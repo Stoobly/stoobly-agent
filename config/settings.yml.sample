@@ -1,0 +1,23 @@
+---
+agent_url: http://localhost:4200
+api_url: https://api.stoobly.com
+api_key: vGxx1SgChtkVzrqCRtaZKgKs
+mode:
+  active: record
+  record:
+    enabled: false
+    exclude_patterns: []
+    include_patterns: []
+    policy: all
+    service_url: ''
+    project_key: ''
+    scenario_key: ''
+  mock:
+    enabled: false
+    exclude_patterns: []
+    include_patterns: []
+    policy: all
+    project_key: ''
+    scenario_key: ''
+    service_url: ''
+proxy_config_path: config/settings.yml
