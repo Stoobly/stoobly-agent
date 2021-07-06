@@ -30,10 +30,18 @@ class Settings:
         else:
             cwd = os.path.dirname(os.path.realpath(__file__))
 
-            self.config_file_path = os.path.join(cwd, '..', '..', '..', 'config', 'settings.yml')
+            self.config_file_path = os.path.join(cwd, '..', 'config', 'settings.yml')
 
             self.__load_config()
             self.__observe_config()
+
+    def to_hash(self):
+        return self.config
+
+    def update(self, contents):
+        fp = open(self.config_file_path, 'w')
+        yaml.dump(contents, fp, allow_unicode=True)
+        fp.close()
 
     # Headless means the agent is packaged without the frontend and
     # supports configuration with environment variables or the yaml file.

@@ -7,30 +7,29 @@ import time
 import threading
 
 from mitmproxy import http
-from mitmdump import DumpMaster, Options
 from urllib.parse import urlparse
 
-import stoobly.lib
+import lib
 
-from stoobly.lib.agent_api import AgentApi
-from stoobly.lib.hashed_request_decorator import HashedRequestDecorator
-from stoobly.lib.joined_request import JoinedRequest
-from stoobly.lib.logger import Logger
-from stoobly.lib.mitmproxy_request_adapter import MitmproxyRequestAdapter
-from stoobly.lib.mitmproxy_response_adapter import MitmproxyResponseAdapter
-from stoobly.lib.proxy_request import ProxyRequest
-from stoobly.lib.settings import Settings
-from stoobly.lib.scenarios_api import ScenariosApi
+from lib.agent_api import AgentApi
+from lib.hashed_request_decorator import HashedRequestDecorator
+from lib.joined_request import JoinedRequest
+from lib.logger import Logger
+from lib.mitmproxy_request_adapter import MitmproxyRequestAdapter
+from lib.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from lib.proxy_request import ProxyRequest
+from lib.settings import Settings
+from lib.scenarios_api import ScenariosApi
 
 # mitmproxy only hot reloads the main script, manually hot reload lib
-importlib.reload(stoobly.lib.hashed_request_decorator)
-importlib.reload(stoobly.lib.joined_request)
-importlib.reload(stoobly.lib.logger)
-importlib.reload(stoobly.lib.mitmproxy_request_adapter)
-importlib.reload(stoobly.lib.mitmproxy_response_adapter)
-importlib.reload(stoobly.lib.proxy_request)
-importlib.reload(stoobly.lib.settings)
-importlib.reload(stoobly.lib.scenarios_api)
+importlib.reload(lib.hashed_request_decorator)
+importlib.reload(lib.joined_request)
+importlib.reload(lib.logger)
+importlib.reload(lib.mitmproxy_request_adapter)
+importlib.reload(lib.mitmproxy_response_adapter)
+importlib.reload(lib.proxy_request)
+importlib.reload(lib.settings)
+importlib.reload(lib.scenarios_api)
 
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
@@ -451,8 +450,3 @@ def __get_service_url(request, settings):
 
         return f"{request.scheme}://{request.host}:{request.port}"
 
-
-if __name__ == '__main__':
-    opts = Options(listen_host='0.0.0.0', listen_port=8080, scripts=__file__)
-    m = DumpMaster(opts)
-    m.run()
