@@ -8,4 +8,4 @@
 /*.egg-info
 /*.egg
 
-static/*
+stoobly_agent/public/*
