@@ -1,6 +1,6 @@
 # Stoobly Agent
 
-Record requests to Stoobly and mock HTTP requests
+Record requests to Stoobly and mock HTTP/HTTPS requests
 
 ## Installation
 
