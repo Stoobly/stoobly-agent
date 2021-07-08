@@ -13,17 +13,17 @@ pip install stoobly
 ### Run with both UI and proxy
 
 ```
-stoobly-agent run
+stoobly run
 ```
 
 ### Run with just proxy
 
 ```
-stoobly-agent run --headless
+stoobly run --headless
 ```
 
 ### See available options
 
 ```
-stoobly-agent --help
+stoobly --help
 ```
