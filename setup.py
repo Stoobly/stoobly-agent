@@ -20,12 +20,12 @@ setup(
         "watchdog>=2.1.0,<=2.1.3",
     ],
     license='MIT',
-    name='stoobly',
+    name='stoobly-agent',
     packages=find_packages(include=[
-        'stoobly_agent', 'stoobly_agent.*',
+        'stoobly-agent', 'stoobly-agent.*',
     ]),
     package_data={
-        'stoobly_agent': ['app/*' , 'config/*', 'public/*']
+        'stoobly-agent': ['app/*' , 'config/*', 'public/*']
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
