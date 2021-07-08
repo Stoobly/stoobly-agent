@@ -1,5 +1,7 @@
 import json
+import mimetypes
 import os
+import pathlib
 import pdb
 import re
 import yaml
@@ -34,8 +36,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.preprocess()
 
         if not self.route('GET'):
+            path = os.path.join(self.public_dir, self.path[1:] if self.path != '/' else 'index.html')
+            if not os.path.exists(path):
+                path = os.path.join(self.public_dir, 'index.html')
+
             self.render(
-                file = os.path.join(self.public_dir, 'index.html'),
+                file = path,
                 status = 200
             )
 
@@ -112,19 +118,48 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             return body
 
     def render(self, **kwargs):
-        self.send_response(kwargs.get('status') or 200)
+        if kwargs.get('file'):
+            self.render_file(kwargs)
+        elif kwargs.get('json'):
+            self.render_json(kwargs)
+        elif kwargs.get('plain'):
+            self.render_plain(kwargs)
+
+    def render_file(self, kwargs):
+        path = kwargs['file']
+
+        if not os.path.exists(path):
+            return self.send_response(404)
+        else:
+            self.send_response(kwargs.get('status') or 200)
+
+        mimetype = mimetypes.guess_type(path)[0]
+        self.send_header('Content-Type', mimetype or 'text/plain')
+
         self.enable_cors()
         self.end_headers()
 
-        if kwargs.get('file'):
-            fp = open(kwargs['file'], 'rb')
-            self.wfile.write(fp.read())
-            fp.close()
-        elif kwargs.get('json'):
-            json_string = json.dumps(kwargs['json'])
-            self.wfile.write(json_string.encode())
-        elif kwargs.get('plain'):
-            self.wfile.write(kwargs['plain'].encode())
+        fp = open(path, 'rb')
+        self.wfile.write(fp.read())
+        fp.close()
+
+    def render_json(self, kwargs):
+        self.send_response(kwargs.get('status') or 200)
+        self.enable_cors()
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+
+        json_string = json.dumps(kwargs['json'])
+        self.wfile.write(json_string.encode())
+
+    def render_plain(self, kwargs):
+        self.send_response(kwargs.get('status') or 200)
+        self.enable_cors()
+        self.send_header('Content-Type', 'text/plain')
+        self.end_headers()
+
+        self.wfile.write(kwargs['plain'].encode())
+
 
     ### Routes
 
