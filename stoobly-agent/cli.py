@@ -4,8 +4,8 @@ import click
 import pdb
 import threading
 
-from stoobly_agent.proxy import run as run_proxy
-from stoobly_agent.api import run as run_api
+from agent.proxy import run as run_proxy
+from agent.api import run as run_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option()
@@ -24,6 +24,8 @@ def main(ctx):
 @click.option('--ui-port', default=4200, help='UI service port.')
 @click.option('--headless', default=False, help='Disable starting frontend.')
 def run(**kwargs):
+    run_api('0.0.0.0', 4200)
+    return
     if not kwargs['headless']:
         thread = threading.Thread(target=run_api, args=(kwargs.get('ui_host'), kwargs.get('ui_port')))
         thread.start()
