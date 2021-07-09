@@ -19,7 +19,7 @@ from lib.mitmproxy_request_adapter import MitmproxyRequestAdapter
 from lib.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from lib.proxy_request import ProxyRequest
 from lib.settings import Settings
-from lib.scenarios_api import ScenariosApi
+from lib.stoobly_api import StooblyApi
 
 # mitmproxy only hot reloads the main script, manually hot reload lib
 importlib.reload(lib.hashed_request_decorator)
@@ -29,7 +29,7 @@ importlib.reload(lib.mitmproxy_request_adapter)
 importlib.reload(lib.mitmproxy_response_adapter)
 importlib.reload(lib.proxy_request)
 importlib.reload(lib.settings)
-importlib.reload(lib.scenarios_api)
+importlib.reload(lib.stoobly_api)
 
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
@@ -110,7 +110,7 @@ def response(flow):
 
     active_mode_settings = settings.active_mode_settings
 
-    api = ScenariosApi(
+    api = StooblyApi(
       settings.api_url, settings.api_key
     )
 
@@ -156,7 +156,7 @@ def __handle_mock(flow, settings):
     active_mode_settings = settings.active_mode_settings
     service_url = __get_service_url(request, active_mode_settings)
 
-    api = ScenariosApi(
+    api = StooblyApi(
       settings.api_url, settings.api_key
     )
 
@@ -195,6 +195,7 @@ def __handle_mock(flow, settings):
 
 def __handle_record(request, settings):
     active_mode_settings = settings.active_mode_settings
+
     service_url = __get_service_url(request, active_mode_settings)
 
     #
@@ -208,17 +209,19 @@ def __handle_record(request, settings):
 ### API Access
 
 def __reverse_proxy(request, service_url, options = {}):
+    Logger.instance().debug(f"Sending request to: {service_url}")
+
     uri = urlparse(service_url)
 
-    #request.scheme = uri.scheme
-    #request.host = uri.hostname
-    #request.port = uri.port
+    request.scheme = uri.scheme
+    request.host = uri.hostname
+    request.port = uri.port
 
 ###
 #
 # Upon receiving a response, create the request in API for future use
 #
-# @param api [ScenariosApi]
+# @param api [StooblyApi]
 # @param settings [Settings.mode.mock | Settings.mode.record]
 # @param res [Net::HTTP::Response]
 #
@@ -257,7 +260,7 @@ def __upload_request(flow, api, settings):
 
 ###
 #
-# @param api [ScenariosApi]
+# @param api [StooblyApi]
 # @param settings [Settings.mode.mock | Settings.mode.record]
 # @param ignored_components_json [String] JSON string
 #
@@ -335,12 +338,12 @@ def __exclude(request, patterns):
 
 ###
 #
-# Formats request into parameters expected by scenarios api
+# Formats request into parameters expected by stoobly api
 #
 # @param request [lib.mitmproxy_request_adapter.MitmproxyRequestAdapter]
 # @param ignored_components [Array<Hash>]
 #
-# @return [Hash] query parameters to pass to scenarios api
+# @return [Hash] query parameters to pass to stoobly api
 #
 def __build_query_params(request, ignored_components = []):
     request = MitmproxyRequestAdapter(request)

@@ -6,8 +6,8 @@ import pdb
 
 from .logger import Logger
 
-class ScenariosApi:
-    LOG_ID = 'lib.scenarios_api'
+class StooblyApi:
+    LOG_ID = 'lib.stoobly_api'
     REQUESTS_ENDPOINT = '/requests'
 
     def __init__(self, service_url, api_key):
