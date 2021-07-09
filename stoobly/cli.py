@@ -23,6 +23,14 @@ def main(ctx):
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
 @click.option('--headless', default=False, help='Disable starting frontend.')
+@click.option('--mode', default="regular", help='''
+    Mode can be "regular", "transparent", "socks5",
+    "reverse:SPEC", or "upstream:SPEC". For reverse and
+    upstream proxy modes, SPEC is host specification in
+    the form of "http[s]://host[:port]".
+'''
+)
+
 def run(**kwargs):
     if not kwargs['headless']:
         thread = threading.Thread(target=run_api, args=(kwargs.get('ui_host'), kwargs.get('ui_port')))
