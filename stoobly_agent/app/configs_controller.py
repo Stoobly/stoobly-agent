@@ -1,7 +1,7 @@
 from mergedeep import merge
 
-from stoobly_agent.lib.settings import Settings
-from stoobly_agent.lib.stoobly_api import StooblyApi
+from ..lib.settings import Settings
+from ..lib.stoobly_api import StooblyApi
 
 class ConfigsController:
     _instance = None
