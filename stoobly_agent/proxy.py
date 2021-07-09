@@ -7,6 +7,7 @@ def run(**kwargs):
     script = os.path.join(cwd, 'record.py')
 
     fixed_options = {
+        'flow_detail': 1,
         'scripts': script,
     }
 

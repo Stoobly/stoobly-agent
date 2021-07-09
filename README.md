@@ -5,7 +5,7 @@ Record requests to Stoobly and mock HTTP/HTTPS requests
 ## Installation
 
 ```
-pip install stoobly
+pip install stoobly-agent
 ```
 
 ## Usage
@@ -13,17 +13,17 @@ pip install stoobly
 ### Run with both UI and proxy
 
 ```
-stoobly run
+stoobly-agent run
 ```
 
 ### Run with just proxy
 
 ```
-stoobly run --headless
+stoobly-agent run --headless
 ```
 
 ### See available options
 
 ```
-stoobly --help
+stoobly-agent --help
 ```
