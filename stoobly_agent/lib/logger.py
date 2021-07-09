@@ -1,6 +1,8 @@
 import logging
 import os
 
+from .env_vars import LOG_LEVEL
+
 class Logger:
     _instance = None
 
@@ -12,7 +14,7 @@ class Logger:
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
 
-            log_level = os.getenv('STOOBLY_LOG_LEVEL')
+            log_level = os.getenv(LOG_LEVEL)
 
             if log_level == 'debug':
                 logging.basicConfig(level=logging.DEBUG)
