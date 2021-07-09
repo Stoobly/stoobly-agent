@@ -75,7 +75,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             path = endpoint_handler[0]
 
             matches = isinstance(path, str) and self.path == path
-            matches = matches or isinstance(path, re.Pattern) and re.match(path, self.path)
+            matches = matches or not isinstance(path, str) and re.match(path, self.path)
 
             if matches:
                 handler = endpoint_handler[1]
