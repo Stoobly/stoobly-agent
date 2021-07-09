@@ -7,7 +7,7 @@ setup(
     description='Client agent for Stoobly',
     entry_points={
         'console_scripts': [
-            'stoobly=stoobly.cli:main'
+            'stoobly-agent=stoobly_agent.cli:main'
         ]
     },
     include_package_data=True,
@@ -20,12 +20,12 @@ setup(
         "watchdog>=2.1.0,<=2.1.3",
     ],
     license='MIT',
-    name='stoobly',
+    name='stoobly-agent',
     packages=find_packages(include=[
-        'stoobly', 'stoobly.*',
+        'stoobly_agent', 'stoobly_agent.*',
     ]),
     package_data={
-        'stoobly': ['app/*' , 'config/*', 'public/*']
+        'stoobly_agent': ['app/*' , 'config/*', 'public/*']
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',

@@ -12,14 +12,16 @@ class Logger:
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
 
-            env = os.getenv('PROXY_ENV')
+            log_level = os.getenv('STOOBLY_LOG_LEVEL')
 
-            if env == 'production':
-                logging.basicConfig(level=logging.WARNING)
-            elif env == 'staging':
-                logging.basicConfig(level=logging.INFO)
-            else:
+            if log_level == 'debug':
                 logging.basicConfig(level=logging.DEBUG)
+            elif log_level == 'warning':
+                logging.basicConfig(level=logging.WARNING)
+            elif log_level == 'error':
+                logging.basicConfig(level=logging.ERROR)
+            else:
+                logging.basicConfig(level=logging.INFO)
 
         return logging
 
