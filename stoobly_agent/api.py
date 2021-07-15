@@ -106,11 +106,14 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         merge(self.params, parse_qs(self.uri.query))
 
     def parse_body(self):
+        if not self.headers.get('Content-Length'):
+            body = self.rfile.read()
+        else:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+
         if not self.headers['Content-Type']:
             return body
-
-        content_length = int(self.headers['Content-Length'])
-        body = self.rfile.read(content_length)
 
         if self.headers['Content-Type'].lower() == 'application/json':
             return json.loads(body)

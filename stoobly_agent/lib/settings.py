@@ -101,7 +101,7 @@ class Settings:
 
             enabled = os.environ.get(env_vars.AGENT_ENABLED)
             if enabled != None:
-                active_mode_settings['enabled'] = enabled
+                active_mode_settings['enabled'] = not not enabled
 
             include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
             if include_patterns != None:
