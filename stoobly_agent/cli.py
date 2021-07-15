@@ -20,9 +20,9 @@ def main(ctx):
     pass
 
 @main.command()
-@click.option('--headless', is_flag=True, default=False, help='Disable starting frontend.')
+@click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--log-level', default='info', help='''
-    Environment can be "debug", "info", "warning" or "error"
+    Environment can be "debug", "info", "warning" or "error".
 ''')
 @click.option('--mode', default="regular", help='''
     Mode can be "regular", "transparent", "socks5",
