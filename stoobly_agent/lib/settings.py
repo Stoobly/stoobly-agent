@@ -99,6 +99,10 @@ class Settings:
             # Get settings from yaml file, replace setting with env var if set
             active_mode_settings = mode.get(active_mode)
 
+            enabled = os.environ.get(env_vars.AGENT_ENABLED)
+            if enabled != None:
+                active_mode_settings['enabled'] = enabled
+
             include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
             if include_patterns != None:
                 # Split the string based on commas, strip whitespace
