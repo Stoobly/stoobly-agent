@@ -50,3 +50,8 @@ class StatusesController:
         cache = Cache.instance()
         cache.write(context.params.get('id'), context.parse_body())
 
+        context.render(
+            plain = '',
+            status = 200
+        )
+

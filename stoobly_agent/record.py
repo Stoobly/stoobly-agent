@@ -246,7 +246,7 @@ def __upload_request(flow, api, settings):
 
     )
 
-    if res.status_code == 201:
+    if not Settings.instance().is_headless() and res.status_code == 201:
         agent_url = settings.agent_url
 
         if not agent_url:
