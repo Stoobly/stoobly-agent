@@ -11,12 +11,14 @@ from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
 from .app.configs_controller import ConfigsController
+from .app.proxy_controller import ProxyController
 from .app.statuses_controller import StatusesController
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 
     CONFIGS_PATH = '/api/v1/admin/configs'
+    PROXY_PATH = '/proxy'
     STATUSES_PATH = '/api/v1/admin/statuses'
     STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
@@ -59,7 +61,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def enable_cors(self):
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', 'CONTENT-TYPE, X-DO-PROXY')
+        self.send_header('Access-Control-Allow-Headers', 'CONTENT-TYPE, X-DO-PROXY, X-SERVICE-URL, X-REQUEST-PATH')
         self.send_header('Access-Control-Max-Age', '7200')
 
     def preprocess(self):
@@ -127,6 +129,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.render_json(kwargs)
         elif kwargs.get('plain'):
             self.render_plain(kwargs)
+        else:
+            self.render_data(kwargs)
 
     def render_file(self, kwargs):
         path = kwargs['file']
@@ -136,10 +140,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_response(kwargs.get('status') or 200)
 
+        self.enable_cors()
         mimetype = mimetypes.guess_type(path)[0]
         self.send_header('Content-Type', mimetype or 'text/plain')
-
-        self.enable_cors()
+        self.render_headers(kwarg.get('headers'))
         self.end_headers()
 
         fp = open(path, 'rb')
@@ -148,8 +152,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def render_json(self, kwargs):
         self.send_response(kwargs.get('status') or 200)
+
         self.enable_cors()
         self.send_header('Content-Type', 'application/json')
+        self.render_headers(kwargs.get('headers'))
         self.end_headers()
 
         json_string = json.dumps(kwargs['json'])
@@ -157,24 +163,47 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def render_plain(self, kwargs):
         self.send_response(kwargs.get('status') or 200)
+
         self.enable_cors()
         self.send_header('Content-Type', 'text/plain')
+        self.render_headers(kwargs.get('headers'))
         self.end_headers()
 
-        self.wfile.write(kwargs['plain'].encode())
+        if isinstance(kwargs['plain'], str):
+            self.wfile.write(kwargs['plain'].encode())
+        else:
+            self.wfile.write(kwargs['plain'])
 
+    def render_data(self, kwargs):
+        self.send_response(kwargs.get('status') or 200)
+
+        #self.enable_cors()
+        self.render_headers(kwargs.get('headers'))
+        self.end_headers()
+
+        if isinstance(kwargs['data'], str):
+            self.wfile.write(kwargs['data'].encode())
+        else:
+            self.wfile.write(kwargs['data'])
+
+    def render_headers(self, headers):
+        if headers:
+            for key, val in headers.items():
+                self.send_header(key, val)
 
     ### Routes
 
     ROUTES = {
         'GET': [
             [CONFIGS_PATH, ConfigsController.instance().get_configs],
-            [os.path.join(CONFIGS_PATH, 'modes'), ConfigsController.instance().get_configs_modes],
-            [os.path.join(CONFIGS_PATH, 'policies'), ConfigsController.instance().get_configs_policies],
+            ['/'.join([CONFIGS_PATH, 'modes']), ConfigsController.instance().get_configs_modes],
+            ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
+            ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
             [STATUS_PATH, StatusesController.instance().get_status],
         ],
         'PUT': [
             [CONFIGS_PATH, ConfigsController.instance().put_configs],
+            ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
             [STATUS_PATH, StatusesController.instance().put_status],
         ]
     }
