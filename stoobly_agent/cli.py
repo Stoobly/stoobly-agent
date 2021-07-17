@@ -8,6 +8,7 @@ import threading
 from .api import run as run_api
 from .proxy import run as run_proxy
 from .lib.env_vars import LOG_LEVEL
+from .lib.settings import Settings
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option()
@@ -37,6 +38,10 @@ def main(ctx):
 @click.option('--ui-port', default=4200, help='UI service port.')
 def run(**kwargs):
     os.environ[LOG_LEVEL]= kwargs['log_level']
+
+    settings = Settings.instance()
+    settings.proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
+    settings.agent_url = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
 
     if not kwargs['headless']:
         initialize_ui(kwargs)

@@ -99,6 +99,7 @@ class ConfigsController:
                 },
                 'enabled': settings.active_mode_settings.get('enabled'),
                 'list': list(self.MODE.values()),
+                'proxy_url': settings.proxy_url,
             },
             status = 200
         )
