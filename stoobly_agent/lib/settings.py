@@ -12,6 +12,8 @@ class Settings:
     LOG_ID = 'lib.settings'
 
     _instance = None
+    _agent_url = ''
+    _proxy_url = ''
 
     def __init__(self):
         if Settings._instance:
@@ -49,7 +51,19 @@ class Settings:
 
     @property
     def agent_url(self):
-        return self.config.get('agent_url')
+        return self._agent_url
+
+    @agent_url.setter
+    def agent_url(self, value):
+        self._agent_url = value
+
+    @property
+    def proxy_url(self):
+        return self._proxy_url
+
+    @proxy_url.setter
+    def proxy_url(self, value):
+        self._proxy_url = value
 
     @property
     def api_url(self):
