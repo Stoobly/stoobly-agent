@@ -123,13 +123,13 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             return body
 
     def render(self, **kwargs):
-        if kwargs.get('file'):
+        if kwargs.get('file') != None:
             self.render_file(kwargs)
-        elif kwargs.get('json'):
+        elif kwargs.get('json') != None:
             self.render_json(kwargs)
-        elif kwargs.get('plain'):
+        elif kwargs.get('plain') != None:
             self.render_plain(kwargs)
-        else:
+        elif kwargs.get('data') != None:
             self.render_data(kwargs)
 
     def render_file(self, kwargs):
