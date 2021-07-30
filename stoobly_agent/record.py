@@ -37,7 +37,7 @@ os.environ['no_proxy'] = '*'
 # Initialize settings instance
 Settings.instance()
 
-LOG_ID = 'record'
+LOG_ID = 'Record'
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -83,7 +83,7 @@ def request(flow):
     settings = Settings.instance()
     mode = __get_proxy_mode(request.headers, settings)
 
-    Logger.instance().debug(f"Proxy Mode: {mode}")
+    Logger.instance().debug(f"{LOG_ID}:ProxyMode: {mode}")
 
     if mode == MODE['NONE']:
         pass
@@ -120,7 +120,7 @@ def response(flow):
         # If the request path does not match accepted paths, do not record
         upload_policy = RECORD_POLICY['NONE']
 
-    Logger.instance().debug(f"Upload Policy: {upload_policy}")
+    Logger.instance().debug(f"{LOG_ID}:UploadPolicy: {upload_policy}")
 
     if upload_policy == RECORD_POLICY['ALL']:
         thread = threading.Thread(target=__upload_request, args=(flow, api, settings))
@@ -209,7 +209,7 @@ def __handle_record(request, settings):
 ### API Access
 
 def __reverse_proxy(request, service_url, options = {}):
-    Logger.instance().debug(f"Sending request to: {service_url}")
+    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
 
     uri = urlparse(service_url)
 
@@ -245,6 +245,8 @@ def __upload_request(flow, api, settings):
         }
 
     )
+
+    Logger.instance().debug(f"{LOG_ID}:UploadRequest:StatusCode:{res.status_code}")
 
     if not Settings.instance().is_headless() and res.status_code == 201:
         agent_url = settings.agent_url
