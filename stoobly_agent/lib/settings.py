@@ -26,13 +26,7 @@ class Settings:
             self.__load_config()
             self.__observe_config()
 
-    def to_hash(self):
-        return self.config
-
-    def update(self, contents):
-        fp = open(self.config_file_path, 'w')
-        yaml.dump(contents, fp, allow_unicode=True)
-        fp.close()
+    ### Statuses
 
     # Headless means the agent is packaged without the frontend and
     # supports configuration with environment variables or the yaml file.
@@ -41,6 +35,25 @@ class Settings:
             return True
 
         return False
+
+    def is_debug(self):
+        return os.environ.get(env_vars.LOG_LEVEL) == 'debug'
+
+    ### CRUD
+
+    def to_hash(self):
+        return self.config
+
+    def update(self, contents):
+        fp = open(self.config_file_path, 'w')
+        yaml.dump(contents, fp, allow_unicode=True)
+        fp.close()
+
+    def reload_config(self, event):
+        Logger.instance().info(f"{self.LOG_ID}.reload_config")
+        self.__load_config()
+
+    ### Properties
 
     @classmethod
     def instance(cls):
@@ -147,9 +160,7 @@ class Settings:
 
         return mode.get(active_mode)
 
-    def reload_config(self, event):
-        Logger.instance().info(f"{self.LOG_ID}.reload_config")
-        self.__load_config()
+    ### Helpers
 
     def __load_config(self):
         with open(self.config_file_path, 'r') as stream:
