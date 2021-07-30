@@ -3,6 +3,7 @@ import json
 import os
 import pdb
 import re
+import tempfile
 import time
 import threading
 
@@ -236,9 +237,11 @@ def __upload_request(flow, api, settings):
 
     Logger.instance().info(f"Uploading {proxy_request.url()}")
 
+    raw_requests = joined_request.build()
+
     res = api.request_create(
         active_mode_settings.get('project_key'),
-        joined_request.build(),
+        raw_requests,
         {
             'importer': 'gor',
             'scenario_key': active_mode_settings.get('scenario_key'),
@@ -247,6 +250,15 @@ def __upload_request(flow, api, settings):
     )
 
     Logger.instance().debug(f"{LOG_ID}:UploadRequest:StatusCode:{res.status_code}")
+
+    # Write the request to a file to help debug
+    if Settings.instance().is_debug():
+        # Build file path, replace slashes with underscores
+        request_path = request.path.replace('/', '_')
+        file_path = os.path.join(tempfile.gettempdir(), request_path, str(int(time.time() * 1000)))
+
+        with open(file_path, 'w') as f:
+            f.write(raw_requests)
 
     if not Settings.instance().is_headless() and res.status_code == 201:
         agent_url = settings.agent_url
