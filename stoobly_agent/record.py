@@ -1,3 +1,4 @@
+import errno
 import importlib
 import json
 import os
@@ -255,9 +256,19 @@ def __upload_request(flow, api, settings):
     if Settings.instance().is_debug():
         # Build file path, replace slashes with underscores
         request_path = request.path.replace('/', '_')
-        file_path = os.path.join(tempfile.gettempdir(), request_path, str(int(time.time() * 1000)))
+        timestamp = str(int(time.time() * 1000))
+        file_path = os.path.join(tempfile.gettempdir(), 'stoobly', request_path, timestamp)
 
-        with open(file_path, 'w') as f:
+        if not os.path.exists(os.path.dirname(file_path)):
+            try:
+                os.makedirs(os.path.dirname(file_path))
+            except OSError as err: # Guard against race condition
+                if err.errno != errno.EEXIST:
+                    raise err
+
+        Logger.instance().debug(f"{LOG_ID}: Writing request to {file_path}")
+
+        with open(file_path, 'wb') as f:
             f.write(raw_requests)
 
     if not Settings.instance().is_headless() and res.status_code == 201:
@@ -407,9 +418,9 @@ def __simulate_latency(expected_latency, start_time):
 
     wait_time = expected_latency - estimated_rtt_network_latency - api_latency
 
-    logger.instance().debug(f"{LOG_ID}:Expected latency: {expected_latency}")
-    logger.instance().debug(f"{LOG_ID}:API latency: {api_latency}")
-    logger.instance().debug(f"{LOG_ID}:Wait time: {wait_time}")
+    Logger.instance().debug(f"{LOG_ID}:Expected latency: {expected_latency}")
+    Logger.instance().debug(f"{LOG_ID}:API latency: {api_latency}")
+    Logger.instance().debug(f"{LOG_ID}:Wait time: {wait_time}")
 
     if wait_time > 0:
         time.sleep(wait_time)
