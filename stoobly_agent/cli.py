@@ -23,7 +23,7 @@ def main(ctx):
 @main.command()
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--log-level', default='info', help='''
-    Environment can be "debug", "info", "warning" or "error".
+    Log level can be "debug", "info", "warning" or "error".
 ''')
 @click.option('--mode', default="regular", help='''
     Mode can be "regular", "transparent", "socks5",
@@ -37,7 +37,8 @@ def main(ctx):
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
 def run(**kwargs):
-    os.environ[LOG_LEVEL]= kwargs['log_level']
+    if not os.getenv(LOG_LEVEL):
+        os.environ[LOG_LEVEL] = kwargs['log_level']
 
     settings = Settings.instance()
     settings.proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
