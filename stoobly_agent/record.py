@@ -77,6 +77,8 @@ CUSTOM_HEADERS = {
     'SERVICE_URL': 'X-Service-Url',
 }
 
+NAMESPACE_FOLDER = 'stoobly'
+
 def request(flow):
     request = flow.request
 
@@ -257,7 +259,7 @@ def __upload_request(flow, api, settings):
         # Build file path, replace slashes with underscores
         request_path = request.path.replace('/', '_')
         timestamp = str(int(time.time() * 1000))
-        file_path = os.path.join(tempfile.gettempdir(), 'stoobly', request_path, timestamp)
+        file_path = os.path.join(tempfile.gettempdir(), NAMESPACE_FOLDER, request_path, timestamp)
 
         if not os.path.exists(os.path.dirname(file_path)):
             try:
