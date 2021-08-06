@@ -143,7 +143,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.enable_cors()
         mimetype = mimetypes.guess_type(path)[0]
         self.send_header('Content-Type', mimetype or 'text/plain')
-        self.render_headers(kwarg.get('headers'))
+        self.render_headers(kwargs.get('headers'))
         self.end_headers()
 
         fp = open(path, 'rb')

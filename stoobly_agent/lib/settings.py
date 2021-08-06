@@ -49,7 +49,7 @@ class Settings:
         yaml.dump(contents, fp, allow_unicode=True)
         fp.close()
 
-    def reload_config(self, event):
+    def reload_config(self):
         Logger.instance().info(f"{self.LOG_ID}.reload_config")
         self.__load_config()
 
