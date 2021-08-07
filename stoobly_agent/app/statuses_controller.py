@@ -1,8 +1,6 @@
 import pdb
 
 from ..lib.cache import Cache
-from ..lib.settings import Settings
-from ..lib.stoobly_api import StooblyApi
 
 class StatusesController:
     _instance = None
