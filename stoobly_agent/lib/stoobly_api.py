@@ -72,7 +72,7 @@ class StooblyApi:
             'project_id': project_data.get('id'),
             **query_params,
         }
-
+        
         Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
 
         return requests.get(url, headers=self.default_headers, params=params)
