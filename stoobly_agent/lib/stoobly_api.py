@@ -56,11 +56,10 @@ class StooblyApi:
 
         body = {
             'project_id': project_data.get('id'),
-            'requests': raw_requests,
             **params,
         }
 
-        return requests.post(url, headers=self.default_headers, data=body)
+        return requests.post(url, headers=self.default_headers, data=body, files={ 'requests': raw_requests })
 
     def request_response(self, project_key, query_params):
         url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/response"
