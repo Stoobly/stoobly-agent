@@ -85,6 +85,10 @@ class Settings:
 
         return self.config.get('api_url')
 
+    @api_url.setter
+    def api_url(self, value):
+        self.api_url = value
+
     @property
     def api_key(self):
         if self.is_headless() and os.environ.get(env_vars.API_KEY):
