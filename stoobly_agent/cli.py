@@ -38,7 +38,7 @@ def main(ctx):
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
-@click.option('--api-url', default='https://api.stoobly.com', help='API URL.')
+@click.option('--api-url', help='API URL.')
 def run(**kwargs):
     if not os.getenv(LOG_LEVEL):
         os.environ[LOG_LEVEL] = kwargs['log_level']

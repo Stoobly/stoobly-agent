@@ -14,6 +14,7 @@ class Settings:
     _instance = None
     _agent_url = ''
     _proxy_url = ''
+    _api_url = ''
 
     def __init__(self):
         if Settings._instance:
@@ -80,6 +81,9 @@ class Settings:
 
     @property
     def api_url(self):
+        if self._api_url:
+            return self._api_url
+
         if self.is_headless() and os.environ.get(env_vars.API_URL):
             return os.environ[env_vars.API_URL]
 
@@ -87,7 +91,7 @@ class Settings:
 
     @api_url.setter
     def api_url(self, value):
-        self.api_url = value
+        self._api_url = value
 
     @property
     def api_key(self):
