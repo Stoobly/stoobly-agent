@@ -2,9 +2,7 @@
 
 import click
 import os
-import json
 import pdb
-import time
 import threading
 
 from .api import run as run_api
@@ -60,25 +58,13 @@ def run(**kwargs):
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump_config(**kwargs):
     settings = Settings.instance()
-    settings_dict = settings.__dict__
-    settings_dict['is_headless'] = settings.is_headless()
-    settings_dict['is_debug'] = settings.is_debug()
-    output = None
-
-    if kwargs['pretty_print']:
-        output = json.dumps(settings_dict, indent=4)
-    else:
-        output = json.dumps(settings_dict)
+    
+    output = settings.dump(pretty_print=kwargs['pretty_print'])
 
     print(output)
 
     if kwargs['save_to_file']:
-        timestamp = str(int(time.time() * 1000))
-        config_dump_file_name = f"config_dump_{timestamp}.json"
-
-        with open(config_dump_file_name, 'w') as output_file:
-            json.dump(settings_dict, output_file, indent=4)
-            print(f"\nConfig successfully dumped to {config_dump_file_name}")
+        settings.save_to_file(output)
 
 ### Helpers
 

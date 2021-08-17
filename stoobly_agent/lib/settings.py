@@ -1,4 +1,6 @@
+import json
 import os
+import time
 import yaml
 import pdb
 
@@ -53,6 +55,27 @@ class Settings:
     def reload_config(self):
         Logger.instance().info(f"{self.LOG_ID}.reload_config")
         self.__load_config()
+
+    def dump(self, pretty_print=False):
+        output = None
+        settings_dict = self.__dict__
+        settings_dict['is_headless'] = self.is_headless()
+        settings_dict['is_debug'] = self.is_debug()
+
+        if pretty_print:
+            output = json.dumps(settings_dict, indent=4)
+        else:
+            output = json.dumps(settings_dict)
+
+        return output
+
+    def save_to_file(self, output):
+        timestamp = str(int(time.time() * 1000))
+        config_dump_file_name = f"config_dump_{timestamp}.json"
+
+        with open(config_dump_file_name, 'w') as output_file:
+            json.dump(output, output_file, indent=4)
+            print(f"\nConfig successfully dumped to {config_dump_file_name}")
 
     ### Properties
 
