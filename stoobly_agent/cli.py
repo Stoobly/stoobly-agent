@@ -3,6 +3,7 @@
 import click
 import os
 import pdb
+import time
 import threading
 
 from .api import run as run_api
@@ -59,12 +60,15 @@ def run(**kwargs):
 def dump_config(**kwargs):
     settings = Settings.instance()
     
-    output = settings.dump(pretty_print=kwargs['pretty_print'])
+    output = settings.to_json(pretty_print=kwargs['pretty_print'])
 
     print(output)
 
     if kwargs['save_to_file']:
-        settings.save_to_file(output)
+        timestamp = str(int(time.time() * 1000))
+        config_dump_file_name = f"config_dump_{timestamp}.json"
+        settings.save_to_file(config_dump_file_name, output)
+        print(f"\nConfig successfully dumped to {config_dump_file_name}")
 
 ### Helpers
 

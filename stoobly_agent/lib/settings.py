@@ -1,6 +1,5 @@
 import json
 import os
-import time
 import yaml
 import pdb
 
@@ -56,7 +55,7 @@ class Settings:
         Logger.instance().info(f"{self.LOG_ID}.reload_config")
         self.__load_config()
 
-    def dump(self, pretty_print=False):
+    def to_json(self, pretty_print=False):
         output = None
         settings_dict = self.__dict__
         settings_dict['is_headless'] = self.is_headless()
@@ -64,16 +63,12 @@ class Settings:
 
         settings_dict['env_vars'] = {}
         environ_vars = settings_dict['env_vars']
-        environ_vars['api_url'] = os.environ.get(env_vars.API_URL)
-        environ_vars['api_key'] = os.environ.get(env_vars.API_KEY)
-        environ_vars['active_mode'] = os.environ.get(env_vars.AGENT_ACTIVE_MODE)
-        environ_vars['agent_enabled'] = os.environ.get(env_vars.AGENT_ENABLED)
-        environ_vars['agent_include_patterns'] = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
-        environ_vars['agent_exclude_patterns'] = os.environ.get(env_vars.AGENT_EXCLUDE_PATTERNS)
-        environ_vars['agent_policy'] = os.environ.get(env_vars.AGENT_POLICY)
-        environ_vars['service_url'] = os.environ.get(env_vars.AGENT_SERVICE_URL)
-        environ_vars['project_key'] = os.environ.get(env_vars.AGENT_PROJECT_KEY)
-        environ_vars['scenario_key'] = os.environ.get(env_vars.AGENT_SCENARIO_KEY)
+
+        # https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
+        env_vars_fields = [a for a in dir(env_vars) if not a.startswith('__')]
+
+        for env_var in env_vars_fields:
+            environ_vars[env_var] = os.environ.get(env_vars.__dict__[env_var])
 
         if pretty_print:
             output = json.dumps(settings_dict, indent=4)
@@ -82,13 +77,9 @@ class Settings:
 
         return output
 
-    def save_to_file(self, output):
-        timestamp = str(int(time.time() * 1000))
-        config_dump_file_name = f"config_dump_{timestamp}.json"
-
+    def save_to_file(self, config_dump_file_name, output):
         with open(config_dump_file_name, 'w') as output_file:
             json.dump(output, output_file)
-            print(f"\nConfig successfully dumped to {config_dump_file_name}")
 
     ### Properties
 
