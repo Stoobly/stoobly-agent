@@ -1,3 +1,4 @@
+import json
 import os
 import yaml
 import pdb
@@ -14,6 +15,7 @@ class Settings:
     _instance = None
     _agent_url = ''
     _proxy_url = ''
+    _api_url = ''
 
     def __init__(self):
         if Settings._instance:
@@ -53,6 +55,28 @@ class Settings:
         Logger.instance().info(f"{self.LOG_ID}.reload_config")
         self.__load_config()
 
+    def to_json(self, pretty_print=False):
+        output = None
+        settings_dict = self.__dict__
+        settings_dict['is_headless'] = self.is_headless()
+        settings_dict['is_debug'] = self.is_debug()
+
+        settings_dict['env_vars'] = {}
+        environ_vars = settings_dict['env_vars']
+
+        # https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
+        env_vars_fields = [a for a in dir(env_vars) if not a.startswith('__')]
+
+        for env_var in env_vars_fields:
+            environ_vars[env_var] = os.environ.get(env_vars.__dict__[env_var])
+
+        if pretty_print:
+            output = json.dumps(settings_dict, indent=4)
+        else:
+            output = json.dumps(settings_dict)
+
+        return output
+
     ### Properties
 
     @classmethod
@@ -80,10 +104,17 @@ class Settings:
 
     @property
     def api_url(self):
+        if self._api_url:
+            return self._api_url
+
         if self.is_headless() and os.environ.get(env_vars.API_URL):
             return os.environ[env_vars.API_URL]
 
         return self.config.get('api_url')
+
+    @api_url.setter
+    def api_url(self, value):
+        self._api_url = value
 
     @property
     def api_key(self):
