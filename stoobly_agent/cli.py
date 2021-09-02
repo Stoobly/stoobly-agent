@@ -63,16 +63,16 @@ def dump_config(**kwargs):
     
     output = settings.to_json(pretty_print=kwargs['pretty_print'])
 
-    print(output)
-
     if kwargs['save_to_file']:
         timestamp = str(int(time.time() * 1000))
-        config_dump_file_name = f"config_dump_{timestamp}.json"
+        config_dump_file_name = f"stoobly_agent_config_dump_{timestamp}.json"
 
         with open(config_dump_file_name, 'w') as output_file:
-            json.dump(output, output_file)
+            output_file.write(output)
 
-        print(f"\nConfig successfully dumped to {config_dump_file_name}")
+        print(f"Config successfully dumped to {config_dump_file_name}")
+    else:
+        print(output)
 
 ### Helpers
 
