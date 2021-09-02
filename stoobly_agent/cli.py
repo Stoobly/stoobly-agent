@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import click
+import distro
 import os
 import pdb
+import subprocess
 import threading
 
 from .api import run as run_api
@@ -48,6 +50,42 @@ def run(**kwargs):
         initialize_ui(kwargs)
 
     initialize_proxy(kwargs)
+
+@main.command()
+def install_ca_cert():
+    distro_name = distro.name(pretty=True)
+    home_dir = os.path.expanduser('~')
+    mitmproxy_certs_dir = os.path.join(home_dir, '.mitmproxy')
+    pem_file_name = 'mitmproxy-ca-cert.pem' 
+    crt_file_name = 'mitmproxy-ca-cert.crt'
+
+    # Ubuntu or other Debian based
+    # https://askubuntu.com/a/94861
+    if distro.like() == 'debian':
+        print(f"Installing CA certificate for {distro_name}...")
+        extra_ca_certs_dir = '/usr/local/share/ca-certificates/extra'
+
+        # TODO: smaller lines
+
+        subprocess.run(f"sudo mkdir -p {extra_ca_certs_dir}".split(), check=True)
+        subprocess.run(f"openssl x509 -in {os.path.join(mitmproxy_certs_dir, pem_file_name)} -inform PEM -out {os.path.join(mitmproxy_certs_dir, crt_file_name)}".split(), check=True)
+        subprocess.run(f"sudo cp {os.path.join(mitmproxy_certs_dir, crt_file_name)} {os.path.join(extra_ca_certs_dir, crt_file_name)}".split(), check=True)
+        subprocess.run('sudo update-ca-certificates'.split(), check=True)
+
+    # MacOS
+    elif distro.id() == 'darwin':
+        # https://www.dssw.co.uk/reference/security.html
+        subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain {os.path.join(mitmproxy_certs_dir, pem_file_name)}".split(), check=True)
+
+    elif distro.id() == 'rhel':
+        return
+
+    else:
+        print(f"{distro_name} is not supported yet for automatic CA cert installation.")
+
+@main.command()
+def uninstall_ca_cert():
+    return
 
 ### Helpers
 

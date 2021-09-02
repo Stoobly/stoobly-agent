@@ -1,5 +1,4 @@
 from setuptools import find_packages, setup
-import pdb
 
 setup(
     author='Michael Yen',
@@ -13,6 +12,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "click>=7.0.0,<8.0.0",
+        "distro>=1.6.0,<1.7.0",
         "mergedeep>=1.3.0,<1.3.4",
         "mitmdump>=1.1.0,<=1.1.2",
         "pyyaml>=5.4,<=5.4.1",
@@ -31,3 +31,4 @@ setup(
     url='https://github.com/Stoobly/stoobly-agent',
     version='0.1.4',
 )
+
