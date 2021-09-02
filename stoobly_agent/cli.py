@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import click
+import json
 import os
 import pdb
 import time
@@ -67,7 +68,10 @@ def dump_config(**kwargs):
     if kwargs['save_to_file']:
         timestamp = str(int(time.time() * 1000))
         config_dump_file_name = f"config_dump_{timestamp}.json"
-        settings.save_to_file(config_dump_file_name, output)
+
+        with open(config_dump_file_name, 'w') as output_file:
+            json.dump(output, output_file)
+
         print(f"\nConfig successfully dumped to {config_dump_file_name}")
 
 ### Helpers

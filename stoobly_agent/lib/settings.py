@@ -77,10 +77,6 @@ class Settings:
 
         return output
 
-    def save_to_file(self, config_dump_file_name, output):
-        with open(config_dump_file_name, 'w') as output_file:
-            json.dump(output, output_file)
-
     ### Properties
 
     @classmethod
