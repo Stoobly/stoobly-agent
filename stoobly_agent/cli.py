@@ -5,6 +5,7 @@ import distro
 import os
 import pdb
 import subprocess
+import time
 import threading
 
 from .api import run as run_api
@@ -38,6 +39,7 @@ def main(ctx):
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
+@click.option('--api-url', help='API URL.')
 def run(**kwargs):
     if not os.getenv(LOG_LEVEL):
         os.environ[LOG_LEVEL] = kwargs['log_level']
@@ -45,6 +47,9 @@ def run(**kwargs):
     settings = Settings.instance()
     settings.proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
     settings.agent_url = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
+
+    if kwargs['api_url']:
+        settings.api_url = kwargs['api_url']
 
     if not kwargs['headless']:
         initialize_ui(kwargs)
@@ -87,6 +92,25 @@ def install_ca_cert():
 def uninstall_ca_cert():
     return
 
+@click.option('--pretty-print', is_flag=True, default=False, help='Pretty print the json.')
+@click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
+def dump_config(**kwargs):
+    settings = Settings.instance()
+    
+    output = settings.to_json(pretty_print=kwargs['pretty_print'])
+
+    if kwargs['save_to_file']:
+        timestamp = str(int(time.time() * 1000))
+        config_dump_file_name = f"stoobly_agent_config_dump_{timestamp}.json"
+
+        with open(config_dump_file_name, 'w') as output_file:
+            output_file.write(output)
+
+        print(f"Config successfully dumped to {config_dump_file_name}")
+    else:
+        print(output)
+
+
 ### Helpers
 
 def initialize_ui(kwargs):
@@ -111,5 +135,6 @@ def initialize_proxy(kwargs):
     del options['proxy_port']
     del options['ui_host']
     del options['ui_port']
+    del options['api_url']
 
     run_proxy(**options)
