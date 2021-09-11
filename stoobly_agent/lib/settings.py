@@ -51,7 +51,7 @@ class Settings:
         yaml.dump(contents, fp, allow_unicode=True)
         fp.close()
 
-    def reload_config(self):
+    def reload_config(self, event):
         Logger.instance().info(f"{self.LOG_ID}.reload_config")
         self.__load_config()
 
@@ -206,10 +206,14 @@ class Settings:
         ignore_directories = False
         case_sensitive = True
         event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-
         event_handler.on_modified = self.reload_config
 
         observer = Observer()
         watch_dir = os.path.dirname(self.config_file_path)
-        observer.schedule(event_handler, watch_dir)
-        observer.start()
+
+        # Address Issue #7
+        try:
+            observer.schedule(event_handler, watch_dir)
+            observer.start()
+        except:
+            pass
