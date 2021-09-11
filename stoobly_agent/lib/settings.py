@@ -26,7 +26,20 @@ class Settings:
             self.config_file_path = os.path.join(cwd, '..', 'config', 'settings.yml')
 
             self.__load_config()
-            self.__observe_config()
+
+    def observe_config(self):
+        patterns = ['settings.yml']
+        ignore_patterns = None
+        ignore_directories = False
+        case_sensitive = True
+        event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+        event_handler.on_modified = self.reload_config
+
+        observer = Observer()
+        watch_dir = os.path.dirname(self.config_file_path)
+
+        observer.schedule(event_handler, watch_dir)
+        observer.start()
 
     ### Statuses
 
@@ -199,21 +212,3 @@ class Settings:
                 self.config = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 pass
-
-    def __observe_config(self):
-        patterns = ['settings.yml']
-        ignore_patterns = None
-        ignore_directories = False
-        case_sensitive = True
-        event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-        event_handler.on_modified = self.reload_config
-
-        observer = Observer()
-        watch_dir = os.path.dirname(self.config_file_path)
-
-        # Address Issue #7
-        try:
-            observer.schedule(event_handler, watch_dir)
-            observer.start()
-        except:
-            pass
