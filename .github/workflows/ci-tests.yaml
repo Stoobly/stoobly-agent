@@ -1,0 +1,30 @@
+name: Integration tests
+on: 
+  push:
+    branches:
+      - 'master'
+      - 'release-*'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  lint-python:
+    name: Lint Python code
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.8.11'
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 .
+        continue-on-error: true
+

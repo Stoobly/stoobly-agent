@@ -1,0 +1,53 @@
+name: Publish artifacts
+on:
+  push:
+    branches:
+      - master
+      - 'release-*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download stoobly-dashboard from Artifactory
+        env:
+          STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.1.0.tar.gz"
+        run: |
+          mkdir public/
+          cd public/
+
+          curl -H "X-JFrog-Art-Api:${{ secrets.ARTIFACTORY_API_KEY }}" \
+               -O "https://stoobly.jfrog.io/artifactory/stoobly-dashboard-generic-local/${{ env.STOOBLY_DASHBOARD_FILE }}"
+          echo "Extracting tar file..."
+          tar xvf ${{ env.STOOBLY_DASHBOARD_FILE }}
+
+      - name: Build Docker image
+        run: |
+          make build-image image="stoobly/agent"
+          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
+          docker tag stoobly/agent stoobly/agent:alpha
+
+      - name: Push Docker image
+        run: |
+          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
+          docker images
+          docker push --all-tags stoobly/agent
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.8.11'
+
+      - name: Push to Pypi
+        run: |
+          pip install twine
+          twine --help
+
+          make clean
+          python3 setup.py sdist bdist_wheel
+          twine upload --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}" dist/* 
+
