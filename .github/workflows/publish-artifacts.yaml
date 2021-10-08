@@ -43,7 +43,7 @@ jobs:
 
       - name: Push to Pypi
         run: |
-          pip install twine
+          pip install twine wheel
           twine --help
 
           make clean
