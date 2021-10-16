@@ -13,6 +13,7 @@ from urllib.parse import urlparse, parse_qs
 from .app.configs_controller import ConfigsController
 from .app.proxy_controller import ProxyController
 from .app.statuses_controller import StatusesController
+from .lib import headers
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -61,7 +62,16 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def enable_cors(self):
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', 'CONTENT-TYPE, X-DO-PROXY, X-SERVICE-URL, X-REQUEST-PATH')
+
+        allowed_headers = ', '.join([
+            'Content-Type'.upper(),
+            headers.DO_PROXY.upper(),
+            headers.PROXY_HEADERS.upper(),
+            headers.REQUEST_PATH.upper(),
+            headers.SERVICE_URL.upper(),
+        ])
+        self.send_header('Access-Control-Allow-Headers', allowed_headers)
+
         self.send_header('Access-Control-Max-Age', '7200')
 
     def preprocess(self):
@@ -133,58 +143,75 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.render_data(kwargs)
 
     def render_file(self, kwargs):
+        if not 'headers' in kwargs:
+            kwargs['headers'] = {}
+
         path = kwargs['file']
 
         if not os.path.exists(path):
-            return self.send_response(404)
-        else:
-            self.send_response(kwargs.get('status') or 200)
+            kwargs['status'] = 404
 
-        self.enable_cors()
         mimetype = mimetypes.guess_type(path)[0]
-        self.send_header('Content-Type', mimetype or 'text/plain')
-        self.render_headers(kwargs.get('headers'))
-        self.end_headers()
+        kwargs['headers']['Content-Type'] = mimetype or 'text/plain'
 
         fp = open(path, 'rb')
-        self.wfile.write(fp.read())
-        fp.close()
+        kwargs['data'] = fp.read()
+        self.render_data(kwargs)
 
     def render_json(self, kwargs):
-        self.send_response(kwargs.get('status') or 200)
+        if not 'headers' in kwargs:
+            kwargs['headers'] = {}
 
-        self.enable_cors()
-        self.send_header('Content-Type', 'application/json')
-        self.render_headers(kwargs.get('headers'))
-        self.end_headers()
-
-        json_string = json.dumps(kwargs['json'])
-        self.wfile.write(json_string.encode())
+        kwargs['headers']['Content-Type'] = 'application/json'
+        kwargs['data'] = json.dumps(kwargs['json'])
+        self.render_data(kwargs)
 
     def render_plain(self, kwargs):
-        self.send_response(kwargs.get('status') or 200)
+        if not 'headers' in kwargs:
+            kwargs['headers'] = {}
 
-        self.enable_cors()
-        self.send_header('Content-Type', 'text/plain')
-        self.render_headers(kwargs.get('headers'))
-        self.end_headers()
-
-        if isinstance(kwargs['plain'], str):
-            self.wfile.write(kwargs['plain'].encode())
-        else:
-            self.wfile.write(kwargs['plain'])
+        kwargs['headers']['Content-Type'] = 'text/plain'
+        kwargs['data'] = kwargs['plain']
+        self.render_data(kwargs)
 
     def render_data(self, kwargs):
         self.send_response(kwargs.get('status') or 200)
 
-        #self.enable_cors()
-        self.render_headers(kwargs.get('headers'))
+        body = b''
+        if isinstance(kwargs['data'], str):
+            body = kwargs['data'].encode()
+        else:
+            body = kwargs['data']
+
+        # Send headers
+        headers = self.filter_headers(kwargs.get('headers'), {
+            'TRANSFER-ENCODING': 'CHUNKED',
+        })
+        headers['Content-Length'] = len(body)
+        self.enable_cors()
+        self.render_headers(headers)
         self.end_headers()
 
-        if isinstance(kwargs['data'], str):
-            self.wfile.write(kwargs['data'].encode())
-        else:
-            self.wfile.write(kwargs['data'])
+        # Send body
+        self.wfile.write(body)
+
+    def filter_headers(self, headers, blacklist = {}):
+        if not headers:
+            return {}
+
+        new_blacklist = {}
+        for key, val in blacklist.items():
+            new_blacklist[key.upper()] = val
+
+        new_headers = headers.copy()
+        for key, val in headers.items():
+            if key.upper() in new_blacklist:
+                if not new_blacklist[key.upper()]:
+                    del new_headers[key.upper()]
+                elif val.upper() == new_blacklist[key.upper()]:
+                    del new_headers[key.upper()]
+
+        return new_headers
 
     def render_headers(self, headers):
         if headers:
