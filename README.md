@@ -27,3 +27,8 @@ stoobly-agent run --headless
 ```
 stoobly-agent --help
 ```
+
+## For developers
+
+- Bump up the version in `setup.py` with each PR so the CI automation will publish new artifacts with that new version.
+

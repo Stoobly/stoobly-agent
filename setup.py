@@ -1,5 +1,4 @@
 from setuptools import find_packages, setup
-import pdb
 
 setup(
     author='Michael Yen',
@@ -30,5 +29,5 @@ setup(
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
-    version='0.1.10',
+    version='0.1.11',
 )
