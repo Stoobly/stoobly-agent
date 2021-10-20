@@ -4,6 +4,7 @@ import requests
 from http.cookies import SimpleCookie
 
 from ..lib import headers
+from ..lib.logger import Logger
 
 class ProxyController:
     _instance = None
@@ -44,22 +45,55 @@ class ProxyController:
 
     def __proxy(self, context, method):
         url = self.__get_url(context)
-        if not url:
-            return
-        pdb.set_trace()
-        res = method(
-            url,
-            cookies = self.__get_cookies(context),
-            data = self.__get_body(context),
-            headers = dict(context.headers),
-            params = context.params
-        )
 
-        context.render(
-            headers = res.headers,
-            data = res.content,
-            status = res.status_code,
-        )
+        if url:
+            _headers = self.__get_headers(context)
+            _cookies =  self.__get_cookies(context)
+            _body = self.__get_body(context)
+            _params = context.params
+
+            Logger.instance().debug('Request Headers')
+            Logger.instance().debug(_headers)
+            Logger.instance().debug('Cookies')
+            Logger.instance().debug(_cookies)
+            Logger.instance().debug('Body')
+            Logger.instance().debug(_body)
+            Logger.instance().debug('Query Params')
+            Logger.instance().debug(_params)
+
+            res = method(
+                url,
+                allow_redirects = True,
+                cookies = _cookies,
+                data = _body,
+                headers = _headers,
+                params = _params,
+                stream = True
+            )
+
+            Logger.instance().debug('Response Headers')
+            Logger.instance().debug(res.headers)
+
+            context.render(
+                headers = res.headers,
+                data = res.raw.data,
+                status = res.status_code,
+            )
+
+    def __get_headers(self, context):
+        request_headers = dict(context.headers)
+
+        headers_white_list = []
+
+        if headers.PROXY_HEADERS.title() in request_headers:
+            headers_white_list = request_headers[headers.PROXY_HEADERS.title()].split(',')
+
+        white_listed_headers = {}
+        for name, value in request_headers.items():
+            if name in headers_white_list:
+                white_listed_headers[name] = value
+
+        return white_listed_headers
 
     def __get_url(self, context):
         service_url = context.headers.get(headers.SERVICE_URL)

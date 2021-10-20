@@ -5,6 +5,7 @@ import distro
 import os
 import pdb
 import subprocess
+import json
 import time
 import threading
 
@@ -109,7 +110,6 @@ def dump_config(**kwargs):
         print(f"Config successfully dumped to {config_dump_file_name}")
     else:
         print(output)
-
 
 ### Helpers
 

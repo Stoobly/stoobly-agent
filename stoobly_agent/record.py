@@ -36,8 +36,8 @@ importlib.reload(lib.stoobly_api)
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
 
-# Initialize settings instance
-Settings.instance()
+# Observe config for changes
+Settings.instance().observe_config()
 
 LOG_ID = 'Record'
 
