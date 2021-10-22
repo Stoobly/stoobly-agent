@@ -83,8 +83,8 @@ def install_ca_cert():
         # https://www.dssw.co.uk/reference/security.html
         subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain {os.path.join(mitmproxy_certs_dir, pem_file_name)}".split(), check=True)
 
-    elif distro.id() == 'rhel':
-        return
+    # elif distro.id() == 'rhel':
+    #     return
 
     else:
         print(f"{distro_name} is not supported yet for automatic CA cert installation.")
