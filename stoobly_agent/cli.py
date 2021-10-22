@@ -2,12 +2,12 @@
 
 import click
 import distro
+import json
 import os
 import pdb
 import subprocess
-import json
-import time
 import threading
+import time
 
 from .api import run as run_api
 from .proxy import run as run_proxy
