@@ -13,7 +13,7 @@ jobs:
 
       - name: Download stoobly-dashboard from Artifactory
         env:
-          STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.1.0.tar.gz"
+          STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.2.0.tar.gz"
         run: |
           mkdir public/
           cd public/
