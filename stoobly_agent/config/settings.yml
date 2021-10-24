@@ -1,6 +1,6 @@
 ---
 agent_url: http://localhost:4200
-api_url: https://api.stoobly.com
+api_url: https://alpha.api.stoobly.com
 api_key: vGxx1SgChtkVzrqCRtaZKgKs
 mode:
   active: record
