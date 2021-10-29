@@ -15,8 +15,8 @@ jobs:
         env:
           STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.2.0.tar.gz"
         run: |
-          mkdir public/
-          cd public/
+          mkdir stoobly_agent/public/
+          cd stoobly_agent/public/
 
           curl -H "X-JFrog-Art-Api:${{ secrets.ARTIFACTORY_API_KEY }}" \
                -O "https://stoobly.jfrog.io/artifactory/stoobly-dashboard-generic-local/${{ env.STOOBLY_DASHBOARD_FILE }}"
