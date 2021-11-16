@@ -24,6 +24,16 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def main(ctx):
     pass
 
+@click.group()
+@click.pass_context
+def config(ctx):
+    pass
+
+@click.group()
+@click.pass_context
+def ca_cert(ctx):
+    pass
+
 @main.command()
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--log-level', default='info', help='''
@@ -56,11 +66,6 @@ def run(**kwargs):
 
     initialize_proxy(kwargs)
 
-@click.group()
-@click.pass_context
-def ca_cert(ctx):
-    pass
-
 @ca_cert.command()
 def install(**kwargs):
     distro_name = distro.name(pretty=True)
@@ -83,9 +88,10 @@ def install(**kwargs):
 def uninstall():
     return
 
+@config.command()
 @click.option('--pretty-print', is_flag=True, default=False, help='Pretty print the json.')
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
-def dump_config(**kwargs):
+def dump(**kwargs):
     settings = Settings.instance()
 
     output = settings.to_json(pretty_print=kwargs['pretty_print'])
@@ -103,6 +109,7 @@ def dump_config(**kwargs):
 
 # Attach subcommands to main
 main.add_command(ca_cert)
+main.add_command(config)
 
 ### Helpers
 
