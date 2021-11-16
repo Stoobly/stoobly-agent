@@ -101,7 +101,13 @@ class Settings:
 
     @property
     def agent_url(self):
-        return self._agent_url
+        if self._agent_url:
+            return self._agent_url
+
+        if os.environ.get(env_vars.AGENT_URL):
+            return os.environ[env_vars.AGENT_URL]
+
+        return self.config.get('agent_url')
 
     @agent_url.setter
     def agent_url(self, value):
@@ -109,7 +115,13 @@ class Settings:
 
     @property
     def proxy_url(self):
-        return self._proxy_url
+        if self._proxy_url:
+            return self._proxy_url
+
+        if os.environ.get(env_vars.AGENT_PROXY_URL):
+            return os.environ[env_vars.AGENT_PROXY_URL]
+
+        return self.config.get('proxy_url')
 
     @proxy_url.setter
     def proxy_url(self, value):
@@ -120,7 +132,7 @@ class Settings:
         if self._api_url:
             return self._api_url
 
-        if self.is_headless() and os.environ.get(env_vars.API_URL):
+        if os.environ.get(env_vars.API_URL):
             return os.environ[env_vars.API_URL]
 
         return self.config.get('api_url')
@@ -131,7 +143,7 @@ class Settings:
 
     @property
     def api_key(self):
-        if self.is_headless() and os.environ.get(env_vars.API_KEY):
+        if os.environ.get(env_vars.API_KEY):
             return os.environ[env_vars.API_KEY]
 
         return self.config.get('api_key')
@@ -147,7 +159,7 @@ class Settings:
         if not mode:
             return None
         else:
-            if self.is_headless() and os.environ.get(env_vars.AGENT_ACTIVE_MODE):
+            if os.environ.get(env_vars.AGENT_ACTIVE_MODE):
                 return os.environ[env_vars.AGENT_ACTIVE_MODE]
 
             return mode.get('active')

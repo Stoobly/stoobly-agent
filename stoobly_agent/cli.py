@@ -9,10 +9,10 @@ import threading
 import time
 
 from .api import run as run_api
-from .proxy import run as run_proxy
+from .lib import env_vars
 from .lib.ca_cert_installer import CACertInstaller
-from .lib.env_vars import LOG_LEVEL
 from .lib.settings import Settings
+from .proxy import run as run_proxy
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option()
@@ -42,15 +42,14 @@ def main(ctx):
 @click.option('--ui-port', default=4200, help='UI service port.')
 @click.option('--api-url', help='API URL.')
 def run(**kwargs):
-    if not os.getenv(LOG_LEVEL):
-        os.environ[LOG_LEVEL] = kwargs['log_level']
+    if not os.getenv(env_vars.LOG_LEVEL):
+        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-    settings = Settings.instance()
-    settings.proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
-    settings.agent_url = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
+    os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
+    os.environ[env_vars.AGENT_URL] = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
 
     if kwargs['api_url']:
-        settings.api_url = kwargs['api_url']
+        os.environ[env_vars.API_URL] = kwargs['api_url']
 
     if not kwargs['headless']:
         initialize_ui(kwargs)
