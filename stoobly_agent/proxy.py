@@ -4,7 +4,7 @@ from mitmdump import DumpMaster, Options
 
 def run(**kwargs):
     cwd = os.path.dirname(os.path.realpath(__file__))
-    script = os.path.join(cwd, 'record.py')
+    script = os.path.join(cwd, 'intercept_handler.py')
 
     fixed_options = {
         'flow_detail': 1,
