@@ -11,8 +11,9 @@ import time
 from .api import run as run_api
 from .lib import env_vars
 from .lib.ca_cert_installer import CACertInstaller
+from .lib.cli.exec import run_command, run_command_with_proxy_export
 from .lib.settings import Settings
-from .proxy import run as run_proxy
+from .proxy import run as run_proxy, get_proxy_url
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option()
@@ -46,6 +47,7 @@ def ca_cert(ctx):
     the form of "http[s]://host[:port]".
 '''
 )
+@click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
@@ -65,6 +67,21 @@ def run(**kwargs):
         initialize_ui(kwargs)
 
     initialize_proxy(kwargs)
+
+@main.command()
+@click.option('--command', is_flag=True, default=False, help='Read commands from the command_string operand instead of from the standard input.')
+@click.option('--shell', default='sh', help='Shell script to run interpret command(s).')
+@click.argument('file_path')
+def exec(**kwargs):
+    is_command = kwargs['command']
+    shell = kwargs['shell']
+    file_path = kwargs['file_path']
+    proxy_url = get_proxy_url()
+
+    if not proxy_url:
+        run_command(shell, file_path, is_command)
+    else:
+        run_command_with_proxy_export(shell, file_path, is_command, proxy_url)
 
 @ca_cert.command()
 def install(**kwargs):
