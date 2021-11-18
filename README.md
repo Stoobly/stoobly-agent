@@ -2,10 +2,14 @@
 
 Record requests to Stoobly and mock HTTP/HTTPS requests
 
+## Prerequisite
+
+- Python >=3.8
+
 ## Installation
 
 ```
-pip install stoobly-agent
+pip3 install stoobly-agent
 ```
 
 ## Usage
