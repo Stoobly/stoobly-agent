@@ -219,7 +219,8 @@ def __reverse_proxy(request, service_url, options = {}):
 
     request.scheme = uri.scheme
     request.host = uri.hostname
-    request.port = uri.port
+    if uri.port:
+        request.port = uri.port
 
 ###
 #

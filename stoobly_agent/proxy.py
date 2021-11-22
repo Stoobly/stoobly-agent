@@ -2,21 +2,23 @@ import os
 import pdb
 
 from mitmdump import DumpMaster, Options
+from mitmproxy.optmanager import _Option
 
 PROXY_URL_FILENAME = 'proxy_url'
+INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 
 def run(**kwargs):
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    script = os.path.join(cwd, 'intercept_handler.py')
+    __create_proxy_url_file(kwargs.get('listen_host'), kwargs.get('listen_port'))
 
     fixed_options = {
         'flow_detail': 1,
-        'scripts': script,
+        'scripts': __get_intercept_handler_path(),
+        'upstream_cert': False,
     }
 
-    __create_proxy_url_file(kwargs.get('listen_host'), kwargs.get('listen_port'))
-
     opts = Options(**{**kwargs, **fixed_options})
+    __set_connection_strategy(opts, 'lazy')
+
     m = DumpMaster(opts)
     m.run()
 
@@ -27,6 +29,25 @@ def get_proxy_url():
 
     with open(path) as f:
         return f.read()
+
+def __get_intercept_handler_path():
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
+    return script
+##
+#
+# Equivalent of:
+# mitmdump connection_strategy={strategy}
+#
+def __set_connection_strategy(opts, strategy):
+    extra_options = {
+        'dumper_filter': f"connection_strategy={strategy}",
+        'readfile_filter': f"connection_strategy={strategy}",
+        'save_stream_filter': f"connection_strategy={strategy}",
+    }
+    for k, v in extra_options.items():
+        opts._options[k] = _Option(k, str, v, '', None)
+    opts.update(**extra_options)
 
 def __proxy_url_abs_path():
     cwd = os.path.dirname(os.path.abspath(__file__))
