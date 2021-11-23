@@ -72,10 +72,15 @@ class StooblyApi:
             'project_id': project_data.get('id'),
             **query_params,
         }
-        
+
         Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
 
-        return requests.get(url, headers=self.default_headers, params=params)
+        return requests.get(
+            url,
+            allow_redirects=False,
+            headers=self.default_headers,
+            params=params
+        )
 
     def __parse_scenario_key(self, params):
         if not 'scenario_key' in params:
