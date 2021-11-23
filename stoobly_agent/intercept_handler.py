@@ -302,6 +302,7 @@ def __eval_request(request, api, settings, ignored_components_json = None):
             pass
 
     query_params = __build_query_params(request, ignored_components)
+    query_params['scenario_key'] = settings.get('scenario_key')
 
     return api.request_response(
         settings.get('project_key'), query_params
@@ -390,11 +391,12 @@ def __build_query_params(request, ignored_components = []):
     if len(query_params_hash) > 0:
         query_params['query_params_hash'] = query_params_hash
 
-    if len(body_params_hash) > 0:
-        query_params['body_params_hash'] = body_params_hash
-
-    if len(body_text_hash) > 0:
+    if len(body_text_hash) > 0
         query_params['body_text_hash'] = body_text_hash
+
+        # If there's a request body, then there may be body params
+        if len(hashed_request.body_params_hash_with_ignored()):
+            query_params['body_params_hash'] = body_params_hash
 
     if len(ignored_components) > 0:
         query_params['retry'] = 1
