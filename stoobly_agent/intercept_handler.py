@@ -378,6 +378,7 @@ def __build_query_params(request, ignored_components = []):
     request = MitmproxyRequestAdapter(request)
     hashed_request = HashedRequestDecorator(request).with_ignored_components(ignored_components)
 
+    headers_hash = hashed_request.headers_hash()
     query_params_hash = hashed_request.query_params_hash()
     body_params_hash = hashed_request.body_params_hash()
     body_text_hash = hashed_request.body_text_hash()
@@ -387,6 +388,9 @@ def __build_query_params(request, ignored_components = []):
     query_params['path'] = request.path
     query_params['port'] = request.port
     query_params['method'] = request.method
+
+    if len(headers_hash) > 0:
+        query_params['headers_hash'] = headers_hash
 
     if len(query_params_hash) > 0:
         query_params['query_params_hash'] = query_params_hash
