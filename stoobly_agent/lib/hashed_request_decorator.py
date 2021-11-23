@@ -43,7 +43,10 @@ class HashedRequestDecorator:
 
         return self
 
-    def query_params_hash(self):
+    def query_params_hash_with_ignored(self):
+        return self.query_params_hash(True)
+
+    def query_params_hash(self, with_ignored = False):
         serialized_params = []
 
         params = self.request.query.items()
@@ -51,7 +54,7 @@ class HashedRequestDecorator:
         Logger.instance().debug(f"{self.LOG_ID}.query_params_hash:{params}")
 
         for key, value in params:
-            if key in self.ignored_query_params:
+            if not with_ignored and key in self.ignored_query_params:
                 continue
 
             if isinstance(value, list):
@@ -69,7 +72,10 @@ class HashedRequestDecorator:
 
         return hashlib.md5('.'.join(serialized_params).encode('utf-8')).hexdigest()
 
-    def body_params_hash(self):
+    def body_params_hash_with_ignored(self):
+        return self.body_params_hash(True)
+
+    def body_params_hash(self, with_ignored = False):
         serialized_params = []
 
         params = RequestBodyParser.parse(self.request)
@@ -77,7 +83,7 @@ class HashedRequestDecorator:
         Logger.instance().debug(f"{self.LOG_ID}.body_params_hash:{params}")
 
         for key, value in params.items():
-            if key in self.ignored_body_params:
+            if not with_ignored and key in self.ignored_body_params:
                 continue
 
             if isinstance(value, list):
