@@ -391,12 +391,16 @@ def __build_query_params(request, ignored_components = []):
     if len(query_params_hash) > 0:
         query_params['query_params_hash'] = query_params_hash
 
-    if len(body_text_hash) > 0
-        query_params['body_text_hash'] = body_text_hash
+    # The problem here is that if a body_param_hash is not passed, then body_text_hash is checked
+    # However, if body_params are ignored, then there may not be a body_param_hash
+    #
+    # If there are ignored body_params, this means there are body_params
+    # Then we should use body_params_hash over body_text_hash
+    if len(body_params_hash) > 0 or len(hashed_request.ignored_body_params) > 0:
+        query_params['body_params_hash'] = body_params_hash
 
-        # If there's a request body, then there may be body params
-        if len(hashed_request.body_params_hash_with_ignored()):
-            query_params['body_params_hash'] = body_params_hash
+    if len(body_text_hash) > 0:
+        query_params['body_text_hash'] = body_text_hash
 
     if len(ignored_components) > 0:
         query_params['retry'] = 1
