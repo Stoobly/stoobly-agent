@@ -43,6 +43,24 @@ class HashedRequestDecorator:
 
         return self
 
+    def headers_hash(self, with_ignored = False):
+        headers = self.request.headers
+
+        serialized_params = []
+        for key, value in headers.items():
+            if not with_ignored and key in self.ignored_headers:
+                continue
+
+            header_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
+            serialized_params.append(header_hash)
+
+        if len(serialized_params) == 0:
+            return ''
+
+        serialized_params.sort()
+
+        return hashlib.md5('.'.join(serialized_params).encode('utf-8')).hexdigest()
+
     def query_params_hash_with_ignored(self):
         return self.query_params_hash(True)
 
