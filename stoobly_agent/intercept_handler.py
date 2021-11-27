@@ -333,10 +333,21 @@ def __bad_request(flow, message):
     return False
 
 def __allowed_request(active_mode_settings, request):
-    if __include(request, active_mode_settings.get('include_patterns')):
-        return True
+    exclude_patterns = active_mode_settings.get('exclude_patterns')
 
-    return __exclude(request,  active_mode_settings.get('exclude_patterns'))
+    if exclude_patterns:
+        if __exclude(request,  exclude_patterns):
+            return False
+
+    # If an include pattern is set, then that means only requests
+    # matching these pattern(s) are allowed
+    include_patterns = active_mode_settings.get('include_patterns')
+    if include_patterns:
+        if not __include(request, include_patterns):
+            return False
+
+    # If there are no exclude or include patterns, request is allowed
+    return True
 
 ###
 #
