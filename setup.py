@@ -1,4 +1,15 @@
+import os
 from setuptools import find_packages, setup
+
+def package_files(directory):
+    paths = []
+    for (path, directories, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append(os.path.join('..', path, filename))
+    return paths
+
+public_files_relative_path = 'stoobly_agent/public'
+public_files = package_files(public_files_relative_path)
 
 setup(
     author='Michael Yen',
@@ -26,7 +37,7 @@ setup(
         'stoobly_agent', 'stoobly_agent.*',
     ]),
     package_data={
-        'stoobly_agent': ['app/*' , 'config/*', 'public/*']
+        'stoobly_agent': ['app/*' , 'config/*'] + public_files
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
