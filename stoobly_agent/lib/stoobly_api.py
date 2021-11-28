@@ -79,7 +79,8 @@ class StooblyApi:
             url,
             allow_redirects=False,
             headers=self.default_headers,
-            params=params
+            params=params,
+            stream=True
         )
 
     def __parse_scenario_key(self, params):
