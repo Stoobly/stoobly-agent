@@ -315,12 +315,16 @@ def __eval_request(request, api, settings, ignored_components_json = None):
 # Return response headers, body, and status code
 #
 def __pass_on(flow, res):
+    # Ideally we just return the HTTPResponse object from res.raw
+    # See Issue #11
+    #flow.response = res.raw
+
     headers = {}
     for key, value in res.headers.items():
         headers[key.capitalize()] = value
 
     flow.response = http.HTTPResponse.make(
-        res.status_code, res.content, headers,
+        res.status_code, res.raw.read(), headers,
     )
 
 def __bad_request(flow, message):
