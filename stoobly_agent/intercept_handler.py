@@ -323,8 +323,12 @@ def __pass_on(flow, res):
     for key, value in res.headers.items():
         headers[key.capitalize()] = value
 
+    # Without specifying a length to read, requests will compare content length
+    # with Content-Length header. If the content is gzipped, an IncompleteRead error will be thrown
+    content = res.raw.read(res.raw.length_remaining)
+
     flow.response = http.HTTPResponse.make(
-        res.status_code, res.raw.read(), headers,
+        res.status_code, content, headers,
     )
 
 def __bad_request(flow, message):
