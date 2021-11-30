@@ -52,7 +52,7 @@ def __set_connection_strategy(opts, strategy):
     opts.update(**extra_options)
 
 def __proxy_url_abs_path():
-    tmp_dir_path = os.path.join(RootDir.instance().root_dir, 'tmp')
+    tmp_dir_path = RootDir.instance().tmp_dir
     return os.path.join(tmp_dir_path, PROXY_URL_FILENAME)
 
 def __create_proxy_url_file(host, port):
