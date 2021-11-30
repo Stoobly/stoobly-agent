@@ -20,3 +20,8 @@ class RootDir:
             cls._instance = cls()
 
         return cls._instance
+
+    @property
+    def tmp_dir(self):
+        return os.path.join(self.root_dir, 'tmp')
+
