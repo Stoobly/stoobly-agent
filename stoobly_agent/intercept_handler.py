@@ -325,7 +325,9 @@ def __pass_on(flow, res):
 
     # Without specifying a length to read, requests will compare content length
     # with Content-Length header. If the content is gzipped, an IncompleteRead error will be thrown
-    content = res.raw.read(res.raw.length_remaining)
+    #content = res.raw.read(res.raw.length_remaining)
+
+    content = res.content
 
     flow.response = http.HTTPResponse.make(
         res.status_code, content, headers,
