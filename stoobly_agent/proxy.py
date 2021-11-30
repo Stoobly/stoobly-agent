@@ -4,6 +4,8 @@ import pdb
 from mitmdump import DumpMaster, Options
 from mitmproxy.optmanager import _Option
 
+from .lib.root_dir import RootDir
+
 PROXY_URL_FILENAME = 'proxy_url'
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 
@@ -50,8 +52,7 @@ def __set_connection_strategy(opts, strategy):
     opts.update(**extra_options)
 
 def __proxy_url_abs_path():
-    cwd = os.path.dirname(os.path.abspath(__file__))
-    tmp_dir_path = os.path.join(cwd, 'tmp')
+    tmp_dir_path = os.path.join(RootDir.instance().root_dir, 'tmp')
     return os.path.join(tmp_dir_path, PROXY_URL_FILENAME)
 
 def __create_proxy_url_file(host, port):
