@@ -7,6 +7,7 @@ class MitmproxyResponseAdapter(Response):
 
     def __init__(self, response):
         self.response = response
+        self.content = response.raw_content
 
     @property
     def code(self):
@@ -16,9 +17,16 @@ class MitmproxyResponseAdapter(Response):
     def headers(self):
         return self.response.headers
 
+    def decode_body(self):
+        # Decodes content (if Content-Encoding header is set)
+        self.content = response.content
+
+        # Update Content-Lenght header to decoded content length
+        self.response.headers['content-length'] = str(len(self.content))
+
     @property
     def body(self):
-        content = self.response.content
+        content = self.content
 
         if not content:
             return b''
