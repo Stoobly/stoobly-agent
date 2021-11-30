@@ -3,14 +3,17 @@ import os
 import yaml
 import pdb
 
+from shutil import copyfile
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 from . import env_vars
 from .logger import Logger
+from .root_dir import RootDir
 
 class Settings:
     LOG_ID = 'lib.settings'
+    FILE_NAME = 'settings.yml'
 
     _instance = None
     _agent_url = ''
@@ -23,7 +26,12 @@ class Settings:
         else:
             cwd = os.path.dirname(os.path.realpath(__file__))
 
-            self.config_file_path = os.path.join(cwd, '..', 'config', 'settings.yml')
+            self.config_file_path = os.path.join(RootDir.instance().root_dir, self.FILE_NAME)
+
+            # If the config does not exist, use template
+            if not os.path.exists(self.config_file_path):
+                self.config_template_file_path = os.path.join(cwd, '..', 'config', self.FILE_NAME)
+                copyfile(self.config_template_file_path, self.config_file_path)
 
             self.__load_config()
 
