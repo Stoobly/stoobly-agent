@@ -46,78 +46,31 @@ class HashedRequestDecorator:
     def headers_hash(self, with_ignored = False):
         headers = self.request.headers
 
-        serialized_params = []
-        for key, value in headers.items():
-            if not with_ignored and key in self.ignored_headers:
-                continue
+        serialized_params = self.__serialize_params(headers, {} if with_ignored else self.ignored_headers)
 
-            header_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
-            serialized_params.append(header_hash)
-
-        if len(serialized_params) == 0:
-            return ''
-
-        serialized_params.sort()
-
-        return hashlib.md5('.'.join(serialized_params).encode('utf-8')).hexdigest()
+        return self.__hash_serialized_params(serialized_params)
 
     def query_params_hash_with_ignored(self):
         return self.query_params_hash(True)
 
     def query_params_hash(self, with_ignored = False):
-        serialized_params = []
+        query_params = self.request.query
 
-        params = self.request.query.items()
+        params = self.__deflatten_multi_dict(query_params)
 
-        Logger.instance().debug(f"{self.LOG_ID}.query_params_hash:{params}")
+        serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_query_params)
 
-        for key, value in params:
-            if not with_ignored and key in self.ignored_query_params:
-                continue
-
-            if isinstance(value, list):
-                for param in value:
-                    param_hash = hashlib.md5(self.__serialize_param(key, param)).hexdigest()
-                    serialized_params.append(param_hash)
-            else:
-                param_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
-                serialized_params.append(param_hash)
-
-        if len(serialized_params) == 0:
-            return ''
-
-        serialized_params.sort()
-
-        return hashlib.md5('.'.join(serialized_params).encode('utf-8')).hexdigest()
+        return self.__hash_serialized_params(serialized_params)
 
     def body_params_hash_with_ignored(self):
         return self.body_params_hash(True)
 
     def body_params_hash(self, with_ignored = False):
-        serialized_params = []
-
         params = RequestBodyParser.parse(self.request)
 
-        Logger.instance().debug(f"{self.LOG_ID}.body_params_hash:{params}")
+        serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_body_params)
 
-        for key, value in params.items():
-            if not with_ignored and key in self.ignored_body_params:
-                continue
-
-            if isinstance(value, list):
-                for param in value:
-                    param_hash = hashlib.md5(self.__serialize_param(key, param)).hexdigest()
-                    serialized_params.append(param_hash)
-            else:
-                param_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
-                serialized_params.append(param_hash)
-
-        if len(serialized_params) == 0:
-            return ''
-
-        serialized_params.sort()
-
-        return hashlib.md5('.'.join(serialized_params).encode('utf-8')).hexdigest()
+        return self.__hash_serialized_params(serialized_params)
 
     def body_text_hash(self):
         text = self.request.body
@@ -125,7 +78,52 @@ class HashedRequestDecorator:
         if len(text) == 0:
             return text
 
+        return self.__hash(text)
+
+    def __hash_serialized_params(self, serialized_params):
+        if len(serialized_params) == 0:
+            return ''
+
+        serialized_params.sort()
+        return self.__hash('.'.join(serialized_params))
+
+    def __hash(self, text):
         return hashlib.md5(text.encode('utf-8')).hexdigest()
 
     def __serialize_param(self, key, val):
         return f"{key}.{str(val)}".encode('utf-8')
+
+    def __serialize_params(self, params, ignored_params = {}):
+        serialized_params = []
+
+        for key, value in params.items():
+            if key in ignored_params:
+                continue
+
+            if isinstance(value, list):
+                for param in value:
+                    param_hash = hashlib.md5(self.__serialize_param(key, param)).hexdigest()
+
+                    Logger.instance().debug(f"{self.LOG_ID}.serialized_query_params_hash:{key} -> {param} ({param_hash})")
+
+                    serialized_params.append(param_hash)
+            else:
+                param_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
+
+                Logger.instance().debug(f"{self.LOG_ID}.serialized_query_params_hash:{key} -> {value} ({param_hash})")
+
+                serialized_params.append(param_hash)
+
+        return serialized_params
+
+    def __deflatten_multi_dict(self, multi_dict):
+        params = {}
+        for name, value in multi_dict.items(multi=True):
+            if name not in params:
+                params[name] = value
+            else:
+                if not isinstance(params[name], list):
+                   params[name] = [params[name]]
+
+                params[name].append(value)
+        return params
