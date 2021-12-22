@@ -182,10 +182,11 @@ def __handle_mock(flow, settings):
     elif mock_policy == MOCK_POLICY['FOUND']:
         res = __eval_request(request, api, active_mode_settings)
 
+        if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
+            res = __eval_request(request, api, active_mode_settings, res.content)
+
         if res.status_code == CUSTOM_RESPONSE_CODES['NOT_FOUND']:
-            # options = get_options()
-            options = {}
-            return __reverse_proxy(request, service_url, options)
+            return __reverse_proxy(request, service_url, {})
         else:
             __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
     else:
@@ -510,5 +511,8 @@ def __get_service_url(request, settings):
         if settings.get('service_url') and len(settings.get('service_url')) > 0:
             return settings.get('service_url')
 
-        return f"{request.scheme}://{request.host}:{request.port}"
+        return self.__upstream_url(request)
+
+def __upstream_url(request):
+    return f"{request.scheme}://{request.host}:{request.port}"
 
