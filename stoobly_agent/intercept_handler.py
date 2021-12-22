@@ -511,7 +511,7 @@ def __get_service_url(request, settings):
         if settings.get('service_url') and len(settings.get('service_url')) > 0:
             return settings.get('service_url')
 
-        return self.__upstream_url(request)
+        return __upstream_url(request)
 
 def __upstream_url(request):
     return f"{request.scheme}://{request.host}:{request.port}"
