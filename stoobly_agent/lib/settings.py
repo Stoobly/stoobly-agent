@@ -176,6 +176,19 @@ class Settings:
     # If the env var is null, get the setting from the yaml file
     @property
     def active_mode_settings(self):
+        active_mode_settings = self.config_project_settings
+
+        if self.is_headless():
+            self.__override_settings_with_env(active_mode_settings)
+
+        return active_mode_settings
+
+    #
+    # Return active project's settings
+    # If a scenario is set, return scenario settings
+    #
+    @property
+    def config_project_settings(self):
         mode = self.mode
 
         if not mode:
@@ -186,12 +199,24 @@ class Settings:
         if not active_mode:
             return None
 
-        active_mode_settings = mode.get(active_mode)
+        active_mode_settings = mode.get(active_mode, {})
+        all_project_settings = active_mode_settings.get('settings', {})
 
-        if self.is_headless():
-            self.__override_settings_with_env(active_mode_settings)
+        project_key = mode.get('project_key')
+        project_settings = all_project_settings.get(project_key)
 
-        return active_mode_settings
+        if not project_settings:
+            return None
+
+        scenario_key = project_settings.get('scenario_key')
+        if scenario_key and len(scenario_key) != 0:
+            scenario_settings = all_project_settings.get(scenario_key)
+            scenario_settings['project_key'] = project_key
+            scenario_settings['scenario_key'] = scenario_key
+            return scenario_settings
+        else:
+            project_settings['project_key'] = project_key
+            return project_settings
 
     ### Helpers
 
