@@ -186,45 +186,52 @@ class Settings:
         if not active_mode:
             return None
 
+        active_mode_settings = mode.get(active_mode)
+
         if self.is_headless():
-            # Get settings from yaml file, replace setting with env var if set
-            active_mode_settings = mode.get(active_mode)
+            self.__override_settings_with_env(active_mode_settings)
 
-            enabled = os.environ.get(env_vars.AGENT_ENABLED)
-            if enabled != None:
-                active_mode_settings['enabled'] = not not enabled
-
-            include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
-            if include_patterns != None:
-                # Split the string based on commas, strip whitespace
-                active_mode_settings['include_patterns'] = list(map(str.strip, include_patterns.split(',')))
-
-            exclude_patterns = os.environ.get(env_vars.AGENT_EXCLUDE_PATTERNS)
-            if exclude_patterns != None:
-                # Split the string based on commas, strip whitespace
-                active_mode_settings['exclude_patterns'] = list(map(str.strip, exclude_patterns.split(',')))
-
-            policy = os.environ.get(env_vars.AGENT_POLICY)
-            if policy != None:
-                active_mode_settings['policy'] = policy
-
-            proxy_service_url = os.environ.get(env_vars.AGENT_SERVICE_URL)
-            if proxy_service_url != None:
-                active_mode_settings['service_url'] = proxy_service_url
-
-            proxy_project_key = os.environ.get(env_vars.AGENT_PROJECT_KEY)
-            if proxy_project_key != None:
-                active_mode_settings['project_key'] = proxy_project_key
-
-            proxy_scenario_key = os.environ.get(env_vars.AGENT_SCENARIO_KEY)
-            if proxy_scenario_key != None:
-                active_mode_settings['scenario_key'] = proxy_scenario_key
-
-            return active_mode_settings
-
-        return mode.get(active_mode)
+        return active_mode_settings
 
     ### Helpers
+
+    ###
+    #
+    # Replace setting with env var if set
+    #
+    # @param active_mode_settings [Dict]
+    #
+    def __override_settings_with_env(self, active_mode_settings):
+        enabled = os.environ.get(env_vars.AGENT_ENABLED)
+
+        if enabled != None:
+            active_mode_settings['enabled'] = not not enabled
+
+        include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
+        if include_patterns != None:
+            # Split the string based on commas, strip whitespace
+            active_mode_settings['include_patterns'] = list(map(str.strip, include_patterns.split(',')))
+
+        exclude_patterns = os.environ.get(env_vars.AGENT_EXCLUDE_PATTERNS)
+        if exclude_patterns != None:
+            # Split the string based on commas, strip whitespace
+            active_mode_settings['exclude_patterns'] = list(map(str.strip, exclude_patterns.split(',')))
+
+        policy = os.environ.get(env_vars.AGENT_POLICY)
+        if policy != None:
+            active_mode_settings['policy'] = policy
+
+        proxy_service_url = os.environ.get(env_vars.AGENT_SERVICE_URL)
+        if proxy_service_url != None:
+            active_mode_settings['service_url'] = proxy_service_url
+
+        proxy_project_key = os.environ.get(env_vars.AGENT_PROJECT_KEY)
+        if proxy_project_key != None:
+            active_mode_settings['project_key'] = proxy_project_key
+
+        proxy_scenario_key = os.environ.get(env_vars.AGENT_SCENARIO_KEY)
+        if proxy_scenario_key != None:
+            active_mode_settings['scenario_key'] = proxy_scenario_key
 
     def __load_config(self):
         with open(self.config_file_path, 'r') as stream:
