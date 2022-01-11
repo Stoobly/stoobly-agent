@@ -202,7 +202,7 @@ class Settings:
         active_mode_settings = mode.get(active_mode, {})
         all_project_settings = active_mode_settings.get('settings', {})
 
-        project_key = mode.get('project_key')
+        project_key = active_mode_settings.get('project_key')
         project_settings = all_project_settings.get(project_key)
 
         if not project_settings:
@@ -210,13 +210,17 @@ class Settings:
 
         scenario_key = project_settings.get('scenario_key')
         if scenario_key and len(scenario_key) != 0:
-            scenario_settings = all_project_settings.get(scenario_key)
-            scenario_settings['project_key'] = project_key
-            scenario_settings['scenario_key'] = scenario_key
-            return scenario_settings
+            project_settings = all_project_settings.get(scenario_key)
+
+            project_settings['scenario_key'] = scenario_key
         else:
-            project_settings['project_key'] = project_key
-            return project_settings
+            project_settings['scenario_key'] = ''
+
+        # Merge higher level settings
+        project_settings['project_key'] = project_key
+        project_settings['enabled'] = active_mode_settings.get('enabled')
+
+        return project_settings
 
     ### Helpers
 

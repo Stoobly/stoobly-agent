@@ -6,22 +6,13 @@ class RequestBodyParser:
     JSON = 'application/json'
     WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
 
-    ###
-    #
-    # @param request [ActionDispatch::Request]
-    #
-    # @return [Hash]
-    #
     @classmethod
-    def parse(cls, request):
-        content = request.body
-
+    def parse(cls, content, content_type):
         if isinstance(content, bytes):
             content = content.decode('utf-8')
 
         params = {}
 
-        content_type = request.content_type
         if not content_type:
             content_type = ''
 
@@ -33,6 +24,17 @@ class RequestBodyParser:
             params = cls.__parse_www_form_urlencoded(content)
 
         return params
+
+    @classmethod
+    def stringify(cls, content, content_type):
+        content_type = content_type.lower()
+
+        if content_type == cls.JSON:
+            return cls.__stringify_json(content)
+        elif content_type == cls.WWW_FORM_URLENCODED:
+            return cls.__stringify_www_form_urlencoded(content)
+
+        return content
 
     @staticmethod
     def __parse_json(content):
@@ -47,3 +49,18 @@ class RequestBodyParser:
             return urllib.parse.parse_qs(content)
         except:
             return {}
+
+    @staticmethod
+    def __stringify_json(content):
+        try:
+            return json.dump(content)
+        except:
+            return content
+
+    @staticmethod
+    def __stringify_www_form_urlencoded(content):
+        try:
+            return urllib.parse.urlencode(content)
+        except:
+            return content
+

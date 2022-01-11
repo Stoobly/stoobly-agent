@@ -27,7 +27,6 @@ class RequestString:
         current_time = self.current_time()
         self.lines.insert(0, "{} {} {}".format(self.REQUEST_TYPE, self.request_id, current_time))
 
-
     def request_line(self):
         self.lines.append("{} {} HTTP/1.1".format(self.request.method, self.proxy_request.url()))
 
