@@ -30,6 +30,7 @@ setup(
         "pyyaml>=5.4,<=5.4.1",
         "requests>=2.25.0,<=2.25.1",
         "watchdog>=2.1.0,<=2.1.3",
+        "yamale>=4.0.0,<=4.0.2"
     ],
     license='MIT',
     name='stoobly-agent',

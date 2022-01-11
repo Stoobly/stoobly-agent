@@ -6,6 +6,7 @@ import pdb
 from shutil import copyfile
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
+from yamale import *
 
 from . import env_vars
 from .logger import Logger
@@ -14,6 +15,7 @@ from .root_dir import RootDir
 class Settings:
     LOG_ID = 'lib.settings'
     FILE_NAME = 'settings.yml'
+    SCHEMA_FILE_NAME = 'schema.yml'
 
     _instance = None
     _agent_url = ''
@@ -25,14 +27,17 @@ class Settings:
             raise RuntimeError('Call instance() instead')
         else:
             cwd = os.path.dirname(os.path.realpath(__file__))
+            config_dir = os.path.join(cwd, '..', 'config')
 
             self.config_file_path = os.path.join(RootDir.instance().root_dir, self.FILE_NAME)
+            self.schema_file_path = os.path.join(config_dir, self.SCHEMA_FILE_NAME)
 
             # If the config does not exist, use template
             if not os.path.exists(self.config_file_path):
-                self.config_template_file_path = os.path.join(cwd, '..', 'config', self.FILE_NAME)
+                self.config_template_file_path = os.path.join(config_dir, self.FILE_NAME)
                 copyfile(self.config_template_file_path, self.config_file_path)
 
+            self.__validate()
             self.__load_config()
 
     def observe_config(self):
@@ -268,3 +273,12 @@ class Settings:
                 self.config = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 pass
+
+    def __validate(self):
+        try:
+            schema = yamale.make_schema(self.schema_file_path)
+            data = yamale.make_data(self.config_file_path)
+            yamale.validate(schema, data)
+        except YamaleError as e:
+            for result in e.results:
+                print(f"{result}\n")

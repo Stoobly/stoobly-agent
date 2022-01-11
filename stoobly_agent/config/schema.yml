@@ -1,0 +1,28 @@
+agent_url: str()
+api_url: str()
+api_key: str()
+mode:
+  active: str(matches='mock|record')
+  record:
+    enabled: bool()
+    project_key: str()
+    settings: map(include('project_record_setting'), key=str())
+  mock:
+    enabled: bool()
+    project_key: str()
+    settings: map(include('project_mock_setting'), key=str())
+proxy_config_path: str()
+---
+project_mock_setting:
+  exclude_patterns: list(str())
+  include_patterns: list(str())
+  policy: str(matches='all|none|found|found')
+  service_url: str(required=False)
+  scenario_key: str(required=False)
+project_record_setting:
+  exclude_patterns: list(str())
+  filter_patterns: list(str(), required=False)
+  include_patterns: list(str())
+  policy: str(matches='all|none|found|not_found')
+  service_url: str(required=False)
+  scenario_key: str(required=False)
