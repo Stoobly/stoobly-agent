@@ -69,10 +69,11 @@ class ConfigsController:
         mock = {}
         mock_mode = mode.get('mock')
         if mock_mode:
-            project = StooblyApi.decode_project_key(mock_mode.get('project_key'))
+            project_key = mock_mode.get('project_key')
+            project = StooblyApi.decode_project_key(project_key)
             mock['project_id'] = project.get('id')
 
-            scenario_key = mock_mode.get('scenario_key')
+            scenario_key = mock_mode.get('settings', {}).get(project_key, {}).get('scenario_key')
             if isinstance(scenario_key, str) and len(scenario_key) > 0:
                 scenario = StooblyApi.decode_scenario_key(scenario_key)
                 mock['scenario_id'] = scenario['id']
@@ -80,10 +81,11 @@ class ConfigsController:
         record = {}
         record_mode = mode.get('record')
         if record_mode:
-            project = StooblyApi.decode_project_key(record_mode.get('project_key'))
+            project_key = record_mode.get('project_key')
+            project = StooblyApi.decode_project_key(project_key)
             record['project_id'] = project.get('id')
 
-            scenario_key = record_mode.get('scenario_key')
+            scenario_key = record_mode.get('settings', {}).get(project_key, {}).get('scenario_key')
             if isinstance(scenario_key, str) and len(scenario_key) > 0:
                 scenario = StooblyApi.decode_scenario_key(scenario_key)
                 record['scenario_id'] = scenario['id']

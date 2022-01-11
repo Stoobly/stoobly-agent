@@ -8,6 +8,7 @@ class MitmproxyResponseAdapter(Response):
     def __init__(self, response):
         self.response = response
         self.content = response.raw_content
+        self.param_filters = []
 
     @property
     def code(self):
@@ -32,3 +33,13 @@ class MitmproxyResponseAdapter(Response):
             return b''
 
         return content
+
+    ###
+    #
+    # @param filters [Array<string>]
+    #
+    def with_param_filters(self, filters):
+        if type(filters) == list:
+            self.param_filters = filters
+
+        return self

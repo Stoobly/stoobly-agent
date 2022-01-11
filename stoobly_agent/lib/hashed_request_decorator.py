@@ -66,7 +66,7 @@ class HashedRequestDecorator:
         return self.body_params_hash(True)
 
     def body_params_hash(self, with_ignored = False):
-        params = RequestBodyParser.parse(self.request)
+        params = RequestBodyParser.parse(self.request.body, self.request.content_type)
 
         serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_body_params)
 

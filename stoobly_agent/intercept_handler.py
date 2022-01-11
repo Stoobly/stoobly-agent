@@ -233,11 +233,21 @@ def __reverse_proxy(request, service_url, options = {}):
 #
 def __upload_request(flow, api, settings):
     active_mode_settings = settings.active_mode_settings
-    service_url = __get_service_url(flow.request, active_mode_settings)
-    request = MitmproxyRequestAdapter(flow.request)
-    proxy_request = ProxyRequest(request, service_url)
-    response = MitmproxyResponseAdapter(flow.response)
+    param_filters = active_mode_settings.get('filter_patterns')
 
+    # Adapt flow.request
+    request = MitmproxyRequestAdapter(flow.request)
+    request.with_param_filters(param_filters)
+
+    # Decorate request with service_url
+    service_url = __get_service_url(flow.request, active_mode_settings)
+    proxy_request = ProxyRequest(request, service_url)
+
+    # Adapt flow.response
+    response = MitmproxyResponseAdapter(flow.response)
+    response.with_param_filters(param_filters)
+
+    # Create JoinedRequest
     joined_request = JoinedRequest(proxy_request).with_response(response)
 
     Logger.instance().info(f"Uploading {proxy_request.url()}")
