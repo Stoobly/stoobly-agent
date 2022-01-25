@@ -25,12 +25,6 @@ Settings.instance().observe_config()
 
 LOG_ID = 'InterceptHandler'
 
-TEST_POLICY = {
-    'ALL': 'all',
-    'NONE': 'none',
-    'FOUND': 'found',
-}
-
 MODE = {
     'MOCK': 'mock',
     'NONE': 'none',
