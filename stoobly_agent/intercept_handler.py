@@ -57,10 +57,17 @@ RECORD_POLICY = {
     'NOT_FOUND': 'not_found',
 }
 
+TEST_POLICY = {
+    'ALL': 'all',
+    'NONE': 'none',
+    'FOUND': 'found',
+}
+
 MODE = {
     'MOCK': 'mock',
     'NONE': 'none',
     'RECORD': 'record',
+    'TEST' : 'test',
 }
 
 CUSTOM_RESPONSE_CODES = {
