@@ -21,7 +21,7 @@ MOCK_POLICY = {
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_mock(flow, settings):
+def handle_request_mock_generic(flow, settings, callback):
     start_time = time.time()
 
     request = flow.request
@@ -47,7 +47,7 @@ def handle_request_mock(flow, settings):
         if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
             res = eval_request(request, api, active_mode_settings, res.content)
 
-            __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
+            callback(res, start_time)
     elif mock_policy == MOCK_POLICY['FOUND']:
         res = eval_request(request, api, active_mode_settings)
 
@@ -58,7 +58,7 @@ def handle_request_mock(flow, settings):
             Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
             return reverse_proxy(request, service_url, {})
         else:
-            __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
+            callback(res, start_time)
     else:
         return bad_request(
             flow,
@@ -67,6 +67,12 @@ def handle_request_mock(flow, settings):
         )
 
     return pass_on(flow, res)
+
+def handle_request_mock(flow, settings):
+    handle_request_mock_generic(flow, settings, __mock_callback)
+
+def __mock_callback(res, start_time):
+    __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
 
 ###
 #
