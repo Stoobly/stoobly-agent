@@ -2,13 +2,9 @@ import errno
 import tempfile
 
 from ..agent_api import AgentApi
-from ..joined_request import JoinedRequest
 from ..logger import Logger
-from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
-from ..mitmproxy_response_adapter import MitmproxyResponseAdapter
-from ..proxy_request import ProxyRequest
 from ..settings import Settings
-from .settings import get_service_url
+from .join_request_service import join_request
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -27,24 +23,9 @@ NAMESPACE_FOLDER = 'stoobly'
 #
 def upload_request(flow, api, settings):
     active_mode_settings = settings.active_mode_settings
-    param_filters = active_mode_settings.get('filter_patterns')
+    joined_request = join_request(flow, active_mode_settings)
 
-    # Adapt flow.request
-    request = MitmproxyRequestAdapter(flow.request)
-    request.with_param_filters(param_filters)
-
-    # Decorate request with service_url
-    service_url = get_service_url(flow.request, active_mode_settings)
-    proxy_request = ProxyRequest(request, service_url)
-
-    # Adapt flow.response
-    response = MitmproxyResponseAdapter(flow.response)
-    response.with_param_filters(param_filters)
-
-    # Create JoinedRequest
-    joined_request = JoinedRequest(proxy_request).with_response(response)
-
-    Logger.instance().info(f"Uploading {proxy_request.url()}")
+    Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
     raw_requests = joined_request.build()
 
