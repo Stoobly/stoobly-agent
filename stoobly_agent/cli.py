@@ -13,7 +13,7 @@ from .lib import env_vars
 from .lib.ca_cert_installer import CACertInstaller
 from .lib.cli.exec import run_command, run_command_with_proxy_export
 from .lib.settings import Settings
-from .proxy import run as run_proxy, get_proxy_url
+from .proxy import run as run_proxy, filter_options, get_proxy_url
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.version_option()
@@ -53,6 +53,7 @@ def ca_cert(ctx):
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
 @click.option('--api-url', help='API URL.')
+@click.option('--test-script', help='Provide a custom script for testing.')
 def run(**kwargs):
     if not os.getenv(env_vars.LOG_LEVEL):
         os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -62,6 +63,9 @@ def run(**kwargs):
 
     if kwargs['api_url']:
         os.environ[env_vars.API_URL] = kwargs['api_url']
+
+    if kwargs['test_script']:
+        os.environ[env_vars.TEST_SCRIPT] = kwargs['test_script']
 
     if not kwargs['headless']:
         initialize_ui(kwargs)
@@ -142,16 +146,6 @@ def initialize_ui(kwargs):
 def initialize_proxy(kwargs):
     options = kwargs.copy()
 
-    # Filter out non-mitmproxy options
-    options['listen_host'] = options['proxy_host']
-    options['listen_port'] = options['proxy_port']
-
-    del options['headless']
-    del options['log_level']
-    del options['proxy_host']
-    del options['proxy_port']
-    del options['ui_host']
-    del options['ui_port']
-    del options['api_url']
+    filter_options(options)
 
     run_proxy(**options)
