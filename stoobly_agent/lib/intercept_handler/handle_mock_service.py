@@ -21,12 +21,13 @@ MOCK_POLICY = {
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(flow, settings, callback):
+def handle_request_mock_generic(flow, settings, **kwargs):
     start_time = time.time()
 
     request = flow.request
     active_mode_settings = settings.active_mode_settings
-    service_url = get_service_url(request, active_mode_settings)
+    handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
+    handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
     api = StooblyApi(
       settings.api_url, settings.api_key
@@ -39,15 +40,16 @@ def handle_request_mock_generic(flow, settings, callback):
         mock_policy = MOCK_POLICY['NONE']
 
     if mock_policy == MOCK_POLICY['NONE']:
-        Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
-        return reverse_proxy(request, service_url, {})
+        if handle_failure:
+            return handle_failure(request, active_mode_settings)
     elif mock_policy == MOCK_POLICY['ALL']:
         res = eval_request(request, api, active_mode_settings)
 
         if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
             res = eval_request(request, api, active_mode_settings, res.content)
 
-            callback(res, start_time)
+        if handle_success:
+            handle_success(res, start_time)
     elif mock_policy == MOCK_POLICY['FOUND']:
         res = eval_request(request, api, active_mode_settings)
 
@@ -55,10 +57,11 @@ def handle_request_mock_generic(flow, settings, callback):
             res = eval_request(request, api, active_mode_settings, res.content)
 
         if res.status_code == CUSTOM_RESPONSE_CODES['NOT_FOUND']:
-            Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
-            return reverse_proxy(request, service_url, {})
+            if handle_failure:
+                return handle_failure(request, active_mode_settings)
         else:
-            callback(res, start_time)
+            if handle_success:
+                handle_success(res, start_time)
     else:
         return bad_request(
             flow,
@@ -69,10 +72,20 @@ def handle_request_mock_generic(flow, settings, callback):
     return pass_on(flow, res)
 
 def handle_request_mock(flow, settings):
-    handle_request_mock_generic(flow, settings, __mock_callback)
+    handle_request_mock_generic(
+        flow,
+        settings,
+        failure=__handle_mock_failure,
+        success=__handle_mock_success
+    )
 
-def __mock_callback(res, start_time):
+def __handle_mock_success(res, start_time):
     __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
+
+def __handle_mock_failure(request, active_mode_settings):
+    service_url = get_service_url(request, active_mode_settings)
+    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
+    return reverse_proxy(request, service_url, {})
 
 ###
 #
