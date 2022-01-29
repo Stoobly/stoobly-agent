@@ -1,4 +1,6 @@
-def dict_matches(d1, d2, path_key):
+from typing import Tuple
+
+def dict_matches(d1: dict, d2: dict, path_key: str) -> Tuple[bool, str]:
     for key, val in d1.items():
         path_key = '.'.join([path_key, key])
 
@@ -23,7 +25,7 @@ def dict_matches(d1, d2, path_key):
 #
 # If list value is traversable, traverse
 #
-def list_matches(l1, l2, path_key):
+def list_matches(l1: list, l2: list, path_key: str) -> Tuple[bool, str]:
     valid_types = []
     type_examples = {}
 
@@ -48,7 +50,3 @@ def list_matches(l1, l2, path_key):
             return dict_matches(type_examples[list], val)
 
     return True, ''
-
-def __is_traversable(content):
-    return type(content) is dict or type(content) is list
-

@@ -1,15 +1,22 @@
 import json
 
+from mitmproxy.net.http.request import Request as MitmproxyRequest
+from typing import Union
+
 from ..hashed_request_decorator import HashedRequestDecorator
 from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
+from ..stoobly_api import StooblyApi
 
 ###
 #
-# @param api [StooblyApi]
 # @param settings [Settings.mode.mock | Settings.mode.record]
-# @param ignored_components_json [String] JSON string
 #
-def eval_request(request, api, settings, ignored_components_json = None):
+def eval_request(
+    request: MitmproxyRequest, 
+    api: StooblyApi, 
+    settings, 
+    ignored_components_json: Union[str, None] = None
+):
     ignored_components = []
 
     if ignored_components_json:
@@ -34,7 +41,7 @@ def eval_request(request, api, settings, ignored_components_json = None):
 #
 # @return [Hash] query parameters to pass to stoobly api
 #
-def __build_query_params(request, ignored_components = []):
+def __build_query_params(request: MitmproxyRequest, ignored_components = []):
     request = MitmproxyRequestAdapter(request)
     hashed_request = HashedRequestDecorator(request).with_ignored_components(ignored_components)
 

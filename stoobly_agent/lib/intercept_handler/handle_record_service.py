@@ -1,11 +1,15 @@
 import threading
 
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.net.http.response import Response as MitmproxyResponse 
+
 from ..logger import Logger
 from ..stoobly_api import StooblyApi
 from .allowed_request_service import allowed_request
 from .custom_response_codes import CUSTOM_RESPONSE_CODES
 from .eval_request_service import eval_request
-from .response_handler import bad_request, pass_on, reverse_proxy
+from .response_handler import bad_request, reverse_proxy
 from .settings import get_record_policy, get_service_url
 from .upload_request_service import upload_request
 
@@ -17,7 +21,7 @@ RECORD_POLICY = {
     'NOT_FOUND': 'not_found',
 }
 
-def handle_request_record(request, settings):
+def handle_request_record(request: MitmproxyRequest, settings):
     active_mode_settings = settings.active_mode_settings
 
     service_url = get_service_url(request, active_mode_settings)
@@ -31,7 +35,7 @@ def handle_request_record(request, settings):
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
     reverse_proxy(request, service_url, {})
 
-def handle_response_record(flow, settings):
+def handle_response_record(flow: MitmproxyHTTPFlow, settings):
     __disable_transfer_encoding(flow.response)
 
     request = flow.request
@@ -70,7 +74,7 @@ def handle_response_record(flow, settings):
             [RECORD_POLICY['ALL'], RECORD_POLICY['NOT_FOUND'], RECORD_POLICY['NONE'], upload_policy]
         )
 
-def __disable_transfer_encoding(response):
+def __disable_transfer_encoding(response: MitmproxyResponse):
     header_name = 'Transfer-Encoding'
     if header_name in response.headers and response.headers[header_name] == 'chunked':
         # Without deleting this header, causes caller to stall

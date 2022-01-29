@@ -1,5 +1,9 @@
 import time
 
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.net.http.response import Response as MitmproxyResponse 
+
 from ..logger import Logger
 from ..stoobly_api import StooblyApi
 from .allowed_request_service import allowed_request
@@ -21,7 +25,7 @@ MOCK_POLICY = {
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(flow, settings, **kwargs):
+def handle_request_mock_generic(flow: MitmproxyHTTPFlow, settings, **kwargs):
     start_time = time.time()
 
     request = flow.request
@@ -71,7 +75,7 @@ def handle_request_mock_generic(flow, settings, **kwargs):
 
     return pass_on(flow, res)
 
-def handle_request_mock(flow, settings):
+def handle_request_mock(flow: MitmproxyHTTPFlow, settings):
     handle_request_mock_generic(
         flow,
         settings,
@@ -79,10 +83,10 @@ def handle_request_mock(flow, settings):
         success=__handle_mock_success
     )
 
-def __handle_mock_success(res, start_time):
+def __handle_mock_success(res: MitmproxyResponse, start_time: float) -> None:
     __simulate_latency(res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
 
-def __handle_mock_failure(request, active_mode_settings):
+def __handle_mock_failure(request: MitmproxyRequest, active_mode_settings):
     service_url = get_service_url(request, active_mode_settings)
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
     return reverse_proxy(request, service_url, {})
@@ -97,7 +101,7 @@ def __handle_mock_failure(request, active_mode_settings):
 # estimated_rtt_network_latency = 15ms
 # api_latency = current_time - start_time of this request
 #
-def __simulate_latency(expected_latency, start_time):
+def __simulate_latency(expected_latency: int, start_time: float) -> float:
     if not expected_latency:
         return 0
 

@@ -1,11 +1,10 @@
-import base64
-import pdb
+from mitmproxy.net.http.response import Response as MitmproxyResponse 
 
-from .response import  Response
+from .response import Response
 
 class MitmproxyResponseAdapter(Response):
 
-    def __init__(self, response):
+    def __init__(self, response: MitmproxyResponse):
         self.response = response
         self.content = response.raw_content
         self.param_filters = []
@@ -20,7 +19,7 @@ class MitmproxyResponseAdapter(Response):
 
     def decode_body(self):
         # Decodes content (if Content-Encoding header is set)
-        self.content = response.content
+        self.content = self.response.content
 
         # Update Content-Lenght header to decoded content length
         self.response.headers['content-length'] = str(len(self.content))
