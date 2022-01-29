@@ -6,6 +6,7 @@ import lib
 
 from lib.intercept_handler.handle_mock_service import handle_request_mock
 from lib.intercept_handler.handle_record_service import handle_request_record, handle_response_record
+from lib.intercept_handler.handle_test_service import handle_request_test
 from lib.intercept_handler.response_handler import bad_request
 from lib.intercept_handler.settings import get_proxy_mode
 from lib.logger import Logger
@@ -42,16 +43,18 @@ def request(flow):
 
     Logger.instance().debug(f"{LOG_ID}:ProxyMode: {mode}")
 
-    if mode == MODE['NONE']:
+    if mode == MODE['MOCK']:
+        handle_request_mock(flow, settings)
+    elif mode == MODE['NONE']:
         pass
     elif mode == MODE['RECORD']:
         handle_request_record(request, settings)
-    elif mode == MODE['MOCK']:
-        handle_request_mock(flow, settings)
+    elif mode == MODE['TEST']:
+        pass
     else:
         return bad_request(
             flow,
-            "Valid env MODE: %s, %s, Got: %s" % (MODE['RECORD'], MODE['MOCK'], mode)
+            "Valid env MODE: %s, Got: %s" % ([MODE['RECORD'], MODE['MOCK'], MODE['TEST']], mode)
         )
 
 def response(flow):
@@ -60,10 +63,12 @@ def response(flow):
 
     mode = get_proxy_mode(request.headers, settings)
 
-    if mode != MODE['RECORD']:
+    if mode == MODE['RECORD']:
+        return handle_response_record(flow, settings)
+    elif mode == MODE['TEST']:
+        return handle_request_test(flow, settings)
+    else:
         return False
-
-    return handle_response_record(flow, settings)
 
 ### PRIVATE
 
