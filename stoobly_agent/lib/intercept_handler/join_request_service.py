@@ -1,10 +1,12 @@
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+
 from ..joined_request import JoinedRequest
 from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
 from ..mitmproxy_response_adapter import MitmproxyResponseAdapter
 from ..proxy_request import ProxyRequest
 from .settings import get_service_url
 
-def join_request(flow, active_mode_settings):
+def join_request(flow: MitmproxyHTTPFlow, active_mode_settings) -> JoinedRequest:
     param_filters = active_mode_settings.get('filter_patterns')
 
     # Adapt flow.request

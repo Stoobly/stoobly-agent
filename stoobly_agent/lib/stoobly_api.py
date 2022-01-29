@@ -11,7 +11,7 @@ class StooblyApi:
     REQUESTS_ENDPOINT = '/requests'
     TESTS_ENDPOINT = '/tests'
 
-    def __init__(self, service_url, api_key):
+    def __init__(self, service_url: str, api_key: str):
         self.service_url = service_url
         self.api_key = api_key
 
@@ -48,7 +48,7 @@ class StooblyApi:
             'X-Do-Proxy': '1',
         }
 
-    def request_create(self, project_key, raw_requests, params):
+    def request_create(self, project_key: str, raw_requests, params) -> requests.Response:
         url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
 
         self.__parse_scenario_key(params)
@@ -62,7 +62,7 @@ class StooblyApi:
 
         return requests.post(url, headers=self.default_headers, data=body, files={ 'requests': raw_requests })
 
-    def request_response(self, project_key, query_params):
+    def request_response(self, project_key: str, query_params) -> requests.Response:
         url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/response"
 
         self.__parse_scenario_key(query_params)
@@ -84,7 +84,7 @@ class StooblyApi:
             stream=True
         )
 
-    def test_create(self, project_key, raw_request, params):
+    def test_create(self, project_key: str, raw_request, params) -> requests.Response:
         url = f"{self.service_url}{self.TESTS_ENDPOINT}"
 
         self.__parse_scenario_key(params)
@@ -98,7 +98,7 @@ class StooblyApi:
 
         return requests.post(url, headers=self.default_headers, data=body, files={ 'request': raw_request })
 
-    def __parse_scenario_key(self, params):
+    def __parse_scenario_key(self, params) -> None:
         if not 'scenario_key' in params:
             return
 

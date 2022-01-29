@@ -1,7 +1,10 @@
 from mitmproxy import http
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from mitmproxy.net.http.request import Request as MitmproxyRequest
+from requests import Response
 from urllib.parse import urlparse
 
-def reverse_proxy(request, service_url, options = {}):
+def reverse_proxy(request: MitmproxyRequest, service_url: str, options = {}):
     uri = urlparse(service_url)
 
     request.scheme = uri.scheme
@@ -13,7 +16,7 @@ def reverse_proxy(request, service_url, options = {}):
 #
 # Return response headers, body, and status code
 #
-def pass_on(flow, res):
+def pass_on(flow: MitmproxyHTTPFlow, res: Response):
     # Ideally we just return the HTTPResponse object from res.raw
     # See Issue #11
     #flow.response = res.raw
@@ -32,7 +35,7 @@ def pass_on(flow, res):
         res.status_code, content, headers,
     )
 
-def bad_request(flow, message):
+def bad_request(flow: MitmproxyHTTPFlow, message: str):
     flow.response = http.HTTPResponse.make(
         400,  # (optional) status code
         message,

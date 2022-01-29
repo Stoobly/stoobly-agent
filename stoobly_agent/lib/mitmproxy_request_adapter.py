@@ -2,6 +2,7 @@ import hashlib
 import pdb
 import re
 
+from mitmproxy.net.http.request import Request as MitmproxyRequest
 from urllib.parse import urlparse
 
 from .request import Request
@@ -15,7 +16,7 @@ class MitmproxyRequestAdapter(Request):
     #
     # @return [Hash]
     #
-    def __init__(self, request):
+    def __init__(self, request: MitmproxyRequest):
         self.request = request
         self.param_filters = []
 

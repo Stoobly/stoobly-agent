@@ -2,12 +2,14 @@ import hashlib
 import time
 import pdb
 
+from .proxy_request import ProxyRequest
+
 class RequestString:
     ENCODING = 'utf-8'
     REQUEST_TYPE = 1
     CLRF = "\r\n"
 
-    def __init__(self, proxy_request):
+    def __init__(self, proxy_request: ProxyRequest):
         self.request = proxy_request.request
         self.proxy_request = proxy_request
 
