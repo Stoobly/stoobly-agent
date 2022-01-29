@@ -1,5 +1,7 @@
 from mergedeep import merge
 
+from ..lib.intercept_handler.handle_mock_service import MOCK_POLICY
+from ..lib.intercept_handler.handle_record_service import RECORD_POLICY
 from ..lib.settings import Settings
 from ..lib.stoobly_api import StooblyApi
 
@@ -9,18 +11,7 @@ class ConfigsController:
     MODE = {
       'MOCK': 'mock',
       'RECORD': 'record',
-    }
-
-    MOCK_POLICY = {
-      'ALL': 'all',
-      'NONE': 'none',
-      'FOUND': 'found',
-    }
-
-    RECORD_POLICY = {
-      'NONE': 'none',
-      'ALL': 'all',
-      'NOT_FOUND': 'not_found',
+      'TEST': 'test'
     }
 
     def __init__(self):
@@ -41,14 +32,14 @@ class ConfigsController:
         settings = Settings.instance()
         active_mode = settings.active_mode
 
-        if active_mode == self.MODE['MOCK']:
+        if active_mode in [self.MODE['MOCK'], self.MODE['TEST']]:
             context.render(
-                json = self.MOCK_POLICY,
+                json = MOCK_POLICY,
                 status = 200
             )
         elif active_mode == self.MODE['RECORD']:
             context.render(
-                json = self.RECORD_POLICY,
+                json = RECORD_POLICY,
                 status = 200
             )
 
@@ -69,26 +60,20 @@ class ConfigsController:
         mock = {}
         mock_mode = mode.get('mock')
         if mock_mode:
-            project_key = mock_mode.get('project_key')
-            project = StooblyApi.decode_project_key(project_key)
-            mock['project_id'] = project.get('id')
-
-            scenario_key = mock_mode.get('settings', {}).get(project_key, {}).get('scenario_key')
-            if isinstance(scenario_key, str) and len(scenario_key) > 0:
-                scenario = StooblyApi.decode_scenario_key(scenario_key)
-                mock['scenario_id'] = scenario['id']
+            project_key = self.__merge_project_key(mock, mock_mode)
+            self.__merge_scenario_key(mock, mock_mode, project_key)
 
         record = {}
         record_mode = mode.get('record')
         if record_mode:
-            project_key = record_mode.get('project_key')
-            project = StooblyApi.decode_project_key(project_key)
-            record['project_id'] = project.get('id')
+            project_key = self.__merge_project_key(record, record_mode)
+            self.__merge_scenario_key(record, record_mode, project_key)
 
-            scenario_key = record_mode.get('settings', {}).get(project_key, {}).get('scenario_key')
-            if isinstance(scenario_key, str) and len(scenario_key) > 0:
-                scenario = StooblyApi.decode_scenario_key(scenario_key)
-                record['scenario_id'] = scenario['id']
+        test = {}
+        test_mode = mode.get('test')
+        if test_mode:
+            project_key = self.__merge_project_key(test, test_mode)
+            self.__merge_scenario_key(test, test_mode, project_key)
 
         active_mode =  settings.active_mode
 
@@ -98,6 +83,7 @@ class ConfigsController:
                 'details': {
                     'mock': mock,
                     'record': record,
+                    'test': test,
                 },
                 'enabled': settings.active_mode_settings.get('enabled'),
                 'list': list(self.MODE.values()),
@@ -118,3 +104,16 @@ class ConfigsController:
             json = merged_settings,
             status = 200
         )
+
+    def __merge_project_key(self, h, mode):
+        project_key = mode.get('project_key')
+        project = StooblyApi.decode_project_key(project_key)
+        h['project_id'] = project.get('id')
+        return project_key
+
+    def __merge_scenario_key(self, h, mode, project_key):
+        scenario_key = mode.get('settings', {}).get(project_key, {}).get('scenario_key')
+        if isinstance(scenario_key, str) and len(scenario_key) > 0:
+            scenario = StooblyApi.decode_scenario_key(scenario_key)
+            h['scenario_id'] = scenario['id']
+        return scenario_key
