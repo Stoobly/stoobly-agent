@@ -181,28 +181,30 @@ class Settings:
     # If the env var is null, get the setting from the yaml file
     @property
     def active_mode_settings(self):
-        active_mode_settings = self.config_project_settings
+        active_mode_settings = self.__build_active_mode_settings()
 
         if self.is_headless():
             self.__override_settings_with_env(active_mode_settings)
+            self.__override_project_settings_with_env(active_mode_settings)
 
         return active_mode_settings
+
+    ### Helpers
 
     #
     # Return active project's settings
     # If a scenario is set, return scenario settings
     #
-    @property
-    def config_project_settings(self):
+    def __build_active_mode_settings(self):
         mode = self.mode
 
         if not mode:
-            return None
+            return {}
 
         active_mode = self.active_mode
 
         if not active_mode:
-            return None
+            return {}
 
         active_mode_settings = mode.get(active_mode, {})
         all_project_settings = active_mode_settings.get('settings', {})
@@ -211,15 +213,15 @@ class Settings:
         project_settings = all_project_settings.get(project_key)
 
         if not project_settings:
-            return None
-
-        scenario_key = project_settings.get('scenario_key')
-        if scenario_key and len(scenario_key) != 0:
-            project_settings = all_project_settings.get(scenario_key)
-
-            project_settings['scenario_key'] = scenario_key
+            project_settings = {}
         else:
-            project_settings['scenario_key'] = ''
+            scenario_key = project_settings.get('scenario_key')
+            if scenario_key and len(scenario_key) != 0:
+                project_settings = all_project_settings.get(scenario_key)
+
+                project_settings['scenario_key'] = scenario_key
+            else:
+                project_settings['scenario_key'] = ''
 
         # Merge higher level settings
         project_settings['project_key'] = project_key
@@ -227,20 +229,7 @@ class Settings:
 
         return project_settings
 
-    ### Helpers
-
-    ###
-    #
-    # Replace setting with env var if set
-    #
-    # @param active_mode_settings [Dict]
-    #
-    def __override_settings_with_env(self, active_mode_settings):
-        enabled = os.environ.get(env_vars.AGENT_ENABLED)
-
-        if enabled != None:
-            active_mode_settings['enabled'] = not not enabled
-
+    def __override_project_settings_with_env(self, active_mode_settings):
         include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
         if include_patterns != None:
             # Split the string based on commas, strip whitespace
@@ -255,17 +244,30 @@ class Settings:
         if policy != None:
             active_mode_settings['policy'] = policy
 
+        proxy_scenario_key = os.environ.get(env_vars.AGENT_SCENARIO_KEY)
+        if proxy_scenario_key != None:
+            active_mode_settings['scenario_key'] = proxy_scenario_key
+
         proxy_service_url = os.environ.get(env_vars.AGENT_SERVICE_URL)
         if proxy_service_url != None:
             active_mode_settings['service_url'] = proxy_service_url
+
+    ###
+    #
+    # Replace setting with env var if set
+    #
+    # @param active_mode_settings [Dict]
+    #
+    def __override_settings_with_env(self, active_mode_settings):
+        enabled = os.environ.get(env_vars.AGENT_ENABLED)
+
+        if enabled != None:
+            active_mode_settings['enabled'] = not not enabled
 
         proxy_project_key = os.environ.get(env_vars.AGENT_PROJECT_KEY)
         if proxy_project_key != None:
             active_mode_settings['project_key'] = proxy_project_key
 
-        proxy_scenario_key = os.environ.get(env_vars.AGENT_SCENARIO_KEY)
-        if proxy_scenario_key != None:
-            active_mode_settings['scenario_key'] = proxy_scenario_key
 
     def __load_config(self):
         with open(self.config_file_path, 'r') as stream:
