@@ -71,6 +71,7 @@ def handle_response_record(flow, settings):
         )
 
 def __disable_transfer_encoding(response):
-    if 'Transfer-Encoding' in response.headers:
+    header_name = 'Transfer-Encoding'
+    if header_name in response.headers and response.headers[header_name] == 'chunked':
         # Without deleting this header, causes caller to stall
         del response.headers['Transfer-Encoding']
