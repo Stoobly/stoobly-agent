@@ -32,6 +32,20 @@ def get_proxy_url():
     with open(path) as f:
         return f.read()
 
+def filter_options(options):
+    # Filter out non-mitmproxy options
+    options['listen_host'] = options['proxy_host']
+    options['listen_port'] = options['proxy_port']
+
+    del options['headless']
+    del options['log_level']
+    del options['proxy_host']
+    del options['proxy_port']
+    del options['ui_host']
+    del options['ui_port']
+    del options['api_url']
+    del options['test_script']
+
 def __get_intercept_handler_path():
     cwd = os.path.dirname(os.path.realpath(__file__))
     script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
