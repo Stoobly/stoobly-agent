@@ -12,4 +12,8 @@ mode:
     enabled: false
     project_key: ''
     settings: {}
+  test:
+    enabled: false
+    project_key: ''
+    settings: {}
 proxy_config_path: config/settings.yml
