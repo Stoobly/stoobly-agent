@@ -9,6 +9,7 @@ from .logger import Logger
 class StooblyApi:
     LOG_ID = 'lib.stoobly_api'
     REQUESTS_ENDPOINT = '/requests'
+    TESTS_ENDPOINT = '/tests'
 
     def __init__(self, service_url, api_key):
         self.service_url = service_url
@@ -82,6 +83,20 @@ class StooblyApi:
             params=params,
             stream=True
         )
+
+    def test_create(self, project_key, raw_request, params):
+        url = f"{self.service_url}{self.TESTS_ENDPOINT}"
+
+        self.__parse_scenario_key(params)
+
+        project_data = self.decode_project_key(project_key)
+
+        body = {
+            'project_id': project_data.get('id'),
+            **params,
+        }
+
+        return requests.post(url, headers=self.default_headers, data=body, files={ 'request': raw_request })
 
     def __parse_scenario_key(self, params):
         if not 'scenario_key' in params:
