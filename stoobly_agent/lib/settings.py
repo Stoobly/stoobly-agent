@@ -4,6 +4,7 @@ import yaml
 import pdb
 
 from shutil import copyfile
+from typing import TypedDict, Union
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -11,6 +12,66 @@ from yamale import *
 from . import env_vars
 from .logger import Logger
 from .root_dir import RootDir
+
+
+class IProjectRecordSettings(TypedDict):
+    enabled: bool
+    exclude_patterns: list
+    filter_patterns: list
+    include_patterns: list
+    policy: str
+    project_key: str
+    service_url: str
+    scenario_key: str
+
+class IProjectMockSettings(TypedDict):
+    enabled: bool
+    exclude_patterns: list
+    include_patterns: list
+    policy: str
+    project_key: str
+    service_url: str
+    scenario_key: str
+
+class IProjectTestSettings(TypedDict):
+    exclude_patterns: list
+    include_patterns: list
+    policy: str
+    project_key: str
+    service_url: str
+    scenario_key: str
+    test_strategy: str
+    enabled: bool
+
+class IRecordSettings(TypedDict):
+    enabled: bool
+    project_key: str
+    settings: dict
+
+class IMockSettings(TypedDict):
+    enabled: bool
+    project_key: str
+    settings: dict
+
+class ITestSettings(TypedDict):
+    enabled: bool
+    project_key: str
+    settings: dict
+
+class ISettingsMode(TypedDict):
+    active: str
+    record: IRecordSettings
+    mock: IMockSettings
+    test: ITestSettings
+
+class ISettings(TypedDict):
+    agent_url: str
+    api_url: str
+    api_key: str
+    mode: ISettingsMode
+    proxy_config_path: str
+
+IProjectModeSettings = Union[IProjectMockSettings, IProjectRecordSettings, IProjectTestSettings]
 
 class Settings:
     LOG_ID = 'lib.settings'
@@ -137,11 +198,11 @@ class Settings:
         return self.config.get('proxy_url')
 
     @proxy_url.setter
-    def proxy_url(self, value):
+    def proxy_url(self, value) -> None:
         self._proxy_url = value
 
     @property
-    def api_url(self):
+    def api_url(self) -> str:
         if self._api_url:
             return self._api_url
 
@@ -151,11 +212,11 @@ class Settings:
         return self.config.get('api_url')
 
     @api_url.setter
-    def api_url(self, value):
+    def api_url(self, value) -> None:
         self._api_url = value
 
     @property
-    def api_key(self):
+    def api_key(self) -> str:
         if os.environ.get(env_vars.API_KEY):
             return os.environ[env_vars.API_KEY]
 
@@ -180,7 +241,7 @@ class Settings:
     # Get active mode settings first from environment variables
     # If the env var is null, get the setting from the yaml file
     @property
-    def active_mode_settings(self):
+    def active_mode_settings(self) -> IProjectModeSettings:
         active_mode_settings = self.__build_active_mode_settings()
 
         if self.is_headless():
@@ -195,7 +256,7 @@ class Settings:
     # Return active project's settings
     # If a scenario is set, return scenario settings
     #
-    def __build_active_mode_settings(self):
+    def __build_active_mode_settings(self) -> IProjectModeSettings:
         mode = self.mode
 
         if not mode:
@@ -229,7 +290,7 @@ class Settings:
 
         return project_settings
 
-    def __override_project_settings_with_env(self, active_mode_settings):
+    def __override_project_settings_with_env(self, active_mode_settings: IProjectModeSettings):
         include_patterns = os.environ.get(env_vars.AGENT_INCLUDE_PATTERNS)
         if include_patterns != None:
             # Split the string based on commas, strip whitespace
@@ -258,7 +319,7 @@ class Settings:
     #
     # @param active_mode_settings [Dict]
     #
-    def __override_settings_with_env(self, active_mode_settings):
+    def __override_settings_with_env(self, active_mode_settings: IProjectModeSettings):
         enabled = os.environ.get(env_vars.AGENT_ENABLED)
 
         if enabled != None:
