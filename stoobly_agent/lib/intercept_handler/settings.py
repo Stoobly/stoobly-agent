@@ -1,9 +1,10 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
+from ..settings import Settings
 from .custom_headers import CUSTOM_HEADERS
 from .modes import MODES
 
-def get_proxy_mode(headers: MitmproxyRequest.headers, settings):
+def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     access_control_header =  'Access-Control-Request-Headers'
     do_proxy_header = CUSTOM_HEADERS['DO_PROXY']
 
@@ -16,19 +17,19 @@ def get_proxy_mode(headers: MitmproxyRequest.headers, settings):
     else:
         return settings.active_mode
 
-def get_mock_policy(headers: MitmproxyRequest.headers, settings):
+def get_mock_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     if CUSTOM_HEADERS['MOCK_POLICY'] in headers:
         return headers[CUSTOM_HEADERS['MOCK_POLICY']]
     else:
         return settings.get('policy')
 
-def get_record_policy(headers: MitmproxyRequest.headers, settings):
+def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     if CUSTOM_HEADERS['RECORD_POLICY'] in headers:
         return headers[CUSTOM_HEADERS['RECORD_POLICY']]
     else:
         return settings.get('policy')
 
-def get_service_url(request: MitmproxyRequest, settings):
+def get_service_url(request: MitmproxyRequest, settings: Settings) -> str:
     service_url = request.headers.get(CUSTOM_HEADERS['SERVICE_URL'])
 
     if service_url:
@@ -39,5 +40,5 @@ def get_service_url(request: MitmproxyRequest, settings):
 
         return __upstream_url(request)
 
-def __upstream_url(request: MitmproxyRequest):
+def __upstream_url(request: MitmproxyRequest) -> str:
     return f"{request.scheme}://{request.host}:{request.port}"

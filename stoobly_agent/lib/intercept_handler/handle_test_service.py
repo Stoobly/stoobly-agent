@@ -6,6 +6,8 @@ from mitmproxy.net.http.response import Response as MitmproxyResponse
 from requests import Response
 
 from ..logger import Logger
+from ..settings import Settings, IProjectTestSettings
+from ..stoobly_api import StooblyApi
 
 from .custom_headers import CUSTOM_HEADERS
 from .handle_mock_service import handle_request_mock_generic
@@ -21,33 +23,38 @@ LOG_ID = 'HandleTest'
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_test(flow: MitmproxyHTTPFlow, settings) -> None:
+def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
     __disable_transfer_encoding(flow.response)
 
+    active_mode_settings: IProjectTestSettings = settings.active_mode_settings
+    api = StooblyApi(settings.api_url, settings.api_key)
+
     handle_request_mock_generic(
-        flow,
-        settings,
-        failure=lambda res, start_time: __handle_mock_failure(res, flow, settings),
-        success=lambda res, start_time: __handle_mock_success(res, flow, settings)
+        flow, api, active_mode_settings,
+        failure=__handle_mock_failure,
+        success=lambda req, res: __handle_mock_success(res, flow, api, active_mode_settings)
     )
 
-def __handle_mock_success(res: Response, flow: MitmproxyRequest, settings) -> None:
-    active_mode_settings = settings.active_mode_settings
- 
+def __handle_mock_success(
+    expected_response: Response, 
+    flow: MitmproxyHTTPFlow, 
+    api: StooblyApi, 
+    active_mode_settings: IProjectTestSettings
+) -> None:
     response: MitmproxyResponse = flow.response
     test_strategy = active_mode_settings.get('strategy')
-    passed, log = test(flow, res, test_strategy)
+    passed, log = test(flow, expected_response, test_strategy)
 
     res = upload_test(
-        flow, settings,
+        flow, api, active_mode_settings,
         log=log,
         passed=passed,
-        request_id=res.headers.get(CUSTOM_HEADERS['MOCK_REQUEST_ID']),
+        request_id=expected_response.headers.get(CUSTOM_HEADERS['MOCK_REQUEST_ID']),
         status=response.status_code,
         strategy=test_strategy
     )
 
-def __handle_mock_failure(res: Response, flow: MitmproxyHTTPFlow, settings) -> None:
+def __handle_mock_failure(res: Response) -> None:
     Logger.instance().info(f"{LOG_ID}:TestStatus: No test found")
 
 # Without deleting this header, causes parsing issues when reading response
