@@ -4,6 +4,9 @@ import pdb
 
 import lib
 
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from mitmproxy.net.http.request import Request as MitmproxyRequest
+
 from lib.intercept_handler.handle_mock_service import handle_request_mock
 from lib.intercept_handler.handle_record_service import handle_request_record, handle_response_record
 from lib.intercept_handler.handle_test_service import handle_request_test
@@ -27,8 +30,8 @@ Settings.instance().observe_config()
 
 LOG_ID = 'InterceptHandler'
 
-def request(flow):
-    request = flow.request
+def request(flow: MitmproxyHTTPFlow):
+    request: MitmproxyRequest = flow.request
 
     __disable_web_cache(request)
 
@@ -51,8 +54,8 @@ def request(flow):
             "Valid env MODES: %s, Got: %s" % ([MODES['RECORD'], MODES['MOCK'], MODES['TEST']], mode)
         )
 
-def response(flow):
-    request = flow.request
+def response(flow: MitmproxyHTTPFlow):
+    request: MitmproxyRequest = flow.request
     settings = Settings.instance()
 
     mode = get_proxy_mode(request.headers, settings)
@@ -66,7 +69,7 @@ def response(flow):
 
 ### PRIVATE
 
-def __disable_web_cache(request):
+def __disable_web_cache(request: MitmproxyRequest) -> None:
     request.headers['CACHE-CONTROL'] = 'no-cache'
 
     if 'IF-NONE-MATCH' in request.headers:
