@@ -1,13 +1,17 @@
+import math
 import os
 import pdb
+import time
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
 from runpy import run_path
-from typing import NewType, Union
+from typing import Union
 
 from ..env_vars import TEST_SCRIPT
+from .custom_headers import CUSTOM_HEADERS
 from .iterable_matches import dict_matches, list_matches
+from .mock_context import MockContext
 
 TEST_STRATEGIES = {
     'CUSTOM': 'custom',
@@ -17,22 +21,59 @@ TEST_STRATEGIES = {
 
 FuzzyContent = Union[dict, list, str]
 
-def test(flow: MitmproxyHTTPFlow, expected_res: Response, test_strategy):
-    expected_content = expected_res.content
+def test(test_strategy: str, context: MockContext):
+    flow = context.flow
+    expected_res = context.response
+    start_time = context.start_time
 
     response = flow.response
-    content = response.content
+    content: FuzzyContent = response.content
+    expected_content: FuzzyContent = expected_res.content
 
     if test_strategy == TEST_STRATEGIES['CUSTOM']:
-        return __test_custom(flow, expected_res)
+        return __test_custom(context)
     elif test_strategy == TEST_STRATEGIES['DIFF']:
-        return __test_diff(content, expected_content)
+        status_score = __test_status_code(flow, expected_res)
+        latency_score = __test_latency(start_time, expected_res)
+        diff_score, log = __test_diff(content, expected_content)
+        score = status_score + latency_score + diff_score
+        return score, log
     elif test_strategy == TEST_STRATEGIES['FUZZY']:
-        return __test_fuzzy(content, expected_content)
+        status_score = __test_status_code(flow, expected_res)
+        latency_score = __test_latency(start_time, expected_res)
+        fuzzy_score, log = __test_fuzzy(content, expected_content)
+        score = status_score + latency_score + fuzzy_score
+        return score, log
+
+def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response):
+    status_matches = flow.response.status_code == expected_res.status_code
+    if status_matches:
+        return 30
+    
+    return 0
+
+def __test_latency(start_time: float, expected_res: Response):
+    latency = time.time() - start_time
+    
+    expected_latency = expected_res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY'])
+    if not expected_latency:
+        expected_latency = 0
+    else:
+        expected_latency = float(expected_latency)
+
+    if latency > expected_latency:
+        percent_diff = (latency - expected_latency) / expected_latency
+        return math.floor(10 * percent_diff)
+    else:
+        return 10
 
 def __test_diff(content: FuzzyContent, expected_content: FuzzyContent):
-    matches = content == expected_content
-    return matches, ''
+    score = 0
+    content_matches = content == expected_content
+    if content_matches:
+        score += 60
+
+    return score, ''
 
 #
 # Defaults to diff if content is not traversable
@@ -49,7 +90,7 @@ def __test_fuzzy(content: FuzzyContent, expected_content: FuzzyContent):
     else:
         return __test_diff(content, expected_content)
 
-def __test_custom(flow: MitmproxyHTTPFlow, expected_res: Response):
+def __test_custom(context: MockContext):
     if not TEST_SCRIPT in os.environ:
         return False, f"Please use arg '--test-script <PATH>' when starting the agent"
 
@@ -70,7 +111,7 @@ def __test_custom(flow: MitmproxyHTTPFlow, expected_res: Response):
         return False, f"Expected function 'test' to be defined in {script_path}"
 
     try:
-        status, log = module['test'](flow, expected_res)
+        status, log = module['test'](context)
     except Exception as e:
         return False, f"Exception: {e}"
 

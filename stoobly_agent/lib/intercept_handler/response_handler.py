@@ -4,7 +4,11 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
 from urllib.parse import urlparse
 
+from ..logger import Logger
+
 def reverse_proxy(request: MitmproxyRequest, service_url: str, options = {}):
+    Logger.instance().debug(f"ReverseProxy:ServiceUrl: {service_url}")
+
     uri = urlparse(service_url)
 
     request.scheme = uri.scheme
