@@ -33,47 +33,29 @@ def test(test_strategy: str, context: MockContext):
     if test_strategy == TEST_STRATEGIES['CUSTOM']:
         return __test_custom(context)
     elif test_strategy == TEST_STRATEGIES['DIFF']:
-        status_score = __test_status_code(flow, expected_res)
-        latency_score = __test_latency(start_time, expected_res)
-        diff_score, log = __test_diff(content, expected_content)
+        status_matches = __test_status_code(flow, expected_res)
+        response_matches = __test_diff(content, expected_content)
         score = status_score + latency_score + diff_score
-        return score, log
+
+        log_lines = []
+        if not response_matches:
+            log_lines.append('Response did not match')
+
+        if not status_matches:
+            log_lines.append('Status did not match')
+
+        return status_matches and response_matches, "\n".join(log_lines)
     elif test_strategy == TEST_STRATEGIES['FUZZY']:
-        status_score = __test_status_code(flow, expected_res)
-        latency_score = __test_latency(start_time, expected_res)
-        fuzzy_score, log = __test_fuzzy(content, expected_content)
-        score = status_score + latency_score + fuzzy_score
-        return score, log
+        status_matches = __test_status_code(flow, expected_res)
+        fuzzy_matches, log = __test_fuzzy(content, expected_content)
 
-def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response):
-    status_matches = flow.response.status_code == expected_res.status_code
-    if status_matches:
-        return 30
-    
-    return 0
+        return status_matches and fuzzy_matches, log
 
-def __test_latency(start_time: float, expected_res: Response):
-    latency = time.time() - start_time
-    
-    expected_latency = expected_res.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY'])
-    if not expected_latency:
-        expected_latency = 0
-    else:
-        expected_latency = float(expected_latency)
+def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response) -> boolean:
+    return flow.response.status_code == expected_res.status_code
 
-    if latency > expected_latency:
-        percent_diff = (latency - expected_latency) / expected_latency
-        return math.floor(10 * percent_diff)
-    else:
-        return 10
-
-def __test_diff(content: FuzzyContent, expected_content: FuzzyContent):
-    score = 0
-    content_matches = content == expected_content
-    if content_matches:
-        score += 60
-
-    return score, ''
+def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> boolean:
+    return content == expected_content
 
 #
 # Defaults to diff if content is not traversable
