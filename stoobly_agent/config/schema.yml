@@ -17,6 +17,10 @@ mode:
     settings: map(include('project_test_setting'), key=str())
 proxy_config_path: str()
 ---
+filter_rule:
+  method: str(matches='DELETE|GET|OPTIONS|POST|PUT')
+  pattern: str()
+  filters: list(include('rewrite'))
 project_mock_setting:
   exclude_patterns: list(str())
   include_patterns: list(str())
@@ -25,7 +29,7 @@ project_mock_setting:
   scenario_key: str(required=False)
 project_record_setting:
   exclude_patterns: list(str())
-  filter_patterns: list(str(), required=False)
+  filter_rules: list(include('filter_rule'), required=False)
   include_patterns: list(str())
   policy: str(matches='all|none|not_found')
   service_url: str(required=False)
@@ -34,6 +38,15 @@ project_test_setting:
   exclude_patterns: list(str())
   include_patterns: list(str())
   policy: str(matches='all|none|found')
+  rewrite_rules: list(include('rewrite_rule'), required=False)
   service_url: str(required=False)
   scenario_key: str(required=False)
   strategy: str(matches='diff|fuzzy|custom')
+rewrite_rule:
+  method: str(matches='DELETE|GET|OPTIONS|POST|PUT')
+  pattern: str()
+  rewrites: list(include('rewrite'))
+rewrite:
+  name: str()
+  type: str()
+  value: str(required=False)
