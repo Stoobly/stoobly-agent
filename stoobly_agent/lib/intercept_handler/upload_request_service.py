@@ -10,7 +10,7 @@ from ..agent_api import AgentApi
 from ..logger import Logger
 from ..settings import Settings
 from ..stoobly_api import StooblyApi
-from .join_request_service import join_request
+from .join_request_service import join_filtered_request
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -29,7 +29,7 @@ NAMESPACE_FOLDER = 'stoobly'
 #
 def upload_request(flow: MitmproxyHTTPFlow, api: StooblyApi, settings):
     active_mode_settings = settings.active_mode_settings
-    joined_request = join_request(flow, active_mode_settings)
+    joined_request = join_filtered_request(flow, active_mode_settings)
 
     Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
