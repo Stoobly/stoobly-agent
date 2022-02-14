@@ -5,7 +5,7 @@ from stoobly_agent.lib.settings import IProjectTestSettings
 
 from ..stoobly_api import StooblyApi
 from ..logger import Logger
-from .join_request_service import join_request
+from .join_request_service import join_filtered_request
 
 def upload_test(
   flow: MitmproxyHTTPFlow, 
@@ -13,7 +13,7 @@ def upload_test(
   active_mode_settings: IProjectTestSettings, 
   **kwargs
 ) -> Response:
-    joined_request = join_request(flow, active_mode_settings)
+    joined_request = join_filtered_request(flow, active_mode_settings)
 
     Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
