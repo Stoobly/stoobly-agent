@@ -4,7 +4,7 @@ import yaml
 import pdb
 
 from shutil import copyfile
-from typing import TypedDict, Union
+from typing import List, Optional, TypedDict, Union
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -13,11 +13,25 @@ from . import env_vars
 from .logger import Logger
 from .root_dir import RootDir
 
+class Rewrite:
+    name: Optional[str]
+    type: str
+    value: str
+
+class FilterRule(TypedDict):
+    filters: List[Rewrite]
+    method: str
+    pattern: str
+
+class RewriteRule(TypedDict):
+    rewrites: List[Rewrite]
+    method: str
+    pattern: str
 
 class IProjectRecordSettings(TypedDict):
     enabled: bool
     exclude_patterns: list
-    filter_patterns: list
+    filter_rules: list
     include_patterns: list
     policy: str
     project_key: str
@@ -38,6 +52,7 @@ class IProjectTestSettings(TypedDict):
     include_patterns: list
     policy: str
     project_key: str
+    rewrite_rules: list
     service_url: str
     scenario_key: str
     test_strategy: str
@@ -71,7 +86,13 @@ class ISettings(TypedDict):
     mode: ISettingsMode
     proxy_config_path: str
 
+Component = {
+    'Header': 'Header',
+    'BodyParam': 'Body Param',
+    'QueryParam': 'Query Param',
+}
 IProjectModeSettings = Union[IProjectMockSettings, IProjectRecordSettings, IProjectTestSettings]
+Rule = Union[FilterRule, RewriteRule]
 
 class Settings:
     LOG_ID = 'lib.settings'
