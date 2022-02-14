@@ -35,7 +35,6 @@ def test(test_strategy: str, context: MockContext):
     elif test_strategy == TEST_STRATEGIES['DIFF']:
         status_matches = __test_status_code(flow, expected_res)
         response_matches = __test_diff(content, expected_content)
-        score = status_score + latency_score + diff_score
 
         log_lines = []
         if not response_matches:
@@ -51,10 +50,10 @@ def test(test_strategy: str, context: MockContext):
 
         return status_matches and fuzzy_matches, log
 
-def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response) -> boolean:
+def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response) -> bool:
     return flow.response.status_code == expected_res.status_code
 
-def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> boolean:
+def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> bool:
     return content == expected_content
 
 #
