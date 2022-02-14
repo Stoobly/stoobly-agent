@@ -3,13 +3,14 @@ import time
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
-from mitmproxy.net.http.response import Response as MitmproxyResponse 
+from mitmproxy.net.http.response import Response as MitmproxyResponse
 from requests import Response
 
 from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
 from ..stoobly_api import StooblyApi
 
+from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
 from .custom_headers import CUSTOM_HEADERS
 from .handle_mock_service import handle_request_mock_generic
 from .mock_context import MockContext
@@ -29,6 +30,12 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
     __disable_transfer_encoding(flow.response)
 
     active_mode_settings: IProjectTestSettings = settings.active_mode_settings
+
+    # If rewrite rules are set, then rewrite the request
+    if active_mode_settings.get('rewrite_rules'):
+        request = MitmproxyRequestAdapter(flow.request)
+        request.rewrite(active_mode_settings.get('rewrite_rules'))
+
     api = StooblyApi(settings.api_url, settings.api_key)
     context = MockContext(flow, active_mode_settings).with_api(api)
 
@@ -39,23 +46,25 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
     )
 
 def __handle_mock_success(context: MockContext) -> None:
-    active_mode_settings = context.active_mode_settings
-    api = context.api
-    flow = context.flow
     expected_response = context.response
+    request_id = expected_response.headers.get(CUSTOM_HEADERS['MOCK_REQUEST_ID'])
 
-    response: MitmproxyResponse = flow.response
-    test_strategy = active_mode_settings.get('strategy')
-    score, log = test(test_strategy, context)
+    if request_id:
+        active_mode_settings = context.active_mode_settings
+        api = context.api
+        flow = context.flow
+        response: MitmproxyResponse = flow.response
+        test_strategy = active_mode_settings.get('strategy')
+        passed, log = test(test_strategy, context)
 
-    res = upload_test(
-        flow, api, active_mode_settings,
-        log=log,
-        request_id=expected_response.headers.get(CUSTOM_HEADERS['MOCK_REQUEST_ID']),
-        score=score,
-        status=response.status_code,
-        strategy=test_strategy
-    )
+        upload_test(
+            flow, api, active_mode_settings,
+            log=log,
+            passed=passed,
+            request_id=request_id,
+            status=response.status_code,
+            strategy=test_strategy
+        )
 
 def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance().info(f"{LOG_ID}:TestStatus: No test found")
