@@ -4,7 +4,7 @@ import pdb
 from urllib.parse import parse_qs
 
 from .logger import Logger
-from .request_body_parser import RequestBodyParser
+from .mitmproxy_request_adapter import MitmproxyRequestAdapter
 
 class HashedRequestDecorator:
 
@@ -18,7 +18,7 @@ class HashedRequestDecorator:
         'RESPONSE': 5
     }
 
-    def __init__(self, request):
+    def __init__(self, request: MitmproxyRequestAdapter):
         self.request = request
 
         self.ignored_headers = {}
@@ -66,10 +66,8 @@ class HashedRequestDecorator:
         return self.body_params_hash(True)
 
     def body_params_hash(self, with_ignored = False):
-        params = RequestBodyParser.parse(self.request.body, self.request.content_type)
-
+        params = self.request.parsed_body
         serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_body_params)
-
         return self.__hash_serialized_params(serialized_params)
 
     def body_text_hash(self):
@@ -91,7 +89,15 @@ class HashedRequestDecorator:
         return hashlib.md5(text.encode('utf-8')).hexdigest()
 
     def __serialize_param(self, key, val):
-        return f"{key}.{str(val)}".encode('utf-8')
+        if isinstance(key, bytes):
+            key = key.decode('utf-8')
+
+        if isinstance(val, bytes):
+            val = val.decode('utf-8')
+        else:
+            val = str(val)
+            
+        return f"{key}.{val}".encode('utf-8')
 
     def __serialize_params(self, params, ignored_params = {}):
         serialized_params = []

@@ -14,9 +14,9 @@ from ..stoobly_api import StooblyApi
 # @param settings [Settings.mode.mock | Settings.mode.record]
 #
 def eval_request(
-    request: MitmproxyRequest, 
-    api: StooblyApi, 
-    settings: IProjectModeSettings, 
+    request: MitmproxyRequest,
+    api: StooblyApi,
+    settings: IProjectModeSettings,
     ignored_components_json: Union[str, None] = None
 ) -> Response:
     ignored_components = []
