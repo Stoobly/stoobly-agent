@@ -102,7 +102,7 @@ class StooblyApi:
         if not 'scenario_key' in params:
             return
 
-        if len(params['scenario_key']) != 0:
+        if params['scenario_key'] and len(params['scenario_key']) != 0:
             scenario_data = self.decode_scenario_key(params['scenario_key'])
 
             if 'id' in scenario_data:
