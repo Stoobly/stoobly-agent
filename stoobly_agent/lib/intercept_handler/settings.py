@@ -1,7 +1,9 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from ..settings import Settings
-from .custom_headers import CUSTOM_HEADERS
+from .constants.mock_policy import MOCK_POLICY
+from .constants.record_policy import RECORD_POLICY
+from .constants.custom_headers import CUSTOM_HEADERS
 from .modes import MODES
 
 def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
@@ -21,13 +23,13 @@ def get_mock_policy(headers: MitmproxyRequest.headers, settings: Settings) -> st
     if CUSTOM_HEADERS['MOCK_POLICY'] in headers:
         return headers[CUSTOM_HEADERS['MOCK_POLICY']]
     else:
-        return settings.get('policy')
+        return settings.get('policy') or MOCK_POLICY['FOUND']
 
 def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     if CUSTOM_HEADERS['RECORD_POLICY'] in headers:
         return headers[CUSTOM_HEADERS['RECORD_POLICY']]
     else:
-        return settings.get('policy')
+        return settings.get('policy') or RECORD_POLICY['ALL']
 
 def get_service_url(request: MitmproxyRequest, settings: Settings) -> str:
     service_url = request.headers.get(CUSTOM_HEADERS['SERVICE_URL'])
