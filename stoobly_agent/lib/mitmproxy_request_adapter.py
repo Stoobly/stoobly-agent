@@ -88,7 +88,7 @@ class MitmproxyRequestAdapter(Request):
         method = self.method
         url = self.url
 
-        filter_matches = lambda filter_rule: re.match(filter_rule.get('pattern'), url) == url and filter_rule.get('method') == method
+        filter_matches = lambda filter_rule: re.match(filter_rule.get('pattern'), url) and filter_rule.get('method') == method
         return list(filter(filter_matches, self.filter_rules or []))
     
     @property
