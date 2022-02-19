@@ -11,7 +11,7 @@ from ..settings import Settings, IProjectTestSettings
 from ..stoobly_api import StooblyApi
 
 from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
-from .custom_headers import CUSTOM_HEADERS
+from .constants.custom_headers import CUSTOM_HEADERS
 from .handle_mock_service import handle_request_mock_generic
 from .mock_context import MockContext
 from .test_service import test

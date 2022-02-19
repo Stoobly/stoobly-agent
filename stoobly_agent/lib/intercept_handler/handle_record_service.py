@@ -8,18 +8,14 @@ from ..logger import Logger
 from ..settings import IProjectRecordSettings, Settings
 from ..stoobly_api import StooblyApi
 from .allowed_request_service import allowed_request
-from .custom_response_codes import CUSTOM_RESPONSE_CODES
+from .constants.record_policy import RECORD_POLICY
+from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
 from .eval_request_service import eval_request
 from .response_handler import bad_request, reverse_proxy
 from .settings import get_record_policy, get_service_url
 from .upload_request_service import upload_request
 
 LOG_ID = 'HandleRecord'
-RECORD_POLICY = {
-    'NONE': 'none',
-    'ALL': 'all',
-    'NOT_FOUND': 'not_found',
-}
 
 def handle_request_record(request: MitmproxyRequest, settings: Settings):
     active_mode_settings: IProjectRecordSettings = settings.active_mode_settings
