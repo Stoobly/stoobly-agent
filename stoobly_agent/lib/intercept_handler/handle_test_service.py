@@ -16,7 +16,7 @@ from .filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
 from .mock_context import MockContext
 from .test_service import test
-from .upload_test_service import upload_test
+from .upload.upload_test_service import upload_test
 
 LOG_ID = 'HandleTest'
 

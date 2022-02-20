@@ -13,7 +13,7 @@ from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
 from .eval_request_service import eval_request
 from .response_handler import bad_request, reverse_proxy
 from .settings import get_record_policy, get_service_url
-from .upload_request_service import upload_request
+from .upload.upload_request_service import upload_request
 
 LOG_ID = 'HandleRecord'
 

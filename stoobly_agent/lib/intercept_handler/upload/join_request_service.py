@@ -1,11 +1,13 @@
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from ..joined_request import JoinedRequest
-from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
-from ..mitmproxy_response_adapter import MitmproxyResponseAdapter
-from ..proxy_request import ProxyRequest
-from .modes import MODES
-from .settings import get_service_url
+from ...mitmproxy_request_adapter import MitmproxyRequestAdapter
+from ...mitmproxy_response_adapter import MitmproxyResponseAdapter
+
+from ..modes import MODES
+from ..settings import get_service_url
+
+from .joined_request import JoinedRequest
+from .proxy_request import ProxyRequest
 
 def join_request(
     adapted_request:  MitmproxyRequestAdapter, adapted_response: MitmproxyResponseAdapter, active_mode_settings
