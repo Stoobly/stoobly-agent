@@ -11,10 +11,10 @@ from .allowed_request_service import allowed_request
 from .constants.mock_policy import MOCK_POLICY
 from .constants.custom_headers import CUSTOM_HEADERS
 from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
-from .eval_request_service import eval_request
+from .mock.eval_request_service import eval_request
 from .response_handler import bad_request, pass_on, reverse_proxy
 from .settings import get_mock_policy, get_service_url
-from .mock_context import MockContext
+from .mock.context import MockContext
 
 LOG_ID = 'HandleMock'
 

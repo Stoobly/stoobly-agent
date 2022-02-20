@@ -1,8 +1,7 @@
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from ...mitmproxy_request_adapter import MitmproxyRequestAdapter
-from ...mitmproxy_response_adapter import MitmproxyResponseAdapter
-
+from ..mock.mitmproxy_request_adapter import MitmproxyRequestAdapter
+from ..mock.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from ..modes import MODES
 from ..settings import get_service_url
 

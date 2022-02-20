@@ -4,10 +4,11 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
 from typing import List, Union
 
-from ..hashed_request_decorator import HashedRequestDecorator
-from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
-from ..settings import IProjectModeSettings
-from ..stoobly_api import StooblyApi
+from stoobly_agent.lib.settings import IProjectModeSettings
+from stoobly_agent.lib.stoobly_api import StooblyApi
+
+from .hashed_request_decorator import HashedRequestDecorator
+from .mitmproxy_request_adapter import MitmproxyRequestAdapter
 
 ###
 #

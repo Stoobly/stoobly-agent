@@ -3,7 +3,8 @@ import pdb
 
 from urllib.parse import parse_qs
 
-from .logger import Logger
+from stoobly_agent.lib.logger import Logger
+
 from .mitmproxy_request_adapter import MitmproxyRequestAdapter
 
 COMPONENT_TYPES = {

@@ -1,6 +1,6 @@
 from typing import List, TypedDict
 from ..settings import Component, Rewrite
-from ..hashed_request_decorator import COMPONENT_TYPES
+from .mock.hashed_request_decorator import COMPONENT_TYPES
 
 class IgnoredComponent(TypedDict):
   name: str

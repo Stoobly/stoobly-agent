@@ -11,7 +11,7 @@ from typing import Union
 from ..env_vars import TEST_SCRIPT
 from .constants.custom_headers import CUSTOM_HEADERS
 from .iterable_matches import dict_matches, list_matches
-from .mock_context import MockContext
+from .mock.context import MockContext
 
 TEST_STRATEGIES = {
     'CUSTOM': 'custom',
