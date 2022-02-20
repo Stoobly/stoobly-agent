@@ -6,17 +6,17 @@ from urllib.parse import parse_qs
 from .logger import Logger
 from .mitmproxy_request_adapter import MitmproxyRequestAdapter
 
+COMPONENT_TYPES = {
+    'HEADER': 1,
+    'PATH_SEGMENT': 2,
+    'QUERY_PARAM': 3,
+    'BODY_PARAM': 4,
+    'RESPONSE': 5
+}
+
 class HashedRequestDecorator:
 
     LOG_ID = 'lib.hashed_request_decorator'
-
-    COMPONENT_TYPES = {
-        'HEADER': 1,
-        'PATH_SEGMENT': 2,
-        'QUERY_PARAM': 3,
-        'BODY_PARAM': 4,
-        'RESPONSE': 5
-    }
 
     def __init__(self, request: MitmproxyRequestAdapter):
         self.request = request
@@ -34,11 +34,11 @@ class HashedRequestDecorator:
             component_name = ignored_component['name']
             component_type = ignored_component['type']
 
-            if component_type == self.COMPONENT_TYPES['HEADER']:
+            if component_type == COMPONENT_TYPES['HEADER']:
                 self.ignored_headers[component_name] = True
-            elif component_type == self.COMPONENT_TYPES['QUERY_PARAM']:
+            elif component_type == COMPONENT_TYPES['QUERY_PARAM']:
                 self.ignored_query_params[component_name] = True
-            elif component_type == self.COMPONENT_TYPES['BODY_PARAM']:
+            elif component_type == COMPONENT_TYPES['BODY_PARAM']:
                 self.ignored_body_params[component_name] = True
 
         return self

@@ -12,6 +12,7 @@ from ..stoobly_api import StooblyApi
 
 from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
 from .constants.custom_headers import CUSTOM_HEADERS
+from .filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
 from .mock_context import MockContext
 from .test_service import test
@@ -32,9 +33,13 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
     active_mode_settings: IProjectTestSettings = settings.active_mode_settings
 
     # If rewrite rules are set, then rewrite the request
+    ignored_components = []
     if active_mode_settings.get('rewrite_rules'):
         request = MitmproxyRequestAdapter(flow.request)
         request.rewrite(active_mode_settings.get('rewrite_rules'))
+
+        rewrite_rules = request.relevant_rewrites
+        ignored_components = filters_to_ignored_components(rewrite_rules)
 
     api = StooblyApi(settings.api_url, settings.api_key)
     context = MockContext(flow, active_mode_settings).with_api(api)
@@ -42,6 +47,7 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
     handle_request_mock_generic(
         context,
         failure=__handle_mock_failure,
+        ignored_components=ignored_components,
         success=__handle_mock_success
     )
 

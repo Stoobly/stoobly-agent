@@ -92,12 +92,18 @@ class MitmproxyRequestAdapter(Request):
         return list(filter(filter_matches, self.filter_rules or []))
     
     @property
-    def relevant_rewrite_rules(self) -> List[RewriteRule]:
+    def relevant_rewrites(self) -> List[RewriteRule]:
         method = self.method
         url = self.url
 
         rewrite_matches = lambda rewrite_rule: re.match(rewrite_rule.get('pattern'), url) and rewrite_rule.get('method') == method
-        return list(filter(rewrite_matches, self.rewrite_rules or []))
+        rewrite_rules = list(filter(rewrite_matches, self.rewrite_rules or []))
+
+        if len(rewrite_rules) == 0:
+            return []
+
+        rewrite_list = map(lambda rewrite_rule: rewrite_rule.get('rewrites'), rewrite_rules)
+        return [item for sublist in rewrite_list for item in sublist] # flatten filters_list
     
     def filter(self, filter_rules: List[FilterRule]):
         self.filter_rules = filter_rules
@@ -116,15 +122,10 @@ class MitmproxyRequestAdapter(Request):
         if type(rules) == list:
             self.rewrite_rules = rules
 
-        relevant_rewrite_rules = self.relevant_rewrite_rules
-        if len(relevant_rewrite_rules) == 0:
-            return self
-
-        rewrite_list = map(lambda rewrite_rule: rewrite_rule.get('rewrites'), relevant_rewrite_rules)
-        rewrites = [item for sublist in rewrite_list for item in sublist] # flatten filters_list
-
-        self.__rewrite_headers(rewrites)
-        self.__rewrite_content(rewrites)
+        rewrites = self.relevant_rewrites
+        if len(rewrites) != 0:
+            self.__rewrite_headers(rewrites)
+            self.__rewrite_content(rewrites)
 
     def __rewrite_headers(self, rewrites: List[Rewrite]):
         self.request.headers = self.__apply_headers(rewrites, self.__rewrite_handler)
