@@ -1,4 +1,5 @@
 import time
+import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
@@ -41,20 +42,25 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         if handle_failure:
             return handle_failure(context)
     elif mock_policy == MOCK_POLICY['ALL']:
-        res = eval_request(request, api, active_mode_settings)
+        ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else []] 
+
+        res = eval_request(request, api, active_mode_settings, ignored_components)
 
         if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
-            res = eval_request(request, api, active_mode_settings, res.content)
+            ignored_components.append(res.content)
+            res = eval_request(request, api, active_mode_settings, [res.content] + ignored_components)
 
         context.with_response(res)
 
         if handle_success:
             handle_success(context)
     elif mock_policy == MOCK_POLICY['FOUND']:
-        res = eval_request(request, api, active_mode_settings)
+        ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else None]
+        res = eval_request(request, api, active_mode_settings, ignored_components)
 
         if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
-            res = eval_request(request, api, active_mode_settings, res.content)
+            ignored_components.append(res.content)
+            res = eval_request(request, api, active_mode_settings, ignored_components)
         
         context.with_response(res)
 

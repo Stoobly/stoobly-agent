@@ -2,7 +2,7 @@ import json
 
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
-from typing import Union
+from typing import List, Union
 
 from ..hashed_request_decorator import HashedRequestDecorator
 from ..mitmproxy_request_adapter import MitmproxyRequestAdapter
@@ -17,15 +17,9 @@ def eval_request(
     request: MitmproxyRequest,
     api: StooblyApi,
     settings: IProjectModeSettings,
-    ignored_components_json: Union[str, None] = None
+    ignored_components_list: List[Union[list, str, None]] = None
 ) -> Response:
-    ignored_components = []
-
-    if ignored_components_json:
-        try:
-            ignored_components = json.loads(ignored_components_json)
-        except:
-            pass
+    ignored_components = __build_ignored_components(ignored_components_list)
 
     query_params = __build_query_params(request, ignored_components)
     query_params['scenario_key'] = settings.get('scenario_key')
@@ -33,6 +27,18 @@ def eval_request(
     return api.request_response(
         settings.get('project_key'), query_params
     )
+
+def __build_ignored_components(ignored_components_list):
+    ignored_components = []
+    for el in ignored_components_list:
+        if isinstance(el, str): 
+            try:
+                ignored_components += json.loads(el)
+            except:
+                pass
+        elif isinstance(el, list):
+            ignored_components += el
+    return ignored_components
 
 ###
 #
