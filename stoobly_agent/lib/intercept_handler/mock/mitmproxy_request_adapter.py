@@ -8,9 +8,10 @@ from mitmproxy.coretypes import multidict
 from typing import Callable, List, Union
 from urllib.parse import urlparse
 
-from .request import Request
+from stoobly_agent.lib.settings import Component, FilterRule, Rewrite, RewriteRule, Rule
+
 from .mitmproxy_request_body_facade import MitmproxyRequestBodyFacade
-from .settings import Component, FilterRule, Rewrite, RewriteRule, Rule
+from .request import Request
 
 class MitmproxyRequestAdapter(Request):
 

@@ -10,7 +10,7 @@ from ..stoobly_api import StooblyApi
 from .allowed_request_service import allowed_request
 from .constants.record_policy import RECORD_POLICY
 from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
-from .eval_request_service import eval_request
+from .mock.eval_request_service import eval_request
 from .response_handler import bad_request, reverse_proxy
 from .settings import get_record_policy, get_service_url
 from .upload.upload_request_service import upload_request
