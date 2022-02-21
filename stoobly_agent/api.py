@@ -13,7 +13,7 @@ from urllib.parse import urlparse, parse_qs
 from .app.configs_controller import ConfigsController
 from .app.proxy_controller import ProxyController
 from .app.statuses_controller import StatusesController
-from .lib import headers
+from .lib.constants import headers
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROOT_DIR = os.path.dirname(os.path.realpath(__file__))

@@ -10,8 +10,8 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from lib.intercept_handler.handle_mock_service import handle_request_mock
 from lib.intercept_handler.handle_record_service import handle_request_record, handle_response_record
 from lib.intercept_handler.handle_test_service import handle_request_test
-from lib.intercept_handler.modes import MODES
-from lib.intercept_handler.response_handler import bad_request
+from lib.intercept_handler.constants.modes import MODES
+from lib.intercept_handler.utils.response_handler import bad_request
 from lib.intercept_handler.settings import get_proxy_mode
 from lib.logger import Logger
 from lib.settings import Settings

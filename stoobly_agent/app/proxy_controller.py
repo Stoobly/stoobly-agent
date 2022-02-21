@@ -1,9 +1,8 @@
-import pdb
 import requests
 
 from http.cookies import SimpleCookie
 
-from ..lib import headers
+from ..lib.constants import headers
 from ..lib.logger import Logger
 
 class ProxyController:

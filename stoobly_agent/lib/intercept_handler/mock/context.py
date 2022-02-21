@@ -4,8 +4,8 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
 from typing import Union
 
-from ...settings import IProjectMockSettings, IProjectTestSettings 
-from ...stoobly_api import StooblyApi
+from stoobly_agent.lib.settings import IProjectMockSettings, IProjectTestSettings 
+from stoobly_agent.lib.stoobly_api import StooblyApi
 
 class MockContext():
   def __init__(self, flow: MitmproxyHTTPFlow, active_mode_settings: Union[IProjectMockSettings , IProjectTestSettings]):

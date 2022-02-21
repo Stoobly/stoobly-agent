@@ -9,7 +9,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
 
-from . import env_vars
+from .constants import env_vars
 from .logger import Logger
 from .root_dir import RootDir
 
