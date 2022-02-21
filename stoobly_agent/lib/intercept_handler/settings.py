@@ -4,7 +4,7 @@ from ..settings import Settings
 from .constants.mock_policy import MOCK_POLICY
 from .constants.record_policy import RECORD_POLICY
 from .constants.custom_headers import CUSTOM_HEADERS
-from .modes import MODES
+from .constants.modes import MODES
 
 def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     access_control_header =  'Access-Control-Request-Headers'

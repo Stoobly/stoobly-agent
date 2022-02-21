@@ -1,7 +1,7 @@
 import logging
 import os
 
-from .env_vars import LOG_LEVEL
+from .constants.env_vars import LOG_LEVEL
 
 class Logger:
     _instance = None

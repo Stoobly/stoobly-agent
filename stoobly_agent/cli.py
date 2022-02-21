@@ -9,9 +9,9 @@ import threading
 import time
 
 from .api import run as run_api
-from .lib import env_vars
-from .lib.ca_cert_installer import CACertInstaller
+from .lib.cli.ca_cert_installer import CACertInstaller
 from .lib.cli.exec import run_command, run_command_with_proxy_export
+from .lib.constants import env_vars
 from .lib.settings import Settings
 from .proxy import run as run_proxy, filter_options, get_proxy_url
 
