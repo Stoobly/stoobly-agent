@@ -10,7 +10,7 @@ from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
 from ..stoobly_api import StooblyApi
 
-from .mock.mitmproxy_request_adapter import MitmproxyRequestAdapter
+from .mitmproxy.request_adapter import MitmproxyRequestAdapter
 from .constants.custom_headers import CUSTOM_HEADERS
 from .utils.filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic

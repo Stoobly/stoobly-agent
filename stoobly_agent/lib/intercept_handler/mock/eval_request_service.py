@@ -8,7 +8,7 @@ from stoobly_agent.lib.settings import IProjectModeSettings
 from stoobly_agent.lib.stoobly_api import StooblyApi
 
 from .hashed_request_decorator import HashedRequestDecorator
-from .mitmproxy_request_adapter import MitmproxyRequestAdapter
+from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
 
 ###
 #
