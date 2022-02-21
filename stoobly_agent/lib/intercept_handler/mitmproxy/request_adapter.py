@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from stoobly_agent.lib.settings import Component, FilterRule, Rewrite, RewriteRule, Rule
 
-from .mitmproxy_request_body_facade import MitmproxyRequestBodyFacade
+from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
 
 class MitmproxyRequestAdapter(Request):

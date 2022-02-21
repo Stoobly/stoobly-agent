@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.lib.logger import Logger
 
-from .mitmproxy_request_adapter import MitmproxyRequestAdapter
+from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
 
 COMPONENT_TYPES = {
     'HEADER': 1,
