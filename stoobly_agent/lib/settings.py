@@ -299,7 +299,7 @@ class Settings:
         else:
             scenario_key = project_settings.get('scenario_key')
             if scenario_key and len(scenario_key) != 0:
-                project_settings = all_project_settings.get(scenario_key)
+                project_settings = all_project_settings.get(scenario_key) or {}
 
                 project_settings['scenario_key'] = scenario_key
             else:
