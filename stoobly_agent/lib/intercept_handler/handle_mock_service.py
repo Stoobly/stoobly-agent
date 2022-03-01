@@ -4,15 +4,15 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
+from ..api.stoobly_api import StooblyApi
 from ..logger import Logger
 from ..settings import IProjectMockSettings, Settings
-from ..stoobly_api import StooblyApi
 from .constants.custom_headers import CUSTOM_HEADERS
 from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
 from .constants.mock_policy import MOCK_POLICY
 from .mock.context import MockContext
 from .mock.eval_request_service import eval_request
-from .settings import get_mock_policy, get_service_url
+from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
 from .utils.allowed_request_service import allowed_request
 from .utils.response_handler import bad_request, pass_on, reverse_proxy
 
@@ -32,7 +32,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
     handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
     handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
-    if active_mode_settings.get('enabled') and allowed_request(active_mode_settings, request):
+    if is_proxy_enabled(request.headers, active_mode_settings) and allowed_request(active_mode_settings, request):
         mock_policy = get_mock_policy(request.headers, active_mode_settings)
     else:
         # If the request path does not match accepted paths, do not mock

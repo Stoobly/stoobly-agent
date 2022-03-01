@@ -1,14 +1,16 @@
 import json
+import pdb
 
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
 from typing import List, Union
 
+from stoobly_agent.lib.api.stoobly_api import StooblyApi
 from stoobly_agent.lib.settings import IProjectModeSettings
-from stoobly_agent.lib.stoobly_api import StooblyApi
 
 from .hashed_request_decorator import HashedRequestDecorator
 from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
+from ..settings import get_project_key, get_scenario_key
 
 ###
 #
@@ -23,10 +25,10 @@ def eval_request(
     ignored_components = __build_ignored_components(ignored_components_list)
 
     query_params = __build_query_params(request, ignored_components)
-    query_params['scenario_key'] = settings.get('scenario_key')
+    query_params['scenario_key'] = get_scenario_key(request.headers, settings)
 
     return api.request_response(
-        settings.get('project_key'), query_params
+        get_project_key(request.headers, settings), query_params
     )
 
 def __build_ignored_components(ignored_components_list):

@@ -7,9 +7,9 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from stoobly_agent.lib.agent_api import AgentApi
+from stoobly_agent.lib.api.stoobly_api import StooblyApi
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.settings import Settings
-from stoobly_agent.lib.stoobly_api import StooblyApi
 
 from .join_request_service import join_filtered_request
 

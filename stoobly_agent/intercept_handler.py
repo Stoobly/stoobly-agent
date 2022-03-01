@@ -2,8 +2,6 @@ import importlib
 import os
 import pdb
 
-import lib
-
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
@@ -15,12 +13,6 @@ from lib.intercept_handler.utils.response_handler import bad_request
 from lib.intercept_handler.settings import get_proxy_mode
 from lib.logger import Logger
 from lib.settings import Settings
-
-# mitmproxy only hot reloads the main script, manually hot reload lib
-importlib.reload(lib.intercept_handler)
-importlib.reload(lib.logger)
-importlib.reload(lib.settings)
-importlib.reload(lib.stoobly_api)
 
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'

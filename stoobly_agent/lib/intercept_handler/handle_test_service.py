@@ -2,20 +2,22 @@ import pdb
 import time
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.request import Request as MitmproxyRequest
 from mitmproxy.net.http.response import Response as MitmproxyResponse
-from requests import Response
 
+from ..api.stoobly_api import StooblyApi
 from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
-from ..stoobly_api import StooblyApi
 
 from .mitmproxy.request_adapter import MitmproxyRequestAdapter
 from .constants.custom_headers import CUSTOM_HEADERS
 from .utils.filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
-from .test.test_service import test
+from .test.test_service import test, TEST_STRATEGIES
+from .test.context import TestContext
+from .test.context_response import TestContextResponse
+from .test.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from .test.requests_response_adapter import RequestsResponseAdapter
 from .upload.upload_test_service import upload_test
 
 LOG_ID = 'HandleTest'
@@ -57,14 +59,24 @@ def __handle_mock_success(context: MockContext) -> None:
 
     if request_id:
         active_mode_settings = context.active_mode_settings
-        api = context.api
         flow = context.flow
-        response: MitmproxyResponse = flow.response
-        test_strategy = active_mode_settings.get('strategy')
-        passed, log = test(test_strategy, context)
 
+        # Build TestContext
+        response = MitmproxyResponseAdapter(flow.response).adapt() 
+        test_strategy = active_mode_settings.get('strategy') or TEST_STRATEGIES['DIFF']
+
+        test_context = TestContext(test_strategy)
+        test_context.start_time = context.start_time
+        
+        test_context.with_expected_response(RequestsResponseAdapter(expected_response).adapt())
+        test_context.with_response(response)
+
+        # Run test
+        passed, log = test(test_context)
+
+        # Commit test to API
         upload_test(
-            flow, api, active_mode_settings,
+            flow, context.api, active_mode_settings,
             log=log,
             passed=passed,
             request_id=request_id,

@@ -1,17 +1,12 @@
-import math
 import os
 import pdb
-import time
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from requests import Response
 from runpy import run_path
 from typing import Union
 
 from ...constants.env_vars import TEST_SCRIPT
-from ..constants.custom_headers import CUSTOM_HEADERS
 from .iterable_matches import dict_matches, list_matches
-from ..mock.context import MockContext
+from ..test.context import TestContext
 
 TEST_STRATEGIES = {
     'CUSTOM': 'custom',
@@ -21,19 +16,18 @@ TEST_STRATEGIES = {
 
 FuzzyContent = Union[dict, list, str]
 
-def test(test_strategy: str, context: MockContext):
-    flow = context.flow
-    expected_res = context.response
-    start_time = context.start_time
+def test(context: TestContext):
+    test_strategy = context.strategy
 
-    response = flow.response
+    response = context.response
     content: FuzzyContent = response.content
-    expected_content: FuzzyContent = expected_res.content
+    expected_response = context.expected_response
+    expected_content: FuzzyContent = expected_response.content
 
     if test_strategy == TEST_STRATEGIES['CUSTOM']:
         return __test_custom(context)
     elif test_strategy == TEST_STRATEGIES['DIFF']:
-        status_matches = __test_status_code(flow, expected_res)
+        status_matches = __test_status_code(context)
         response_matches = __test_diff(content, expected_content)
 
         log_lines = []
@@ -45,13 +39,15 @@ def test(test_strategy: str, context: MockContext):
 
         return status_matches and response_matches, "\n".join(log_lines)
     elif test_strategy == TEST_STRATEGIES['FUZZY']:
-        status_matches = __test_status_code(flow, expected_res)
+        status_matches = __test_status_code(context)
         fuzzy_matches, log = __test_fuzzy(content, expected_content)
 
         return status_matches and fuzzy_matches, log
 
-def __test_status_code(flow: MitmproxyHTTPFlow, expected_res: Response) -> bool:
-    return flow.response.status_code == expected_res.status_code
+def __test_status_code(context: TestContext) -> bool:
+    response = context.response
+    expected_response = context.expected_response
+    return response.status_code == expected_response.status_code
 
 def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> bool:
     return content == expected_content
@@ -71,7 +67,7 @@ def __test_fuzzy(content: FuzzyContent, expected_content: FuzzyContent):
     else:
         return __test_diff(content, expected_content)
 
-def __test_custom(context: MockContext):
+def __test_custom(context: TestContext):
     if not TEST_SCRIPT in os.environ:
         return False, f"Please use arg '--test-script <PATH>' when starting the agent"
 
