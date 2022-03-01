@@ -1,9 +1,9 @@
 from mergedeep import merge
 
+from ..lib.api.stoobly_api import StooblyApi
 from ..lib.intercept_handler.handle_mock_service import MOCK_POLICY
 from ..lib.intercept_handler.handle_record_service import RECORD_POLICY
 from ..lib.settings import Settings
-from ..lib.stoobly_api import StooblyApi
 
 class ConfigsController:
     _instance = None

@@ -228,6 +228,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
             [STATUS_PATH, StatusesController.instance().get_status],
         ],
+        'POST': [
+            ['/'.join([PROXY_PATH, 'post']), ProxyController.instance().do_POST],
+        ],
         'PUT': [
             [CONFIGS_PATH, ConfigsController.instance().put_configs],
             ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],

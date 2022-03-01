@@ -9,7 +9,9 @@ import threading
 import time
 
 from .api import run as run_api
+from .lib.api.stoobly_api import StooblyApi
 from .lib.cli.ca_cert_installer import CACertInstaller
+from .lib.cli.test import Test
 from .lib.cli.exec import run_command, run_command_with_proxy_export
 from .lib.constants import env_vars
 from .lib.settings import Settings
@@ -71,6 +73,18 @@ def run(**kwargs):
         initialize_ui(kwargs)
 
     initialize_proxy(kwargs)
+
+@main.command()
+@click.option('--from-scenario', help='Key for the scenario to replay.')
+@click.option('--to-report', help='Key for the report to store test results.')
+@click.option('--name', help='Report name.')
+def test(**kwargs):
+    settings = Settings.instance()
+    api = StooblyApi(settings.api_url, settings.api_key)
+    test = Test(api, 'eyJpZCI6MTgsIm9yZ2FuaXphdGlvbl9pZCI6MX0=', 'diff')
+    test.create_report('test', 'Testing')
+    test.from_scenario('eyJpZCI6NDEsInByb2plY3RfaWQiOjE4fQ==')
+    test.run()
 
 @main.command()
 @click.option('--command', is_flag=True, default=False, help='Read commands from the command_string operand instead of from the standard input.')

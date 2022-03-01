@@ -4,10 +4,12 @@ import requests
 import urllib
 import pdb
 
-from .logger import Logger
+from ..logger import Logger
+from .interfaces.requests_index_query_params import RequestsIndexQueryParams
 
 class StooblyApi:
-    LOG_ID = 'lib.stoobly_api'
+    LOG_ID = 'lib.api.stoobly_api'
+    REPORTS_ENDPOINT = '/reports'
     REQUESTS_ENDPOINT = '/requests'
     TESTS_ENDPOINT = '/tests'
 
@@ -48,6 +50,37 @@ class StooblyApi:
             'X-Do-Proxy': '1',
         }
 
+    # Request
+
+    def requests_index(self, project_key: str, query_params: RequestsIndexQueryParams):
+        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
+
+        project_data = self.decode_project_key(project_key)
+
+        params = {
+            'project_id': project_data.get('id'),
+            **query_params,
+        }
+
+        Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+
+        return requests.get(url, headers=self.default_headers, params=params)
+
+
+    def request_show(self, project_key: str, request_id: str, query_params) -> requests.Response:
+        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/{request_id}"
+
+        project_data = self.decode_project_key(project_key)
+
+        params = {
+            'project_id': project_data.get('id'),
+            **query_params,
+        }
+
+        Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+
+        return requests.get(url, headers=self.default_headers, params=params)
+
     def request_create(self, project_key: str, raw_requests, params) -> requests.Response:
         url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
 
@@ -83,6 +116,24 @@ class StooblyApi:
             params=params,
             stream=True
         )
+
+    # Report
+
+    def report_create(self, project_key: str, params) -> requests.Response:
+        url = f"{self.service_url}{self.REPORTS_ENDPOINT}"
+
+        self.__parse_scenario_key(params)
+
+        project_data = self.decode_project_key(project_key)
+
+        body = {
+            'project_id': project_data.get('id'),
+            **params,
+        }
+
+        return requests.post(url, headers=self.default_headers, json=body)
+
+    # Test
 
     def test_create(self, project_key: str, raw_request, params) -> requests.Response:
         url = f"{self.service_url}{self.TESTS_ENDPOINT}"
