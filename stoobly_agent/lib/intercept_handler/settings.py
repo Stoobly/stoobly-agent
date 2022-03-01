@@ -1,9 +1,7 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from ..settings import IProjectModeSettings, Settings
-from .constants import custom_headers, modes
-from .constants.mock_policy import MOCK_POLICY
-from .constants.record_policy import RECORD_POLICY
+from .constants import custom_headers, mock_policy, modes, record_policy
 
 def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
     if custom_headers.PROJECT_KEY in headers:
@@ -37,13 +35,13 @@ def get_mock_policy(headers: MitmproxyRequest.headers, settings: IProjectModeSet
     if custom_headers.MOCK_POLICY in headers:
         return headers[custom_headers.MOCK_POLICY]
     else:
-        return settings.get('policy') or MOCK_POLICY['FOUND']
+        return settings.get('policy') or mock_policy.FOUND
 
 def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     if custom_headers.RECORD_POLICY in headers:
         return headers[custom_headers.RECORD_POLICY]
     else:
-        return settings.get('policy') or RECORD_POLICY['ALL']
+        return settings.get('policy') or record_policy.ALL
 
 def get_service_url(request: MitmproxyRequest, settings: IProjectModeSettings) -> str:
     service_url = request.headers.get(custom_headers.SERVICE_URL)

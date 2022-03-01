@@ -1,18 +1,11 @@
 from mergedeep import merge
 
 from ..lib.api.stoobly_api import StooblyApi
-from ..lib.intercept_handler.handle_mock_service import MOCK_POLICY
-from ..lib.intercept_handler.handle_record_service import RECORD_POLICY
+from ..lib.intercept_handler.constants import mock_policy, modes, record_policy
 from ..lib.settings import Settings
 
 class ConfigsController:
     _instance = None
-
-    MODE = {
-      'MOCK': 'mock',
-      'RECORD': 'record',
-      'TEST': 'test'
-    }
 
     def __init__(self):
         if self._instance:
@@ -32,14 +25,14 @@ class ConfigsController:
         settings = Settings.instance()
         active_mode = settings.active_mode
 
-        if active_mode in [self.MODE['MOCK'], self.MODE['TEST']]:
+        if active_mode in [modes.MOCK, modes.TEST]:
             context.render(
-                json = MOCK_POLICY,
+                json = mock_policy,
                 status = 200
             )
-        elif active_mode == self.MODE['RECORD']:
+        elif active_mode == modes.RECORD:
             context.render(
-                json = RECORD_POLICY,
+                json = record_policy,
                 status = 200
             )
 

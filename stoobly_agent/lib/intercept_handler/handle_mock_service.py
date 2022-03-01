@@ -7,9 +7,7 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from ..api.stoobly_api import StooblyApi
 from ..logger import Logger
 from ..settings import IProjectMockSettings, Settings
-from .constants import custom_headers
-from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
-from .constants.mock_policy import MOCK_POLICY
+from .constants import custom_headers, custom_response_codes, mock_policy
 from .mock.context import MockContext
 from .mock.eval_request_service import eval_request
 from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
@@ -33,20 +31,20 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
     handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
     if is_proxy_enabled(request.headers, active_mode_settings) and allowed_request(active_mode_settings, request):
-        mock_policy = get_mock_policy(request.headers, active_mode_settings)
+        policy = get_mock_policy(request.headers, active_mode_settings)
     else:
         # If the request path does not match accepted paths, do not mock
-        mock_policy = MOCK_POLICY['NONE']
+        policy = mock_policy.NONE
 
-    if mock_policy == MOCK_POLICY['NONE']:
+    if policy == mock_policy.NONE:
         if handle_failure:
             return handle_failure(context)
-    elif mock_policy == MOCK_POLICY['ALL']:
+    elif policy == mock_policy.ALL:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else []] 
 
         res = eval_request(request, api, active_mode_settings, ignored_components)
 
-        if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
+        if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
             ignored_components.append(res.content)
             res = eval_request(request, api, active_mode_settings, [res.content] + ignored_components)
 
@@ -54,17 +52,17 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
 
         if handle_success:
             handle_success(context)
-    elif mock_policy == MOCK_POLICY['FOUND']:
+    elif policy == mock_policy.FOUND:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else None]
         res = eval_request(request, api, active_mode_settings, ignored_components)
 
-        if res.status_code == CUSTOM_RESPONSE_CODES['IGNORE_COMPONENTS']:
+        if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
             ignored_components.append(res.content)
             res = eval_request(request, api, active_mode_settings, ignored_components)
         
         context.with_response(res)
 
-        if res.status_code == CUSTOM_RESPONSE_CODES['NOT_FOUND']:
+        if res.status_code == custom_response_codes.NOT_FOUND:
             if handle_failure:
                 return handle_failure(context)
         else:
@@ -74,7 +72,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         return bad_request(
             flow,
             "Valid env MOCK_POLICY: %s, %s, %s, Got: %s" %
-            [MOCK_POLICY['ALL'], MOCK_POLICY['FOUND'], MOCK_POLICY['NONE'], mock_policy]
+            [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE, mock_policy]
         )
 
     return pass_on(flow, res)
