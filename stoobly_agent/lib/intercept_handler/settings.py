@@ -1,53 +1,52 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from ..settings import IProjectModeSettings, Settings
+from .constants import custom_headers, modes
 from .constants.mock_policy import MOCK_POLICY
 from .constants.record_policy import RECORD_POLICY
-from .constants.custom_headers import CUSTOM_HEADERS
-from .constants.modes import MODES
 
 def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
-    if CUSTOM_HEADERS['PROJECT_KEY'] in headers:
-        return headers[CUSTOM_HEADERS['PROJECT_KEY']]
+    if custom_headers.PROJECT_KEY in headers:
+        return headers[custom_headers.PROJECT_KEY]
 
     return settings.get('project_key')
 
 def get_scenario_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
-    if CUSTOM_HEADERS['SCENARIO_KEY'] in headers:
-        return headers[CUSTOM_HEADERS['SCENARIO_KEY']]
+    if custom_headers.SCENARIO_KEY in headers:
+        return headers[custom_headers.SCENARIO_KEY]
 
     return settings.get('scenario_key')
 
 def is_proxy_enabled(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> bool:
-    return settings.get('enabled') or CUSTOM_HEADERS['PROXY_MODE'] in headers
+    return settings.get('enabled') or custom_headers.PROXY_MODE in headers
 
 def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     access_control_header =  'Access-Control-Request-Headers'
-    do_proxy_header = CUSTOM_HEADERS['DO_PROXY']
+    do_proxy_header = custom_headers.DO_PROXY
 
     if access_control_header in headers and do_proxy_header.lower() in headers[access_control_header]:
-        return MODES['NONE']
+        return modes.NONE
     elif do_proxy_header in headers:
-        return MODES['NONE']
-    elif CUSTOM_HEADERS['PROXY_MODE'] in headers:
-        return headers[CUSTOM_HEADERS['PROXY_MODE']]
+        return modes.NONE
+    elif custom_headers.PROXY_MODE in headers:
+        return headers[custom_headers.PROXY_MODE]
     else:
         return settings.active_mode
 
 def get_mock_policy(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
-    if CUSTOM_HEADERS['MOCK_POLICY'] in headers:
-        return headers[CUSTOM_HEADERS['MOCK_POLICY']]
+    if custom_headers.MOCK_POLICY in headers:
+        return headers[custom_headers.MOCK_POLICY]
     else:
         return settings.get('policy') or MOCK_POLICY['FOUND']
 
 def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
-    if CUSTOM_HEADERS['RECORD_POLICY'] in headers:
-        return headers[CUSTOM_HEADERS['RECORD_POLICY']]
+    if custom_headers.RECORD_POLICY in headers:
+        return headers[custom_headers.RECORD_POLICY]
     else:
         return settings.get('policy') or RECORD_POLICY['ALL']
 
 def get_service_url(request: MitmproxyRequest, settings: IProjectModeSettings) -> str:
-    service_url = request.headers.get(CUSTOM_HEADERS['SERVICE_URL'])
+    service_url = request.headers.get(custom_headers.SERVICE_URL)
 
     if service_url:
         return service_url

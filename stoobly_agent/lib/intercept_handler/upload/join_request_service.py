@@ -2,7 +2,6 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
 from ..mitmproxy.response_adapter import MitmproxyResponseAdapter
-from ..constants.modes import MODES
 from ..settings import get_service_url
 
 from .joined_request import JoinedRequest

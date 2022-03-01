@@ -7,7 +7,7 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from ..api.stoobly_api import StooblyApi
 from ..logger import Logger
 from ..settings import IProjectMockSettings, Settings
-from .constants.custom_headers import CUSTOM_HEADERS
+from .constants import custom_headers
 from .constants.custom_response_codes import CUSTOM_RESPONSE_CODES
 from .constants.mock_policy import MOCK_POLICY
 from .mock.context import MockContext
@@ -93,7 +93,7 @@ def handle_request_mock(flow: MitmproxyHTTPFlow, settings: Settings):
 def __handle_mock_success(context: MockContext) -> None:
     response = context.response
     start_time = context.start_time
-    __simulate_latency(response.headers.get(CUSTOM_HEADERS['RESPONSE_LATENCY']), start_time)
+    __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __handle_mock_failure(context: MockContext):
     req = context.flow.request
