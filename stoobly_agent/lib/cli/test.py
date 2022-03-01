@@ -2,7 +2,6 @@ import json
 import pdb
 import requests
 
-from http.cookies import SimpleCookie
 from typing import List, Union
 
 from stoobly_agent.lib.api.interfaces.report_show_response import ReportShowResponse
@@ -10,9 +9,9 @@ from stoobly_agent.lib.api.interfaces.requests_index_query_params import Request
 from stoobly_agent.lib.api.interfaces.requests_index_response import RequestsIndexResponse
 from stoobly_agent.lib.api.schemas.request import Request
 from stoobly_agent.lib.api.stoobly_api import StooblyApi
-from stoobly_agent.lib.intercept_handler.constants.custom_headers import CUSTOM_HEADERS
-from stoobly_agent.lib.intercept_handler.constants.modes import MODES
-from stoobly_agent.lib.intercept_handler.test.context import TestContext
+from stoobly_agent.lib.intercept_handler.constants import modes
+
+from .replay_request_service import replay_request
 
 class Test():
 
@@ -39,35 +38,7 @@ class Test():
       return
 
     for scenario_key in self.scenario_keys:
-      self.__map_scenario_requests(self.project_key, scenario_key, self.__replay_request)
-
-  def __replay_request(self, project_key: str, request: Request, **kwargs):
-    method = request.method
-    handler = getattr(requests, method.lower())
-    cookies = self.__get_cookies(request.headers)
-
-    headers = request.headers
-
-    # Set headers to identify request
-    headers[CUSTOM_HEADERS['PROXY_MODE']] = MODES['TEST']
-
-    headers[CUSTOM_HEADERS['PROJECT_KEY']] = project_key
-
-    if self.report_key:
-      headers[CUSTOM_HEADERS['REPORT_KEY']] = self.report_key
-
-    if 'scenario_key' in kwargs:
-      headers[CUSTOM_HEADERS['SCENARIO_KEY']] = kwargs['scenario_key']
-      
-    response: requests.Response = handler(
-      request.url, 
-      allow_redirects = True,
-      cookies = cookies,
-      data=request.body,
-      headers=headers, 
-      params=request.query_params,
-      stream = True
-    )
+      self.__map_scenario_requests(scenario_key, replay_request)
 
   def __create_report(self, project_key: str, name, description) -> ReportShowResponse:
     res: requests.Response = self.api.report_create(project_key, {
@@ -112,10 +83,7 @@ class Test():
 
     return res.json()
 
-  def __get_cookies(self, headers: Request.headers):
-      return SimpleCookie(headers.get('Cookie'))
-
-  def __map_scenario_requests(self, project_key: str, scenario_key: str, handler):
+  def __map_scenario_requests(self, scenario_key: str, handler):
     page = 0
     count = 0
 
@@ -123,7 +91,7 @@ class Test():
 
     while True:
       requests_response = self.__get_requests(
-        project_key, scenario_key, { 
+        self.project_key, scenario_key, { 
           'page': page, 'size': '25'
         }
       )
@@ -139,8 +107,17 @@ class Test():
 
       for request_partial in requests:
         request_id = request_partial['id']
-        request = self.__get_request(project_key, request_id)
-        l.append(handler(project_key, Request(request), scenario_key=scenario_key))
+        request = self.__get_request(self.project_key, request_id)
+
+        response = handler(
+          Request(request), 
+          mode=modes.TEST,
+          project_key=self.project_key,
+          report_key=self.report_key,
+          scenario_key=scenario_key
+        )
+
+        l.append(response)
 
       count += len(requests)
 

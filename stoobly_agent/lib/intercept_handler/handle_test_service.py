@@ -9,7 +9,7 @@ from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
 
 from .mitmproxy.request_adapter import MitmproxyRequestAdapter
-from .constants.custom_headers import CUSTOM_HEADERS
+from .constants import custom_headers
 from .utils.filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
@@ -55,7 +55,7 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
 
 def __handle_mock_success(context: MockContext) -> None:
     expected_response = context.response
-    request_id = expected_response.headers.get(CUSTOM_HEADERS['MOCK_REQUEST_ID'])
+    request_id = expected_response.headers.get(custom_headers.MOCK_REQUEST_ID)
 
     if request_id:
         active_mode_settings = context.active_mode_settings

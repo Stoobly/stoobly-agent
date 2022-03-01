@@ -8,7 +8,7 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from lib.intercept_handler.handle_mock_service import handle_request_mock
 from lib.intercept_handler.handle_record_service import handle_request_record, handle_response_record
 from lib.intercept_handler.handle_test_service import handle_request_test
-from lib.intercept_handler.constants.modes import MODES
+from lib.intercept_handler.constants import modes
 from lib.intercept_handler.utils.response_handler import bad_request
 from lib.intercept_handler.settings import get_proxy_mode
 from lib.logger import Logger
@@ -32,18 +32,18 @@ def request(flow: MitmproxyHTTPFlow):
 
     Logger.instance().debug(f"{LOG_ID}:ProxyMode: {mode}")
 
-    if mode == MODES['MOCK']:
+    if mode == modes.MOCK:
         handle_request_mock(flow, settings)
-    elif mode == MODES['NONE']:
+    elif mode == modes.NONE:
         pass
-    elif mode == MODES['RECORD']:
+    elif mode == modes.RECORD:
         handle_request_record(request, settings)
-    elif mode == MODES['TEST']:
+    elif mode == modes.TEST:
         pass
     else:
         return bad_request(
             flow,
-            "Valid env MODES: %s, Got: %s" % ([MODES['RECORD'], MODES['MOCK'], MODES['TEST']], mode)
+            "Valid env MODES: %s, Got: %s" % ([modes.RECORD, modes.MOCK, modes.TEST], mode)
         )
 
 def response(flow: MitmproxyHTTPFlow):
@@ -52,9 +52,9 @@ def response(flow: MitmproxyHTTPFlow):
 
     mode = get_proxy_mode(request.headers, settings)
 
-    if mode == MODES['RECORD']:
+    if mode == modes.RECORD:
         return handle_response_record(flow, settings)
-    elif mode == MODES['TEST']:
+    elif mode == modes.TEST:
         return handle_request_test(flow, settings)
     else:
         return False
