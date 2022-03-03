@@ -1,34 +1,54 @@
 import json
 import pdb
+from urllib.request import Request
 
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
 from typing import List, Union
 
-from stoobly_agent.lib.api.stoobly_api import StooblyApi
-from stoobly_agent.lib.settings import IProjectModeSettings
+from stoobly_agent.lib.api.requests_resource import RequestsResource
+from stoobly_agent.lib.settings import IProjectMockSettings, Settings
 
 from .hashed_request_decorator import HashedRequestDecorator
 from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
 from ..settings import get_project_key, get_scenario_key
+
+def inject_eval_request(
+    api: RequestsResource,
+    active_mode_settings: IProjectMockSettings,
+):
+    settings = Settings.instance()
+
+    if not api:
+        api = RequestsResource(settings.api_url, settings.api_key)
+
+    if not active_mode_settings:
+        active_mode_settings = settings.active_mode_settings
+
+    return lambda request, ignored_components_list: eval_request(
+        api, active_mode_settings, request, ignored_components_list, 
+    )
 
 ###
 #
 # @param settings [Settings.mode.mock | Settings.mode.record]
 #
 def eval_request(
+    api: RequestsResource,
+    active_mode_settings: IProjectMockSettings,
     request: MitmproxyRequest,
-    api: StooblyApi,
-    settings: IProjectModeSettings,
-    ignored_components_list: List[Union[list, str, None]] = None
+    ignored_components_list: List[Union[list, str, None]] = None,
 ) -> Response:
     ignored_components = __build_ignored_components(ignored_components_list)
-
     query_params = __build_query_params(request, ignored_components)
-    query_params['scenario_key'] = get_scenario_key(request.headers, settings)
 
-    return api.request_response(
-        get_project_key(request.headers, settings), query_params
+    return api.with_scenario_key(
+        get_scenario_key(request.headers, active_mode_settings), query_params
+    ).from_project_key(
+        get_project_key(request.headers, active_mode_settings),
+        lambda project_id: api.response(
+            project_id, query_params
+        )
     )
 
 def __build_ignored_components(ignored_components_list):

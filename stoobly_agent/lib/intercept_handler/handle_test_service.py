@@ -4,7 +4,7 @@ import time
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.response import Response as MitmproxyResponse
 
-from ..api.stoobly_api import StooblyApi
+from ..api.requests_resource import RequestsResource
 from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
 
@@ -15,10 +15,9 @@ from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
 from .test.test_service import test, TEST_STRATEGIES
 from .test.context import TestContext
-from .test.context_response import TestContextResponse
 from .test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from .test.requests_response_adapter import RequestsResponseAdapter
-from .upload.upload_test_service import upload_test
+from .upload.upload_test_service import inject_upload_test
 
 LOG_ID = 'HandleTest'
 
@@ -43,7 +42,7 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
         rewrite_rules = request.relevant_rewrites
         ignored_components = filters_to_ignored_components(rewrite_rules)
 
-    api = StooblyApi(settings.api_url, settings.api_key)
+    api = RequestsResource(settings.api_url, settings.api_key)
     context = MockContext(flow, active_mode_settings).with_api(api)
 
     handle_request_mock_generic(
@@ -75,8 +74,9 @@ def __handle_mock_success(context: MockContext) -> None:
         passed, log = test(test_context)
 
         # Commit test to API
+        upload_test = inject_upload_test(None, active_mode_settings)
         upload_test(
-            flow, active_mode_settings,
+            flow,
             log=log,
             passed=passed,
             request_id=request_id,

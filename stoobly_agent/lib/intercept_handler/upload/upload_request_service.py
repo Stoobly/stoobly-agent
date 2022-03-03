@@ -7,7 +7,7 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from stoobly_agent.lib.api.agent_api import AgentApi
-from stoobly_agent.lib.api.stoobly_api import StooblyApi
+from stoobly_agent.lib.api.requests_resource import RequestsResource
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.settings import Settings
 
@@ -20,6 +20,17 @@ AGENT_STATUSES = {
 LOG_ID = 'UploadRequest'
 NAMESPACE_FOLDER = 'stoobly'
 
+def inject_upload_request(api: RequestsResource, settings: Settings):
+    if not settings:
+        settings = Settings.instance()
+
+    if not api:
+        api = RequestsResource(settings.api_url, settings.api_key)
+
+
+    return lambda flow: upload_request(api, settings, flow)
+
+
 ###
 #
 # Upon receiving a response, create the request in API for future use
@@ -28,21 +39,22 @@ NAMESPACE_FOLDER = 'stoobly'
 # @param settings [Settings.mode.mock | Settings.mode.record]
 # @param res [Net::HTTP::Response]
 #
-def upload_request(flow: MitmproxyHTTPFlow, api: StooblyApi, settings):
+def upload_request(api: RequestsResource, settings: Settings, flow: MitmproxyHTTPFlow):
     active_mode_settings = settings.active_mode_settings
     joined_request = join_filtered_request(flow, active_mode_settings)
 
     Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
     raw_requests = joined_request.build()
+    body_params = { 'importer': 'gor' }
 
-    res = api.request_create(
-        active_mode_settings.get('project_key'),
-        raw_requests,
-        {
-            'importer': 'gor',
-            'scenario_key': active_mode_settings.get('scenario_key'),
-        }
+    res = api.with_scenario_key(
+        active_mode_settings.get('scenario_key'), body_params
+    ).from_project_key(
+        active_mode_settings.get('project_key'), 
+        lambda project_id: api.request_create(
+            project_id, raw_requests, body_params 
+        )
     )
 
     Logger.instance().debug(f"{LOG_ID}:StatusCode:{res.status_code}")

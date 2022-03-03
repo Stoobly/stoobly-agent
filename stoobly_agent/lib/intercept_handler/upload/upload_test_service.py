@@ -8,13 +8,26 @@ from stoobly_agent.lib.logger import Logger
 from .join_request_service import join_filtered_request
 from ..settings import get_report_key
 
-def upload_test(
-  flow: MitmproxyHTTPFlow, 
+def inject_upload_test(
+  api: TestsResource,
   active_mode_settings: IProjectTestSettings, 
+):
+  settings = Settings.instance()
+
+  if not api:
+    api = TestsResource(settings.api_url, settings.api_key)
+
+  if not active_mode_settings:
+    active_mode_settings = Settings.instance().active_mode_settings
+
+  return lambda flow, **kwargs: upload_test(api, active_mode_settings, flow, **kwargs)
+
+def upload_test(
+  api: TestsResource,
+  active_mode_settings: IProjectTestSettings, 
+  flow: MitmproxyHTTPFlow, 
   **kwargs
 ) -> Response:
-    api = __build_api()
-
     joined_request = join_filtered_request(flow, active_mode_settings)
 
     Logger.instance().info(f"Uploading test results for {joined_request.proxy_request.url()}")
@@ -22,7 +35,7 @@ def upload_test(
     raw_requests = joined_request.build()
 
     # If report key is set, upload test to report
-    report_key = get_report_key()
+    report_key = get_report_key(flow.request.headers)
     if report_key:
       Logger.instance().debug(f"Using report {report_key}")
 
@@ -39,7 +52,3 @@ def upload_test(
         active_mode_settings.get('project_key'),
         lambda project_id: api.create(project_id, raw_requests, { **kwargs })
       )
-
-def __build_api():
-    settings = Settings.instance()
-    return TestsResource(settings.api_url, settings.api_key)

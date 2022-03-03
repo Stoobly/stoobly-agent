@@ -82,51 +82,14 @@ class StooblyApi(Api):
         report_data = self.decode_report_key(report_key)
         params['report_id'] = report_data.get('report_id')
 
-    def request_create(self, project_key: str, raw_requests, params) -> requests.Response:
-        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
+        return self
 
-        self.__parse_scenario_key(params)
-
-        project_data = self.decode_project_key(project_key)
-
-        body = {
-            'project_id': project_data.get('id'),
-            **params,
-        }
-
-        return requests.post(url, headers=self.default_headers, data=body, files={ 'requests': raw_requests })
-
-    def request_response(self, project_key: str, query_params) -> requests.Response:
-        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/response"
-
-        self.__parse_scenario_key(query_params)
-
-        project_data = self.decode_project_key(project_key)
-
-        params = {
-            'project_id': project_data.get('id'),
-            **query_params,
-        }
-
-        Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
-
-        return requests.get(
-            url,
-            allow_redirects=False,
-            headers=self.default_headers,
-            params=params,
-            stream=True
-        )
-
-    def __parse_scenario_key(self, params) -> None:
-        if not 'scenario_key' in params:
-            return
-
-        if params['scenario_key'] and len(params['scenario_key']) != 0:
-            scenario_data = self.decode_scenario_key(params['scenario_key'])
+    def with_scenario_key(self, scenario_key, params):
+        if scenario_key and len(scenario_key) != 0:
+            scenario_data = self.decode_scenario_key(scenario_key)
 
             if 'id' in scenario_data:
                 scenario_id = scenario_data['id']
                 params['scenario_id'] = scenario_id
 
-        del params['scenario_key']
+        return self
