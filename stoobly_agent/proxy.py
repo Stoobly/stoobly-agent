@@ -3,6 +3,7 @@ import pdb
 
 from mitmdump import DumpMaster, Options
 from mitmproxy.optmanager import _Option
+from typing import Union
 
 from .lib.root_dir import RootDir
 
@@ -24,7 +25,7 @@ def run(**kwargs):
     m = DumpMaster(opts)
     m.run()
 
-def get_proxy_url():
+def get_proxy_url() -> Union[str, None]:
     path = __proxy_url_abs_path()
     if not os.path.exists(path):
         return None

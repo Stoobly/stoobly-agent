@@ -1,13 +1,18 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
+from typing import Union
 
+from ..constants import custom_headers
 from ..settings import IProjectModeSettings, Settings
-from .constants import custom_headers, mock_policy, modes, record_policy
+from .constants import mock_policy, modes, record_policy
 
 def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
     if custom_headers.PROJECT_KEY in headers:
         return headers[custom_headers.PROJECT_KEY]
 
     return settings.get('project_key')
+
+def get_report_key(headers: MitmproxyRequest.headers) -> Union[str, None]:
+    return headers.get(custom_headers.REPORT_KEY)
 
 def get_scenario_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
     if custom_headers.SCENARIO_KEY in headers:

@@ -8,8 +8,8 @@ from ..api.stoobly_api import StooblyApi
 from ..logger import Logger
 from ..settings import Settings, IProjectTestSettings
 
+from ..constants import custom_headers
 from .mitmproxy.request_adapter import MitmproxyRequestAdapter
-from .constants import custom_headers
 from .utils.filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
@@ -76,7 +76,7 @@ def __handle_mock_success(context: MockContext) -> None:
 
         # Commit test to API
         upload_test(
-            flow, context.api, active_mode_settings,
+            flow, active_mode_settings,
             log=log,
             passed=passed,
             request_id=request_id,

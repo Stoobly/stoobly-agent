@@ -3,8 +3,9 @@ import requests
 from http.cookies import SimpleCookie
 from typing import TypedDict, Union
 
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.api.schemas.request import Request
-from stoobly_agent.lib.intercept_handler.constants import custom_headers
+from stoobly_agent.lib.constants import custom_headers
 from stoobly_agent.lib.intercept_handler.constants import modes
 
 class ReplayRequestOptions(TypedDict):
@@ -32,6 +33,8 @@ def replay_request(request: Request, **kwargs: ReplayRequestOptions):
 
   if 'scenario_key' in kwargs:
     headers[custom_headers.SCENARIO_KEY] = kwargs['scenario_key']
+
+  Logger.instance().info(f"{method} {request.url}")
     
   handler(
     request.url, 

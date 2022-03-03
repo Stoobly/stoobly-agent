@@ -1,20 +1,16 @@
 #!/usr/bin/env python
 
 import click
-import distro
-import json
 import os
-import pdb
 import threading
-import time
 
 from .api import run as run_api
-from .lib.api.stoobly_api import StooblyApi
-from .lib.cli.ca_cert_installer import CACertInstaller
-from .lib.cli.test import Test
+from .lib.cli.ca_cert_cli import ca_cert
+from .lib.cli.config_cli import config
+from .lib.cli.report_cli import report
+from .lib.cli.scenario_cli import scenario
 from .lib.cli.exec import run_command, run_command_with_proxy_export
 from .lib.constants import env_vars
-from .lib.settings import Settings
 from .proxy import run as run_proxy, filter_options, get_proxy_url
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -27,15 +23,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def main(ctx):
     pass
 
-@click.group()
-@click.pass_context
-def config(ctx):
-    pass
-
-@click.group()
-@click.pass_context
-def ca_cert(ctx):
-    pass
+# Attach subcommands to main
+main.add_command(ca_cert)
+main.add_command(config)
+main.add_command(report)
+main.add_command(scenario)
 
 @main.command()
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
@@ -74,17 +66,6 @@ def run(**kwargs):
 
     initialize_proxy(kwargs)
 
-@main.command()
-@click.option('--from-scenario', help='Key for the scenario to replay.')
-@click.option('--to-report', help='Key for the report to store test results.')
-@click.option('--name', help='Report name.')
-def test(**kwargs):
-    settings = Settings.instance()
-    api = StooblyApi(settings.api_url, settings.api_key)
-    test = Test(api, 'eyJpZCI6MTgsIm9yZ2FuaXphdGlvbl9pZCI6MX0=', 'diff')
-    test.create_report('test', 'Testing')
-    test.from_scenario('eyJpZCI6NDEsInByb2plY3RfaWQiOjE4fQ==')
-    test.run()
 
 @main.command()
 @click.option('--command', is_flag=True, default=False, help='Read commands from the command_string operand instead of from the standard input.')
@@ -101,50 +82,6 @@ def exec(**kwargs):
     else:
         run_command_with_proxy_export(shell, file_path, is_command, proxy_url)
 
-@ca_cert.command()
-def install(**kwargs):
-    distro_name = distro.name(pretty=True)
-
-    installer = CACertInstaller()
-
-    # Ubuntu or other Debian based
-    if distro.like() == 'debian':
-        print(f"Installing CA certificate for {distro_name}...")
-        installer.handle_debian()
-    # MacOS
-    elif distro.id() == 'darwin':
-        installer.handle_darwin()
-    # elif distro.id() == 'rhel':
-    #     return
-    else:
-        print(f"{distro_name} is not supported yet for automatic CA cert installation.")
-
-@ca_cert.command()
-def uninstall():
-    return
-
-@config.command()
-@click.option('--pretty-print', is_flag=True, default=False, help='Pretty print the json.')
-@click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
-def dump(**kwargs):
-    settings = Settings.instance()
-
-    output = settings.to_json(pretty_print=kwargs['pretty_print'])
-
-    if kwargs['save_to_file']:
-        timestamp = str(int(time.time() * 1000))
-        config_dump_file_name = f"stoobly_agent_config_dump_{timestamp}.json"
-
-        with open(config_dump_file_name, 'w') as output_file:
-            output_file.write(output)
-
-        print(f"Config successfully dumped to {config_dump_file_name}")
-    else:
-        print(output)
-
-# Attach subcommands to main
-main.add_command(ca_cert)
-main.add_command(config)
 
 ### Helpers
 

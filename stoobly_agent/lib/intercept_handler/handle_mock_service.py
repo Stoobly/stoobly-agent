@@ -5,9 +5,10 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
 from ..api.stoobly_api import StooblyApi
+from ..constants import custom_headers
 from ..logger import Logger
 from ..settings import IProjectMockSettings, Settings
-from .constants import custom_headers, custom_response_codes, mock_policy
+from .constants import custom_response_codes, mock_policy
 from .mock.context import MockContext
 from .mock.eval_request_service import eval_request
 from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
