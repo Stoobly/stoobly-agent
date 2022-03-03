@@ -79,7 +79,7 @@ class ConfigsController:
                     'test': test,
                 },
                 'enabled': settings.active_mode_settings.get('enabled'),
-                'list': list(self.MODE.values()),
+                'list': [modes.MOCK, modes.NONE, modes.RECORD, modes.TEST],
                 'proxy_url': settings.proxy_url,
             },
             status = 200

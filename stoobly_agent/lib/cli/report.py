@@ -26,3 +26,20 @@ class Report():
 
     return res.json()
 
+  def index(self, project_key: str, page: int, size: int):
+    api = ReportsResource(self.settings.api_url, self.settings.api_key)
+
+    res: requests.Response = api.from_project_key(
+      project_key, 
+      lambda project_id: api.index(
+        project_id, {
+          'page': page,
+          'size': size,
+        }
+      )
+    )
+
+    if not res.ok:
+      raise AssertionError('Could not create report')
+
+    return res.json()

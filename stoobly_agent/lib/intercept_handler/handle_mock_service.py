@@ -4,13 +4,13 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
-from ..api.stoobly_api import StooblyApi
+from ..api.requests_resource import RequestsResource
 from ..constants import custom_headers
 from ..logger import Logger
 from ..settings import IProjectMockSettings, Settings
 from .constants import custom_response_codes, mock_policy
 from .mock.context import MockContext
-from .mock.eval_request_service import eval_request
+from .mock.eval_request_service import inject_eval_request
 from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
 from .utils.allowed_request_service import allowed_request
 from .utils.response_handler import bad_request, pass_on, reverse_proxy
@@ -23,11 +23,12 @@ LOG_ID = 'HandleMock'
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, **kwargs):
-    api: StooblyApi = context.api
+    api: RequestsResource = context.api
     active_mode_settings = context.active_mode_settings
     flow = context.flow
     request: MitmproxyRequest = flow.request
 
+    eval_request = inject_eval_request(api, active_mode_settings)
     handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
     handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
@@ -43,11 +44,11 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
     elif policy == mock_policy.ALL:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else []] 
 
-        res = eval_request(request, api, active_mode_settings, ignored_components)
+        res = eval_request(request, ignored_components)
 
         if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
             ignored_components.append(res.content)
-            res = eval_request(request, api, active_mode_settings, [res.content] + ignored_components)
+            res = eval_request(request, [res.content] + ignored_components)
 
         context.with_response(res)
 
@@ -55,11 +56,11 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
             handle_success(context)
     elif policy == mock_policy.FOUND:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else None]
-        res = eval_request(request, api, active_mode_settings, ignored_components)
+        res = eval_request(request, ignored_components)
 
         if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
             ignored_components.append(res.content)
-            res = eval_request(request, api, active_mode_settings, ignored_components)
+            res = eval_request(request, ignored_components)
         
         context.with_response(res)
 
@@ -80,7 +81,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
 
 def handle_request_mock(flow: MitmproxyHTTPFlow, settings: Settings):
     active_mode_settings: IProjectMockSettings = settings.active_mode_settings
-    api = StooblyApi(settings.api_url, settings.api_key)
+    api = RequestsResource(settings.api_url, settings.api_key)
     context = MockContext(flow, active_mode_settings).with_api(api)
 
     handle_request_mock_generic(

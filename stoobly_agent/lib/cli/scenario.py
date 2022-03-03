@@ -3,7 +3,7 @@ import pdb
 from stoobly_agent.lib.settings import Settings
 from stoobly_agent.lib.api.requests_resource import RequestsResource
 from stoobly_agent.lib.intercept_handler.constants import modes, test_strategies
-from stoobly_agent.lib.intercept_handler.utils.replay_scenario_service import replay
+from stoobly_agent.lib.intercept_handler.replay.replay_scenario_service import replay
 
 class Scenario():
 

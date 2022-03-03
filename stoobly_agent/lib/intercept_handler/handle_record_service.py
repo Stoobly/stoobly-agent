@@ -4,13 +4,13 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from mitmproxy.net.http.response import Response as MitmproxyResponse 
 
-from ..api.stoobly_api import StooblyApi
+from ..api.requests_resource import RequestsResource
 from ..logger import Logger
 from ..settings import IProjectRecordSettings, Settings
 from .constants import custom_response_codes, record_policy
-from .mock.eval_request_service import eval_request
+from .mock.eval_request_service import inject_eval_request
 from .settings import get_record_policy, get_service_url
-from .upload.upload_request_service import upload_request
+from .upload.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import allowed_request
 from .utils.response_handler import bad_request, reverse_proxy
 
@@ -38,8 +38,6 @@ def handle_response_record(flow: MitmproxyHTTPFlow, settings: Settings):
 
     active_mode_settings: IProjectRecordSettings = settings.active_mode_settings
 
-    api = StooblyApi(settings.api_url, settings.api_key)
-
     if active_mode_settings.get('enabled') and allowed_request(active_mode_settings, request):
         upload_policy = get_record_policy(request.headers, active_mode_settings)
     else:
@@ -49,16 +47,16 @@ def handle_response_record(flow: MitmproxyHTTPFlow, settings: Settings):
     Logger.instance().debug(f"{LOG_ID}:UploadPolicy: {upload_policy}")
 
     if upload_policy == record_policy.ALL:
-        thread = threading.Thread(target=upload_request, args=(flow, api, settings))
+        api = RequestsResource(settings.api_url, settings.api_key)
+        thread = threading.Thread(target=inject_upload_request(api, settings), args=(flow))
         thread.start()
-        #upload_request(flow, api, settings)
     elif upload_policy == record_policy.NOT_FOUND:
-        res = eval_request(request, api, active_mode_settings)
+        api = RequestsResource(settings.api_url, settings.api_key)
+        res = inject_eval_request(api, active_mode_settings)(request, [])
 
         if res.status_code == custom_response_codes.NOT_FOUND:
-            thread = threading.Thread(target=upload_request, args=(flow, api, settings))
+            thread = threading.Thread(target=inject_upload_request(api, settings), args=(flow))
             thread.start()
-            #upload_request(flow, api, settings)
     elif upload_policy == record_policy.NONE:
         pass
     else:
