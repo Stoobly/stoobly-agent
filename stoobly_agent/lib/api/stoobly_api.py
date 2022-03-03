@@ -5,9 +5,9 @@ import urllib
 import pdb
 
 from ..logger import Logger
-from .interfaces.requests_index_query_params import RequestsIndexQueryParams
+from .api import Api
 
-class StooblyApi:
+class StooblyApi(Api):
     LOG_ID = 'lib.api.stoobly_api'
     REPORTS_ENDPOINT = '/reports'
     REQUESTS_ENDPOINT = '/requests'
@@ -16,6 +16,19 @@ class StooblyApi:
     def __init__(self, service_url: str, api_key: str):
         self.service_url = service_url
         self.api_key = api_key
+
+    @staticmethod
+    def decode_report_key(key):
+        try:
+            key = base64.b64decode(key)
+        except:
+            return {}
+
+        # TODO: add specific error catching
+        try:
+            return json.loads(key)
+        except:
+            return {}
 
     @staticmethod
     def decode_project_key(key):
@@ -52,34 +65,22 @@ class StooblyApi:
 
     # Request
 
-    def requests_index(self, project_key: str, query_params: RequestsIndexQueryParams):
-        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
-
+    def from_project_key(self, project_key, handler):
         project_data = self.decode_project_key(project_key)
+        return handler(project_data.get('id'))
 
-        params = {
-            'project_id': project_data.get('id'),
-            **query_params,
-        }
+    def from_scenario_key(self, scenario_key, handler):
+        scenario_data = self.decode_scenario_key(scenario_key)
+        return handler(scenario_data.get('project_id'), {
+            'scenario_id': scenario_data['id']
+        })
 
-        Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+    def with_report_key(self, report_key, params):
+        if not report_key:
+            return
 
-        return requests.get(url, headers=self.default_headers, params=params)
-
-
-    def request_show(self, project_key: str, request_id: str, query_params) -> requests.Response:
-        url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/{request_id}"
-
-        project_data = self.decode_project_key(project_key)
-
-        params = {
-            'project_id': project_data.get('id'),
-            **query_params,
-        }
-
-        Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
-
-        return requests.get(url, headers=self.default_headers, params=params)
+        report_data = self.decode_report_key(report_key)
+        params['report_id'] = report_data.get('report_id')
 
     def request_create(self, project_key: str, raw_requests, params) -> requests.Response:
         url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
@@ -116,38 +117,6 @@ class StooblyApi:
             params=params,
             stream=True
         )
-
-    # Report
-
-    def report_create(self, project_key: str, params) -> requests.Response:
-        url = f"{self.service_url}{self.REPORTS_ENDPOINT}"
-
-        self.__parse_scenario_key(params)
-
-        project_data = self.decode_project_key(project_key)
-
-        body = {
-            'project_id': project_data.get('id'),
-            **params,
-        }
-
-        return requests.post(url, headers=self.default_headers, json=body)
-
-    # Test
-
-    def test_create(self, project_key: str, raw_request, params) -> requests.Response:
-        url = f"{self.service_url}{self.TESTS_ENDPOINT}"
-
-        self.__parse_scenario_key(params)
-
-        project_data = self.decode_project_key(project_key)
-
-        body = {
-            'project_id': project_data.get('id'),
-            **params,
-        }
-
-        return requests.post(url, headers=self.default_headers, data=body, files={ 'request': raw_request })
 
     def __parse_scenario_key(self, params) -> None:
         if not 'scenario_key' in params:
