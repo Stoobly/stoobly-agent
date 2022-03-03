@@ -1,6 +1,4 @@
-from typing import TypedDict
+from .pagination_query_params import PaginationQueryParams
 
-class RequestsIndexQueryParams(TypedDict):
-  page: str
+class RequestsIndexQueryParams(PaginationQueryParams):
   scenario_id: str
-  size: int
