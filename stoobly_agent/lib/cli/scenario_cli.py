@@ -5,7 +5,7 @@ import pdb
 from stoobly_agent.lib.intercept_handler.constants import test_strategies
 
 from ..settings import Settings
-from .scenario import Scenario
+from .scenario_facade import ScenarioFacade
 
 @click.group()
 @click.pass_context
@@ -18,7 +18,7 @@ def replay(**kwargs):
     scenario_key = kwargs['scenario_key']
     del kwargs['scenario_key']
 
-    scenario = Scenario(Settings.instance())
+    scenario = ScenarioFacade(Settings.instance())
     scenario.replay(scenario_key, **kwargs)   
 
 @scenario.command()
@@ -29,7 +29,7 @@ def test(**kwargs):
     scenario_key = kwargs['scenario_key']
     del kwargs['scenario_key']
 
-    scenario = Scenario(Settings.instance())
+    scenario = ScenarioFacade(Settings.instance())
     scenario.test(scenario_key, **kwargs)
 
 @scenario.command()
@@ -42,7 +42,7 @@ def list(**kwargs):
     project_key = kwargs['project_key']
     del kwargs['project_key']
 
-    scenario = Scenario(Settings.instance())
+    scenario = ScenarioFacade(Settings.instance())
     scenarios = scenario.index(project_key, **kwargs)
 
     print(json.dumps(scenarios, indent=2))
