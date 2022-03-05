@@ -14,7 +14,7 @@ class ReplayRequestOptions(TypedDict):
   report_key: str
   scenario_key: str
 
-def replay_request(request: Request, **kwargs: ReplayRequestOptions):
+def replay(request: Request, **kwargs: ReplayRequestOptions) -> requests.Response:
   method = request.method
   handler = getattr(requests, method.lower())
   cookies = __get_cookies(request.headers)
@@ -36,7 +36,7 @@ def replay_request(request: Request, **kwargs: ReplayRequestOptions):
 
   Logger.instance().info(f"{method} {request.url}")
     
-  handler(
+  return handler(
     request.url, 
     allow_redirects = True,
     cookies = cookies,

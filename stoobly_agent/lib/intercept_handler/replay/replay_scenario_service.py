@@ -5,7 +5,7 @@ from stoobly_agent.lib.api.interfaces.requests_index_response import RequestsInd
 from stoobly_agent.lib.api.schemas.request import Request
 from stoobly_agent.lib.api.requests_resource import RequestsResource
 
-from .replay_request_service import replay_request, ReplayRequestOptions
+from .replay_request_service import replay as replay_request, ReplayRequestOptions
 
 def replay(api: RequestsResource, **kwargs):
   options: ReplayRequestOptions = kwargs # For annotation purposes
