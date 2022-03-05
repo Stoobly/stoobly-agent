@@ -1,7 +1,7 @@
 import click
 import json
 
-from .report import Report
+from .report_facade import ReportFacade
 from ..settings import Settings
 
 @click.group()
@@ -14,7 +14,7 @@ def report(ctx):
 @click.option('--project-key', required=True, help='Project to create report in.')
 @click.argument('name')
 def create(**kwargs):
-    report = Report(Settings.instance())
+    report = ReportFacade(Settings.instance())
     print(report.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
 
 @report.command()
@@ -27,7 +27,7 @@ def list(**kwargs):
     report_key = kwargs['project_key']
     del kwargs['project_key']
 
-    report = Report(Settings.instance())
+    report = ReportFacade(Settings.instance())
     reports = report.index(report_key, **kwargs)
     
     print(json.dumps(reports, indent=2))
