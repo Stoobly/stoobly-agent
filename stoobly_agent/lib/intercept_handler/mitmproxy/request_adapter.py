@@ -51,7 +51,7 @@ class MitmproxyRequestAdapter(Request):
 
     @property
     def body(self):
-        content = self.request.get_content()
+        content = self.request.raw_content
 
         try:
             if isinstance(content, bytes):
