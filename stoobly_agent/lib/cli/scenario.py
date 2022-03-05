@@ -1,5 +1,4 @@
 import pdb
-from stoobly_agent.lib.api.schemas.request import Request
 
 from stoobly_agent.lib.settings import Settings
 from stoobly_agent.lib.api.requests_resource import RequestsResource
