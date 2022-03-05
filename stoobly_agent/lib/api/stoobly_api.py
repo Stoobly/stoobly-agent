@@ -17,6 +17,20 @@ class StooblyApi(Api):
         self.service_url = service_url
         self.api_key = api_key
 
+
+    @staticmethod
+    def decode_key(key):
+        try:
+            key = base64.b64decode(key)
+        except:
+            return {}
+
+        # TODO: add specific error catching
+        try:
+            return json.loads(key)
+        except:
+            return {}
+
     @staticmethod
     def decode_report_key(key):
         try:

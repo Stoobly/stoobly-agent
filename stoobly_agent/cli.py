@@ -8,6 +8,7 @@ from .api import run as run_api
 from .lib.cli.ca_cert_cli import ca_cert
 from .lib.cli.config_cli import config
 from .lib.cli.report_cli import report
+from .lib.cli.request_cli import request
 from .lib.cli.scenario_cli import scenario
 from .lib.cli.exec import run_command, run_command_with_proxy_export
 from .lib.constants import env_vars
@@ -27,6 +28,7 @@ def main(ctx):
 main.add_command(ca_cert)
 main.add_command(config)
 main.add_command(report)
+main.add_command(request)
 main.add_command(scenario)
 
 @main.command()
