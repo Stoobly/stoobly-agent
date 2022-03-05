@@ -3,7 +3,7 @@ import requests
 from stoobly_agent.lib.api.reports_resource import ReportsResource
 from stoobly_agent.lib.settings import Settings
 
-class Report():
+class ReportFacade():
 
   def __init__(self, settings: Settings):
     self.settings = settings
