@@ -52,7 +52,7 @@ def upload_request(api: RequestsResource, settings: Settings, flow: MitmproxyHTT
         active_mode_settings.get('scenario_key'), body_params
     ).from_project_key(
         active_mode_settings.get('project_key'), 
-        lambda project_id: api.request_create(
+        lambda project_id: api.create(
             project_id, raw_requests, body_params 
         )
     )

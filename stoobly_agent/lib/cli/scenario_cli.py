@@ -2,6 +2,8 @@ import click
 import json
 import pdb
 
+from stoobly_agent.lib.intercept_handler.constants import test_strategies
+
 from ..settings import Settings
 from .scenario import Scenario
 
@@ -11,8 +13,17 @@ def scenario(ctx):
     pass
 
 @scenario.command()
+@click.argument('scenario_key')
+def replay(**kwargs):
+    scenario_key = kwargs['scenario_key']
+    del kwargs['scenario_key']
+
+    scenario = Scenario(Settings.instance())
+    scenario.replay(scenario_key, **kwargs)   
+
+@scenario.command()
 @click.option('--save-to-report', help='Key for the report to store test results.')
-@click.option('--strategy', help='Test strategy')
+@click.option('--strategy', default=test_strategies.DIFF, help=f"{test_strategies.CUSTOM} | {test_strategies.DIFF} | {test_strategies.FUZZY}")
 @click.argument('scenario_key')
 def test(**kwargs):
     scenario_key = kwargs['scenario_key']

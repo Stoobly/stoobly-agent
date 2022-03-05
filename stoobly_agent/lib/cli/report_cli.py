@@ -24,8 +24,10 @@ def create(**kwargs):
 @click.option('--size', default=10)
 @click.argument('project_key')
 def list(**kwargs):
+    report_key = kwargs['project_key']
+    del kwargs['project_key']
+
     report = Report(Settings.instance())
-    reports = report.index(
-        kwargs['project_key'], **kwargs
-    )
+    reports = report.index(report_key, **kwargs)
+    
     print(json.dumps(reports, indent=2))

@@ -48,14 +48,14 @@ def handle_response_record(flow: MitmproxyHTTPFlow, settings: Settings):
 
     if upload_policy == record_policy.ALL:
         api = RequestsResource(settings.api_url, settings.api_key)
-        thread = threading.Thread(target=inject_upload_request(api, settings), args=(flow))
+        thread = threading.Thread(target=inject_upload_request(api, settings), args=[flow])
         thread.start()
     elif upload_policy == record_policy.NOT_FOUND:
         api = RequestsResource(settings.api_url, settings.api_key)
         res = inject_eval_request(api, active_mode_settings)(request, [])
 
         if res.status_code == custom_response_codes.NOT_FOUND:
-            thread = threading.Thread(target=inject_upload_request(api, settings), args=(flow))
+            thread = threading.Thread(target=inject_upload_request(api, settings), args=[flow])
             thread.start()
     elif upload_policy == record_policy.NONE:
         pass

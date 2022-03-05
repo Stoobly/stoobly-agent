@@ -27,12 +27,12 @@ class ConfigsController:
 
         if active_mode in [modes.MOCK, modes.TEST]:
             context.render(
-                json = mock_policy,
+                json = [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
                 status = 200
             )
         elif active_mode == modes.RECORD:
             context.render(
-                json = record_policy,
+                json = [record_policy.ALL, record_policy.NONE, record_policy.NOT_FOUND],
                 status = 200
             )
 
