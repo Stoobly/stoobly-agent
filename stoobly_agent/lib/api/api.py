@@ -8,26 +8,42 @@ from stoobly_agent.lib.constants.env_vars import HTTP_PROXY, HTTPS_PROXY
 class Api():
 
     def without_proxy(self, handler):
-      disabled = {}
-
-      disabled[HTTP_PROXY] = os.environ[HTTP_PROXY]
-      os.environ[HTTP_PROXY] = ''
-
-      disabled[HTTPS_PROXY] = os.environ[HTTPS_PROXY]
-      os.environ[HTTPS_PROXY] = ''
-
-      disabled[HTTP_PROXY.lower()] = os.environ[HTTP_PROXY.lower()]
-      os.environ[HTTP_PROXY.lower()] = ''
-
-      disabled[HTTPS_PROXY.lower()] = os.environ[HTTPS_PROXY.lower()]
-      os.environ[HTTPS_PROXY.lower()] = ''
+      current = self.set_proxy('')
 
       res = handler()
 
-      for key, val in disabled.items():
+      for key, val in current.items():
         os.environ[key] = val
 
       return res
+
+    def with_proxy(self, handler):
+      proxy_url = get_proxy_url()
+      current = self.set_proxy(proxy_url)
+
+      res = handler()
+
+      for key, val in current.items():
+        os.environ[key] = val
+
+      return res
+
+    def set_proxy(self, val):
+      current = {}
+
+      current[HTTP_PROXY] = os.environ[HTTP_PROXY]
+      os.environ[HTTP_PROXY] = ''
+
+      current[HTTPS_PROXY] = os.environ[HTTPS_PROXY]
+      os.environ[HTTPS_PROXY] = ''
+
+      current[HTTP_PROXY.lower()] = os.environ[HTTP_PROXY.lower()]
+      os.environ[HTTP_PROXY.lower()] = ''
+
+      current[HTTPS_PROXY.lower()] = os.environ[HTTPS_PROXY.lower()]
+      os.environ[HTTPS_PROXY.lower()] = ''
+
+      return current
 
     def get(self, url, **kwargs):
       handler = lambda: requests.get(url, **kwargs)
