@@ -12,25 +12,32 @@ def request(ctx):
     pass
 
 @request.command()
+@click.option('--report-key')
+@click.option('--scenario-key')
 @click.argument('request_key')
 def replay(**kwargs):
   request = RequestFacade(Settings.instance())
   __replay(request.replay, **kwargs)
   
 @request.command()
+@click.option('--report-key')
+@click.option('--scenario-key')
 @click.argument('request_key')
 def record(**kwargs):
   request = RequestFacade(Settings.instance())
   __replay(request.record, **kwargs)
 
 @request.command()
+@click.option('--report-key')
+@click.option('--scenario-key')
 @click.argument('request_key')
 def mock(**kwargs):
   request = RequestFacade(Settings.instance())
   __replay(request.mock, **kwargs)
 
-  
 @request.command()
+@click.option('--report-key')
+@click.option('--scenario-key')
 @click.argument('request_key')
 def test(**kwargs):
   request = RequestFacade(Settings.instance())

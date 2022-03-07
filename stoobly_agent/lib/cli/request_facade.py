@@ -40,10 +40,12 @@ class RequestFacade():
 
   def test(self, request_key: str, **kwargs):
     kwargs['mode'] = modes.TEST
-    kwargs['report_key'] = kwargs.get('save_to_report')
     kwargs['strategy'] = kwargs.get('strategy') or test_strategies.DIFF
+    
+    if kwargs.get('save_to_report'):
+      kwargs['report_key'] = kwargs.get('save_to_report')
 
-    self.__replay(request_key, **kwargs)
+    return self.__replay(request_key, **kwargs)
 
   def __replay(self, request_key: str, **kwargs):
     request_response = self.show(request_key, **{
