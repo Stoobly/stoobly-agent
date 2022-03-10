@@ -13,6 +13,14 @@ def scenario(ctx):
     pass
 
 @scenario.command()
+@click.option('--description', help='Scenario description.')
+@click.option('--project-key', required=True, help='Project to create scenario in.')
+@click.argument('name')
+def create(**kwargs):
+    scenario = ScenarioFacade(Settings.instance())
+    print(scenario.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
+
+@scenario.command()
 @click.argument('scenario_key')
 def replay(**kwargs):
     scenario_key = kwargs['scenario_key']
