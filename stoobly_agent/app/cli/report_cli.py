@@ -1,7 +1,7 @@
 import click
-import json
 
-from ..settings import Settings
+from stoobly_agent.lib.settings import Settings
+
 from .report_facade import ReportFacade
 from .utils.tabulate_print_service import tabulate_print
 

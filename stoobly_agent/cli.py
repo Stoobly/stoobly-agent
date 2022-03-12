@@ -4,14 +4,14 @@ import click
 import os
 import threading
 
-from .app.proxy import run as run_proxy, filter_options, get_proxy_url
 from .app.api import run as run_api
-from .lib.cli.ca_cert_cli import ca_cert
-from .lib.cli.config_cli import config
-from .lib.cli.report_cli import report
-from .lib.cli.request_cli import request
-from .lib.cli.scenario_cli import scenario
-from .lib.cli.exec import run_command, run_command_with_proxy_export
+from .app.cli.ca_cert_cli import ca_cert
+from .app.cli.config_cli import config
+from .app.cli.report_cli import report
+from .app.cli.request_cli import request
+from .app.cli.scenario_cli import scenario
+from .app.cli.exec import run_command, run_command_with_proxy_export
+from .app.proxy import run as run_proxy, filter_options, get_proxy_url
 from .lib.constants import env_vars
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])

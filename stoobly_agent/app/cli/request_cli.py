@@ -2,8 +2,8 @@ import click
 import requests
 
 from stoobly_agent.app.proxy.constants import modes, test_strategies
+from stoobly_agent.lib.settings import Settings
 
-from ..settings import Settings
 from .request_facade import RequestFacade
 
 @click.group()
