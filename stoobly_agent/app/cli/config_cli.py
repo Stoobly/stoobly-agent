@@ -1,7 +1,7 @@
 import click
 import time
 
-from ..settings import Settings
+from stoobly_agent.lib.settings import Settings
 
 @click.group()
 @click.pass_context

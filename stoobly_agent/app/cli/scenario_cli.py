@@ -3,8 +3,8 @@ import json
 import pdb
 
 from stoobly_agent.app.proxy.constants import test_strategies
+from stoobly_agent.lib.settings import Settings
 
-from ..settings import Settings
 from .scenario_facade import ScenarioFacade
 from .utils.tabulate_print_service import tabulate_print
 

@@ -1,6 +1,7 @@
 
 import click
 import distro
+
 from .ca_cert_installer import CACertInstaller
 
 @click.group()
