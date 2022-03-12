@@ -1,8 +1,8 @@
 from typing import Union
 
 from stoobly_agent.lib.api.requests_resource import RequestsResource
+from stoobly_agent.lib.settings import Settings
 
-from ...settings import Settings
 from .local_db_request_adapter import LocalDBRequestAdapter
 from .stoobly_request_adapter import StooblyRequestAdapter
 

@@ -10,9 +10,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
-from .app.configs_controller import ConfigsController
-from .app.proxy_controller import ProxyController
-from .app.statuses_controller import StatusesController
+from .app.controllers.configs_controller import ConfigsController
+from .app.controllers.proxy_controller import ProxyController
+from .app.controllers.statuses_controller import StatusesController
 from .lib.constants import headers
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):

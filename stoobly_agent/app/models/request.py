@@ -1,4 +1,5 @@
-from ..settings import Settings
+from stoobly_agent.lib.settings import Settings
+
 from .adapters.request_adapter_factory import RequestAdapterFactory
 
 class Request():

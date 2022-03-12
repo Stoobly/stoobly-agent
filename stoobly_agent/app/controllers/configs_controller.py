@@ -1,8 +1,8 @@
 from mergedeep import merge
 
-from ..lib.api.stoobly_api import StooblyApi
-from ..lib.intercept_handler.constants import mock_policy, modes, record_policy
-from ..lib.settings import Settings
+from stoobly_agent.lib.api.stoobly_api import StooblyApi
+from stoobly_agent.lib.intercept_handler.constants import mock_policy, modes, record_policy
+from stoobly_agent.lib.settings import Settings
 
 class ConfigsController:
     _instance = None
