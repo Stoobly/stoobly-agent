@@ -6,6 +6,7 @@ from stoobly_agent.lib.intercept_handler.constants import test_strategies
 
 from ..settings import Settings
 from .scenario_facade import ScenarioFacade
+from .utils.tabulate_print_service import tabulate_print
 
 @click.group()
 @click.pass_context
@@ -51,6 +52,6 @@ def list(**kwargs):
     del kwargs['project_key']
 
     scenario = ScenarioFacade(Settings.instance())
-    scenarios = scenario.index(project_key, **kwargs)
+    scenarios_response = scenario.index(project_key, **kwargs)
 
-    print(json.dumps(scenarios, indent=2))
+    tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])

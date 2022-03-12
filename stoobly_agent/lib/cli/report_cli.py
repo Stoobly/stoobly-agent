@@ -1,8 +1,9 @@
 import click
 import json
 
-from .report_facade import ReportFacade
 from ..settings import Settings
+from .report_facade import ReportFacade
+from .utils.tabulate_print_service import tabulate_print
 
 @click.group()
 @click.pass_context
@@ -28,6 +29,6 @@ def list(**kwargs):
     del kwargs['project_key']
 
     report = ReportFacade(Settings.instance())
-    reports = report.index(report_key, **kwargs)
+    reports_response = report.index(report_key, **kwargs)
     
-    print(json.dumps(reports, indent=2))
+    tabulate_print(reports_response['list'], filter=['created_at', 'user_id', 'starred', 'updated_at'])
