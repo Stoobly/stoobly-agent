@@ -4,7 +4,8 @@ import pdb
 from runpy import run_path
 from typing import Union
 
-from ...constants.env_vars import TEST_SCRIPT
+from stoobly_agent.lib.constants.env_vars import TEST_SCRIPT
+
 from .iterable_matches import dict_matches, list_matches
 from ..test.context import TestContext
 

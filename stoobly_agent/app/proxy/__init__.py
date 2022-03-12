@@ -5,7 +5,7 @@ from mitmdump import DumpMaster, Options
 from mitmproxy.optmanager import _Option
 from typing import Union
 
-from .lib.root_dir import RootDir
+from stoobly_agent.lib.root_dir import RootDir
 
 PROXY_URL_FILENAME = 'proxy_url'
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'

@@ -1,7 +1,7 @@
 from mergedeep import merge
 
+from stoobly_agent.app.proxy.constants import mock_policy, modes, record_policy
 from stoobly_agent.lib.api.stoobly_api import StooblyApi
-from stoobly_agent.lib.intercept_handler.constants import mock_policy, modes, record_policy
 from stoobly_agent.lib.settings import Settings
 
 class ConfigsController:
@@ -79,7 +79,7 @@ class ConfigsController:
                     'test': test,
                 },
                 'enabled': settings.active_mode_settings.get('enabled'),
-                'list': [modes.MOCK, modes.NONE, modes.RECORD, modes.TEST],
+                'list': [modes.MOCK, modes.RECORD, modes.TEST],
                 'proxy_url': settings.proxy_url,
             },
             status = 200

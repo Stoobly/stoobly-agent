@@ -4,10 +4,11 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
-from ..api.requests_resource import RequestsResource
-from ..constants import custom_headers
-from ..logger import Logger
-from ..settings import IProjectMockSettings, Settings
+from stoobly_agent.lib.api.requests_resource import RequestsResource
+from stoobly_agent.lib.constants import custom_headers
+from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.settings import IProjectMockSettings, Settings
+
 from .constants import custom_response_codes, mock_policy
 from .mock.context import MockContext
 from .mock.eval_request_service import inject_eval_request

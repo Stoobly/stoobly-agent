@@ -2,7 +2,7 @@ import click
 import json
 import pdb
 
-from stoobly_agent.lib.intercept_handler.constants import test_strategies
+from stoobly_agent.app.proxy.constants import test_strategies
 
 from ..settings import Settings
 from .scenario_facade import ScenarioFacade
