@@ -10,10 +10,11 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
-from .app.controllers.configs_controller import ConfigsController
-from .app.controllers.proxy_controller import ProxyController
-from .app.controllers.statuses_controller import StatusesController
-from .lib.constants import headers
+from stoobly_agent.lib.constants import headers
+
+from .configs_controller import ConfigsController
+from .proxy_controller import ProxyController
+from .statuses_controller import StatusesController
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROOT_DIR = os.path.dirname(os.path.realpath(__file__))

@@ -5,7 +5,7 @@ import os
 import threading
 
 from .app.proxy import run as run_proxy, filter_options, get_proxy_url
-from .api import run as run_api
+from .app.api import run as run_api
 from .lib.cli.ca_cert_cli import ca_cert
 from .lib.cli.config_cli import config
 from .lib.cli.report_cli import report
