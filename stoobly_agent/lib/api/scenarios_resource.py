@@ -2,6 +2,7 @@ import urllib
 
 from ..logger import Logger
 from .interfaces.pagination_query_params import PaginationQueryParams
+from .interfaces.scenarios_index_response import ScenariosIndexResponse
 from .stoobly_api import StooblyApi
 
 class ScenariosResource(StooblyApi):
@@ -21,7 +22,7 @@ class ScenariosResource(StooblyApi):
 
     return self.post(url, headers=self.default_headers, data=body, files=files)
 
-  def index(self, project_id: int, query_params: PaginationQueryParams):
+  def index(self, project_id: int, query_params: PaginationQueryParams) -> ScenariosIndexResponse:
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}"
 
     params = {
