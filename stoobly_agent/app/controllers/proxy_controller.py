@@ -2,8 +2,8 @@ import requests
 
 from http.cookies import SimpleCookie
 
-from ..lib.constants import headers
-from ..lib.logger import Logger
+from stoobly_agent.lib.constants import headers
+from stoobly_agent.lib.logger import Logger
 
 class ProxyController:
     _instance = None
