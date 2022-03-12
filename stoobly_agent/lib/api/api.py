@@ -2,7 +2,7 @@ import os
 import pdb
 import requests
 
-from stoobly_agent.proxy import get_proxy_url
+from stoobly_agent.app.proxy import get_proxy_url
 from stoobly_agent.lib.constants.env_vars import HTTP_PROXY, HTTPS_PROXY
 
 class Api():

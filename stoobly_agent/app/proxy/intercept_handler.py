@@ -1,18 +1,18 @@
-import importlib
 import os
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
-from lib.intercept_handler.handle_mock_service import handle_request_mock
-from lib.intercept_handler.handle_record_service import handle_request_record, handle_response_record
-from lib.intercept_handler.handle_test_service import handle_request_test
-from lib.intercept_handler.constants import modes
-from lib.intercept_handler.utils.response_handler import bad_request
-from lib.intercept_handler.settings import get_proxy_mode
-from lib.logger import Logger
-from lib.settings import Settings
+from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.settings import Settings
+
+from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
+from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
+from stoobly_agent.app.proxy.handle_test_service import handle_request_test
+from stoobly_agent.app.proxy.constants import modes
+from stoobly_agent.app.proxy.utils.response_handler import bad_request
+from stoobly_agent.app.proxy.settings import get_proxy_mode
 
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'

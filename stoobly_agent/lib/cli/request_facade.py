@@ -4,8 +4,8 @@ from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowRe
 from stoobly_agent.lib.api.requests_resource import RequestsResource
 from stoobly_agent.lib.api.schemas.request import Request
 from stoobly_agent.lib.api.keys.request_key import RequestKey
-from stoobly_agent.lib.intercept_handler.constants import modes, test_strategies
-from stoobly_agent.lib.intercept_handler.replay.replay_request_service import replay
+from stoobly_agent.app.proxy.constants import modes, test_strategies
+from stoobly_agent.app.proxy.replay.replay_request_service import replay
 from stoobly_agent.lib.settings import Settings
 
 class RequestFacade():

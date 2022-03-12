@@ -4,9 +4,10 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from mitmproxy.net.http.response import Response as MitmproxyResponse 
 
-from ..api.requests_resource import RequestsResource
-from ..logger import Logger
-from ..settings import IProjectRecordSettings, Settings
+from stoobly_agent.lib.api.requests_resource import RequestsResource
+from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.settings import IProjectRecordSettings, Settings
+
 from .constants import custom_response_codes, record_policy
 from .mock.eval_request_service import inject_eval_request
 from .settings import get_record_policy, get_service_url

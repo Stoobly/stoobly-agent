@@ -1,8 +1,9 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from typing import Union
 
-from ..constants import custom_headers
-from ..settings import IProjectModeSettings, Settings
+from stoobly_agent.lib.constants import custom_headers
+from stoobly_agent.lib.settings import IProjectModeSettings, Settings
+
 from .constants import mock_policy, modes, record_policy
 
 def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
