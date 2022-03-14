@@ -1,11 +1,15 @@
 import base64
 
-from ..interfaces.request_show_response import RequestShowResponse
+from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowResponse
 
 class Request():
 
   def __init__(self, response: RequestShowResponse):
     self.response = response
+
+  @property
+  def id(self):
+    return self.response.get('id')
 
   @property
   def url(self) -> str:

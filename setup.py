@@ -27,6 +27,7 @@ setup(
         "mergedeep>=1.3.0,<1.3.4",
         "mitmdump>=1.1.0,<=1.1.2",
         "mitmproxy>=6.0.0,<7.0.0",
+        "orator>=0.9.10",
         "pyyaml>=5.4,<=5.4.1",
         "requests>=2.25.0,<=2.25.1",
         "tabulate>=0.8.8",

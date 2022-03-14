@@ -1,42 +1,39 @@
-from typing import Union
+from typing import List
 
 from stoobly_agent.lib.api.interfaces.requests_index_query_params import RequestsIndexQueryParams
-from stoobly_agent.lib.api.interfaces.requests_index_response import RequestsIndexResponse
-from stoobly_agent.lib.api.schemas.request import Request
-from stoobly_agent.lib.api.requests_resource import RequestsResource
+from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+from stoobly_agent.lib.models.request_model import RequestModel
+from stoobly_agent.lib.models.schemas.request import Request
 
 from .replay_request_service import replay as replay_request, ReplayRequestOptions
 
-def replay(api: RequestsResource, **kwargs):
+def replay(request_model: RequestModel, **kwargs):
   options: ReplayRequestOptions = kwargs # For annotation purposes
 
-  scenario_key = options['scenario_key']
+  scenario_key = ScenarioKey(options['scenario_key'])
 
   page = 0
   count = 0
   l = []
 
   while True:
-    requests_response = __get_requests(
-      api, scenario_key, { 
+    requests_index = __get_requests(
+      request_model, scenario_key, { 
         'page': page, 'size': '25'
       }
     )
 
-    if not requests_response:
-      return l
+    requests = requests_index['list']
+    total = requests_index['total']
 
-    total = requests_response['total']
-    requests = requests_response['list']
-    
-    if len(requests) == 0:
+    if not requests or len(requests) == 0:
       return l
 
     for request_partial in requests:
-      request_id = request_partial['id']
-      request = __get_request(api, scenario_key, request_id)
+      request_id = request_partial.id
+      request = __get_request(request_model, scenario_key, request_id)
 
-      response = replay_request(Request(request), **kwargs) 
+      response = replay_request(request, **kwargs) 
 
       l.append(response)
 
@@ -48,30 +45,21 @@ def replay(api: RequestsResource, **kwargs):
     page += 1
 
 def __get_requests(
-   api: RequestsResource, scenario_key: str, query_params: RequestsIndexQueryParams = {}
-) -> Union[None, RequestsIndexResponse]:
-  scenario_data = RequestsResource.decode_scenario_key(scenario_key)
+  request_model: RequestModel, scenario_key: ScenarioKey, query_params: RequestsIndexQueryParams = {}
+):
+  project_id = scenario_key.project_id
+  scenario_id = scenario_key.id
 
-  project_id = scenario_data['project_id']
-  scenario_id = scenario_data['id']
-
-  res = api.index(project_id, {
+  return request_model.index(project_id, {
     'scenario_id': scenario_id,
     'page': query_params.get('page'),
     'size': query_params.get('size'),
   })
 
-  if not res.ok:
-    raise AssertionError(f"Could not get requests for scenario {scenario_key}")
+def __get_request(request_model: RequestModel, scenario_key: ScenarioKey, request_id: int) -> Request:
+  project_id = scenario_key.project_id
 
-  return res.json()
-
-def __get_request(api: RequestsResource, scenario_key: str, request_id: int):
-  scenario_data = RequestsResource.decode_scenario_key(scenario_key)
-
-  project_id = scenario_data['project_id']
-
-  res = api.show(
+  return request_model.show(
     project_id, request_id, {
       'body': True,
       'headers': True,
@@ -79,8 +67,3 @@ def __get_request(api: RequestsResource, scenario_key: str, request_id: int):
       'response': True
     }
   )
-
-  if not res.ok:
-    raise AssertionError(f"Could not get details for request {request_id}")
-
-  return res.json()

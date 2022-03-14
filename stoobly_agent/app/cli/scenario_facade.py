@@ -1,8 +1,8 @@
 import pdb
 import requests
 
-from stoobly_agent.lib.api.requests_resource import RequestsResource
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
+from stoobly_agent.lib.models.request_model import RequestModel
 from stoobly_agent.app.proxy.constants import modes, test_strategies
 from stoobly_agent.app.proxy.replay.replay_scenario_service import replay
 from stoobly_agent.lib.settings import Settings
@@ -52,6 +52,6 @@ class ScenarioFacade():
     kwargs['scenario_key'] = scenario_key
 
     replay(
-      RequestsResource(self.settings.api_url, self.settings.api_key), **kwargs
+      RequestModel(self.settings), **kwargs
     )
 
