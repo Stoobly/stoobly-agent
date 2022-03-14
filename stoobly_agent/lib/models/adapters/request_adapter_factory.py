@@ -13,4 +13,4 @@ class RequestAdapterFactory():
 
   def get(self) -> Union[LocalDBRequestAdapter, StooblyRequestAdapter]:
     api = RequestsResource(self.settings.api_url, self.settings.api_key)
-    return api
+    return StooblyRequestAdapter(api)

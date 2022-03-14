@@ -1,9 +1,8 @@
 import pdb
 
-from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowResponse
-from stoobly_agent.lib.api.requests_resource import RequestsResource
-from stoobly_agent.lib.api.schemas.request import Request
+from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.request_key import RequestKey
+from stoobly_agent.lib.models.request_model import RequestModel
 from stoobly_agent.app.proxy.constants import modes, test_strategies
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
 from stoobly_agent.lib.settings import Settings
@@ -11,20 +10,15 @@ from stoobly_agent.lib.settings import Settings
 class RequestFacade():
 
   def __init__(self, settings: Settings):
-    self.api = RequestsResource(settings.api_url, settings.api_key)
-    self.settings = settings
+    self.model = RequestModel(settings)
 
-  def show(self, request_key: str, **kwargs) -> RequestShowResponse:
+  def show(self, request_key: str, **kwargs):
     key = RequestKey(request_key)
-    res = self.api.show(key.project_id, key.request_id, kwargs)
-
-    return res.json()
+    return self.model.show(key.project_id, key.request_id, kwargs)
 
   def index(self, project_key, **kwargs):
-    res = self.api.from_project_key(
-      project_key, lambda project_id: self.api.index(project_id, kwargs)
-    ) 
-    return res.json()
+    key = ProjectKey(project_key)
+    return self.model.index(key.id, kwargs)
 
   def replay(self, request_key: str, **kwargs):
     kwargs['mode'] = modes.NONE
@@ -48,13 +42,13 @@ class RequestFacade():
     return self.__replay(request_key, **kwargs)
 
   def __replay(self, request_key: str, **kwargs):
-    request_response = self.show(request_key, **{
+    request = self.show(request_key, **{
       'body': True,
       'headers': True,
       'query_params': True,
       'response': True,
       **kwargs
     })
-    return replay(Request(request_response), **kwargs)
+    return replay(request, **kwargs)
 
 
