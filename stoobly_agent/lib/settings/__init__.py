@@ -4,7 +4,6 @@ import yaml
 import pdb
 
 from shutil import copyfile
-from typing import List, Optional, TypedDict, Union
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -13,87 +12,7 @@ from ..constants import env_vars
 from ..logger import Logger
 from ..data_dir import DataDir
 from ..source_dir import SourceDir
-
-class Rewrite:
-    name: Optional[str]
-    type: str
-    value: str
-
-class FilterRule(TypedDict):
-    filters: List[Rewrite]
-    method: str
-    pattern: str
-
-class RewriteRule(TypedDict):
-    rewrites: List[Rewrite]
-    method: str
-    pattern: str
-
-class IProjectRecordSettings(TypedDict):
-    enabled: bool
-    exclude_patterns: list
-    filter_rules: list
-    include_patterns: list
-    policy: str
-    project_key: str
-    service_url: str
-    scenario_key: str
-
-class IProjectMockSettings(TypedDict):
-    enabled: bool
-    exclude_patterns: list
-    include_patterns: list
-    policy: str
-    project_key: str
-    service_url: str
-    scenario_key: str
-
-class IProjectTestSettings(TypedDict):
-    exclude_patterns: list
-    include_patterns: list
-    policy: str
-    project_key: str
-    rewrite_rules: list
-    service_url: str
-    scenario_key: str
-    test_strategy: str
-    enabled: bool
-
-class IRecordSettings(TypedDict):
-    enabled: bool
-    project_key: str
-    settings: dict
-
-class IMockSettings(TypedDict):
-    enabled: bool
-    project_key: str
-    settings: dict
-
-class ITestSettings(TypedDict):
-    enabled: bool
-    project_key: str
-    settings: dict
-
-class ISettingsMode(TypedDict):
-    active: str
-    record: IRecordSettings
-    mock: IMockSettings
-    test: ITestSettings
-
-class ISettings(TypedDict):
-    agent_url: str
-    api_url: str
-    api_key: str
-    mode: ISettingsMode
-    proxy_config_path: str
-
-Component = {
-    'Header': 'Header',
-    'BodyParam': 'Body Param',
-    'QueryParam': 'Query Param',
-}
-IProjectModeSettings = Union[IProjectMockSettings, IProjectRecordSettings, IProjectTestSettings]
-Rule = Union[FilterRule, RewriteRule]
+from .types import IProjectModeSettings
 
 class Settings:
     LOG_ID = 'lib.settings'
@@ -118,20 +37,6 @@ class Settings:
             self.__validate()
             self.__load_config()
 
-    def observe_config(self):
-        patterns = ['settings.yml']
-        ignore_patterns = None
-        ignore_directories = False
-        case_sensitive = True
-        event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-        event_handler.on_modified = self.reload_config
-
-        observer = Observer()
-        watch_dir = os.path.dirname(self.settings_file_path)
-
-        observer.schedule(event_handler, watch_dir)
-        observer.start()
-
     ### Statuses
 
     # Headless means the agent is packaged without the frontend and
@@ -144,42 +49,6 @@ class Settings:
 
     def is_debug(self):
         return os.environ.get(env_vars.LOG_LEVEL) == 'debug'
-
-    ### CRUD
-
-    def to_hash(self):
-        return self.config
-
-    def update(self, contents):
-        fp = open(self.settings_file_path, 'w')
-        yaml.dump(contents, fp, allow_unicode=True)
-        fp.close()
-
-    def reload_config(self, event):
-        Logger.instance().info(f"{self.LOG_ID}.reload_config")
-        self.__load_config()
-
-    def to_json(self, pretty_print=False):
-        output = None
-        settings_dict = self.__dict__
-        settings_dict['is_headless'] = self.is_headless()
-        settings_dict['is_debug'] = self.is_debug()
-
-        settings_dict['env_vars'] = {}
-        environ_vars = settings_dict['env_vars']
-
-        # https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
-        env_vars_fields = [a for a in dir(env_vars) if not a.startswith('__')]
-
-        for env_var in env_vars_fields:
-            environ_vars[env_var] = os.environ.get(env_vars.__dict__[env_var])
-
-        if pretty_print:
-            output = json.dumps(settings_dict, indent=4)
-        else:
-            output = json.dumps(settings_dict)
-
-        return output
 
     ### Properties
 
@@ -207,10 +76,6 @@ class Settings:
 
         return self.config.get('agent_url')
 
-    @agent_url.setter
-    def agent_url(self, value):
-        self._agent_url = value
-
     @property
     def proxy_url(self):
         if self._proxy_url:
@@ -220,10 +85,6 @@ class Settings:
             return os.environ[env_vars.AGENT_PROXY_URL]
 
         return self.config.get('proxy_url')
-
-    @proxy_url.setter
-    def proxy_url(self, value) -> None:
-        self._proxy_url = value
 
     @property
     def api_url(self) -> str:
@@ -235,9 +96,6 @@ class Settings:
 
         return self.config.get('api_url')
 
-    @api_url.setter
-    def api_url(self, value) -> None:
-        self._api_url = value
 
     @property
     def api_key(self) -> str:
@@ -273,6 +131,66 @@ class Settings:
             self.__override_project_settings_with_env(active_mode_settings)
 
         return active_mode_settings
+
+    @agent_url.setter
+    def agent_url(self, value):
+        self._agent_url = value
+
+    @api_url.setter
+    def api_url(self, value) -> None:
+        self._api_url = value
+
+    @proxy_url.setter
+    def proxy_url(self, value) -> None:
+        self._proxy_url = value
+
+    def update(self, contents):
+        fp = open(self.settings_file_path, 'w')
+        yaml.dump(contents, fp, allow_unicode=True)
+        fp.close()
+
+    def reload_config(self, event):
+        Logger.instance().info(f"{self.LOG_ID}.reload_config")
+        self.__load_config()
+
+    def to_hash(self):
+        return self.config
+
+    def to_json(self, pretty_print=False):
+        output = None
+        settings_dict = self.__dict__
+        settings_dict['is_headless'] = self.is_headless()
+        settings_dict['is_debug'] = self.is_debug()
+
+        settings_dict['env_vars'] = {}
+        environ_vars = settings_dict['env_vars']
+
+        # https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
+        env_vars_fields = [a for a in dir(env_vars) if not a.startswith('__')]
+
+        for env_var in env_vars_fields:
+            environ_vars[env_var] = os.environ.get(env_vars.__dict__[env_var])
+
+        if pretty_print:
+            output = json.dumps(settings_dict, indent=4)
+        else:
+            output = json.dumps(settings_dict)
+
+        return output
+
+    def observe_config(self):
+        patterns = ['settings.yml']
+        ignore_patterns = None
+        ignore_directories = False
+        case_sensitive = True
+        event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+        event_handler.on_modified = self.reload_config
+
+        observer = Observer()
+        watch_dir = os.path.dirname(self.settings_file_path)
+
+        observer.schedule(event_handler, watch_dir)
+        observer.start()
 
     ### Helpers
 
