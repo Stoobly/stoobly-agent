@@ -9,9 +9,10 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
 
-from .constants import env_vars
-from .logger import Logger
-from .root_dir import RootDir
+from ..constants import env_vars
+from ..logger import Logger
+from ..data_dir import DataDir
+from ..source_dir import SourceDir
 
 class Rewrite:
     name: Optional[str]
@@ -96,7 +97,6 @@ Rule = Union[FilterRule, RewriteRule]
 
 class Settings:
     LOG_ID = 'lib.settings'
-    FILE_NAME = 'settings.yml'
     SCHEMA_FILE_NAME = 'schema.yml'
 
     _instance = None
@@ -108,16 +108,12 @@ class Settings:
         if Settings._instance:
             raise RuntimeError('Call instance() instead')
         else:
-            cwd = os.path.dirname(os.path.realpath(__file__))
-            config_dir = os.path.join(cwd, '..', 'config')
-
-            self.config_file_path = os.path.join(RootDir.instance().root_dir, self.FILE_NAME)
-            self.schema_file_path = os.path.join(config_dir, self.SCHEMA_FILE_NAME)
+            self.settings_file_path = DataDir.instance().settings_file_path
+            self.schema_file_path = SourceDir.instance().schema_file_path
 
             # If the config does not exist, use template
-            if not os.path.exists(self.config_file_path):
-                self.config_template_file_path = os.path.join(config_dir, self.FILE_NAME)
-                copyfile(self.config_template_file_path, self.config_file_path)
+            if not os.path.exists(self.settings_file_path):
+                copyfile(SourceDir.instance().settings_template_file_path, self.settings_file_path)
 
             self.__validate()
             self.__load_config()
@@ -131,7 +127,7 @@ class Settings:
         event_handler.on_modified = self.reload_config
 
         observer = Observer()
-        watch_dir = os.path.dirname(self.config_file_path)
+        watch_dir = os.path.dirname(self.settings_file_path)
 
         observer.schedule(event_handler, watch_dir)
         observer.start()
@@ -155,7 +151,7 @@ class Settings:
         return self.config
 
     def update(self, contents):
-        fp = open(self.config_file_path, 'w')
+        fp = open(self.settings_file_path, 'w')
         yaml.dump(contents, fp, allow_unicode=True)
         fp.close()
 
@@ -193,6 +189,13 @@ class Settings:
             cls._instance = cls()
 
         return cls._instance
+
+    @property
+    def remote_enabled(self):
+        if os.environ.get(env_vars.AGENT_REMOTE_ENABLED):
+            return True 
+
+        return self.config.get('remote_enabled')
 
     @property
     def agent_url(self):
@@ -352,7 +355,7 @@ class Settings:
 
 
     def __load_config(self):
-        with open(self.config_file_path, 'r') as stream:
+        with open(self.settings_file_path, 'r') as stream:
             try:
                 self.config = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
@@ -361,7 +364,7 @@ class Settings:
     def __validate(self):
         try:
             schema = yamale.make_schema(self.schema_file_path)
-            data = yamale.make_data(self.config_file_path)
+            data = yamale.make_data(self.settings_file_path)
             yamale.validate(schema, data)
         except YamaleError as e:
             for result in e.results:
