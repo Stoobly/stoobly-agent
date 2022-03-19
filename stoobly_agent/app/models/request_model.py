@@ -1,3 +1,4 @@
+import pdb
 import requests
 
 from typing import List, TypedDict, Union
@@ -7,16 +8,20 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.settings import Settings
 
 from .adapters.request_adapter_factory import RequestAdapterFactory
+from .adapters.types.request_create_params import RequestCreateParams
 from .types.requests_model_index import RequestsModelIndex
 
 class RequestModel():
 
   def __init__(self, settings: Settings):
-    self.adapter = RequestAdapterFactory(settings).get()
+    if not settings.remote_enabled:
+      self.adapter =  RequestAdapterFactory(settings).local_db()
+    else:
+      self.adapter =  RequestAdapterFactory(settings).stoobly()
 
-  def create(self, project_id: str, raw_requests, params) -> Union[Request, None]:
+  def create(self, **body_params: RequestCreateParams) -> Union[Request, None]:
     try:
-      return Request(self.adapter.create(project_id, raw_requests, params))
+      return Request(self.adapter.create(**body_params))
     except requests.exceptions.RequestException as e:
       self.__handle_request_error(e)
       return None
@@ -27,6 +32,9 @@ class RequestModel():
     except requests.exceptions.RequestException as e:
       self.__handle_request_error(e)
       return None
+
+  def response(self, **query_params):
+    return self.adapter.response(**query_params)
 
   def index(self, project_id: int, query_params) -> Union[RequestsModelIndex, None]:
     try:
