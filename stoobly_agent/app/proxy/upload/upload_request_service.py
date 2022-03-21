@@ -1,19 +1,20 @@
 import errno
 import os
+import pdb
 import time
 import tempfile
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
-from stoobly_agent.lib.api.agent_api import AgentApi
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
-from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
-from stoobly_agent.lib.models.request_model import RequestModel
+from stoobly_agent.lib.api.param_builder import ParamBuilder
+from stoobly_agent.app.models.request_model import RequestModel
 
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.types import IProjectRecordSettings
 
+from ..utils.publish_change_service import publish_change
 from .join_request_service import join_filtered_request
 
 AGENT_STATUSES = {
@@ -23,14 +24,16 @@ AGENT_STATUSES = {
 LOG_ID = 'UploadRequest'
 NAMESPACE_FOLDER = 'stoobly'
 
-def inject_upload_request(request_model: RequestModel, settings: Settings):
-    if not settings:
-        settings = Settings.instance()
+def inject_upload_request(request_model: RequestModel, active_mode_settings: IProjectRecordSettings):
+    settings = Settings.instance()
 
     if not request_model:
         request_model = RequestModel(settings)
 
-    return lambda flow: upload_request(request_model, settings, flow)
+    if not active_mode_settings:
+        active_mode_settings = settings.active_mode_settings
+
+    return lambda flow: upload_request(request_model, active_mode_settings, flow)
 
 ###
 #
@@ -40,37 +43,29 @@ def inject_upload_request(request_model: RequestModel, settings: Settings):
 # @param settings [Settings.mode.mock | Settings.mode.record]
 # @param res [Net::HTTP::Response]
 #
-def upload_request(request_model: RequestModel, settings: Settings, flow: MitmproxyHTTPFlow):
-    active_mode_settings = settings.active_mode_settings
+def upload_request(
+    request_model: RequestModel, active_mode_settings: IProjectRecordSettings, flow: MitmproxyHTTPFlow
+):
     joined_request = join_filtered_request(flow, active_mode_settings)
 
     Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
-    project_id = None
-    raw_requests = joined_request.build()
-    body_params = { 'importer': 'gor' }
+    settings = Settings.instance()
+    if settings.is_debug():
+        __debug_request(flow.request, joined_request.build())
 
-    if Settings.instance().is_debug():
-        __debug_request(flow.request, raw_requests)
+    body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
+    body_params.with_resource_scoping(active_mode_settings)
 
-    # Try to see if a scenario is set, otherwise use project
-    scenario_key = ScenarioKey(active_mode_settings.get('scenario_key'))
-    if scenario_key:
-        body_params['scenario_id'] = scenario_key.id
-        project_id = scenario_key.project_id
-    else:
-        project_key = ProjectKey(active_mode_settings.get('project_key'))
-        project_id = project_key.id
-
-    try:
-        request = request_model.create(project_id, raw_requests, body_params)
-    except Exception as e:
+    #try:
+    request = request_model.create(**body_params.build())
+    #except Exception as e:
         # If anything bad happens, just log it
-        Logger.instance().error(e)
-        return None
+    #    Logger.instance().error(e)
+    #    return None
 
-    if not Settings.instance().is_headless() and request:
-        __publish_change(settings)
+    if request:
+        publish_change(AGENT_STATUSES['REQUESTS_MODIFIED'])
 
     return request
 
@@ -93,13 +88,3 @@ def __debug_request(request: MitmproxyRequest, raw_requests: bytes):
     with open(file_path, 'wb') as f:
         f.write(raw_requests)
 
-# Announce that a new request has been created
-def __publish_change(settings):
-    active_mode_settings = settings.active_mode_settings
-    agent_url = settings.agent_url
-
-    if not agent_url:
-        Logger.instance().warn('Settings.agent_url not configured')
-    else:
-        request_model: AgentApi = AgentApi(agent_url)
-        request_model.update_status(AGENT_STATUSES['REQUESTS_MODIFIED'], active_mode_settings.get('project_key'))

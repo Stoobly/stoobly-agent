@@ -2,8 +2,8 @@ import os
 import pdb
 import requests
 
-from stoobly_agent.app.proxy import get_proxy_url
-from stoobly_agent.lib.constants.env_vars import HTTP_PROXY, HTTPS_PROXY
+from stoobly_agent.config.constants.env_vars import HTTP_PROXY, HTTPS_PROXY
+from stoobly_agent.app.settings import Settings
 
 class Api():
 
@@ -18,7 +18,8 @@ class Api():
       return res
 
     def with_proxy(self, handler):
-      proxy_url = get_proxy_url()
+      settings = Settings.instance()
+      proxy_url = settings.proxy_url
       current = self.set_proxy(proxy_url)
 
       res = handler()

@@ -4,13 +4,13 @@ import requests
 from http.cookies import SimpleCookie
 from typing import TypedDict, Union
 
-from stoobly_agent.lib.constants import custom_headers
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.models.schemas.request import Request
-from stoobly_agent.app.proxy.constants import modes
+from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.config.constants import mode
 
 class ReplayRequestOptions(TypedDict):
-  mode: Union[modes.MOCK, modes.RECORD, modes.TEST, None]
+  mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   project_key: str
   report_key: str
   scenario_key: str

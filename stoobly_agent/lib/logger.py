@@ -1,7 +1,7 @@
 import logging
 import os
 
-from .constants.env_vars import LOG_LEVEL
+from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 
 class Logger:
     _instance = None

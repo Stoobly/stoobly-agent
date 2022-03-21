@@ -1,6 +1,6 @@
 # Stoobly Agent
 
-Record requests to Stoobly and mock HTTP/HTTPS requests
+Record requests to Stoobly. Mock or test HTTP/HTTPS requests.
 
 ## Prerequisite
 
@@ -32,7 +32,21 @@ stoobly-agent run --headless
 stoobly-agent --help
 ```
 
-## For developers
+## For Developers
 
-- Bump up the version in `setup.py` with each PR so the CI automation will publish new artifacts with that new version.
+### Dependencies
+
+```
+pip3 install alembic
+```
+
+### Installation
+
+```
+pip install .
+```
+
+### Deployment
+
+- Bump the version in `setup.py` with each PR so the CI automation will publish new artifacts with that new version.
 

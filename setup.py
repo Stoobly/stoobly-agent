@@ -11,6 +11,9 @@ def package_files(directory):
 public_files_relative_path = 'stoobly_agent/public'
 public_files = package_files(public_files_relative_path)
 
+db_files_relative_path = 'stoobly_agent/db'
+db_files = package_files(db_files_relative_path)
+
 setup(
     author='Michael Yen',
     author_email='michael@stoobly.com',
@@ -22,12 +25,14 @@ setup(
     },
     include_package_data=True,
     install_requires=[
+        "alembic>=1.7.6",
         "click>=7.0.0,<8.0.0",
         "distro>=1.6.0,<1.7.0",
+        "httptools>=0.4.0",
         "mergedeep>=1.3.0,<1.3.4",
         "mitmdump>=1.1.0,<=1.1.2",
         "mitmproxy>=6.0.0,<7.0.0",
-        "orator>=0.9.10",
+        "orator>=0.9.9",
         "pyyaml>=5.4,<=5.4.1",
         "requests>=2.25.0,<=2.25.1",
         "tabulate>=0.8.8",
@@ -40,7 +45,7 @@ setup(
         'stoobly_agent', 'stoobly_agent.*',
     ]),
     package_data={
-        'stoobly_agent': ['app/*' , 'config/*'] + public_files
+        'stoobly_agent': ['config/*'] + db_files + public_files
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',

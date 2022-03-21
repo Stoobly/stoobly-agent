@@ -1,10 +1,12 @@
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from typing import Union
+from ...config.constants import mock_policy, record_policy
 
-from stoobly_agent.lib.constants import custom_headers
-from stoobly_agent.lib.settings import IProjectModeSettings, Settings
+from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.types import IProjectModeSettings
 
-from .constants import mock_policy, modes, record_policy
+from ...config.constants import mode
 
 def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
     if custom_headers.PROJECT_KEY in headers:
@@ -29,9 +31,9 @@ def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str
     do_proxy_header = custom_headers.DO_PROXY
 
     if access_control_header in headers and do_proxy_header.lower() in headers[access_control_header]:
-        return modes.NONE
+        return mode.NONE
     elif do_proxy_header in headers:
-        return modes.NONE
+        return mode.NONE
     elif custom_headers.PROXY_MODE in headers:
         return headers[custom_headers.PROXY_MODE]
     else:

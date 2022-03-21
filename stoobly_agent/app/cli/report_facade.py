@@ -1,7 +1,7 @@
 import requests
 
 from stoobly_agent.lib.api.reports_resource import ReportsResource
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.app.settings import Settings
 
 class ReportFacade():
 

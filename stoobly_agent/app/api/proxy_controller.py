@@ -2,7 +2,7 @@ import requests
 
 from http.cookies import SimpleCookie
 
-from stoobly_agent.lib.constants import headers
+from stoobly_agent.config.constants import headers
 from stoobly_agent.lib.logger import Logger
 
 class ProxyController:

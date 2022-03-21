@@ -3,12 +3,12 @@ import requests
 
 from typing import List, TypedDict, Union
 
-from stoobly_agent.lib.models.schemas.request import Request
+from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.app.settings import Settings
 
 from .adapters.request_adapter_factory import RequestAdapterFactory
-from .adapters.types.request_create_params import RequestCreateParams
+from .adapters.types import RequestCreateParams, RequestShowParams
 from .types.requests_model_index import RequestsModelIndex
 
 class RequestModel():
@@ -21,14 +21,14 @@ class RequestModel():
 
   def create(self, **body_params: RequestCreateParams) -> Union[Request, None]:
     try:
-      return Request(self.adapter.create(**body_params))
+      return self.adapter.create(**body_params)
     except requests.exceptions.RequestException as e:
       self.__handle_request_error(e)
       return None
 
-  def show(self, project_id: str, request_id: str, query_params) -> Union[Request, None]:
+  def show(self, request_id: str, **params: RequestShowParams) -> Union[Request, None]:
     try:
-      return Request(self.adapter.show(project_id, request_id, query_params))
+      return self.adapter.show(request_id, **params)
     except requests.exceptions.RequestException as e:
       self.__handle_request_error(e)
       return None
@@ -36,17 +36,12 @@ class RequestModel():
   def response(self, **query_params):
     return self.adapter.response(**query_params)
 
-  def index(self, project_id: int, query_params) -> Union[RequestsModelIndex, None]:
+  def index(self, **query_params) -> Union[RequestsModelIndex, None]:
     try:
-      res = self.adapter.index(project_id, query_params)
+      return self.adapter.index(**query_params)
     except requests.exceptions.RequestException as e:
       self.__handle_request_error(e)
-      return None, None
-
-    return {
-      'list': list(map(lambda request_response: Request(request_response), res['list'])),
-      'total': res['total'],
-    }
+      return None
 
   def __handle_request_error(self, e: requests.exceptions.RequestException):
       response: requests.Response = e.response

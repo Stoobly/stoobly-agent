@@ -3,10 +3,11 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.response import Response as MitmproxyResponse
 
-from stoobly_agent.lib.api.requests_resource import RequestsResource
-from stoobly_agent.lib.constants import custom_headers
+from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.settings import Settings, IProjectTestSettings
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.types import IProjectTestSettings 
 
 from .mitmproxy.request_adapter import MitmproxyRequestAdapter
 from .utils.filters_to_ignored_components_service import filters_to_ignored_components
@@ -41,8 +42,8 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
         rewrite_rules = request.relevant_rewrites
         ignored_components = filters_to_ignored_components(rewrite_rules)
 
-    api = RequestsResource(settings.api_url, settings.api_key)
-    context = MockContext(flow, active_mode_settings).with_api(api)
+    request_model = RequestModel(settings)
+    context = MockContext(flow, active_mode_settings).with_model(request_model)
 
     handle_request_mock_generic(
         context,

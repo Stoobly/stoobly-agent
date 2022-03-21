@@ -2,8 +2,8 @@ import click
 import json
 import pdb
 
-from stoobly_agent.app.proxy.constants import test_strategies
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.app.settings import Settings
 
 from .scenario_facade import ScenarioFacade
 from .utils.tabulate_print_service import tabulate_print
@@ -32,7 +32,7 @@ def replay(**kwargs):
 
 @scenario.command()
 @click.option('--save-to-report', help='Key for the report to store test results.')
-@click.option('--strategy', default=test_strategies.DIFF, help=f"{test_strategies.CUSTOM} | {test_strategies.DIFF} | {test_strategies.FUZZY}")
+@click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('scenario_key')
 def test(**kwargs):
     scenario_key = kwargs['scenario_key']

@@ -1,59 +1,44 @@
 import urllib
 
 from ..logger import Logger
-from .interfaces.requests_index_query_params import RequestsIndexQueryParams
+from .interfaces import RequestCreateParams, RequestsIndexQueryParams, RequestShowQueryParams
 from .stoobly_api import StooblyApi
 
 class RequestsResource(StooblyApi):
 
-  def create(self, project_id: str, raw_requests, params):
+  def create(self, **body_params: RequestCreateParams):
       url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
 
-      body = {
-          'project_id': project_id,
-          **params,
-      }
+      requests = body_params.get('requests')
 
-      return self.post(url, headers=self.default_headers, data=body, files={ 'requests': raw_requests })
+      if requests:
+        del body_params['requests']
 
-  def index(self, project_id: int, query_params: RequestsIndexQueryParams):
+      return self.post(url, headers=self.default_headers, data=body_params, files={ 'requests': requests })
+
+  def index(self, **query_params: RequestsIndexQueryParams):
     url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"
 
-    params = {
-      'project_id': project_id,
-      **query_params,
-    }
+    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
 
-    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+    return self.get(url, headers=self.default_headers, params=query_params)
 
-    return self.get(url, headers=self.default_headers, params=params)
-
-  def response(self, project_id: str, query_params):
+  def response(self, **query_params):
     url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/response"
 
-    params = {
-        'project_id': project_id,
-        **query_params,
-    }
-
-    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
 
     return self.get(
         url,
         allow_redirects=False,
         headers=self.default_headers,
-        params=params,
+        params=query_params,
         stream=True
     )
 
-  def show(self, project_id: str, request_id: str, query_params):
+  def show(self, request_id, **query_params: RequestShowQueryParams):
       url = f"{self.service_url}{self.REQUESTS_ENDPOINT}/{request_id}"
 
-      params = {
-        'project_id': project_id,
-        **query_params,
-      }
+      Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
 
-      Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
-
-      return self.get(url, headers=self.default_headers, params=params)
+      return self.get(url, headers=self.default_headers, params=query_params)

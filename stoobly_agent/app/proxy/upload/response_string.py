@@ -7,15 +7,25 @@ class ResponseString:
     RESPONSE_TYPE = 2
     CLRF = b"\r\n"
 
+    __current_time = None
+
     def __init__(self, response, request_id):
+        self.__current_time = self.__get_current_time()
+
         self.response = response
         self.lines = []
         self.latency = 0
         self.request_id = request_id
 
-        self.response_line()
-        self.headers()
-        self.body()
+        self.__response_line()
+        self.__headers()
+        self.__body()
+
+    def get(self, **kwargs):
+        if kwargs.get('control'):
+            return self.CLRF.join([self.control()] + self.lines)
+        else:
+            return self.CLRF.join(self.lines)
 
     ###
     #
@@ -25,23 +35,24 @@ class ResponseString:
     # 4 - response latency in nano seconds
     #
     def control(self):
-        current_time = self.current_time()
+        line = "{} {} {} {}".format(self.RESPONSE_TYPE, self.request_id, self.__current_time, self.latency)
+        return line.encode(self.ENCODING)
 
-        line = "{} {} {} {}".format(self.RESPONSE_TYPE, self.request_id, current_time, self.latency)
-        self.lines.insert(0, line.encode(self.ENCODING))
+    def with_latency(self, latency):
+        self.latency = latency
 
-    def response_line(self):
+    def __response_line(self):
         line = "HTTP/1.1 {}".format(self.response.code)
         self.lines.append(line.encode(self.ENCODING))
 
-    def headers(self):
+    def __headers(self):
         headers = self.response.headers
 
         for name, val in headers.items():
-            line = "{}: {}".format(self.to_header_case(name), val)
+            line = "{}: {}".format(self.__to_header_case(name), val)
             self.lines.append(line.encode(self.ENCODING))
 
-    def body(self):
+    def __body(self):
         body = self.response.body
 
         if not body:
@@ -51,14 +62,7 @@ class ResponseString:
         else:
             raise Exception('Unsupported body type')
 
-    def with_latency(self, latency):
-        self.latency = latency
-
-    def get(self):
-        self.control()
-        return self.CLRF.join(self.lines)
-
-    def to_header_case(self, header):
+    def __to_header_case(self, header):
         toks = re.split('_|-', header)
         if len(toks) == 1:
             return header
@@ -67,7 +71,7 @@ class ResponseString:
             toks[index] = tok.lower().capitalize()
         return "-".join(toks)
 
-    def current_time(self):
+    def __get_current_time(self):
         now = time.time()
         current_time = round(now * (pow(10, 6)))
         return current_time
