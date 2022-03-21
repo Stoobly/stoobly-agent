@@ -4,15 +4,15 @@ class RequestKey(ResourceKey):
 
   @property
   def project_id(self) -> str:
-    return self.decoded_key.get('project_id')
+    return self.decoded_key.get('p')
 
   @property
   def request_id(self) -> str:
-    return self.decoded_key.get('request_id')
+    return self.decoded_key.get('i')
 
   @staticmethod
   def encode(project_id: str, request_id: str):
     return ResourceKey.encode({
-      'project_id': project_id,
-      'request_id': request_id,
+      'p': project_id,
+      'i': request_id,
     })
