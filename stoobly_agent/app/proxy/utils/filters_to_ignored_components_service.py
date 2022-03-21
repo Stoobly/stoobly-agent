@@ -1,6 +1,6 @@
 from typing import List, TypedDict
 
-from stoobly_agent.lib.settings import Component, Rewrite
+from stoobly_agent.app.settings.types import Component, Rewrite
 from ..mock.hashed_request_decorator import COMPONENT_TYPES
 
 class IgnoredComponent(TypedDict):

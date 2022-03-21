@@ -21,10 +21,6 @@ def reverse_proxy(request: MitmproxyRequest, service_url: str, options = {}):
 # Return response headers, body, and status code
 #
 def pass_on(flow: MitmproxyHTTPFlow, res: Response):
-    # Ideally we just return the HTTPResponse object from res.raw
-    # See Issue #11
-    #flow.response = res.raw
-
     headers = {}
     for key, value in res.headers.items():
         headers[key.capitalize()] = value
@@ -33,6 +29,9 @@ def pass_on(flow: MitmproxyHTTPFlow, res: Response):
     # with Content-Length header. If the content is gzipped, an IncompleteRead error will be thrown
     #content = res.raw.read(res.raw.length_remaining)
 
+    # Ideally we just return the HTTPResponse object from res.raw
+    # See Issue #11
+    # content = res.raw
     content = res.content
 
     flow.response = http.HTTPResponse.make(

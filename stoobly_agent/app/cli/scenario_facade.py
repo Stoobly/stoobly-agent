@@ -1,11 +1,12 @@
 import pdb
 import requests
+from stoobly_agent.config.constants import test_strategy
 
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
-from stoobly_agent.lib.models.request_model import RequestModel
-from stoobly_agent.app.proxy.constants import modes, test_strategies
+from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.config.constants import mode
 from stoobly_agent.app.proxy.replay.replay_scenario_service import replay
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.app.settings import Settings
 
 class ScenarioFacade():
 
@@ -38,13 +39,13 @@ class ScenarioFacade():
     return res.json()
 
   def replay(self, scenario_key: str, **kwargs):
-    kwargs['mode'] = modes.NONE
+    kwargs['mode'] = mode.NONE
     self.__replay(scenario_key, **kwargs)
 
   def test(self, scenario_key: str, **kwargs):
-    kwargs['mode'] = modes.TEST
+    kwargs['mode'] = mode.TEST
     kwargs['report_key'] = kwargs.get('save_to_report')
-    kwargs['strategy'] = kwargs.get('strategy') or test_strategies.DIFF
+    kwargs['strategy'] = kwargs.get('strategy') or test_strategy.DIFF
 
     self.__replay(scenario_key, **kwargs)
 

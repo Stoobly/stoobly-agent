@@ -1,10 +1,9 @@
-from typing import List
-from unittest import mock
+from typing import List, Union 
 
-from stoobly_agent.app.proxy.constants import modes
-from stoobly_agent.app.proxy.constants import mock_policy
-from stoobly_agent.app.proxy.constants import record_policy
-from stoobly_agent.app.proxy.constants import test_strategies
+from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import mock_policy
+from stoobly_agent.config.constants import record_policy
+from stoobly_agent.config.constants import test_strategy
 
 class ActiveModeSettingsBuilder():
   exclude_patterns: list = []
@@ -17,14 +16,14 @@ class ActiveModeSettingsBuilder():
   test_strategy: str = None
   enabled: bool  = False
 
-  def __init__(self, mode: List[modes.MOCK, modes.RECORD, modes.TEST]):
-    if mode == modes.MOCK:
+  def __init__(self, active_mode: Union[mode.MOCK, mode.RECORD, mode.TEST]):
+    if active_mode == mode.MOCK:
       self.policy = mock_policy.ALL
-    elif mode == modes.RECORD:
+    elif active_mode == mode.RECORD:
       self.policy = record_policy.ALL
-    elif mode == modes.TEST:
+    elif active_mode == mode.TEST:
       self.policy = mock_policy.ALL
-      self.test_strategy = test_strategies.DIFF
+      self.test_strategy = test_strategy.DIFF
 
   def with_exclude_patterns(self, patterns: List[str]):
     self.exclude_patterns = patterns

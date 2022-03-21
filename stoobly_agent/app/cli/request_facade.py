@@ -1,11 +1,13 @@
 import pdb
+from stoobly_agent.config.constants import test_strategy
 
+from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.proxy.replay.replay_request_service import replay
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.request_key import RequestKey
-from stoobly_agent.lib.models.request_model import RequestModel
-from stoobly_agent.app.proxy.constants import modes, test_strategies
-from stoobly_agent.app.proxy.replay.replay_request_service import replay
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.config.constants import mode
 
 class RequestFacade():
 
@@ -14,27 +16,30 @@ class RequestFacade():
 
   def show(self, request_key: str, **kwargs):
     key = RequestKey(request_key)
-    return self.model.show(key.project_id, key.request_id, kwargs)
+    return self.model.show(key.request_id, **{ 
+      'project_id': key.project_id, 
+      **kwargs 
+    })
 
   def index(self, project_key, **kwargs):
     key = ProjectKey(project_key)
-    return self.model.index(key.id, kwargs)
+    return self.model.index(**{ 'project_id': key.id, **kwargs})
 
   def replay(self, request_key: str, **kwargs):
-    kwargs['mode'] = modes.NONE
+    kwargs['mode'] = mode.NONE
     return self.__replay(request_key, **kwargs)
 
   def record(self, request_key: str, **kwargs):
-    kwargs['mode'] = modes.RECORD
+    kwargs['mode'] = mode.RECORD
     return self.__replay(request_key, **kwargs)
 
   def mock(self, request_key: str, **kwargs):
-    kwargs['mode'] = modes.MOCK
+    kwargs['mode'] = mode.MOCK
     return self.__replay(request_key, **kwargs)
 
   def test(self, request_key: str, **kwargs):
-    kwargs['mode'] = modes.TEST
-    kwargs['strategy'] = kwargs.get('strategy') or test_strategies.DIFF
+    kwargs['mode'] = mode.TEST
+    kwargs['strategy'] = kwargs.get('strategy') or test_strategy.DIFF
     
     if kwargs.get('save_to_report'):
       kwargs['report_key'] = kwargs.get('save_to_report')
@@ -49,6 +54,4 @@ class RequestFacade():
       'response': True,
       **kwargs
     })
-    return replay(request, **kwargs)
-
-
+    return replay(Request(request), **kwargs)

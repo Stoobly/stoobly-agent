@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import yaml
 import pdb
 
@@ -8,14 +9,16 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
 
-from ..constants import env_vars
-from ..logger import Logger
-from ..data_dir import DataDir
-from ..source_dir import SourceDir
+from stoobly_agent.config.constants import env_vars
+from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.source_dir import SourceDir
+from stoobly_agent.lib.logger import Logger
+
 from .types import IProjectModeSettings
+from .active_mode_settings_builder import ActiveModeSettingsBuilder
 
 class Settings:
-    LOG_ID = 'lib.settings'
+    LOG_ID = 'app.settings'
     SCHEMA_FILE_NAME = 'schema.yml'
 
     _instance = None
@@ -37,6 +40,13 @@ class Settings:
             self.__validate()
             self.__load_config()
 
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+
+        return cls._instance
+
     ### Statuses
 
     # Headless means the agent is packaged without the frontend and
@@ -50,14 +60,14 @@ class Settings:
     def is_debug(self):
         return os.environ.get(env_vars.LOG_LEVEL) == 'debug'
 
+
     ### Properties
 
-    @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-
-        return cls._instance
+    @property
+    def config(self):
+        if not self.__config:
+            self.__load_config()
+        return self.__config
 
     @property
     def remote_enabled(self):
@@ -124,13 +134,16 @@ class Settings:
     # If the env var is null, get the setting from the yaml file
     @property
     def active_mode_settings(self) -> IProjectModeSettings:
-        active_mode_settings = self.__build_active_mode_settings()
+        if self.remote_enabled:
+            active_mode_settings = self.__build_active_mode_settings()
 
-        if self.is_headless():
-            self.__override_settings_with_env(active_mode_settings)
-            self.__override_project_settings_with_env(active_mode_settings)
+            if self.is_headless():
+                self.__override_settings_with_env(active_mode_settings)
+                self.__override_project_settings_with_env(active_mode_settings)
 
-        return active_mode_settings
+            return active_mode_settings
+        else:
+            return ActiveModeSettingsBuilder(self.active_mode).with_enabled(True).build()
 
     @agent_url.setter
     def agent_url(self, value):
@@ -154,6 +167,8 @@ class Settings:
         self.__load_config()
 
     def to_hash(self):
+        if not self.config:
+            self.__load_config()
         return self.config
 
     def to_json(self, pretty_print=False):
@@ -275,9 +290,11 @@ class Settings:
     def __load_config(self):
         with open(self.settings_file_path, 'r') as stream:
             try:
-                self.config = yaml.safe_load(stream)
+                config = yaml.safe_load(stream)
+                if config:
+                    self.__config = config
             except yaml.YAMLError as exc:
-                pass
+                Logger.instance().error(exc)
 
     def __validate(self):
         try:

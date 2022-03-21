@@ -1,8 +1,11 @@
+import pdb
+
 from mergedeep import merge
 
-from stoobly_agent.app.proxy.constants import mock_policy, modes, record_policy
+from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import mock_policy, record_policy
 from stoobly_agent.lib.api.stoobly_api import StooblyApi
-from stoobly_agent.lib.settings import Settings
+from stoobly_agent.app.settings import Settings
 
 class ConfigsController:
     _instance = None
@@ -25,12 +28,12 @@ class ConfigsController:
         settings = Settings.instance()
         active_mode = settings.active_mode
 
-        if active_mode in [modes.MOCK, modes.TEST]:
+        if active_mode in [mode.MOCK, mode.TEST]:
             context.render(
                 json = [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
                 status = 200
             )
-        elif active_mode == modes.RECORD:
+        elif active_mode == mode.RECORD:
             context.render(
                 json = [record_policy.ALL, record_policy.NONE, record_policy.NOT_FOUND],
                 status = 200
@@ -48,22 +51,22 @@ class ConfigsController:
     # GET /api/v1/admin/configs/modes
     def get_configs_modes(self, context):
         settings = Settings.instance()
-        mode = settings.mode
+        settings_mode = settings.mode
 
         mock = {}
-        mock_mode = mode.get('mock')
+        mock_mode = settings_mode.get('mock')
         if mock_mode:
             project_key = self.__merge_project_key(mock, mock_mode)
             self.__merge_scenario_key(mock, mock_mode, project_key)
 
         record = {}
-        record_mode = mode.get('record')
+        record_mode = settings_mode.get('record')
         if record_mode:
             project_key = self.__merge_project_key(record, record_mode)
             self.__merge_scenario_key(record, record_mode, project_key)
 
         test = {}
-        test_mode = mode.get('test')
+        test_mode = settings_mode.get('test')
         if test_mode:
             project_key = self.__merge_project_key(test, test_mode)
             self.__merge_scenario_key(test, test_mode, project_key)
@@ -79,7 +82,7 @@ class ConfigsController:
                     'test': test,
                 },
                 'enabled': settings.active_mode_settings.get('enabled'),
-                'list': [modes.MOCK, modes.RECORD, modes.TEST],
+                'list': [mode.MOCK, mode.RECORD, mode.TEST],
                 'proxy_url': settings.proxy_url,
             },
             status = 200
@@ -89,7 +92,6 @@ class ConfigsController:
     def put_configs(self, context):
         updated_settings = context.parse_body()
         settings = Settings.instance()
-
         merged_settings = merge(settings.to_hash(), updated_settings)
         settings.update(merged_settings)
 

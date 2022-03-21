@@ -10,7 +10,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
-from stoobly_agent.lib.constants import headers
+from stoobly_agent.config.constants import headers
 
 from .configs_controller import ConfigsController
 from .proxy_controller import ProxyController

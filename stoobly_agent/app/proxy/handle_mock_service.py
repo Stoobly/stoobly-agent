@@ -3,13 +3,15 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
+from ...config.constants import mock_policy
 
-from stoobly_agent.lib.api.requests_resource import RequestsResource
-from stoobly_agent.lib.constants import custom_headers
+from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.types import IProjectMockSettings
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.settings import IProjectMockSettings, Settings
 
-from .constants import custom_response_codes, mock_policy
+from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_request_service import inject_eval_request
 from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
@@ -24,12 +26,12 @@ LOG_ID = 'HandleMock'
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, **kwargs):
-    api: RequestsResource = context.api
+    request_model: RequestModel = context.model
     active_mode_settings = context.active_mode_settings
     flow = context.flow
     request: MitmproxyRequest = flow.request
 
-    eval_request = inject_eval_request(api, active_mode_settings)
+    eval_request = inject_eval_request(request_model, active_mode_settings)
     handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
     handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
@@ -82,8 +84,8 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
 
 def handle_request_mock(flow: MitmproxyHTTPFlow, settings: Settings):
     active_mode_settings: IProjectMockSettings = settings.active_mode_settings
-    api = RequestsResource(settings.api_url, settings.api_key)
-    context = MockContext(flow, active_mode_settings).with_api(api)
+    request_model = RequestModel(settings)
+    context = MockContext(flow, active_mode_settings).with_model(request_model)
 
     handle_request_mock_generic(
         context,

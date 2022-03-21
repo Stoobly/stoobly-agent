@@ -1,9 +1,9 @@
 from typing import List
 
-from stoobly_agent.lib.api.interfaces.requests_index_query_params import RequestsIndexQueryParams
+from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexQueryParams
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
-from stoobly_agent.lib.models.request_model import RequestModel
-from stoobly_agent.lib.models.schemas.request import Request
+from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.models.schemas.request import Request
 
 from .replay_request_service import replay as replay_request, ReplayRequestOptions
 
@@ -23,7 +23,7 @@ def replay(request_model: RequestModel, **kwargs):
       }
     )
 
-    requests = requests_index['list']
+    requests = list(map(lambda request: Request(request), requests_index['list']))
     total = requests_index['total']
 
     if not requests or len(requests) == 0:
@@ -31,7 +31,7 @@ def replay(request_model: RequestModel, **kwargs):
 
     for request_partial in requests:
       request_id = request_partial.id
-      request = __get_request(request_model, scenario_key, request_id)
+      request = Request(__get_request(request_model, scenario_key, request_id))
 
       response = replay_request(request, **kwargs) 
 
@@ -50,19 +50,22 @@ def __get_requests(
   project_id = scenario_key.project_id
   scenario_id = scenario_key.id
 
-  return request_model.index(project_id, {
+  return request_model.index(**{
+    'project_id': project_id,
     'scenario_id': scenario_id,
     'page': query_params.get('page'),
     'size': query_params.get('size'),
   })
 
-def __get_request(request_model: RequestModel, scenario_key: ScenarioKey, request_id: int) -> Request:
+def __get_request(request_model: RequestModel, scenario_key: ScenarioKey, request_id: int) -> RequestShowResponse:
   project_id = scenario_key.project_id
 
   return request_model.show(
-    project_id, request_id, {
+    request_id,
+    **{
       'body': True,
       'headers': True,
+      'project_id': project_id,
       'query_params': True,
       'response': True
     }

@@ -17,3 +17,4 @@ mode:
     project_key: ''
     settings: {}
 proxy_config_path: config/settings.yml
+remoted_enabled: false
