@@ -4,8 +4,8 @@ class ScenarioKey(ResourceKey):
 
   @property
   def project_id(self) -> str:
-    return self.decoded_key.get('project_id')
+    return self.decoded_key.get('p')
 
   @property
   def id(self) -> str:
-    return self.decoded_key.get('id')
+    return self.decoded_key.get('i')

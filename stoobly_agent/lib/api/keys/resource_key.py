@@ -1,6 +1,7 @@
 import base64
 import json
-import pdb
+import random
+import time
 
 class ResourceKey():
 
@@ -20,5 +21,8 @@ class ResourceKey():
 
 
     @staticmethod
-    def encode(data):
-        return base64.b64encode(json.dumps(data).encode())
+    def encode(data: dict):
+        return base64.b64encode(json.dumps({
+            **data,
+            't': random.randint(1000000, 10000000),
+        }).encode())
