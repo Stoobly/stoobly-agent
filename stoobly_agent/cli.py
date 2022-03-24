@@ -8,18 +8,16 @@ import threading
 from stoobly_agent.config.constants import env_vars
 
 from .app.api import run as run_api
-from .app.cli.ca_cert_cli import ca_cert
-from .app.cli.config_cli import config
-from .app.cli.dev_tools import dev_tools
-from .app.cli.report_cli import report
-from .app.cli.request_cli import request
-from .app.cli.scenario_cli import scenario
-from .app.cli.exec import run_command, run_command_with_proxy_export
+from .app.cli import ca_cert, config, dev_tools, feature, report, request, scenario
+from .app.cli.decorators.exec import ExecDecorator
 from .app.cli.utils.migrate_service import migrate as migrate_database
 from .app.proxy import INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
 
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+settings = Settings.instance()
+
 @click.version_option()
 @click.group(
     epilog="Run 'stoobly COMMAND --help' for more information on a command.",
@@ -32,10 +30,18 @@ def main(ctx):
 # Attach subcommands to main
 main.add_command(ca_cert)
 main.add_command(config)
-main.add_command(dev_tools)
-main.add_command(report)
+main.add_command(feature)
 main.add_command(request)
-main.add_command(scenario)
+
+if settings.features.get('dev_tools'):
+    main.add_command(dev_tools)
+
+if settings.features.get('exec'):
+    ExecDecorator(main).decorate()
+
+if settings.remote_enabled:
+    main.add_command(report)
+    main.add_command(scenario)
 
 @main.command()
 @click.option('--api-url', help='API URL.')
@@ -77,23 +83,6 @@ def run(**kwargs):
     migrate_database()
 
     run_proxy(**kwargs)
-
-@main.command()
-@click.option('--command', is_flag=True, default=False, help='Read commands from the command_string operand instead of from the standard input.')
-@click.option('--shell', default='sh', help='Shell script to run interpret command(s).')
-@click.argument('file_path')
-def exec(**kwargs):
-    is_command = kwargs['command']
-    shell = kwargs['shell']
-    file_path = kwargs['file_path']
-
-    settings = Settings.instance()
-    proxy_url = settings.proxy_url
-
-    if not proxy_url:
-        run_command(shell, file_path, is_command)
-    else:
-        run_command_with_proxy_export(shell, file_path, is_command, proxy_url)
 
 ### Helpers
 

@@ -26,7 +26,7 @@ class Settings:
     _proxy_url = ''
     _api_url = ''
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         if Settings._instance:
             raise RuntimeError('Call instance() instead')
         else:
@@ -37,7 +37,9 @@ class Settings:
             if not os.path.exists(self.settings_file_path):
                 copyfile(SourceDir.instance().settings_template_file_path, self.settings_file_path)
 
-            self.__validate()
+            if kwargs.get('validate'):
+                self.__validate()
+            
             self.__load_config()
 
     @classmethod
@@ -68,6 +70,10 @@ class Settings:
         if not self.__config:
             self.__load_config()
         return self.__config
+
+    @property
+    def features(self):
+        return self.__config.get('features') or {}
 
     @property
     def remote_enabled(self):
