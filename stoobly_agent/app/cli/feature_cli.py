@@ -38,7 +38,6 @@ ConfigDecorator(exec, settings, 'features.exec').decorate()
 
 feature.add_command(exec)
 
-
 @click.group(
   epilog="Run 'stoobly-agent remote COMMAND --help' for more information on a command.",
   help="Toggle whether local or remote storage is used."

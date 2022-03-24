@@ -16,7 +16,9 @@ from .utils.tabulate_print_service import tabulate_print
 def scenario(ctx):
     pass
 
-@scenario.command()
+@scenario.command(
+    help="Create a scenario"
+)
 @click.option('--description', help='Scenario description.')
 @click.option('--project-key', required=True, help='Project to create scenario in.')
 @click.argument('name')
@@ -24,7 +26,9 @@ def create(**kwargs):
     scenario = ScenarioFacade(Settings.instance())
     print(scenario.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
 
-@scenario.command()
+@scenario.command(
+    help="Replay a scenario"
+)
 @click.argument('scenario_key')
 def replay(**kwargs):
     scenario_key = kwargs['scenario_key']
@@ -33,7 +37,9 @@ def replay(**kwargs):
     scenario = ScenarioFacade(Settings.instance())
     scenario.replay(scenario_key, **kwargs)   
 
-@scenario.command()
+@scenario.command(
+    help="Replay and test a scenario"
+)
 @click.option('--save-to-report', help='Key for the report to store test results.')
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('scenario_key')
@@ -44,7 +50,9 @@ def test(**kwargs):
     scenario = ScenarioFacade(Settings.instance())
     scenario.test(scenario_key, **kwargs)
 
-@scenario.command()
+@scenario.command(
+    help="Show created scenarios"
+)
 @click.option('--page', default=0)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')

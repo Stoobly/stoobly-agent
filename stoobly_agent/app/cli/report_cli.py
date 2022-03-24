@@ -13,7 +13,9 @@ from .utils.tabulate_print_service import tabulate_print
 def report(ctx):
     pass
 
-@report.command()
+@report.command(
+    help="Create a report"
+)
 @click.option('--description', help='Report description.')
 @click.option('--project-key', required=True, help='Project to create report in.')
 @click.argument('name')
@@ -21,7 +23,9 @@ def create(**kwargs):
     report = ReportFacade(Settings.instance())
     print(report.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
 
-@report.command()
+@report.command(
+    help="Show created reports"
+)
 @click.option('--page', default=0)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
