@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import click
 import os
 import pdb
@@ -8,12 +6,10 @@ import threading
 from stoobly_agent.config.constants import env_vars
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, dev_tools, feature, report, request, scenario
-from .app.cli.decorators.exec import ExecDecorator
+from .app.cli import ca_cert, config, feature, request
 from .app.cli.utils.migrate_service import migrate as migrate_database
 from .app.proxy import INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
-
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 settings = Settings.instance()
@@ -34,12 +30,15 @@ main.add_command(feature)
 main.add_command(request)
 
 if settings.features.get('dev_tools'):
+    from .app.cli import dev_tools
     main.add_command(dev_tools)
 
 if settings.features.get('exec'):
+    from .app.cli.decorators.exec import ExecDecorator
     ExecDecorator(main).decorate()
 
-if settings.remote_enabled:
+if settings.features.get('remote'):
+    from .app.cli import report, scenario
     main.add_command(report)
     main.add_command(scenario)
 
