@@ -58,7 +58,8 @@ def record(**kwargs):
 @click.argument('request_key')
 def test(**kwargs):
   request = RequestFacade(Settings.instance())
-  __replay(request.test, **kwargs)
+  res = __replay(request.test, **kwargs)
+  print(res.json())
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",

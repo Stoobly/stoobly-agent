@@ -56,7 +56,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         context.with_response(res)
 
         if handle_success:
-            handle_success(context)
+            res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else None]
         res = eval_request(request, ignored_components)
@@ -72,7 +72,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
                 return handle_failure(context)
         else:
             if handle_success:
-                handle_success(context)
+                res = handle_success(context) or res
     else:
         return bad_request(
             flow,

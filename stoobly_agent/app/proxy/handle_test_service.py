@@ -1,3 +1,4 @@
+import json
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
@@ -6,6 +7,7 @@ from mitmproxy.net.http.response import Response as MitmproxyResponse
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IProjectTestSettings 
 
@@ -54,25 +56,24 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
 
 def __handle_mock_success(context: MockContext) -> None:
     expected_response = context.response
+    active_mode_settings = context.active_mode_settings
+    flow = context.flow
+
+    # Build TestContext
+    response = MitmproxyResponseAdapter(flow.response).adapt() 
+    test_strategy = active_mode_settings.get('strategy') or TEST_STRATEGIES['DIFF']
+
+    test_context = TestContext(test_strategy)
+    test_context.start_time = context.start_time
+    
+    test_context.with_expected_response(RequestsResponseAdapter(expected_response).adapt())
+    test_context.with_response(response)
+
+    # Run test
+    passed, log = test(test_context)
+
     request_id = expected_response.headers.get(custom_headers.MOCK_REQUEST_ID)
-
     if request_id:
-        active_mode_settings = context.active_mode_settings
-        flow = context.flow
-
-        # Build TestContext
-        response = MitmproxyResponseAdapter(flow.response).adapt() 
-        test_strategy = active_mode_settings.get('strategy') or TEST_STRATEGIES['DIFF']
-
-        test_context = TestContext(test_strategy)
-        test_context.start_time = context.start_time
-        
-        test_context.with_expected_response(RequestsResponseAdapter(expected_response).adapt())
-        test_context.with_response(response)
-
-        # Run test
-        passed, log = test(test_context)
-
         # Commit test to API
         upload_test = inject_upload_test(None, active_mode_settings)
         upload_test(
@@ -83,6 +84,21 @@ def __handle_mock_success(context: MockContext) -> None:
             status=response.status_code,
             strategy=test_strategy
         )
+
+    return __build_response(passed, log)
+
+def __build_response(passed, log):
+    body = json.dumps({
+        'log': log,
+        'passed': passed,
+    }).encode()
+ 
+    builder = RequestsResponseBuilder()
+    builder.with_header('content-type', 'application/json')
+    builder.with_body(body)
+    builder.with_status_code(200)
+
+    return builder.build()
 
 def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance().info(f"{LOG_ID}:TestStatus: No test found")
