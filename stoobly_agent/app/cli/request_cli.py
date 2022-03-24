@@ -33,7 +33,8 @@ def list(**kwargs):
 @click.argument('request_key')
 def replay(**kwargs):
   request = RequestFacade(Settings.instance())
-  __replay(request.replay, **kwargs)
+  res = __replay(request.replay, **kwargs)
+  print(res.content)
   
 @request.command()
 @click.option('--report-key')
@@ -59,9 +60,8 @@ def test(**kwargs):
   request = RequestFacade(Settings.instance())
   __replay(request.test, **kwargs)
 
-def __replay(handler, **kwargs):
+def __replay(handler, **kwargs) -> requests.Response:
   request_key = kwargs['request_key']
   del kwargs['request_key']
 
-  res: requests.Response = handler(request_key, **kwargs)   
-  print(res.content)
+  return handler(request_key, **kwargs)   
