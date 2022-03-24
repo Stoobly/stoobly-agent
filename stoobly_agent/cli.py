@@ -60,7 +60,6 @@ if settings.features.get('remote'):
 '''
 )
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
-@click.option('--remote-enabled', is_flag=True, default=False, help='Do not upload requests to Stoobly, store locally.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--test-script', help='Provide a custom script for testing.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')

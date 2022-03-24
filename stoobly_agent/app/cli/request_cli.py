@@ -81,7 +81,7 @@ def get(**kwargs):
   help="Set new mocked response"
 )
 def set(**kwargs):
-  pass
+  print("Not yet implemented. Stay tuned!")
 
 request.add_command(response)
 
