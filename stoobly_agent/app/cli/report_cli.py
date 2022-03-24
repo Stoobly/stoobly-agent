@@ -5,7 +5,10 @@ from stoobly_agent.app.settings import Settings
 from .report_facade import ReportFacade
 from .utils.tabulate_print_service import tabulate_print
 
-@click.group()
+@click.group(
+    epilog="Run 'stoobly-agent report COMMAND --help' for more information on a command.",
+    help="Manage test reports"
+)
 @click.pass_context
 def report(ctx):
     pass
