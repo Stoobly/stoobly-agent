@@ -48,7 +48,6 @@ def __filter_options(options):
     del options['ui_host']
     del options['ui_port']
     del options['api_url']
-    del options['remote_enabled']
     del options['test_script']
 
 def __commit_options(options):
