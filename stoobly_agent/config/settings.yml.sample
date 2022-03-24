@@ -2,6 +2,9 @@
 agent_url: http://localhost:4200
 api_url: 
 api_key: 
+features:
+  dev_tools: false
+  exec: false
 mode:
   active: record
   record:
