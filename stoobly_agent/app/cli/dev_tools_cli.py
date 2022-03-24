@@ -1,11 +1,12 @@
 import click
 import pdb
 
-from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.cli.utils.migrate_service import migrate as database_migrate
 
-@click.group()
+@click.group(
+  epilog="Run 'stoobly-agent dev-tools COMMAND --help' for more information on a command.",
+  help="Access developer tools"
+)
 @click.pass_context
 def dev_tools(ctx):
     pass

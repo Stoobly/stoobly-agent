@@ -4,7 +4,10 @@ import distro
 
 from .ca_cert_installer import CACertInstaller
 
-@click.group()
+@click.group(
+    epilog="Run 'stoobly-agent COMMAND --help' for more information on a command.",
+    help="Manage CA certificate"
+)
 @click.pass_context
 def ca_cert(ctx):
     pass

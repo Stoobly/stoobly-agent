@@ -5,6 +5,7 @@ api_key:
 features:
   dev_tools: false
   exec: false
+  remote: false
 mode:
   active: record
   record:

@@ -80,7 +80,7 @@ class Settings:
         if os.environ.get(env_vars.AGENT_REMOTE_ENABLED):
             return True 
 
-        return self.config.get('remote_enabled')
+        return self.features.get('remote')
 
     @property
     def agent_url(self):

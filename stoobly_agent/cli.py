@@ -16,7 +16,7 @@ settings = Settings.instance()
 
 @click.version_option()
 @click.group(
-    epilog="Run 'stoobly COMMAND --help' for more information on a command.",
+    epilog="Run 'stoobly-agent COMMAND --help' for more information on a command.",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.pass_context
@@ -42,7 +42,9 @@ if settings.features.get('remote'):
     main.add_command(report)
     main.add_command(scenario)
 
-@main.command()
+@main.command(
+    help="Run proxy and/or UI",
+)
 @click.option('--api-url', help='API URL.')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES))

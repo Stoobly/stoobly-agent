@@ -8,7 +8,10 @@ from stoobly_agent.app.settings import Settings
 from .request_facade import RequestFacade
 from .utils.tabulate_print_service import tabulate_print
 
-@click.group()
+@click.group(
+  epilog="Run 'stoobly-agent request COMMAND --help' for more information on a command.",
+  help="Manage requests"
+)
 @click.pass_context
 def request(ctx):
     pass
