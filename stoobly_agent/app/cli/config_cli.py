@@ -1,4 +1,5 @@
 import click
+import json
 import time
 
 from stoobly_agent.app.settings import Settings
@@ -9,12 +10,11 @@ def config(ctx):
     pass
 
 @config.command()
-@click.option('--pretty-print', is_flag=True, default=False, help='Pretty print the json.')
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):
     settings = Settings.instance()
 
-    output = settings.to_json(pretty_print=kwargs['pretty_print'])
+    output = json.dumps(settings.to_hash(), indent=2, sort_keys=True)
 
     if kwargs['save_to_file']:
         timestamp = str(int(time.time() * 1000))
