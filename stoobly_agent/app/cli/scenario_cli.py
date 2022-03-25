@@ -2,8 +2,8 @@ import click
 import json
 import pdb
 
-from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import test_strategy
 
 from .scenario_facade import ScenarioFacade
 from .utils.tabulate_print_service import tabulate_print
