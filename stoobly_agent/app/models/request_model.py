@@ -45,4 +45,5 @@ class RequestModel():
 
   def __handle_request_error(self, e: requests.exceptions.RequestException):
       response: requests.Response = e.response
-      Logger.instance().error(f"{response.status_code} {response.content}")
+      if response:
+        Logger.instance().error(f"{response.status_code} {response.content}")
