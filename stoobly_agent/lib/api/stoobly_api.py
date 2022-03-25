@@ -81,12 +81,12 @@ class StooblyApi(Api):
 
     def from_project_key(self, project_key, handler):
         project_data = self.decode_project_key(project_key)
-        return handler(project_data.get('id'))
+        return handler(project_data.get('i'))
 
     def from_scenario_key(self, scenario_key, handler):
         scenario_data = self.decode_scenario_key(scenario_key)
-        return handler(scenario_data.get('project_id'), {
-            'scenario_id': scenario_data['id']
+        return handler(scenario_data.get('p'), {
+            'scenario_id': scenario_data['i']
         })
 
     def with_report_key(self, report_key, params):
@@ -94,7 +94,7 @@ class StooblyApi(Api):
             return
 
         report_data = self.decode_report_key(report_key)
-        params['report_id'] = report_data.get('report_id')
+        params['report_id'] = report_data.get('i')
 
         return self
 
@@ -103,7 +103,7 @@ class StooblyApi(Api):
             scenario_data = self.decode_scenario_key(scenario_key)
 
             if 'id' in scenario_data:
-                scenario_id = scenario_data['id']
+                scenario_id = scenario_data['i']
                 params['scenario_id'] = scenario_id
 
         return self
