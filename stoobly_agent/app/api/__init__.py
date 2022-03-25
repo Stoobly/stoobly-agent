@@ -1,16 +1,14 @@
 import json
 import mimetypes
 import os
-import pathlib
-import pdb
 import re
-import yaml
+import threading
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
-from stoobly_agent.config.constants import headers
+from stoobly_agent.config.constants import env_vars, headers
 
 from .configs_controller import ConfigsController
 from .proxy_controller import ProxyController
@@ -239,6 +237,17 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         ]
     }
 
-def run(host, port):
+def start_server(host, port):
     httpd = HTTPServer((host, port), SimpleHTTPRequestHandler)
     httpd.serve_forever()
+
+def run(**kwargs):
+    ui_host = kwargs['ui_host']
+    ui_port = kwargs['ui_port']
+
+    os.environ[env_vars.AGENT_URL] = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
+
+    print(f"UI server listening at http://{ui_host}:{ui_port}\n")
+
+    thread = threading.Thread(target=start_server, args=(ui_host, ui_port))
+    thread.start()

@@ -2,11 +2,14 @@ import click
 import pdb
 import requests
 
-from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .request_facade import RequestFacade
 from .utils.tabulate_print_service import tabulate_print
+
+is_remote = Settings.instance().features.get('remote')
 
 @click.group(
   epilog="Run 'stoobly-agent request COMMAND --help' for more information on a command.",
@@ -23,10 +26,13 @@ def request(ctx):
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
-@click.argument('project_key', required=False)
+@ConditionalDecorator(lambda f: click.argument('project_key', required=True)(f), is_remote)
 def list(**kwargs):
+  # If run in local-only mode, will be None
   project_key = kwargs.get('project_key')
-  del kwargs['project_key']
+  
+  if project_key:
+    del kwargs['project_key']
 
   request = RequestFacade(Settings.instance())
   requests_response = request.index(project_key, **kwargs)
@@ -44,7 +50,7 @@ def replay(**kwargs):
 @request.command(
   help="Record a request"
 )
-@click.option('--scenario-key')
+@ConditionalDecorator(lambda f: click.option('--scenario-key')(f), is_remote)
 @click.argument('request_key')
 def record(**kwargs):
   request = RequestFacade(Settings.instance())
@@ -53,7 +59,7 @@ def record(**kwargs):
 @request.command(
   help="Test a request"
 )
-@click.option('--report-key')
+@ConditionalDecorator(lambda f: click.option('--report-key')(f), is_remote)
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('request_key')
 def test(**kwargs):

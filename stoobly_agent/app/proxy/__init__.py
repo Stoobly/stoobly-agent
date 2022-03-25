@@ -39,15 +39,23 @@ def __filter_options(options):
     options['listen_port'] = options['proxy_port']
     options['mode'] = options['proxy_mode']
 
-    del options['headless']
+    if 'api_url' in options:
+        del options['api_url']
+
+    if 'headless' in options:
+        del options['headless']
+
+    if 'ui_host' in options:
+        del options['ui_host']
+
+    if 'ui_port' in options:
+        del options['ui_port']
+
     del options['intercept_mode']
     del options['log_level']
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
-    del options['ui_host']
-    del options['ui_port']
-    del options['api_url']
     del options['test_script']
 
 def __commit_options(options):
