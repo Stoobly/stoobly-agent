@@ -51,7 +51,7 @@ def test(**kwargs):
     scenario.test(scenario_key, **kwargs)
 
 @scenario.command(
-    help="Show created scenarios"
+    help="Show all scenarios"
 )
 @click.option('--page', default=0)
 @click.option('--sort-by', default='created_at', help='created_at|name')
