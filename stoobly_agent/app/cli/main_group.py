@@ -27,25 +27,32 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['ca-cert', 'config', 'dev-tools', 'exec', 'feature'],
+        'commands': ['dev-tools', 'exec', 'feature'],
+      },
+      {
+        'name': 'Proxy Commands',
+        'commands': ['ca-cert', 'config', 'run'],
       }  
     ]
 
     if self.__settings.features.get('remote'):
       command_groups.append({
         'name': 'Remote Commands',
-        'commands': ['project', 'report', 'scenario', 'request', 'run'],
+        'commands': ['project', 'report', 'scenario', 'request'],
       })
     else:
       command_groups.append({
         'name': 'Local Commands',
-        'commands': ['request', 'run'],
+        'commands': ['request'],
       })
 
     self.__print(formatter, command_groups)
 
   def __print(self, formatter, command_groups: List[CommandGroup]):
-    command_names = reduce(lambda a, b: a['commands'] + b['commands'], command_groups)
+    command_names = []
+    for command_group in command_groups:
+      command_names += command_group['commands']
+
     longest_length_command_length = len(max(command_names, key=len))
 
     for command_group in command_groups:
