@@ -6,7 +6,7 @@ from stoobly_agent.app.settings import Settings
 
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
-    help="Manage agent configs"
+    help="Manage proxy config"
 )
 @click.pass_context
 def config(ctx):
