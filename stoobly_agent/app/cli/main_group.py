@@ -34,7 +34,7 @@ class MainGroup(click.Group):
     if self.__settings.features.get('remote'):
       command_groups.append({
         'name': 'Remote Commands',
-        'commands': ['report', 'scenario', 'request', 'run'],
+        'commands': ['project', 'report', 'scenario', 'request', 'run'],
       })
     else:
       command_groups.append({
