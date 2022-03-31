@@ -103,12 +103,12 @@ class ConfigsController:
     def __merge_project_key(self, h, mode):
         project_key = mode.get('project_key')
         project = StooblyApi.decode_project_key(project_key)
-        h['project_id'] = project.get('id')
+        h['project_id'] = project.get('i')
         return project_key
 
     def __merge_scenario_key(self, h, mode, project_key):
         scenario_key = mode.get('settings', {}).get(project_key, {}).get('scenario_key')
         if isinstance(scenario_key, str) and len(scenario_key) > 0:
             scenario = StooblyApi.decode_scenario_key(scenario_key)
-            h['scenario_id'] = scenario['id']
+            h['scenario_id'] = scenario['i']
         return scenario_key
