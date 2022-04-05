@@ -36,10 +36,6 @@ stoobly-agent --help
 
 ### Dependencies
 
-```
-pip3 install alembic
-```
-
 ### Installation
 
 ```
