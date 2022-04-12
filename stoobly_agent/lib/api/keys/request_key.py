@@ -3,12 +3,12 @@ from .resource_key import ResourceKey
 class RequestKey(ResourceKey):
 
   @property
-  def project_id(self) -> str:
-    return self.decoded_key.get('p')
-
+  def id(self) -> str:
+    return self.get('i')
+    
   @property
-  def request_id(self) -> str:
-    return self.decoded_key.get('i')
+  def project_id(self) -> str:
+    return self.get('p')
 
   @staticmethod
   def encode(project_id: str, request_id: str):

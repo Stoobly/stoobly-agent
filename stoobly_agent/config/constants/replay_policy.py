@@ -1,0 +1,2 @@
+ALL = 'all'
+NONE = 'none'

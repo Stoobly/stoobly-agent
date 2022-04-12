@@ -17,7 +17,7 @@ def config(ctx):
 def dump(**kwargs):
     settings = Settings.instance()
 
-    output = json.dumps(settings.to_hash(), indent=2, sort_keys=True)
+    output = json.dumps(settings.to_dict(), indent=2, sort_keys=True)
 
     if kwargs['save_to_file']:
         timestamp = str(int(time.time() * 1000))

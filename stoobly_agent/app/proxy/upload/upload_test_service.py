@@ -6,30 +6,33 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IProjectTestSettings
 from stoobly_agent.lib.logger import Logger
 
-from .join_request_service import join_filtered_request
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+
+from ..intercept_settings import InterceptSettings
+from .join_request_service import join_redacted_request
 from ..settings import get_report_key
 
 def inject_upload_test(
   api: TestsResource,
-  active_mode_settings: IProjectTestSettings, 
+  intercept_settings: InterceptSettings, 
 ):
-  settings = Settings.instance()
+  settings = intercept_settings.settings
 
   if not api:
-    api = TestsResource(settings.api_url, settings.api_key)
+    api = TestsResource(settings.remote.api_url, settings.remote.api_key)
 
-  if not active_mode_settings:
-    active_mode_settings = Settings.instance().active_mode_settings
+  if not intercept_settings:
+    intercept_settings = InterceptSettings(Settings.instance())
 
-  return lambda flow, **kwargs: upload_test(api, active_mode_settings, flow, **kwargs)
+  return lambda flow, **kwargs: upload_test(api, intercept_settings, flow, **kwargs)
 
 def upload_test(
   api: TestsResource,
-  active_mode_settings: IProjectTestSettings, 
+  intercept_settings: InterceptSettings, 
   flow: MitmproxyHTTPFlow, 
   **kwargs
 ) -> Response:
-    joined_request = join_filtered_request(flow, active_mode_settings)
+    joined_request = join_redacted_request(flow, intercept_settings)
 
     Logger.instance().info(f"Uploading test results for {joined_request.proxy_request.url()}")
 
@@ -42,7 +45,7 @@ def upload_test(
 
       api.with_report_key(report_key, kwargs)
 
-    scenario_key = active_mode_settings.get('scenario_key')
+    scenario_key = intercept_settings.scenario_key
     if scenario_key:
       return api.from_scenario_key(
         scenario_key, 
@@ -50,6 +53,6 @@ def upload_test(
       )
     else:
       return api.from_project_key(
-        active_mode_settings.get('project_key'),
+        intercept_settings.scenario_key,
         lambda project_id: api.create(project_id, raw_requests, { **kwargs })
       )

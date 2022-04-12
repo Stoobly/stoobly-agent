@@ -17,7 +17,6 @@ class StooblyApi(Api):
         self.service_url = service_url
         self.api_key = api_key
 
-
     @staticmethod
     def decode_key(key):
         try:

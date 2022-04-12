@@ -5,21 +5,20 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.response import Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectTestSettings 
 
-from .mitmproxy.request_adapter import MitmproxyRequestAdapter
-from .utils.filters_to_ignored_components_service import filters_to_ignored_components
 from .handle_mock_service import handle_request_mock_generic
+from .mitmproxy.request_facade import MitmproxyRequestFacade
 from .mock.context import MockContext
-from .test.test_service import test, TEST_STRATEGIES
 from .test.context import TestContext
 from .test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from .test.requests_response_adapter import RequestsResponseAdapter
+from .test.test_service import test, TEST_STRATEGIES
 from .upload.upload_test_service import inject_upload_test
+from .utils.filter_rules_to_ignored_components_service import filter_rules_to_ignored_components
 
 LOG_ID = 'HandleTest'
 
@@ -30,22 +29,20 @@ LOG_ID = 'HandleTest'
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
+def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> None:
     __disable_transfer_encoding(flow.response)
 
-    active_mode_settings: IProjectTestSettings = settings.active_mode_settings
-
-    # If rewrite rules are set, then rewrite the request
     ignored_components = []
-    if active_mode_settings.get('rewrite_rules'):
-        request = MitmproxyRequestAdapter(flow.request)
-        request.rewrite(active_mode_settings.get('rewrite_rules'))
 
-        rewrite_rules = request.relevant_rewrites
-        ignored_components = filters_to_ignored_components(rewrite_rules)
+    # If ignore rules are set, then ignore specified request parameters
+    ignore_rules = intercept_settings.ignore_rules
+    if len(ignore_rules) > 0:
+        request = MitmproxyRequestFacade(flow.request)
+        ignore_rules = request.select_parameter_rules(ignore_rules)
+        ignored_components = filter_rules_to_ignored_components(ignore_rules)
 
-    request_model = RequestModel(settings)
-    context = MockContext(flow, active_mode_settings).with_model(request_model)
+    request_model = RequestModel(intercept_settings.settings)
+    context = MockContext(flow, intercept_settings).with_model(request_model)
 
     handle_request_mock_generic(
         context,
@@ -56,12 +53,12 @@ def handle_request_test(flow: MitmproxyHTTPFlow, settings: Settings) -> None:
 
 def __handle_mock_success(context: MockContext) -> None:
     expected_response = context.response
-    active_mode_settings = context.active_mode_settings
+    intercept_settings = context.intercept_settings
     flow = context.flow
 
     # Build TestContext
     response = MitmproxyResponseAdapter(flow.response).adapt() 
-    test_strategy = active_mode_settings.get('strategy') or TEST_STRATEGIES['DIFF']
+    test_strategy = intercept_settings.test_strategy
 
     test_context = TestContext(test_strategy)
     test_context.start_time = context.start_time
@@ -75,7 +72,7 @@ def __handle_mock_success(context: MockContext) -> None:
     request_id = expected_response.headers.get(custom_headers.MOCK_REQUEST_ID)
     if request_id:
         # Commit test to API
-        upload_test = inject_upload_test(None, active_mode_settings)
+        upload_test = inject_upload_test(None, intercept_settings)
         upload_test(
             flow,
             log=log,

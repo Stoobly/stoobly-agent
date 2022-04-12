@@ -7,26 +7,26 @@ from typing import List, Union
 
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectMockSettings
 
 from .hashed_request_decorator import HashedRequestDecorator
-from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
+from ..mitmproxy.request_facade import MitmproxyRequestFacade
 
 def inject_eval_request(
     request_model: RequestModel,
-    active_mode_settings: IProjectMockSettings,
+    intercept_settings: InterceptSettings,
 ):
     settings = Settings.instance()
 
     if not request_model:
         request_model = RequestModel(settings)
 
-    if not active_mode_settings:
-        active_mode_settings = settings.active_mode_settings
+    if not intercept_settings:
+        intercept_settings = InterceptSettings(intercept_settings)
 
     return lambda request, ignored_components_list: eval_request(
-        request_model, active_mode_settings, request, ignored_components_list, 
+        request_model, intercept_settings, request, ignored_components_list, 
     )
 
 ###
@@ -35,12 +35,12 @@ def inject_eval_request(
 #
 def eval_request(
     request_model: RequestModel,
-    active_mode_settings: IProjectMockSettings,
+    intercept_settings: InterceptSettings,
     request: MitmproxyRequest,
     ignored_components_list: List[Union[list, str, None]] = None,
 ) -> Response:
     query_params = ParamBuilder()
-    query_params.with_resource_scoping(active_mode_settings)
+    query_params.with_resource_scoping(intercept_settings)
 
     ignored_components = __build_ignored_components(ignored_components_list)
     query_params.with_params(__build_query_params(request, ignored_components))
@@ -63,13 +63,13 @@ def __build_ignored_components(ignored_components_list):
 #
 # Formats request into parameters expected by stoobly request_model
 #
-# @param request [lib.mitmproxy_request_adapter.MitmproxyRequestAdapter]
+# @param request [lib.mitmproxy_request_adapter.MitmproxyRequestFacade]
 # @param ignored_components [Array<Hash>]
 #
 # @return [Hash] query parameters to pass to stoobly request_model
 #
 def __build_query_params(request: MitmproxyRequest, ignored_components = []) -> dict:
-    request = MitmproxyRequestAdapter(request)
+    request = MitmproxyRequestFacade(request)
     hashed_request = HashedRequestDecorator(request).with_ignored_components(ignored_components)
 
     headers_hash = hashed_request.headers_hash()

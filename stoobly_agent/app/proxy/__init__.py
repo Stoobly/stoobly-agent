@@ -6,7 +6,6 @@ from mitmproxy.optmanager import _Option
 from typing import Union
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.writer import SettingsWriter
 
 from ...config.constants import mode
 
@@ -59,18 +58,12 @@ def __filter_options(options):
     del options['test_script']
 
 def __commit_options(options):
-    # proxy_url
-    writer = SettingsWriter(Settings.instance())
-    url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
-    writer.write_proxy_url(url)
+    settings = Settings.instance()
 
-    # intercept_mode
-    intercept_mode = options.get('intercept_mode')
-    writer.write_active_mode(intercept_mode)
+    settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
+    settings.proxy.intercept.mode = options.get('intercept_mode')
+    settings.commit()
 
-    # remote_enabled
-    remote_enabled = options.get('remote_enabled')
-    writer.write_remote_enabled(remote_enabled)
 
 def __get_intercept_handler_path():
     cwd = os.path.dirname(os.path.realpath(__file__))

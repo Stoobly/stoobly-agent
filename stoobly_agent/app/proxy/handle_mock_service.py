@@ -3,20 +3,18 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
-from ...config.constants import mock_policy
 
 from stoobly_agent.app.models.request_model import RequestModel
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectMockSettings
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.config.constants import custom_headers, mock_policy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_request_service import inject_eval_request
-from .settings import is_proxy_enabled, get_mock_policy, get_service_url, is_proxy_enabled
 from .utils.allowed_request_service import allowed_request
-from .utils.response_handler import bad_request, pass_on, reverse_proxy
+from .utils.request_handler import reverse_proxy
+from .utils.response_handler import bad_request, pass_on
 
 LOG_ID = 'HandleMock'
 
@@ -27,16 +25,15 @@ LOG_ID = 'HandleMock'
 #
 def handle_request_mock_generic(context: MockContext, **kwargs):
     request_model: RequestModel = context.model
-    active_mode_settings = context.active_mode_settings
-    flow = context.flow
-    request: MitmproxyRequest = flow.request
+    intercept_settings = context.intercept_settings
+    request: MitmproxyRequest = context.flow.request
 
-    eval_request = inject_eval_request(request_model, active_mode_settings)
+    eval_request = inject_eval_request(request_model, intercept_settings)
     handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
     handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
 
-    if is_proxy_enabled(request.headers, active_mode_settings) and allowed_request(active_mode_settings, request):
-        policy = get_mock_policy(request.headers, active_mode_settings)
+    if intercept_settings.active and allowed_request(intercept_settings, request):
+        policy = intercept_settings.policy
     else:
         # If the request path does not match accepted paths, do not mock
         policy = mock_policy.NONE
@@ -75,17 +72,16 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
                 res = handle_success(context) or res
     else:
         return bad_request(
-            flow,
+            context.flow,
             "Valid env MOCK_POLICY: %s, %s, %s, Got: %s" %
-            [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE, mock_policy]
+            [mock_policy.ALL, mock_policy.FOUND, mock_policy]
         )
 
-    return pass_on(flow, res)
+    return pass_on(context.flow, res)
 
-def handle_request_mock(flow: MitmproxyHTTPFlow, settings: Settings):
-    active_mode_settings: IProjectMockSettings = settings.active_mode_settings
-    request_model = RequestModel(settings)
-    context = MockContext(flow, active_mode_settings).with_model(request_model)
+def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
+    request_model = RequestModel(intercept_settings.settings)
+    context = MockContext(flow, intercept_settings).with_model(request_model)
 
     handle_request_mock_generic(
         context,
@@ -100,12 +96,12 @@ def __handle_mock_success(context: MockContext) -> None:
 
 def __handle_mock_failure(context: MockContext):
     req = context.flow.request
-    active_mode_settings = context.active_mode_settings
-    service_url = get_service_url(req, active_mode_settings)
+    intercept_settings = context.intercept_settings
+    upstream_url = intercept_settings.upstream_url
 
-    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
+    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
 
-    return reverse_proxy(req, service_url, {})
+    return reverse_proxy(req, upstream_url, {})
 
 ###
 #

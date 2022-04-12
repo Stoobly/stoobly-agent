@@ -19,7 +19,7 @@ class Api():
 
     def with_proxy(self, handler):
       settings = Settings.instance()
-      proxy_url = settings.proxy_url
+      proxy_url = settings.proxy.url
       current = self.set_proxy(proxy_url)
 
       res = handler()

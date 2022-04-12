@@ -2,6 +2,8 @@ import hashlib
 import time
 import pdb
 
+from typing import Union
+
 from .proxy_request import ProxyRequest
 
 class RequestString:
@@ -41,13 +43,16 @@ class RequestString:
         headers = self.request.headers
 
         for name, val in headers.items():
-            line = ' '.join(["{}:".format(self.__to_header_case(name)), val])
+            line = ' '.join([
+                "{}:".format(self.__to_header_case(self.__to_str(name))), 
+                self.__to_str(val)
+            ])
             self.lines.append(line)
 
     def __body(self):
         self.lines.append("{}{}".format(self.CLRF, self.request.body))
 
-    def __to_header_case(self, header):
+    def __to_header_case(self, header: str) -> str:
         toks = header.split('_')
 
         for index, tok in enumerate(toks):
@@ -64,3 +69,8 @@ class RequestString:
         current_time = round(now * (pow(10, 9)))
 
         return current_time
+
+    def __to_str(self, s: Union[bytes, str]):
+        if isinstance(s, bytes):
+            return s.decode('utf-8')
+        return s

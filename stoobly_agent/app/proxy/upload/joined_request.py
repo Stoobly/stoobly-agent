@@ -1,5 +1,6 @@
 import time
 
+from .proxy_request import ProxyRequest
 from .request_string import RequestString
 from .response_string import ResponseString
 
@@ -10,11 +11,7 @@ class JoinedRequest:
     __request_string = None
     __response_string = None
 
-    ###
-    #
-    # @params proxy_request [ProxyRequest]
-    #
-    def __init__(self, proxy_request):
+    def __init__(self, proxy_request: ProxyRequest):
         self.timestamp = time.time()
         self.proxy_request = proxy_request
 

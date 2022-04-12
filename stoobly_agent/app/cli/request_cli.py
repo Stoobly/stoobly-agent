@@ -9,7 +9,8 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .request_facade import RequestFacade
 from .utils.tabulate_print_service import tabulate_print
 
-is_remote = Settings.instance().features.get('remote')
+settings = Settings.instance()
+is_remote = settings.cli.features.remote
 
 @click.group(
   epilog="Run 'stoobly-agent request COMMAND --help' for more information on a command.",

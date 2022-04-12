@@ -2,10 +2,14 @@ import pdb
 
 from mergedeep import merge
 
-from stoobly_agent.config.constants import mode
-from stoobly_agent.config.constants import mock_policy, record_policy
-from stoobly_agent.lib.api.stoobly_api import StooblyApi
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import mode, replay_policy
+from stoobly_agent.config.constants import mock_policy, record_policy
+from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+from stoobly_agent.lib.api.stoobly_api import StooblyApi
+
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 class ConfigsController:
     _instance = None
@@ -26,16 +30,21 @@ class ConfigsController:
     # GET /api/v1/admin/configs/policies
     def get_configs_policies(self, context):
         settings = Settings.instance()
-        active_mode = settings.active_mode
+        active_mode = settings.proxy.intercept.active
 
         if active_mode in [mode.MOCK, mode.TEST]:
             context.render(
-                json = [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
+                json = [mock_policy.ALL, mock_policy.FOUND],
                 status = 200
             )
         elif active_mode == mode.RECORD:
             context.render(
-                json = [record_policy.ALL, record_policy.NONE, record_policy.NOT_FOUND],
+                json = [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND],
+                status = 200
+            )
+        elif active_mode == mode.REPLAY:
+            context.render(
+                json = [replay_policy.ALL],
                 status = 200
             )
 
@@ -44,46 +53,29 @@ class ConfigsController:
         settings = Settings.instance()
 
         context.render(
-            json = settings.to_hash(),
+            json = settings.to_dict(),
             status = 200
         )
 
-    # GET /api/v1/admin/configs/modes
-    def get_configs_modes(self, context):
+    # GET /api/v1/admin/configs/summary
+    def get_configs_summary(self, context):
         settings = Settings.instance()
-        settings_mode = settings.mode
+        proxy = settings.proxy
+        intercept_settings = InterceptSettings(settings)
 
-        mock = {}
-        mock_mode = settings_mode.get('mock')
-        if mock_mode:
-            project_key = self.__merge_project_key(mock, mock_mode)
-            self.__merge_scenario_key(mock, mock_mode, project_key)
-
-        record = {}
-        record_mode = settings_mode.get('record')
-        if record_mode:
-            project_key = self.__merge_project_key(record, record_mode)
-            self.__merge_scenario_key(record, record_mode, project_key)
-
-        test = {}
-        test_mode = settings_mode.get('test')
-        if test_mode:
-            project_key = self.__merge_project_key(test, test_mode)
-            self.__merge_scenario_key(test, test_mode, project_key)
-
-        active_mode =  settings.active_mode
+        project_key = intercept_settings.project_key
+        project_id = ProjectKey(project_key).id if project_key else None
+        scenario_key = intercept_settings.scenario_key
+        scenario_id =  ScenarioKey(scenario_key).id if scenario_key else None
 
         context.render(
             json = {
-                'active': active_mode,
-                'details': {
-                    'mock': mock,
-                    'record': record,
-                    'test': test,
-                },
-                'enabled': settings.active_mode_settings.get('enabled'),
-                'list': [mode.MOCK, mode.RECORD, mode.TEST],
-                'proxy_url': settings.proxy_url,
+                'active': intercept_settings.active,
+                'mode': intercept_settings.mode,
+                'modes': [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY],
+                'project_id': project_id,
+                'proxy_url': proxy.url,
+                'scenario_id': scenario_id,
             },
             status = 200
         )
@@ -92,23 +84,10 @@ class ConfigsController:
     def put_configs(self, context):
         updated_settings = context.parse_body()
         settings = Settings.instance()
-        merged_settings = merge(settings.to_hash(), updated_settings)
-        settings.update(merged_settings)
+        merged_settings = merge(settings.to_dict(), updated_settings)
+        settings.write(merged_settings)
 
         context.render(
             json = merged_settings,
             status = 200
         )
-
-    def __merge_project_key(self, h, mode):
-        project_key = mode.get('project_key')
-        project = StooblyApi.decode_project_key(project_key)
-        h['project_id'] = project.get('i')
-        return project_key
-
-    def __merge_scenario_key(self, h, mode, project_key):
-        scenario_key = mode.get('settings', {}).get(project_key, {}).get('scenario_key')
-        if isinstance(scenario_key, str) and len(scenario_key) > 0:
-            scenario = StooblyApi.decode_scenario_key(scenario_key)
-            h['scenario_id'] = scenario['i']
-        return scenario_key

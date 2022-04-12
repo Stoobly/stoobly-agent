@@ -3,6 +3,7 @@ import pdb
 import urllib.parse
 
 from mitmproxy.net.http.request import Request as MitmproxyRequest
+from typing import Union
 
 class MitmproxyRequestBodyFacade:
     JSON = 'application/json'
@@ -12,10 +13,10 @@ class MitmproxyRequestBodyFacade:
     def __init__(self, request: MitmproxyRequest):
         self.__request = request
 
-    def get(self, content_type):
-        params = {}
-        content_type = content_type.lower()
+    def get(self, content_type: Union[bytes, str]):
+        content_type = self.__normalize_header(content_type)
 
+        params = {}
         if content_type == self.JSON:
             content = self.__request.content
 
@@ -28,22 +29,22 @@ class MitmproxyRequestBodyFacade:
             params = self.__parse_json(content)
         elif content_type == self.WWW_FORM_URLENCODED:
             params = self.__request.urlencoded_form
-        elif self.MULTIPART_FORM in content_type:
+        elif content_type == self.MULTIPART_FORM:
             params = self.__request.multipart_form
 
         return params
 
-    def set(self, content, content_type):
-        if not content_type:
-            return content
-            
-        content_type = content_type.lower()
+    def set(self, content, content_type: Union[bytes, str]):
+        """
+        Adjusting Content-Length header should be done by MitmproxyRequest
+        """
+        content_type = self.__normalize_header(content_type)
 
         if content_type == self.JSON:
             self.__request.set_content(self.__stringify_json(content))
         elif content_type == self.WWW_FORM_URLENCODED:
             self.__request.urlencoded_form = content
-        elif self.MULTIPART_FORM in content_type:
+        elif content_type == self.MULTIPART_FORM:
             self.__request.multipart_form = content.items()
             # Fix bug where mitmproxy sets headers["content-type"] = 'multipart/form-data' without the boundary
             self.__request.headers['content-type'] = content_type
@@ -76,3 +77,8 @@ class MitmproxyRequestBodyFacade:
         except:
             return content
 
+    def __normalize_header(self, header):
+        if isinstance(header, bytes):
+            header = header.decode('utf-8')
+
+        return header.lower()

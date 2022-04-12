@@ -1,4 +1,6 @@
-from mitmproxy.net.http.response import Response as MitmproxyResponse 
+from mitmproxy.net.http.response import Response as MitmproxyResponse
+
+from stoobly_agent.app.settings.filter_rule import FilterRule 
 
 from .response import Response
 
@@ -19,13 +21,6 @@ class MitmproxyResponseAdapter(Response):
     def headers(self):
         return self.response.headers
 
-    def decode_body(self):
-        # Decodes content (if Content-Encoding header is set)
-        self.content = self.response.content
-
-        # Update Content-Lenght header to decoded content length
-        self.response.headers['content-length'] = str(len(self.content))
-
     @property
     def body(self):
         content = self.content
@@ -35,18 +30,30 @@ class MitmproxyResponseAdapter(Response):
 
         return content
 
-    ###
-    #
-    # @param filters [Array<string>]
-    #
-    def filter(self, rules):
+    def decode_body(self):
+        # Decodes content (if Content-Encoding header is set)
+        self.content = self.response.content
+
+        # Update Content-Lenght header to decoded content length
+        self.response.headers['content-length'] = str(len(self.content))
+
+    
+    def with_redact_rules(self, rules: FilterRule):
         if type(rules) == list:
             self.filter_rules = rules
 
         return self
 
-    def rewrite(self, rules):
+    def with_rewrite_rules(self, rules: FilterRule):
         if type(rules) == list:
             self.rewrite_rules = rules
 
         return self
+
+    # TODO
+    def redact(self):
+        pass
+    
+    # TODO
+    def rewrite(self):
+        pass

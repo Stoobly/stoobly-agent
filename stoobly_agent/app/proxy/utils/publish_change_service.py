@@ -1,21 +1,22 @@
-from stoobly_agent.lib.api.agent_api import AgentApi
-from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.api.agent_api import AgentApi
+from stoobly_agent.lib.api.keys import ProjectKey
+from stoobly_agent.lib.logger import Logger
 
 # Announce that a new request has been created
 def publish_change(status: str):
   settings = Settings.instance()
 
-  if not settings.is_headless() or settings.remote_enabled:
+  if not settings.ui.active or settings.remote:
     return False
 
-  agent_url = settings.agent_url
+  ui_url = settings.ui.url
 
-  if not agent_url:
-    Logger.instance().warn('Settings.agent_url not configured')
+  if not ui_url:
+    Logger.instance().warn('Settings.ui.url not configured')
     return False
   else:
-    active_mode_settings = settings.active_mode_settings
-    api: AgentApi = AgentApi(agent_url)
-    api.update_status(status, active_mode_settings.get('project_key'))
+    api: AgentApi = AgentApi(ui_url)
+    project_key = ProjectKey(settings.proxy.intercept.project_key)
+    api.update_status(status, project_key.id)
     return True

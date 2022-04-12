@@ -16,7 +16,7 @@ class RequestFacade():
 
   def show(self, request_key: str, **kwargs):
     key = RequestKey(request_key)
-    return self.model.show(key.request_id, **{ 
+    return self.model.show(key.id, **{ 
       'project_id': key.project_id, 
       **kwargs 
     })

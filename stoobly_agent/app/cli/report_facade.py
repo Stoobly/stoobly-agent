@@ -9,7 +9,7 @@ class ReportFacade():
     self.settings = settings
 
   def create(self, project_key: str, name: str, description: str = ''):
-    api = ReportsResource(self.settings.api_url, self.settings.api_key)
+    api = ReportsResource(self.settings.remote.api_url, self.settings.remote.api_key)
 
     res: requests.Response = api.from_project_key(
       project_key, 
@@ -27,7 +27,7 @@ class ReportFacade():
     return res.json()
 
   def index(self, project_key: str, **kwargs):
-    api = ReportsResource(self.settings.api_url, self.settings.api_key)
+    api = ReportsResource(self.settings.remote.api_url, self.settings.remote.api_key)
 
     res: requests.Response = api.from_project_key(
       project_key, 

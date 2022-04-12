@@ -1,45 +1,46 @@
 import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
-from ..mitmproxy.response_adapter import MitmproxyResponseAdapter
-from ..settings import get_service_url
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
+from ..mitmproxy.request_facade import MitmproxyRequestFacade
+from ..mitmproxy.response_adapter import MitmproxyResponseAdapter
 from .joined_request import JoinedRequest
 from .proxy_request import ProxyRequest
 
 def join_request(
-    adapted_request:  MitmproxyRequestAdapter, adapted_response: MitmproxyResponseAdapter, active_mode_settings
+    adapted_request: MitmproxyRequestFacade, adapted_response: MitmproxyResponseAdapter, intercept_settings: InterceptSettings
 ) -> JoinedRequest:
     # Decorate request with service_url
-    service_url = get_service_url(adapted_request.request, active_mode_settings)
-    proxy_request = ProxyRequest(adapted_request, service_url)
+    upstream_url = intercept_settings.upstream_url
+    proxy_request = ProxyRequest(adapted_request, upstream_url)
 
     # Create JoinedRequest
     return JoinedRequest(proxy_request).with_response(adapted_response)
 
-def join_rewritten_request(flow: MitmproxyHTTPFlow, active_mode_settings) -> JoinedRequest:
+def join_rewritten_request(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> JoinedRequest:
     # Adapt flow.request
-    request = MitmproxyRequestAdapter(flow.request)
+    request = MitmproxyRequestFacade(flow.request)
 
     # Adapt flow.response
     response = MitmproxyResponseAdapter(flow.response)
 
-    rewrite_rules: list = active_mode_settings.get('rewrite_rules')
-    request.rewrite(rewrite_rules)
-    response.filter(rewrite_rules)
+    rewrite_rules = intercept_settings.rewrite_rules
+    request.with_rewrite_rules(rewrite_rules).rewrite()
+    response.with_rewrite_rules(rewrite_rules).rewrite()
 
-    return join_request(request, response, active_mode_settings)
+    return join_request(request, response, intercept_settings)
 
-def join_filtered_request(flow: MitmproxyHTTPFlow, active_mode_settings) -> JoinedRequest:
+def join_redacted_request(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> JoinedRequest:
     # Adapt flow.request
-    request = MitmproxyRequestAdapter(flow.request)
+    request = MitmproxyRequestFacade(flow.request)
 
     # Adapt flow.response
     response = MitmproxyResponseAdapter(flow.response)
 
-    filter_rules: list = active_mode_settings.get('filter_rules')
-    request.filter(filter_rules)
-    response.filter(filter_rules)
+    redact_rules: list = intercept_settings.ignore_rules
+ 
+    request.with_redact_rules(redact_rules).redact()
+    response.with_redact_rules(redact_rules).redact()
 
-    return join_request(request, response, active_mode_settings)
+    return join_request(request, response, intercept_settings)

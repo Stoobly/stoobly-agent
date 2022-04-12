@@ -18,7 +18,7 @@ class ExecDecorator():
         file_path = kwargs['file_path']
 
         settings = Settings.instance()
-        proxy_url = settings.proxy_url
+        proxy_url = settings.proxy.url
 
         if not proxy_url:
             run_command(shell, file_path, is_command)

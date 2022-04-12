@@ -6,71 +6,72 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from mitmproxy.net.http.response import Response as MitmproxyResponse 
 
 from stoobly_agent.app.models.request_model import RequestModel
-from ...config.constants import record_policy
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.config.constants import record_policy
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectRecordSettings
 
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
-from .settings import get_record_policy, get_service_url
 from .upload.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import allowed_request
-from .utils.response_handler import bad_request, reverse_proxy
+from .utils.request_handler import reverse_proxy
+from .utils.response_handler import bad_request 
 
 LOG_ID = 'HandleRecord'
 
-def handle_request_record(request: MitmproxyRequest, settings: Settings):
-    active_mode_settings: IProjectRecordSettings = settings.active_mode_settings
-
-    service_url = get_service_url(request, active_mode_settings)
+def handle_request_record(request: MitmproxyRequest, intercept_settings: InterceptSettings):
+    upstream_url = intercept_settings.upstream_url
 
     #
     # Try forwarding the request to the service specified by Settings.service_url
     #
-    if not service_url:
+    if not upstream_url:
         raise Exception('config service_url is not set')
 
-    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:ServiceUrl: {service_url}")
+    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
 
-    reverse_proxy(request, service_url, {})
+    reverse_proxy(request, upstream_url, {})
 
-def handle_response_record(flow: MitmproxyHTTPFlow, settings: Settings):
+def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
+    request: MitmproxyRequest = flow.request
+
     __disable_transfer_encoding(flow.response)
 
-    request_model = RequestModel(settings)
-    active_mode_settings: IProjectRecordSettings = settings.active_mode_settings
-    request: MitmproxyRequest = flow.request
-    upload_policy = __get_upload_policy(request, active_mode_settings)
+    request_model = RequestModel(intercept_settings.settings)
 
-    Logger.instance().debug(f"{LOG_ID}:UploadPolicy: {upload_policy}")
+    active_record_policy = __get_record_policy(request, intercept_settings)
+    Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
 
-    if upload_policy == record_policy.ALL:
-        __upload_request(request_model, active_mode_settings, flow)
-    elif upload_policy == record_policy.NOT_FOUND:
-        res = inject_eval_request(request_model, active_mode_settings)(request, [])
+    if active_record_policy == record_policy.ALL:
+        __record_request(request_model, intercept_settings, flow)
+    elif active_record_policy == record_policy.FOUND:
+        res = inject_eval_request(request_model, intercept_settings)(request, [])
+
+        if res.status_code != custom_response_codes.NOT_FOUND:
+            __record_request(request_model, intercept_settings, flow)
+    elif active_record_policy == record_policy.NOT_FOUND:
+        res = inject_eval_request(request_model, intercept_settings)(request, [])
 
         if res.status_code == custom_response_codes.NOT_FOUND:
-            __upload_request(request_model, active_mode_settings, flow)
-    elif upload_policy == record_policy.NONE:
-        pass
+            __record_request(request_model, intercept_settings, flow)
     else:
-        return bad_request(
-            flow,
-            "Valid env RECORD_POLICY: %s, %s, %s, Got: %s" %
-            [record_policy.ALL, record_policy.NOT_FOUND, record_policy.NONE, upload_policy]
-        )
+        if active_record_policy != record_policy.NONE:
+            return bad_request(
+                flow,
+                "Valid env RECORD_POLICY: %s, %s, %s, Got: %s" %
+                [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND, active_record_policy]
+            )
 
-def __upload_request(request_model: RequestModel, active_mode_settings: IProjectRecordSettings, flow: MitmproxyHTTPFlow):
+def __record_request(request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow):
     thread = threading.Thread(
-        target=inject_upload_request(request_model, active_mode_settings), 
+        target=inject_upload_request(request_model, intercept_settings), 
         args=[flow]
     )
     thread.start()
 
-def __get_upload_policy(request: MitmproxyRequest, active_mode_settings: IProjectRecordSettings):
-    if active_mode_settings.get('enabled') and allowed_request(active_mode_settings, request):
-        return get_record_policy(request.headers, active_mode_settings)
+def __get_record_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
+    if intercept_settings.active and allowed_request(intercept_settings, request):
+        return intercept_settings.policy
     else:
         # If the request path does not match accepted paths, do not record
         return record_policy.NONE

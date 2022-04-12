@@ -4,8 +4,8 @@ class ProjectKey(ResourceKey):
 
   @property
   def id(self) -> str:
-    return self.decoded_key.get('i')
+    return self.get('i')
   
   @property
   def organization_id(self) -> str:
-    return self.decoded_key.get('o')
+    return self.get('o')
