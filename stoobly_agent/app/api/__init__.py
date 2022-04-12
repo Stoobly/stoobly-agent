@@ -222,7 +222,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROUTES = {
         'GET': [
             [CONFIGS_PATH, ConfigsController.instance().get_configs],
-            ['/'.join([CONFIGS_PATH, 'modes']), ConfigsController.instance().get_configs_modes],
+            ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().get_configs_summary],
             ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
             ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
             [STATUS_PATH, StatusesController.instance().get_status],

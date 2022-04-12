@@ -1,24 +1,19 @@
 ---
-agent_url: http://localhost:4200
-api_url: 
-api_key: 
-features:
-  dev_tools: false
-  exec: false
-  remote: false
-mode:
-  active: record
-  record:
-    enabled: false
-    project_key: ''
-    settings: {}
-  mock:
-    enabled: false
-    project_key: ''
-    settings: {}
-  test:
-    enabled: false
-    project_key: ''
-    settings: {}
+cli:
+    features:
+        dev_tools: false
+        exec: false
+        remote: false       
+proxy:
+    intercept:
+        active: false
+        mode: ''
+    data: {}
+    firewall: {}
+    filter: {}
+remote: 
+    api_url: ''
+    api_key: ''
+ui:
+    url: http://localhost:4200
 proxy_config_path: config/settings.yml
-remoted_enabled: false

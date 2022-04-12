@@ -6,7 +6,7 @@ from typing import List
 
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
-from stoobly_agent.app.proxy.mitmproxy.request_adapter import MitmproxyRequestAdapter
+from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
 
 from stoobly_agent.lib.api.keys.request_key import RequestKey
@@ -34,7 +34,7 @@ class LocalDBRequestAdapter():
     joined_request: JoinedRequest = params['joined_request']
 
     request: MitmproxyRequest = flow.request
-    hashed_request = HashedRequestDecorator(MitmproxyRequestAdapter(request))
+    hashed_request = HashedRequestDecorator(MitmproxyRequestFacade(request))
 
     with ORM.instance().db.transaction():
       request_columns: RequestColumns = {

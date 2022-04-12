@@ -1,4 +1,5 @@
 MOCK = 'mock'
 NONE = 'none'
 RECORD = 'record'
+REPLAY = 'replay'
 TEST = 'test'

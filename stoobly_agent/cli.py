@@ -12,7 +12,7 @@ from .app.proxy import INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
 
 settings = Settings.instance()
-is_remote = settings.features.get('remote')
+is_remote = settings.cli.features.remote
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -32,15 +32,15 @@ main.add_command(config)
 main.add_command(feature)
 main.add_command(request)
 
-if settings.features.get('dev_tools'):
+if settings.cli.features.dev_tools:
     from .app.cli import dev_tools
     main.add_command(dev_tools)
 
-if settings.features.get('exec'):
+if settings.cli.features.exec:
     from .app.cli.decorators.exec import ExecDecorator
     ExecDecorator(main).decorate()
 
-if settings.features.get('remote'):
+if settings.cli.features.remote:
     from .app.cli import report, scenario
     main.add_command(project)
     main.add_command(report)

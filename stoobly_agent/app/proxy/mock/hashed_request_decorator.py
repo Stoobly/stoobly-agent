@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.lib.logger import Logger
 
-from ..mitmproxy.request_adapter import MitmproxyRequestAdapter
+from ..mitmproxy.request_facade import MitmproxyRequestFacade
 
 COMPONENT_TYPES = {
     'HEADER': 1,
@@ -19,7 +19,7 @@ class HashedRequestDecorator:
 
     LOG_ID = 'lib.hashed_request_decorator'
 
-    def __init__(self, request: MitmproxyRequestAdapter):
+    def __init__(self, request: MitmproxyRequestFacade):
         self.request = request
 
         self.ignored_headers = {}

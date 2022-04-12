@@ -21,21 +21,21 @@ class ConfigDecorator():
   def __with_enable(self):
     @self.__main.command()
     def enable():
-      settings_hash = self.__settings.to_hash()
+      settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=True)
-      self.__settings.update(settings_hash)
+      self.__settings.write(settings_hash)
 
   def __with_disable(self):
     @self.__main.command()
     def disable():
-      settings_hash = self.__settings.to_hash()
+      settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=False)
-      self.__settings.update(settings_hash)
+      self.__settings.write(settings_hash)
 
   def __with_show(self):
     @self.__main.command()
     def show():
-      settings_hash = self.__settings.to_hash()
+      settings_hash = self.__settings.to_dict()
       print(self.__resolve(settings_hash, self.__setting))
 
   def __resolve(self, settings_hash, setting: str, **kwargs):

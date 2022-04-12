@@ -14,7 +14,7 @@ class ScenarioFacade():
     self.settings = settings
 
   def create(self, project_key: str, name: str, description: str = ''):
-    api = ScenariosResource(self.settings.api_url, self.settings.api_key)
+    api = ScenariosResource(self.settings.remote.api_url, self.settings.remote.api_key)
 
     res: requests.Response = api.from_project_key(
       project_key, 
@@ -32,7 +32,7 @@ class ScenarioFacade():
     return res.json()
 
   def index(self, project_key, **kwargs):
-    api = ScenariosResource(self.settings.api_url, self.settings.api_key)
+    api = ScenariosResource(self.settings.remote.api_url, self.settings.remote.api_key)
     res = api.from_project_key(
       project_key, lambda project_id: api.index(project_id, kwargs)
     ) 

@@ -10,7 +10,7 @@ class ProjectFacade():
 
   def __init__(self, __settings: Settings):
     self.__settings = __settings
-    self.__api = ProjectsResource(self.__settings.api_url, self.__settings.api_key)
+    self.__api = ProjectsResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
 
   def create(self, **kwargs: ProjectCreateParams):
     organization_key: str = OrganizationKey(kwargs.get('organization_key')) 

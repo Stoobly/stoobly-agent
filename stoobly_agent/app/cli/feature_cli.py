@@ -22,7 +22,7 @@ def feature(ctx):
 def dev_tools(ctx):
   pass
 
-ConfigDecorator(dev_tools, settings, 'features.dev_tools').decorate()
+ConfigDecorator(dev_tools, settings, 'cli.features.dev_tools').decorate()
 
 feature.add_command(dev_tools)
 
@@ -34,7 +34,7 @@ feature.add_command(dev_tools)
 def exec(ctx):
   pass
 
-ConfigDecorator(exec, settings, 'features.exec').decorate()
+ConfigDecorator(exec, settings, 'cli.features.exec').decorate()
 
 feature.add_command(exec)
 
@@ -46,6 +46,6 @@ feature.add_command(exec)
 def remote(ctx):
   pass
 
-ConfigDecorator(remote, settings, 'features.remote').decorate()
+ConfigDecorator(remote, settings, 'cli.features.remote').decorate()
 
 feature.add_command(remote)

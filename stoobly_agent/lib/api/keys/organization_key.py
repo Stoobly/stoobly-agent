@@ -4,5 +4,5 @@ class OrganizationKey(ResourceKey):
 
   @property
   def id(self) -> str:
-    return self.decoded_key.get('i')
+    return self.get('i')
 

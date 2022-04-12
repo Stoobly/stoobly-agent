@@ -7,15 +7,14 @@ import tempfile
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 
-from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.app.models.request_model import RequestModel
-
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectRecordSettings
+from stoobly_agent.lib.api.param_builder import ParamBuilder
+from stoobly_agent.lib.logger import Logger
 
 from ..utils.publish_change_service import publish_change
-from .join_request_service import join_filtered_request
+from .join_request_service import join_redacted_request
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -24,16 +23,16 @@ AGENT_STATUSES = {
 LOG_ID = 'UploadRequest'
 NAMESPACE_FOLDER = 'stoobly'
 
-def inject_upload_request(request_model: RequestModel, active_mode_settings: IProjectRecordSettings):
+def inject_upload_request(request_model: RequestModel, intercept_settings: InterceptSettings):
     settings = Settings.instance()
 
     if not request_model:
         request_model = RequestModel(settings)
 
-    if not active_mode_settings:
-        active_mode_settings = settings.active_mode_settings
+    if not intercept_settings:
+        intercept_settings = InterceptSettings(settings)
 
-    return lambda flow: upload_request(request_model, active_mode_settings, flow)
+    return lambda flow: upload_request(request_model, intercept_settings, flow)
 
 ###
 #
@@ -44,18 +43,17 @@ def inject_upload_request(request_model: RequestModel, active_mode_settings: IPr
 # @param res [Net::HTTP::Response]
 #
 def upload_request(
-    request_model: RequestModel, active_mode_settings: IProjectRecordSettings, flow: MitmproxyHTTPFlow
+    request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow
 ):
-    joined_request = join_filtered_request(flow, active_mode_settings)
+    joined_request = join_redacted_request(flow, intercept_settings)
 
     Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
 
-    settings = Settings.instance()
-    if settings.is_debug():
+    if intercept_settings.settings.is_debug():
         __debug_request(flow.request, joined_request.build())
 
     body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
-    body_params.with_resource_scoping(active_mode_settings)
+    body_params.with_resource_scoping(intercept_settings)
 
     #try:
     request = request_model.create(**body_params.build())

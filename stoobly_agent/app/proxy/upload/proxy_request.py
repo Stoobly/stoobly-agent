@@ -1,5 +1,7 @@
+from ..mitmproxy.request_facade import MitmproxyRequestFacade
+
 class ProxyRequest:
-    def __init__(self, request, upstream_url):
+    def __init__(self, request: MitmproxyRequestFacade, upstream_url: str):
         self.request = request
 
         self.upstream_url = upstream_url

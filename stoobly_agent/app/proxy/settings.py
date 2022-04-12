@@ -37,7 +37,7 @@ def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str
     elif custom_headers.PROXY_MODE in headers:
         return headers[custom_headers.PROXY_MODE]
     else:
-        return settings.active_mode
+        return settings.proxy.intercept.active
 
 def get_mock_policy(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
     if custom_headers.MOCK_POLICY in headers:
@@ -57,7 +57,7 @@ def get_service_url(request: MitmproxyRequest, settings: IProjectModeSettings) -
     if service_url:
         return service_url
     else:
-        if settings.get('service_url') and len(settings.get('service_url')) > 0:
+        if settings.up and len(settings.get('service_url')) > 0:
             return settings.get('service_url')
 
         return __upstream_url(request)

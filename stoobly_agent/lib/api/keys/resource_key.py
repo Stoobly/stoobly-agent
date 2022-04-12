@@ -26,3 +26,8 @@ class ResourceKey():
             **data,
             't': random.randint(1000000, 10000000),
         }).encode())
+
+
+    def get(self, k: str):
+        v = self.decoded_key.get(k)
+        return str(v) if v else None
