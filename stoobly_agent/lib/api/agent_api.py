@@ -1,7 +1,6 @@
-import base64
-import json
 import requests
-import pdb
+
+from typing import Union
 
 class AgentApi:
     STATUSES_ENDPOINT = '/api/v1/admin/statuses'
@@ -15,21 +14,6 @@ class AgentApi:
             'X-Do-Proxy': '1',
         }
 
-    def update_status(self, status_id, project_key):
-        project_data = self.decode_project_key(project_key)
+    def update_status(self, status_id: str, project_id: Union[int, str]):
         url = f"{self.service_url}{self.STATUSES_ENDPOINT}/{status_id}"
-        return requests.put(url, data=str(project_data.get('id')), headers=self.default_headers)
-
-    @staticmethod
-    def decode_project_key(key):
-        # TODO: add specific error catching
-        try:
-            key = base64.b64decode(key)
-        except:
-            return {}
-
-        # TODO: add specific error catching
-        try:
-            return json.loads(key)
-        except:
-            return {}
+        return requests.put(url, data=str(project_id), headers=self.default_headers)

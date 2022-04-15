@@ -153,7 +153,7 @@ class MitmproxyRequestFacade(Request):
         self.__apply_content(rewrites, self.__rewrite_handler)
 
     def __redact_headers(self, filters: List[ParameterRule]):
-        sself.__apply_headers(filters, self.__redact_handler)
+        self.__apply_headers(filters, self.__redact_handler)
 
     def __redact_content(self, filters: List[ParameterRule]):
         self.__apply_content(filters, self.__redact_handler)
