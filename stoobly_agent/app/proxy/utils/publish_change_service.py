@@ -7,7 +7,8 @@ from stoobly_agent.lib.logger import Logger
 def publish_change(status: str):
   settings = Settings.instance()
 
-  if not settings.ui.active or settings.remote:
+  # If ui is not active or if remote is not enabled, return
+  if not settings.ui.active or not settings.cli.features.remote:
     return False
 
   ui_url = settings.ui.url
