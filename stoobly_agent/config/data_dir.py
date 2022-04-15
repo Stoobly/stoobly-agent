@@ -41,7 +41,7 @@ class DataDir:
         db_dir_path = os.path.join(self.path, 'db')
 
         if not os.path.exists(db_dir_path):
-            os.mkdir(db_dir_path, exist_ok=True)
+            os.mkdir(db_dir_path)
 
         return db_dir_path
 

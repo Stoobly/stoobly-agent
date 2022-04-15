@@ -15,7 +15,7 @@ from .proxy_controller import ProxyController
 from .statuses_controller import StatusesController
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+    ROOT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')
 
     CONFIGS_PATH = '/api/v1/admin/configs'
     PROXY_PATH = '/proxy'
