@@ -7,8 +7,8 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
-from stoobly_agent.app.settings import Settings, parameter_rule
-from stoobly_agent.config.constants import custom_headers, mode
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import custom_headers, mode, test_origin
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
 class InterceptSettings:
@@ -128,6 +128,13 @@ class InterceptSettings:
   @property
   def test_strategy(self):
     return self.__data_rules.test_strategy
+
+  @property
+  def test_origin(self):
+    if self.__headers and custom_headers.TEST_ORIGIN in self.__headers:
+      return self.__headers[custom_headers.TEST_ORIGIN]
+
+    return test_origin.WEB
 
   def __select_filter_rules(self):
     rules = []

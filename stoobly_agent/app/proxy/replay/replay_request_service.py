@@ -35,6 +35,9 @@ def replay(request: Request, **kwargs: ReplayRequestOptions) -> requests.Respons
   if 'scenario_key' in kwargs:
     headers[custom_headers.SCENARIO_KEY] = kwargs['scenario_key']
 
+  if 'test_origin' in kwargs:
+    headers[custom_headers.TEST_ORIGIN] = kwargs['test_origin']
+
   Logger.instance().info(f"{method} {request.url}")
     
   return handler(

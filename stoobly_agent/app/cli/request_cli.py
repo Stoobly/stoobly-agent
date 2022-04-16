@@ -3,7 +3,7 @@ import pdb
 import requests
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.config.constants import test_origin, test_strategy
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .request_facade import RequestFacade
