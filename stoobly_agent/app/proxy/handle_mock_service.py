@@ -40,7 +40,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
 
     if policy == mock_policy.NONE:
         if handle_failure:
-            return handle_failure(context)
+            res = handle_failure(context)
     elif policy == mock_policy.ALL:
         ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else []] 
 
@@ -66,7 +66,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
 
         if res.status_code == custom_response_codes.NOT_FOUND:
             if handle_failure:
-                return handle_failure(context)
+                res = handle_failure(context)
         else:
             if handle_success:
                 res = handle_success(context) or res

@@ -6,7 +6,7 @@ from mitmproxy.net.http.response import Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants import custom_headers, test_origin
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 
@@ -82,7 +82,10 @@ def __handle_mock_success(context: MockContext) -> None:
             strategy=test_strategy
         )
 
-    return __build_response(passed, log)
+    # If the origin was from a CLI, send a JSON response
+    # Testing via browser for example, requires the actual response to be returned
+    if intercept_settings.test_origin == test_origin.CLI:
+        return __build_response(passed, log)
 
 def __build_response(passed, log):
     body = json.dumps({
@@ -99,6 +102,10 @@ def __build_response(passed, log):
 
 def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance().info(f"{LOG_ID}:TestStatus: No test found")
+
+    intercept_settings = context.intercept_settings
+    if intercept_settings.test_origin == test_origin.CLI:
+        return __build_response(False, 'No test found')
 
 # Without deleting this header, causes parsing issues when reading response
 def __disable_transfer_encoding(response: MitmproxyResponse) -> None:

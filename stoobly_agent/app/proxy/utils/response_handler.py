@@ -7,6 +7,9 @@ from requests import Response
 # Return response headers, body, and status code
 #
 def pass_on(flow: MitmproxyHTTPFlow, res: Response):
+    if not res:
+        return
+        
     headers = {}
     for key, value in res.headers.items():
         headers[key.capitalize()] = value

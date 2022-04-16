@@ -1,0 +1,2 @@
+CLI = 'cli'
+WEB = 'web'

@@ -1,5 +1,5 @@
 import pdb
-from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.config.constants import test_origin, test_strategy
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
@@ -40,6 +40,7 @@ class RequestFacade():
   def test(self, request_key: str, **kwargs):
     kwargs['mode'] = mode.TEST
     kwargs['strategy'] = kwargs.get('strategy') or test_strategy.DIFF
+    kwargs['test_origin'] = test_origin.CLI
     
     if kwargs.get('save_to_report'):
       kwargs['report_key'] = kwargs.get('save_to_report')
