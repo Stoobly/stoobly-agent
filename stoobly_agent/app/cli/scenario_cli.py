@@ -58,15 +58,19 @@ def test(**kwargs):
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
-@click.argument('project_key')
 def list(**kwargs):
-    project_key = kwargs['project_key']
-    del kwargs['project_key']
+    project_key = None
+    settings = Settings.instance()
 
-    scenario = ScenarioFacade(Settings.instance())
+    project_key = settings.proxy.intercept.project_key
+
+    scenario = ScenarioFacade(settings)
     scenarios_response = scenario.index(project_key, **kwargs)
 
-    tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+    if len(scenarios_response['list']) == 0:
+        print('No scenarios found.')
+    else:
+        tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
 
 @scenario.command(
     help="Set current active scenario"
