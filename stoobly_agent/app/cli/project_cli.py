@@ -38,13 +38,16 @@ def list(**kwargs):
     project = ProjectFacade(Settings.instance())
     projects_response = project.index(**kwargs)
 
-    tabulate_print(projects_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+    if len(projects_response['list']) == 0:
+        print('No projects found')
+    else:
+        tabulate_print(projects_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
 
 @project.command(
     help="Set current active project"
 )
 @click.argument('project_key')
-def set(**kwargs):
+def use(**kwargs):
     settings = Settings.instance()
 
     project_key = ProjectKey(kwargs['project_key'])

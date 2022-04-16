@@ -30,12 +30,16 @@ def create(**kwargs):
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
-@click.argument('project_key')
 def list(**kwargs):
-    report_key = kwargs['project_key']
-    del kwargs['project_key']
+    project_key = None
+    settings = Settings.instance()
+
+    project_key = settings.proxy.intercept.project_key
 
     report = ReportFacade(Settings.instance())
-    reports_response = report.index(report_key, **kwargs)
-    
-    tabulate_print(reports_response['list'], filter=['created_at', 'user_id', 'starred', 'updated_at'])
+    reports_response = report.index(project_key, **kwargs)
+
+    if len(reports_response['list']) == 0:
+        print('No reports found.')
+    else:
+        tabulate_print(reports_response['list'], filter=['created_at', 'user_id', 'starred', 'updated_at'])

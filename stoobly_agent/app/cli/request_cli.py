@@ -27,17 +27,20 @@ def request(ctx):
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
-@ConditionalDecorator(lambda f: click.argument('project_key', required=True)(f), is_remote)
 def list(**kwargs):
-  # If run in local-only mode, will be None
-  project_key = kwargs.get('project_key')
-  
-  if project_key:
-    del kwargs['project_key']
+  project_key = None
+  settings = Settings.instance()
 
-  request = RequestFacade(Settings.instance())
+  if is_remote:
+    project_key = settings.proxy.intercept.project_key
+
+  request = RequestFacade(settings)
   requests_response = request.index(project_key, **kwargs)
-  tabulate_print(requests_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+
+  if len(requests_response['list']) == 0:
+    print('No requests found.')
+  else:
+    tabulate_print(requests_response['list'], filter=['created_at', 'position', 'project_id', 'starred', 'updated_at'])
 
 @request.command(
   help="Replay a request"
