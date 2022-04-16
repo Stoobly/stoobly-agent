@@ -24,6 +24,7 @@ class ConfigDecorator():
       settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=True)
       self.__settings.write(settings_hash)
+      print(f"{self.__setting} enabled")
 
   def __with_disable(self):
     @self.__main.command()
@@ -31,6 +32,7 @@ class ConfigDecorator():
       settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=False)
       self.__settings.write(settings_hash)
+      print(f"{self.__setting} disabled")
 
   def __with_show(self):
     @self.__main.command()
