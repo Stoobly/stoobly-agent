@@ -4,6 +4,7 @@ import pdb
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 from .scenario_facade import ScenarioFacade
 from .utils.tabulate_print_service import tabulate_print
@@ -66,3 +67,25 @@ def list(**kwargs):
     scenarios_response = scenario.index(project_key, **kwargs)
 
     tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+
+@scenario.command(
+    help="Set current active scenario"
+)
+@click.argument('scenario_key')
+def set(**kwargs):
+    settings = Settings.instance()
+
+    scenario_key = ScenarioKey(kwargs['scenario_key'])
+    if not scenario_key.id:
+        return print("Invalid scenario key provided.")
+
+    project_key = ProjectKey(kwargs['project_key'])
+
+    if scenario_key.project_id != project_key.id:
+        return print("Please provide a scenario that belongs to the current project.\n")
+
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.scenario_key = kwargs['scenario_key']
+    settings.commit()
+
+    print("Scenario updated!")
