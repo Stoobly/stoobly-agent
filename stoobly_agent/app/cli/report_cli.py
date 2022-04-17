@@ -35,7 +35,7 @@ def create(**kwargs):
     tabulate_print(
         [res], 
         filter=['created_at', 'user_id', 'starred', 'updated_at'], 
-        headers=kwargs.get('headers'),
+        headers=not kwargs.get('without_headers'),
         select=kwargs.get('select')
     )
 
@@ -43,16 +43,19 @@ def create(**kwargs):
     help="Show created reports"
 )
 @click.option('--page', default=0)
+@click.option('--project-key', help='Project to create scenario in.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    project_key = None
+    project_key = kwargs.get('project_key')
+    del kwargs['project_key']
     settings = Settings.instance()
 
-    project_key = settings.proxy.intercept.project_key
+    if not project_key:
+        project_key = settings.proxy.intercept.project_key
 
     report = ReportFacade(Settings.instance())
     reports_response = report.index(project_key, **kwargs)

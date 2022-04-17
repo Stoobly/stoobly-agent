@@ -20,11 +20,26 @@ def scenario(ctx):
     help="Create a scenario"
 )
 @click.option('--description', help='Scenario description.')
-@click.option('--project-key', required=True, help='Project to create scenario in.')
+@click.option('--project-key', help='Project to create scenario in.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
+    project_key = kwargs.get('project_key')
+    settings = Settings.instance()
+
+    if not project_key:
+        project_key = settings.proxy.intercept.project_key
+
     scenario = ScenarioFacade(Settings.instance())
-    print(scenario.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
+    res = scenario.create(project_key, kwargs['name'], kwargs['description'])
+
+    tabulate_print(
+        [res],
+        filter=['created_at', 'project_id', 'starred', 'updated_at'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select')
+    )
 
 @scenario.command(
     help="Replay a scenario"
@@ -54,14 +69,19 @@ def test(**kwargs):
     help="Show all scenarios"
 )
 @click.option('--page', default=0)
+@click.option('--project-key', help='Project to create scenario in.')
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    project_key = None
+    project_key = kwargs.get('project_key')
+    del kwargs['project_key']
     settings = Settings.instance()
 
-    project_key = settings.proxy.intercept.project_key
+    if not project_key:
+        project_key = settings.proxy.intercept.project_key
 
     scenario = ScenarioFacade(settings)
     scenarios_response = scenario.index(project_key, **kwargs)
@@ -69,7 +89,12 @@ def list(**kwargs):
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')
     else:
-        tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+        tabulate_print(
+            scenarios_response['list'], 
+            filter=['created_at', 'project_id', 'starred', 'updated_at'],
+            headers=not kwargs.get('without_headers'),
+            select=kwargs.get('select')
+        )
 
 @scenario.command(
     help="Describe scenario"
