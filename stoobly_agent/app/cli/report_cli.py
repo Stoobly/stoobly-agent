@@ -1,4 +1,5 @@
 import click
+import sys
 
 from stoobly_agent.app.settings import Settings
 
@@ -17,19 +18,36 @@ def report(ctx):
     help="Create a report"
 )
 @click.option('--description', help='Report description.')
-@click.option('--project-key', required=True, help='Project to create report in.')
+@click.option('--project-key', help='Project to create report in.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=True, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
-    report = ReportFacade(Settings.instance())
-    print(report.create(kwargs['project_key'], kwargs['name'], kwargs['description']))
+    project_key = kwargs.get('project_key')
+    settings = Settings.instance()
+
+    if not project_key:
+        project_key = settings.proxy.intercept.project_key
+
+    report = ReportFacade(settings)
+    res = report.create(project_key, kwargs['name'], kwargs['description'])
+
+    tabulate_print(
+        [res], 
+        filter=['created_at', 'user_id', 'starred', 'updated_at'], 
+        headers=kwargs.get('headers'),
+        select=kwargs.get('select')
+    )
 
 @report.command(
     help="Show created reports"
 )
 @click.option('--page', default=0)
+@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
     project_key = None
     settings = Settings.instance()
@@ -40,6 +58,11 @@ def list(**kwargs):
     reports_response = report.index(project_key, **kwargs)
 
     if len(reports_response['list']) == 0:
-        print('No reports found.')
+        print('No reports found.', file=sys.stderr)
     else:
-        tabulate_print(reports_response['list'], filter=['created_at', 'user_id', 'starred', 'updated_at'])
+        tabulate_print(
+            reports_response['list'], 
+            filter=['created_at', 'user_id', 'starred', 'updated_at'],
+            headers=not kwargs.get('without_headers'),
+            select=kwargs.get('select')
+        )
