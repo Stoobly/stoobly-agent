@@ -29,22 +29,31 @@ def create(**kwargs):
     help="Show all projects"
 )
 @click.option('--page', default=0)
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--size', default=10)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
-@click.option('--size', default=10)
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('organization_key')
 def list(**kwargs):
     project = ProjectFacade(Settings.instance())
     projects_response = project.index(**kwargs)
 
     if len(projects_response['list']) == 0:
-        print('No projects found')
+        print('No projects found.', file=sys.stderr)
     else:
-        tabulate_print(projects_response['list'], filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'])
+        tabulate_print(
+            projects_response['list'], 
+            filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
+            headers=not kwargs.get('without_headers'),
+            select=kwargs.get('select'),
+        )
 
 @project.command(
     help="Describe scenario"
 )
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('project_key', required=False)
 def show(**kwargs):
     project_key = kwargs.get('project_key')
@@ -58,7 +67,13 @@ def show(**kwargs):
 
     project = ProjectFacade(settings)
     project_response = project.show(project_key)
-    tabulate_print([project_response], filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'])
+
+    tabulate_print(
+        [project_response], 
+        filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select')
+    )
 
 @project.command(
     help="Set current active project"

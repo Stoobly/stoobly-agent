@@ -24,14 +24,18 @@ def request(ctx):
   help="Show recorded requests"
 )
 @click.option('--page', default=0)
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--size', default=10)
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-  project_key = None
+  project_key = kwargs.get('project_key')
+  del kwargs['project_key']
   settings = Settings.instance()
 
-  if is_remote:
+  if is_remote and not project_key:
     project_key = settings.proxy.intercept.project_key
 
   request = RequestFacade(settings)
@@ -40,7 +44,12 @@ def list(**kwargs):
   if len(requests_response['list']) == 0:
     print('No requests found.')
   else:
-    tabulate_print(requests_response['list'], filter=['created_at', 'position', 'project_id', 'starred', 'updated_at'])
+    tabulate_print(
+      requests_response['list'], 
+      filter=['components' , 'created_at', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
+      headers=not kwargs.get('without_headers'),
+      select=kwargs.get('select'),
+    )
 
 @request.command(
   help="Replay a request"
