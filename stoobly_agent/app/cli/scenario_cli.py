@@ -1,6 +1,5 @@
 import click
-import json
-import pdb
+import sys
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_strategy
@@ -73,15 +72,35 @@ def list(**kwargs):
         tabulate_print(scenarios_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
 
 @scenario.command(
+    help="Describe scenario"
+)
+@click.argument('scenario_key', required=False)
+def show(**kwargs):
+    scenario_key = kwargs.get('scenario_key')
+    settings = Settings.instance()
+
+    if not scenario_key:
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        scenario_key = data_rule.scenario_key
+
+    if not scenario_key or len(scenario_key) == 0:
+        return print('Invalid scenario key provided.', file=sys.stderr)
+
+    scenario = ScenarioFacade(settings)
+    scenario_response = scenario.show(scenario_key)
+    tabulate_print([scenario_response], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+
+@scenario.command(
     help="Set current active scenario"
 )
 @click.argument('scenario_key')
-def set(**kwargs):
+def use(**kwargs):
     settings = Settings.instance()
 
     scenario_key = ScenarioKey(kwargs['scenario_key'])
     if not scenario_key.id:
-        return print("Invalid scenario key provided.")
+        return print('Invalid scenario key provided.', file=sys.stderr)
 
     project_key = ProjectKey(kwargs['project_key'])
 
