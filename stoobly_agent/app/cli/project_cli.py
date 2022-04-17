@@ -1,6 +1,5 @@
 import click
-import json
-import pdb
+import sys
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
@@ -41,7 +40,25 @@ def list(**kwargs):
     if len(projects_response['list']) == 0:
         print('No projects found')
     else:
-        tabulate_print(projects_response['list'], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+        tabulate_print(projects_response['list'], filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'])
+
+@project.command(
+    help="Describe scenario"
+)
+@click.argument('project_key', required=False)
+def show(**kwargs):
+    project_key = kwargs.get('project_key')
+    settings = Settings.instance()
+
+    if not project_key:
+        project_key = settings.proxy.intercept.project_key
+
+    if not project_key or len(project_key) == 0:
+        return print('Invalid project key provided.', file=sys.stderr)
+
+    project = ProjectFacade(settings)
+    project_response = project.show(project_key)
+    tabulate_print([project_response], filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'])
 
 @project.command(
     help="Set current active project"
