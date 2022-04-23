@@ -125,24 +125,3 @@ def show(**kwargs):
     scenario_response = scenario.show(scenario_key)
     tabulate_print([scenario_response], filter=['created_at', 'project_id', 'starred', 'updated_at'])
 
-@scenario.command(
-    help="Set current active scenario"
-)
-@click.argument('scenario_key')
-def use(**kwargs):
-    settings = Settings.instance()
-
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
-    if not scenario_key.id:
-        return print('Invalid scenario key provided.', file=sys.stderr)
-
-    project_key = ProjectKey(kwargs['project_key'])
-
-    if scenario_key.project_id != project_key.id:
-        return print("Please provide a scenario that belongs to the current project.\n")
-
-    data_rule = settings.proxy.data.data_rules(project_key.id)
-    data_rule.scenario_key = kwargs['scenario_key']
-    settings.commit()
-
-    print("Scenario updated!")

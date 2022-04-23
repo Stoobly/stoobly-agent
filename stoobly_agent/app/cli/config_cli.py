@@ -1,8 +1,10 @@
 import click
 import json
+import sys
 import time
 
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
@@ -12,7 +14,9 @@ from stoobly_agent.app.settings import Settings
 def config(ctx):
     pass
 
-@config.command()
+@config.command(
+    help="Display config contents."
+)
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):
     settings = Settings.instance()
@@ -29,3 +33,34 @@ def dump(**kwargs):
         print(f"Config successfully dumped to {config_dump_file_name}")
     else:
         print(output)
+
+@click.group(
+    help="Manage active scenario."
+)
+@click.pass_context
+def scenario(ctx):
+    pass
+
+@scenario.command(
+    help="Set active scenario."
+)
+@click.argument('scenario_key')
+def set(**kwargs):
+    settings = Settings.instance()
+
+    scenario_key = ScenarioKey(kwargs['scenario_key'])
+    if not scenario_key.id:
+        return print('Invalid scenario key provided.', file=sys.stderr)
+
+    project_key = ProjectKey(kwargs['project_key'])
+
+    if scenario_key.project_id != project_key.id:
+        return print("Please provide a scenario that belongs to the current project.\n")
+
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.scenario_key = kwargs['scenario_key']
+    settings.commit()
+
+    print("Scenario updated!")
+
+config.add_command(scenario)
