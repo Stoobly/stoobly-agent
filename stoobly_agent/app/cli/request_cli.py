@@ -6,8 +6,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_origin, test_strategy
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .request_facade import RequestFacade
-from .utils.tabulate_print_service import tabulate_print
+from .helpers.request_facade import RequestFacade
+from .helpers.tabulate_print_service import tabulate_print
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote

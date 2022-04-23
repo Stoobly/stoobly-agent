@@ -1,7 +1,7 @@
 import click
 import pdb
 
-from stoobly_agent.app.cli.utils.migrate_service import migrate as database_migrate
+from stoobly_agent.app.cli.helpers.migrate_service import migrate as database_migrate
 
 @click.group(
   epilog="Run 'stoobly-agent dev-tools COMMAND --help' for more information on a command.",

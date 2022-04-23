@@ -3,8 +3,8 @@ import sys
 
 from stoobly_agent.app.settings import Settings
 
-from .report_facade import ReportFacade
-from .utils.tabulate_print_service import tabulate_print
+from .helpers.report_facade import ReportFacade
+from .helpers.tabulate_print_service import tabulate_print
 
 @click.group(
     epilog="Run 'stoobly-agent report COMMAND --help' for more information on a command.",

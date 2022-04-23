@@ -5,7 +5,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 from .helpers import ProjectFacade
-from .utils.tabulate_print_service import tabulate_print
+from .helpers.tabulate_print_service import tabulate_print
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",

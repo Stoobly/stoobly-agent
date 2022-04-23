@@ -6,8 +6,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
-from .scenario_facade import ScenarioFacade
-from .utils.tabulate_print_service import tabulate_print
+from .helpers.scenario_facade import ScenarioFacade
+from .helpers.tabulate_print_service import tabulate_print
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",
