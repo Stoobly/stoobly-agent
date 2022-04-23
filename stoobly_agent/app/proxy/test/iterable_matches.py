@@ -44,9 +44,9 @@ def list_matches(l1: list, l2: list, path_key: str) -> Tuple[bool, str]:
             return False, f"Expected type for {path_key} to exist, got {type(val)}, expected {valid_types}"
 
         if type(val) is dict:
-            return dict_matches(type_examples[dict], val)
+            return dict_matches(type_examples[dict], val, path_key)
 
         if type(val) is list:
-            return dict_matches(type_examples[list], val)
+            return dict_matches(type_examples[list], val, path_key)
 
     return True, ''

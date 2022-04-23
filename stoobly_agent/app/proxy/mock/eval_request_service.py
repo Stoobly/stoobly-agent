@@ -42,7 +42,7 @@ def eval_request(
     query_params = ParamBuilder()
     query_params.with_resource_scoping(intercept_settings)
 
-    ignored_components = __build_ignored_components(ignored_components_list)
+    ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params.with_params(__build_query_params(request, ignored_components))
 
     return request_model.response(**query_params.build())
@@ -57,6 +57,9 @@ def __build_ignored_components(ignored_components_list):
                 pass
         elif isinstance(el, list):
             ignored_components += el
+        elif isinstance(el, dict):
+            ignored_components.append(el)
+
     return ignored_components
 
 ###
