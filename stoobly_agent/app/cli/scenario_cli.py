@@ -45,7 +45,7 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
-@click.option('--save-to', help='Scenario to store test results.')
+@click.option('--save-to', help='Scenario to store replayed requests.')
 @click.argument('scenario_key')
 def replay(**kwargs):
     scenario_key = kwargs['scenario_key']

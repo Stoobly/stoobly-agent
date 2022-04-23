@@ -54,20 +54,12 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
+@click.option('--scenario-key', help='Save to scenario.')
 @click.argument('request_key')
 def replay(**kwargs):
   request = RequestFacade(Settings.instance())
   res = __replay(request.replay, **kwargs)
   print(res.content)
-  
-@request.command(
-  help="Record a request"
-)
-@ConditionalDecorator(lambda f: click.option('--scenario-key')(f), is_remote)
-@click.argument('request_key')
-def record(**kwargs):
-  request = RequestFacade(Settings.instance())
-  __replay(request.record, **kwargs)
 
 @request.command(
   help="Test a request"
