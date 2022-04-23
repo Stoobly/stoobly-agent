@@ -34,63 +34,65 @@ def dump(**kwargs):
     else:
         print(output)
 
-@click.group(
-    help="Manage active scenario."
-)
-@click.pass_context
-def scenario(ctx):
-    pass
+is_remote = Settings.instance().cli.features.remote
+if is_remote:
+    @click.group(
+        help="Manage active scenario."
+    )
+    @click.pass_context
+    def scenario(ctx):
+        pass
 
-@scenario.command(
-    help="Set active scenario."
-)
-@click.argument('scenario_key')
-def set(**kwargs):
-    settings = Settings.instance()
+    @scenario.command(
+        help="Set active scenario."
+    )
+    @click.argument('scenario_key')
+    def set(**kwargs):
+        settings = Settings.instance()
 
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
-    if not scenario_key.id:
-        return print('Invalid scenario key provided.', file=sys.stderr)
+        scenario_key = ScenarioKey(kwargs['scenario_key'])
+        if not scenario_key.id:
+            return print('Invalid scenario key provided.', file=sys.stderr)
 
-    project_key = ProjectKey(kwargs['project_key'])
+        project_key = ProjectKey(kwargs['project_key'])
 
-    if scenario_key.project_id != project_key.id:
-        return print("Please provide a scenario that belongs to the current project.\n")
+        if scenario_key.project_id != project_key.id:
+            return print("Please provide a scenario that belongs to the current project.\n")
 
-    data_rule = settings.proxy.data.data_rules(project_key.id)
-    data_rule.scenario_key = kwargs['scenario_key']
-    settings.commit()
-
-    print("Scenario updated!")
-
-@click.group(
-    help="Manage active project."
-)
-@click.pass_context
-def project(ctx):
-    pass
-
-@project.command(
-    help="Set active project."
-)
-@click.argument('project_key')
-def set(**kwargs):
-    settings = Settings.instance()
-
-    project_key = ProjectKey(kwargs['project_key'])
-    if not project_key.id:
-        return print("Invalid project key provided.")
-
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
-
-    if project_key.id != scenario_key.project_id:
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        data_rule.scenario_key = None
-        print("Current scenario does not belong to current project, unsetting current scenario.\n")
+        data_rule.scenario_key = kwargs['scenario_key']
+        settings.commit()
 
-    settings.proxy.intercept.project_key = kwargs['project_key']
-    settings.commit()
-    print("Project updated!")
+        print("Scenario updated!")
 
-config.add_command(project)
-config.add_command(scenario)
+    @click.group(
+        help="Manage active project."
+    )
+    @click.pass_context
+    def project(ctx):
+        pass
+
+    @project.command(
+        help="Set active project."
+    )
+    @click.argument('project_key')
+    def set(**kwargs):
+        settings = Settings.instance()
+
+        project_key = ProjectKey(kwargs['project_key'])
+        if not project_key.id:
+            return print("Invalid project key provided.")
+
+        scenario_key = ScenarioKey(kwargs['scenario_key'])
+
+        if project_key.id != scenario_key.project_id:
+            data_rule = settings.proxy.data.data_rules(project_key.id)
+            data_rule.scenario_key = None
+            print("Current scenario does not belong to current project, unsetting current scenario.\n")
+
+        settings.proxy.intercept.project_key = kwargs['project_key']
+        settings.commit()
+        print("Project updated!")
+
+    config.add_command(project)
+    config.add_command(scenario)
