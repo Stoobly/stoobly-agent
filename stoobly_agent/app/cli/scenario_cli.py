@@ -56,13 +56,23 @@ def replay(**kwargs):
     help="Replay and test a scenario"
 )
 @click.option('--save-to-report', help='Key for the report to store test results.')
-@click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
+@click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('scenario_key')
 def test(**kwargs):
+    settings = Settings.instance()
+
     scenario_key = kwargs['scenario_key']
     del kwargs['scenario_key']
+    test_strategy = kwargs.get('strategy')
 
-    scenario = ScenarioFacade(Settings.instance())
+    if not test_strategy:
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        kwargs['strategy'] = data_rule.test_strategy
+    else:
+        kwargs['strategy'] = test_strategy
+
+    scenario = ScenarioFacade(settings)
     scenario.test(scenario_key, **kwargs)
 
 @scenario.command(

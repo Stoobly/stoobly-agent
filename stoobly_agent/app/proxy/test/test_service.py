@@ -4,30 +4,25 @@ import pdb
 from runpy import run_path
 from typing import Union
 
+from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.config.constants.env_vars import TEST_SCRIPT
 
 from .iterable_matches import dict_matches, list_matches
 from ..test.context import TestContext
 
-TEST_STRATEGIES = {
-    'CUSTOM': 'custom',
-    'DIFF': 'diff',
-    'FUZZY': 'fuzzy',
-}
-
 FuzzyContent = Union[dict, list, str]
 
 def test(context: TestContext):
-    test_strategy = context.strategy
+    active_test_strategy = context.strategy
 
     response = context.response
     content: FuzzyContent = response.content
     expected_response = context.expected_response
     expected_content: FuzzyContent = expected_response.content
 
-    if test_strategy == TEST_STRATEGIES['CUSTOM']:
+    if active_test_strategy == test_strategy.CUSTOM:
         return __test_custom(context)
-    elif test_strategy == TEST_STRATEGIES['DIFF']:
+    elif active_test_strategy == test_strategy.DIFF:
         status_matches = __test_status_code(context)
         response_matches = __test_diff(content, expected_content)
 
@@ -39,9 +34,9 @@ def test(context: TestContext):
             log_lines.append('Status did not match')
 
         return status_matches and response_matches, "\n".join(log_lines)
-    elif test_strategy == TEST_STRATEGIES['FUZZY']:
+    elif active_test_strategy == test_strategy.FUZZY:
         status_matches = __test_status_code(context)
-        fuzzy_matches, log = __test_fuzzy(content, expected_content)
+        fuzzy_matches, log = __test_fuzzy(response.decode_content(), expected_response.decode_content())
 
         return status_matches and fuzzy_matches, log
 
@@ -66,7 +61,13 @@ def __test_fuzzy(content: FuzzyContent, expected_content: FuzzyContent):
             elif type(content) == list:
                 return list_matches(expected_content, content, '')
     else:
-        return __test_diff(content, expected_content)
+        response_matches = __test_diff(content, expected_content)
+        log_lines = []
+
+        if not response_matches:
+            log_lines.append('Response did not match')
+
+        return response_matches, "\n".join(log_lines)
 
 def __test_custom(context: TestContext):
     if not TEST_SCRIPT in os.environ:

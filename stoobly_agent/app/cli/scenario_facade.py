@@ -49,7 +49,7 @@ class ScenarioFacade():
   def test(self, scenario_key: str, **kwargs):
     kwargs['mode'] = mode.TEST
     kwargs['report_key'] = kwargs.get('save_to_report')
-    kwargs['strategy'] = kwargs.get('strategy') or test_strategy.DIFF
+    kwargs['test_strategy'] = kwargs.get('strategy') or test_strategy.DIFF
 
     self.__replay(scenario_key, **kwargs)
 
