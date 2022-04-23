@@ -11,6 +11,7 @@ class RequestsResponseAdapter():
     response = TestContextResponse()
 
     response.with_content(self._response.content)
+    response.with_headers(self._response.headers)
     response.with_status_code(self._response.status_code)
 
     return response

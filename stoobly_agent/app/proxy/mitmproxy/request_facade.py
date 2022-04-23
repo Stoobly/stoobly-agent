@@ -71,10 +71,11 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def content_type(self):
-        for key, value in self.headers.items():
-            if key.lower() == 'content-type':
-                return cgi.parse_header(value)[0]
-        return ''
+        value = self.headers.get('content-type')
+        if not value:
+            return ''
+
+        return cgi.parse_header(value)[0]
 
     @property
     def host(self):

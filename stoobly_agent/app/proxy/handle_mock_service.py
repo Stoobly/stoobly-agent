@@ -37,12 +37,12 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
     else:
         # If the request path does not match accepted paths, do not mock
         policy = mock_policy.NONE
-
+ 
     if policy == mock_policy.NONE:
         if handle_failure:
             res = handle_failure(context)
     elif policy == mock_policy.ALL:
-        ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else []] 
+        ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
 
         res = eval_request(request, ignored_components)
 
@@ -55,7 +55,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         if handle_success:
             res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
-        ignored_components = [kwargs['ignored_components'] if 'ignored_components' in kwargs else None]
+        ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
         res = eval_request(request, ignored_components)
 
         if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
