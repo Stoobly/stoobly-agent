@@ -43,20 +43,15 @@ class ScenarioFacade():
     return res.json()
 
   def replay(self, scenario_key: str, **kwargs):
+    kwargs['dest_scenario_key'] = kwargs.get('save_to')
     kwargs['mode'] = mode.NONE
-    self.__replay(scenario_key, **kwargs)
+
+    return replay(scenario_key, RequestModel(self.settings), **kwargs)
 
   def test(self, scenario_key: str, **kwargs):
     kwargs['mode'] = mode.TEST
-    kwargs['report_key'] = kwargs.get('save_to_report')
+    kwargs['report_key'] = kwargs.get('save_to')
     kwargs['test_strategy'] = kwargs.get('strategy') or test_strategy.DIFF
-
-    self.__replay(scenario_key, **kwargs)
-
-  def __replay(self, scenario_key: str, **kwargs):
-    kwargs['scenario_key'] = scenario_key
-
-    replay(
-      RequestModel(self.settings), **kwargs
-    )
+    
+    return replay(scenario_key, RequestModel(self.settings), **kwargs)
 

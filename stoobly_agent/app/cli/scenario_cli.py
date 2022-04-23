@@ -1,4 +1,5 @@
 import click
+import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
@@ -44,6 +45,7 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
+@click.option('--save-to', help='Scenario to store test results.')
 @click.argument('scenario_key')
 def replay(**kwargs):
     scenario_key = kwargs['scenario_key']
@@ -55,7 +57,7 @@ def replay(**kwargs):
 @scenario.command(
     help="Replay and test a scenario"
 )
-@click.option('--save-to-report', help='Key for the report to store test results.')
+@click.option('--save-to', help='Report to store test results.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('scenario_key')
 def test(**kwargs):
@@ -63,14 +65,11 @@ def test(**kwargs):
 
     scenario_key = kwargs['scenario_key']
     del kwargs['scenario_key']
-    test_strategy = kwargs.get('strategy')
 
-    if not test_strategy:
+    if not kwargs.get('strategy'):
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
         kwargs['strategy'] = data_rule.test_strategy
-    else:
-        kwargs['strategy'] = test_strategy
 
     scenario = ScenarioFacade(settings)
     scenario.test(scenario_key, **kwargs)
