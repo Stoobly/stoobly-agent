@@ -26,11 +26,11 @@ class RequestFacade():
     return self.model.index(**{ 'project_id': key.id, **kwargs})
 
   def replay(self, request_key: str, **kwargs):
-    kwargs['mode'] = mode.NONE
-    return self.__replay(request_key, **kwargs)
+    if 'scenario_key' in kwargs: 
+      kwargs['mode'] = mode.RECORD
+    else:
+      kwargs['mode'] = mode.REPLAY
 
-  def record(self, request_key: str, **kwargs):
-    kwargs['mode'] = mode.RECORD
     return self.__replay(request_key, **kwargs)
 
   def mock(self, request_key: str, **kwargs):
@@ -53,6 +53,5 @@ class RequestFacade():
       'headers': True,
       'query_params': True,
       'response': True,
-      **kwargs
     })
     return replay(Request(request), **kwargs)
