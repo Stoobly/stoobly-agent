@@ -16,7 +16,7 @@ from .mock.context import MockContext
 from .test.context import TestContext
 from .test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from .test.requests_response_adapter import RequestsResponseAdapter
-from .test.test_service import test, TEST_STRATEGIES
+from .test.test_service import test
 from .upload.upload_test_service import inject_upload_test
 from .utils.filter_rules_to_ignored_components_service import filter_rules_to_ignored_components
 
@@ -59,7 +59,7 @@ def __handle_mock_success(context: MockContext) -> None:
     # Build TestContext
     response = MitmproxyResponseAdapter(flow.response).adapt() 
     test_strategy = intercept_settings.test_strategy
-
+        
     test_context = TestContext(test_strategy)
     test_context.start_time = context.start_time
     
@@ -101,7 +101,7 @@ def __build_response(passed, log):
     return builder.build()
 
 def __handle_mock_failure(context: MockContext) -> None:
-    Logger.instance().info(f"{LOG_ID}:TestStatus: No test found")
+    Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
 
     intercept_settings = context.intercept_settings
     if intercept_settings.test_origin == test_origin.CLI:

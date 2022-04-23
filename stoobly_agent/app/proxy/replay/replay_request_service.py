@@ -38,7 +38,12 @@ def replay(request: Request, **kwargs: ReplayRequestOptions) -> requests.Respons
   if 'test_origin' in kwargs:
     headers[custom_headers.TEST_ORIGIN] = kwargs['test_origin']
 
+  if 'test_strategy' in kwargs:
+    headers[custom_headers.TEST_STRATEGY] = kwargs['test_strategy']
+
   Logger.instance().info(f"{method} {request.url}")
+
+  # Do not send query params, they should be a part of the URL
     
   return handler(
     request.url, 
@@ -46,7 +51,7 @@ def replay(request: Request, **kwargs: ReplayRequestOptions) -> requests.Respons
     cookies = cookies,
     data=request.body,
     headers=headers, 
-    params=request.query_params,
+    #params=request.query_params,
     stream = True
   )
 

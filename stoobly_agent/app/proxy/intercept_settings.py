@@ -127,6 +127,9 @@ class InterceptSettings:
   
   @property
   def test_strategy(self):
+    if self.__headers and custom_headers.TEST_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.TEST_STRATEGY]
+
     return self.__data_rules.test_strategy
 
   @property
