@@ -74,26 +74,3 @@ def show(**kwargs):
         headers=not kwargs.get('without_headers'),
         select=kwargs.get('select')
     )
-
-@project.command(
-    help="Set current active project"
-)
-@click.argument('project_key')
-def use(**kwargs):
-    settings = Settings.instance()
-
-    project_key = ProjectKey(kwargs['project_key'])
-    if not project_key.id:
-        return print("Invalid project key provided.")
-
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
-
-    if project_key.id != scenario_key.project_id:
-        data_rule = settings.proxy.data.data_rules(project_key.id)
-        data_rule.scenario_key = None
-        print("Current scenario does not belong to current project, unsetting current scenario.\n")
-
-    settings.proxy.intercept.project_key = kwargs['project_key']
-    settings.commit()
-    print("Project updated!")
-
