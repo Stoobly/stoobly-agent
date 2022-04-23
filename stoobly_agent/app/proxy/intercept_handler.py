@@ -27,8 +27,6 @@ LOG_ID = 'InterceptHandler'
 def request(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
 
-    __disable_web_cache(request)
-
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
     active_mode = intercept_settings.mode
@@ -39,6 +37,7 @@ def request(flow: MitmproxyHTTPFlow):
     elif active_mode == mode.NONE:
         pass
     elif active_mode == mode.RECORD:
+        __disable_web_cache(request)
         handle_request_record(request, intercept_settings)
     elif active_mode == mode.REPLAY or active_mode == mode.TEST:
         handle_request_replay(request, intercept_settings)
@@ -63,8 +62,14 @@ def response(flow: MitmproxyHTTPFlow):
 ### PRIVATE
 
 def __disable_web_cache(request: MitmproxyRequest) -> None:
-    request.headers['CACHE-CONTROL'] = 'no-cache'
+    request.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    request.headers['Expires'] = '0'
+    request.headers['Pragma'] = 'no-cache'
 
     if 'IF-NONE-MATCH' in request.headers:
         del request.headers['IF-NONE-MATCH']
+
+    if 'IF-MODIFIED-SINCE' in request.headers:
+        del request.headers['IF-MODIFIED-SINCE']
+
 
