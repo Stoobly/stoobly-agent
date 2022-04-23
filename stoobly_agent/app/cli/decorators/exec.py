@@ -1,6 +1,6 @@
 import click
 
-from stoobly_agent.app.cli.exec import run_command, run_command_with_proxy_export
+from stoobly_agent.app.cli.helpers import run_command, run_command_with_proxy_export
 from stoobly_agent.app.settings import Settings
 
 class ExecDecorator():
@@ -8,7 +8,9 @@ class ExecDecorator():
     self.__main = main
 
   def decorate(self):
-    @self.__main.command()
+    @self.__main.command(
+      help="Run shell command with proxy enabled"
+    )
     @click.option('--command', is_flag=True, default=False, help='Read commands from the command_string operand instead of from the standard input.')
     @click.option('--shell', default='sh', help='Shell script to run interpret command(s).')
     @click.argument('file_path')
