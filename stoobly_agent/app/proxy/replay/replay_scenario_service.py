@@ -7,10 +7,11 @@ from stoobly_agent.app.models.schemas.request import Request
 
 from .replay_request_service import replay as replay_request, ReplayRequestOptions
 
-def replay(request_model: RequestModel, **kwargs):
-  options: ReplayRequestOptions = kwargs # For annotation purposes
+def replay(scenario_key: str, request_model: RequestModel, **kwargs: ReplayRequestOptions):
+  scenario_key = ScenarioKey(scenario_key)
 
-  scenario_key = ScenarioKey(options['scenario_key'])
+  # replay_request uses scenario_key to determine if header should be set
+  kwargs['scenario_key'] = kwargs.get('dest_scenario_key')
 
   page = 0
   count = 0
@@ -18,9 +19,7 @@ def replay(request_model: RequestModel, **kwargs):
 
   while True:
     requests_index = __get_requests(
-      request_model, scenario_key, { 
-        'page': page, 'size': '25'
-      }
+      request_model, scenario_key, { 'page': page, 'size': '25' }
     )
 
     requests = list(map(lambda request: Request(request), requests_index['list']))
