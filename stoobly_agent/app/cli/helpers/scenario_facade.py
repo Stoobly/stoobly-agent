@@ -43,8 +43,11 @@ class ScenarioFacade():
     return res.json()
 
   def replay(self, scenario_key: str, **kwargs):
-    kwargs['dest_scenario_key'] = kwargs.get('save_to')
-    kwargs['mode'] = mode.NONE
+    if not 'save_to' in kwargs:
+      kwargs['mode'] = mode.NONE
+    else:
+      kwargs['mode'] = mode.RECORD
+      kwargs['dest_scenario_key'] = kwargs['save_to']
 
     return replay(scenario_key, RequestModel(self.settings), **kwargs)
 
