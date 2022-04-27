@@ -72,8 +72,8 @@ class InterceptSettings:
     return self.__data_rules.scenario_key
 
   @property
-  def report_key(headers: MitmproxyRequest.headers) -> Union[str, None]:
-    return headers.get(custom_headers.REPORT_KEY)
+  def report_key(self) -> Union[str, None]:
+    return self.__headers[custom_headers.REPORT_KEY]
 
   @property
   def policy(self):

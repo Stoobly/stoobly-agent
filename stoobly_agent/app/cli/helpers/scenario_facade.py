@@ -32,7 +32,7 @@ class ScenarioFacade():
 
     return res.json()
 
-  def index(self, project_key, **kwargs) -> ScenariosIndexResponse:
+  def index(self, project_key, kwargs: dict) -> ScenariosIndexResponse:
     key = ProjectKey(project_key)
     res = self.__api.index(**{ 'project_id': key.id, **kwargs})
     return res.json()
@@ -42,7 +42,7 @@ class ScenarioFacade():
     res = self.__api.show(key.id)
     return res.json()
 
-  def replay(self, source_key: str, **kwargs):
+  def replay(self, source_key: str, kwargs: dict):
     scenario_key = None
 
     # Scenario key has no meaning if mode is replay
@@ -55,15 +55,16 @@ class ScenarioFacade():
       'scenario_key': scenario_key
     })
 
-  def test(self, scenario_key: str, **kwargs):
+  def test(self, scenario_key: str, kwargs: dict):
     strategy = kwargs.get('strategy')
     if not strategy:
         data_rule = self.__data_rules()
-        kwargs['strategy'] = data_rule.test_strategy
+        strategy = data_rule.test_strategy
 
-    return replay(scenario_key, RequestModel(self.__settings), **{
+    return replay(scenario_key, RequestModel(self.__settings), {
       'mode': mode.TEST,
       'report_key': kwargs.get('report_key'),
+      'scenario_key': scenario_key, # Mock the request from the specified scenario instead of active scenario
       'test_origin': test_origin.CLI,
       'test_strategy': strategy or test_strategy.DIFF
     })

@@ -53,11 +53,10 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
 
 def resolve_project_key(kwargs: dict, settings: Settings) -> str:
     project_key = kwargs.get('project_key')
-    del kwargs['project_key']
 
     if not project_key:
-        project_key = settings.proxy.intercept.project_key
-        Logger.instance().info(f"No project key specified, using {project_key}")
+      project_key = settings.proxy.intercept.project_key
+      #Logger.instance().info(f"No project key specified, using {project_key}")
 
     return project_key
 
@@ -75,7 +74,7 @@ def resolve_scenario_key(kwargs: dict, settings: Settings) -> str:
         project_key = validate_project_key(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
         scenario_key = data_rule.scenario_key
-        Logger.instance().info(f"No scenario key specified, using {scenario_key}")
+        #Logger.instance().info(f"No scenario key specified, using {scenario_key}")
 
     return scenario_key
 

@@ -1,3 +1,5 @@
+import pdb
+
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
 
@@ -39,7 +41,7 @@ def upload_test(
     raw_requests = joined_request.build()
 
     # If report key is set, upload test to report
-    report_key = get_report_key(flow.request.headers)
+    report_key = intercept_settings.report_key
     if report_key:
       Logger.instance().debug(f"Using report {report_key}")
 
