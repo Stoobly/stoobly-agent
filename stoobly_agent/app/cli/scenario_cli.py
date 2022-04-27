@@ -57,7 +57,7 @@ def replay(**kwargs):
 
     scenario = ScenarioFacade(Settings.instance())
 
-    scenario.replay(kwargs.get('key'), **kwargs)
+    scenario.replay(kwargs.get('key'), kwargs)
 
 @scenario.command(
     help="Replay and test a scenario"
@@ -73,7 +73,7 @@ def test(**kwargs):
 
     scenario = ScenarioFacade(Settings.instance())
 
-    scenario.test(kwargs['key'], **kwargs)
+    scenario.test(kwargs['key'], kwargs)
 
 @scenario.command(
     help="Show all scenarios"
@@ -92,7 +92,7 @@ def list(**kwargs):
 
     validate_project_key(project_key)
 
-    scenarios_response = scenario.index(project_key, **kwargs)
+    scenarios_response = scenario.index(project_key, kwargs)
 
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')

@@ -28,6 +28,7 @@ def request(ctx):
 )
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--scenario-key')(f), is_remote)
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
@@ -36,12 +37,13 @@ def request(ctx):
 def list(**kwargs):
   settings = Settings.instance()
 
-  project_key = None
-  if is_remote:
-    project_key = resolve_project_key(kwargs, settings)
+  project_key = resolve_project_key(kwargs, settings)
+
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
 
   request = RequestFacade(settings)
-  requests_response = request.index(project_key, **kwargs)
+  requests_response = request.index(project_key, kwargs)
 
   if len(requests_response['list']) == 0:
     print('No requests found.')
@@ -70,7 +72,7 @@ def replay(**kwargs):
     validate_scenario_key(kwargs['scenario_key'])
 
   request = RequestFacade(Settings.instance())
-  res = __replay(request.replay, **kwargs)
+  res = __replay(request.replay, kwargs)
 
   print(res.content)
 
@@ -87,7 +89,7 @@ def test(**kwargs):
     validate_report_key(kwargs['report_key'])
 
   request = RequestFacade(Settings.instance())
-  res = __replay(request.test, **kwargs)
+  res = __replay(request.test, kwargs)
 
   print(res.json())
 
@@ -107,7 +109,7 @@ def get(**kwargs):
   validate_request_key(kwargs['request_key'])
 
   request = RequestFacade(Settings.instance())
-  res = __replay(request.mock, **kwargs)
+  res = __replay(request.mock, kwargs)
 
   print(res.content)
 
@@ -119,12 +121,12 @@ def set(**kwargs):
 
 request.add_command(response)
 
-def __replay(handler, **kwargs) -> requests.Response:
+def __replay(handler, kwargs) -> requests.Response:
   request_key = kwargs['request_key']
   del kwargs['request_key']
 
   try:
-    return handler(request_key, **kwargs) 
+    return handler(request_key, kwargs) 
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
     sys.exit(1)
