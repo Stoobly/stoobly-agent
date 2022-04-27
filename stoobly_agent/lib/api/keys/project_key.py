@@ -1,5 +1,8 @@
 from .resource_key import ResourceKey
 
+class InvalidProjectKey(Exception):
+  pass
+
 class ProjectKey(ResourceKey):
 
   @property

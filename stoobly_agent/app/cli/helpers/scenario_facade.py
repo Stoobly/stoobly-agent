@@ -49,11 +49,8 @@ class ScenarioFacade():
     # Only set scenario key if mode is record
     if kwargs.get('record'):
       scenario_key = kwargs.get('scenario_key')
-      if not scenario_key:
-        data_rules = self.__data_rules()
-        scenario_key = data_rules.scenario_key
 
-    return replay(source_key, RequestModel(self.__settings), **{
+    return replay(source_key, RequestModel(self.__settings), {
       'mode': mode.RECORD if kwargs.get('record') else mode.REPLAY,
       'scenario_key': scenario_key
     })
@@ -61,8 +58,7 @@ class ScenarioFacade():
   def test(self, scenario_key: str, **kwargs):
     strategy = kwargs.get('strategy')
     if not strategy:
-        project_key = ProjectKey(self.__settings.proxy.intercept.project_key)
-        data_rule = self.__settings.proxy.data.data_rules(project_key.id)
+        data_rule = self.__data_rules()
         kwargs['strategy'] = data_rule.test_strategy
 
     return replay(scenario_key, RequestModel(self.__settings), **{
