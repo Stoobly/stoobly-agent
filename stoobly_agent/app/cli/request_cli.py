@@ -1,6 +1,7 @@
 import click
 import pdb
 import requests
+import sys
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_origin, test_strategy
@@ -54,9 +55,14 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
-@click.option('--scenario-key', help='Save to scenario.')
+@click.option('--record', is_flag=True, default=False, help='Replay and record request.')
+@click.option('--scenario-key', help='Record to scenario.')
 @click.argument('request_key')
 def replay(**kwargs):
+  if kwargs.get('scenario_key') and not kwargs.get('record'):
+    print("Error: Missing option '--record'.", file=sys.stderr)
+    sys.exit(1)
+
   request = RequestFacade(Settings.instance())
   res = __replay(request.replay, **kwargs)
   print(res.content)
@@ -64,7 +70,7 @@ def replay(**kwargs):
 @request.command(
   help="Test a request"
 )
-@ConditionalDecorator(lambda f: click.option('--report-key')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('request_key')
 def test(**kwargs):

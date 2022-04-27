@@ -1,6 +1,6 @@
 import pdb
 import requests
-from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.config.constants import test_origin, test_strategy
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.replay.replay_scenario_service import replay
@@ -13,8 +13,8 @@ from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 class ScenarioFacade():
 
   def __init__(self, settings: Settings):
-    self.settings = settings
-    self.__api = ScenariosResource(self.settings.remote.api_url, self.settings.remote.api_key)
+    self.__settings = settings
+    self.__api = ScenariosResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
 
   def create(self, project_key: str, name: str, description: str = ''):
     res: requests.Response = self.__api.from_project_key(
@@ -42,19 +42,36 @@ class ScenarioFacade():
     res = self.__api.show(key.id)
     return res.json()
 
-  def replay(self, scenario_key: str, **kwargs):
-    if not 'save_to' in kwargs:
-      kwargs['mode'] = mode.NONE
-    else:
-      kwargs['mode'] = mode.RECORD
-      kwargs['dest_scenario_key'] = kwargs['save_to']
+  def replay(self, source_key: str, **kwargs):
+    scenario_key = None
 
-    return replay(scenario_key, RequestModel(self.settings), **kwargs)
+    # Scenario key has no meaning if mode is replay
+    # Only set scenario key if mode is record
+    if kwargs.get('record'):
+      scenario_key = kwargs.get('scenario_key')
+      if not scenario_key:
+        data_rules = self.__data_rules()
+        scenario_key = data_rules.scenario_key
+
+    return replay(source_key, RequestModel(self.__settings), **{
+      'mode': mode.RECORD if kwargs.get('record') else mode.REPLAY,
+      'scenario_key': scenario_key
+    })
 
   def test(self, scenario_key: str, **kwargs):
-    kwargs['mode'] = mode.TEST
-    kwargs['report_key'] = kwargs.get('save_to')
-    kwargs['test_strategy'] = kwargs.get('strategy') or test_strategy.DIFF
-    
-    return replay(scenario_key, RequestModel(self.settings), **kwargs)
+    strategy = kwargs.get('strategy')
+    if not strategy:
+        project_key = ProjectKey(self.__settings.proxy.intercept.project_key)
+        data_rule = self.__settings.proxy.data.data_rules(project_key.id)
+        kwargs['strategy'] = data_rule.test_strategy
 
+    return replay(scenario_key, RequestModel(self.__settings), **{
+      'mode': mode.TEST,
+      'report_key': kwargs.get('report_key'),
+      'test_origin': test_origin.CLI,
+      'test_strategy': strategy or test_strategy.DIFF
+    })
+
+  def __data_rules(self):
+    project_key = ProjectKey(self.__settings.proxy.intercept.project_key)
+    return self.__settings.proxy.data.data_rules(project_key.id)

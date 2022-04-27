@@ -45,34 +45,26 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
-@click.option('--save-to', help='Scenario to store replayed requests.')
-@click.argument('scenario_key')
+@click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
+@click.option('--scenario-key', help='Record to scenario.')
+@click.argument('key')
 def replay(**kwargs):
-    scenario_key = kwargs['scenario_key']
-    del kwargs['scenario_key']
+    if kwargs.get('scenario_key') and not kwargs.get('record'):
+        print("Error: Missing option '--record'.", file=sys.stderr)
+        sys.exit(1)
 
     scenario = ScenarioFacade(Settings.instance())
-    scenario.replay(scenario_key, **kwargs)   
+    scenario.replay(kwargs.get('key'), **kwargs)   
 
 @scenario.command(
     help="Replay and test a scenario"
 )
-@click.option('--save-to', help='Report to store test results.')
+@click.option('--report-key', help='Save to report.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
-@click.argument('scenario_key')
+@click.argument('key')
 def test(**kwargs):
-    settings = Settings.instance()
-
-    scenario_key = kwargs['scenario_key']
-    del kwargs['scenario_key']
-
-    if not kwargs.get('strategy'):
-        project_key = ProjectKey(settings.proxy.intercept.project_key)
-        data_rule = settings.proxy.data.data_rules(project_key.id)
-        kwargs['strategy'] = data_rule.test_strategy
-
-    scenario = ScenarioFacade(settings)
-    scenario.test(scenario_key, **kwargs)
+    scenario = ScenarioFacade(Settings.instance())
+    scenario.test(kwargs['key'], **kwargs)
 
 @scenario.command(
     help="Show all scenarios"
