@@ -6,6 +6,7 @@ from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import ProjectKey, RequestKey
+from stoobly_agent.lib.api.keys import InvalidProjectKey
 from stoobly_agent.config.constants import mode
 
 class RequestFacade():
@@ -23,8 +24,11 @@ class RequestFacade():
     })
 
   def index(self, project_key, **kwargs):
-    key = ProjectKey(project_key)
-    return self.__model.index(**{ 'project_id': key.id, **kwargs})
+    if project_key:
+      key = ProjectKey(project_key)
+      return self.__model.index(**{ 'project_id': key.id, **kwargs})
+    else:
+      return self.__model.index(**kwargs)
 
   def replay(self, request_key: str, **kwargs):
     scenario_key = None

@@ -4,6 +4,14 @@ class InvalidRequestKey(Exception):
   pass
 
 class RequestKey(ResourceKey):
+  def __init__(self, key: str):
+    super().__init__(key)
+
+    if not self.id:
+      raise InvalidRequestKey('Missing id')
+
+    if not self.project_id:
+      raise InvalidRequestKey('Missing request_id')
 
   @property
   def id(self) -> str:

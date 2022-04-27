@@ -48,11 +48,11 @@ def create(**kwargs):
 def replay(**kwargs):
     validate_scenario_key(kwargs['key'])
 
-    if kwargs.get('scenario_key') and not kwargs.get('record'):
-        print("Error: Missing option '--record'.", file=sys.stderr)
-        sys.exit(1)
+    if kwargs.get('scenario_key'):
+        if kwargs['scenario_key'] and not kwargs.get('record'):
+            print("Error: Missing option '--record'.", file=sys.stderr)
+            sys.exit(1)
 
-    if 'scenario_key' in kwargs:
         validate_scenario_key(kwargs['scenario_key'])
 
     scenario = ScenarioFacade(Settings.instance())
@@ -68,7 +68,7 @@ def replay(**kwargs):
 def test(**kwargs):
     validate_scenario_key(kwargs['key'])
 
-    if 'report_key' in kwargs:
+    if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
 
     scenario = ScenarioFacade(Settings.instance())

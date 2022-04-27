@@ -10,6 +10,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.request_facade import RequestFacade
 from .helpers.tabulate_print_service import tabulate_print
+from .helpers.validations import *
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote
@@ -33,12 +34,11 @@ def request(ctx):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-  project_key = kwargs.get('project_key')
-  del kwargs['project_key']
   settings = Settings.instance()
 
-  if is_remote and not project_key:
-    project_key = settings.proxy.intercept.project_key
+  project_key = None
+  if is_remote:
+    project_key = resolve_project_key(kwargs, settings)
 
   request = RequestFacade(settings)
   requests_response = request.index(project_key, **kwargs)
@@ -57,15 +57,21 @@ def list(**kwargs):
   help="Replay a request"
 )
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
-@click.option('--scenario-key', help='Record to scenario.')
+@ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.argument('request_key')
 def replay(**kwargs):
-  if kwargs.get('scenario_key') and not kwargs.get('record'):
-    print("Error: Missing option '--record'.", file=sys.stderr)
-    sys.exit(1)
+  validate_request_key(kwargs['request_key'])
+
+  if kwargs.get('scenario_key'):
+    if not kwargs.get('record'):
+      print("Error: Missing option '--record'.", file=sys.stderr)
+      sys.exit(1)
+
+    validate_scenario_key(kwargs['scenario_key'])
 
   request = RequestFacade(Settings.instance())
   res = __replay(request.replay, **kwargs)
+
   print(res.content)
 
 @request.command(
@@ -75,8 +81,14 @@ def replay(**kwargs):
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('request_key')
 def test(**kwargs):
+  validate_request_key(kwargs['request_key'])
+
+  if kwargs.get('report_key'):
+    validate_report_key(kwargs['report_key'])
+
   request = RequestFacade(Settings.instance())
   res = __replay(request.test, **kwargs)
+
   print(res.json())
 
 @click.group(
@@ -92,8 +104,11 @@ def response(ctx):
 )
 @click.argument('request_key')
 def get(**kwargs):
+  validate_request_key(kwargs['request_key'])
+
   request = RequestFacade(Settings.instance())
   res = __replay(request.mock, **kwargs)
+
   print(res.content)
 
 @response.command(
