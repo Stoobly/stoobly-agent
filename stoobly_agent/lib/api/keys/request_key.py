@@ -1,5 +1,8 @@
 from .resource_key import ResourceKey
 
+class InvalidRequestKey(Exception):
+  pass
+
 class RequestKey(ResourceKey):
 
   @property

@@ -5,6 +5,7 @@ import sys
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_origin, test_strategy
+from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.request_facade import RequestFacade
@@ -107,4 +108,8 @@ def __replay(handler, **kwargs) -> requests.Response:
   request_key = kwargs['request_key']
   del kwargs['request_key']
 
-  return handler(request_key, **kwargs)   
+  try:
+    return handler(request_key, **kwargs) 
+  except InvalidRequestKey:
+    print('Error: Invalid request key.', file=sys.stderr)
+    sys.exit(1)

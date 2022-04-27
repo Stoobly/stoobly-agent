@@ -1,5 +1,8 @@
 from .resource_key import ResourceKey
 
+class InvalidScenarioKey(Exception):
+  pass
+
 class ScenarioKey(ResourceKey):
 
   @property

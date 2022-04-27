@@ -1,7 +1,7 @@
-from typing import List
+import pdb
 
 from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexQueryParams
-from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 
@@ -24,7 +24,7 @@ def replay(scenario_key: str, request_model: RequestModel, **kwargs: ReplayReque
 
     requests = list(map(lambda request: Request(request), requests_index['list']))
     total = requests_index['total']
-
+  
     if not requests or len(requests) == 0:
       return l
 
