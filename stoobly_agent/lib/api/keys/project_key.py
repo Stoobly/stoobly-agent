@@ -5,6 +5,15 @@ class InvalidProjectKey(Exception):
 
 class ProjectKey(ResourceKey):
 
+  def __init__(self, key: str):
+    super().__init__(key)
+
+    if not self.id:
+      raise InvalidProjectKey('Missing id')
+
+    if not self.organization_id:
+      raise InvalidProjectKey('Missing organization_id')
+
   @property
   def id(self) -> str:
     return self.get('i')
