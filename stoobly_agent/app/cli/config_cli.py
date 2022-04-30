@@ -6,6 +6,8 @@ import time
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
+from .helpers.validations import *
+
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
     help="Manage proxy config"
@@ -51,10 +53,11 @@ if is_remote:
         settings = Settings.instance()
 
         scenario_key = ScenarioKey(kwargs['scenario_key'])
-        if not scenario_key.id:
-            return print('Invalid scenario key provided.', file=sys.stderr)
+        validate_scenario_key(scenario_key)
 
-        project_key = ProjectKey(kwargs['project_key'])
+        project_key = settings.proxy.intercept.project_key
+        validate_project_key(project_key)
+        project_key = ProjectKey(project_key)
 
         if scenario_key.project_id != project_key.id:
             return print("Please provide a scenario that belongs to the current project.\n")
@@ -79,19 +82,24 @@ if is_remote:
     def set(**kwargs):
         settings = Settings.instance()
 
-        project_key = ProjectKey(kwargs['project_key'])
-        if not project_key.id:
-            return print("Invalid project key provided.")
+        project_key = kwargs['project_key']
+        validate_project_key(project_key)
+        project_key = ProjectKey(project_key)
 
-        scenario_key = ScenarioKey(kwargs['scenario_key'])
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        scenario_key = data_rule.scenario_key
 
-        if project_key.id != scenario_key.project_id:
-            data_rule = settings.proxy.data.data_rules(project_key.id)
-            data_rule.scenario_key = None
-            print("Current scenario does not belong to current project, unsetting current scenario.\n")
+        if scenario_key:
+            validate_scenario_key(scenario_key)
+            scenario_key = ScenarioKey(scenario_key)
 
-        settings.proxy.intercept.project_key = kwargs['project_key']
+            if project_key.id != scenario_key.project_id:
+                data_rule.scenario_key = None
+                print("Current scenario does not belong to current project, unsetting current scenario.\n")
+
+        settings.proxy.intercept.project_key = project_key 
         settings.commit()
+
         print("Project updated!")
 
     config.add_command(project)
