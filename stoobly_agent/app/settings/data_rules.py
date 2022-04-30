@@ -30,6 +30,13 @@ class DataRules:
   def scenario_key(self):
     return self.__scenario_key
 
+  @scenario_key.setter
+  def scenario_key(self, v):
+    self.__scenario_key = v
+    self.__data_rules['scenario_key'] = v
+    if not v and 'scenario_key' in self.__data_rules:
+      del self.__data_rules['scenario_key']
+
   @property
   def test_policy(self):
     return self.__test_policy 
