@@ -51,15 +51,17 @@ def create(**kwargs):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
+    without_headers = kwargs['without_headers']
+
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
-    del kwargs['project_key']
 
-    if not project_key:
-        project_key = settings.proxy.intercept.project_key
+    # Remove non query param options
+    del kwargs['project_key']
+    del kwargs['without_headers']
 
     report = ReportFacade(Settings.instance())
-    reports_response = report.index(project_key, **kwargs)
+    reports_response = report.index(project_key, kwargs)
 
     if len(reports_response['list']) == 0:
         print('No reports found.', file=sys.stderr)
@@ -67,6 +69,6 @@ def list(**kwargs):
         tabulate_print(
             reports_response['list'], 
             filter=['created_at', 'user_id', 'starred', 'updated_at'],
-            headers=not kwargs.get('without_headers'),
+            headers=not without_headers,
             select=kwargs.get('select')
         )
