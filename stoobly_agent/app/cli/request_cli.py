@@ -35,12 +35,19 @@ def request(ctx):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
+  without_headers = kwargs['without_headers']
+
   settings = Settings.instance()
+  project_key = None
 
-  project_key = resolve_project_key_and_validate(kwargs, settings)
-
-  if kwargs.get('scenario_key'):
+  if is_remote:
+    project_key = resolve_project_key_and_validate(project_key, settings)
     validate_scenario_key(kwargs['scenario_key'])
+    
+    del kwargs['project_key']
+
+  # Remove non query param options
+  del kwargs['without_headers']
 
   request = RequestFacade(settings)
   requests_response = request.index(project_key, kwargs)
@@ -51,7 +58,7 @@ def list(**kwargs):
     tabulate_print(
       requests_response['list'], 
       filter=['components' , 'created_at', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
-      headers=not kwargs.get('without_headers'),
+      headers=not without_headers,
       select=kwargs.get('select'),
     )
 
