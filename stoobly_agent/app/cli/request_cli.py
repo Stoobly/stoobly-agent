@@ -37,7 +37,7 @@ def request(ctx):
 def list(**kwargs):
   settings = Settings.instance()
 
-  project_key = resolve_project_key(kwargs, settings)
+  project_key = resolve_project_key_and_validate(kwargs, settings)
 
   if kwargs.get('scenario_key'):
     validate_scenario_key(kwargs['scenario_key'])

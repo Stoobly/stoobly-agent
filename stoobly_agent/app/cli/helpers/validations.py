@@ -7,47 +7,39 @@ from stoobly_agent.lib.logger import Logger
 
 # Handle
 
-def handle_invalid_project_key():
-  print('Error: Invalid project key', file=sys.stderr) 
+def handle_invalid_key(resource: str):
+  print(f"Error: Invalid {resource} key", file=sys.stderr) 
   sys.exit(1)
 
-def handle_invalid_report_key():
-  print('Error: Invalid report key', file=sys.stderr) 
-  sys.exit(1)
-
-def handle_invalid_request_key():
-  print('Error: Invalid request key', file=sys.stderr) 
-  sys.exit(1)
-
-def handle_invalid_scenario_key():
-  print('Error: Invalid scenario key', file=sys.stderr) 
+def handle_missing_key(resource: str):
+  print(f"Error: Missing {resource} key", file=sys.stderr) 
   sys.exit(1)
 
 # Validate
 
 def validate_project_key(project_key) -> ProjectKey:
-    try:
-        return ProjectKey(project_key)
-    except InvalidProjectKey:
-        handle_invalid_project_key()
+  try:
+    return ProjectKey(project_key)
+  except InvalidProjectKey:
+    handle_invalid_key('project') if project_key else handle_missing_key('project')
 
 def validate_report_key(report_key) -> ReportKey:
   try:
     return ReportKey(report_key)
   except InvalidReportKey:
-    handle_invalid_report_key()
+    handle_invalid_key('report') if report_key else handle_missing_key('report')
 
 def validate_request_key(request_key) -> RequestKey:
   try:
     return RequestKey(request_key)
   except InvalidRequestKey:
-    handle_invalid_request_key()
+    handle_invalid_key('request') if request_key else handle_missing_key('request')
 
 def validate_scenario_key(scenario_key) -> ScenarioKey:
-    try:
-        return ScenarioKey(scenario_key)
-    except InvalidScenarioKey:
-        handle_invalid_scenario_key()
+  try:
+    return ScenarioKey(scenario_key)
+  except InvalidScenarioKey:
+    handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
 
 # Resolve
 
