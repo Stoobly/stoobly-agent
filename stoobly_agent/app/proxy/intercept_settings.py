@@ -9,7 +9,7 @@ from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers, mode, test_origin
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 
 class InterceptSettings:
 
@@ -20,10 +20,17 @@ class InterceptSettings:
 
     if request:
       self.__headers = request.headers
-    
-    project_key = ProjectKey(self.project_key)
-    project_id = project_key.id
 
+    project_id = None
+
+    try: 
+      project_key = ProjectKey(self.project_key)
+      project_id = project_key.id
+    except InvalidProjectKey:
+      pass
+
+    # If no valid project key is provided, use default settings,
+    # Otherwise, set settings for the project
     self.__data_rules = self.__settings.proxy.data.data_rules(project_id)
     self.__filter_rules = self.__settings.proxy.filter.filter_rules(project_id)
     self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
@@ -70,6 +77,10 @@ class InterceptSettings:
         return self.__headers[custom_headers.SCENARIO_KEY]
 
     return self.__data_rules.scenario_key
+
+  @scenario_key.setter
+  def scenario_key(self, v):
+    self.__data_rules.scenario_key = v
 
   @property
   def report_key(self) -> Union[str, None]:
