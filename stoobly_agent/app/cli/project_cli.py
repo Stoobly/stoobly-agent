@@ -40,7 +40,7 @@ def list(**kwargs):
     del kwargs['without_headers']
 
     project = ProjectFacade(Settings.instance())
-    projects_response = project.index(**kwargs)
+    projects_response = project.index(kwargs)
 
     if len(projects_response['list']) == 0:
         print('No projects found.', file=sys.stderr)

@@ -31,7 +31,7 @@ class ProjectFacade():
     res = self.__api.show(key.id)
     return res.json()
 
-  def index(self, **kwargs) -> ProjectsIndexResponse:
+  def index(self, kwargs) -> ProjectsIndexResponse:
     organization_key: str = OrganizationKey(kwargs.get('organization_key')) 
 
     del kwargs['organization_key']
