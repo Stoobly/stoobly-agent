@@ -3,13 +3,13 @@ import pdb
 from mergedeep import merge
 
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants import mode, replay_policy
 from stoobly_agent.config.constants import mock_policy, record_policy
+from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
-from stoobly_agent.lib.api.stoobly_api import StooblyApi
-
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 
 class ConfigsController:
     _instance = None
@@ -65,8 +65,19 @@ class ConfigsController:
 
         project_key = intercept_settings.project_key
         project_id = ProjectKey(project_key).id if project_key else None
+                
         scenario_key = intercept_settings.scenario_key
         scenario_id =  ScenarioKey(scenario_key).id if scenario_key else None
+
+        # Check to make sure the scenario still exists
+        if scenario_id:
+            resource = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
+            res = resource.show(scenario_id)
+
+            if not res.ok and res.status_code == 404:
+                scenario_id = None
+                intercept_settings.scenario_key = None
+                settings.commit()
 
         context.render(
             json = {
