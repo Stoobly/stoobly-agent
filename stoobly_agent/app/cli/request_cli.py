@@ -36,18 +36,17 @@ def request(ctx):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
   without_headers = kwargs['without_headers']
+  del kwargs['without_headers']
 
   settings = Settings.instance()
   project_key = None
 
   if is_remote:
-    project_key = resolve_project_key_and_validate(project_key, settings)
-    validate_scenario_key(kwargs['scenario_key'])
-    
+    project_key = resolve_project_key_and_validate(kwargs, settings)
     del kwargs['project_key']
 
-  # Remove non query param options
-  del kwargs['without_headers']
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
 
   request = RequestFacade(settings)
   requests_response = request.index(project_key, kwargs)

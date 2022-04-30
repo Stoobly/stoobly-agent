@@ -36,6 +36,9 @@ def create(**kwargs):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('organization_key')
 def list(**kwargs):
+    without_headers = kwargs['without_headers']
+    del kwargs['without_headers']
+
     project = ProjectFacade(Settings.instance())
     projects_response = project.index(**kwargs)
 
@@ -45,7 +48,7 @@ def list(**kwargs):
         tabulate_print(
             projects_response['list'], 
             filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
-            headers=not kwargs.get('without_headers'),
+            headers=not without_headers,
             select=kwargs.get('select'),
         )
 
