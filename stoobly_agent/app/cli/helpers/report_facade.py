@@ -26,7 +26,7 @@ class ReportFacade():
 
     return res.json()
 
-  def index(self, project_key: str, **kwargs):
+  def index(self, project_key: str, kwargs: dict):
     api = ReportsResource(self.settings.remote.api_url, self.settings.remote.api_key)
 
     res: requests.Response = api.from_project_key(
