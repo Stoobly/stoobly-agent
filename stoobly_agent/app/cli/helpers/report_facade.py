@@ -22,7 +22,7 @@ class ReportFacade():
     )
 
     if not res.ok:
-      raise AssertionError('Could not create report')
+      raise AssertionError('Could not list reports')
 
     return res.json()
 
