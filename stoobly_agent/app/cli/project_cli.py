@@ -2,10 +2,10 @@ import click
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 from .helpers import ProjectFacade
 from .helpers.tabulate_print_service import tabulate_print
+from .helpers.validations import *
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -56,14 +56,8 @@ def list(**kwargs):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('project_key', required=False)
 def show(**kwargs):
-    project_key = kwargs.get('project_key')
     settings = Settings.instance()
-
-    if not project_key:
-        project_key = settings.proxy.intercept.project_key
-
-    if not project_key or len(project_key) == 0:
-        return print('Invalid project key provided.', file=sys.stderr)
+    project_key = resolve_project_key_and_validate(kwargs, settings)
 
     project = ProjectFacade(settings)
     project_response = project.show(project_key)
