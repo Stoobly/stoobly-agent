@@ -5,6 +5,12 @@ class InvalidOrganizationKey(Exception):
 
 class OrganizationKey(ResourceKey):
 
+  def __init__(self, key: str):
+    super().__init__(key)
+
+    if not self.id:
+      raise InvalidOrganizationKey('Missing id')
+
   @property
   def id(self) -> str:
     return self.get('i')

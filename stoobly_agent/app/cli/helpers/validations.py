@@ -1,8 +1,8 @@
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.api.keys import InvalidProjectKey, InvalidReportKey, InvalidRequestKey, InvalidScenarioKey
-from stoobly_agent.lib.api.keys import ProjectKey, ReportKey, RequestKey, ScenarioKey
+from stoobly_agent.lib.api.keys import InvalidOrganizationKey, InvalidProjectKey, InvalidReportKey, InvalidRequestKey, InvalidScenarioKey
+from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey, ReportKey, RequestKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
 # Handle
@@ -16,6 +16,12 @@ def handle_missing_key(resource: str):
   sys.exit(1)
 
 # Validate
+
+def validate_organization_key(organization_key) -> OrganizationKey:
+  try:
+    return OrganizationKey(organization_key)
+  except InvalidOrganizationKey:
+    handle_invalid_key('organization') if organization_key else handle_missing_key('organization')
 
 def validate_project_key(project_key) -> ProjectKey:
   try:
