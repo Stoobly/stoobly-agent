@@ -8,3 +8,4 @@ from .requests_index_query_params import RequestsIndexQueryParams
 from .requests_index_response import RequestsIndexResponse
 from .response_show_response import ResponseShowResponse
 from .scenarios import ScenarioShowResponse, ScenariosIndexResponse
+from .users import UserProfileResponse

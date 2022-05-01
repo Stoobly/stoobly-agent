@@ -1,7 +1,10 @@
 import click
+import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.api.keys import organization_key
+from stoobly_agent.lib.api.users_resource import UsersResource
 
 from .helpers import ProjectFacade
 from .helpers.tabulate_print_service import tabulate_print
@@ -34,14 +37,20 @@ def create(**kwargs):
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
-@click.argument('organization_key')
+@click.argument('organization_key', required=False)
 def list(**kwargs):
+    organization_key = kwargs['organization_key']
     without_headers = kwargs['without_headers']
     del kwargs['without_headers']
 
-    validate_organization_key(kwargs['organization_key'])
-
     project = ProjectFacade(Settings.instance())
+    if not kwargs['organization_key']:
+        user_profile = project.user_profile()
+        organization_key = user_profile['organization_key']
+        kwargs['organization_key'] = organization_key
+
+    validate_organization_key(organization_key)
+
     projects_response = project.index(kwargs)
 
     if len(projects_response['list']) == 0:
