@@ -2,7 +2,8 @@ import pdb
 import requests
 
 from stoobly_agent.lib.api.projects_resource import ProjectsResource
-from stoobly_agent.lib.api.interfaces import ProjectCreateParams, ProjectShowResponse, ProjectsIndexQueryParams, ProjectsIndexResponse
+from stoobly_agent.lib.api.users_resource import UsersResource
+from stoobly_agent.lib.api.interfaces import ProjectCreateParams, ProjectShowResponse, ProjectsIndexResponse, UserProfileResponse
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey
 from stoobly_agent.app.settings import Settings
 
@@ -11,6 +12,11 @@ class ProjectFacade():
   def __init__(self, __settings: Settings):
     self.__settings = __settings
     self.__api = ProjectsResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
+
+  def user_profile(self) -> UserProfileResponse:
+    resource = UsersResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
+    res = resource.profile()
+    return res.json()
 
   def create(self, **kwargs: ProjectCreateParams) -> ProjectShowResponse:
     organization_key: str = OrganizationKey(kwargs.get('organization_key')) 
