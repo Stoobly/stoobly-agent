@@ -22,7 +22,7 @@ class InterceptSettings:
 
   @property
   def mode_before_change(self):
-    return self.__intercept_settings.get('mode')
+    return self.__intercept_settings.get('mode') or mode.NONE
 
   @property
   def mode(self):
