@@ -39,6 +39,8 @@ def list(**kwargs):
     without_headers = kwargs['without_headers']
     del kwargs['without_headers']
 
+    validate_organization_key(kwargs['organization_key'])
+
     project = ProjectFacade(Settings.instance())
     projects_response = project.index(kwargs)
 
