@@ -1,6 +1,7 @@
 import click
 import os
 import pdb
+import sys
 
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
@@ -81,6 +82,10 @@ def run(**kwargs):
 
     if kwargs['test_script']:
         os.environ[env_vars.TEST_SCRIPT] = kwargs['test_script']
+
+    if kwargs['intercept_mode'] and kwargs['intercept_mode'] not in INTERCEPT_MODES:
+        print(f"Error: Invalid value for --intercept-mode, values: {', '.join(INTERCEPT_MODES)}", file=sys.stderr)
+        sys.exit(1)
 
     migrate_database()
 

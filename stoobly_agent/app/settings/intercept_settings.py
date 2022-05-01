@@ -1,4 +1,5 @@
 import os
+import pdb
 
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.constants import mode
@@ -38,6 +39,7 @@ class InterceptSettings:
   def mode(self, v):
     if v in [mode.MOCK, mode.NONE, mode.RECORD, mode.TEST]:
       self.__mode = v
+      self.__intercept_settings['mode'] = v
 
   @property
   def project_key(self):
