@@ -57,11 +57,15 @@ def __filter_options(options):
     del options['proxy_port']
     del options['test_script']
 
-def __commit_options(options):
+def __commit_options(options: dict):
     settings = Settings.instance()
 
-    settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
-    settings.proxy.intercept.mode = options.get('intercept_mode')
+    if options.get('proxy_host') and options.get('proxy_port'):
+        settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
+
+    if options.get('intercept_mode'):
+        settings.proxy.intercept.mode = options['intercept_mode']
+
     settings.commit()
 
 
