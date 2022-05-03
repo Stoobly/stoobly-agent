@@ -15,3 +15,8 @@ class OrganizationKey(ResourceKey):
   def id(self) -> str:
     return self.get('i')
 
+  @staticmethod
+  def encode(organization_id: str):
+    return ResourceKey.encode({
+      'i': organization_id,
+    })

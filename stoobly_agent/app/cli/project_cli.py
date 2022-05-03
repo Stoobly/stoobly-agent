@@ -43,22 +43,32 @@ def create(**kwargs):
 @click.argument('organization_key', required=False)
 def list(**kwargs):
     print_options = __select_print_options(kwargs)
+    settings = Settings.instance()
+    project = ProjectFacade(settings)
 
     organization_key = kwargs['organization_key']
 
-    project = ProjectFacade(Settings.instance())
-    if not kwargs['organization_key']:
+    # If organization_key is not set, try to use current project's organization
+    if not organization_key:
+        try:
+            project_key = ProjectKey(settings.proxy.intercept.project_key)
+            organization_key = OrganizationKey.encode(project_key.organization_id)
+        except InvalidProjectKey as e:
+            pass
+
+    # If organization_key is not set, try to use current user's private organization
+    if not organization_key:
         try:
             user_profile = project.user_profile()
         except AssertionError as e:
             return print(e, file=sys.stderr)
 
         organization_key = user_profile['organization_key']
-        kwargs['organization_key'] = organization_key
 
     validate_organization_key(organization_key)
 
     try:
+        kwargs['organization_key'] = organization_key
         projects_response = project.index(kwargs)
     except AssertionError as e:
         return print(e, file=sys.stderr)
@@ -69,7 +79,7 @@ def list(**kwargs):
         __print(projects_response['list'], **print_options)
 
 @project.command(
-    help="Describe scenario"
+    help="Describe project"
 )
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
