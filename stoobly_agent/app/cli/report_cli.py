@@ -24,6 +24,8 @@ def report(ctx):
 @click.option('--without-headers', is_flag=True, default=True, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
+    print_options = __select_print_options(kwargs)
+    
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
 
@@ -37,12 +39,7 @@ def create(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    tabulate_print(
-        [res], 
-        filter=['created_at', 'user_id', 'starred', 'updated_at'], 
-        headers=not kwargs.get('without_headers'),
-        select=kwargs.get('select')
-    )
+    __print([res], **print_options)
 
 @report.command(
     help="Show created reports"
@@ -55,8 +52,7 @@ def create(**kwargs):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    without_headers = kwargs['without_headers']
-    del kwargs['without_headers']
+    print_options = __select_print_options(kwargs)
 
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
@@ -72,9 +68,24 @@ def list(**kwargs):
     if len(reports_response['list']) == 0:
         print('No reports found.', file=sys.stderr)
     else:
-        tabulate_print(
-            reports_response['list'], 
-            filter=['created_at', 'priority', 'user_id', 'starred', 'updated_at'],
-            headers=not without_headers,
-            select=kwargs.get('select')
-        )
+        __print(reports_response['list'], **print_options)
+        
+
+def __print(reports, **kwargs):
+    tabulate_print(
+        reports, 
+        filter=['created_at', 'priority', 'user_id', 'starred', 'updated_at'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select') or []
+    )
+
+def __select_print_options(kwargs):
+    print_options = {
+        'select': kwargs['select'],
+        'without_headers': kwargs['without_headers']
+    }
+
+    del kwargs['without_headers']
+    del kwargs['select']
+
+    return print_options

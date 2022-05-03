@@ -26,6 +26,8 @@ def scenario(ctx):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
+    print_options = __select_print_options(kwargs)
+
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings) 
 
@@ -36,12 +38,7 @@ def create(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    tabulate_print(
-        [res],
-        filter=['created_at', 'project_id', 'starred', 'updated_at'],
-        headers=not kwargs.get('without_headers'),
-        select=kwargs.get('select')
-    )
+    __print([res], **print_options)
 
 @scenario.command(
     help="Replay a scenario"
@@ -84,14 +81,13 @@ def test(**kwargs):
 )
 @click.option('--page', default=0)
 @click.option('--project-key', help='Project to list scenarios from.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--size', default=10)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
-@click.option('--size', default=10)
-@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    without_headers = kwargs['without_headers']
-    del kwargs['without_headers']
+    print_options = __select_print_options(kwargs)
 
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
@@ -107,18 +103,17 @@ def list(**kwargs):
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')
     else:
-        tabulate_print(
-            scenarios_response['list'], 
-            filter=['created_at', 'project_id', 'starred', 'updated_at'],
-            headers=not without_headers,
-            select=kwargs.get('select')
-        )
+        __print(scenarios_response['list'], **print_options) 
 
 @scenario.command(
     help="Describe scenario"
 )
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('key', required=False)
 def show(**kwargs):
+    print_options = __select_print_options(kwargs)
+
     settings = Settings.instance()
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
     scenario = ScenarioFacade(settings)
@@ -128,4 +123,23 @@ def show(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    tabulate_print([scenario_response], filter=['created_at', 'project_id', 'starred', 'updated_at'])
+    __print([scenario_response], **print_options)
+
+def __print(scenarios, **kwargs):
+    tabulate_print(
+        scenarios, 
+        filter=['created_at', 'project_id', 'starred', 'updated_at'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select') or []
+    )
+
+def __select_print_options(kwargs):
+    print_options = {
+        'select': kwargs['select'],
+        'without_headers': kwargs['without_headers']
+    }
+
+    del kwargs['without_headers']
+    del kwargs['select']
+
+    return print_options
