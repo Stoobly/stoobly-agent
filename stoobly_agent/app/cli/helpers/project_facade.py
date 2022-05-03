@@ -16,6 +16,10 @@ class ProjectFacade():
   def user_profile(self) -> UserProfileResponse:
     resource = UsersResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
     res = resource.profile()
+
+    if not res.ok:
+      raise AssertionError(res.content)
+
     return res.json()
 
   def create(self, **kwargs: ProjectCreateParams) -> ProjectShowResponse:
@@ -28,13 +32,17 @@ class ProjectFacade():
     )
 
     if not res.ok:
-      raise AssertionError('Could not create report')
+      raise AssertionError(res.content)
 
     return res.json()
 
   def show(self, project_key: str) -> ProjectShowResponse:
     key = ProjectKey(project_key)
     res = self.__api.show(key.id)
+
+    if not res.ok:
+      raise AssertionError(res.content)
+
     return res.json()
 
   def index(self, kwargs) -> ProjectsIndexResponse:
@@ -43,6 +51,9 @@ class ProjectFacade():
     del kwargs['organization_key']
 
     res = self.__api.index(**{ 'organization_id': organization_key.id,  **kwargs })
+
+    if not res.ok:
+      raise AssertionError(res.content)
 
     return res.json()
 

@@ -26,7 +26,7 @@ def project(ctx):
 @click.argument('name')
 def create(**kwargs):
     project = ProjectFacade(Settings.instance())
-    print(project.create(**kwargs))
+    __print(project.create(**kwargs))
 
 @project.command(
     help="Show all projects"
@@ -40,28 +40,33 @@ def create(**kwargs):
 @click.argument('organization_key', required=False)
 def list(**kwargs):
     organization_key = kwargs['organization_key']
+
+    select = kwargs['select']
     without_headers = kwargs['without_headers']
+    del kwargs['select']
     del kwargs['without_headers']
 
     project = ProjectFacade(Settings.instance())
     if not kwargs['organization_key']:
-        user_profile = project.user_profile()
+        try:
+            user_profile = project.user_profile()
+        except AssertionError as e:
+            return print(e, file=sys.stderr)
+
         organization_key = user_profile['organization_key']
         kwargs['organization_key'] = organization_key
 
     validate_organization_key(organization_key)
 
-    projects_response = project.index(kwargs)
+    try:
+        projects_response = project.index(kwargs)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     if len(projects_response['list']) == 0:
         print('No projects found.', file=sys.stderr)
     else:
-        tabulate_print(
-            projects_response['list'], 
-            filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
-            headers=not without_headers,
-            select=kwargs.get('select'),
-        )
+        __print(projects_response['list'], without_headers=without_headers, select=select)
 
 @project.command(
     help="Describe scenario"
@@ -72,12 +77,18 @@ def list(**kwargs):
 def show(**kwargs):
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
-
     project = ProjectFacade(settings)
-    project_response = project.show(project_key)
 
+    try:
+        project_response = project.show(project_key)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
+
+    __print([project_response] **kwargs)
+
+def __print(projects, **kwargs):
     tabulate_print(
-        [project_response], 
+        projects, 
         filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
         headers=not kwargs.get('without_headers'),
         select=kwargs.get('select')
