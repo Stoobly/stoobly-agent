@@ -35,8 +35,7 @@ def request(ctx):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-  without_headers = kwargs['without_headers']
-  del kwargs['without_headers']
+  print_options = __select_print_options(kwargs)
 
   settings = Settings.instance()
   project_key = None
@@ -54,12 +53,7 @@ def list(**kwargs):
   if len(requests_response['list']) == 0:
     print('No requests found.')
   else:
-    tabulate_print(
-      requests_response['list'], 
-      filter=['components' , 'created_at', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
-      headers=not without_headers,
-      select=kwargs.get('select'),
-    )
+    __print(requests_response['list'], **print_options)
 
 @request.command(
   help="Replay a request"
@@ -136,3 +130,23 @@ def __replay(handler, kwargs) -> requests.Response:
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
     sys.exit(1)
+
+
+def __print(requests, **kwargs):
+    tabulate_print(
+      requests, 
+      filter=['components' , 'created_at', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
+      headers=not kwargs.get('without_headers'),
+      select=kwargs.get('select') or []
+    )
+
+def __select_print_options(kwargs):
+    print_options = {
+        'select': kwargs['select'],
+        'without_headers': kwargs['without_headers']
+    }
+
+    del kwargs['without_headers']
+    del kwargs['select']
+
+    return print_options
