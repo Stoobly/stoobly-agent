@@ -31,7 +31,11 @@ def create(**kwargs):
         project_key = settings.proxy.intercept.project_key
 
     report = ReportFacade(settings)
-    res = report.create(project_key, kwargs['name'], kwargs['description'])
+
+    try:
+        res = report.create(project_key, kwargs['name'], kwargs['description'])
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     tabulate_print(
         [res], 
@@ -59,7 +63,11 @@ def list(**kwargs):
     del kwargs['project_key']
 
     report = ReportFacade(Settings.instance())
-    reports_response = report.index(project_key, kwargs)
+
+    try:
+        reports_response = report.index(project_key, kwargs)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     if len(reports_response['list']) == 0:
         print('No reports found.', file=sys.stderr)

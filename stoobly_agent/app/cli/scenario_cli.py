@@ -30,7 +30,11 @@ def create(**kwargs):
     project_key = resolve_project_key_and_validate(kwargs, settings) 
 
     scenario = ScenarioFacade(settings)
-    res = scenario.create(project_key, kwargs['name'], kwargs['description'])
+
+    try:
+        res = scenario.create(project_key, kwargs['name'], kwargs['description'])
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     tabulate_print(
         [res],
@@ -94,7 +98,11 @@ def list(**kwargs):
     del kwargs['project_key']
 
     scenario = ScenarioFacade(settings)
-    scenarios_response = scenario.index(project_key, kwargs)
+
+    try:
+        scenarios_response = scenario.index(project_key, kwargs)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')
@@ -115,6 +123,9 @@ def show(**kwargs):
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
     scenario = ScenarioFacade(settings)
 
-    scenario_response = scenario.show(scenario_key)
+    try:
+        scenario_response = scenario.show(scenario_key)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
 
     tabulate_print([scenario_response], filter=['created_at', 'project_id', 'starred', 'updated_at'])

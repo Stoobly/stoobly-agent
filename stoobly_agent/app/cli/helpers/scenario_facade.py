@@ -28,18 +28,26 @@ class ScenarioFacade():
     )
 
     if not res.ok:
-      raise AssertionError('Could not create report')
+      raise AssertionError(res.content)
 
     return res.json()
 
   def index(self, project_key, kwargs: dict) -> ScenariosIndexResponse:
     key = ProjectKey(project_key)
     res = self.__api.index(**{ 'project_id': key.id, **kwargs})
+
+    if not res.ok:
+      raise AssertionError(res.content)
+
     return res.json()
 
   def show(self, scenario_key: str) -> ScenarioShowResponse:
     key = ScenarioKey(scenario_key)
     res = self.__api.show(key.id)
+
+    if not res.ok:
+      raise AssertionError(res.content)
+
     return res.json()
 
   def replay(self, source_key: str, kwargs: dict):
