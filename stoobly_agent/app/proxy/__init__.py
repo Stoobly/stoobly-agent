@@ -19,7 +19,7 @@ def run(**kwargs):
     options = kwargs.copy()
     __commit_options(options)
     __filter_options(options)
-    
+
     fixed_options = {
         'flow_detail': 1,
         'scripts': __get_intercept_handler_path(),
@@ -65,6 +65,7 @@ def __commit_options(options: dict):
 
     if options.get('intercept_mode'):
         settings.proxy.intercept.mode = options['intercept_mode']
+        settings.proxy.intercept.active = True
 
     settings.commit()
 
