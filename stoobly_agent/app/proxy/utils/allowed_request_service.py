@@ -5,6 +5,7 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.lib.logger import Logger
 
 def allowed_request(intercept_settings: InterceptSettings, request: MitmproxyRequest) -> bool:
     active_mode = intercept_settings.mode
@@ -40,7 +41,11 @@ def __include(request: MitmproxyRequest, patterns: List[str]) -> bool:
         return True
 
     for pattern in patterns:
-        if re.match(pattern, request.url):
+        try:
+            if re.match(pattern, request.url):
+                return True
+        except re.error as e:
+            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return True
 
     return False
@@ -50,7 +55,11 @@ def __exclude(request: MitmproxyRequest, patterns: List[str]) -> bool:
         return False
 
     for pattern in patterns:
-        if re.match(pattern, request.url):
+        try:
+            if re.match(pattern, request.url):
+                return True
+        except re.error as e:
+            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return True
 
     return False
