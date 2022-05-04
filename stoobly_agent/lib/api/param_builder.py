@@ -10,14 +10,15 @@ class ParamBuilder():
 
   def with_resource_scoping(self, intercept_settings: InterceptSettings):
     _scenario_key = intercept_settings.scenario_key
+    _project_key = intercept_settings.project_key
 
     # Try to see if a scenario is set, otherwise use project
-    if _scenario_key:
+    if _scenario_key and len(_scenario_key) > 0:
         scenario_key = ScenarioKey(_scenario_key)
         self.__params['scenario_id'] = scenario_key.id
         self.__params['project_id'] = scenario_key.project_id
-    else:
-        project_key = ProjectKey(intercept_settings.project_key)
+    elif _project_key and len(_project_key) > 0:
+        project_key = ProjectKey(_project_key)
         self.__params['project_id'] = project_key.id
 
     return self
