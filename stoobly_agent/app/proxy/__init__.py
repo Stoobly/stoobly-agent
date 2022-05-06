@@ -60,6 +60,9 @@ def __filter_options(options):
 def __commit_options(options: dict):
     settings = Settings.instance()
 
+    # Set intercept to not active on start
+    settings.proxy.intercept.active = False
+
     if options.get('proxy_host') and options.get('proxy_port'):
         settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
 
