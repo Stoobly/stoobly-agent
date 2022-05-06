@@ -21,6 +21,11 @@ class InterceptSettings:
   def active(self):
     return self.__active
 
+  @active.setter
+  def active(self, v):
+    self.__active = bool(v)
+    self.__intercept_settings['active'] = bool(v)
+
   @property
   def mode_before_change(self):
     return self.__intercept_settings.get('mode') or mode.NONE
