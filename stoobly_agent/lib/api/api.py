@@ -13,6 +13,9 @@ class Api():
       res = handler()
 
       for key, val in current.items():
+        if not val:
+          continue
+        
         os.environ[key] = val
 
       return res
@@ -33,16 +36,16 @@ class Api():
       current = {}
 
       current[HTTP_PROXY] = os.environ.get(HTTP_PROXY)
-      os.environ[HTTP_PROXY] = ''
+      os.environ[HTTP_PROXY] = val
 
       current[HTTPS_PROXY] = os.environ.get(HTTPS_PROXY)
-      os.environ[HTTPS_PROXY] = ''
+      os.environ[HTTPS_PROXY] = val
 
       current[HTTP_PROXY.lower()] = os.environ.get(HTTP_PROXY.lower())
-      os.environ[HTTP_PROXY.lower()] = ''
+      os.environ[HTTP_PROXY.lower()] = val
 
       current[HTTPS_PROXY.lower()] = os.environ.get(HTTPS_PROXY.lower())
-      os.environ[HTTPS_PROXY.lower()] = ''
+      os.environ[HTTPS_PROXY.lower()] = val
 
       return current
 
