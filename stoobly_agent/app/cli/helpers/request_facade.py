@@ -66,6 +66,7 @@ class RequestFacade():
     return self.__replay(request_key, {
       'mode': mode.TEST,
       'report_key': kwargs.get('report_key'),
+      'scenario_key': '', # When replaying a specific request, we don't want active scenario to be used
       'test_origin': test_origin.CLI,
       'test_strategy': strategy or test_strategy.DIFF
     })
@@ -77,7 +78,7 @@ class RequestFacade():
       'query_params': True,
       'response': True,
     })
-    return replay(Request(request), kwargs)
+    return replay(Request(request), **kwargs)
 
   def __data_rules(self):
     project_key = ProjectKey(self.__settings.proxy.intercept.project_key)
