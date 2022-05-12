@@ -84,7 +84,8 @@ class InterceptSettings:
 
   @property
   def report_key(self) -> Union[str, None]:
-    return self.__headers[custom_headers.REPORT_KEY]
+    if self.__headers and custom_headers.REPORT_KEY in self.__headers:
+      return self.__headers[custom_headers.REPORT_KEY]
 
   @property
   def policy(self):
