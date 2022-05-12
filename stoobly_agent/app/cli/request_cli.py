@@ -135,7 +135,7 @@ def __replay(handler, kwargs) -> requests.Response:
 def __print(requests, **kwargs):
     tabulate_print(
       requests, 
-      filter=['components' , 'created_at', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
+      filter=['components' , 'created_at', 'endpoint', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
       headers=not kwargs.get('without_headers'),
       select=kwargs.get('select') or []
     )
