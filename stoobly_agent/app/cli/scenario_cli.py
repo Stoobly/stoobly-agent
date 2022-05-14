@@ -128,7 +128,7 @@ def show(**kwargs):
 def __print(scenarios, **kwargs):
     tabulate_print(
         scenarios, 
-        filter=['created_at', 'project_id', 'starred', 'updated_at'],
+        filter=['created_at', 'priority', 'project_id', 'starred', 'updated_at'],
         headers=not kwargs.get('without_headers'),
         select=kwargs.get('select') or []
     )
