@@ -82,10 +82,16 @@ def __handle_mock_success(context: MockContext) -> None:
             strategy=test_strategy
         )
 
+    #
+    # DEPRECATED
+    # TODO: Make request to API to get test results
     # If the origin was from a CLI, send a JSON response
     # Testing via browser for example, requires the actual response to be returned
     if intercept_settings.test_origin == test_origin.CLI:
-        return __build_response(passed, log)
+        pass
+        #return __build_response(passed, log)
+    
+    return flow.response
 
 def __build_response(passed, log):
     body = json.dumps({
