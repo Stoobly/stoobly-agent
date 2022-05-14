@@ -4,6 +4,7 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.net.http.request import Request as MitmproxyRequest
+from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -19,20 +20,26 @@ from .utils.response_handler import bad_request, pass_on
 
 LOG_ID = 'HandleMock'
 
+class MockOptions(TypedDict):
+    failure: Callable
+    ignored_components: list 
+    infer: bool
+    success: Callable
+
 ###
 #
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(context: MockContext, **kwargs):
+def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     request_model: RequestModel = context.model
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
 
     eval_request = inject_eval_request(request_model, intercept_settings)
-    handle_success = kwargs['success'] if 'success' in kwargs and callable(kwargs['success']) else None
-    handle_failure = kwargs['failure'] if 'failure' in kwargs and callable(kwargs['failure']) else None
-
+    handle_success = options['success'] if 'success' in options and callable(options['success']) else None
+    handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
+ 
     if intercept_settings.active and allowed_request(intercept_settings, request):
         policy = intercept_settings.policy
     else:
@@ -43,16 +50,14 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         if handle_failure:
             res = handle_failure(context)
     elif policy == mock_policy.ALL:
-        ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
-        res = eval_request_with_retry(eval_request, request, ignored_components) 
+        res = eval_request_with_retry(eval_request, request, **options) 
 
         context.with_response(res)
 
         if handle_success:
             res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
-        ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
-        res = eval_request_with_retry(eval_request, request, ignored_components) 
+        res = eval_request_with_retry(eval_request, request, **options) 
 
         context.with_response(res)
 
@@ -66,17 +71,20 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         return bad_request(
             context.flow,
             "Valid env MOCK_POLICY: %s, %s, %s, Got: %s" %
-            [mock_policy.ALL, mock_policy.FOUND, mock_policy]
+            [mock_policy.ALL, mock_policy.FOUND, policy]
         )
 
     return pass_on(context.flow, res)
 
-def eval_request_with_retry(eval_request, request, ignored_components):
+def eval_request_with_retry(eval_request, request, **options: MockOptions):
+    infer = bool(options.get('infer'))
+    ignored_components = options['ignored_components'] if 'ignored_components' in options else []
+
     res: requests.Response = eval_request(request, ignored_components)
 
     if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
         ignored_components.append(res.content)
-        res = eval_request(request, ignored_components)
+        res = eval_request(request, ignored_components, infer=infer, retry=1)
 
     return res
 

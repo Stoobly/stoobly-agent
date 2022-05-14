@@ -3,7 +3,7 @@ import pdb
 
 from mitmproxy.net.http.request import Request as MitmproxyRequest
 from requests import Response
-from typing import List, Union
+from typing import List, TypedDict, Union
 
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.app.models.request_model import RequestModel
@@ -12,6 +12,10 @@ from stoobly_agent.app.settings import Settings
 
 from .hashed_request_decorator import HashedRequestDecorator
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
+
+class EvalRequestOptions(TypedDict):
+    infer: bool
+    retry: int
 
 def inject_eval_request(
     request_model: RequestModel,
@@ -25,8 +29,8 @@ def inject_eval_request(
     if not intercept_settings:
         intercept_settings = InterceptSettings(intercept_settings)
 
-    return lambda request, ignored_components_list: eval_request(
-        request_model, intercept_settings, request, ignored_components_list, 
+    return lambda request, ignored_components, **options: eval_request(
+        request_model, intercept_settings, request, ignored_components or [], **options 
     )
 
 ###
@@ -37,15 +41,29 @@ def eval_request(
     request_model: RequestModel,
     intercept_settings: InterceptSettings,
     request: MitmproxyRequest,
-    ignored_components_list: List[Union[list, str, None]] = None,
+    ignored_components_list: List[Union[list, str, None]],
+    **options: EvalRequestOptions
 ) -> Response:
     query_params = ParamBuilder()
     query_params.with_resource_scoping(intercept_settings)
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
-    query_params.with_params(__build_query_params(request, ignored_components))
+    query_params.with_params(__build_request_params(request, ignored_components))
+
+    query_params.with_params(__build_optional_params(options))
 
     return request_model.response(**query_params.build())
+
+def __build_optional_params(options: EvalRequestOptions):
+    optional_params = {}
+
+    if options.get('retry'):
+        optional_params['retry'] = options['retry']
+
+        if options.get('infer'):
+            optional_params['infer'] = options['infer']
+
+    return optional_params
 
 def __build_ignored_components(ignored_components_list):
     ignored_components = []
@@ -71,7 +89,7 @@ def __build_ignored_components(ignored_components_list):
 #
 # @return [Hash] query parameters to pass to stoobly request_model
 #
-def __build_query_params(request: MitmproxyRequest, ignored_components = []) -> dict:
+def __build_request_params(request: MitmproxyRequest, ignored_components = []) -> dict:
     request = MitmproxyRequestFacade(request)
     hashed_request = HashedRequestDecorator(request).with_ignored_components(ignored_components)
 
@@ -102,8 +120,5 @@ def __build_query_params(request: MitmproxyRequest, ignored_components = []) -> 
 
     if len(body_text_hash) > 0:
         query_params['body_text_hash'] = body_text_hash
-
-    if len(ignored_components) > 0:
-        query_params['retry'] = 1
 
     return query_params
