@@ -1,3 +1,4 @@
+import requests
 import time
 import pdb
 
@@ -43,12 +44,7 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
             res = handle_failure(context)
     elif policy == mock_policy.ALL:
         ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
-
-        res = eval_request(request, ignored_components)
-
-        if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
-            ignored_components.append(res.content)
-            res = eval_request(request, [res.content] + ignored_components)
+        res = eval_request_with_retry(eval_request, request, ignored_components) 
 
         context.with_response(res)
 
@@ -56,15 +52,11 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
             res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
         ignored_components = kwargs['ignored_components'] if 'ignored_components' in kwargs else []
-        res = eval_request(request, ignored_components)
+        res = eval_request_with_retry(eval_request, request, ignored_components) 
 
-        if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
-            ignored_components.append(res.content)
-            res = eval_request(request, ignored_components)
-        
         context.with_response(res)
 
-        if res.status_code == custom_response_codes.NOT_FOUND:
+        if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
             if handle_failure:
                 res = handle_failure(context)
         else:
@@ -78,6 +70,15 @@ def handle_request_mock_generic(context: MockContext, **kwargs):
         )
 
     return pass_on(context.flow, res)
+
+def eval_request_with_retry(eval_request, request, ignored_components):
+    res: requests.Response = eval_request(request, ignored_components)
+
+    if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
+        ignored_components.append(res.content)
+        res = eval_request(request, ignored_components)
+
+    return res
 
 def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
     request_model = RequestModel(intercept_settings.settings)
