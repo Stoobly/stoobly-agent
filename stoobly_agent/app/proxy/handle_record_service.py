@@ -15,7 +15,7 @@ from .mock.eval_request_service import inject_eval_request
 from .upload.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import allowed_request
 from .utils.request_handler import reverse_proxy
-from .utils.response_handler import bad_request 
+from .utils.response_handler import bad_request, disable_transfer_encoding 
 
 LOG_ID = 'HandleRecord'
 
@@ -35,7 +35,7 @@ def handle_request_record(request: MitmproxyRequest, intercept_settings: Interce
 def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
     request: MitmproxyRequest = flow.request
 
-    __disable_transfer_encoding(flow.response)
+    disable_transfer_encoding(flow.response)
 
     request_model = RequestModel(intercept_settings.settings)
 
@@ -75,9 +75,3 @@ def __get_record_policy(request: MitmproxyRequest, intercept_settings: Intercept
     else:
         # If the request path does not match accepted paths, do not record
         return record_policy.NONE
-
-def __disable_transfer_encoding(response: MitmproxyResponse):
-    header_name = 'Transfer-Encoding'
-    if header_name in response.headers and response.headers[header_name] == 'chunked':
-        # Without deleting this header, causes caller to stall
-        del response.headers['Transfer-Encoding']

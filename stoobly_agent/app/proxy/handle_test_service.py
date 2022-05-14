@@ -1,14 +1,14 @@
-import json
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.response import Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.utils.request_handler import build_response
+from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
 from stoobly_agent.config.constants import custom_headers, test_origin, test_strategy
+from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 
 from .handle_mock_service import handle_request_mock_generic
 from .mitmproxy.request_facade import MitmproxyRequestFacade
@@ -30,7 +30,7 @@ LOG_ID = 'HandleTest'
 # @param settings [Dict]
 #
 def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> None:
-    __disable_transfer_encoding(flow.response)
+    disable_transfer_encoding(flow.response)
 
     ignored_components = []
 
@@ -74,7 +74,7 @@ def __handle_mock_success(context: MockContext) -> None:
     if request_id:
         # Commit test to API
         upload_test = inject_upload_test(None, intercept_settings)
-        upload_test(
+        res = upload_test(
             flow,
             log=log,
             passed=passed,
@@ -83,39 +83,19 @@ def __handle_mock_success(context: MockContext) -> None:
             strategy=test_strategy
         )
 
-    #
-    # DEPRECATED
-    # TODO: Make request to API to get test results
-    # If the origin was from a CLI, send a JSON response
-    # Testing via browser for example, requires the actual response to be returned
-    if intercept_settings.test_origin == test_origin.CLI:
-        pass
-        #return __build_response(passed, log)
+        # If the origin was from a CLI, send test ID in response header
+        if intercept_settings.test_origin == test_origin.CLI and res.ok:
+            __decorate_test_id(flow, res.json())
     
     return flow.response
 
-def __build_response(passed, log):
-    body = json.dumps({
-        'log': log,
-        'passed': passed,
-    }).encode()
- 
-    builder = RequestsResponseBuilder()
-    builder.with_header('content-type', 'application/json')
-    builder.with_body(body)
-    builder.with_status_code(200)
-
-    return builder.build()
+def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse):
+    if test_response.get('id'):
+        flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
 
 def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
 
     intercept_settings = context.intercept_settings
     if intercept_settings.test_origin == test_origin.CLI:
-        return __build_response(False, 'No test found')
-
-# Without deleting this header, causes parsing issues when reading response
-def __disable_transfer_encoding(response: MitmproxyResponse) -> None:
-    header_name = 'Transfer-Encoding'
-    if header_name in response.headers and response.headers[header_name] == 'chunked':
-        del response.headers['Transfer-Encoding']
+        return build_response(False, 'No test found')

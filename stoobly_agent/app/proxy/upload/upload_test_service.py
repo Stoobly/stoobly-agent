@@ -47,6 +47,8 @@ def upload_test(
 
       api.with_report_key(report_key, kwargs)
 
+    res: Response = None
+
     scenario_key = intercept_settings.scenario_key
     if scenario_key:
       return api.from_scenario_key(
@@ -55,6 +57,6 @@ def upload_test(
       )
     else:
       return api.from_project_key(
-        intercept_settings.scenario_key,
+        intercept_settings.project_key,
         lambda project_id: api.create(project_id, raw_requests, { **kwargs })
       )

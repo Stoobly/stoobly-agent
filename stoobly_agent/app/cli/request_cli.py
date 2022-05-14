@@ -91,6 +91,8 @@ def test(**kwargs):
   request = RequestFacade(Settings.instance())
   res = __replay(request.test, kwargs)
 
+  pdb.set_trace()
+
   print(res.json())
 
 @click.group(
