@@ -6,7 +6,7 @@ from mitmproxy.net.http.response import Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.config.constants import custom_headers, test_origin
+from stoobly_agent.config.constants import custom_headers, test_origin, test_strategy
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 
@@ -48,6 +48,7 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
         context,
         failure=__handle_mock_failure,
         ignored_components=ignored_components,
+        infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=__handle_mock_success
     )
 
