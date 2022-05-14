@@ -8,6 +8,7 @@ class QueryParam(TypedDict):
 
 class RequestShowResponse(TypedDict):
   body: str
+  endpoint_id: int
   headers: Union[list, None]
   host: str
   id: str
