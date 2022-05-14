@@ -28,6 +28,7 @@ setup(
         "click>=7.0.0,<8.0.0",
         "distro>=1.6.0,<1.7.0",
         "httptools>=0.4.0",
+        "jmespath>=1.0.0",
         "mergedeep>=1.3.0,<1.3.4",
         "mitmdump>=1.1.0,<=1.1.2",
         "mitmproxy>=6.0.0,<7.0.0",

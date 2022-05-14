@@ -19,6 +19,8 @@ class RequestModel():
     else:
       self.adapter =  RequestAdapterFactory(settings.remote).stoobly()
 
+    self.settings = settings
+
   def create(self, **body_params: RequestCreateParams) -> Union[Request, None]:
     try:
       return self.adapter.create(**body_params)
