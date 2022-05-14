@@ -5,7 +5,7 @@ from http.cookies import SimpleCookie
 from typing import TypedDict, Union
 
 from stoobly_agent.config.constants import custom_headers
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
 
@@ -41,10 +41,9 @@ def replay(request: Request, **kwargs: ReplayRequestOptions) -> requests.Respons
   if 'test_strategy' in kwargs:
     headers[custom_headers.TEST_STRATEGY] = kwargs['test_strategy']
 
-  Logger.instance().info(f"{method} {request.url}")
+  Logger.instance().info(f"{bcolors.OKCYAN}{method} {request.url}{bcolors.ENDC}")
 
   # Do not send query params, they should be a part of the URL
-    
   return handler(
     request.url, 
     allow_redirects = True,
