@@ -1,4 +1,3 @@
-import cgi
 import pdb
 
 from .decode_response_service import decode_response
@@ -24,7 +23,6 @@ class TestContextResponse():
 
   def decode_content(self):
     content_type = self.headers.get('content-type')
-    content_type = cgi.parse_header(content_type)[0]
     return decode_response(self.content, content_type)
 
   def with_content(self, content):
