@@ -5,14 +5,12 @@ from requests import Response
 
 from stoobly_agent.lib.api.tests_resource import TestsResource
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectTestSettings
 from stoobly_agent.lib.logger import Logger
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ..intercept_settings import InterceptSettings
 from .join_request_service import join_redacted_request
-from ..settings import get_report_key
 
 def inject_upload_test(
   api: TestsResource,

@@ -37,4 +37,9 @@ class ReplayContext():
   def with_response(self, response: requests.Response):
     self.__end_time = time.time()
     self.__response = response
+    return self
+
+  def with_sequence(self, sequence):
+    self.__sequence = sequence
+    return self
 
