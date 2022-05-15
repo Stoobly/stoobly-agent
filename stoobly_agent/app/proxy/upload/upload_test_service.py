@@ -5,14 +5,12 @@ from requests import Response
 
 from stoobly_agent.lib.api.tests_resource import TestsResource
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IProjectTestSettings
 from stoobly_agent.lib.logger import Logger
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ..intercept_settings import InterceptSettings
 from .join_request_service import join_redacted_request
-from ..settings import get_report_key
 
 def inject_upload_test(
   api: TestsResource,
@@ -47,6 +45,8 @@ def upload_test(
 
       api.with_report_key(report_key, kwargs)
 
+    res: Response = None
+
     scenario_key = intercept_settings.scenario_key
     if scenario_key:
       return api.from_scenario_key(
@@ -55,6 +55,6 @@ def upload_test(
       )
     else:
       return api.from_project_key(
-        intercept_settings.scenario_key,
+        intercept_settings.project_key,
         lambda project_id: api.create(project_id, raw_requests, { **kwargs })
       )

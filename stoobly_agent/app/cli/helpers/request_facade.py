@@ -1,4 +1,6 @@
 import pdb
+from stoobly_agent.app.cli.helpers.scenario_facade import ReplayOptions
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.config.constants import test_origin, test_strategy
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -50,6 +52,7 @@ class RequestFacade():
 
     return self.__replay(request_key, {
       'mode': mode.RECORD if kwargs.get('record') else mode.REPLAY,
+      'on_response': kwargs.get('on_response'),
       'scenario_key': scenario_key 
     })
 
@@ -65,20 +68,22 @@ class RequestFacade():
 
     return self.__replay(request_key, {
       'mode': mode.TEST,
+      'on_response': kwargs.get('on_response'),
       'report_key': kwargs.get('report_key'),
       'scenario_key': '', # When replaying a specific request, we don't want active scenario to be used
       'test_origin': test_origin.CLI,
       'test_strategy': strategy or test_strategy.DIFF
     })
 
-  def __replay(self, request_key: str, kwargs: dict):
-    request = self.show(request_key, {
+  def __replay(self, request_key: str, options: ReplayOptions):
+    request_response = self.show(request_key, {
       'body': True,
       'headers': True,
       'query_params': True,
       'response': True,
     })
-    return replay(Request(request), **kwargs)
+    context = ReplayContext(Request(request_response))
+    return replay(context, **options)
 
   def __data_rules(self):
     project_key = ProjectKey(self.__settings.proxy.intercept.project_key)

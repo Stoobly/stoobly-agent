@@ -1,5 +1,6 @@
 from mitmproxy import http
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from mitmproxy.net.http.response import Response as MitmproxyResponse
 from requests import Response
 
 ###
@@ -35,3 +36,9 @@ def bad_request(flow: MitmproxyHTTPFlow, message: str):
     )
 
     return False
+
+# Without deleting this header, causes parsing issues when reading response
+def disable_transfer_encoding(response: MitmproxyResponse) -> None:
+    header_name = 'Transfer-Encoding'
+    if header_name in response.headers and response.headers[header_name] == 'chunked':
+        del response.headers['Transfer-Encoding']
