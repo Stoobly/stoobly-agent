@@ -41,8 +41,7 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
         ignore_rules = request.select_parameter_rules(ignore_rules)
         ignored_components = filter_rules_to_ignored_components(ignore_rules)
 
-    request_model = RequestModel(intercept_settings.settings)
-    context = MockContext(flow, intercept_settings).with_model(request_model)
+    context = MockContext(flow, intercept_settings)
 
     handle_request_mock_generic(
         context,
