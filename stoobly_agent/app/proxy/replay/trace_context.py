@@ -5,6 +5,7 @@ from requests import Response
 from typing import Callable, List, Union
 
 from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.test.decode_response_service import decode_response
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
@@ -21,7 +22,8 @@ class TraceContext:
     Logger.instance().debug(f"Created Trace {self.__trace.id}")
     self.__requests: List[Request] = []
 
-  def with_request(self, request: Request, replay: Callable[[], Response]): 
+  def with_replay_context(self, context: ReplayContext, replay: Callable[[], Response]): 
+    request = context.request
     endpoint = None
 
     if request.endpoint_id:

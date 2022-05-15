@@ -1,6 +1,8 @@
 import pdb
 import requests
+
 from stoobly_agent.config.constants import test_origin, test_strategy
+from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.replay.replay_scenario_service import replay
@@ -9,6 +11,16 @@ from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
+
+class ReplayOptions(TypedDict):
+  on_response: Callable
+  record: bool
+  scenario_key: str
+
+class TestOptions(TypedDict):
+  on_response: Callable
+  report_key: str
+  strategy: str
 
 class ScenarioFacade():
 
@@ -50,7 +62,7 @@ class ScenarioFacade():
 
     return res.json()
 
-  def replay(self, source_key: str, kwargs: dict):
+  def replay(self, source_key: str, kwargs: ReplayOptions):
     scenario_key = None
 
     # Scenario key has no meaning if mode is replay
@@ -60,10 +72,11 @@ class ScenarioFacade():
 
     return replay(source_key, RequestModel(self.__settings), {
       'mode': mode.RECORD if kwargs.get('record') else mode.REPLAY,
+      'on_response': kwargs.get('on_response'),
       'scenario_key': scenario_key
     })
 
-  def test(self, scenario_key: str, kwargs: dict):
+  def test(self, scenario_key: str, kwargs: TestOptions):
     strategy = kwargs.get('strategy')
     if not strategy:
         data_rule = self.__data_rules()
@@ -71,6 +84,7 @@ class ScenarioFacade():
 
     return replay(scenario_key, RequestModel(self.__settings), {
       'mode': mode.TEST,
+      'on_response': kwargs.get('on_response'),
       'report_key': kwargs.get('report_key'),
       'scenario_key': scenario_key, # Mock the request from the specified scenario instead of active scenario
       'test_origin': test_origin.CLI,

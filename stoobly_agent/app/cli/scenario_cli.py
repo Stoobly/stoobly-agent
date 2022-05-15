@@ -1,9 +1,14 @@
 import click
 import pdb
+import requests
 import sys
+from stoobly_agent.app.cli.helpers.print_service import handle_on_request_response, handle_on_test_response
+from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.config.constants import custom_headers, test_strategy
+from stoobly_agent.lib.api.keys.test_key import TestKey
 
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.tabulate_print_service import tabulate_print
@@ -56,8 +61,9 @@ def replay(**kwargs):
 
         validate_scenario_key(kwargs['scenario_key'])
 
-    scenario = ScenarioFacade(Settings.instance())
+    kwargs['on_response'] = handle_on_request_response
 
+    scenario = ScenarioFacade(Settings.instance())
     scenario.replay(kwargs.get('key'), kwargs)
 
 @scenario.command(
@@ -67,13 +73,17 @@ def replay(**kwargs):
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('key')
 def test(**kwargs):
-    validate_scenario_key(kwargs['key'])
+    scenario_key = validate_scenario_key(kwargs['key'])
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
 
-    scenario = ScenarioFacade(Settings.instance())
+    settings = Settings.instance()
+    kwargs['on_response'] = lambda context: handle_on_test_response(
+        context, scenario_key.project_id, settings
+    )
 
+    scenario = ScenarioFacade(settings)
     scenario.test(kwargs['key'], kwargs)
 
 @scenario.command(

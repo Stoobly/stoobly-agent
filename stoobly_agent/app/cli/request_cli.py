@@ -2,12 +2,15 @@ import click
 import pdb
 import requests
 import sys
+from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_origin, test_strategy
+from stoobly_agent.config.constants import custom_headers, test_strategy
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
+from stoobly_agent.lib.api.keys.test_key import TestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
+from .helpers.print_service import handle_on_request_response, handle_on_test_response
 from .helpers.request_facade import RequestFacade
 from .helpers.tabulate_print_service import tabulate_print
 from .helpers.validations import *
@@ -71,10 +74,10 @@ def replay(**kwargs):
 
     validate_scenario_key(kwargs['scenario_key'])
 
-  request = RequestFacade(Settings.instance())
-  res = __replay(request.replay, kwargs)
+  kwargs['on_response'] = handle_on_request_response
 
-  print(res.content)
+  request = RequestFacade(Settings.instance())
+  __replay(request.replay, kwargs)
 
 @request.command(
   help="Test a request"
@@ -83,15 +86,18 @@ def replay(**kwargs):
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('request_key')
 def test(**kwargs):
-  validate_request_key(kwargs['request_key'])
+  request_key = validate_request_key(kwargs['request_key'])
 
   if kwargs.get('report_key'):
     validate_report_key(kwargs['report_key'])
 
-  request = RequestFacade(Settings.instance())
-  res = __replay(request.test, kwargs)
+  settings = Settings.instance()
+  kwargs['on_response'] = lambda context: handle_on_test_response(
+    context, request_key.project_id, settings
+  )
 
-  print(res.json())
+  request = RequestFacade(settings)
+  __replay(request.test, kwargs)
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
@@ -130,7 +136,6 @@ def __replay(handler, kwargs) -> requests.Response:
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
     sys.exit(1)
-
 
 def __print(requests, **kwargs):
     tabulate_print(
