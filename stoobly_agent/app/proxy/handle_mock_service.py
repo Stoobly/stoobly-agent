@@ -32,8 +32,8 @@ class MockOptions(TypedDict):
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, **options: MockOptions):
-    request_model: RequestModel = context.model
     intercept_settings = context.intercept_settings
+    request_model = RequestModel(intercept_settings.settings)
     request: MitmproxyRequest = context.flow.request
 
     eval_request = inject_eval_request(request_model, intercept_settings)
@@ -89,8 +89,7 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
     return res
 
 def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
-    request_model = RequestModel(intercept_settings.settings)
-    context = MockContext(flow, intercept_settings).with_model(request_model)
+    context = MockContext(flow, intercept_settings)
 
     handle_request_mock_generic(
         context,

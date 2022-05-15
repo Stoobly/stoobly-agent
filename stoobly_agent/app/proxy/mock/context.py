@@ -4,17 +4,20 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
 from typing import Union
 
-from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 class MockContext():
   def __init__(self, flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
     self.__flow = flow
-    self.__intercept_settings = intercept_settings
-    self.start_time = time.time()
+    self.__start_time = time.time()
+    self.__end_time = None
+    self.__response = None
 
-    self.model = None
-    self.response = None
+    self.__intercept_settings = intercept_settings
+
+  @property
+  def end_time(self):
+    return self.__end_time
 
   @property
   def flow(self):
@@ -24,10 +27,15 @@ class MockContext():
   def intercept_settings(self):
     return self.__intercept_settings
 
-  def with_response(self, response: Response):
-    self.response = response
-    return self
+  @property
+  def response(self):
+    return self.__response
 
-  def with_model(self, model: RequestModel):
-    self.model = model
+  @property
+  def start_time(self):
+    return self.__start_time
+
+  def with_response(self, response: Response):
+    self.__response = response
+    self.__end_time = time.time()
     return self
