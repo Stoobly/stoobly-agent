@@ -14,7 +14,7 @@ from stoobly_agent.lib.logger import Logger
 from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_request_service import inject_eval_request
-from .utils.allowed_request_service import allowed_request
+from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, pass_on
 
@@ -39,12 +39,8 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     eval_request = inject_eval_request(request_model, intercept_settings)
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
- 
-    if intercept_settings.active and allowed_request(intercept_settings, request):
-        policy = intercept_settings.policy
-    else:
-        # If the request path does not match accepted paths, do not mock
-        policy = mock_policy.NONE
+    
+    policy = get_active_mode_policy(request, intercept_settings)
  
     if policy == mock_policy.NONE:
         if handle_failure:
