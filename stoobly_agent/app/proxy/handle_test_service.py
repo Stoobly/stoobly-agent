@@ -60,7 +60,7 @@ def __handle_mock_success(context: MockContext) -> None:
     response = MitmproxyResponseAdapter(flow.response).adapt() 
     test_strategy = intercept_settings.test_strategy
         
-    test_context = TestContext(test_strategy)
+    test_context = TestContext(flow.request, test_strategy)
     test_context.start_time = context.start_time
     
     test_context.with_expected_response(RequestsResponseAdapter(expected_response).adapt())
