@@ -23,27 +23,41 @@ def test(context: TestContext):
     if active_test_strategy == test_strategy.CUSTOM:
         return __test_custom(context)
     elif active_test_strategy == test_strategy.DIFF:
-        status_matches = __test_status_code(context)
+        status_code_matches, status_code_log = __test_status_code(context)
         response_matches = __test_diff(content, expected_content)
 
         log_lines = []
         if not response_matches:
-            log_lines.append('Response did not match')
+            log_lines.append('Response did not match: please check diff')
 
-        if not status_matches:
-            log_lines.append('Status did not match')
+        if not status_code_matches:
+            log_lines.append(status_code_log)
 
-        return status_matches and response_matches, "\n".join(log_lines)
+        return status_code_matches and response_matches, "\n".join(log_lines)
     elif active_test_strategy == test_strategy.FUZZY:
-        status_matches = __test_status_code(context)
+        status_code_matches, status_code_log = __test_status_code(context)
         fuzzy_matches, log = __test_fuzzy(response.decode_content(), expected_response.decode_content())
 
-        return status_matches and fuzzy_matches, log
+        log_lines = []
+        if not fuzzy_matches:
+            log_lines.append(log)
+
+        if not status_code_matches:
+            log_lines.append(status_code_log)
+
+        return status_code_matches and fuzzy_matches, "\n".join(log_lines)
 
 def __test_status_code(context: TestContext) -> bool:
     response = context.response
     expected_response = context.expected_response
-    return response.status_code == expected_response.status_code
+
+    matches = response.status_code == expected_response.status_code 
+
+    log = ''
+    if not matches:
+        log = f"Status codes did not match: got {response.status_code} expected {expected_response.status_code}"
+
+    return matches, log
 
 def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> bool:
     return content == expected_content
@@ -54,7 +68,7 @@ def __test_diff(content: FuzzyContent, expected_content: FuzzyContent) -> bool:
 def __test_fuzzy(content: FuzzyContent, expected_content: FuzzyContent):
     if __is_traversable(content) and __is_traversable(expected_content):
         if type(content) != type(expected_content):
-            return False, f"Expected types to match, got {type(content)}, expected {type(expected_content)}"
+            return False, f"Expected types to match: got {type(content)}, expected {type(expected_content)}"
         else:
             if type(content) == dict:
                 return dict_matches(expected_content, content, '')
