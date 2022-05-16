@@ -1,10 +1,14 @@
-from typing import List, TypedDict
+from typing import List, TypedDict, Union
+
+from stoobly_agent.config.constants import test_strategy
 
 from .pagination_query_params import PaginationQueryParams
 
 class TestShowResponse(TypedDict):
   id: int
+  passed: bool
   project_id: str
+  strategy: Union[test_strategy.DIFF, test_strategy.CUSTOM, test_strategy.FUZZY] 
 
 class TestsIndexQueryParams(PaginationQueryParams):
   project_id: str
