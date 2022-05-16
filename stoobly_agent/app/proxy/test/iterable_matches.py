@@ -1,14 +1,14 @@
 from typing import Tuple
 
-def dict_matches(d1: dict, d2: dict, path_key: str) -> Tuple[bool, str]:
+def dict_matches(d1: dict, d2: dict, parent_path_key: str) -> Tuple[bool, str]:
     for key, val in d1.items():
-        path_key = '.'.join([path_key, key])
+        path_key = '.'.join([parent_path_key, key]) if len(parent_path_key) > 0 else key
 
         if key not in d2:
-            return False, f"Expected {path_key} to exist"
+            return False, f"Missing key: expected {path_key} to exist"
 
         if type(val) != type(d2[key]):
-            return False, f"Expected type for {path_key} to match, got {type(d2[key])}, expected {type(d1[key])}"
+            return False, f"Key '{path_key}' type did not match: got {type(d2[key])}, expected {type(d1[key])}"
 
         if type(val) is dict:
             return dict_matches(val, d2[key], path_key)
@@ -41,7 +41,7 @@ def list_matches(l1: list, l2: list, path_key: str) -> Tuple[bool, str]:
         path_key = f"{path_key}[{i}]"
 
         if type(val) not in valid_types:
-            return False, f"Expected type for {path_key} to exist, got {type(val)}, expected {valid_types}"
+            return False, f"Key '{path_key}' type did not match: got {type(val)}, expected {valid_types}"
 
         if type(val) is dict:
             return dict_matches(type_examples[dict], val, path_key)
