@@ -1,7 +1,7 @@
 import pdb
 import requests
 
-from stoobly_agent.config.constants import test_origin, test_strategy
+from stoobly_agent.config.constants import request_origin, test_strategy
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -73,6 +73,7 @@ class ScenarioFacade():
     return replay(source_key, RequestModel(self.__settings), {
       'mode': mode.RECORD if kwargs.get('record') else mode.REPLAY,
       'on_response': kwargs.get('on_response'),
+      'request_origin': request_origin.CLI,
       'scenario_key': scenario_key
     })
 
@@ -86,8 +87,8 @@ class ScenarioFacade():
       'mode': mode.TEST,
       'on_response': kwargs.get('on_response'),
       'report_key': kwargs.get('report_key'),
+      'request_origin': request_origin.CLI,
       'scenario_key': scenario_key, # Mock the request from the specified scenario instead of active scenario
-      'test_origin': test_origin.CLI,
       'test_strategy': strategy or test_strategy.DIFF
     })
 

@@ -1,7 +1,7 @@
 import pdb
 from stoobly_agent.app.cli.helpers.scenario_facade import ReplayOptions
 from stoobly_agent.app.proxy.replay.context import ReplayContext
-from stoobly_agent.config.constants import test_origin, test_strategy
+from stoobly_agent.config.constants import request_origin, test_strategy
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
@@ -71,7 +71,6 @@ class RequestFacade():
       'on_response': kwargs.get('on_response'),
       'report_key': kwargs.get('report_key'),
       'scenario_key': '', # When replaying a specific request, we don't want active scenario to be used
-      'test_origin': test_origin.CLI,
       'test_strategy': strategy or test_strategy.DIFF
     })
 
@@ -83,7 +82,11 @@ class RequestFacade():
       'response': True,
     })
     context = ReplayContext(Request(request_response))
-    return replay(context, **options)
+
+    return replay(context, **{ 
+      **options,   
+      'request_origin': request_origin.CLI
+    })
 
   def __data_rules(self):
     project_key = ProjectKey(self.__settings.proxy.intercept.project_key)

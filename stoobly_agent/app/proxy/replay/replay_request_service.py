@@ -5,7 +5,7 @@ from http.cookies import SimpleCookie
 from typing import Callable, TypedDict, Union
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 
-from stoobly_agent.config.constants import custom_headers, test_origin, test_strategy
+from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
@@ -16,8 +16,8 @@ class ReplayRequestOptions(TypedDict):
   project_key: Union[str, None]
   quiet: bool
   report_key: Union[str, None] 
+  request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
-  test_origin: Union[test_origin.CLI, None] 
   test_strategy: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
 
 def replay(context: ReplayContext, **options: ReplayRequestOptions) -> requests.Response:
@@ -40,11 +40,11 @@ def replay(context: ReplayContext, **options: ReplayRequestOptions) -> requests.
   if 'report_key' in options:
     headers[custom_headers.REPORT_KEY] = options['report_key']
 
+  if 'request_origin' in options:
+    headers[custom_headers.REQUEST_ORIGIN] = options['request_origin']
+
   if 'scenario_key' in options:
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
-
-  if 'test_origin' in options:
-    headers[custom_headers.TEST_ORIGIN] = options['test_origin']
 
   if 'test_strategy' in options:
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']

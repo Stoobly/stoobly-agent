@@ -5,9 +5,20 @@ from mitmproxy.net.http.request import Request as MitmproxyRequest
 from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.config.constants import mock_policy, request_origin
 from stoobly_agent.lib.logger import Logger
 
-def allowed_request(intercept_settings: InterceptSettings, request: MitmproxyRequest) -> bool:
+def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
+    if intercept_settings.request_origin == request_origin.CLI:
+        return intercept_settings.policy 
+
+    if intercept_settings.active and allowed_request(request, intercept_settings):
+        return intercept_settings.policy
+    else:
+        # If the request path does not match accepted paths, do not mock
+        return mock_policy.NONE
+
+def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
     active_mode = intercept_settings.mode
 
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed

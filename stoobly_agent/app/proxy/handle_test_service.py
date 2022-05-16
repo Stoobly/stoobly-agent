@@ -6,7 +6,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, test_origin, test_strategy
+from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
 
@@ -83,7 +83,7 @@ def __handle_mock_success(context: MockContext) -> None:
         )
 
         # If the origin was from a CLI, send test ID in response header
-        if intercept_settings.test_origin == test_origin.CLI and res.ok:
+        if intercept_settings.request_origin == request_origin.CLI and res.ok:
             __decorate_test_id(flow, res.json())
     
     return flow.response
@@ -96,5 +96,5 @@ def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
 
     intercept_settings = context.intercept_settings
-    if intercept_settings.test_origin == test_origin.CLI:
+    if intercept_settings.request_origin == request_origin.CLI:
         return build_response(False, 'No test found')
