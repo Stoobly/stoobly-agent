@@ -49,6 +49,6 @@ setup(
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
-    version='0.9.7',
+    version='0.10.0',
 )
 
