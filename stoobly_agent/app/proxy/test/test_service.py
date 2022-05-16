@@ -15,16 +15,11 @@ FuzzyContent = Union[dict, list, str]
 def test(context: TestContext):
     active_test_strategy = context.strategy
 
-    response = context.response
-    content: FuzzyContent = response.content
-    expected_response = context.expected_response
-    expected_content: FuzzyContent = expected_response.content
-
     if active_test_strategy == test_strategy.CUSTOM:
         return __test_custom(context)
     elif active_test_strategy == test_strategy.DIFF:
         status_code_matches, status_code_log = __test_status_code(context)
-        response_matches = __test_diff(content, expected_content)
+        response_matches = test_diff(context)
 
         log_lines = []
         if not response_matches:
@@ -36,7 +31,7 @@ def test(context: TestContext):
         return status_code_matches and response_matches, "\n".join(log_lines)
     elif active_test_strategy == test_strategy.FUZZY:
         status_code_matches, status_code_log = __test_status_code(context)
-        fuzzy_matches, log = __test_fuzzy(response.decode_content(), expected_response.decode_content())
+        fuzzy_matches, log = test_fuzzy(context)
 
         log_lines = []
         if not fuzzy_matches:
@@ -46,6 +41,21 @@ def test(context: TestContext):
             log_lines.append(status_code_log)
 
         return status_code_matches and fuzzy_matches, "\n".join(log_lines)
+    else:
+        test_strategies = ','.join([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY])
+        return False, f"Could not find matching test strategy: valid options [{test_strategies}]"
+
+def test_diff(context: TestContext):
+    response = context.response
+    content: FuzzyContent = response.content
+    expected_response = context.expected_response
+    expected_content: FuzzyContent = expected_response.content
+    return __test_diff(content, expected_content)
+
+def test_fuzzy(context: TestContext):
+    response = context.response
+    expected_response = context.expected_response
+    return __test_fuzzy(response.decode_content(), expected_response.decode_content())
 
 def __test_status_code(context: TestContext) -> bool:
     response = context.response
