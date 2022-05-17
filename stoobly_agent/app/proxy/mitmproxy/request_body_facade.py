@@ -1,3 +1,4 @@
+import cgi
 import json
 import pdb
 import urllib.parse
@@ -81,4 +82,4 @@ class MitmproxyRequestBodyFacade:
         if isinstance(header, bytes):
             header = header.decode('utf-8')
 
-        return header.lower()
+        return cgi.parse_header(header)[0].lower()
