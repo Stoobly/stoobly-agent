@@ -3,6 +3,7 @@ import yaml
 import pdb
 
 from shutil import copyfile
+from typing import TypedDict
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -17,6 +18,9 @@ from .proxy_settings import ProxySettings
 from .remote_settings import RemoteSettings
 from .ui_settings import UISettings
 
+class SettingsOptions(TypedDict):
+    validate: bool
+
 class Settings:
     LOG_ID = 'app.settings'
 
@@ -30,11 +34,11 @@ class Settings:
     __settings_file_path = None
     __schema_file_path = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: SettingsOptions):
         if Settings.__instance:
             raise RuntimeError('Call instance() instead')
 
-        self.__settings_file_path = DataDir.instance().settings_file_path
+        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or DataDir.instance().settings_file_path
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
         # If the config does not exist, use template
