@@ -2,21 +2,29 @@ import pdb
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexQueryParams
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
 from .context import ReplayContext
-from .replay_request_service import replay as replay_request, ReplayRequestOptions
+from .replay_request_service import replay_with_trace, ReplayRequestOptions
 from .trace_context import TraceContext
 
 PAGE_SIZE = '25'
 
-def replay(scenario_key: str, request_model: RequestModel, options: ReplayRequestOptions):
-  scenario_key = ScenarioKey(scenario_key)
-  settings = request_model.settings
+def inject_replay():
+  settings = Settings.instance()
+  request_model = RequestModel(settings)
   endpoints_resource = EndpointsResource(settings.remote.api_url, settings.remote.api_key)
-  trace_context = TraceContext(endpoints_resource)
+
+  return lambda scenario_key, options: replay(scenario_key, request_model, endpoints_resource, options)
+
+def replay(
+  scenario_key: str, request_model: RequestModel, endpoints_resource: EndpointsResource, options: ReplayRequestOptions
+):
+  scenario_key = ScenarioKey(scenario_key)
+  trace_context = options.get('trace_context') or TraceContext(endpoints_resource)
 
   page = 0
   count = 0
@@ -41,7 +49,7 @@ def replay(scenario_key: str, request_model: RequestModel, options: ReplayReques
         continue
       
       context = ReplayContext(Request(request_response)).with_sequence(count)
-      trace_context.with_replay_context(context, lambda: replay_request(context, **options))
+      replay_with_trace(context, trace_context, **options)
 
     if count >= total:
       return
