@@ -15,12 +15,17 @@ from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
 class TraceContext:
 
-  def __init__(self, endpoints_resource: EndpointsResource):
+  def __init__(self, endpoints_resource: EndpointsResource, trace = Trace.create()):
     self.__endpoints_resource = endpoints_resource
 
-    self.__trace = Trace.create()
-    Logger.instance().debug(f"Created Trace {self.__trace.id}")
+    self.__trace = trace
+    Logger.instance().debug(f"Using trace {self.__trace.id}")
+
     self.__requests: List[Request] = []
+
+  @property
+  def trace(self):
+    return self.__trace
 
   def with_replay_context(self, context: ReplayContext, replay: Callable[[], Response]): 
     request = context.request
@@ -28,16 +33,25 @@ class TraceContext:
 
     if request.endpoint_id:
       endpoint = self.__get_endpoint(request.endpoint_id)
-      Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
-      self.__rewrite_request(request, endpoint)
+      if endpoint:
+        Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
-    response = replay()
+        self.__rewrite_request(request, endpoint)
+
+    response = replay(context)
 
     if endpoint:
       self.__create_trace_aliases(response, endpoint)
 
     self.__requests.append((request, response))
+
+  def create_trace(self, alias_name, value):
+    return TraceAlias.create(
+      name=alias_name,
+      value=value,
+      trace_id=self.__trace.id
+    )
 
   def __rewrite_request(self, request: Request, endpoint: EndpointShowResponse):
     if not endpoint:
@@ -116,11 +130,7 @@ class TraceContext:
       Logger.instance().debug(f"\tAlias: {_alias}")
 
       if _alias and value:
-        TraceAlias.create(
-          name=_alias['name'],
-          value=value,
-          trace_id=self.__trace.id
-        )
+        self.create_trace(_alias['name'], value) 
 
   def __resolve_alias(self, alias_name: str, value):
     trace_alias_hash = {

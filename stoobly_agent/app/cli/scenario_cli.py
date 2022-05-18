@@ -1,14 +1,10 @@
 import click
 import pdb
-import requests
 import sys
-from stoobly_agent.app.cli.helpers.print_service import handle_on_request_response, handle_on_test_response
-from stoobly_agent.app.cli.helpers.test_facade import TestFacade
-from stoobly_agent.app.proxy.replay.context import ReplayContext
 
+from stoobly_agent.app.cli.helpers.print_service import handle_on_request_response, handle_on_test_response
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import custom_headers, test_strategy
-from stoobly_agent.lib.api.keys.test_key import TestKey
+from stoobly_agent.config.constants import test_strategy
 
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.tabulate_print_service import tabulate_print
