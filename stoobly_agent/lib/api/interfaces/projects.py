@@ -5,9 +5,13 @@ from .pagination_query_params import PaginationQueryParams
 class ProjectsIndexQueryParams(PaginationQueryParams):
   organization_id: str
 
-class ProjectCreateParams(TypedDict):
+class ProjectMutateParams(TypedDict):
   name: str
   description: str
+
+class ProjectCreateParams(TypedDict):
+  organization_id: str
+  project: ProjectMutateParams
 
 class ProjectShowResponse(TypedDict):
   created_at: str

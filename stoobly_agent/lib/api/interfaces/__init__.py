@@ -1,6 +1,6 @@
 from .endpoints import EndpointsIndexQueryParams
 from .pagination_query_params import PaginationQueryParams
-from .projects import ProjectCreateParams, ProjectShowResponse, ProjectsIndexQueryParams, ProjectsIndexResponse 
+from .projects import ProjectCreateParams, ProjectShowResponse, ProjectsIndexQueryParams, ProjectsIndexResponse, ProjectMutateParams
 from .report_show_response import ReportShowResponse
 from .request_create_params import RequestCreateParams
 from .request_show_query_params import RequestShowQueryParams

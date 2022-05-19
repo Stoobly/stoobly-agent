@@ -2,6 +2,7 @@ import requests
 import urllib
 import pdb
 
+from typing import TypedDict
 from ..logger import Logger
 from .interfaces import ProjectCreateParams, ProjectsIndexQueryParams
 from .stoobly_api import StooblyApi
@@ -12,7 +13,9 @@ class ProjectsResource(StooblyApi):
   def create(self, **params: ProjectCreateParams):
     url = f"{self.service_url}/{self.PROJECTS_ENDPOINT}"
 
-    return self.post(url, headers=self.default_headers, data=params)
+    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(params)}")
+
+    return self.post(url, headers=self.default_headers, json=params)
 
   def index(self, **query_params: ProjectsIndexQueryParams) -> requests.Response:
     url = f"{self.service_url}/{self.PROJECTS_ENDPOINT}"
