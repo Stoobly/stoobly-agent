@@ -60,12 +60,12 @@ class RequestHasher():
       return False
 
     # Sometimes there's different types for a param
-    if isinstance(param, list):
-      for param_type in param:
-        if self.__infer_type(value) == param_type['inferred_type']:
-          return True
+    if not isinstance(param, list):
+      return param['query'] == query 
 
-    return param['query'] == query 
+    for param_type in param:
+      if self.__infer_type(value) == param_type['inferred_type'] and param_type['query'] == query:
+        return True
 
   def __serialize_array(
     self, key: str, value: Union[dict, list, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
@@ -88,7 +88,7 @@ class RequestHasher():
     serialized_params = []
 
     for k, v in value.items():
-      param_hash = self.__serialize(k, v, k if not query else "#{query}.#{k}", ignored_params)
+      param_hash = self.__serialize(k, v, k if not query else f"{query}.{k}", ignored_params)
 
       if not param_hash:
         continue
