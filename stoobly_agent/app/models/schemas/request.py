@@ -2,6 +2,7 @@ import base64
 import pdb
 
 from urllib.parse import urlencode, urlparse
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
 from typing import List
 
@@ -82,6 +83,15 @@ class Request():
       return ''
 
     return base64.b64decode(encoded_body)
+
+  @property
+  def body_params(self):
+    _body = self.body
+    return decode_response(_body, self.headers['content-type'])
+
+  @body_params.setter
+  def body_params(self, v):
+    encode_response(v, self.headers['content-type'])
 
   def __set_dict(self, component_name_str, v):
     component_names: List[RequestComponentName] = self.request[component_name_str] or []
