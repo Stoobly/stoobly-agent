@@ -1,11 +1,10 @@
 import hashlib
 import pdb
 
-from urllib.parse import parse_qs
-
 from stoobly_agent.lib.logger import Logger
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
+from .request_hasher import RequestHasher
 
 COMPONENT_TYPES = {
     'HEADER': 1,
@@ -32,15 +31,15 @@ class HashedRequestDecorator:
     #
     def with_ignored_components(self, ignored_components):
         for ignored_component in ignored_components:
-            component_name = ignored_component['name']
             component_type = ignored_component['type']
+            component_query = ignored_component['query']
 
             if component_type == COMPONENT_TYPES['HEADER']:
-                self.ignored_headers[component_name] = True
+                self.ignored_headers[component_query] = ignored_component 
             elif component_type == COMPONENT_TYPES['QUERY_PARAM']:
-                self.ignored_query_params[component_name] = True
+                self.ignored_query_params[component_query] = ignored_component 
             elif component_type == COMPONENT_TYPES['BODY_PARAM']:
-                self.ignored_body_params[component_name] = True
+                self.ignored_body_params[component_query] = ignored_component
 
         return self
 
@@ -68,8 +67,7 @@ class HashedRequestDecorator:
 
     def body_params_hash(self, with_ignored = False):
         params = self.request.parsed_body
-        serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_body_params)
-        return self.__hash_serialized_params(serialized_params)
+        return RequestHasher.instance().hash_params(params, {} if with_ignored else self.ignored_body_params)
 
     def body_text_hash(self):
         text = self.request.body
