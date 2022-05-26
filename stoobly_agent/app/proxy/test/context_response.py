@@ -1,6 +1,6 @@
 import pdb
 
-from .decode_response_service import decode_response
+from ..replay.body_parser_service import decode_response
 
 class TestContextResponse():
 

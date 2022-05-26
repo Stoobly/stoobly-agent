@@ -49,7 +49,7 @@ def replay(
         continue
       
       context = ReplayContext(Request(request_response)).with_sequence(count)
-      replay_with_trace(context, trace_context, **options)
+      replay_with_trace(context, trace_context, options)
 
     if count >= total:
       return

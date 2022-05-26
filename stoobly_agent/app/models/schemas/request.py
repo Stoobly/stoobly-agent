@@ -1,7 +1,9 @@
 import base64
 import pdb
 
-from urllib.parse import urlencode, urlparse
+from mitmproxy.net.http.url import encode as urlencode
+from mitmproxy.coretypes.multidict import MultiDict
+from urllib.parse import urlparse
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
 from typing import List
@@ -24,7 +26,14 @@ class Request():
 
   @property
   def url(self) -> str:
-    url = self.__url._replace(path=self.path, query=urlencode(self.query_params))
+    query_params = self.query_params
+
+    query_tuples = []
+    for key in query_params:
+      for value in query_params.get_all(key):
+        query_tuples.append((key, value))
+
+    url = self.__url._replace(path=self.path, query=urlencode(query_tuples))
     return url.geturl()
 
   @property
@@ -51,29 +60,29 @@ class Request():
     return self.request['method']
 
   @property
-  def headers(self) -> dict:
-    headers = {}
+  def headers(self) -> MultiDict:
+    headers = MultiDict()
 
     for header in (self.request['headers'] or []):
-      headers[header['name']] = header['value']
+      headers.add(header['name'], header['value'])
 
     return headers 
 
   @headers.setter
-  def headers(self, v):
+  def headers(self, v: MultiDict):
     self.__set_dict('headers', v)
 
   @property
-  def query_params(self) -> dict:
-    query_params = {}
+  def query_params(self) -> MultiDict:
+    query_params = MultiDict()
 
     for query_param in (self.request['query_params'] or []):
-      query_params[query_param['name']] = query_param['value']
+      query_params.add(query_param['name'], query_param['value'])
 
     return query_params
 
   @query_params.setter
-  def query_params(self, v: dict):
+  def query_params(self, v: MultiDict):
     self.__set_dict('query_params', v) 
   
   @property
@@ -84,19 +93,66 @@ class Request():
 
     return base64.b64decode(encoded_body)
 
+  @body.setter
+  def body(self, v: str):
+    if not 'body' in self.request:
+      return
+
+    text = v.encode()
+    self.request['body'] = base64.b64encode(text)
+
+    headers = self.headers
+    if 'content-length' in headers:
+      headers['content-length'] = str(len(text))
+      self.headers = headers
+
   @property
   def body_params(self):
     _body = self.body
-    return decode_response(_body, self.headers['content-type'])
+    return decode_response(_body, self.headers.get('content-type'))
 
   @body_params.setter
   def body_params(self, v):
-    encode_response(v, self.headers['content-type'])
+    content_type = self.headers.get('content-type')
+    if content_type:
+      self.body = encode_response(v, content_type)
 
-  def __set_dict(self, component_name_str, v):
+  def __set_dict(self, component_name_str, v: MultiDict):
     component_names: List[RequestComponentName] = self.request[component_name_str] or []
+
+    indexes = {}
 
     for component_name in component_names:
       name = component_name['name']
       if name in v:
-        component_name['value'] = v[name]
+        value = v.get_all(name)
+
+        if isinstance(value, list):
+          if name not in indexes:
+            indexes[name] = 0
+          else:
+            indexes[name] += 1
+
+          index = indexes[name]
+          component_name['value'] = value[index]
+        else:
+          component_name['value'] = value
+
+    # If a component was set that doesn't exist in the request template, add it
+    for key in v:
+      if key in indexes:
+        continue
+      
+      value = v.get_all(key)
+
+      if isinstance(value, list):
+        for val in value:
+          component_names.append({
+            'name': key,
+            'value': val,
+          })
+      else:
+        component_names.append({
+          'name': key,
+          'value': value,
+        })
