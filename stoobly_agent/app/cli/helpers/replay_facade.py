@@ -50,6 +50,8 @@ class ReplayFacade():
       if not scenario_key:
         data_rules = self.data_rules()
         common_cli_options['scenario_key'] = data_rules.scenario_key
+      else:
+        common_cli_options['scenario_key'] = scenario_key
     
     return common_cli_options
 

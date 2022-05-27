@@ -50,12 +50,9 @@ class ScenarioFacade(ReplayFacade):
     return res.json()
 
   def replay(self, source_key: str, cli_options: ReplayCliOptions):
-    scenario_key = None
-
     return self.__replay(source_key, {
       'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
-      'scenario_key': scenario_key,
-      **self.common_cli_options(cli_options)
+      **self.common_replay_cli_options(cli_options)
     })
 
   def test(self, scenario_key: str, cli_options: TestCliOptions):
