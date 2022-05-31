@@ -26,6 +26,11 @@ class UISettings:
 
     return self.__active or False
 
+  @active.setter
+  def active(self, v):
+    self.__ui_settings['active'] = v
+    self.__active = v
+
   @property
   def url_before_change(self) -> str:
     return self.__ui_settings.get('url')
@@ -42,6 +47,7 @@ class UISettings:
 
   @url.setter
   def url(self, v):
+    self.__ui_settings['url'] = v
     self.__url = v
 
   def to_dict(self):
