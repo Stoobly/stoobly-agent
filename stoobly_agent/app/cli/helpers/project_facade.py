@@ -3,7 +3,7 @@ import requests
 
 from stoobly_agent.lib.api.projects_resource import ProjectsResource
 from stoobly_agent.lib.api.users_resource import UsersResource
-from stoobly_agent.lib.api.interfaces import ProjectShowResponse, ProjectsIndexResponse, UserProfileResponse, ProjectMutateParams
+from stoobly_agent.lib.api.interfaces import ProjectDetails, ProjectShowResponse, ProjectsIndexResponse, UserProfileResponse
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey
 from stoobly_agent.app.settings import Settings
 
@@ -22,13 +22,13 @@ class ProjectFacade():
 
     return res.json()
 
-  def create(self, **kwargs: ProjectMutateParams) -> ProjectShowResponse:
+  def create(self, **kwargs: ProjectDetails) -> ProjectShowResponse:
     organization_key: OrganizationKey = OrganizationKey(kwargs.get('organization_key')) 
 
     res: requests.Response =  self.__api.create(
       project={
-        "name": kwargs.get('name'),
         "description": kwargs.get('description') or '',
+        "name": kwargs.get('name'),
         "organization_id": organization_key.id
       },
       organization_id=organization_key.id
