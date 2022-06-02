@@ -19,7 +19,7 @@ class TraceContextFacade():
 
   def with_aliases(self, aliases):
     for _alias in self.__parse_aliases(aliases):
-      self.__trace_context.create_trace(_alias['name'], _alias['value'])
+      self.__trace_context.create_trace_alias(_alias['name'], _alias['value'])
     return self
 
   def __parse_aliases(self, aliases: List[str]):
