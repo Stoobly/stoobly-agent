@@ -44,6 +44,7 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
+@click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
 @click.argument('key')
