@@ -1,4 +1,5 @@
 import jmespath
+
 from .visitor import TreeInterpreter, Visitor
 
 # Monkey patch jmespath with replacement functionality
@@ -11,12 +12,13 @@ from requests import Response
 from typing import Callable, Dict, List, Union
 from orator.orm.collection import Collection
 
+from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
@@ -55,12 +57,14 @@ class TraceContext:
 
     self.__requests.append((request, response))
 
-  def create_trace(self, alias_name, value):
-    return TraceAlias.create(
+  def create_trace_alias(self, alias_name, value):
+    trace_alias = TraceAlias.create(
       name=alias_name,
       value=value,
       trace_id=self.__trace.id
     )
+    Logger.instance().info(f"{bcolors.OKGREEN}Resolved {trace_alias.name}: {value}{bcolors.ENDC}")
+    return trace_alias
 
   def __rewrite_request(self, request: Request, endpoint: EndpointShowResponse):
     if not endpoint:
@@ -126,7 +130,7 @@ class TraceContext:
         continue
 
       name = body_param_name['name']
-      current_value = body_params.get(name)
+      current_value = body_params.get(name) 
       trace_aliases = self.__resolve_alias(_alias['name'], current_value)
 
       if trace_aliases.is_empty():
@@ -149,12 +153,12 @@ class TraceContext:
 
   def __rewrite_components(self, components, component_names, id_to_alias: AliasMap):
     visited = {}
-    for query_param_name in component_names:
-      _alias: Alias = id_to_alias.get(query_param_name['alias_id'])
+    for component_name in component_names:
+      _alias: Alias = id_to_alias.get(component_name['alias_id'])
       if not _alias:
         continue
 
-      name = query_param_name['name']
+      name = component_name['name']
       if name in visited:
         continue
       else:
@@ -215,7 +219,7 @@ class TraceContext:
 
       for value in values:  
         if _alias and value:
-          self.create_trace(_alias['name'], value) 
+          self.create_trace_alias(_alias['name'], value) 
 
   def __resolve_and_assign_alias(self, alias_name: str, value: list) -> Union[TraceAlias, None]:
     trace_aliases = self.__resolve_alias(alias_name, value)
@@ -231,6 +235,8 @@ class TraceContext:
     if not trace_alias.assigned_to:
       trace_alias.assigned_to = value
       trace_alias.save()
+
+      Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
   def __resolve_alias(self, alias_name: str, value: str) -> Collection:
     '''
@@ -291,3 +297,16 @@ class TraceContext:
 
     if res.ok:
       return res.json()
+
+  def __dump_trace_aliases(self):
+    aliases = self.__trace.trace_aliases()
+
+    data = []
+    for _alias in aliases:
+      data.append({
+        'assigned_to': _alias.assigned_to,
+        'name': _alias.name,
+        'value': _alias.value,
+      })
+
+    tabulate_print(data, print_handler=Logger.instance().debug)
