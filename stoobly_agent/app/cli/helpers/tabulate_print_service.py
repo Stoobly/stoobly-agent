@@ -14,6 +14,7 @@ def tabulate_print(records: List[dict], **kwargs: TabulatePrintOptions):
   filter = kwargs.get('filter') or []
   format = kwargs.get('format') or 'plain'
   select = kwargs.get('select') or []
+  print_handler = kwargs.get('print_handler') or print
 
   headers = []
   rows = []
@@ -37,4 +38,4 @@ def tabulate_print(records: List[dict], **kwargs: TabulatePrintOptions):
 
     rows.append(row)
 
-  print(tabulate(rows, headers=headers, tablefmt=format))
+  print_handler(tabulate(rows, headers=headers, tablefmt=format))
