@@ -66,6 +66,7 @@ def replay(**kwargs):
 @scenario.command(
     help="Replay and test a scenario"
 )
+@click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--report-key', help='Save to report.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('key')
