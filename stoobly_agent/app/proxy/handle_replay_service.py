@@ -16,7 +16,7 @@ LOG_ID = 'HandleReplay'
 def handle_request_replay(request: MitmproxyRequest, intercept_settings: InterceptSettings):
   policy = get_active_mode_policy(request, intercept_settings)
 
-  if policy == replay_policy.ALL:
+  if policy != replay_policy.NONE:
     replay_request(request, intercept_settings)
 
 def replay_request(request: MitmproxyRequest, intercept_settings: InterceptSettings):
