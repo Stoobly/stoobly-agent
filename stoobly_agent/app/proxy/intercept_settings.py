@@ -50,6 +50,7 @@ class InterceptSettings:
   @property
   def mode(self):
     if self.__headers:
+      '''
       access_control_header = self.__headers.get('Access-Control-Request-Headers')
       do_proxy_header = custom_headers.DO_PROXY
 
@@ -58,6 +59,7 @@ class InterceptSettings:
 
       if do_proxy_header in self.__headers:
           return mode.NONE
+      '''
 
       if custom_headers.PROXY_MODE in self.__headers:
           return self.__headers[custom_headers.PROXY_MODE]
