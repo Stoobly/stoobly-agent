@@ -12,8 +12,8 @@ from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 class ScenarioFacade(ReplayFacade):
 
   def __init__(self, settings: Settings):
-    self.__settings = settings
-    self.__api = ScenariosResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
+    self.__api = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
+    super().__init__(settings)
 
   def create(self, project_key: str, name: str, description: str = ''):
     res: requests.Response = self.__api.from_project_key(
