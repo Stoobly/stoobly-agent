@@ -47,7 +47,7 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
         context,
         failure=__handle_mock_failure,
         ignored_components=ignored_components,
-        infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
+        #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=__handle_mock_success
     )
 
