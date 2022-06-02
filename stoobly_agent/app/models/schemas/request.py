@@ -94,11 +94,11 @@ class Request():
     return base64.b64decode(encoded_body)
 
   @body.setter
-  def body(self, v: str):
+  def body(self, v: bytes):
     if not 'body' in self.request:
       return
 
-    text = v.encode()
+    text = v
     self.request['body'] = base64.b64encode(text)
 
     headers = self.headers
