@@ -1,4 +1,3 @@
-import cgi
 import pdb
 import re
 
@@ -72,11 +71,7 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def content_type(self):
-        value = self.headers.get('content-type')
-        if not value:
-            return ''
-
-        return cgi.parse_header(value)[0]
+        return self.headers.get('content-type')
 
     @property
     def host(self):
@@ -112,6 +107,7 @@ class MitmproxyRequestFacade(Request):
 
     def rewrite(self):
         rewrites = self.__rewrite_rules
+ 
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
             self.__rewrite_content(rewrites)
