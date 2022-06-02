@@ -1,6 +1,7 @@
 import hashlib
 import pdb
 
+from mitmproxy.coretypes.multidict import MultiDict
 from typing import List, Dict, TypedDict, Union
 
 class IgnoredParam(TypedDict):
@@ -30,7 +31,7 @@ class RequestHasher():
       return cls._instance
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
-    if isinstance(params, dict) or isinstance(params, list):
+    if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict):
       return self.__serialize(None, params, None, ignored_params)
     else:
       return ''
@@ -41,9 +42,9 @@ class RequestHasher():
     return hashlib.md5(text.encode()).hexdigest()
  
   def __serialize(
-    self, key: str, value: Union[dict, list, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
+    self, key: str, value: Union[dict, list, MultiDict, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
   ) -> str:
-    if isinstance(value, dict):
+    if isinstance(value, dict) or isinstance(value, MultiDict):
       return self.__serialize_hash(key, value, query, ignored_params)
     elif isinstance(value, list):
       return self.__serialize_array(key, value, query, ignored_params)
