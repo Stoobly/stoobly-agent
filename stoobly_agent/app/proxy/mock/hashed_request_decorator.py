@@ -32,7 +32,9 @@ class HashedRequestDecorator:
     def with_ignored_components(self, ignored_components):
         for ignored_component in ignored_components:
             component_type = ignored_component['type']
-            component_query = ignored_component['query']
+            component_query = ignored_component['name']
+            if 'query' in ignored_component:
+                component_query = ignored_component['query']
 
             if component_type == COMPONENT_TYPES['HEADER']:
                 self.ignored_headers[component_query] = ignored_component 
