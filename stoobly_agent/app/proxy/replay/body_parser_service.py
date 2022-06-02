@@ -4,8 +4,9 @@ import pdb
 import urllib.parse
 
 from mitmproxy.coretypes.multidict import MultiDict
-from mitmproxy.net.http.multipart import decode as multipart_decode, encode as multipart_encode
 from typing import Dict, Union
+
+from .multipart import decode as multipart_decode, encode as multipart_encode
 
 JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
@@ -57,7 +58,9 @@ def parse_json(content):
 
 def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
     headers = {'content-type': content_type}
-    params_array = multipart_decode(headers, content)
+    params_array = []
+    for ele in multipart_decode(headers, content):
+        params_array.append((ele[0].decode(), ele[1].decode()))
     return MultiDict(params_array)
 
 def parse_www_form_urlencoded(content):
@@ -71,6 +74,13 @@ def serialize_json(o):
 
 def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]):
     headers = {'content-type': content_type}
+    for k, v in o.items():
+        if isinstance(k, bytes):
+            continue
+
+        o[k.encode()] = v if isinstance(v, bytes) else v.encode()
+        del o[k]
+
     return multipart_encode(headers, o.items())
 
 def serialize_www_form_urlencoded(o):
