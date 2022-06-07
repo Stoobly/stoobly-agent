@@ -99,9 +99,11 @@ class Settings:
     def to_dict(self):
         if not self.__settings:
             self.__load_settings()
+
         return { 
             **self.__settings, 
-            **{ 'remote': self.__remote_settings.to_dict() }
+            **{ 'remote': self.__remote_settings.to_dict() },
+            **{ 'ui': self.__ui_settings.to_dict() },
         }
 
     ### Set

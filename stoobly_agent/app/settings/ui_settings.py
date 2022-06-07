@@ -28,7 +28,6 @@ class UISettings:
 
   @active.setter
   def active(self, v):
-    self.__ui_settings['active'] = v
     self.__active = v
 
   @property
@@ -47,7 +46,6 @@ class UISettings:
 
   @url.setter
   def url(self, v):
-    self.__ui_settings['url'] = v
     self.__url = v
 
   def to_dict(self):
