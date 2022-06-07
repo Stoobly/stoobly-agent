@@ -26,6 +26,10 @@ class RemoteSettings:
 
     return self.__api_key
 
+  @api_key.setter
+  def api_key(self, v):
+    self.__api_key = v
+
   @property
   def api_url_before_change(self):
     return self.__remote_settings.get('api_url')
