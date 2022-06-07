@@ -16,7 +16,8 @@ class Api():
         if not val:
           continue
         
-        os.environ[key] = val
+        if isinstance(val, str):
+          os.environ[key] = val
 
       return res
 
