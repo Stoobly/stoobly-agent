@@ -1,5 +1,6 @@
 import click
 import json
+import pdb
 import sys
 import time
 
@@ -102,5 +103,27 @@ if is_remote:
 
         print("Project updated!")
 
+    @click.group(
+        help="Manage API key."
+    )
+    @click.pass_context
+    def api_key(ctx):
+        pass
+
+    @api_key.command(
+        help="Set API Key"
+    )
+    @click.argument('api_key')
+    def set(**kwargs):
+        settings = Settings.instance()
+
+        api_key = kwargs['api_key']
+        settings.remote.api_key = api_key
+
+        settings.commit()
+
+        print("API Key updated!")
+
+    config.add_command(api_key)
     config.add_command(project)
     config.add_command(scenario)

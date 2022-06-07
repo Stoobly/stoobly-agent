@@ -99,7 +99,10 @@ class Settings:
     def to_dict(self):
         if not self.__settings:
             self.__load_settings()
-        return self.__settings
+        return { 
+            **self.__settings, 
+            **{ 'remote': self.__remote_settings.to_dict() }
+        }
 
     ### Set
 
@@ -112,7 +115,8 @@ class Settings:
         fp.close()
 
     def commit(self):
-        self.write(self.to_dict())
+        settings = self.to_dict()
+        self.write(settings)
 
     ### Helpers
 
