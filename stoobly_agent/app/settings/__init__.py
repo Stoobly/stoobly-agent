@@ -102,6 +102,8 @@ class Settings:
 
         return { 
             **self.__settings, 
+            **{ 'cli': self.__cli_settings.to_dict() },
+            **{ 'proxy': self.__proxy_settings.to_dict() },
             **{ 'remote': self.__remote_settings.to_dict() },
             **{ 'ui': self.__ui_settings.to_dict() },
         }

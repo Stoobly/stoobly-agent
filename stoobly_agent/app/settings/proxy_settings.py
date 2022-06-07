@@ -47,10 +47,14 @@ class ProxySettings:
     self.__url = v
 
   def to_dict(self) -> IProxySettings:
-    return {
+    _dict = {
       'data': self.__data.to_dict(),
       'filter': self.__filter.to_dict(),
       'firewall': self.__firewall.to_dict(),
       'intercept': self.__intercept.to_dict(),
-      'url': self.__url,
     }
+
+    if self.__url:
+      _dict['url'] = self.__url
+
+    return _dict
