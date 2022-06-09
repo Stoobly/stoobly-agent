@@ -2,11 +2,10 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
+from stoobly_agent.config.constants import custom_headers, request_origin
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
 
@@ -14,8 +13,6 @@ from .handle_mock_service import handle_request_mock_generic
 from .mitmproxy.request_facade import MitmproxyRequestFacade
 from .mock.context import MockContext
 from .test.context import TestContext
-from .test.mitmproxy_response_adapter import MitmproxyResponseAdapter
-from .test.requests_response_adapter import RequestsResponseAdapter
 from .test.test_service import test
 from .upload.upload_test_service import inject_upload_test
 from .utils.filter_rules_to_ignored_components_service import filter_rules_to_ignored_components
@@ -51,34 +48,29 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
         success=__handle_mock_success
     )
 
-def __handle_mock_success(context: MockContext) -> None:
-    expected_response = context.response
-    intercept_settings = context.intercept_settings
-    flow = context.flow
+def __handle_mock_success(mock_context: MockContext) -> None:
+    flow = mock_context.flow
+    intercept_settings = mock_context.intercept_settings
 
     # Build TestContext
-    response = MitmproxyResponseAdapter(flow.response).adapt() 
+    test_context = TestContext(flow, mock_context)
     test_strategy = intercept_settings.test_strategy
-        
-    test_context = TestContext(flow.request, test_strategy)
-    test_context.start_time = context.start_time
+    test_context.strategy = test_strategy
     
-    test_context.with_expected_response(RequestsResponseAdapter(expected_response).adapt())
-    test_context.with_response(response)
-
     # Run test
     passed, log = test(test_context)
 
-    request_id = expected_response.headers.get(custom_headers.MOCK_REQUEST_ID)
+    request_id = test_context.mock_request_id
     if request_id:
-        # Commit test to API
         upload_test = inject_upload_test(None, intercept_settings)
+
+        # Commit test to API
         res = upload_test(
             flow,
             log=log,
             passed=passed,
             request_id=request_id,
-            status=response.status_code,
+            status=flow.response.status_code,
             strategy=test_strategy
         )
 
