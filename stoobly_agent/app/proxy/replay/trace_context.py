@@ -13,6 +13,7 @@ from typing import Callable, Dict, List, Union
 from orator.orm.collection import Collection
 
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -45,11 +46,17 @@ class TraceContext:
     if request.endpoint_id:
       endpoint = self.__get_endpoint(request.endpoint_id)
 
-      if endpoint:
-        Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
+    if endpoint:
+      Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
-        self.__rewrite_request(request, endpoint)
+      self.__rewrite_request(request, endpoint)
 
+    # Set trace id for request
+    headers = request.headers
+    headers[custom_headers.TRACE_ID] = str(self.trace.id)
+    request.headers = headers
+
+    # Replay request
     response = replay(context)
 
     if endpoint:
