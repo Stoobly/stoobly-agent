@@ -4,6 +4,7 @@ import requests
 from http.cookies import SimpleCookie
 from typing import Callable, TypedDict, Union
 from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
 from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
 from stoobly_agent.lib.logger import bcolors, Logger
@@ -19,20 +20,19 @@ class ReplayRequestOptions(TypedDict):
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
   test_strategy: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+  trace_context: TraceContext
 
-def replay(context: ReplayContext, **options: ReplayRequestOptions) -> requests.Response:
+def replay_with_trace(context: ReplayContext, trace_context: TraceContext, options: ReplayRequestOptions):
+  return trace_context.with_replay_context(context, lambda context: replay(context, options))
+
+def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
   __log(context)
 
   request = context.request
-  method = request.method
-  handler = getattr(requests, method.lower())
-  cookies = __get_cookies(request.headers)
-
   headers = request.headers
 
-  # Set headers to identify request
   if 'mode' in options:
-    headers[custom_headers.PROXY_MODE] = options['mode'] 
+    __handle_mode_option(request, headers, options['mode'])
 
   if 'project_key' in options:
     headers[custom_headers.PROJECT_KEY] = options['project_key']
@@ -48,6 +48,10 @@ def replay(context: ReplayContext, **options: ReplayRequestOptions) -> requests.
 
   if 'test_strategy' in options:
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
+
+  method = request.method
+  handler = getattr(requests, method.lower())
+  cookies = __get_cookies(request.headers)
 
   # Do not send query params, they should be a part of the URL
   res: requests.Response = handler(
@@ -65,6 +69,13 @@ def replay(context: ReplayContext, **options: ReplayRequestOptions) -> requests.
     res = options['on_response'](context) or res
 
   return res
+
+def __handle_mode_option(request: Request, headers, _mode):
+  headers[custom_headers.PROXY_MODE] = _mode
+
+  # If mocking or testing, we already know which request to get response from 
+  if _mode == mode.MOCK or _mode == mode.TEST:
+    headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
 
 def __log(context: ReplayContext):
   request = context.request

@@ -1,13 +1,11 @@
 import pdb
 import requests
-import sys
 
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.tests_resource import TestsResource
-from stoobly_agent.lib.api.users_resource import UsersResource
-from stoobly_agent.lib.api.interfaces import TestCreateParams, TestShowResponse, TestsIndexResponse, UserProfileResponse
+from stoobly_agent.lib.api.interfaces import TestCreateParams, TestShowResponse
 from stoobly_agent.lib.api.keys import OrganizationKey, TestKey
 
 class TestFacade():
@@ -40,11 +38,9 @@ class TestFacade():
     return res.json()
 
   def show_with_context(self, context: ReplayContext, project_id: str):
-    settings = Settings.instance()
     response = context.response
 
     test_id = response.headers.get(custom_headers.TEST_ID)
     if test_id:
-        test = TestFacade(settings)
         test_key = TestKey.encode({'i': test_id, 'p': project_id})
         return self.show(test_key)

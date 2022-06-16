@@ -70,8 +70,9 @@ def __commit_options(options: dict):
         settings.proxy.intercept.mode = options['intercept_mode']
         settings.proxy.intercept.active = True
 
-    settings.commit()
+    settings.ui.active = not options.get('headless')
 
+    settings.commit()
 
 def __get_intercept_handler_path():
     cwd = os.path.dirname(os.path.realpath(__file__))

@@ -26,6 +26,10 @@ class UISettings:
 
     return self.__active or False
 
+  @active.setter
+  def active(self, v):
+    self.__active = v
+
   @property
   def url_before_change(self) -> str:
     return self.__ui_settings.get('url')

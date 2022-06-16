@@ -55,9 +55,13 @@ class InterceptSettings:
     return self.__upstream_url
 
   def to_dict(self) -> IInterceptSettings:
-    return {
+    _dict = {
       'active': self.__active,
       'mode': self.__mode,
       'project_key': self.__project_key,
-      'upstream_url': self.__upstream_url,
     }
+
+    if self.__upstream_url:
+      _dict['upstream_url'] = self.__upstream_url
+    
+    return _dict

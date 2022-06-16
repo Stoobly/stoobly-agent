@@ -52,8 +52,8 @@ if settings.cli.features.remote:
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')(f), is_remote)
-@click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES))
-@click.option('--log-level', default='info', help='''
+@click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES), type=click.Choice(INTERCEPT_MODES))
+@click.option('--log-level', default='info', type=click.Choice(['debug', 'info', 'warning', 'error']), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')

@@ -2,12 +2,10 @@ import click
 import pdb
 import requests
 import sys
-from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import custom_headers, test_strategy
+from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
-from stoobly_agent.lib.api.keys.test_key import TestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.print_service import handle_on_request_response, handle_on_test_response
@@ -61,6 +59,7 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
+@click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.argument('request_key')

@@ -1,4 +1,3 @@
-import cgi
 import pdb
 import re
 
@@ -9,6 +8,7 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.filter_rule import FilterRule, ParameterRule
+from stoobly_agent.lib.logger import Logger
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
@@ -71,11 +71,7 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def content_type(self):
-        value = self.headers.get('content-type')
-        if not value:
-            return ''
-
-        return cgi.parse_header(value)[0]
+        return self.headers.get('content-type')
 
     @property
     def host(self):
@@ -111,6 +107,7 @@ class MitmproxyRequestFacade(Request):
 
     def rewrite(self):
         rewrites = self.__rewrite_rules
+ 
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
             self.__rewrite_content(rewrites)
@@ -127,7 +124,14 @@ class MitmproxyRequestFacade(Request):
         return [item for sublist in parameter_rules for item in sublist] # flatten filters_list
 
     def __is_parameter_rule_selected(self, redact_rule: FilterRule):
-        url_matches = re.match(redact_rule.pattern, self.url)
+        pattern = redact_rule.pattern
+
+        try:
+            url_matches = re.match(pattern, self.url)
+        except re.error as e:
+            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
+            return False
+
         method_matches = self.method in redact_rule.methods
         return url_matches and method_matches
 
@@ -175,7 +179,14 @@ class MitmproxyRequestFacade(Request):
     def __redact_applies(self, rewrite: ParameterRule, param_name):
         if isinstance(param_name, bytes):
             param_name = param_name.decode('utf-8')
-        return re.match(rewrite.name, param_name)
+        
+        pattern = rewrite.name
+
+        try:
+            return re.match(pattern, param_name)
+        except re.error as e:
+            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
+            return False
 
     def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> bytes:
         # If the rule does not apply, set the param

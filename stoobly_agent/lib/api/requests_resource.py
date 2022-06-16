@@ -15,7 +15,9 @@ class RequestsResource(StooblyApi):
       if requests:
         del body_params['requests']
 
-      return self.post(url, headers=self.default_headers, data=body_params, files={ 'requests': requests })
+      proxies = {}
+
+      return self.post(url, headers=self.default_headers, data=body_params, files={ 'requests': requests }, proxies=proxies)
 
   def index(self, **query_params: RequestsIndexQueryParams):
     url = f"{self.service_url}{self.REQUESTS_ENDPOINT}"

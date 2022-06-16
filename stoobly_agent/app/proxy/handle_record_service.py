@@ -28,8 +28,6 @@ def handle_request_record(request: MitmproxyRequest, intercept_settings: Interce
     if not upstream_url:
         raise Exception('config service_url is not set')
 
-    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
-
     reverse_proxy(request, upstream_url, {})
 
 def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
@@ -38,7 +36,7 @@ def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
     disable_transfer_encoding(flow.response)
 
     request_model = RequestModel(intercept_settings.settings)
-
+ 
     active_record_policy = get_active_mode_policy(request, intercept_settings)
     Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
 
