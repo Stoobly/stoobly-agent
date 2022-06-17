@@ -1,4 +1,5 @@
 import os
+import pdb
 
 from orator import DatabaseManager, Model
 
@@ -16,7 +17,7 @@ class ORM():
         else:
             config = {
                 'default': os.environ.get(ENV) or 'production',
-                'development': {
+                'test': {
                     'driver': 'sqlite',
                     'database': DataDir.instance().tmp_db_file_path,
                 },

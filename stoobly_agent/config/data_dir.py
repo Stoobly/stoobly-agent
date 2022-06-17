@@ -1,5 +1,6 @@
 import os
 import pdb
+import tempfile
 
 class DataDir:
     DATA_DIR_NAME = '.stoobly'
@@ -47,7 +48,8 @@ class DataDir:
 
     @property
     def tmp_db_file_path(self):
-        return os.path.join('/', 'tmp', self.DB_FILE_NAME)
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        return tmp.name
 
     @property
     def db_file_path(self):
