@@ -31,8 +31,7 @@ class MockOptions(TypedDict):
 # @param request [mitmproxy.net.http.request.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(context: MockContext, **options: MockOptions):
-    intercept_settings = context.intercept_settings
+def handle_request_mock_generic(context: MockContext, intercept_settings: InterceptSettings, **options: MockOptions):
     request_model = RequestModel(intercept_settings.settings)
     request: MitmproxyRequest = context.flow.request
 
@@ -85,12 +84,13 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
     return res
 
 def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
-    context = MockContext(flow, intercept_settings)
+    context = MockContext(flow)
 
     handle_request_mock_generic(
         context,
-        failure=__handle_mock_failure,
-        success=__handle_mock_success
+        intercept_settings,
+        failure=lambda flow: __handle_mock_failure(flow, intercept_settings),
+        success=lambda flow: __handle_mock_success(flow, intercept_settings)
     )
 
 def __handle_mock_success(context: MockContext) -> None:
@@ -98,9 +98,8 @@ def __handle_mock_success(context: MockContext) -> None:
     start_time = context.start_time
     __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
-def __handle_mock_failure(context: MockContext):
+def __handle_mock_failure(context: MockContext, intercept_settings: InterceptSettings):
     req = context.flow.request
-    intercept_settings = context.intercept_settings
     upstream_url = intercept_settings.upstream_url
 
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
