@@ -73,15 +73,18 @@ def serialize_json(o):
     return json.dumps(o)
 
 def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]):
-    headers = {'content-type': content_type}
+    _o = MultiDict()
     for k, v in o.items():
-        if isinstance(k, bytes):
-            continue
+        if not isinstance(k, bytes):
+            k = k.encode()
 
-        o[k.encode()] = v if isinstance(v, bytes) else v.encode()
-        del o[k]
+        if not isinstance(v, bytes):
+            v = v.encode()
+        
+        _o.add(k, v)
 
-    return multipart_encode(headers, o.items())
+    headers = {'content-type': content_type}
+    return multipart_encode(headers, _o.items())
 
 def serialize_www_form_urlencoded(o):
     return urllib.parse.urlencode(o)
