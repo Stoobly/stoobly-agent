@@ -12,7 +12,7 @@ class CreateTraceAliases(Migration):
             table.integer('trace_id').unsigned()
             table.foreign('trace_id').references('id').on('traces').index()
             table.text('name')
-            table.text('value')
+            table.binary('value')
             table.text('assigned_to').nullable()
             table.timestamps()
 
