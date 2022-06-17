@@ -8,9 +8,9 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, feature, MainGroup, project, request
-from .app.cli.helpers.migrate_service import migrate as migrate_database
 from .app.proxy import INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
+from .lib.orm.migrate_service import migrate as migrate_database
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote
