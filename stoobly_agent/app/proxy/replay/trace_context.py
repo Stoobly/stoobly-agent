@@ -295,6 +295,7 @@ class TraceContext:
   def __get_endpoint(self, endpoint_id: int) -> Union[EndpointShowResponse, None]:
     res = self.__endpoints_resource.show(endpoint_id,
       aliases=True,
+      filter='alias_id',
       path_segment_names=True,
       query_param_names=True,
       header_names=True,
