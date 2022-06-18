@@ -21,6 +21,12 @@ AliasMap = Dict[str, RequestComponentName]
 def __handle_after_replace(trace_alias: TraceAlias, value):
   pass
 
+def build_id_to_alias_map(aliases):
+    id_to_alias = {}
+    for _alias in aliases:
+      id_to_alias[_alias['id']] = _alias
+    return id_to_alias
+
 def rewrite_params(
   params: Union[list, dict],
   param_names: List[RequestComponentName], 
@@ -33,8 +39,8 @@ def rewrite_params(
     if not _alias:
       continue
 
-    current_value = jmespath.search(param_name['query'], params)
-    trace_aliases = __resolve_alias(trace, _alias['name'], current_value)
+    current_value = jmespath.search(param_name.get('query') or param_name.get('name'), params)
+    trace_aliases = resolve_alias(trace, _alias['name'], current_value)
 
     if trace_aliases.is_empty():
       continue
@@ -53,14 +59,7 @@ def rewrite_params(
       }
     )
 
-def build_id_to_alias_map(endpoint: EndpointShowResponse):
-    id_to_alias = {}
-    aliases = endpoint['aliases']
-    for _alias in aliases:
-      id_to_alias[_alias['id']] = _alias
-    return id_to_alias
-
-def __resolve_alias(trace: Trace, alias_name: str, value: str) -> Collection:
+def resolve_alias(trace: Trace, alias_name: str, value: str) -> Collection:
   '''
   Return TraceAlias collection based on alias_name and value
   '''

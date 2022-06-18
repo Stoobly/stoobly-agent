@@ -88,7 +88,6 @@ class TestContext():
     if not trace:
       return _decoded_expected_response_content
 
-
     if not isinstance(_decoded_expected_response_content, list) or not isinstance(_decoded_expected_response_content, dict):
       return _decoded_expected_response_content
 
@@ -96,10 +95,11 @@ class TestContext():
       return _decoded_expected_response_content
 
     aliased_response_param_names = self.response_param_names.aliased
-    if len(aliased_response_param_names) == 0:
+    aliases = self.__endpoint_show_response.get('aliases') or []
+    if len(aliased_response_param_names) == 0 or len(aliases) == 0:
       return _decoded_expected_response_content
 
-    id_to_alias_map = build_id_to_alias_map(self.__endpoint_show_response)
+    id_to_alias_map = build_id_to_alias_map(aliases)
     rewrite_params(_decoded_expected_response_content, aliased_response_param_names, id_to_alias_map, trace)
 
     return _decoded_expected_response_content

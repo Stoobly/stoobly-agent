@@ -1,5 +1,6 @@
 import jmespath
 
+
 from .visitor import TreeInterpreter, Visitor
 
 # Monkey patch jmespath with replacement functionality
@@ -10,15 +11,15 @@ import pdb
 
 from requests import Response
 from typing import Callable, Dict, List, Union
-from orator.orm.collection import Collection
 
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
+from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, resolve_alias, rewrite_params
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
+from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
@@ -77,10 +78,7 @@ class TraceContext:
     if not endpoint:
       return
 
-    id_to_alias = {}
-    aliases = endpoint['aliases']
-    for _alias in aliases:
-      id_to_alias[_alias['id']] = _alias
+    id_to_alias = build_id_to_alias_map(endpoint['aliases'])
 
     self.__rewrite_path(request, endpoint['path_segment_names'], id_to_alias) 
     self.__rewrite_headers(request, endpoint['header_names'], id_to_alias)
@@ -131,30 +129,14 @@ class TraceContext:
     self, request: Request, body_param_names: List[RequestComponentName], id_to_alias: AliasMap
   ):
     body_params = request.body_params
-    for body_param_name in body_param_names:
-      _alias: Alias = id_to_alias.get(body_param_name['alias_id'])
-      if not _alias:
-        continue
 
-      name = body_param_name['name']
-      current_value = body_params.get(name) 
-      trace_aliases = self.__resolve_alias(_alias['name'], current_value)
-
-      if trace_aliases.is_empty():
-        continue
-
-      trace_aliases_list = []
-      trace_aliases.each(lambda trace_alias: trace_aliases_list.append(trace_alias))
-      trace_alias_values = list(map(lambda trace_alias: trace_alias.value, trace_aliases_list))
-
-      # We have may have to first search for all values matching query,
-      # If there's more than one, then try to assign different alias values  
-      jmespath.search(
-        body_param_name['query'], body_params, { 
-          'replacements': trace_alias_values, 
-          'handle_after_replace': lambda v, i: self.__assign_trace_alias(trace_aliases_list[i], v)
-        }
-      )
+    rewrite_params(
+      body_params, 
+      body_param_names, 
+      id_to_alias, 
+      self.trace,
+      lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
+    )
 
     request.body_params = body_params
 
@@ -174,7 +156,7 @@ class TraceContext:
       new_values = []
       current_values = components.get_all(name)
       if len(current_values) == 0:
-        trace_aliases = self.__resolve_alias(_alias['name'], None)
+        trace_aliases = resolve_alias(_alias['name'], None)
         if trace_aliases.is_empty():
           continue
 
@@ -229,7 +211,7 @@ class TraceContext:
           self.create_trace_alias(_alias['name'], value) 
 
   def __resolve_and_assign_alias(self, alias_name: str, value: list) -> Union[TraceAlias, None]:
-    trace_aliases = self.__resolve_alias(alias_name, value)
+    trace_aliases = resolve_alias(self.trace, alias_name, value)
     if trace_aliases.is_empty():
       return
       
@@ -244,32 +226,6 @@ class TraceContext:
       trace_alias.save()
 
       Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
-
-  def __resolve_alias(self, alias_name: str, value: str) -> Collection:
-    '''
-    Return TraceAlias collection based on alias_name and value
-    '''
-
-    trace_alias_hash = {
-      'assigned_to': value,
-      'name': alias_name,
-      'trace_id': self.__trace.id,
-    }
-
-    Logger.instance().debug(f"\tResolving Trace Alias: {trace_alias_hash}")
-
-    trace_aliases = TraceAlias.where(trace_alias_hash).get()
-
-    if trace_aliases.is_empty():
-      trace_aliases = TraceAlias.where({
-        'name': alias_name,
-        'trace_id': self.__trace.id,
-      }).where_null('assigned_to').get()
-
-    if not trace_aliases.is_empty():
-      trace_aliases.each(lambda trace_alias: Logger.instance().debug(f"\tResolved Trace Alias: {trace_alias.to_dict()}"))
-
-    return trace_aliases
 
   def __query_resolves_response(self, query: str, response: Union[list, dict]) -> list:
     '''
