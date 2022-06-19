@@ -28,10 +28,10 @@ AliasMap = Dict[str, RequestComponentName]
 
 class TraceContext:
 
-  def __init__(self, endpoints_resource: EndpointsResource, trace = Trace.create()):
+  def __init__(self, endpoints_resource: EndpointsResource, trace):
     self.__endpoints_resource = endpoints_resource
 
-    self.__trace = trace
+    self.__trace = trace or Trace.create()
     Logger.instance().debug(f"Using trace {self.__trace.id}")
 
     self.__requests: List[Request] = []
