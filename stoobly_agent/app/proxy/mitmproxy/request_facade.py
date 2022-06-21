@@ -1,7 +1,7 @@
 import pdb
 import re
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from mitmproxy.coretypes import multidict
 from typing import Callable, List, Union
 from urllib.parse import urlparse

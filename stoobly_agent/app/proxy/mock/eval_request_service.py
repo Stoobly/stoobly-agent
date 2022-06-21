@@ -1,7 +1,7 @@
 import json
 import pdb
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
 from typing import List, TypedDict, Union
 from stoobly_agent.config.constants import custom_headers

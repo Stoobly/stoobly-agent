@@ -1,7 +1,6 @@
-import time
 import pdb
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade

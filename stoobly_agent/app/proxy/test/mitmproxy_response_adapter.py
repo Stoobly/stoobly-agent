@@ -1,4 +1,4 @@
-from mitmproxy.net.http.response import Response as MitmproxyResponse
+from mitmproxy.http import Response as MitmproxyResponse
 
 from .context_response import TestContextResponse
 

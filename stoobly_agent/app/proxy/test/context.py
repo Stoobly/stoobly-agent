@@ -1,6 +1,6 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow, HTTPRequest
+from mitmproxy.http import HTTPFlow, Request
 from typing import Union
 
 from stoobly_agent.app.proxy.mock.context import MockContext
@@ -69,7 +69,7 @@ class TestContext():
     return self.expected_response.headers.get(custom_headers.MOCK_REQUEST_ENDPOINT_ID)
 
   @property
-  def request(self) -> HTTPRequest:
+  def request(self) -> Request:
     return self.__flow.request
 
   @property
