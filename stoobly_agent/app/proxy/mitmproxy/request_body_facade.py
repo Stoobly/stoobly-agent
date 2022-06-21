@@ -1,6 +1,6 @@
 import pdb
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from typing import Union
 
 from ..replay.body_parser_service import decode_response, encode_response

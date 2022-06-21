@@ -25,9 +25,6 @@ LOG_ID = 'HandleTest'
 #
 # Mock and Test modes share the same policies
 #
-# @param request [mitmproxy.net.http.request.Request]
-# @param settings [Dict]
-#
 def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> None:
     disable_transfer_encoding(flow.response)
 
@@ -45,10 +42,10 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
     handle_request_mock_generic(
         context,
         intercept_settings,
-        failure=lambda flow: __handle_mock_failure(flow, intercept_settings),
+        failure=lambda context: __handle_mock_failure(context, intercept_settings),
         ignored_components=ignored_components,
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
-        success=lambda flow: __handle_mock_success(flow, intercept_settings)
+        success=lambda context: __handle_mock_success(context, intercept_settings)
     )
 
 def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse):

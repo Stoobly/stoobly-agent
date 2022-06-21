@@ -1,4 +1,4 @@
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from typing import Union
 from ...config.constants import mock_policy, record_policy
 

@@ -2,7 +2,7 @@ import pdb
 
 from typing import List, Union
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.filter_rule import FilterRule

@@ -2,7 +2,7 @@ import os
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay
 
 from stoobly_agent.lib.logger import Logger

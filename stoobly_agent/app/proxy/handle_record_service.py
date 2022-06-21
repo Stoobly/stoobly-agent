@@ -2,8 +2,7 @@ import pdb
 import threading
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.request import Request as MitmproxyRequest
-from mitmproxy.net.http.response import Response as MitmproxyResponse 
+from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings

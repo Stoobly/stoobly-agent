@@ -1,6 +1,7 @@
-from mitmproxy import http
+import pdb
+
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.response import Response as MitmproxyResponse
+from mitmproxy.http import Response as MitmproxyResponse
 from requests import Response
 
 ###
@@ -24,12 +25,12 @@ def pass_on(flow: MitmproxyHTTPFlow, res: Response):
     # content = res.raw
     content = res.content
 
-    flow.response = http.HTTPResponse.make(
+    flow.response = MitmproxyResponse.make(
         res.status_code, content, headers,
     )
 
 def bad_request(flow: MitmproxyHTTPFlow, message: str):
-    flow.response = http.HTTPResponse.make(
+    flow.response = MitmproxyResponse.make(
         400,  # (optional) status code
         message,
         {'Content-Type': 'text/plain'}  # (optional) headers

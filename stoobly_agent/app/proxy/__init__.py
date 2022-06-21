@@ -1,39 +1,50 @@
+import asyncio
 import os
 import pdb
-
-from mitmdump import DumpMaster, Options
-from mitmproxy.optmanager import _Option
-from typing import Union
+import signal
 
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import mode
 
-from ...config.constants import mode
+from mitmproxy.tools.dump import DumpMaster
+from mitmproxy.options import Options
 
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 INTERCEPT_MODES = [mode.MOCK, mode.RECORD, mode.TEST]
 
-'''
-Pass in options from run CLI
-'''
 def run(**kwargs):
-    options = kwargs.copy()
-    __commit_options(options)
-    __filter_options(options)
+    async def main():
+        options = Options()
+        master = DumpMaster(options)
 
-    fixed_options = {
-        'flow_detail': 1,
-        'scripts': __get_intercept_handler_path(),
-        'upstream_cert': False,
-    }
+        __with_static_options(options)
 
-    opts = Options(**{**options, **fixed_options})
-    __set_connection_strategy(opts, 'lazy')
+        cli_options = kwargs.copy()
+        __with_cli_options(options, cli_options)
 
-    m = DumpMaster(opts)
-    m.run()
+        loop = asyncio.get_running_loop()
+
+        def _sigint(*_):
+            loop.call_soon_threadsafe(getattr(master, "prompt_for_exit", master.shutdown))
+
+        def _sigterm(*_):
+            loop.call_soon_threadsafe(master.shutdown)
+
+        # We can't use loop.add_signal_handler because that's not available on Windows' Proactorloop,
+        # but signal.signal just works fine for our purposes.
+        signal.signal(signal.SIGINT, _sigint)
+        signal.signal(signal.SIGTERM, _sigterm)
+
+        await master.run()
+        return master
+
+    return asyncio.run(main())
 
 def __filter_options(options):
-    # Filter out non-mitmproxy options
+    ''' 
+    Filter out non-mitmproxy options
+    '''
+
     options['listen_host'] = options['proxy_host']
     options['listen_port'] = options['proxy_port']
     options['mode'] = options['proxy_mode']
@@ -79,16 +90,18 @@ def __get_intercept_handler_path():
     script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
     return script
 
-'''
- Equivalent of:
- mitmdump connection_strategy={strategy}
-'''
-def __set_connection_strategy(opts, strategy):
-    extra_options = {
-        'dumper_filter': f"connection_strategy={strategy}",
-        'readfile_filter': f"connection_strategy={strategy}",
-        'save_stream_filter': f"connection_strategy={strategy}",
-    }
-    for k, v in extra_options.items():
-        opts._options[k] = _Option(k, str, v, '', None)
-    opts.update(**extra_options)
+def __with_static_options(options: Options):
+    #options.set('connection_strategy=lazy') If need to mock in offline mode
+    options.set('flow_detail=1')
+    options.set(f"scripts={__get_intercept_handler_path()}")
+    options.set('upstream_cert=false')
+
+def __with_cli_options(options: Options, cli_options: dict):
+    __commit_options(cli_options)
+    __filter_options(cli_options)
+
+    for key, val in cli_options.items():
+        if isinstance(val, bool):
+            options.set(f"{key}={str(val).lower()}")
+        else:
+            options.set(f"{key}={val}")

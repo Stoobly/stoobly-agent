@@ -1,7 +1,7 @@
 import pdb
 import re
 
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings

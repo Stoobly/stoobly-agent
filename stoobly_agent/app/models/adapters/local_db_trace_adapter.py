@@ -1,7 +1,7 @@
 import pdb
 import requests
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, HTTPRequest as MitmproxyRequest, HTTPResponse as MitmproxyResponse
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
 from typing import Union
 
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder

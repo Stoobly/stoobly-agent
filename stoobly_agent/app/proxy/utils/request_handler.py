@@ -1,7 +1,6 @@
 import json
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from urllib.parse import urlparse
 
 from stoobly_agent.lib.logger import Logger

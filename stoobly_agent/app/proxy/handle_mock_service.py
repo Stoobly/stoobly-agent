@@ -3,7 +3,7 @@ import time
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.net.http.request import Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -28,7 +28,7 @@ class MockOptions(TypedDict):
 
 ###
 #
-# @param request [mitmproxy.net.http.request.Request]
+# @param request [mitmproxy.http.Request]
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, intercept_settings: InterceptSettings, **options: MockOptions):
@@ -89,8 +89,8 @@ def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSe
     handle_request_mock_generic(
         context,
         intercept_settings,
-        failure=lambda flow: __handle_mock_failure(flow, intercept_settings),
-        success=lambda flow: __handle_mock_success(flow, intercept_settings)
+        failure=lambda context: __handle_mock_failure(context, intercept_settings),
+        success=lambda context: __handle_mock_success(context)
     )
 
 def __handle_mock_success(context: MockContext) -> None:
