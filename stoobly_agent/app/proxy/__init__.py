@@ -3,11 +3,17 @@ import os
 import pdb
 import signal
 
+from mitmproxy.net import tls
+
+# Monkey patch for OpenSSL unsafe legacy renegotiation disabled
+# See: https://stackoverflow.com/questions/71603314/ssl-error-unsafe-legacy-renegotiation-disabled
+tls.DEFAULT_OPTIONS |= 0x4 
+
+from mitmproxy.options import Options
+from mitmproxy.tools.dump import DumpMaster
+
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
-
-from mitmproxy.tools.dump import DumpMaster
-from mitmproxy.options import Options
 
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 INTERCEPT_MODES = [mode.MOCK, mode.RECORD, mode.TEST]
