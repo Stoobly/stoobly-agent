@@ -3,6 +3,7 @@ import requests
 from http.cookies import SimpleCookie
 
 from stoobly_agent.config.constants import headers
+from stoobly_agent.config.mitmproxy_dir import MitmproxyDir
 from stoobly_agent.lib.logger import Logger
 
 class ProxyController:
@@ -67,7 +68,8 @@ class ProxyController:
                 data = _body,
                 headers = _headers,
                 params = _params,
-                stream = True
+                stream = True,
+                verify = MitmproxyDir.instance().ca_cert_pem_path or True
             )
 
             Logger.instance().debug('Response Headers')
