@@ -28,7 +28,7 @@ AliasMap = Dict[str, RequestComponentName]
 
 class TraceContext:
 
-  def __init__(self, endpoints_resource: EndpointsResource, trace):
+  def __init__(self, endpoints_resource: EndpointsResource, trace = None):
     self.__endpoints_resource = endpoints_resource
 
     self.__trace = trace or Trace.create()
