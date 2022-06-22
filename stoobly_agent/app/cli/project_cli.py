@@ -29,7 +29,12 @@ def create(**kwargs):
 
     project = ProjectFacade(Settings.instance())
 
-    __print(project.create(**kwargs), **print_options)
+    try:
+        project_response = project.create(**kwargs)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
+
+    __print([project_response], **print_options)
 
 @project.command(
     help="Show all projects"
@@ -96,7 +101,7 @@ def show(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    __print([project_response] **print_options)
+    __print([project_response], **print_options)
 
 def __print(projects, **kwargs):
     tabulate_print(
