@@ -7,6 +7,7 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
 from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
+from stoobly_agent.config.mitmproxy_dir import MitmproxyDir
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
@@ -61,7 +62,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     data=request.body,
     headers=headers, 
     #params=request.query_params,
-    stream = True
+    stream = True,
+    verify = MitmproxyDir.instance().ca_cert_pem_path or True
   )
 
   if 'on_response' in options and callable(options['on_response']):
