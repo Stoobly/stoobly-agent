@@ -48,39 +48,47 @@ def decode(hdrs, content):
     """
         Takes a multipart boundary encoded string and returns list of (key, value) tuples.
     """
+    if not isinstance(content, bytes) and not isinstance(content, str):
+        return
+
     v = hdrs.get("content-type")
-    if v:
-        v = headers.parse_content_type(v)
-        if not v:
-            return []
-        try:
-            boundary = v[2]["boundary"].encode("ascii")
-        except (KeyError, UnicodeError):
-            return []
+    if not v:
+        return
 
-        rx = re.compile(br'\bname="([^"]+)"')
-        r = []
-        if content is not None:
-            for i in content.split(b"--" + boundary):
-                parts = i.splitlines(True)
+    v = headers.parse_content_type(v)
+    if not v:
+        return
 
-                if len(parts) > 1 and parts[0][0:2] != b"--":
-                    match = rx.search(parts[1])
-                    if match:
-                        key = match.group(1)
+    try:
+        boundary = v[2]["boundary"].encode("ascii")
+    except (KeyError, UnicodeError):
+        return
 
-                        # Continue parsing until we see just a line with CRLF
-                        ar = parts[2:]
-                        for i, ele in enumerate(ar):
-                          if ele == CRLF:
-                            value = b"".join(parts[3 + i:])
+    boundary_parts = content.split(b"--" + boundary)
+    if len(boundary_parts) == 0:
+        return
 
-                            # Remove CRLF preceding the next boundary
-                            length = len(value)
-                            if value[length - 2:] == CRLF:
-                              value = value[0:length - 2]
+    rx = re.compile(br'\bname="([^"]+)"')
+    r = []
+    for i in boundary_parts:
+        parts = i.splitlines(True)
 
-                            r.append((key, value))
-                            break
-        return r
-    return []
+        if len(parts) > 1 and parts[0][0:2] != b"--":
+            match = rx.search(parts[1])
+            if match:
+                key = match.group(1)
+
+                # Continue parsing until we see just a line with CRLF
+                ar = parts[2:]
+                for i, ele in enumerate(ar):
+                    if ele == CRLF:
+                        value = b"".join(parts[3 + i:])
+
+                        # Remove CRLF preceding the next boundary
+                        length = len(value)
+                        if value[length - 2:] == CRLF:
+                            value = value[0:length - 2]
+
+                        r.append((key, value))
+                        break
+    return r
