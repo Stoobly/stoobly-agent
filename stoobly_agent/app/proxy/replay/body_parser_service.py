@@ -54,20 +54,26 @@ def parse_json(content):
     try:
         return json.loads(content)
     except:
-        return {}
+        return content
 
 def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
     headers = {'content-type': content_type}
+    decoded_multipart = multipart_decode(headers, content)
+
+    if not decoded_multipart:
+        return content
+
     params_array = []
-    for ele in multipart_decode(headers, content):
+    for ele in decoded_multipart:
         params_array.append((ele[0].decode(), ele[1].decode()))
+
     return MultiDict(params_array)
 
 def parse_www_form_urlencoded(content):
     try:
         return urllib.parse.parse_qs(content)
     except:
-        return {}
+        return content
 
 def serialize_json(o):
     return json.dumps(o)
