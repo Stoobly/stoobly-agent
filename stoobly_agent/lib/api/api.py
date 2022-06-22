@@ -2,22 +2,30 @@ import os
 import pdb
 import requests
 
-from stoobly_agent.config.constants.env_vars import HTTP_PROXY, HTTPS_PROXY
+from stoobly_agent.config.constants.env_vars import HTTP_PROXY, HTTPS_PROXY, NO_PROXY
 from stoobly_agent.app.settings import Settings
 
 class Api():
 
     def without_proxy(self, handler):
-      current = self.set_proxy('')
+      settings = Settings.instance()
+
+      no_proxy = os.environ.get(NO_PROXY)
+      os.environ[NO_PROXY] = settings.remote.api_url
+
+      current_proxies = self.set_proxy('')
 
       res = handler()
 
-      for key, val in current.items():
+      for key, val in current_proxies.items():
         if not val:
           continue
         
         if isinstance(val, str):
           os.environ[key] = val
+        
+      if isinstance(no_proxy, str): 
+        os.environ[NO_PROXY] = no_proxy
 
       return res
 
