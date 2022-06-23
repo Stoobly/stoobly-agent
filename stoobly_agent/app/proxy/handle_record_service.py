@@ -37,7 +37,7 @@ def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
     request_model = RequestModel(intercept_settings.settings)
  
     active_record_policy = get_active_mode_policy(request, intercept_settings)
-    Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
+    Logger.instance().info(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
 
     if active_record_policy == record_policy.ALL:
         __record_request(request_model, intercept_settings, flow)

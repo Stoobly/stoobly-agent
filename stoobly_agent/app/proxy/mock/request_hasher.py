@@ -34,7 +34,7 @@ class RequestHasher():
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
     Logger.instance().info(f"{bcolors.OKCYAN}Hashing params...{bcolors.ENDC}")
-    Logger.instance().info(ignored_params)
+    Logger.instance().info(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
 
     if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict):
       return self.__serialize(None, params, None, ignored_params)
@@ -57,11 +57,9 @@ class RequestHasher():
       if self.__ignored(query, ignored_params, value):
         return
 
-      return self.hash_text(self.__serialize_param(key, value))
+      return self.hash_text(self.__serialize_param(query, key, value))
 
   def __ignored(self, query: str, ignored_params: dict, value: Union[dict, list, str]) -> str:
-    Logger.instance().info(query)
-
     param = ignored_params.get(query)
 
     if not param:
@@ -114,8 +112,8 @@ class RequestHasher():
   def __infer_type(self, val):
     return self.type_map.get(str(val.__class__))
 
-  def __serialize_param(self, key: str, val):
-    Logger.instance().info(f"{bcolors.OKBLUE}Serializing{bcolors.ENDC} {key}: {val}")
+  def __serialize_param(self, query, key: str, val):
+    Logger.instance().info(f"{bcolors.OKBLUE}Serializing{bcolors.ENDC} {query} => {val}")
 
     if isinstance(val, bool):
       # Ruby boolean are lower case
