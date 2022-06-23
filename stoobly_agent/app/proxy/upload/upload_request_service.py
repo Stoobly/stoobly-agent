@@ -11,7 +11,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.param_builder import ParamBuilder
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import Logger, bcolors
 
 from ..utils.publish_change_service import publish_change
 from .join_request_service import join_redacted_request
@@ -47,7 +47,7 @@ def upload_request(
 ):
     joined_request = join_redacted_request(flow, intercept_settings)
 
-    Logger.instance().info(f"Uploading {joined_request.proxy_request.url()}")
+    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {joined_request.proxy_request.url()}")
 
     if intercept_settings.settings.is_debug():
         __debug_request(flow.request, joined_request.build())

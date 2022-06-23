@@ -30,7 +30,7 @@ def request(flow: MitmproxyHTTPFlow):
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
     active_mode = intercept_settings.mode
-    Logger.instance().info(f"{LOG_ID}:ProxyMode: {active_mode}")
+    Logger.instance().debug(f"{LOG_ID}:ProxyMode: {active_mode}")
 
     if active_mode == mode.MOCK:
         handle_request_mock(flow, intercept_settings)
