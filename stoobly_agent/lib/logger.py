@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import os
 
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
@@ -28,12 +29,13 @@ class Logger:
             log_level = os.getenv(LOG_LEVEL) or ''
 
             if log_level.lower() == 'debug':
+                logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
                 logging.basicConfig(level=logging.DEBUG)
-            elif log_level.lower() == 'info':
-                logging.basicConfig(level=logging.INFO)
+            elif log_level.lower() == 'warning':
+                logging.basicConfig(level=logging.WARNING)
             elif log_level.lower() == 'error':
                 logging.basicConfig(level=logging.ERROR)
             else:
-                logging.basicConfig(level=logging.WARNING)
+                logging.basicConfig(level=logging.INFO)
 
         return logging
