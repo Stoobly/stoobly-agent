@@ -24,7 +24,7 @@ class MitmproxyDir:
 
     @property
     def ca_cert_pem_path(self):
-        path = os.path.join(self.__mitmproxy_dir_path, 'mitmproxy_ca_cert.pem')
+        path = os.path.join(self.__mitmproxy_dir_path, 'mitmproxy-ca-cert.pem')
 
         if not os.path.exists(path):
             return ''

@@ -157,7 +157,7 @@ class TraceContext:
       new_values = []
       current_values = components.get_all(name)
       if len(current_values) == 0:
-        trace_aliases = resolve_alias(_alias['name'], None)
+        trace_aliases = resolve_alias(self.trace, _alias['name'], None)
         if trace_aliases.is_empty():
           continue
 
