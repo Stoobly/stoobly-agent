@@ -58,7 +58,7 @@ def eval_request(
 def __build_ignored_components(ignored_components_list):
     ignored_components = []
     for el in ignored_components_list:
-        if isinstance(el, str): 
+        if isinstance(el, bytes) or isinstance(el, str): 
             try:
                 ignored_components += json.loads(el)
             except:
