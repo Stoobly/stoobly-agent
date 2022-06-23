@@ -47,9 +47,12 @@ class MitmproxyConfig():
   def get(self, key: str):
     if not self.__master:
       try:
-        options = json.loads(self.options_json_path)
+        fp = open(self.options_json_path, 'r')
+        contents = fp.read()
+        fp.close()
+        options = json.loads(contents)
         return options.get(key)
-      except:
+      except Exception as e:
         pass
     else:
       options = self.__master.options
