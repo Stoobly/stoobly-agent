@@ -53,7 +53,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   method = request.method
   handler = getattr(requests, method.lower())
   cookies = __get_cookies(request.headers)
-  pdb.set_trace()
+
   # Do not send query params, they should be a part of the URL
   res: requests.Response = handler(
     request.url, 

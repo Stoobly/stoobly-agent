@@ -4,6 +4,8 @@ import pdb
 from mitmproxy.coretypes.multidict import MultiDict
 from typing import List, Dict, TypedDict, Union
 
+from stoobly_agent.lib.logger import Logger, bcolors
+
 class IgnoredParam(TypedDict):
   inferred_type: str
   query: str
@@ -31,6 +33,9 @@ class RequestHasher():
       return cls._instance
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
+    Logger.instance().info(f"{bcolors.OKCYAN}Hashing params...{bcolors.ENDC}")
+    Logger.instance().info(ignored_params)
+
     if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict):
       return self.__serialize(None, params, None, ignored_params)
     else:
@@ -55,6 +60,8 @@ class RequestHasher():
       return self.hash_text(self.__serialize_param(key, value))
 
   def __ignored(self, query: str, ignored_params: dict, value: Union[dict, list, str]) -> str:
+    Logger.instance().info(query)
+
     param = ignored_params.get(query)
 
     if not param:
@@ -108,4 +115,13 @@ class RequestHasher():
     return self.type_map.get(str(val.__class__))
 
   def __serialize_param(self, key: str, val):
+    Logger.instance().info(f"{bcolors.OKBLUE}Serializing{bcolors.ENDC} {key}: {val}")
+
+    if isinstance(val, bool):
+      # Ruby boolean are lower case
+      val = str(val).lower()
+    elif val == None:
+      # Ruby str(nil) translates to ''
+      val = ''
+
     return f"{str(key)}.{str(val)}"
