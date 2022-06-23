@@ -8,7 +8,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, feature, MainGroup, project, request
-from .app.proxy import INTERCEPT_MODES, run as run_proxy
+from .app.proxy import CONNECTION_STRATEGIES, INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
 from .lib.orm.migrate_service import migrate as migrate_database
 
@@ -52,6 +52,7 @@ if settings.cli.features.remote:
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')(f), is_remote)
+@click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
 @click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES), type=click.Choice(INTERCEPT_MODES))
 @click.option('--log-level', default='info', type=click.Choice(['debug', 'info', 'warning', 'error']), help='''
     Log levels can be "debug", "info", "warning", or "error"

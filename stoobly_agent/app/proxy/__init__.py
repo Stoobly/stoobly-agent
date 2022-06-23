@@ -5,6 +5,8 @@ import signal
 
 from mitmproxy.net import tls
 
+from stoobly_agent.config.mitmproxy import MitmproxyConfig
+
 # Monkey patch for OpenSSL unsafe legacy renegotiation disabled
 # See: https://stackoverflow.com/questions/71603314/ssl-error-unsafe-legacy-renegotiation-disabled
 tls.DEFAULT_OPTIONS |= 0x4 
@@ -15,6 +17,7 @@ from mitmproxy.tools.dump import DumpMaster
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 
+CONNECTION_STRATEGIES = ['eager', 'lazy']
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 INTERCEPT_MODES = [mode.MOCK, mode.RECORD, mode.TEST]
 
@@ -22,11 +25,14 @@ def run(**kwargs):
     async def main():
         options = Options()
         master = DumpMaster(options)
-
-        __with_static_options(options)
+        config = MitmproxyConfig.instance() 
+        config.with_master(master) # Initialize mitmproxy config instance
 
         cli_options = kwargs.copy()
-        __with_cli_options(options, cli_options)
+        __with_static_options(config, cli_options)
+        __with_cli_options(config, cli_options)
+
+        config.dump()
 
         loop = asyncio.get_running_loop()
 
@@ -42,9 +48,47 @@ def run(**kwargs):
         signal.signal(signal.SIGTERM, _sigterm)
 
         await master.run()
+
         return master
 
     return asyncio.run(main())
+
+def __get_intercept_handler_path():
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
+    return script
+
+def __with_static_options(config: MitmproxyConfig, cli_options):
+    config.set('flow_detail=1')
+    config.set(f"scripts={__get_intercept_handler_path()}")
+    config.set('upstream_cert=false')
+
+def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
+    __commit_options(cli_options)
+    __filter_options(cli_options)
+
+    for key, val in cli_options.items():
+        if isinstance(val, bool):
+            config.set(f"{key}={str(val).lower()}")
+        else:
+            config.set(f"{key}={val}")
+
+def __commit_options(options: dict):
+    settings = Settings.instance()
+
+    # Set intercept to not active on start
+    settings.proxy.intercept.active = False
+
+    if options.get('proxy_host') and options.get('proxy_port'):
+        settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
+
+    if options.get('intercept_mode'):
+        settings.proxy.intercept.mode = options['intercept_mode']
+        settings.proxy.intercept.active = True
+
+    settings.ui.active = not options.get('headless')
+
+    settings.commit()
 
 def __filter_options(options):
     ''' 
@@ -73,41 +117,3 @@ def __filter_options(options):
     del options['proxy_mode']
     del options['proxy_port']
     del options['test_script']
-
-def __commit_options(options: dict):
-    settings = Settings.instance()
-
-    # Set intercept to not active on start
-    settings.proxy.intercept.active = False
-
-    if options.get('proxy_host') and options.get('proxy_port'):
-        settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
-
-    if options.get('intercept_mode'):
-        settings.proxy.intercept.mode = options['intercept_mode']
-        settings.proxy.intercept.active = True
-
-    settings.ui.active = not options.get('headless')
-
-    settings.commit()
-
-def __get_intercept_handler_path():
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
-    return script
-
-def __with_static_options(options: Options):
-    #options.set('connection_strategy=lazy') If need to mock in offline mode
-    options.set('flow_detail=1')
-    options.set(f"scripts={__get_intercept_handler_path()}")
-    options.set('upstream_cert=false')
-
-def __with_cli_options(options: Options, cli_options: dict):
-    __commit_options(cli_options)
-    __filter_options(cli_options)
-
-    for key, val in cli_options.items():
-        if isinstance(val, bool):
-            options.set(f"{key}={str(val).lower()}")
-        else:
-            options.set(f"{key}={val}")
