@@ -137,7 +137,7 @@ def list_matches(expected: dict, actual: dict, response_param_names_facade: Resp
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
     if len(expected) != len(actual):
-        return False, f"Length did not match: got {len(expected)}, expected {len(actual)}"
+        return False, f"Length did not match: got {len(actual)}, expected {len(expected)}"
 
     for i, expected_value in enumerate(expected):
         context = MatchContext(parent_context.to_dict())
