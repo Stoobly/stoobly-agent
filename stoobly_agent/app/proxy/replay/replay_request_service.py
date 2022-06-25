@@ -75,9 +75,13 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 def __handle_mode_option(request: Request, headers, _mode):
   headers[custom_headers.PROXY_MODE] = _mode
 
-  # If mocking or testing, we already know which request to get response from 
   if _mode == mode.MOCK or _mode == mode.TEST:
+    # If mocking or testing, we already know which request to get response from 
     headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+  elif _mode == mode.RECORD:
+    # If recording, then it's actually a replay and record
+    headers[custom_headers.PROXY_MODE] = mode.REPLAY
+    headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
 
 def __log(context: ReplayContext):
   request = context.request
