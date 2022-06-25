@@ -74,6 +74,13 @@ class InterceptSettings:
     return self.__settings.proxy.intercept.project_key
 
   @property
+  def response_mode(self):
+    if custom_headers.RESPONSE_PROXY_MODE in self.__headers:
+      return self.__headers[custom_headers.RESPONSE_PROXY_MODE]
+
+    return self.mode
+
+  @property
   def scenario_key(self):
     if self.__headers and custom_headers.SCENARIO_KEY in self.__headers:
         return self.__headers[custom_headers.SCENARIO_KEY]

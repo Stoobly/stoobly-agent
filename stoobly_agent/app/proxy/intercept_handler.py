@@ -42,7 +42,7 @@ def request(flow: MitmproxyHTTPFlow):
     elif active_mode == mode.REPLAY or active_mode == mode.TEST:
         handle_request_replay(request, intercept_settings)
     else:
-        return bad_request(
+        bad_request(
             flow,
             "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST], active_mode)
         )
@@ -52,7 +52,7 @@ def response(flow: MitmproxyHTTPFlow):
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
-    active_mode = intercept_settings.mode
+    active_mode = intercept_settings.response_mode
 
     if active_mode == mode.RECORD:
         return handle_response_record(flow, intercept_settings)
