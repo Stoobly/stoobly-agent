@@ -85,9 +85,9 @@ if is_remote:
 
         project_key = kwargs['project_key']
         validate_project_key(project_key)
-        project_key = ProjectKey(project_key)
+        _project_key = ProjectKey(project_key)
 
-        data_rule = settings.proxy.data.data_rules(project_key.id)
+        data_rule = settings.proxy.data.data_rules(_project_key.id)
         scenario_key = data_rule.scenario_key
 
         if scenario_key:
