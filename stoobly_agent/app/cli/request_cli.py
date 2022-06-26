@@ -3,14 +3,16 @@ import pdb
 import requests
 import sys
 
+from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
+from stoobly_agent.app.cli.helpers.print_service import select_print_options
+from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .helpers.print_service import handle_on_request_response, handle_on_test_response
+from .helpers.print_service import print_requests
 from .helpers.request_facade import RequestFacade
-from .helpers.tabulate_print_service import tabulate_print
 from .helpers.validations import *
 
 settings = Settings.instance()
@@ -36,7 +38,7 @@ def request(ctx):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-  print_options = __select_print_options(kwargs)
+  print_options = select_print_options(kwargs)
 
   settings = Settings.instance()
   project_key = None
@@ -54,7 +56,7 @@ def list(**kwargs):
   if len(requests_response['list']) == 0:
     print('No requests found.')
   else:
-    __print(requests_response['list'], **print_options)
+    print_requests(requests_response['list'], **print_options)
 
 @request.command(
   help="Replay a request"
@@ -73,7 +75,7 @@ def replay(**kwargs):
 
     validate_scenario_key(kwargs['scenario_key'])
 
-  kwargs['on_response'] = handle_on_request_response
+  kwargs['on_response'] = print_request
 
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
@@ -85,18 +87,27 @@ def replay(**kwargs):
 @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('request_key')
 def test(**kwargs):
+  settings = Settings.instance()
   request_key = validate_request_key(kwargs['request_key'])
 
   if kwargs.get('report_key'):
     validate_report_key(kwargs['report_key'])
 
-  settings = Settings.instance()
+  session_context: SessionContext = { 
+      'aggregate_failures': kwargs['aggregtae_failures'], 
+      'passed': 0, 
+      'project_id': request_key.project_id, 
+      'test_facade': TestFacade(settings), 
+      'total': 0 
+  }
   kwargs['on_response'] = lambda context: handle_on_test_response(
-    context, request_key.project_id, settings
+    context, SessionContext
   )
 
   request = RequestFacade(settings)
   __replay(request.test, kwargs)
+
+  exit_on_failure(session_context)
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
@@ -135,22 +146,3 @@ def __replay(handler, kwargs) -> requests.Response:
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
     sys.exit(1)
-
-def __print(requests, **kwargs):
-    tabulate_print(
-      requests, 
-      filter=['components' , 'created_at', 'endpoint', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
-      headers=not kwargs.get('without_headers'),
-      select=kwargs.get('select') or []
-    )
-
-def __select_print_options(kwargs):
-    print_options = {
-        'select': kwargs['select'],
-        'without_headers': kwargs['without_headers']
-    }
-
-    del kwargs['without_headers']
-    del kwargs['select']
-
-    return print_options
