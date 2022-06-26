@@ -199,7 +199,7 @@ class MitmproxyRequestFacade(Request):
         if not self.__redact_applies(rewrite, param_name):
             return val.encode() if isinstance(val, str) else val
         else:
-            Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {val}")
+            Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
             return (rewrite.value or '').encode()
 
 
