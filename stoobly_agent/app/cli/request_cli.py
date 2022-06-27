@@ -80,34 +80,36 @@ def replay(**kwargs):
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
 
-@request.command(
-  help="Test a request"
-)
-@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
-@click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
-@click.argument('request_key')
-def test(**kwargs):
-  settings = Settings.instance()
-  request_key = validate_request_key(kwargs['request_key'])
-
-  if kwargs.get('report_key'):
-    validate_report_key(kwargs['report_key'])
-
-  session_context: SessionContext = { 
-      'aggregate_failures': kwargs['aggregtae_failures'], 
-      'passed': 0, 
-      'project_id': request_key.project_id, 
-      'test_facade': TestFacade(settings), 
-      'total': 0 
-  }
-  kwargs['on_response'] = lambda context: handle_on_test_response(
-    context, SessionContext
+if is_remote:
+  @request.command(
+    help="Test a request"
   )
+  @click.option('--report-key', help='Save to report.')
+  @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
+  @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
+  @click.argument('request_key')
+  def test(**kwargs):
+    settings = Settings.instance()
+    request_key = validate_request_key(kwargs['request_key'])
 
-  request = RequestFacade(settings)
-  __replay(request.test, kwargs)
+    if kwargs.get('report_key'):
+      validate_report_key(kwargs['report_key'])
 
-  exit_on_failure(session_context)
+    session_context: SessionContext = { 
+        'aggregate_failures': kwargs['aggregate_failures'], 
+        'passed': 0, 
+        'project_id': request_key.project_id, 
+        'test_facade': TestFacade(settings), 
+        'total': 0 
+    }
+    kwargs['on_response'] = lambda context: handle_on_test_response(
+      context, SessionContext
+    )
+
+    request = RequestFacade(settings)
+    __replay(request.test, kwargs)
+
+    exit_on_failure(session_context)
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
