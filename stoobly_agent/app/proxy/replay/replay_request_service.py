@@ -8,6 +8,7 @@ from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
 from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
+from stoobly_agent.lib.api.api import Api
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
@@ -54,17 +55,17 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   handler = getattr(requests, method.lower())
   cookies = __get_cookies(request.headers)
 
-  # Do not send query params, they should be a part of the URL
-  res: requests.Response = handler(
+  # Set proxy env vars to ensure request gets sent to proxy
+  res: requests.Response = Api().with_proxy(lambda: handler(
     request.url, 
     allow_redirects = True,
     cookies = cookies,
     data=request.body,
     headers=headers, 
-    #params=request.query_params,
+    #params=request.query_params, # Do not send query params, they should be a part of the URL
     stream = True,
     verify = not MitmproxyConfig.instance().get('ssl_insecure')
-  )
+  ))
 
   if 'on_response' in options and callable(options['on_response']):
     context.with_response(res)
