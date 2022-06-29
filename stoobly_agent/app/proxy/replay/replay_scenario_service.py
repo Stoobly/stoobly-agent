@@ -34,6 +34,9 @@ def replay(
       request_model, scenario_key, { 'page': page, 'size': PAGE_SIZE }
     )
 
+    if not requests_index:
+      return
+
     requests = list(map(lambda request: Request(request), requests_index['list']))
     total = requests_index['total']
   
