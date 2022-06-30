@@ -49,6 +49,7 @@ def create(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
+@click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def replay(**kwargs):
     validate_scenario_key(kwargs['key'])
@@ -72,6 +73,7 @@ def replay(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--report-key', help='Save to report.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
+@click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def test(**kwargs):
     settings = Settings.instance()

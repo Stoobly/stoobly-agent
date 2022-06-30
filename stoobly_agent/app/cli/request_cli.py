@@ -64,6 +64,7 @@ def list(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
+@click.option('--trace-id', help='Use existing trace.')
 @click.argument('request_key')
 def replay(**kwargs):
   validate_request_key(kwargs['request_key'])
@@ -87,6 +88,7 @@ if is_remote:
   @click.option('--report-key', help='Save to report.')
   @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
   @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
+  @click.option('--trace-id', help='Use existing trace.')
   @click.argument('request_key')
   def test(**kwargs):
     settings = Settings.instance()
