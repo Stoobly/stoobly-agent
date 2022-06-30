@@ -24,6 +24,6 @@ class CACertInstaller():
     # https://www.dssw.co.uk/reference/security.html
     def handle_darwin(self):
         system_keychain_path = '/Library/Keychains/System.keychain'
-        mitm_crt_absolute_path = os.path.join(self.mitmproxy_certs_dir, self.crt_file_name)
+        mitm_pem_absolute_path = os.path.join(self.mitmproxy_certs_dir, self.pem_file_name)
 
-        subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k {system_keychain_path} {mitm_crt_absolute_path}".split(), check=True)
+        subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k {system_keychain_path} {mitm_pem_absolute_path}".split(), check=True)
