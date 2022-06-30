@@ -2,12 +2,14 @@ import click
 import pdb
 import sys
 
-from stoobly_agent.app.cli.helpers.print_service import handle_on_request_response, handle_on_test_response
+from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
+from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
+from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import test_strategy
 
 from .helpers.scenario_facade import ScenarioFacade
-from .helpers.tabulate_print_service import tabulate_print
 from .helpers.validations import *
 
 @click.group(
@@ -27,7 +29,7 @@ def scenario(ctx):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
-    print_options = __select_print_options(kwargs)
+    print_options = select_print_options(kwargs)
 
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings) 
@@ -39,7 +41,7 @@ def create(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    __print([res], **print_options)
+    print_scenarios([res], **print_options)
 
 @scenario.command(
     help="Replay a scenario"
@@ -58,7 +60,7 @@ def replay(**kwargs):
 
         validate_scenario_key(kwargs['scenario_key'])
 
-    kwargs['on_response'] = handle_on_request_response
+    kwargs['on_response'] = print_request
 
     scenario = ScenarioFacade(Settings.instance())
     scenario.replay(kwargs.get('key'), kwargs)
@@ -66,23 +68,33 @@ def replay(**kwargs):
 @scenario.command(
     help="Replay and test a scenario"
 )
+@click.option('--aggregate-failures', default=False, is_flag=True, help='.')
 @click.option('--assign', multiple=True, help='Assign alias values.')
 @click.option('--report-key', help='Save to report.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.argument('key')
 def test(**kwargs):
+    settings = Settings.instance()
     scenario_key = validate_scenario_key(kwargs['key'])
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
 
-    settings = Settings.instance()
-    kwargs['on_response'] = lambda context: handle_on_test_response(
-        context, scenario_key.project_id, settings
+    session_context: SessionContext = { 
+        'aggregate_failures': kwargs['aggregate_failures'], 
+        'passed': 0, 
+        'project_id': scenario_key.project_id, 
+        'test_facade': TestFacade(settings), 
+        'total': 0 
+    }
+    kwargs['on_response'] = lambda context: __handle_on_test_response(
+        context, session_context 
     )
 
     scenario = ScenarioFacade(settings)
     scenario.test(kwargs['key'], kwargs)
+
+    exit_on_failure(session_context)
 
 @scenario.command(
     help="Show all scenarios"
@@ -95,7 +107,7 @@ def test(**kwargs):
 @click.option('--sort-order', default='desc', help='asc | desc')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    print_options = __select_print_options(kwargs)
+    print_options = select_print_options(kwargs)
 
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
@@ -111,7 +123,7 @@ def list(**kwargs):
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')
     else:
-        __print(scenarios_response['list'], **print_options) 
+        print_scenarios(scenarios_response['list'], **print_options) 
 
 @scenario.command(
     help="Describe scenario"
@@ -120,7 +132,7 @@ def list(**kwargs):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('key', required=False)
 def show(**kwargs):
-    print_options = __select_print_options(kwargs)
+    print_options = select_print_options(kwargs)
 
     settings = Settings.instance()
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
@@ -131,23 +143,10 @@ def show(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    __print([scenario_response], **print_options)
+    print_scenarios([scenario_response], **print_options)
 
-def __print(scenarios, **kwargs):
-    tabulate_print(
-        scenarios, 
-        filter=['created_at', 'priority', 'project_id', 'starred', 'updated_at'],
-        headers=not kwargs.get('without_headers'),
-        select=kwargs.get('select') or []
-    )
+def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext):
+    handle_on_test_response(replay_context, session_context)
 
-def __select_print_options(kwargs):
-    print_options = {
-        'select': kwargs['select'],
-        'without_headers': kwargs['without_headers']
-    }
-
-    del kwargs['without_headers']
-    del kwargs['select']
-
-    return print_options
+    if not session_context['aggregate_failures']:
+        exit_on_failure(session_context)

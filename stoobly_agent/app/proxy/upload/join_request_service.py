@@ -2,6 +2,7 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.config.constants import custom_headers, request_origin
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 from ..mitmproxy.response_adapter import MitmproxyResponseAdapter

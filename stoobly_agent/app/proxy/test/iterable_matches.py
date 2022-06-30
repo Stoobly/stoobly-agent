@@ -54,10 +54,10 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
-            return __dict_fuzzy_matches(actual_value, expected_value, context)
+            return __dict_fuzzy_matches(expected_value, actual_value, context)
 
         if type(actual_value) is list:
-            return __list_fuzzy_matches(actual_value, expected_value, context)
+            return __list_fuzzy_matches(expected_value, actual_value, context)
 
     return True, ''
 
@@ -89,7 +89,7 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
         path_key = context.path_key
 
         if type(value) not in valid_types:
-            return False, f"Key '{path_key}' type did not match: got {type(value)}, expected {valid_types}"
+            return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"
 
         if type(value) is dict:
             return __dict_fuzzy_matches(type_examples[dict], value, context)
@@ -137,7 +137,7 @@ def list_matches(expected: dict, actual: dict, response_param_names_facade: Resp
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
     if len(expected) != len(actual):
-        return False, f"Length did not match: got {len(expected)}, expected {len(actual)}"
+        return False, f"Length did not match: got {len(actual)}, expected {len(expected)}"
 
     for i, expected_value in enumerate(expected):
         context = MatchContext(parent_context.to_dict())

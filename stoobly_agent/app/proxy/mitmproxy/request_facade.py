@@ -1,14 +1,15 @@
 import pdb
 import re
 
-from mitmproxy.http import Request as MitmproxyRequest
+from mitmproxy.http import Headers, Request as MitmproxyRequest
 from mitmproxy.coretypes import multidict
 from typing import Callable, List, Union
 from urllib.parse import urlparse
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.filter_rule import FilterRule, ParameterRule
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.lib.logger import Logger, bcolors
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
@@ -47,7 +48,7 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def headers(self):
-        return self.request.headers
+        return self.__filter_custom_headers(self.request.headers)
 
     @property
     def body(self):
@@ -107,7 +108,6 @@ class MitmproxyRequestFacade(Request):
 
     def rewrite(self):
         rewrites = self.__rewrite_rules
- 
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
             self.__rewrite_content(rewrites)
@@ -199,4 +199,26 @@ class MitmproxyRequestFacade(Request):
         if not self.__redact_applies(rewrite, param_name):
             return val.encode() if isinstance(val, str) else val
         else:
+            Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
             return (rewrite.value or '').encode()
+
+
+    def __filter_custom_headers(self, request_headers: Headers):
+        '''
+        Remove custom headers
+        '''
+        _request_headers = Headers(**request_headers)
+
+        headers = custom_headers.__dict__
+        for key in headers:
+            if key[0:2] == '__' and key[-2:] == '__':
+                continue
+
+            name = headers[key]
+
+            if name not in request_headers:
+                continue
+
+            _request_headers.pop(name)
+
+        return _request_headers

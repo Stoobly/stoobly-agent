@@ -1,5 +1,7 @@
 from .resource_key import ResourceKey
 
+from stoobly_agent.app.settings import Settings
+
 class InvalidRequestKey(Exception):
   pass
 
@@ -11,7 +13,9 @@ class RequestKey(ResourceKey):
       raise InvalidRequestKey('Missing id')
 
     if not self.project_id:
-      raise InvalidRequestKey('Missing request_id')
+      settings = Settings.instance()
+      if settings.cli.features.remote:
+        raise InvalidRequestKey('Missing request_id')
 
   @property
   def id(self) -> str:

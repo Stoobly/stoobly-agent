@@ -57,8 +57,9 @@ class ORMTOStooblyRequestTransformer():
 
   def __transform_query_params(self, query_params):
     query_params_list: List[QueryParam] = []
-    for key, val in parse_qs(query_params):
-      query_params.append({
+
+    for key, val in parse_qs(query_params).items():
+      query_params_list.append({
         'name': key,
         'value': val,
       })

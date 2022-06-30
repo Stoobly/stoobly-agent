@@ -5,7 +5,7 @@ from requests import Response
 
 from stoobly_agent.lib.api.tests_resource import TestsResource
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import Logger, bcolors
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
@@ -34,7 +34,7 @@ def upload_test(
 ) -> Response:
     joined_request = join_redacted_request(flow, intercept_settings)
 
-    Logger.instance().info(f"Uploading test results for {joined_request.proxy_request.url()}")
+    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 
     raw_requests = joined_request.build()
 

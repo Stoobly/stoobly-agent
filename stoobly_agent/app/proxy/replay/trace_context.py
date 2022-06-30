@@ -130,15 +130,16 @@ class TraceContext:
   ):
     body_params = request.body_params
 
-    rewrite_params(
-      body_params, 
-      body_param_names, 
-      id_to_alias, 
-      self.trace,
-      lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
-    )
+    if isinstance(body_params, list) or isinstance(body_params, dict):
+      rewrite_params(
+        body_params, 
+        body_param_names, 
+        id_to_alias, 
+        self.trace,
+        lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
+      )
 
-    request.body_params = body_params
+      request.body_params = body_params
 
   def __rewrite_components(self, components, component_names, id_to_alias: AliasMap):
     visited = {}
@@ -156,7 +157,7 @@ class TraceContext:
       new_values = []
       current_values = components.get_all(name)
       if len(current_values) == 0:
-        trace_aliases = resolve_alias(_alias['name'], None)
+        trace_aliases = resolve_alias(self.trace, _alias['name'], None)
         if trace_aliases.is_empty():
           continue
 

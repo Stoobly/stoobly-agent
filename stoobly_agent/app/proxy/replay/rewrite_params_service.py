@@ -10,8 +10,7 @@ jmespath.parser.visitor.TreeInterpreter = TreeInterpreter
 from typing import Callable, Dict, List, Union
 from orator.orm.collection import Collection
 
-from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName
+from stoobly_agent.lib.api.interfaces.endpoints import Alias, RequestComponentName
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias

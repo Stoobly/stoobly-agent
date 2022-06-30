@@ -7,7 +7,8 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
 from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
-from stoobly_agent.config.mitmproxy_dir import MitmproxyDir
+from stoobly_agent.config.mitmproxy import MitmproxyConfig
+from stoobly_agent.lib.api.api import Api
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
@@ -54,17 +55,17 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   handler = getattr(requests, method.lower())
   cookies = __get_cookies(request.headers)
 
-  # Do not send query params, they should be a part of the URL
-  res: requests.Response = handler(
+  # Set proxy env vars to ensure request gets sent to proxy
+  res: requests.Response = Api().with_proxy(lambda: handler(
     request.url, 
     allow_redirects = True,
     cookies = cookies,
     data=request.body,
     headers=headers, 
-    #params=request.query_params,
+    #params=request.query_params, # Do not send query params, they should be a part of the URL
     stream = True,
-    verify = MitmproxyDir.instance().ca_cert_pem_path or True
-  )
+    verify = not MitmproxyConfig.instance().get('ssl_insecure')
+  ))
 
   if 'on_response' in options and callable(options['on_response']):
     context.with_response(res)
@@ -75,9 +76,13 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 def __handle_mode_option(request: Request, headers, _mode):
   headers[custom_headers.PROXY_MODE] = _mode
 
-  # If mocking or testing, we already know which request to get response from 
   if _mode == mode.MOCK or _mode == mode.TEST:
+    # If mocking or testing, we already know which request to get response from 
     headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+  elif _mode == mode.RECORD:
+    # If recording, then it's actually a replay and record
+    headers[custom_headers.PROXY_MODE] = mode.REPLAY
+    headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
 
 def __log(context: ReplayContext):
   request = context.request

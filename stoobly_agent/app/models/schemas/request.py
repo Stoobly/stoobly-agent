@@ -6,7 +6,7 @@ from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
-from typing import List
+from typing import List, Union
 
 from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowResponse
 
@@ -94,11 +94,11 @@ class Request():
     return base64.b64decode(encoded_body)
 
   @body.setter
-  def body(self, v: bytes):
+  def body(self, v: Union[bytes, str]):
     if not 'body' in self.request:
       return
 
-    text = v
+    text = v if isinstance(v, bytes) else v.encode()
     self.request['body'] = base64.b64encode(text)
 
     headers = self.headers
@@ -113,9 +113,12 @@ class Request():
 
   @body_params.setter
   def body_params(self, v):
-    content_type = self.headers.get('content-type')
-    if content_type:
-      self.body = encode_response(v, content_type)
+    if not isinstance(v, dict) and not isinstance(v, list):
+      self.body = v
+    else:
+      content_type = self.headers.get('content-type')
+      if content_type:
+        self.body = encode_response(v, content_type)
 
   def __set_dict(self, component_name_str, v: MultiDict):
     component_names: List[RequestComponentName] = self.request[component_name_str] or []

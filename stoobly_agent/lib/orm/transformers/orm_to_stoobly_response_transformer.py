@@ -1,3 +1,5 @@
+import pdb
+
 from httptools import HttpResponseParser
 
 from stoobly_agent.lib.api.interfaces import ResponseShowResponse
@@ -11,7 +13,7 @@ class ORMTOStooblyResponseTransformer():
 
   def __init__(self, response: ORMResponse):
     self.__response = response
-    self.__response_dict: ResponseDict = {}
+    self.__response_dict: ResponseDict = { 'body': response.raw }
     parser = self.__new_parser(self.__response_dict)
     self.__response_dict['status_code'] = parser.get_status_code()
 

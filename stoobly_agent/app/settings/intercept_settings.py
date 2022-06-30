@@ -50,6 +50,11 @@ class InterceptSettings:
   def project_key(self):
     return self.__project_key
 
+  @project_key.setter
+  def project_key(self, v):
+    self.__project_key = v
+    self.__intercept_settings['project_key'] = v
+
   @property
   def upstream_url(self):
     return self.__upstream_url
