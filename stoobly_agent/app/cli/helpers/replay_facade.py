@@ -1,15 +1,18 @@
 from typing import Callable, List, TypedDict
+
 from stoobly_agent.app.cli.helpers.trace_context_facade import TraceContextFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import request_origin, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.lib.orm.trace import Trace
 
 class ReplayCliOptions(TypedDict):
   assign: List[str]
   on_response: Callable
   record: bool
   scenario_key: str
+  trace: Trace
 
 class TestCliOptions(ReplayCliOptions):
   report_key: str
@@ -20,19 +23,21 @@ class ReplayFacade():
   def __init__(self, settings: Settings):
     self.__settings = settings
 
-  def build_trace_context(self, aliases = None) -> TraceContext:
-    facade = TraceContextFacade(self.__settings)
-
-    if aliases:
-      facade.with_aliases(aliases)
-
-    return facade.trace_context
-
   def common_cli_options(self, cli_options: ReplayCliOptions) -> ReplayCliOptions:
+    assign = cli_options.get('assign')
     trace_context = None
+    trace_id = cli_options.get('trace_id')
 
-    if cli_options.get('assign'):
-      trace_context = self.build_trace_context(cli_options['assign'])
+    # If a trace_id is given, use it to find a trace
+    trace = Trace.find_by(id=trace_id) if trace_id else None 
+    if trace or assign:
+      facade = TraceContextFacade(self.__settings, trace)
+
+      # If assign is given, create default TraceAliases for the trace 
+      if assign:
+        facade.with_aliases(assign)
+
+      trace_context = facade.trace_context
 
     return {
       'on_response': cli_options.get('on_response'),
