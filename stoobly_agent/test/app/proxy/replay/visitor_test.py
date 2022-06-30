@@ -54,5 +54,10 @@ class TestSearch():
         jmespath.search('[*].a', a, { 'replacements': ['*'] })
         assert self.equals(a, [{'a': '*'}, {'a': '*'}, {'a': '*'}]), print(a)
 
+    def test_i(self):
+        a = [{'a': 1}, {'a': 'a'}, {'a': None}]
+        jmespath.search('[*].a', a, { 'replacements': ['*'] })
+        assert self.equals(a, [{'a': '*'}, {'a': '*'}, {'a': '*'}]), print(a)
+
     def equals(self, a, b):
         return json.dumps(a) == json.dumps(b)

@@ -1,6 +1,5 @@
 import jmespath
 
-
 from .visitor import TreeInterpreter, Visitor
 
 # Monkey patch jmespath with replacement functionality
@@ -23,6 +22,7 @@ from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowRespon
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
+from stoobly_agent.lib.orm.trace_request import TraceRequest
 
 AliasMap = Dict[str, RequestComponentName]
 
@@ -65,11 +65,12 @@ class TraceContext:
 
     self.__requests.append((request, response))
 
-  def create_trace_alias(self, alias_name, value):
+  def create_trace_alias(self, alias_name, value, trace_request = None):
     trace_alias = TraceAlias.create(
       name=alias_name,
       value=value,
-      trace_id=self.__trace.id
+      trace_id=self.__trace.id,
+      trace_request_id=trace_request.id if trace_request else None
     )
     Logger.instance().info(f"{bcolors.OKGREEN}Resolved {trace_alias.name}: {value}{bcolors.ENDC}")
     return trace_alias
@@ -182,6 +183,8 @@ class TraceContext:
         components.add(name, new_value)
 
   def __create_trace_aliases(self, response: Response, endpoint: EndpointShowResponse):
+    trace_request = TraceRequest.create(trace_id=self.__trace.id)
+
     '''
     1. Parse all aliased properties from response
     2. Create TraceAlias records for each parsed aliased propert
@@ -209,7 +212,7 @@ class TraceContext:
 
       for value in values:  
         if _alias and value:
-          self.create_trace_alias(_alias['name'], value) 
+          self.create_trace_alias(_alias['name'], value, trace_request) 
 
   def __resolve_and_assign_alias(self, alias_name: str, value: list) -> Union[TraceAlias, None]:
     trace_aliases = resolve_alias(self.trace, alias_name, value)
