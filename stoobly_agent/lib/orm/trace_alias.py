@@ -9,3 +9,8 @@ class TraceAlias(ORM.instance().base):
   def trace(self):
     from .trace import Trace # Get around circular import
     return Trace
+
+  @belongs_to
+  def trace_request(self):
+    from .trace_request import TraceRequest
+    return TraceRequest
