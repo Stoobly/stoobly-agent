@@ -61,7 +61,7 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
-@click.option('--assign', multiple=True, help='Assign alias values.')
+@click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.option('--trace-id', help='Use existing trace.')
@@ -85,6 +85,7 @@ if is_remote:
   @request.command(
     help="Test a request"
   )
+  @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
   @click.option('--report-key', help='Save to report.')
   @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
   @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")

@@ -14,10 +14,10 @@ from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
 
 class ReplayRequestOptions(TypedDict):
+  group_by: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   on_response: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
-  quiet: bool
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 

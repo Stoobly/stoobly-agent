@@ -1,8 +1,11 @@
 import pdb
+from tokenize import group
 import requests
+from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
 from stoobly_agent.app.proxy.replay.replay_scenario_service import inject_replay
+from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
@@ -63,6 +66,22 @@ class ScenarioFacade(ReplayFacade):
       **self.common_test_cli_options(cli_options)
     })
 
-  def __replay(self, scenario_key, replay_options):
+  def __replay(self, scenario_key: str, replay_options: ReplayCliOptions):
+    trace_context = replay_options['trace_context']
+    group_by = replay_options['group_by']
+
+    if not group_by or not trace_context:
+      replay = inject_replay()
+      return replay(scenario_key, replay_options)
+    else:
+      return iterate_group_by(
+        group_by, 
+        trace_context,
+        lambda trace_context: self.__replay_with_trace_context(trace_context, scenario_key, replay_options)
+      )
+
+  def __replay_with_trace_context(trace_context: TraceContext, scenario_key: str, replay_options: ReplayCliOptions):
+    _replay_options = replay_options.copy()
+    _replay_options['trace_context'] = trace_context
     replay = inject_replay()
-    replay(scenario_key, replay_options)
+    return replay(scenario_key, _replay_options)

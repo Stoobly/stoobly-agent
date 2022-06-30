@@ -40,6 +40,10 @@ class TraceContext:
   def trace(self):
     return self.__trace
 
+  @property
+  def endpoints_resource(self):
+    return self.__endpoints_resource
+
   def with_replay_context(self, context: ReplayContext, replay: Callable[[], Response]): 
     request = context.request
     endpoint = None

@@ -9,6 +9,7 @@ from stoobly_agent.lib.orm.trace import Trace
 
 class ReplayCliOptions(TypedDict):
   assign: List[str]
+  group_by: str
   on_response: Callable
   record: bool
   scenario_key: str
@@ -40,6 +41,7 @@ class ReplayFacade():
       trace_context = facade.trace_context
 
     return {
+      'group_by': cli_options.get('group_by'),
       'on_response': cli_options.get('on_response'),
       'request_origin': request_origin.CLI,
       'trace_context': trace_context,
