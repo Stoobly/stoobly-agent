@@ -1,4 +1,4 @@
-from . import ORM 
+from .base import Base
 
-class Response(ORM.instance().base):
+class Response(Base):
   __fillable__ = ['control','request_id', 'raw']

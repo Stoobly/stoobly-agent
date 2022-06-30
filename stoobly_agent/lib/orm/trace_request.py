@@ -1,9 +1,9 @@
 from orator.orm import belongs_to, has_many
 
-from . import ORM 
+from .base import Base
 from .trace_alias import TraceAlias
 
-class TraceRequest(ORM.instance().base):
+class TraceRequest(Base):
   __fillable__ = []
 
   @belongs_to

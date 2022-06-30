@@ -1,5 +1,3 @@
-from orator.orm import has_one
-
 from . import ORM 
 
 class Base(ORM.instance().base):
