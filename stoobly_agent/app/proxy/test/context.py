@@ -83,12 +83,12 @@ class TestContext():
   @property
   def rewritten_expected_response_content(self):
     _decoded_expected_response_content = self.decoded_expected_response_content
-
+    
     trace = self.trace
     if not trace:
       return _decoded_expected_response_content
 
-    if not isinstance(_decoded_expected_response_content, list) or not isinstance(_decoded_expected_response_content, dict):
+    if not isinstance(_decoded_expected_response_content, list) and not isinstance(_decoded_expected_response_content, dict):
       return _decoded_expected_response_content
 
     if not self.response_param_names:

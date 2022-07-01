@@ -9,7 +9,7 @@ class AddTraceRequestReferenceToTraceAliases(Migration):
         """
         with self.schema.table('trace_aliases') as table:
             table.string('trace_request_id').unsigned().nullable()
-            table.string('trace_request_id').references('id').on('trace_requests').index() 
+            table.foreign('trace_request_id').references('id').on('trace_requests').index() 
 
     def down(self):
         """
