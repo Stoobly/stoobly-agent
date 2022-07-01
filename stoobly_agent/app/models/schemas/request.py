@@ -1,4 +1,5 @@
 import base64
+import copy
 import pdb
 
 from mitmproxy.net.http.url import encode as urlencode
@@ -15,6 +16,9 @@ class Request():
   def __init__(self, request: RequestShowResponse):
     self.request = request
     self.__url = urlparse(request.get('url'))
+
+  def clone(self):
+    return Request(copy.deepcopy(self.request))
 
   @property
   def id(self):

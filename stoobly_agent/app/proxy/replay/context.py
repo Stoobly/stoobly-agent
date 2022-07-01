@@ -34,6 +34,9 @@ class ReplayContext():
   def start_time(self):
     return self.__start_time
 
+  def clone(self):
+    return ReplayContext(self.__request.clone())
+
   def with_response(self, response: requests.Response):
     self.__end_time = time.time()
     self.__response = response
