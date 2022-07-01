@@ -62,6 +62,7 @@ def list(**kwargs):
   help="Replay a request"
 )
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+@click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.option('--trace-id', help='Use existing trace.')
@@ -86,6 +87,7 @@ if is_remote:
     help="Test a request"
   )
   @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+  @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--report-key', help='Save to report.')
   @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
   @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
@@ -106,7 +108,7 @@ if is_remote:
         'total': 0 
     }
     kwargs['on_response'] = lambda context: handle_on_test_response(
-      context, SessionContext
+      context, session_context
     )
 
     request = RequestFacade(settings)
