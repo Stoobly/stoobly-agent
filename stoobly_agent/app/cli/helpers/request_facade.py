@@ -41,7 +41,7 @@ class RequestFacade(ReplayFacade):
     return self.__model.index(**query_params)
 
   def replay(self, request_key: str, cli_options: ReplayCliOptions):
-    replay_context = self.__build_replay_context(self, request_key)
+    replay_context = self.__build_replay_context(request_key)
     replay_options = {
       'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
       'scenario_key': '',
@@ -56,7 +56,7 @@ class RequestFacade(ReplayFacade):
     return self.__replay(request_key, cli_options)
 
   def test(self, request_key: str, cli_options: TestCliOptions):
-    replay_context = self.__build_replay_context(self, request_key)
+    replay_context = self.__build_replay_context(request_key)
     replay_options = {
       'mode': mode.TEST,
       'report_key': cli_options.get('report_key'),
@@ -88,5 +88,5 @@ class RequestFacade(ReplayFacade):
       return iterate_group_by(
         group_by, 
         trace_context,
-        lambda trace_context: replay_with_trace(replay_context, trace_context, replay_options)
+        lambda trace_context: replay_with_trace(replay_context.clone(), trace_context, replay_options)
       )
