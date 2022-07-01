@@ -112,7 +112,7 @@ class TraceContext:
       if not trace_alias:
         continue
 
-      path_segment_strings[position] = trace_alias.value
+      path_segment_strings[position] = str(trace_alias.value)
 
     request.path = '/' + '/'.join(path_segment_strings)
 
@@ -232,7 +232,6 @@ class TraceContext:
     if not trace_alias.assigned_to:
       trace_alias.assigned_to = value
       trace_alias.save()
-
       Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
   def __query_resolves_response(self, query: str, response: Union[list, dict]) -> list:
