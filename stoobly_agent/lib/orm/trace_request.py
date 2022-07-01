@@ -4,7 +4,7 @@ from .base import Base
 from .trace_alias import TraceAlias
 
 class TraceRequest(Base):
-  __fillable__ = []
+  __fillable__ = ['trace_id']
 
   @belongs_to
   def trace(self):
