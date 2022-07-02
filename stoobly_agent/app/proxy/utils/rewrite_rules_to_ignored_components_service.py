@@ -10,7 +10,7 @@ class IgnoredComponent(TypedDict):
   name: str
   type: str
 
-def filter_rules_to_ignored_components(rules: List[ParameterRule]) -> List[IgnoredComponent]:
+def rewrite_rules_to_ignored_components(rules: List[ParameterRule]) -> List[IgnoredComponent]:
   ignored_components = []
 
   for rule in rules:

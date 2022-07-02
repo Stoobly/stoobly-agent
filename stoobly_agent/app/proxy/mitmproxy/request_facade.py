@@ -7,7 +7,7 @@ from typing import Callable, List, Union
 from urllib.parse import urlparse
 
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.app.settings.filter_rule import FilterRule, ParameterRule
+from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
 
@@ -90,12 +90,12 @@ class MitmproxyRequestFacade(Request):
     def rewrite_rules(self) -> List[ParameterRule]:
         return self.__rewrite_rules
 
-    def with_rewrite_rules(self, rules: List[FilterRule]):
+    def with_rewrite_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
             self.__rewrite_rules = self.select_parameter_rules(rules)
         return self 
 
-    def with_redact_rules(self, rules: List[FilterRule]):
+    def with_redact_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
             self.__redact_rules = self.select_parameter_rules(rules)
         return self
@@ -112,7 +112,7 @@ class MitmproxyRequestFacade(Request):
             self.__rewrite_headers(rewrites)
             self.__rewrite_content(rewrites)
 
-    def select_parameter_rules(self, rules: List[FilterRule]) -> List[ParameterRule]:
+    def select_parameter_rules(self, rules: List[RewriteRule]) -> List[ParameterRule]:
         # Find all the rules that match request url and method
         _rules = list(filter(self.__is_parameter_rule_selected, rules or []))
         
@@ -123,8 +123,8 @@ class MitmproxyRequestFacade(Request):
 
         return [item for sublist in parameter_rules for item in sublist] # flatten list
 
-    def __is_parameter_rule_selected(self, redact_rule: FilterRule):
-        pattern = redact_rule.pattern
+    def __is_parameter_rule_selected(self, rewrite_rule: RewriteRule):
+        pattern = rewrite_rule.pattern
 
         try:
             url_matches = re.match(pattern, self.url)
@@ -132,7 +132,7 @@ class MitmproxyRequestFacade(Request):
             Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return False
 
-        method_matches = self.method in redact_rule.methods
+        method_matches = self.method in rewrite_rule.methods
         return url_matches and method_matches
     
     def __apply_rewrites(self, params: dict, rewrites: List[ParameterRule], handler: Callable):

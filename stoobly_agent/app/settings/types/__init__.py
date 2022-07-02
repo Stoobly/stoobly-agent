@@ -1,3 +1,4 @@
+from turtle import st
 from .cli_settings import *
 from .proxy_settings import *
 from .remote_settings import *
@@ -5,13 +6,26 @@ from .ui_settings import *
 
 from typing import List, Optional, TypedDict, Union
 
-class Rewrite:
+class Ignore(TypedDict):
+    name: str
+    type: str
+
+class Redact(TypedDict):
+    name: str
+    type: str
+
+class Rewrite(TypedDict):
     name: Optional[str]
     type: str
     value: str
 
-class FilterRule(TypedDict):
-    filters: List[Rewrite]
+class IgnoreRule(TypedDict):
+    ignores: List[Ignore]
+    method: str
+    pattern: str
+
+class RedactRule(TypedDict):
+    redacts: List[Redact]
     method: str
     pattern: str
 
@@ -23,7 +37,7 @@ class RewriteRule(TypedDict):
 class IProjectRecordSettings(TypedDict):
     enabled: bool
     exclude_patterns: list
-    filter_rules: list
+    rewrite_rules: list
     include_patterns: list
     policy: str
     project_key: str
@@ -84,4 +98,4 @@ Component = {
     'QueryParam': 'Query Param',
 }
 IProjectModeSettings = Union[IProjectMockSettings, IProjectRecordSettings, IProjectTestSettings]
-Rule = Union[FilterRule, RewriteRule]
+Rule = Union[IgnoreRule, RedactRule, RewriteRule]

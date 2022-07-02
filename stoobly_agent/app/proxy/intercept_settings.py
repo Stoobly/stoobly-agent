@@ -5,9 +5,10 @@ from typing import List, Union
 from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
-from stoobly_agent.app.settings.filter_rule import FilterRule
+from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.types import IgnoreRule, RedactRule
 from stoobly_agent.config.constants import custom_headers, mode, request_origin
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 
@@ -32,7 +33,7 @@ class InterceptSettings:
     # If no valid project key is provided, use default settings,
     # Otherwise, set settings for the project
     self.__data_rules = self.__settings.proxy.data.data_rules(project_id)
-    self.__filter_rules = self.__settings.proxy.filter.filter_rules(project_id)
+    self.__rewrite_rules = self.__settings.proxy.rewrite.rewrite_rules(project_id)
     self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
     self.__intercept_settings = self.__settings.proxy.intercept 
 
@@ -123,16 +124,18 @@ class InterceptSettings:
     return list(filter(lambda rule: rule.action == firewall_action.INCLUDE, self.__firewall_rules))
 
   @property
-  def redact_rules(self) -> List[FilterRule]:
-    return self.__select_filter_rules()
+  def redact_rules(self) -> List[RedactRule]:
+    # TODO
+    return []
 
   @property
-  def ignore_rules(self) -> List[FilterRule]:
-    return self.__select_filter_rules()
+  def ignore_rules(self) -> List[IgnoreRule]:
+    # TODO
+    return []
 
   @property
-  def rewrite_rules(self) -> List[FilterRule]:
-    return self.__select_filter_rules()
+  def rewrite_rules(self) -> List[RewriteRule]:
+    return self.__select_rewrite_rules()
 
   @property
   def upstream_url(self):
@@ -160,31 +163,31 @@ class InterceptSettings:
 
     return request_origin.WEB
 
-  def __select_filter_rules(self):
+  def __select_rewrite_rules(self):
     rules = []
 
     # Filter only parameters matching active intercept mode
-    for filter_rule in self.__filter_rules:
-      parameter_rules = self.__select_parameter_rules(filter_rule)
+    for rewrite_rule in self.__rewrite_rules:
+      parameter_rules = self.__select_parameter_rules(rewrite_rule)
 
       # If no parameters rules were found, then this filter rule is not applied
       if len(parameter_rules) == 0:
         continue
 
-      # Build a new FilterRule object contain only parameter rules matching intercept mode
-      filter_rule = FilterRule({
-        'methods': filter_rule.methods,
-        'pattern': filter_rule.pattern,
+      # Build a new RewriteRule object contain only parameter rules matching intercept mode
+      rewrite_rule = RewriteRule({
+        'methods': rewrite_rule.methods,
+        'pattern': rewrite_rule.pattern,
         'parameters_rules': [], # Has to be dict form, manually set it
       })
-      filter_rule.parameter_rules = parameter_rules
+      rewrite_rule.parameter_rules = parameter_rules
 
-      rules.append(filter_rule)
+      rules.append(rewrite_rule)
 
     return rules
 
-  def __select_parameter_rules(self, filter_rule: FilterRule):
+  def __select_parameter_rules(self, rewrite_rule: RewriteRule):
     return list(filter(
       lambda parameter: self.mode in parameter.modes and parameter.name, 
-      filter_rule.parameter_rules or []
+      rewrite_rule.parameter_rules or []
     ))

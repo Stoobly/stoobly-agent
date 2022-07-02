@@ -4,13 +4,13 @@ from .types.proxy_settings import ParameterRule as IParameterRule
 
 class ParameterRule:
 
-  def __init__(self, filter_rule: IParameterRule):
-    self.__filter_rule = filter_rule
+  def __init__(self, rewrite_rule: IParameterRule):
+    self.__rewrite_rule = rewrite_rule
 
-    self.__modes = self.__filter_rule.get('modes')
-    self.__name = self.__filter_rule.get('name')
-    self.__value = self.__filter_rule.get('value')
-    self.__type = self.__filter_rule.get('type')
+    self.__modes = self.__rewrite_rule.get('modes')
+    self.__name = self.__rewrite_rule.get('name')
+    self.__value = self.__rewrite_rule.get('value')
+    self.__type = self.__rewrite_rule.get('type')
 
   @property 
   def modes(self):
