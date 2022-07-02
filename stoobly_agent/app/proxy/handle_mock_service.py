@@ -8,6 +8,8 @@ from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
+from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, mock_policy
 from stoobly_agent.lib.logger import Logger
 
@@ -35,10 +37,22 @@ def handle_request_mock_generic(context: MockContext, intercept_settings: Interc
     request_model = RequestModel(intercept_settings.settings)
     request: MitmproxyRequest = context.flow.request
 
-    eval_request = inject_eval_request(request_model, intercept_settings)
+    # Rewrite request with paramter rules for mock
+    request_facade = MitmproxyRequestFacade(request)
+    rewrite_rules = intercept_settings.rewrite_rules
+    request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+
+    # If ignore rules are set, then ignore specified request parameters
+    ignore_rules = intercept_settings.ignore_rules
+    if len(ignore_rules) > 0:
+        _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
+        ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
+        options['ignored_components'] += ignored_components  if 'ignored_components' in options else ignored_components
+
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     
+    eval_request = inject_eval_request(request_model, intercept_settings)
     policy = get_active_mode_policy(request, intercept_settings)
  
     if policy == mock_policy.NONE:

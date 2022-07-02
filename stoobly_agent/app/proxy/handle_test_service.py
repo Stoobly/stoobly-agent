@@ -12,7 +12,6 @@ from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import handle_request_mock_generic
-from .mitmproxy.request_facade import MitmproxyRequestFacade
 from .mock.context import MockContext
 from .test.context import TestContext
 from .test.test_service import test
@@ -28,22 +27,12 @@ LOG_ID = 'HandleTest'
 def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> None:
     disable_transfer_encoding(flow.response)
 
-    ignored_components = []
-
-    # If ignore rules are set, then ignore specified request parameters
-    ignore_rules = intercept_settings.ignore_rules
-    if len(ignore_rules) > 0:
-        request = MitmproxyRequestFacade(flow.request)
-        ignore_rules = request.select_parameter_rules(ignore_rules)
-        ignored_components = rewrite_rules_to_ignored_components(ignore_rules)
-
     context = MockContext(flow)
 
     handle_request_mock_generic(
         context,
         intercept_settings,
         failure=lambda context: __handle_mock_failure(context, intercept_settings),
-        ignored_components=ignored_components,
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=lambda context: __handle_mock_success(context, intercept_settings)
     )
