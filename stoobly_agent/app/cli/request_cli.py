@@ -53,7 +53,7 @@ def list(**kwargs):
   request = RequestFacade(settings)
   requests_response = request.index(project_key, kwargs)
 
-  if len(requests_response['list']) == 0:
+  if not requests_response or len(requests_response['list']) == 0:
     print('No requests found.')
   else:
     print_requests(requests_response['list'], **print_options)
