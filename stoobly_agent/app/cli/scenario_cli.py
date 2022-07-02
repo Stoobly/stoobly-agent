@@ -43,8 +43,6 @@ def create(**kwargs):
 
     print_scenarios([res], **print_options)
 
-
-
 @scenario.command(
     help="Replay a scenario"
 )

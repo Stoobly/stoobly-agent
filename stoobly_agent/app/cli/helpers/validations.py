@@ -1,3 +1,4 @@
+import click
 import sys
 
 from stoobly_agent.app.settings import Settings
@@ -47,6 +48,15 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
   except InvalidScenarioKey:
     handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
 
+# Prompt
+
+def prompt_project_key(settings: Settings):
+  project_key = click.prompt('Please enter a project key', type=str)
+  settings.remote.api_key = project_key
+  settings.proxy.intercept.project_key = project_key
+  settings.commit()
+  return project_key
+
 # Resolve
 
 def resolve_project_key(kwargs: dict, settings: Settings) -> str:
@@ -54,7 +64,9 @@ def resolve_project_key(kwargs: dict, settings: Settings) -> str:
 
     if not project_key:
       project_key = settings.proxy.intercept.project_key
-      #Logger.instance().info(f"No project key specified, using {project_key}")
+
+      if not project_key or len(project_key) == 0:
+        project_key = prompt_project_key(settings)
 
     return project_key
 
