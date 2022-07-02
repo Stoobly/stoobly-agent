@@ -1,14 +1,26 @@
 import pdb
 
+from typing import Callable, TypedDict
+
 from stoobly_agent.app.settings import Settings
+
+class LifeCycleOptions(TypedDict):
+  before_action: Callable[[], None]
+  after_action: Callable[[], None]
+
+class CommandOptions(TypedDict):
+  disable: LifeCycleOptions
+  enable: LifeCycleOptions
+  show: LifeCycleOptions
 
 class ConfigDecorator():
   __main = None
   __settings = None
   __setting = None # e.g. features.remote
 
-  def __init__(self, main, settings: Settings, setting: str):
+  def __init__(self, main, settings: Settings, setting: str, options: CommandOptions = {}):
     self.__main = main
+    self.__options = options
     self.__settings = settings
     self.__setting = setting
 
@@ -21,6 +33,12 @@ class ConfigDecorator():
   def __with_enable(self):
     @self.__main.command()
     def enable():
+      life_cycle_options = self.__options.get('enable')
+      if life_cycle_options:
+        before_action = life_cycle_options['before_action']
+        if isinstance(before_action, Callable):
+          before_action()
+
       settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=True)
       self.__settings.write(settings_hash)

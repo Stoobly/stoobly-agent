@@ -1,3 +1,4 @@
+import click
 import sys
 
 from stoobly_agent.app.settings import Settings
@@ -5,10 +6,15 @@ from stoobly_agent.lib.api.keys import InvalidOrganizationKey, InvalidProjectKey
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey, ReportKey, RequestKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
+# Print
+
+def print_invalid_key(resource: str):
+  print(f"Error: Invalid {resource} key", file=sys.stderr) 
+
 # Handle
 
 def handle_invalid_key(resource: str):
-  print(f"Error: Invalid {resource} key", file=sys.stderr) 
+  print_invalid_key(resource)
   sys.exit(1)
 
 def handle_missing_key(resource: str):
@@ -47,6 +53,24 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
   except InvalidScenarioKey:
     handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
 
+# Prompt
+
+def prompt_project_key(settings: Settings):
+  while True:
+    project_key = click.prompt('Please enter a project key', type=str)
+
+    try:
+      ProjectKey(project_key)
+      break
+    except InvalidProjectKey:
+      print_invalid_key('project')
+      print(f"Try `stoobly-agent project list` to find a project key", file=sys.stderr) 
+
+  settings.proxy.intercept.project_key = project_key
+  settings.commit()
+
+  return project_key
+
 # Resolve
 
 def resolve_project_key(kwargs: dict, settings: Settings) -> str:
@@ -54,7 +78,9 @@ def resolve_project_key(kwargs: dict, settings: Settings) -> str:
 
     if not project_key:
       project_key = settings.proxy.intercept.project_key
-      #Logger.instance().info(f"No project key specified, using {project_key}")
+
+      if not project_key or len(project_key) == 0:
+        project_key = prompt_project_key(settings)
 
     return project_key
 
