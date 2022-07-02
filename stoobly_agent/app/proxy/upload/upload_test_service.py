@@ -10,7 +10,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ..intercept_settings import InterceptSettings
-from .join_request_service import join_redacted_request
+from .join_request_service import join_rewritten_request
 
 def inject_upload_test(
   api: TestsResource,
@@ -32,7 +32,7 @@ def upload_test(
   flow: MitmproxyHTTPFlow, 
   **kwargs
 ) -> Response:
-    joined_request = join_redacted_request(flow, intercept_settings)
+    joined_request = join_rewritten_request(flow, intercept_settings)
 
     Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 
