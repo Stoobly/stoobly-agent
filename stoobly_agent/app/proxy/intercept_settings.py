@@ -125,12 +125,10 @@ class InterceptSettings:
 
   @property
   def redact_rules(self) -> List[RedactRule]:
-    # TODO
-    return []
+    return self.__select_rewrite_rules(mode.RECORD)
 
   @property
   def ignore_rules(self) -> List[IgnoreRule]:
-    # TODO
     return []
 
   @property
@@ -163,7 +161,7 @@ class InterceptSettings:
 
     return request_origin.WEB
 
-  def __select_rewrite_rules(self):
+  def __select_rewrite_rules(self, mode = None):
     rules = []
 
     # Filter only parameters matching active intercept mode
@@ -186,8 +184,9 @@ class InterceptSettings:
 
     return rules
 
-  def __select_parameter_rules(self, rewrite_rule: RewriteRule):
+  def __select_parameter_rules(self, rewrite_rule: RewriteRule, mode = None):
+    mode = mode or self.mode
     return list(filter(
-      lambda parameter: self.mode in parameter.modes and parameter.name, 
+      lambda parameter: mode in parameter.modes and parameter.name, 
       rewrite_rule.parameter_rules or []
     ))
