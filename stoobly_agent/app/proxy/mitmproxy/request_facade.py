@@ -112,16 +112,16 @@ class MitmproxyRequestFacade(Request):
             self.__rewrite_headers(rewrites)
             self.__rewrite_content(rewrites)
 
-    def select_parameter_rules(self, redact_rules: List[FilterRule]) -> List[ParameterRule]:
+    def select_parameter_rules(self, rules: List[FilterRule]) -> List[ParameterRule]:
         # Find all the rules that match request url and method
-        rules = list(filter(self.__is_parameter_rule_selected, redact_rules or []))
+        _rules = list(filter(self.__is_parameter_rule_selected, rules or []))
         
-        if len(rules) == 0:
+        if len(_rules) == 0:
             return []
 
-        parameter_rules = list(map(lambda rule: rule.parameter_rules, rules))
+        parameter_rules = list(map(lambda rule: rule.parameter_rules, _rules))
 
-        return [item for sublist in parameter_rules for item in sublist] # flatten filters_list
+        return [item for sublist in parameter_rules for item in sublist] # flatten list
 
     def __is_parameter_rule_selected(self, redact_rule: FilterRule):
         pattern = redact_rule.pattern
@@ -134,9 +134,8 @@ class MitmproxyRequestFacade(Request):
 
         method_matches = self.method in redact_rule.methods
         return url_matches and method_matches
-
     
-    def __apply_filters(self, params: dict, rewrites: List[ParameterRule], handler: Callable):
+    def __apply_rewrites(self, params: dict, rewrites: List[ParameterRule], handler: Callable):
         if len(rewrites) == 0:
             return params
 
@@ -157,22 +156,22 @@ class MitmproxyRequestFacade(Request):
     def __rewrite_content(self, rewrites: List[ParameterRule]):
         self.__apply_content(rewrites, self.__rewrite_handler)
 
-    def __redact_headers(self, filters: List[ParameterRule]):
-        self.__apply_headers(filters, self.__redact_handler)
+    def __redact_headers(self, redacts: List[ParameterRule]):
+        self.__apply_headers(redacts, self.__redact_handler)
 
-    def __redact_content(self, filters: List[ParameterRule]):
-        self.__apply_content(filters, self.__redact_handler)
+    def __redact_content(self, redacts: List[ParameterRule]):
+        self.__apply_content(redacts, self.__redact_handler)
 
     def __apply_headers(self, rewrites: List[ParameterRule], handler: Callable):
         rewrites = list(filter(lambda rewrite: rewrite.type == request_component.HEADER, rewrites))
-        return self.__apply_filters(self.request.headers, rewrites, handler)
+        return self.__apply_rewrites(self.request.headers, rewrites, handler)
 
     def __apply_content(self, rewrites: List[ParameterRule], handler: Callable):
         parsed_content = self.__body.get(self.content_type)
 
         if isinstance(parsed_content, dict) or isinstance(parsed_content, multidict.MultiDictView):
             rewrites = list(filter(lambda rewrite: rewrite.type == request_component.BODY_PARAM, rewrites))
-            rewritten_params = self.__apply_filters(parsed_content, rewrites, handler)
+            rewritten_params = self.__apply_rewrites(parsed_content, rewrites, handler)
 
             self.__body.set(rewritten_params, self.content_type)
 
