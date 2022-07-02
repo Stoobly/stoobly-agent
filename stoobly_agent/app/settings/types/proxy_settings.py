@@ -22,7 +22,7 @@ class DataRules(TypedDict):
   scenario_id: str
   TestPolicy: TestPolicy
 
-class FilterRule(TypedDict):
+class RewriteRule(TypedDict):
   methods: List[Method]
   pattern: str
   parameter_rules: List[ParameterRule]
@@ -40,14 +40,14 @@ class InterceptSettings(TypedDict):
   upstream_url: str
 
 DataSettings = Dict[str, DataRules]
-FilterRules = List[FilterRule]
-FilterSettings = Dict[str, FilterRules]
+RewriteRules = List[RewriteRule]
+RewriteSettings = Dict[str, RewriteRules]
 FirewallRules = Dict[str, List[FirewallRule]]
 FirewallSettings = Dict[str, FirewallRules]
 
 class ProxySettings(TypedDict):
   data: DataSettings
-  filter: FilterSettings
+  filter: RewriteSettings
   firewall: FirewallSettings
   intercept: InterceptSettings
   url: str

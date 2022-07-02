@@ -1,17 +1,17 @@
 import pdb
 
 from .parameter_rule import ParameterRule
-from .types.proxy_settings import FilterRule as IFilterRule
+from .types.proxy_settings import RewriteRule as IRewriteRule
 
-class FilterRule:
+class RewriteRule:
 
-  def __init__(self, filter_rule: IFilterRule):
-    self.__filter_rule = filter_rule
+  def __init__(self, rewrite_rule: IRewriteRule):
+    self.__rewrite_rule = rewrite_rule
 
-    self.__methods = self.__filter_rule.get('methods')
-    self.__pattern = self.__filter_rule.get('pattern')
+    self.__methods = self.__rewrite_rule.get('methods')
+    self.__pattern = self.__rewrite_rule.get('pattern')
 
-    self.__raw_parameter_rules = self.__filter_rule.get('parameter_rules') or []
+    self.__raw_parameter_rules = self.__rewrite_rule.get('parameter_rules') or []
     self.__parameter_rules = list(map(lambda rule: ParameterRule(rule), self.__raw_parameter_rules))
 
   @property 

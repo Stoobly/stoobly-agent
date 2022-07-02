@@ -17,7 +17,7 @@ from .mock.context import MockContext
 from .test.context import TestContext
 from .test.test_service import test
 from .upload.upload_test_service import inject_upload_test
-from .utils.filter_rules_to_ignored_components_service import filter_rules_to_ignored_components
+from .utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 
 LOG_ID = 'HandleTest'
 
@@ -35,7 +35,7 @@ def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptS
     if len(ignore_rules) > 0:
         request = MitmproxyRequestFacade(flow.request)
         ignore_rules = request.select_parameter_rules(ignore_rules)
-        ignored_components = filter_rules_to_ignored_components(ignore_rules)
+        ignored_components = rewrite_rules_to_ignored_components(ignore_rules)
 
     context = MockContext(flow)
 

@@ -6,7 +6,7 @@ cli:
 proxy:
   data: map(include('data_rules'), key=include('project_id'))
   firewall: map(list(include('firewall_rule')), key=include('project_id'))
-  filter: map(list(include('filter_rule')), key=include('project_id'))
+  filter: map(list(include('rewrite_rule')), key=include('project_id'))
   intercept:
     active: bool()
     mode: include('mode')
@@ -42,7 +42,7 @@ parameter_rule:
   name: str()
   type: str()
   value: str(required=False)
-filter_rule:
+rewrite_rule:
   methods: list(include('method'))
   pattern: str()
   parameter_rules: list(include('parameter_rule'))

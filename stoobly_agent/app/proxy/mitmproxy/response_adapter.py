@@ -1,6 +1,6 @@
 from mitmproxy.http import Response as MitmproxyResponse
 
-from stoobly_agent.app.settings.filter_rule import FilterRule 
+from stoobly_agent.app.settings.rewrite_rule import RewriteRule 
 
 from .response import Response
 
@@ -10,7 +10,7 @@ class MitmproxyResponseAdapter(Response):
         self.response = response
         self.content = response.raw_content
 
-        self.filter_rules = []
+        self.rewrite_rules = []
         self.rewrite_rules = []
 
     @property
@@ -38,13 +38,13 @@ class MitmproxyResponseAdapter(Response):
         self.response.headers['content-length'] = str(len(self.content))
 
     
-    def with_redact_rules(self, rules: FilterRule):
+    def with_redact_rules(self, rules: RewriteRule):
         if type(rules) == list:
-            self.filter_rules = rules
+            self.rewrite_rules = rules
 
         return self
 
-    def with_rewrite_rules(self, rules: FilterRule):
+    def with_rewrite_rules(self, rules: RewriteRule):
         if type(rules) == list:
             self.rewrite_rules = rules
 

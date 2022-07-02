@@ -39,7 +39,7 @@ def join_redacted_request(flow: MitmproxyHTTPFlow, intercept_settings: Intercept
     # Adapt flow.response
     response = MitmproxyResponseAdapter(flow.response)
 
-    redact_rules: list = intercept_settings.ignore_rules
+    redact_rules: list = intercept_settings.redact_rules
  
     request.with_redact_rules(redact_rules).redact()
     response.with_redact_rules(redact_rules).redact()
