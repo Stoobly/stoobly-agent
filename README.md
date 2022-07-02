@@ -34,12 +34,16 @@ stoobly-agent --help
 
 ## For Developers
 
-### Dependencies
-
 ### Installation
 
 ```
 pip install .
+```
+
+### Test
+
+```
+pytest stoobly_agent/test
 ```
 
 ### Deployment
