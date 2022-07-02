@@ -6,10 +6,15 @@ from stoobly_agent.lib.api.keys import InvalidOrganizationKey, InvalidProjectKey
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey, ReportKey, RequestKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
+# Print
+
+def print_invalid_key(resource: str):
+  print(f"Error: Invalid {resource} key", file=sys.stderr) 
+
 # Handle
 
 def handle_invalid_key(resource: str):
-  print(f"Error: Invalid {resource} key", file=sys.stderr) 
+  print_invalid_key(resource)
   sys.exit(1)
 
 def handle_missing_key(resource: str):
@@ -51,10 +56,19 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
 # Prompt
 
 def prompt_project_key(settings: Settings):
-  project_key = click.prompt('Please enter a project key', type=str)
-  settings.remote.api_key = project_key
+  while True:
+    project_key = click.prompt('Please enter a project key', type=str)
+
+    try:
+      ProjectKey(project_key)
+      break
+    except InvalidProjectKey:
+      print_invalid_key('project')
+      print(f"Try `stoobly-agent project list` to find a project key", file=sys.stderr) 
+
   settings.proxy.intercept.project_key = project_key
   settings.commit()
+
   return project_key
 
 # Resolve
