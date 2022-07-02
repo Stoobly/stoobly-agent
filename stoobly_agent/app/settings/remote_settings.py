@@ -17,18 +17,22 @@ class RemoteSettings:
     return self.__remote_settings.get('api_key')
 
   @property
-  def api_key(self):
-    if self.__api_key != self.api_key_before_change:
+  def api_key(self) -> str:
+    def get():
+      if self.__api_key != self.api_key_before_change:
+        return self.__api_key
+
+      if os.environ.get(env_vars.API_KEY):
+        return os.environ[env_vars.API_KEY]
+
       return self.__api_key
-
-    if os.environ.get(env_vars.API_KEY):
-      return os.environ[env_vars.API_KEY]
-
-    return self.__api_key
+    
+    _api_key = get()
+    return _api_key.strip() if isinstance(_api_key, str) else ''
 
   @api_key.setter
-  def api_key(self, v):
-    self.__api_key = v
+  def api_key(self, v: str):
+    self.__api_key = v.strip()
 
   @property
   def api_url_before_change(self):
