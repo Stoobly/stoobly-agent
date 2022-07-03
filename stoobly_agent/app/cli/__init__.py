@@ -7,3 +7,4 @@ from .project_cli import project
 from .report_cli import report
 from .request_cli import request
 from .scenario_cli import scenario
+from .trace_cli import trace
