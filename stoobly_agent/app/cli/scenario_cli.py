@@ -72,6 +72,7 @@ def replay(**kwargs):
 )
 @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+@click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--report-key', help='Save to report.')
 @click.option('--strategy', help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
 @click.option('--trace-id', help='Use existing trace.')

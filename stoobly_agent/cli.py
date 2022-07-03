@@ -7,7 +7,7 @@ from stoobly_agent.config.constants import env_vars
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, feature, MainGroup, project, request
+from .app.cli import ca_cert, config, feature, MainGroup, project, request, trace
 from .app.proxy import CONNECTION_STRATEGIES, INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
 from .lib.orm.migrate_service import migrate as migrate_database
@@ -32,6 +32,7 @@ main.add_command(ca_cert)
 main.add_command(config)
 main.add_command(feature)
 main.add_command(request)
+main.add_command(trace)
 
 if settings.cli.features.dev_tools:
     from .app.cli import dev_tools
