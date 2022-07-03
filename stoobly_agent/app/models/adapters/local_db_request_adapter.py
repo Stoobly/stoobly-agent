@@ -87,10 +87,12 @@ class LocalDBRequestAdapter():
   def index(self, **query_params: RequestsIndexQueryParams) -> RequestsIndexResponse:
     page = query_params.get('page') or 0
     size = query_params.get('size') or 20
+    sort_by = query_params.get('sort_by') or 'created_at'
+    sort_order = query_params.get('sort_order') or 'desc'
 
     total = Request.count()
     
-    requests = Request.offset(page).limit(size).get()
+    requests = Request.offset(page).limit(size).order_by(sort_by, sort_order).get()
 
     return {
       'list': self.__transform_index_list(requests.items),
