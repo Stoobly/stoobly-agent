@@ -52,8 +52,9 @@ class RequestFacade(ReplayFacade):
     return self.__replay(replay_context, trace_context, replay_options)
 
   def mock(self, request_key: str, cli_options: ReplayCliOptions):
+    replay_context = self.__build_replay_context(request_key)
     cli_options['mode'] = mode.MOCK
-    return self.__replay(request_key, cli_options)
+    return self.__replay(replay_context, None, cli_options)
 
   def test(self, request_key: str, cli_options: TestCliOptions):
     replay_context = self.__build_replay_context(request_key)
