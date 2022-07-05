@@ -7,7 +7,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.config.constants import test_filter, test_strategy
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -86,11 +86,12 @@ if is_remote:
   @request.command(
     help="Test a request"
   )
+  @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
   @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+  @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS]), help='For iterable responses, selectively test properties.')
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--report-key', help='Save to report.')
-  @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
-  @click.option('--strategy', default=test_strategy.DIFF, help=f"{test_strategy.CUSTOM} | {test_strategy.DIFF} | {test_strategy.FUZZY}")
+  @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
   @click.option('--trace-id', help='Use existing trace.')
   @click.argument('request_key')
   def test(**kwargs):

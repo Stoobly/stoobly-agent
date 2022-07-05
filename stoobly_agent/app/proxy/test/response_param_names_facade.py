@@ -1,6 +1,8 @@
+from ctypes import Union
 from typing import List
 
 from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
+from stoobly_agent.config.constants import test_filter
 
 class ResponseParamNamesFacade():
 
@@ -10,6 +12,15 @@ class ResponseParamNamesFacade():
     self.__aliased_response_param_names = None
     self.__deterministic_response_param_names = None
     self.__required_response_param_names = None
+
+    self.__filter: test_filter.TestFilter = test_filter.ALL
+
+    self.__response_param_name_map = {}
+    for response_param_name in self.__response_param_names:
+      if not response_param_name.get('query'):
+        continue
+
+      self.__response_param_name_map[response_param_name['query']] = response_param_name
 
   @property
   def aliased(self) -> List[ResponseParamName]: 
@@ -27,6 +38,7 @@ class ResponseParamNamesFacade():
 
     return self.__deterministic_response_param_names
 
+
   @property
   def required(self) -> List[ResponseParamName]: 
     if not self.__required_response_param_names:
@@ -34,3 +46,23 @@ class ResponseParamNamesFacade():
       self.__required_response_param_names = list(filter(filter_handler, self.__response_param_names))
 
     return self.__required_response_param_names
+
+  def is_filtered(self, query: str) -> bool:
+    if self.__filter == test_filter.ALL:
+      return False
+    elif self.__filter == test_filter.ALIAS:
+      _response_param_name = self.__response_param_name_map.get(query)
+      if not _response_param_name:
+        return False
+
+      # If not aliased, then filter
+      return not _response_param_name.get['alias_id']
+    elif self.__filter == test_filter.CUSTOM:
+      pass
+    else:
+      return True
+
+  def with_filter(self, filter: test_filter.TestFilter):
+    self.__filter = filter
+    return self
+    

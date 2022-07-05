@@ -6,7 +6,7 @@ from typing import Callable, TypedDict, Union
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
-from stoobly_agent.config.constants import custom_headers, request_origin, test_strategy
+from stoobly_agent.config.constants import custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.lib.api.api import Api
 from stoobly_agent.lib.logger import bcolors, Logger
@@ -21,6 +21,7 @@ class ReplayRequestOptions(TypedDict):
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
+  test_filter: test_filter.TestFilter
   test_strategy: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
   trace_context: TraceContext
 
@@ -47,6 +48,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   if 'scenario_key' in options:
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
+
+  if 'test_filter' in options:
+    headers[custom_headers.TEST_FILTER] = options['test_filter']
 
   if 'test_strategy' in options:
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
