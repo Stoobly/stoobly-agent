@@ -33,6 +33,9 @@ class MatchContext():
         self.path_key = '.'.join([self.path_key, key]) if len(self.path_key) > 0 else key
         self.query = '.'.join([self.query, key]) if len(self.query) > 0 else key
 
+    def is_filtered(self):
+        return self.response_param_names_facade.is_filtered(self.query)
+
 def dict_fuzzy_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade):
     context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
     return __dict_fuzzy_matches(expected, actual, context)
@@ -48,6 +51,9 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
                 return False, f"Missing key: expected {path_key} to exist"
             else:
                 continue
+
+        if context.is_filtered():
+            continue
 
         actual_value = actual[key]
         if not __value_fuzzy_matches(actual_value, expected_value):
@@ -87,6 +93,9 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
         context = MatchContext(parent_context.to_dict())
         context.visit_list(i)
         path_key = context.path_key
+
+        if context.is_filtered():
+            continue
 
         if type(value) not in valid_types:
             return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"

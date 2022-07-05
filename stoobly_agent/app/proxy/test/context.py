@@ -9,7 +9,7 @@ from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyRes
 from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
 from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
 
-from stoobly_agent.config.constants import custom_headers, test_strategy
+from stoobly_agent.config.constants import custom_headers, test_filter, test_strategy
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
@@ -18,6 +18,7 @@ from .context_response import TestContextResponse
 
 class TestContext():
   def __init__(self, mock_context: MockContext):
+    self.__filter = test_filter.ALL
     self.__flow = mock_context.flow
     self.__mock_context = mock_context
     self.__strategy = test_strategy.DIFF
@@ -59,6 +60,14 @@ class TestContext():
   @property
   def decoded_expected_response_content(self):
     return self.__expected_response.decode_content()
+
+  @property
+  def filter(self):
+    return self.__filter
+
+  @filter.setter
+  def strategy(self, v: test_filter.TestFilter):
+    self.__filter = v
 
   @property
   def mock_request_id(self) -> Union[str, None]:

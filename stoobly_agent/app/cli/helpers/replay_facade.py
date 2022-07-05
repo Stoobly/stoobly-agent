@@ -3,7 +3,7 @@ from typing import Callable, List, TypedDict
 from stoobly_agent.app.cli.helpers.trace_context_facade import TraceContextFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import request_origin, test_strategy
+from stoobly_agent.config.constants import request_origin, test_filter, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.orm.trace import Trace
 
@@ -63,12 +63,18 @@ class ReplayFacade():
     return common_cli_options
 
   def common_test_cli_options(self, cli_options: TestCliOptions) -> TestCliOptions:
+    filter = cli_options.get('filter')
+    if not filter:
+      # TODO: add test_filter to data_rules
+      pass
+
     strategy = cli_options.get('strategy')
     if not strategy:
         data_rule = self.data_rules()
         strategy = data_rule.test_strategy
 
     return {
+      'test_filter': filter or test_filter.ALL,
       'test_strategy': strategy or test_strategy.DIFF,
       **self.common_cli_options(cli_options)
     }

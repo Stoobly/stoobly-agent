@@ -9,7 +9,7 @@ from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IgnoreRule, RedactRule
-from stoobly_agent.config.constants import custom_headers, mode, request_origin
+from stoobly_agent.config.constants import custom_headers, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 
 class InterceptSettings:
@@ -146,6 +146,13 @@ class InterceptSettings:
 
     if self.__request:
       return f"{self.__request.scheme}://{self.__request.host}:{self.__request.port}"
+
+  @property
+  def test_filter(self):
+    if self.__headers and custom_headers.TEST_FILTER in self.__headers:
+      return self.__headers[custom_headers.TEST_FILTER]
+
+    return test_filter.ALL
   
   @property
   def test_strategy(self):

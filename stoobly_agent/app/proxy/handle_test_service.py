@@ -46,6 +46,7 @@ def __handle_mock_success(mock_context: MockContext, intercept_settings: Interce
     test_context = TestContext(mock_context)
     test_strategy = intercept_settings.test_strategy
     test_context.strategy = test_strategy
+    test_context.filter = intercept_settings.test_filter
     settings = Settings.instance()
     test_context.with_response_param_names(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
     
