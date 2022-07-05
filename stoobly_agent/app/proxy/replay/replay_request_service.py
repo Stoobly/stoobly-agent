@@ -1,3 +1,4 @@
+import os
 import pdb
 import requests
 
@@ -36,10 +37,10 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   headers = request.headers
 
   if 'lifecycle_hooks_script_path' in options:
-    headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH] = options['lifecycle_hooks_script_path']
+    __handle_lifecycle_hooks_script_path(options['lifecycle_hooks_script_path'], headers) 
 
   if 'mode' in options:
-    __handle_mode_option(request, headers, options['mode'])
+    __handle_mode_option(options['mode'], request, headers)
 
   if 'project_key' in options:
     headers[custom_headers.PROJECT_KEY] = options['project_key']
@@ -81,7 +82,13 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   return res
 
-def __handle_mode_option(request: Request, headers, _mode):
+def __handle_lifecycle_hooks_script_path(script_path, headers):
+  if not os.path.isabs(script_path):
+      script_path = os.path.join(os.path.abspath('.'), script_path)
+
+  headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH] = script_path
+
+def __handle_mode_option(_mode, request: Request, headers):
   headers[custom_headers.PROXY_MODE] = _mode
 
   if _mode == mode.MOCK or _mode == mode.TEST:

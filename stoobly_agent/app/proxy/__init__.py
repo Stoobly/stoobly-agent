@@ -116,4 +116,3 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
-    del options['test_script']

@@ -56,14 +56,12 @@ class InterceptSettings:
 
   @property
   def lifecycle_hooks_script_path(self):
-    if self.__headers and custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH not in self.__headers:
-      return 
-
-    return self.__headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH]
+    if self.__headers and custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH in self.__headers:
+      return self.__headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH]
 
   @property
   def lifecycle_hooks(self):
-    return self.__lifecycle_hooks
+    return self.__lifecycle_hooks or {}
 
   @property
   def mode(self):
@@ -218,9 +216,6 @@ class InterceptSettings:
 
     if not script_path:
         return
-
-    if not os.path.isabs(script_path):
-        script_path = os.path.join(os.path.abspath('.'), script_path)
 
     if not os.path.exists(script_path):
         return Logger.instance().error(f"Lifecycle hooks script {script_path} does not exist")
