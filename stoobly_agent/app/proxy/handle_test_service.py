@@ -2,7 +2,7 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
 from stoobly_agent.app.settings import Settings
@@ -16,7 +16,6 @@ from .mock.context import MockContext
 from .test.context import TestContext
 from .test.test_service import test
 from .upload.upload_test_service import inject_upload_test
-from .utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 
 LOG_ID = 'HandleTest'
 
@@ -24,32 +23,24 @@ LOG_ID = 'HandleTest'
 #
 # Mock and Test modes share the same policies
 #
-def handle_response_test(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> None:
+def handle_response_test(context: ReplayContext) -> None:
+    flow: MitmproxyHTTPFlow = context.flow
+
     disable_transfer_encoding(flow.response)
 
-    context = MockContext(flow)
-
     handle_request_mock_generic(
-        context,
-        intercept_settings,
-        failure=lambda context: __handle_mock_failure(context, intercept_settings),
+        MockContext(flow),
+        failure=lambda mock_context: __handle_mock_failure(TestContext(context, mock_context)),
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
-        success=lambda context: __handle_mock_success(context, intercept_settings)
+        success=lambda mock_context: __handle_mock_success(TestContext(context, mock_context))
     )
 
 def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse):
     if test_response.get('id'):
         flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
 
-def __handle_mock_success(mock_context: MockContext, intercept_settings: InterceptSettings) -> None:
-    # Build TestContext
-    test_context = TestContext(mock_context)
-
-    test_context.filter = intercept_settings.test_filter
-    test_context.lifecycle_hooks = intercept_settings.lifecycle_hooks
-    test_context.lifecycle_hooks_script_path = intercept_settings.lifecycle_hooks_script_path
-    test_strategy = intercept_settings.test_strategy
-    test_context.strategy = test_strategy
+def __handle_mock_success(test_context: TestContext) -> None:
+    intercept_settings = test_context.intercept_settings
 
     settings = Settings.instance()
     test_context.with_response_param_names(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
@@ -57,7 +48,7 @@ def __handle_mock_success(mock_context: MockContext, intercept_settings: Interce
     # Run test
     passed, log = test(test_context)
 
-    flow = mock_context.flow
+    flow = test_context.flow
     request_id = test_context.mock_request_id
     if request_id:
         upload_test = inject_upload_test(None, intercept_settings)
@@ -69,7 +60,7 @@ def __handle_mock_success(mock_context: MockContext, intercept_settings: Interce
             passed=passed,
             request_id=request_id,
             status=flow.response.status_code,
-            strategy=test_strategy
+            strategy=intercept_settings.test_strategy
         )
 
         # If the origin was from a CLI, send test ID in response header
@@ -78,8 +69,10 @@ def __handle_mock_success(mock_context: MockContext, intercept_settings: Interce
     
     return flow.response
 
-def __handle_mock_failure(context: MockContext, intercept_settings: InterceptSettings) -> None:
+def __handle_mock_failure(test_context: TestContext) -> None:
     Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
+
+    intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
         return build_response(False, 'No test found')

@@ -10,6 +10,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
+from stoobly_agent.app.settings import intercept_settings
 from stoobly_agent.config.constants import custom_headers, mock_policy
 from stoobly_agent.lib.logger import Logger
 
@@ -33,7 +34,8 @@ class MockOptions(TypedDict):
 # @param request [mitmproxy.http.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(context: MockContext, intercept_settings: InterceptSettings, **options: MockOptions):
+def handle_request_mock_generic(context: MockContext, **options: MockOptions):
+    intercept_settings = context.intercept_settings
     request_model = RequestModel(intercept_settings.settings)
     request: MitmproxyRequest = context.flow.request
 
@@ -97,13 +99,10 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
 
     return res
 
-def handle_request_mock(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
-    context = MockContext(flow)
-
+def handle_request_mock(context: MockContext):
     handle_request_mock_generic(
         context,
-        intercept_settings,
-        failure=lambda context: __handle_mock_failure(context, intercept_settings),
+        failure=lambda context: __handle_mock_failure(context),
         success=lambda context: __handle_mock_success(context)
     )
 
@@ -112,8 +111,9 @@ def __handle_mock_success(context: MockContext) -> None:
     start_time = context.start_time
     __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
-def __handle_mock_failure(context: MockContext, intercept_settings: InterceptSettings):
+def __handle_mock_failure(context: MockContext):
     req = context.flow.request
+    intercept_settings = context.intercept_settings
     upstream_url = intercept_settings.upstream_url
 
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
