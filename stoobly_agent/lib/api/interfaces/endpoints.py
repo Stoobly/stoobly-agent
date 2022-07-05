@@ -15,6 +15,7 @@ class Alias(TypedDict):
   name: str
 
 class ResponseParamName(RequestComponentName):
+  is_deterministic: bool
   query: str
 
 class EndpointShowResponse(TypedDict):

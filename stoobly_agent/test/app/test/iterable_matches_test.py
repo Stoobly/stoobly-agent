@@ -1,8 +1,9 @@
 import pdb
 import pytest
 
-from stoobly_agent.app.proxy.test.iterable_matches import dict_fuzzy_matches, list_fuzzy_matches, list_matches
+from stoobly_agent.app.proxy.test.iterable_matches import list_fuzzy_matches, list_matches
 from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
+from stoobly_agent.config.constants import test_filter
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
 @pytest.fixture
@@ -29,7 +30,7 @@ class TestListMatchesList():
     matches, log = list_matches([1], [1, 2], empty_response_param_names_facade)
     assert not matches, log
 
-class TestListFuzzyMatchesListOfDicts():
+class TestFuzzyMatchesListOfDicts():
 
   def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
     matches, log = list_fuzzy_matches([], [], endpoints_list_response_param_names_facade)
@@ -67,7 +68,7 @@ class TestListFuzzyMatchesListOfDicts():
     matches, log = list_fuzzy_matches(expected, actual, endpoints_list_response_param_names_facade)
     assert matches, log
 
-class TestListMatchesListOfDicts():
+class TestMatchesListOfDicts():
   def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
     matches, log = list_matches([], [], endpoints_list_response_param_names_facade)
     assert matches, log
@@ -130,6 +131,79 @@ class TestListMatchesListOfDicts():
         "updated_at": "2022-05-26T23:46:49.968Z",
         "components": [],
         "url": "https://alpha.api.stoobly.com/endpoints/930"
+      },
+    ] 
+
+    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+    assert not matches, log
+
+class TestAliasFilterMatchesListOfDicts():
+  def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+    endpoints_list_response_param_names_facade.with_filter(test_filter.ALIAS)
+
+    actual = [
+      {
+        "id": 1000,
+        "requests_count": 6,
+        "category": 1,
+        "path": "/abc",
+        "method": "GET",
+        "created_at": "2022-05-26T23:46:49.968Z",
+        "updated_at": "2022-05-26T23:46:49.968Z",
+        "components": [],
+        "url": "https://alpha.api.stoobly.com/endpoints/930"
+      },
+    ]
+
+    expected = [
+      {
+        "id": 1000,
+        "requests_count": 7,
+        "category": 2,
+        "path": "/abcdef",
+        "method": "POST",
+        "created_at": "2022-05-26T23:46:49.968Z",
+        "updated_at": "2022-05-26T23:46:49.968Z",
+        "components": None,
+        "url": "https://alpha.api.stoobly.com/endpoints/931"
+      },
+    ] 
+
+    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+    assert matches, log
+
+  def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+    endpoints_list_response_param_names_facade.with_filter(test_filter.ALIAS)
+
+    # Set aliased params as deterministic to prevent ignore due to not deterministic
+    for response_param_name in endpoints_list_response_param_names_facade.aliased:
+      response_param_name['is_deterministic'] = True
+
+    actual = [
+      {
+        "id": 1000,
+        "requests_count": 6,
+        "category": 1,
+        "path": "/abc",
+        "method": "GET",
+        "created_at": "2022-05-26T23:46:49.968Z",
+        "updated_at": "2022-05-26T23:46:49.968Z",
+        "components": [],
+        "url": "https://alpha.api.stoobly.com/endpoints/930"
+      },
+    ]
+
+    expected = [
+      {
+        "id": 1001,
+        "requests_count": 7,
+        "category": 2,
+        "path": "/abcdef",
+        "method": "POST",
+        "created_at": "2022-05-26T23:46:49.968Z",
+        "updated_at": "2022-05-26T23:46:49.968Z",
+        "components": None,
+        "url": "https://alpha.api.stoobly.com/endpoints/931"
       },
     ] 
 
