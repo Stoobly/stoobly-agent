@@ -2,6 +2,7 @@ import pdb
 
 from mitmproxy.http import Request
 from typing import Union
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
@@ -17,12 +18,10 @@ from stoobly_agent.lib.orm.trace import Trace
 from .context_response import TestContextResponse
 
 class TestContext():
-  def __init__(self, mock_context: MockContext):
-    self.__filter = test_filter.ALL
+  def __init__(self, replay_context: ReplayContext, mock_context: MockContext):
     self.__flow = mock_context.flow
+    self.__intercept_settings = mock_context.intercept_settings
     self.__mock_context = mock_context
-    self.__skipped = False
-    self.__strategy = test_strategy.DIFF
 
     mock_response = self.__mock_context.response
     self.__expected_response = RequestsResponseAdapter(mock_response).adapt()
@@ -31,11 +30,10 @@ class TestContext():
     self.__response = MitmproxyResponseAdapter(upstream_response).adapt()
 
     self.__endpoint_show_response = None
-    self.__lifecycle_hooks_script_path = None
-    self.__lifecycle_hooks = None
     self.__log = ''
     self.__passed = None
     self.__response_param_names = None
+    self.__skipped = False
 
   def with_response_param_names(self, resource: EndpointsResource):
     endpoint_id = self.mock_request_endpoint_id
@@ -56,19 +54,11 @@ class TestContext():
 
   @property
   def lifecycle_hooks(self):
-    return self.__lifecycle_hooks
-
-  @lifecycle_hooks.setter
-  def lifecycle_hooks(self, v):
-    self.__lifecycle_hooks = v
+    return self.__intercept_settings.lifecycle_hooks
 
   @property
   def lifecycle_hooks_script_path(self):
-    return self.__lifecycle_hooks_script_path
-
-  @lifecycle_hooks_script_path.setter
-  def lifecycle_hooks_script_path(self, v):
-    self.__lifecycle_hooks_script_path = v
+    return self.__intercept_settings.lifecycle_hooks_script_path
 
   @property
   def end_time(self):
@@ -84,11 +74,15 @@ class TestContext():
 
   @property
   def filter(self):
-    return self.__filter
+    return self.intercept_settings.test_filter
 
-  @filter.setter
-  def filter(self, v: test_filter.TestFilter):
-    self.__filter = v
+  @property
+  def flow(self):
+    return self.__flow
+
+  @property
+  def intercept_settings(self):
+    return self.__intercept_settings
 
   @property
   def log(self):
@@ -164,11 +158,7 @@ class TestContext():
 
   @property
   def strategy(self):
-    return self.__strategy
-
-  @strategy.setter
-  def strategy(self, v: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]):
-    self.__strategy = v
+    return self.intercept_settings.test_strategy
 
   @property
   def trace(self) -> Union[Trace, None]:
