@@ -1,5 +1,7 @@
+import os
 import pdb
 
+from runpy import run_path
 from typing import List, Union
 
 from mitmproxy.http import Request as MitmproxyRequest
@@ -11,6 +13,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IgnoreRule, RedactRule
 from stoobly_agent.config.constants import custom_headers, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+from stoobly_agent.lib.logger import Logger
 
 class InterceptSettings:
 
@@ -37,6 +40,9 @@ class InterceptSettings:
     self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
     self.__intercept_settings = self.__settings.proxy.intercept 
 
+    self.__lifecycle_hooks = None
+    self.__initialize_lifecycle_hooks()
+
   @property
   def settings(self):
     return self.__settings
@@ -49,9 +55,19 @@ class InterceptSettings:
     return self.__headers and custom_headers.PROXY_MODE in self.__headers
 
   @property
+  def lifecycle_hooks_script_path(self):
+    if self.__headers and custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH not in self.__headers:
+      return 
+
+    return self.__headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH]
+
+  @property
+  def lifecycle_hooks(self):
+    return self.__lifecycle_hooks
+
+  @property
   def mode(self):
     if self.__headers:
-      '''
       access_control_header = self.__headers.get('Access-Control-Request-Headers')
       do_proxy_header = custom_headers.DO_PROXY
 
@@ -60,7 +76,6 @@ class InterceptSettings:
 
       if do_proxy_header in self.__headers:
           return mode.NONE
-      '''
 
       if custom_headers.PROXY_MODE in self.__headers:
           return self.__headers[custom_headers.PROXY_MODE]
@@ -197,3 +212,21 @@ class InterceptSettings:
       lambda parameter: mode in parameter.modes and parameter.name, 
       rewrite_rule.parameter_rules or []
     ))
+
+  def __initialize_lifecycle_hooks(self):
+    script_path = self.lifecycle_hooks_script_path
+
+    if not script_path:
+        return
+
+    if not os.path.isabs(script_path):
+        script_path = os.path.join(os.path.abspath('.'), script_path)
+
+    if not os.path.exists(script_path):
+        return Logger.instance().error(f"Lifecycle hooks script {script_path} does not exist")
+
+    try:
+        self.__lifecycle_hooks = run_path(script_path)
+    except Exception as e:
+        return Logger.instance().error(e)
+    

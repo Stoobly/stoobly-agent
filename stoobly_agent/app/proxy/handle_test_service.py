@@ -44,9 +44,13 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
 def __handle_mock_success(mock_context: MockContext, intercept_settings: InterceptSettings) -> None:
     # Build TestContext
     test_context = TestContext(mock_context)
+
+    test_context.filter = intercept_settings.test_filter
+    test_context.lifecycle_hooks = intercept_settings.lifecycle_hooks
+    test_context.lifecycle_hooks_script_path = intercept_settings.lifecycle_hooks_script_path
     test_strategy = intercept_settings.test_strategy
     test_context.strategy = test_strategy
-    test_context.filter = intercept_settings.test_filter
+
     settings = Settings.instance()
     test_context.with_response_param_names(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
     
