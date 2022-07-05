@@ -15,6 +15,7 @@ from stoobly_agent.config.constants import mode
 
 class ReplayRequestOptions(TypedDict):
   group_by: str
+  lifecycle_hooks_script_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   on_response: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
@@ -33,6 +34,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   request = context.request
   headers = request.headers
+
+  if 'lifecycle_hooks_script_path' in options:
+    headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH] = options['lifecycle_hooks_script_path']
 
   if 'mode' in options:
     __handle_mode_option(request, headers, options['mode'])
