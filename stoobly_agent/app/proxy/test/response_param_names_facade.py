@@ -1,4 +1,5 @@
 from ctypes import Union
+import pdb
 from typing import List
 
 from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
@@ -25,7 +26,7 @@ class ResponseParamNamesFacade():
   @property
   def aliased(self) -> List[ResponseParamName]: 
     if not self.__aliased_response_param_names:
-      filter_handler = lambda param_name: param_name.get('alias_id') != None
+      filter_handler = lambda param_name: param_name.get('alias') != None
       self.__aliased_response_param_names = list(filter(filter_handler, self.__response_param_names))
 
     return self.__aliased_response_param_names
@@ -38,7 +39,6 @@ class ResponseParamNamesFacade():
 
     return self.__deterministic_response_param_names
 
-
   @property
   def required(self) -> List[ResponseParamName]: 
     if not self.__required_response_param_names:
@@ -47,20 +47,20 @@ class ResponseParamNamesFacade():
 
     return self.__required_response_param_names
 
-  def is_filtered(self, query: str) -> bool:
+  def is_selected(self, query: str) -> bool:
     if self.__filter == test_filter.ALL:
-      return False
+      return True
     elif self.__filter == test_filter.ALIAS:
       _response_param_name = self.__response_param_name_map.get(query)
       if not _response_param_name:
-        return False
+        return True
 
-      # If not aliased, then filter
-      return not _response_param_name.get['alias_id']
+      # If aliased, then filter
+      return not not _response_param_name.get('alias')
     elif self.__filter == test_filter.CUSTOM:
       pass
     else:
-      return True
+      return False
 
   def with_filter(self, filter: test_filter.TestFilter):
     self.__filter = filter

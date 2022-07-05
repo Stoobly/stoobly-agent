@@ -1,4 +1,3 @@
-from difflib import Match
 import pdb
 
 from typing import List, Tuple, TypedDict
@@ -33,8 +32,8 @@ class MatchContext():
         self.path_key = '.'.join([self.path_key, key]) if len(self.path_key) > 0 else key
         self.query = '.'.join([self.query, key]) if len(self.query) > 0 else key
 
-    def is_filtered(self):
-        return self.response_param_names_facade.is_filtered(self.query)
+    def is_selected(self):
+        return self.response_param_names_facade.is_selected(self.query)
 
 def dict_fuzzy_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade):
     context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
@@ -46,17 +45,17 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
         context.visit_dict(key)
         path_key = context.path_key
 
-        if key not in actual:
-            if __required(context):
-                return False, f"Missing key: expected {path_key} to exist"
-            else:
-                continue
+        if not __param_name_exists(key, actual):
+            if not context.is_selected() or not __required(context):
+                continue 
 
-        if context.is_filtered():
-            continue
+            return __param_name_exists_error(path_key)
 
         actual_value = actual[key]
         if not __value_fuzzy_matches(actual_value, expected_value):
+            if not context.is_selected():
+                continue
+
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
@@ -94,11 +93,11 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
         context.visit_list(i)
         path_key = context.path_key
 
-        if context.is_filtered():
-            continue
+        if not __valid_value_type(value, valid_types):
+            if not context.is_selected():
+                continue
 
-        if type(value) not in valid_types:
-            return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"
+            return __valid_type_error(path_key, value, valid_types)
 
         if type(value) is dict:
             return __dict_fuzzy_matches(type_examples[dict], value, context)
@@ -118,14 +117,17 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
         context.visit_dict(key)
         path_key = context.path_key
 
-        if key not in actual:
-            if __required(context):
-                return False, f"Missing key: expected {path_key} to exist"
-            else:
+        if not __param_name_exists(key, actual):
+            if not context.is_selected() or not __required(context):
                 continue
+
+            return __param_name_exists_error(path_key)
         
         actual_value = actual[key]
-        if not __value_fuzzy_matches(actual_value, expected_value):
+        if not __value_fuzzy_matches(expected_value, actual_value):
+            if not context.is_selected():
+                continue
+
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
@@ -134,9 +136,11 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
         if type(actual_value) is list:
             return __list_matches(expected_value, actual_value, context)
 
-        if actual_value != expected_value:
-            if __deterministic(context):
-                return __value_match_error(path_key, expected_value, actual_value)
+        if not __value_matches(expected_value, actual_value):
+            if not context.is_selected() or not __deterministic(context):
+                continue
+
+            return __value_match_error(path_key, expected_value, actual_value)
 
     return True, ''
 
@@ -145,16 +149,23 @@ def list_matches(expected: dict, actual: dict, response_param_names_facade: Resp
     return __list_matches(expected, actual, context)
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
-    if len(expected) != len(actual):
-        return False, f"Length did not match: got {len(actual)}, expected {len(expected)}"
+    if not __length_matches(expected, actual):
+        if parent_context.is_selected():
+            return __length_match_error(parent_context.path_key, expected, actual)
 
     for i, expected_value in enumerate(expected):
+        if i >= len(actual):
+            break
+
         context = MatchContext(parent_context.to_dict())
         context.visit_list(i)
         path_key = context.path_key
 
         actual_value = actual[i]
-        if not __value_fuzzy_matches(actual_value, expected_value):
+        if not __value_fuzzy_matches(expected_value, actual_value):
+            if not context.is_selected():
+                continue
+
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
@@ -163,9 +174,11 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
         if type(actual_value) is list:
             return __list_matches(expected_value, actual_value, context)
 
-        if actual_value != expected_value:
-            if __deterministic(context):
-                return __value_match_error(path_key, expected_value, actual_value)
+        if not __value_matches(actual_value, expected_value):
+            if not context.is_selected() or not __deterministic(context):
+                continue
+
+            return __value_match_error(path_key, expected_value, actual_value)
 
     return True, ''
 
@@ -187,6 +200,11 @@ def __deterministic(context: MatchContext) -> bool:
     deterministic_param_names: ResponseParamName = response_param_names_facade.deterministic
     return __param_name_matches(query, deterministic_param_names)
 
+### Matchers
+
+def __length_matches(v1, v2):
+    return len(v1) == len(v2)
+
 def __param_name_matches(query, param_names: List[ResponseParamName]) -> bool:
     for param_name in param_names:
         if param_name['query'] == query:
@@ -194,11 +212,31 @@ def __param_name_matches(query, param_names: List[ResponseParamName]) -> bool:
 
     return False
 
+def __param_name_exists(key, actual):
+    return key in actual
+
 def __value_fuzzy_matches(v1, v2):
     return type(v1) == type(v2)
 
-def __value_match_error(path_key, expected_value, actual_value):
-    return False, f"Key '{path_key}' did not match: got {actual_value}, expected {expected_value}"
+def __value_matches(v1, v2):
+    return v1 == v2
+
+def __valid_value_type(value, valid_types: list):
+    return type(value) in valid_types
+
+### Match Errors
+
+def __length_match_error(path_key, expected_value, actual_value):
+    return False, f"Key '{path_key}' length did not match: got {len(actual_value)}, expected {len(expected_value)}"
+
+def __param_name_exists_error(path_key):
+    return False, f"Missing key: expected {path_key} to exist"
 
 def __type_match_error(path_key, expected_value, actual_value):
     return False, f"Key '{path_key}' type did not match: got {type(actual_value)}, expected {type(expected_value)}"
+
+def __valid_type_error(path_key, value, valid_types):
+    return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"
+
+def __value_match_error(path_key, expected_value, actual_value):
+    return False, f"Key '{path_key}' did not match: got {actual_value}, expected {expected_value}"
