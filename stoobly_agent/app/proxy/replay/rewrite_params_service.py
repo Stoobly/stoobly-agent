@@ -64,7 +64,7 @@ def resolve_alias(trace: Trace, alias_name: str, value: str) -> Collection:
   '''
 
   trace_alias_hash = {
-    'assigned_to': value,
+    'assigned_to': str(value) if isinstance(value, list) or isinstance(value, dict) else value,
     'name': alias_name,
     'trace_id': trace.id,
   }

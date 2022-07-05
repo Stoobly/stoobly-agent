@@ -1,4 +1,3 @@
-from turtle import st
 from .cli_settings import *
 from .proxy_settings import *
 from .remote_settings import *
