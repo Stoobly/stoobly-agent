@@ -3,7 +3,8 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
-from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay
+from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
+from stoobly_agent.app.proxy.replay.context import ReplayContext
 
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.settings import Settings
@@ -34,18 +35,19 @@ def request(flow: MitmproxyHTTPFlow):
 
     if active_mode == mode.MOCK:
         handle_request_mock(flow, intercept_settings)
-    elif active_mode == mode.NONE:
-        pass
     elif active_mode == mode.RECORD:
         __disable_web_cache(request)
+
         handle_request_record(request, intercept_settings)
     elif active_mode == mode.REPLAY or active_mode == mode.TEST:
-        handle_request_replay(request, intercept_settings)
+        replay_context = ReplayContext(flow, intercept_settings)
+        handle_request_replay(replay_context)
     else:
-        bad_request(
-            flow,
-            "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST], active_mode)
-        )
+        if active_mode != mode.NONE:
+            bad_request(
+                flow,
+                "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST], active_mode)
+            )
 
 def response(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
@@ -56,6 +58,9 @@ def response(flow: MitmproxyHTTPFlow):
 
     if active_mode == mode.RECORD:
         return handle_response_record(flow, intercept_settings)
+    elif active_mode == mode.REPLAY:
+        replay_context = ReplayContext(flow, intercept_settings)
+        return handle_response_replay(replay_context)
     elif active_mode == mode.TEST:
         return handle_response_test(flow, intercept_settings)
 

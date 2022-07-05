@@ -1,3 +1,5 @@
+import pdb
+
 from typing import Callable, List, TypedDict
 
 from stoobly_agent.app.cli.helpers.trace_context_facade import TraceContextFacade
@@ -44,7 +46,7 @@ class ReplayFacade():
 
     return {
       'group_by': cli_options.get('group_by'),
-      'lifecyle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
+      'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
       'on_response': cli_options.get('on_response'),
       'request_origin': request_origin.CLI,
       'trace_context': trace_context,
