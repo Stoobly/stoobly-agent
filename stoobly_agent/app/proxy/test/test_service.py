@@ -20,10 +20,15 @@ class MatchHandlers():
         self.value_matches_handler = None
 
 def test(context: TestContext):
+    __before_test_hook(context)
+
+    if context.skipped:
+        return None, ''
+
     active_test_strategy = context.strategy
 
     if active_test_strategy == test_strategy.CUSTOM:
-        return test_custom(context)
+        context.passed, context.log = test_custom(context)
     elif active_test_strategy == test_strategy.DIFF or active_test_strategy == test_strategy.FUZZY:
         match_handlers = MatchHandlers()
         match_handlers.value_matches_handler = __value_matches
@@ -45,10 +50,16 @@ def test(context: TestContext):
         if not status_code_matches:
             log_lines.append(status_code_log)
 
-        return status_code_matches and response_matches, "\n".join(log_lines)
+        context.passed = status_code_matches and response_matches, 
+        context.log = "\n".join(log_lines)
     else:
         test_strategies = ','.join([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY])
-        return False, f"Could not find matching test strategy: valid options [{test_strategies}]"
+        context.passed = False
+        context.log = f"Could not find matching test strategy: valid options [{test_strategies}]"
+
+    __after_test_hook(context)
+
+    return context.passed, context.log
 
 #
 # Defaults to diff if content is not traversable
@@ -77,10 +88,10 @@ def test_default(context: TestContext, match_handlers: MatchHandlers):
         return response_matches, "\n".join(log_lines)
 
 def test_custom(context: TestContext):
-    if not TEST_SCRIPT in os.environ:
-        return False, f"Please use arg '--test-script <PATH>' when starting the agent"
+    script_path = __lifecycle_hooks_path(context)
 
-    script_path = os.environ[TEST_SCRIPT]
+    if not script_path:
+        return False, f"Lifecycle script path not set"
 
     if not os.path.isabs(script_path):
         script_path = os.path.join(os.path.abspath('.'), script_path)
@@ -93,11 +104,11 @@ def test_custom(context: TestContext):
     except Exception as e:
         return False, f"Exception: {e}"
 
-    if not 'test' in module:
-        return False, f"Expected function 'test' to be defined in {script_path}"
+    if not 'handle_test' in module:
+        return False, f"Expected function 'handle_test' to be defined in {script_path}"
 
     try:
-        status, log = module['test'](context)
+        status, log = module['handle_test'](context)
     except Exception as e:
         return False, f"Exception: {e}"
 
@@ -123,3 +134,30 @@ def __value_matches(content: FuzzyContent, expected_content: FuzzyContent) -> bo
 
 def __is_traversable(content: FuzzyContent):
     return type(content) is dict or type(content) is list
+
+def __lifecycle_hooks_path(context: TestContext):
+    if not context.lifecycle_hooks:
+        return
+
+    script_path = context.lifecycle_hooks_script_path
+
+    if not os.path.isabs(script_path):
+        script_path = os.path.join(os.path.abspath('.'), script_path)
+
+    return script_path
+
+def __after_test_hook(context: TestContext):
+    lifecycle_hooks = context.lifecycle_hooks 
+
+    if not 'handle_after_test' in lifecycle_hooks:
+        return
+
+    lifecycle_hooks['handle_after_test'](context)
+
+def __before_test_hook(context: TestContext):
+    lifecycle_hooks = context.lifecycle_hooks 
+
+    if not 'handle_after_test' in lifecycle_hooks:
+        return
+
+    lifecycle_hooks['handle_before_test'](context)

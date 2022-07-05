@@ -1,6 +1,6 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow, Request
+from mitmproxy.http import Request
 from typing import Union
 
 from stoobly_agent.app.proxy.mock.context import MockContext
@@ -21,6 +21,7 @@ class TestContext():
     self.__filter = test_filter.ALL
     self.__flow = mock_context.flow
     self.__mock_context = mock_context
+    self.__skipped = False
     self.__strategy = test_strategy.DIFF
 
     mock_response = self.__mock_context.response
@@ -30,6 +31,10 @@ class TestContext():
     self.__response = MitmproxyResponseAdapter(upstream_response).adapt()
 
     self.__endpoint_show_response = None
+    self.__lifecycle_hooks_script_path = None
+    self.__lifecycle_hooks = None
+    self.__log = ''
+    self.__passed = None
     self.__response_param_names = None
 
   def with_response_param_names(self, resource: EndpointsResource):
@@ -50,6 +55,22 @@ class TestContext():
     self.__response_param_names = ResponseParamNamesFacade(self.__endpoint_show_response['response_param_names'])
 
   @property
+  def lifecycle_hooks(self):
+    return self.__lifecycle_hooks
+
+  @lifecycle_hooks.setter
+  def lifecycle_hooks(self, v):
+    self.__lifecycle_hooks = v
+
+  @property
+  def lifecycle_hooks_script_path(self):
+    return self.__lifecycle_hooks_script_path
+
+  @lifecycle_hooks_script_path.setter
+  def lifecycle_hooks_script_path(self, v):
+    self.__lifecycle_hooks_script_path = v
+
+  @property
   def end_time(self):
     return self.__flow.response.timestamp_end
 
@@ -66,8 +87,16 @@ class TestContext():
     return self.__filter
 
   @filter.setter
-  def strategy(self, v: test_filter.TestFilter):
+  def filter(self, v: test_filter.TestFilter):
     self.__filter = v
+
+  @property
+  def log(self):
+    return self.__log
+
+  @log.setter
+  def log(self, v: str):
+    self.__log = v
 
   @property
   def mock_request_id(self) -> Union[str, None]:
@@ -76,6 +105,14 @@ class TestContext():
   @property
   def mock_request_endpoint_id(self) -> Union[str, None]:
     return self.expected_response.headers.get(custom_headers.MOCK_REQUEST_ENDPOINT_ID)
+
+  @property
+  def passed(self):
+    return self.__passed
+
+  @passed.setter
+  def passed(self, v):
+    self.__passed = v
 
   @property
   def request(self) -> Request:
@@ -112,6 +149,14 @@ class TestContext():
     rewrite_params(_decoded_expected_response_content, aliased_response_param_names, id_to_alias_map, trace)
 
     return _decoded_expected_response_content
+
+  @property
+  def skipped(self):
+    return self.__skipped
+
+  @skipped.setter
+  def skipped(self, v: bool):
+    self.skipped = v
 
   @property
   def start_time(self):
