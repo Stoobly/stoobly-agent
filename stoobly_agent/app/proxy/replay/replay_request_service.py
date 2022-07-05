@@ -3,7 +3,7 @@ import requests
 
 from http.cookies import SimpleCookie
 from typing import Callable, TypedDict, Union
-from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
 from stoobly_agent.config.constants import custom_headers, request_origin, test_filter, test_strategy

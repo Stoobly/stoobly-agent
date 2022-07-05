@@ -4,7 +4,7 @@ import sys
 from typing import TypedDict
 
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
-from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import bcolors
 
