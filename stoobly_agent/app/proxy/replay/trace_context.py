@@ -15,7 +15,7 @@ from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
-from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, resolve_alias, rewrite_params
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName

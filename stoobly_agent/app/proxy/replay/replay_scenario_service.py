@@ -7,7 +7,7 @@ from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexQueryParams
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
-from .context import ReplayContext
+from ...cli.helpers.context import ReplayContext
 from .replay_request_service import replay_with_trace, ReplayRequestOptions
 from .trace_context import TraceContext
 

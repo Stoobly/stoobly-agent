@@ -1,7 +1,7 @@
 import pdb
 import requests
 
-from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.tests_resource import TestsResource

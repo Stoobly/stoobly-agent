@@ -4,7 +4,7 @@ from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, Replay
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.replay.context import ReplayContext
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.replay_request_service import ReplayRequestOptions, replay, replay_with_trace
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
