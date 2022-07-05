@@ -10,14 +10,16 @@ from stoobly_agent.lib.orm.trace import Trace
 class ReplayCliOptions(TypedDict):
   assign: List[str]
   group_by: str
+  lifecycle_hooks_script_path: str
   on_response: Callable
   record: bool
   scenario_key: str
   trace: Trace
 
 class TestCliOptions(ReplayCliOptions):
+  filter: test_filter.TestFilter
   report_key: str
-  strategy: str
+  strategy: test_strategy.TestStrategy
 
 class ReplayFacade():
 
@@ -42,6 +44,7 @@ class ReplayFacade():
 
     return {
       'group_by': cli_options.get('group_by'),
+      'lifecyle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
       'on_response': cli_options.get('on_response'),
       'request_origin': request_origin.CLI,
       'trace_context': trace_context,
