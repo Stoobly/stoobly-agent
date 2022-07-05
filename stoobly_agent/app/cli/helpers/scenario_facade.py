@@ -80,7 +80,7 @@ class ScenarioFacade(ReplayFacade):
         lambda trace_context: self.__replay_with_trace_context(trace_context, scenario_key, replay_options)
       )
 
-  def __replay_with_trace_context(trace_context: TraceContext, scenario_key: str, replay_options: ReplayCliOptions):
+  def __replay_with_trace_context(self, trace_context: TraceContext, scenario_key: str, replay_options: ReplayCliOptions):
     _replay_options = replay_options.copy()
     _replay_options['trace_context'] = trace_context
     replay = inject_replay()

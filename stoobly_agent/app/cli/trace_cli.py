@@ -22,7 +22,7 @@ def trace(ctx):
     help="Create a trace"
 )
 def create(**kwargs):
-    trace = Trace()
+    trace = Trace.create()
     print(trace.id)
 
 @trace.command(
