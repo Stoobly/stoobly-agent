@@ -67,7 +67,6 @@ if settings.cli.features.remote:
 ''')
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
-@click.option('--test-script', help='Provide a custom script for testing.')
 @ConditionalDecorator(lambda f: click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--ui-port', default=4200, help='UI service port.')(f), is_remote)
 def run(**kwargs):
@@ -81,9 +80,6 @@ def run(**kwargs):
 
     if 'headless' in kwargs and not kwargs['headless']:
         run_api(**kwargs)
-
-    if kwargs['test_script']:
-        os.environ[env_vars.TEST_SCRIPT] = kwargs['test_script']
 
     if kwargs['intercept_mode'] and kwargs['intercept_mode'] not in INTERCEPT_MODES:
         print(f"Error: Invalid value for --intercept-mode, values: {', '.join(INTERCEPT_MODES)}", file=sys.stderr)

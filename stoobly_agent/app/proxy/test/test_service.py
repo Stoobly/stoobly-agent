@@ -6,7 +6,6 @@ from runpy import run_path
 from typing import Union
 
 from stoobly_agent.config.constants import test_strategy
-from stoobly_agent.config.constants.env_vars import TEST_SCRIPT
 
 from .iterable_matches import dict_fuzzy_matches, dict_matches, list_fuzzy_matches, list_matches
 from ..test.context import TestContext
