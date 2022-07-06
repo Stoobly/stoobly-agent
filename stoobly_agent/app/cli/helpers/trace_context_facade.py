@@ -25,7 +25,8 @@ class TraceContextFacade():
     return self
 
   def with_alias_resolve_strategy(self, strategy: alias_resolve_strategy.AliasResolveStrategy):
-    self.__trace_context.alias_resolve_strategy = strategy
+    if strategy:
+      self.__trace_context.alias_resolve_strategy = strategy
     return self
 
   def __parse_aliases(self, aliases: List[str]):
