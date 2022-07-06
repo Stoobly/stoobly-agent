@@ -5,11 +5,12 @@ from typing import Callable, List, TypedDict
 from stoobly_agent.app.cli.helpers.trace_context_facade import TraceContextFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import request_origin, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, request_origin, test_filter, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.orm.trace import Trace
 
 class ReplayCliOptions(TypedDict):
+  alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
   assign: List[str]
   group_by: str
   lifecycle_hooks_script_path: str
@@ -36,7 +37,7 @@ class ReplayFacade():
     # If a trace_id is given, use it to find a trace
     trace = Trace.find_by(id=trace_id) if trace_id else None 
     if trace or assign:
-      facade = TraceContextFacade(self.__settings, trace)
+      facade = TraceContextFacade(self.__settings, trace).with_alias_resolve_strategy(cli_options.get('alias_resolve_strategy'))
 
       # If assign is given, create default TraceAliases for the trace 
       if assign:
