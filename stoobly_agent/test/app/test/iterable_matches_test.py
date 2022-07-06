@@ -4,6 +4,8 @@ import pytest
 from stoobly_agent.app.proxy.test.iterable_matches import list_fuzzy_matches, list_matches
 from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
 from stoobly_agent.config.constants import test_filter
+from stoobly_agent.lib.orm.trace import Trace
+from stoobly_agent.lib.orm.trace_alias import TraceAlias
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
 @pytest.fixture
@@ -158,7 +160,7 @@ class TestAliasFilterMatchesListOfDicts():
     expected = [
       {
         "id": 1000,
-        "requests_count": 7,
+        "requests_count": 6,
         "category": 2,
         "path": "/abcdef",
         "method": "POST",
@@ -196,7 +198,7 @@ class TestAliasFilterMatchesListOfDicts():
     expected = [
       {
         "id": 1001,
-        "requests_count": 7,
+        "requests_count": 6,
         "category": 2,
         "path": "/abcdef",
         "method": "POST",
@@ -209,3 +211,81 @@ class TestAliasFilterMatchesListOfDicts():
 
     matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
     assert not matches, log
+
+  class TestLinkFilterMatchesListOfDicts():
+    def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+      trace = Trace.create()
+
+      TraceAlias.create(trace_id=trace.id, name=':endpointId', value=1001)
+      TraceAlias.create(trace_id=trace.id, name=':endpointRequestCounts', value=2)
+
+      endpoints_list_response_param_names_facade.with_filter(test_filter.LINK).with_trace(trace)
+
+      actual = [
+        {
+          "id": 1000,
+          "requests_count": 7,
+          "category": 1,
+          "path": "/abc",
+          "method": "GET",
+          "created_at": "2022-05-26T23:46:49.968Z",
+          "updated_at": "2022-05-26T23:46:49.968Z",
+          "components": [],
+          "url": "https://alpha.api.stoobly.com/endpoints/930"
+        },
+      ]
+
+      expected = [
+        {
+          "id": 1000,
+          "requests_count": 7,
+          "category": 2,
+          "path": "/abcdef",
+          "method": "POST",
+          "created_at": "2022-05-26T23:46:49.968Z",
+          "updated_at": "2022-05-26T23:46:49.968Z",
+          "components": None,
+          "url": "https://alpha.api.stoobly.com/endpoints/931"
+        },
+      ] 
+
+      #matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+      #assert matches, log
+
+    def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+      trace = Trace.create()
+
+      TraceAlias.create(trace_id=trace.id, name=':endpointId', value=1001)
+
+      endpoints_list_response_param_names_facade.with_filter(test_filter.LINK).with_trace(trace)
+
+      actual = [
+        {
+          "id": 1001,
+          "requests_count": 8,
+          "category": 1,
+          "path": "/abc",
+          "method": "GET",
+          "created_at": "2022-05-26T23:46:49.968Z",
+          "updated_at": "2022-05-26T23:46:49.968Z",
+          "components": [],
+          "url": "https://alpha.api.stoobly.com/endpoints/930"
+        },
+      ]
+
+      expected = [
+        {
+          "id": 1000,
+          "requests_count": 7,
+          "category": 2,
+          "path": "/abcdef",
+          "method": "POST",
+          "created_at": "2022-05-26T23:46:49.968Z",
+          "updated_at": "2022-05-26T23:46:49.968Z",
+          "components": None,
+          "url": "https://alpha.api.stoobly.com/endpoints/931"
+        },
+      ] 
+
+      matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+      assert not matches, log

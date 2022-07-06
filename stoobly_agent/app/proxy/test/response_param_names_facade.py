@@ -1,9 +1,10 @@
-from ctypes import Union
 import pdb
 from typing import List
 
 from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
 from stoobly_agent.config.constants import test_filter
+from stoobly_agent.lib.orm.trace import Trace
+from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
 class ResponseParamNamesFacade():
 
@@ -15,6 +16,7 @@ class ResponseParamNamesFacade():
     self.__required_response_param_names = None
 
     self.__filter: test_filter.TestFilter = test_filter.ALL
+    self.__trace: Trace = None
 
     self.__response_param_name_map = {}
     for response_param_name in self.__response_param_names:
@@ -51,18 +53,43 @@ class ResponseParamNamesFacade():
     if self.__filter == test_filter.ALL:
       return True
     elif self.__filter == test_filter.ALIAS:
-      _response_param_name = self.__response_param_name_map.get(query)
-      if not _response_param_name:
-        return True
-
-      # If aliased, then filter
-      return not not _response_param_name.get('alias')
-    elif self.__filter == test_filter.CUSTOM:
-      pass
+      return self.__select_alias(query)
+    elif self.__filter == test_filter.LINK:
+      return self.__select_link(query)
     else:
       return False
 
   def with_filter(self, filter: test_filter.TestFilter):
     self.__filter = filter
     return self
+
+  def with_trace(self, trace: Trace):
+    self.__trace = trace
+    return self
     
+  def __select_alias(self, query: str):
+    _response_param_name = self.__response_param_name_map.get(query)
+    if not _response_param_name:
+      return False
+
+    # If aliased, then filter
+    return not not _response_param_name.get('alias')
+
+  def __select_link(self, query: str):
+    if not self.__trace:
+      return True
+
+    _response_param_name: ResponseParamName = self.__response_param_name_map.get(query)
+    if not _response_param_name:
+      return False
+
+    if not _response_param_name.get('alias_name'):
+      return False
+
+    alias_name = _response_param_name.get('alias_name')
+    trace_aliases = TraceAlias.where({
+      'name': alias_name,
+      'trace_id': self.__trace.id,
+    })
+
+    return trace_aliases.count() > 0
