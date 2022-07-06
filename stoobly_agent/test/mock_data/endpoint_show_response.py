@@ -108,6 +108,7 @@ endpoint_show_response = {
       "response_param_name_id": 426,
       "updated_at": "2022-06-15T01:08:06.946Z",
       "alias_name": ":endpointId",
+      "alias_id": 106,
       "alias": {
         "id": 106,
         "name": ":endpointId",

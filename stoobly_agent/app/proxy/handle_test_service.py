@@ -29,7 +29,7 @@ def handle_response_test(context: ReplayContext) -> None:
     disable_transfer_encoding(flow.response)
 
     handle_request_mock_generic(
-        MockContext(flow),
+        MockContext(flow, context.intercept_settings),
         failure=lambda mock_context: __handle_mock_failure(TestContext(context, mock_context)),
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=lambda mock_context: __handle_mock_success(TestContext(context, mock_context))

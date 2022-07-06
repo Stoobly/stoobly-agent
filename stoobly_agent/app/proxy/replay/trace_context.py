@@ -12,7 +12,7 @@ from requests import Response
 from typing import Callable, Dict, List, Union
 
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.cli.helpers.context import ReplayContext
@@ -34,7 +34,16 @@ class TraceContext:
     self.__trace = trace or Trace.create()
     Logger.instance().debug(f"Using trace {self.__trace.id}")
 
+    self.__alias_resolve_strategy = alias_resolve_strategy.NONE
     self.__requests: List[Request] = []
+
+  @property
+  def alias_resolve_strategy(self):
+    return self.__alias_resolve_strategy
+
+  @alias_resolve_strategy.setter
+  def alias_resolve_strategy(self, v):
+    self.__alias_resolve_strategy = v
 
   @property
   def trace(self):
@@ -54,7 +63,8 @@ class TraceContext:
     if endpoint:
       Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
-      self.__rewrite_request(request, endpoint)
+      if self.__alias_resolve_strategy != alias_resolve_strategy.NONE:
+        self.__rewrite_request(request, endpoint)
 
     # Set trace id for request
     headers = request.headers

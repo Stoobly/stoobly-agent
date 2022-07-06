@@ -7,7 +7,7 @@ from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_strategy
 
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.validations import *
@@ -46,6 +46,7 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
+@click.option('--alias-resolve-strategy', default=alias_resolve_strategy.NONE, type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO]), help='Strategy for resolving dynamic values for aliases.')
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
@@ -72,6 +73,7 @@ def replay(**kwargs):
     help="Replay and test a scenario"
 )
 @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
+@click.option('--alias-resolve-strategy', default=alias_resolve_strategy.NONE, type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO]), help='Strategy for resolving dynamic values for aliases.')
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS]), help='For iterable responses, selectively test properties.')
 @click.option('--group-by', help='Repeat for each alias name.')

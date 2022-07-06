@@ -83,8 +83,11 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   return res
 
 def __handle_lifecycle_hooks_script_path(script_path, headers):
+  if not script_path:
+    return
+
   if not os.path.isabs(script_path):
-      script_path = os.path.join(os.path.abspath('.'), script_path)
+    script_path = os.path.join(os.path.abspath('.'), script_path)
 
   headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH] = script_path
 
