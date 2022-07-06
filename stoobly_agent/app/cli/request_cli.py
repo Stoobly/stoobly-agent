@@ -87,9 +87,9 @@ if is_remote:
   @request.command(
     help="Test a request"
   )
-  @click.option('--aggregate-failures', default=False, is_flag=True, help='.')
+  @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
   @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
-  @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS]), help='For iterable responses, selectively test properties.')
+  @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
   @click.option('--report-key', help='Save to report.')

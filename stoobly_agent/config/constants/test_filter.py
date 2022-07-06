@@ -2,6 +2,6 @@ from typing import Literal
 
 ALL = 'all'
 ALIAS = 'alias'
-CUSTOM = 'custom'
+LINK = 'link'
 
-TestFilter = Literal[ALL, ALIAS, CUSTOM]
+TestFilter = Literal[ALL, ALIAS, LINK]

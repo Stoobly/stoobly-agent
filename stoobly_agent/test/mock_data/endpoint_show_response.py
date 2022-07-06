@@ -10,7 +10,21 @@ endpoint_show_response = {
       "query": "[*].requests_count",
       "requests_count": 2,
       "response_param_name_id": 426,
-      "updated_at": "2022-05-31T07:48:32.700Z"
+      "updated_at": "2022-05-31T07:48:32.700Z",
+      "alias_id": 107,
+      "alias_name": ":endpointRequestsCount", 
+      "alias": {
+        "id": 107,
+        "name": ":endpointRequestsCount",
+        "created_at": "2022-05-31T07:03:40.975Z",
+        "updated_at": "2022-05-31T07:03:40.975Z",
+        "project_id": 37,
+        "path_segment_names_count": 1,
+        "header_names_count": 0,
+        "query_param_names_count": 1,
+        "body_param_names_count": 0,
+        "response_param_names_count": 3
+      }
     },
     {
       "created_at": "2022-05-31T07:48:32.722Z",

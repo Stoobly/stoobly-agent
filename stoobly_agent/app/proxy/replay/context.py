@@ -1,5 +1,4 @@
 import time
-from xml.sax.handler import property_declaration_handler
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
