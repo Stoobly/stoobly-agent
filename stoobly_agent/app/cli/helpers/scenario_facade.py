@@ -1,8 +1,7 @@
 import pdb
-from tokenize import group
 import requests
-from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 
+from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
 from stoobly_agent.app.proxy.replay.replay_scenario_service import inject_replay
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext

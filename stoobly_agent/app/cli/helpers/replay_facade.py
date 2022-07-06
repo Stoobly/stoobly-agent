@@ -37,7 +37,7 @@ class ReplayFacade():
     # If a trace_id is given, use it to find a trace
     trace = Trace.find_by(id=trace_id) if trace_id else None 
     if trace or assign:
-      facade = TraceContextFacade(self.__settings, trace).with_alias_resolve_strategy(cli_options.get('alias_resolve_strategy'))
+      facade = TraceContextFacade(self.__settings, trace)
 
       # If assign is given, create default TraceAliases for the trace 
       if assign:
@@ -46,6 +46,7 @@ class ReplayFacade():
       trace_context = facade.trace_context
 
     return {
+      'alias_resolve_strategy': cli_options.get('alias_resolve_strategy'),
       'group_by': cli_options.get('group_by'),
       'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
       'on_response': cli_options.get('on_response'),
