@@ -43,7 +43,8 @@ class TraceContext:
 
   @alias_resolve_strategy.setter
   def alias_resolve_strategy(self, v):
-    self.__alias_resolve_strategy = v
+    if v:
+      self.__alias_resolve_strategy = v
 
   @property
   def trace(self):

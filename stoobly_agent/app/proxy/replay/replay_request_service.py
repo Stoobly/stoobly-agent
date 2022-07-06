@@ -7,7 +7,7 @@ from typing import Callable, TypedDict, Union
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
-from stoobly_agent.config.constants import custom_headers, request_origin, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.lib.api.api import Api
 from stoobly_agent.lib.logger import bcolors, Logger
@@ -15,6 +15,7 @@ from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
 
 class ReplayRequestOptions(TypedDict):
+  alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
   group_by: str
   lifecycle_hooks_script_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
@@ -28,6 +29,7 @@ class ReplayRequestOptions(TypedDict):
   trace_context: TraceContext
 
 def replay_with_trace(context: ReplayContext, trace_context: TraceContext, options: ReplayRequestOptions):
+  trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
