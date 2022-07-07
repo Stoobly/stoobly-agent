@@ -1,5 +1,7 @@
 import jmespath
 
+from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
+
 from .visitor import TreeInterpreter, Visitor
 
 # Monkey patch jmespath with replacement functionality
@@ -16,7 +18,7 @@ from stoobly_agent.config.constants import alias_resolve_strategy, custom_header
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, resolve_alias, rewrite_params
+from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName
 from stoobly_agent.lib.logger import Logger, bcolors
@@ -34,17 +36,18 @@ class TraceContext:
     self.__trace = trace or Trace.create()
     Logger.instance().debug(f"Using trace {self.__trace.id}")
 
-    self.__alias_resolve_strategy = alias_resolve_strategy.NONE
+    self.__alias_resolver = AliasResolver(self.__trace, alias_resolve_strategy.NONE)
+
     self.__requests: List[Request] = []
 
   @property
   def alias_resolve_strategy(self):
-    return self.__alias_resolve_strategy
+    return self.__alias_resolver.strategy
 
   @alias_resolve_strategy.setter
   def alias_resolve_strategy(self, v):
     if v:
-      self.__alias_resolve_strategy = v
+      self.__alias_resolver.strategy = v
 
   @property
   def trace(self):
@@ -64,19 +67,22 @@ class TraceContext:
     if endpoint:
       Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
-      if self.__alias_resolve_strategy != alias_resolve_strategy.NONE:
+      if self.alias_resolve_strategy != alias_resolve_strategy.NONE:
         self.__rewrite_request(request, endpoint)
+
+    trace_request = TraceRequest.create(trace_id=self.__trace.id)
 
     # Set trace id for request
     headers = request.headers
     headers[custom_headers.TRACE_ID] = str(self.trace.id)
+    headers[custom_headers.TRACE_REQUEST_ID] = str(trace_request.id)
     request.headers = headers
 
     # Replay request
     response = replay(context)
 
     if endpoint:
-      self.__create_trace_aliases(response, endpoint)
+      self.__create_trace_aliases(trace_request, response, endpoint)
 
     self.__requests.append((request, response))
 
@@ -151,7 +157,7 @@ class TraceContext:
         body_params, 
         body_param_names, 
         id_to_alias, 
-        self.trace,
+        self.__alias_resolver,
         lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
       )
 
@@ -173,11 +179,11 @@ class TraceContext:
       new_values = []
       current_values = components.get_all(name)
       if len(current_values) == 0:
-        trace_aliases = resolve_alias(self.trace, _alias['name'], None)
-        if trace_aliases.is_empty():
+        trace_alias = self.__alias_resolver.resolve_alias(_alias['name'], None)
+
+        if not trace_alias:
           continue
 
-        trace_alias = trace_aliases.pop()
         new_values.append(trace_alias.value)
       else:
         # Remove all values for the key, name
@@ -197,9 +203,7 @@ class TraceContext:
       for new_value in new_values:
         components.add(name, new_value)
 
-  def __create_trace_aliases(self, response: Response, endpoint: EndpointShowResponse):
-    trace_request = TraceRequest.create(trace_id=self.__trace.id)
-
+  def __create_trace_aliases(self, trace_request: TraceRequest, response: Response, endpoint: EndpointShowResponse):
     '''
     1. Parse all aliased properties from response
     2. Create TraceAlias records for each parsed aliased propert
@@ -229,12 +233,9 @@ class TraceContext:
         if _alias and value:
           self.create_trace_alias(_alias['name'], value, trace_request) 
 
-  def __resolve_and_assign_alias(self, alias_name: str, value: list) -> Union[TraceAlias, None]:
-    trace_aliases = resolve_alias(self.trace, alias_name, value)
-    if trace_aliases.is_empty():
-      return
-      
-    trace_alias = trace_aliases.pop()
+  def __resolve_and_assign_alias(self, alias_name: str, value) -> Union[TraceAlias, None]:
+    trace_alias = self.__alias_resolver.resolve_alias(alias_name, value)
+
     self.__assign_trace_alias(trace_alias, value)
 
     return trace_alias

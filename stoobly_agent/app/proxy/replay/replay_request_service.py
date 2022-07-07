@@ -38,6 +38,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   request = context.request
   headers = request.headers
 
+  if 'alias_resolve_strategy' in options:
+    headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
+
   if 'lifecycle_hooks_script_path' in options:
     __handle_lifecycle_hooks_script_path(options['lifecycle_hooks_script_path'], headers) 
 
