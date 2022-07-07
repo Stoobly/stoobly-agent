@@ -1,6 +1,8 @@
 import pdb
 import jmespath
 
+from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
+
 from .visitor import TreeInterpreter, Visitor
 
 # Monkey patch jmespath with replacement functionality
@@ -30,7 +32,7 @@ def rewrite_params(
   params: Union[list, dict],
   param_names: List[RequestComponentName], 
   id_to_alias: AliasMap, 
-  trace: Trace,
+  alias_resolver: AliasResolver,
   handle_after_replace: Callable = __handle_after_replace 
 ):
   for param_name in param_names:
@@ -39,7 +41,7 @@ def rewrite_params(
       continue
 
     current_value = jmespath.search(param_name.get('query') or param_name.get('name'), params)
-    trace_aliases = resolve_alias(trace, _alias['name'], current_value)
+    trace_aliases = alias_resolver.resolve_alias(_alias['name'], current_value)
 
     if trace_aliases.is_empty():
       continue
@@ -57,29 +59,3 @@ def rewrite_params(
         'handle_after_replace': lambda v, i: handler(trace_aliases_list[i], v)
       }
     )
-
-def resolve_alias(trace: Trace, alias_name: str, value: str) -> Collection:
-  '''
-  Return TraceAlias collection based on alias_name and value
-  '''
-
-  trace_alias_hash = {
-    'assigned_to': str(value) if isinstance(value, list) or isinstance(value, dict) else value,
-    'name': alias_name,
-    'trace_id': trace.id,
-  }
-
-  Logger.instance().debug(f"\tResolving Trace Alias: {trace_alias_hash}")
-
-  trace_aliases = TraceAlias.where(trace_alias_hash).get()
-
-  if trace_aliases.is_empty():
-    trace_aliases = TraceAlias.where({
-      'name': alias_name,
-      'trace_id': trace.id,
-    }).where_null('assigned_to').get()
-
-  if not trace_aliases.is_empty():
-    trace_aliases.each(lambda trace_alias: Logger.instance().debug(f"\tResolved Trace Alias: {trace_alias.to_dict()}"))
-
-  return trace_aliases

@@ -1,6 +1,8 @@
 import pdb
 from typing import List
 import pytest
+from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
+from stoobly_agent.config.constants import alias_resolve_strategy
 
 from stoobly_agent.test import test_helper
 
@@ -37,7 +39,8 @@ class Test():
     resolved_alias_values = [1000]
     self.build_trace_aliases(trace, id_to_alias.values(), resolved_alias_values)
 
-    rewrite_params(response, response_param_names, id_to_alias, trace, self.handle_after_replace)
+    alias_resolver = AliasResolver(trace, alias_resolve_strategy.LIFO)
+    rewrite_params(response, response_param_names, id_to_alias, alias_resolver, self.handle_after_replace)
 
     expected_id = resolved_alias_values[0]
     assert response['id'] == expected_id, test_helper.value_not_match_error(response['id'], expected_id)
@@ -65,7 +68,8 @@ class Test():
     resolved_alias_values = [1000]
     self.build_trace_aliases(trace, id_to_alias.values(), resolved_alias_values)
 
-    rewrite_params(response, response_param_names, id_to_alias, trace, self.handle_after_replace)
+    alias_resolver = AliasResolver(trace, alias_resolve_strategy.LIFO)
+    rewrite_params(response, response_param_names, id_to_alias, alias_resolver, self.handle_after_replace)
 
     expected_id = resolved_alias_values[0]
     assert response[0]['id'] == expected_id, test_helper.value_not_match_error(response['id'], expected_id)

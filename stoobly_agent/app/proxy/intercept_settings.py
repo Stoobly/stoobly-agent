@@ -48,6 +48,11 @@ class InterceptSettings:
     return self.__settings
 
   @property
+  def alias_resolve_strategy(self):
+    if self.__headers and custom_headers.ALIAS_RESOLVE_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.ALIAS_RESOLVE_STRATEGY]
+
+  @property
   def active(self):
     if self.__intercept_settings.active:
       return True

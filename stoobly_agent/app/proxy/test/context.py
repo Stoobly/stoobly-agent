@@ -5,6 +5,7 @@ from typing import Union
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 
 from stoobly_agent.app.proxy.mock.context import MockContext
+from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
@@ -142,7 +143,8 @@ class TestContext():
       return _decoded_expected_response_content
 
     id_to_alias_map = build_id_to_alias_map(aliases)
-    rewrite_params(_decoded_expected_response_content, aliased_response_param_names, id_to_alias_map, trace)
+    alias_resolver = AliasResolver(trace, self.intercept_settings.alias_resolve_strategy)
+    rewrite_params(_decoded_expected_response_content, aliased_response_param_names, id_to_alias_map, alias_resolver)
 
     return _decoded_expected_response_content
 
