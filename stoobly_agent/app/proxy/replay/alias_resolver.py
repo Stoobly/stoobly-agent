@@ -25,7 +25,7 @@ class AliasResolver():
     if strategy == alias_resolve_strategy.NONE:
       return
 
-    trace_aliases = self.resolve_alias(alias_name, value)
+    trace_aliases = self.resolve_aliases(alias_name, value)
     if trace_aliases.is_empty():
       return
       

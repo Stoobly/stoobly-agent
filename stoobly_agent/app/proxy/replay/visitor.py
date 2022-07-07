@@ -155,6 +155,7 @@ class TreeInterpreter(Visitor):
         self.replacements = []
         self.replacement_number = 0
         self.handle_after_replace = None
+        self.handle_replace = None
 
         if isinstance(options, dict):
             if 'replacements' in options:
@@ -162,6 +163,9 @@ class TreeInterpreter(Visitor):
 
             if 'handle_after_replace' in options:
                 self.handle_after_replace = options['handle_after_replace']
+
+            if 'handle_replace' in options:
+                self.handle_replace = options['handle_replace']
 
             options = None
 
@@ -187,11 +191,14 @@ class TreeInterpreter(Visitor):
 
         if len(self.replacements) > 0:
             self.replace(obj, key)
+
+    def get_replacement_index(self):
+        if self.handle_replace:
+            return self.handle_replace(self.replacements, self.replacement_number)
+        else: 
+            return self.replacement_number % len(self.replacements)
         
     def replace(self, obj, key):
-        replacement_index = self.replacement_number % len(self.replacements)
-        replacement_value = self.replacements[replacement_index]
-        
         current_value = None
         try:
             current_value = obj[key]
@@ -200,10 +207,12 @@ class TreeInterpreter(Visitor):
         except IndexError:
             pass
 
-        obj[key] = replacement_value
+        replacement_index = self.get_replacement_index()
+        if replacement_index != -1:
+            obj[key] = self.replacements[replacement_index]
 
-        if self.handle_after_replace:
-            self.handle_after_replace(current_value, replacement_index)
+            if self.handle_after_replace:
+                self.handle_after_replace(current_value, self.replacement_number)
 
     def default_visit(self, node, *args, **kwargs):
         raise NotImplementedError(node['type'])

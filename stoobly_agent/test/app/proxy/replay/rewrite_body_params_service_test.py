@@ -1,14 +1,14 @@
 import pdb
-from typing import List
 import pytest
+
+from typing import List
+
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
-from stoobly_agent.config.constants import alias_resolve_strategy
-
-from stoobly_agent.test import test_helper
-
 from stoobly_agent.app.proxy.replay.rewrite_params_service import rewrite_params
+from stoobly_agent.config.constants import alias_resolve_strategy
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
+from stoobly_agent.test import test_helper
 
 @pytest.fixture
 def trace():
@@ -40,7 +40,7 @@ class Test():
     self.build_trace_aliases(trace, id_to_alias.values(), resolved_alias_values)
 
     alias_resolver = AliasResolver(trace, alias_resolve_strategy.LIFO)
-    rewrite_params(response, response_param_names, id_to_alias, alias_resolver, self.handle_after_replace)
+    rewrite_params(response, response_param_names, id_to_alias, alias_resolver)
 
     expected_id = resolved_alias_values[0]
     assert response['id'] == expected_id, test_helper.value_not_match_error(response['id'], expected_id)
@@ -69,7 +69,7 @@ class Test():
     self.build_trace_aliases(trace, id_to_alias.values(), resolved_alias_values)
 
     alias_resolver = AliasResolver(trace, alias_resolve_strategy.LIFO)
-    rewrite_params(response, response_param_names, id_to_alias, alias_resolver, self.handle_after_replace)
+    rewrite_params(response, response_param_names, id_to_alias, alias_resolver)
 
     expected_id = resolved_alias_values[0]
     assert response[0]['id'] == expected_id, test_helper.value_not_match_error(response['id'], expected_id)
@@ -77,6 +77,3 @@ class Test():
   def build_trace_aliases(self, trace: Trace, aliases: List[TraceAlias], values: list):
     for i, _alias in enumerate(aliases):
       TraceAlias.create(name=_alias['name'], trace_id=trace.id, value=values[i])
-
-  def handle_after_replace(self, trace_alias: TraceAlias, value):
-    pass
