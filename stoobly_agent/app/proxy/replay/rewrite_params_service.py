@@ -9,18 +9,31 @@ from .visitor import TreeInterpreter, Visitor
 jmespath.parser.visitor.Vistor = Visitor
 jmespath.parser.visitor.TreeInterpreter = TreeInterpreter
 
-from typing import Callable, Dict, List, Union
-from orator.orm.collection import Collection
+from typing import Callable, Dict, List, TypedDict, Union
 
+from stoobly_agent.config.constants import alias_resolve_strategy
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, RequestComponentName
-from stoobly_agent.lib.logger import Logger
-from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
 AliasMap = Dict[str, RequestComponentName]
 
-def __handle_after_replace(trace_alias: TraceAlias, value):
+class Options(TypedDict):
+  handle_after_replace: Callable
+  handle_replace: Callable
+
+def __handle_after_replace(trace: TraceAlias, value):
   pass
+
+def __handle_replace(replacement_options: list, number_of_replacements: int, strategy: alias_resolve_strategy.AliasResolveStrategy):
+  if strategy == alias_resolve_strategy.NONE:
+    return
+
+  if strategy == alias_resolve_strategy.FIFO:
+    index = number_of_replacements
+    return -1 if index >= len(replacement_options) else index
+  elif strategy == alias_resolve_strategy.LIFO:
+    index = len(replacement_options) - number_of_replacements - 1
+    return -1 if index < 0 else index
 
 def build_id_to_alias_map(aliases):
     id_to_alias = {}
@@ -33,7 +46,7 @@ def rewrite_params(
   param_names: List[RequestComponentName], 
   id_to_alias: AliasMap, 
   alias_resolver: AliasResolver,
-  handle_after_replace: Callable = __handle_after_replace 
+  **options: Options
 ):
   for param_name in param_names:
     _alias: Alias = id_to_alias.get(param_name['alias_id'])
@@ -41,7 +54,7 @@ def rewrite_params(
       continue
 
     current_value = jmespath.search(param_name.get('query') or param_name.get('name'), params)
-    trace_aliases = alias_resolver.resolve_alias(_alias['name'], current_value)
+    trace_aliases = alias_resolver.resolve_aliases(_alias['name'], current_value)
 
     if trace_aliases.is_empty():
       continue
@@ -49,13 +62,19 @@ def rewrite_params(
     trace_aliases_list = []
     trace_aliases.each(lambda trace_alias: trace_aliases_list.append(trace_alias))
     trace_alias_values = list(map(lambda trace_alias: trace_alias.value, trace_aliases_list))
+ 
+    handle_after_replace = options.get('handle_after_replace')
+    handle_after_replace = handle_after_replace if handle_after_replace else __handle_after_replace
 
     # We have may have to first search for all values matching query,
-    # If there's more than one, then try to assign different alias values  
-    handler = handle_after_replace if handle_after_replace else __handle_after_replace
+    # If there's more than one, then try to assign different alias values 
+    handle_replace = options.get('handle_replace')
+    handle_replace = handle_replace if handle_replace else __handle_replace
+    
     jmespath.search(
       param_name['query'], params, { 
         'replacements': trace_alias_values, 
-        'handle_after_replace': lambda v, i: handler(trace_aliases_list[i], v)
+        'handle_replace': lambda options, count: __handle_replace(options, count, alias_resolver.strategy),
+        'handle_after_replace': lambda v, i: __handle_after_replace(trace_aliases_list[i], v)
       }
     )

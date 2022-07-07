@@ -11,7 +11,7 @@ from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyRes
 from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
 from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
 
-from stoobly_agent.config.constants import custom_headers, test_filter, test_strategy
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
