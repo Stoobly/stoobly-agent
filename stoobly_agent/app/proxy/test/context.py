@@ -51,9 +51,12 @@ class TestContext():
       return 
 
     self.__endpoint_show_response: EndpointShowResponse = res.json()
+    aliases = self.__endpoint_show_response['aliases']
+    response_param_names = self.__endpoint_show_response['response_param_names']
+
     self.__response_param_names = ResponseParamNamesFacade(
-      self.__endpoint_show_response['response_param_names']
-    ).with_filter(self.filter)
+      response_param_names      
+    ).with_aliases(aliases).with_filter(self.filter).with_trace(self.trace)
 
   @property
   def lifecycle_hooks(self):
