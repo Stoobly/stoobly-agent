@@ -7,7 +7,6 @@ class EndpointsIndexQueryParams(PaginationQueryParams):
 
 class RequestComponentName(TypedDict):
   alias_id: int
-  alias_name: str
   name: str
   value: str
 

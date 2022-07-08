@@ -11,11 +11,12 @@ from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_re
 @pytest.fixture
 def endpoints_list_response_param_names_facade():
   response_param_names = endpoint_show_response['response_param_names']
-  return ResponseParamNamesFacade(response_param_names)
+  aliases = endpoint_show_response['aliases']
+  return ResponseParamNamesFacade(response_param_names).with_aliases(aliases)
 
 @pytest.fixture
 def empty_response_param_names_facade():
-  response_param_names = endpoint_show_response['response_param_names']
+  response_param_names = []
   return ResponseParamNamesFacade(response_param_names)
 
 class TestListMatchesList():
@@ -223,8 +224,8 @@ class TestAliasFilterMatchesListOfDicts():
 
       actual = [
         {
-          "id": 1000,
-          "requests_count": 7,
+          "id": 1000, # Aliased as :endpointId
+          "requests_count": 7, # Aliased as :endpointRequestsCount
           "category": 1,
           "path": "/abc",
           "method": "GET",
@@ -249,8 +250,8 @@ class TestAliasFilterMatchesListOfDicts():
         },
       ] 
 
-      #matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
-      #assert matches, log
+      matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+      assert matches, log
 
     def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
       trace = Trace.create()
@@ -261,8 +262,8 @@ class TestAliasFilterMatchesListOfDicts():
 
       actual = [
         {
-          "id": 1001,
-          "requests_count": 8,
+          "id": 1001, # Aliased as :endpointId
+          "requests_count": 8, # Aliased as :endpointRequestsCount
           "category": 1,
           "path": "/abc",
           "method": "GET",

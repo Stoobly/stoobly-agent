@@ -35,7 +35,7 @@ def __handle_replace(replacement_options: list, number_of_replacements: int, str
     index = len(replacement_options) - number_of_replacements - 1
     return -1 if index < 0 else index
 
-def build_id_to_alias_map(aliases):
+def build_id_to_alias_map(aliases: List[Alias]):
     id_to_alias = {}
     for _alias in aliases:
       id_to_alias[_alias['id']] = _alias

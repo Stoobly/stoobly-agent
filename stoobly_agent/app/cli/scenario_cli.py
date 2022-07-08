@@ -46,7 +46,12 @@ def create(**kwargs):
 @scenario.command(
     help="Replay a scenario"
 )
-@click.option('--alias-resolve-strategy', default=alias_resolve_strategy.NONE, type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO]), help='Strategy for resolving dynamic values for aliases.')
+@click.option(
+    '--alias-resolve-strategy', 
+    default=alias_resolve_strategy.NONE, 
+    type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+    help='Strategy for resolving dynamic values for aliases.'
+)
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
@@ -73,7 +78,12 @@ def replay(**kwargs):
     help="Replay and test a scenario"
 )
 @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
-@click.option('--alias-resolve-strategy', default=alias_resolve_strategy.NONE, type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO]), help='Strategy for resolving dynamic values for aliases.')
+@click.option(
+    '--alias-resolve-strategy', 
+    default=alias_resolve_strategy.NONE, 
+    type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+    help='Strategy for resolving dynamic values for aliases.'
+)
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
 @click.option('--group-by', help='Repeat for each alias name.')

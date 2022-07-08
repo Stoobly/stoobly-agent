@@ -1,4 +1,30 @@
 endpoint_show_response = {
+  "aliases": [
+    {
+      "id": 106,
+      "name": ":endpointId",
+      "created_at": "2022-05-31T07:03:40.975Z",
+      "updated_at": "2022-05-31T07:03:40.975Z",
+      "project_id": 37,
+      "path_segment_names_count": 1,
+      "header_names_count": 0,
+      "query_param_names_count": 1,
+      "body_param_names_count": 0,
+      "response_param_names_count": 3
+    },
+    {
+      "id": 107,
+      "name": ":endpointRequestsCount",
+      "created_at": "2022-05-31T07:03:40.975Z",
+      "updated_at": "2022-05-31T07:03:40.975Z",
+      "project_id": 37,
+      "path_segment_names_count": 1,
+      "header_names_count": 0,
+      "query_param_names_count": 1,
+      "body_param_names_count": 0,
+      "response_param_names_count": 3
+    }
+  ],
   "response_param_names": [
     {
       "created_at": "2022-05-31T07:48:32.700Z",
@@ -12,19 +38,6 @@ endpoint_show_response = {
       "response_param_name_id": 426,
       "updated_at": "2022-05-31T07:48:32.700Z",
       "alias_id": 107,
-      "alias_name": ":endpointRequestsCount", 
-      "alias": {
-        "id": 107,
-        "name": ":endpointRequestsCount",
-        "created_at": "2022-05-31T07:03:40.975Z",
-        "updated_at": "2022-05-31T07:03:40.975Z",
-        "project_id": 37,
-        "path_segment_names_count": 1,
-        "header_names_count": 0,
-        "query_param_names_count": 1,
-        "body_param_names_count": 0,
-        "response_param_names_count": 3
-      }
     },
     {
       "created_at": "2022-05-31T07:48:32.722Z",
@@ -121,20 +134,7 @@ endpoint_show_response = {
       "requests_count": 2,
       "response_param_name_id": 426,
       "updated_at": "2022-06-15T01:08:06.946Z",
-      "alias_name": ":endpointId",
-      "alias_id": 106,
-      "alias": {
-        "id": 106,
-        "name": ":endpointId",
-        "created_at": "2022-05-31T07:03:40.975Z",
-        "updated_at": "2022-05-31T07:03:40.975Z",
-        "project_id": 37,
-        "path_segment_names_count": 1,
-        "header_names_count": 0,
-        "query_param_names_count": 1,
-        "body_param_names_count": 0,
-        "response_param_names_count": 3
-      }
+      "alias_id": 106, 
     },
     {
       "created_at": "2022-05-31T07:48:32.635Z",
