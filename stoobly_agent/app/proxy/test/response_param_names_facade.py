@@ -1,8 +1,9 @@
 import pdb
 from typing import List
 
-from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
+from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map
 from stoobly_agent.config.constants import test_filter
+from stoobly_agent.lib.api.interfaces.endpoints import Alias, ResponseParamName
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
@@ -25,13 +26,19 @@ class ResponseParamNamesFacade():
 
       self.__response_param_name_map[response_param_name['query']] = response_param_name
 
+    self.__id_to_alias_map = {}
+
   @property
   def aliased(self) -> List[ResponseParamName]: 
     if not self.__aliased_response_param_names:
-      filter_handler = lambda param_name: param_name.get('alias') != None
+      filter_handler = lambda param_name: param_name.get('alias_id') != None
       self.__aliased_response_param_names = list(filter(filter_handler, self.__response_param_names))
 
     return self.__aliased_response_param_names
+
+  @property
+  def all(self) -> List[ResponseParamName]:
+    return self.__response_param_names
 
   @property
   def deterministic(self) -> List[ResponseParamName]:
@@ -59,6 +66,10 @@ class ResponseParamNamesFacade():
     else:
       return False
 
+  def with_aliases(self, aliases: List[Alias]):
+    self.__id_to_alias_map = build_id_to_alias_map(aliases)
+    return self
+
   def with_filter(self, filter: test_filter.TestFilter):
     self.__filter = filter
     return self
@@ -73,7 +84,7 @@ class ResponseParamNamesFacade():
       return False
 
     # If aliased, then filter
-    return not not _response_param_name.get('alias')
+    return not not _response_param_name.get('alias_id')
 
   def __select_link(self, query: str):
     if not self.__trace:
@@ -83,10 +94,16 @@ class ResponseParamNamesFacade():
     if not _response_param_name:
       return False
 
-    if not _response_param_name.get('alias_name'):
+    alias_id = _response_param_name.get('alias_id')
+    if not alias_id:
       return False
 
-    alias_name = _response_param_name.get('alias_name')
+    _alias: Alias = self.__id_to_alias_map.get(alias_id)
+    
+    if not _alias:
+      return False
+
+    alias_name = _alias['name']
     trace_aliases = TraceAlias.where({
       'name': alias_name,
       'trace_id': self.__trace.id,

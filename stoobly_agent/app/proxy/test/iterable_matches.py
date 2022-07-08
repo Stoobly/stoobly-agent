@@ -184,7 +184,7 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
 
 def __required(context: MatchContext) -> bool:
     response_param_names_facade: ResponseParamNamesFacade = context.response_param_names_facade
-    if not response_param_names_facade:
+    if not response_param_names_facade or len(response_param_names_facade.all) == 0:
         return True
 
     query: str = context.query
@@ -193,7 +193,7 @@ def __required(context: MatchContext) -> bool:
 
 def __deterministic(context: MatchContext) -> bool:
     response_param_names_facade: ResponseParamNamesFacade = context.response_param_names_facade
-    if not response_param_names_facade:
+    if not response_param_names_facade or len(response_param_names_facade.all) == 0:
         return True
 
     query: str = context.query

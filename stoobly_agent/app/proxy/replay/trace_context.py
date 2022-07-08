@@ -236,9 +236,10 @@ class TraceContext:
   def __resolve_and_assign_alias(self, alias_name: str, value) -> Union[TraceAlias, None]:
     trace_alias = self.__alias_resolver.resolve_alias(alias_name, value)
 
-    self.__assign_trace_alias(trace_alias, value)
+    if trace_alias:
+      self.__assign_trace_alias(trace_alias, value)
 
-    return trace_alias
+      return trace_alias
 
   def __assign_trace_alias(self, trace_alias: TraceAlias, value):
     if not trace_alias.assigned_to:
