@@ -5,15 +5,17 @@ cli:
         exec: false
         remote: false       
 proxy:
+    data: {}
     intercept:
         active: false
-        mode: ''
-    data: {}
+        mode: record
+        project_key: ''
     firewall: {}
-    filter: {}
-remote: 
-    api_url: ''
-    api_key: ''
-ui:
-    url: http://localhost:4200
+    rewrite: {}
 proxy_config_path: config/settings.yml
+remote: 
+    api_key: ''
+    api_url: 'https://alpha.api.stoobly.com'
+ui:
+    active: false
+    url: http://localhost:4200
