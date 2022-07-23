@@ -48,6 +48,6 @@ setup(
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
-    version='0.14.0',
+    version='0.14.1',
 )
 
