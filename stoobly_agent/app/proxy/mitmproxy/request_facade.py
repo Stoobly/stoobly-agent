@@ -137,7 +137,7 @@ class MitmproxyRequestFacade(Request):
     
     def __apply_rewrites(self, params: dict, rewrites: List[ParameterRule], handler: Callable):
         if len(rewrites) == 0:
-            return params
+            return
 
         for param_name in params:
             for rewrite in rewrites:
@@ -171,9 +171,9 @@ class MitmproxyRequestFacade(Request):
 
         if isinstance(parsed_content, dict) or isinstance(parsed_content, multidict.MultiDictView):
             rewrites = list(filter(lambda rewrite: rewrite.type == request_component.BODY_PARAM, rewrites))
-            rewritten_params = self.__apply_rewrites(parsed_content, rewrites, handler)
+            self.__apply_rewrites(parsed_content, rewrites, handler)
 
-            self.__body.set(rewritten_params, self.content_type)
+            self.__body.set(parsed_content, self.content_type)
 
     def __redact_applies(self, rewrite: ParameterRule, param_name):
         if isinstance(param_name, bytes):
@@ -187,20 +187,19 @@ class MitmproxyRequestFacade(Request):
             Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return False
 
-    def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> bytes:
+    def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
         # If the rule does not apply, set the param
         if not self.__redact_applies(rewrite, param_name):
-            return val.encode() if isinstance(val, str) else val
+            return val
         else:
-            return '[REDACTED]'.encode()
+            return '[REDACTED]'
 
-    def __rewrite_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> bytes:
+    def __rewrite_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
         if not self.__redact_applies(rewrite, param_name):
-            return val.encode() if isinstance(val, str) else val
+            return val
         else:
             Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
-            return (rewrite.value or '').encode()
-
+            return rewrite.value or ''
 
     def __filter_custom_headers(self, request_headers: Headers):
         '''

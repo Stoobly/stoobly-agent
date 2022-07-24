@@ -16,4 +16,4 @@ class MitmproxyRequestBodyFacade:
         """
         Adjusting Content-Length header should be done by MitmproxyRequest
         """
-        return encode_response(content, content_type)
+        self.__request.content = encode_response(content, content_type).encode()
