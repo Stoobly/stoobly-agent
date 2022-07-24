@@ -2,6 +2,8 @@ import click
 import pdb
 import sys
 
+from sqlalchemy import alias
+
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -69,6 +71,8 @@ def replay(**kwargs):
 
         validate_scenario_key(kwargs['scenario_key'])
 
+    __assign_default_alias_resolve_strategy(kwargs)
+
     kwargs['on_response'] = print_request
 
     scenario = ScenarioFacade(Settings.instance())
@@ -98,6 +102,8 @@ def test(**kwargs):
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
+
+    __assign_default_alias_resolve_strategy(kwargs)
 
     session_context: SessionContext = { 
         'aggregate_failures': kwargs['aggregate_failures'], 
@@ -169,3 +175,8 @@ def __handle_on_test_response(replay_context: ReplayContext, session_context: Se
 
     if not session_context['aggregate_failures']:
         exit_on_failure(session_context)
+
+def __assign_default_alias_resolve_strategy(kwargs):
+    # If we have assigned values to aliases, it's likely we want to also have them resolved
+    if len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
+        kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
