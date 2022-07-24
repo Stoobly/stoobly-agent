@@ -145,11 +145,19 @@ class MitmproxyRequestFacade(Request):
                 'replacements': [rewrite.value]
             })
 
+    def __rewrite_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
+        Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
+        return val
+
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
 
     def __rewrite_content(self, rewrites: List[ParameterRule]):
         self.__apply_content(rewrites, self.__rewrite_handler)
+
+    def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
+        Logger.instance().debug(f"{bcolors.OKCYAN}Redacting{bcolors.ENDC} {param_name}")
+        return '[REDACTED]'
 
     def __redact_headers(self, redacts: List[ParameterRule]):
         self.__apply_headers(redacts, self.__redact_handler)
@@ -169,32 +177,6 @@ class MitmproxyRequestFacade(Request):
             self.__apply_rewrites(parsed_content, rewrites, handler)
 
             self.__body.set(parsed_content, self.content_type)
-
-    def __redact_applies(self, rewrite: ParameterRule, param_name):
-        if isinstance(param_name, bytes):
-            param_name = param_name.decode('utf-8')
-        
-        pattern = rewrite.name
-
-        try:
-            return re.match(pattern, param_name)
-        except re.error as e:
-            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
-            return False
-
-    def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
-        # If the rule does not apply, set the param
-        if not self.__redact_applies(rewrite, param_name):
-            return val
-        else:
-            return '[REDACTED]'
-
-    def __rewrite_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
-        if not self.__redact_applies(rewrite, param_name):
-            return val
-        else:
-            Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
-            return rewrite.value or ''
 
     def __filter_custom_headers(self, request_headers: Headers):
         '''
