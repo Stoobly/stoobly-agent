@@ -150,7 +150,7 @@ class TraceContext:
         body_param_names, 
         id_to_alias, 
         self.__alias_resolver,
-        lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
+        handle_after_replace=lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
       )
 
       request.body_params = body_params
