@@ -1,15 +1,17 @@
 import click
+import os
 import pdb
 import sys
 
-from sqlalchemy import alias
+from stoobly_agent.app.cli.helpers.handle_replay_service import print_request_query
 
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
+from stoobly_agent.lib import logger
 
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.validations import *
@@ -57,11 +59,21 @@ def create(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+@click.option(
+    '--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
+    help='''
+        Log levels can be "debug", "info", "warning", or "error"
+    '''
+)
+@click.option('--query', help='Print a specific property in the response.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def replay(**kwargs):
+    if not os.getenv(env_vars.LOG_LEVEL):
+        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
     validate_scenario_key(kwargs['key'])
 
     if kwargs.get('scenario_key'):
@@ -73,7 +85,11 @@ def replay(**kwargs):
 
     __assign_default_alias_resolve_strategy(kwargs)
 
-    kwargs['on_response'] = print_request
+    on_response_handler = print_request
+    if kwargs['query']:
+        on_response_handler = lambda context: print_request_query(context, kwargs['query'])
+
+    kwargs['on_response'] = on_response_handler 
 
     scenario = ScenarioFacade(Settings.instance())
     scenario.replay(kwargs.get('key'), kwargs)
@@ -89,14 +105,33 @@ def replay(**kwargs):
     help='Strategy for resolving dynamic values for aliases.'
 )
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
-@click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
+@click.option(
+    '--filter', 
+    default=test_filter.ALL, 
+    type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), 
+    help='For iterable responses, selectively test properties.'
+)
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+@click.option(
+    '--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
+    help='''
+        Log levels can be "debug", "info", "warning", or "error"
+    '''
+)
 @click.option('--report-key', help='Save to report.')
-@click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
+@click.option(
+    '--strategy', 
+    default=test_strategy.DIFF, 
+    type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), 
+    help='How to test responses.'
+)
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def test(**kwargs):
+    if not os.getenv(env_vars.LOG_LEVEL):
+        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
     settings = Settings.instance()
     scenario_key = validate_scenario_key(kwargs['key'])
 
