@@ -32,7 +32,7 @@ class TraceContextFacade():
       toks = _alias.split('=', 1)
       return {
         'name': toks[0],
-        'value': eval(toks[1]),
+        'value': toks[1],
       }
 
     return map(parse_alias_string, aliases)
