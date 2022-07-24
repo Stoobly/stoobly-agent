@@ -7,7 +7,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_strategy
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -61,6 +61,12 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
+@click.option(
+    '--alias-resolve-strategy', 
+    default=alias_resolve_strategy.NONE, 
+    type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+    help='Strategy for resolving dynamic values for aliases.'
+)
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
@@ -78,6 +84,8 @@ def replay(**kwargs):
 
     validate_scenario_key(kwargs['scenario_key'])
 
+  __assign_default_alias_resolve_strategy(kwargs)
+
   kwargs['on_response'] = print_request
 
   request = RequestFacade(Settings.instance())
@@ -86,6 +94,12 @@ def replay(**kwargs):
 if is_remote:
   @request.command(
     help="Test a request"
+  )
+  @click.option(
+      '--alias-resolve-strategy', 
+      default=alias_resolve_strategy.NONE, 
+      type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+      help='Strategy for resolving dynamic values for aliases.'
   )
   @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
   @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
@@ -103,6 +117,8 @@ if is_remote:
     if kwargs.get('report_key'):
       validate_report_key(kwargs['report_key'])
 
+    __assign_default_alias_resolve_strategy(kwargs)
+
     session_context: SessionContext = { 
         'aggregate_failures': kwargs['aggregate_failures'], 
         'passed': 0, 
@@ -110,6 +126,7 @@ if is_remote:
         'test_facade': TestFacade(settings), 
         'total': 0 
     }
+
     kwargs['on_response'] = lambda context: handle_on_test_response(
       context, session_context
     )
@@ -156,3 +173,8 @@ def __replay(handler, kwargs) -> requests.Response:
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
     sys.exit(1)
+
+def __assign_default_alias_resolve_strategy(kwargs):
+    # If we have assigned values to aliases, it's likely we want to also have them resolved
+    if len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
+        kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
