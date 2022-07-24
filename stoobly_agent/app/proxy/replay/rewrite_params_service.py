@@ -10,10 +10,6 @@ from stoobly_agent.lib.utils import jmespath
 
 AliasMap = Dict[str, RequestComponentName]
 
-class Options(TypedDict):
-  handle_after_replace: Callable
-  handle_replace: Callable
-
 def __handle_after_replace(trace: TraceAlias, value):
   pass
 
@@ -39,7 +35,7 @@ def rewrite_params(
   param_names: List[RequestComponentName], 
   id_to_alias: AliasMap, 
   alias_resolver: AliasResolver,
-  **options: Options
+  **options: jmespath.Options
 ):
   for param_name in param_names:
     _alias: Alias = id_to_alias.get(param_name['alias_id'])
