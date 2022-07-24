@@ -105,12 +105,14 @@ class MitmproxyRequestFacade(Request):
         redacts = self.__redact_rules
         if len(redacts) != 0:
             self.__redact_headers(redacts)
+            self.__redact_query(redacts)
             self.__redact_content(redacts)
 
     def rewrite(self):
         rewrites = self.__rewrite_rules
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
+            self.__rewrite_query(rewrites)
             self.__rewrite_content(rewrites)
 
     def select_parameter_rules(self, rules: List[RewriteRule]) -> List[ParameterRule]:
@@ -142,32 +144,42 @@ class MitmproxyRequestFacade(Request):
 
         for rewrite in rewrites:
             jmespath.search(rewrite.name, params, {
-                'replacements': [rewrite.value]
+                'replacements': [handler(rewrite) if handler else rewrite.value]
             })
 
-    def __rewrite_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
-        Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {param_name} => {rewrite.value}")
-        return val
+    def __rewrite_handler(self, rewrite: ParameterRule) -> str:
+        Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {rewrite.name} => {rewrite.value}")
+        return rewrite.value
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
 
+    def __rewrite_query(self, rewrites: List[ParameterRule]):
+        self.__apply_queries(rewrites, self.__rewrite_handler)
+
     def __rewrite_content(self, rewrites: List[ParameterRule]):
         self.__apply_content(rewrites, self.__rewrite_handler)
 
-    def __redact_handler(self, rewrite: ParameterRule, param_name, val: Union[bytes, str]) -> str:
-        Logger.instance().debug(f"{bcolors.OKCYAN}Redacting{bcolors.ENDC} {param_name}")
+    def __redact_handler(self, rewrite: ParameterRule) -> str:
+        Logger.instance().debug(f"{bcolors.OKCYAN}Redacting{bcolors.ENDC} {rewrite.name}")
         return '[REDACTED]'
 
     def __redact_headers(self, redacts: List[ParameterRule]):
         self.__apply_headers(redacts, self.__redact_handler)
+
+    def __redact_query(self, redacts: List[ParameterRule]):
+        self.__apply_queries(redacts, self.__redact_handler)
 
     def __redact_content(self, redacts: List[ParameterRule]):
         self.__apply_content(redacts, self.__redact_handler)
 
     def __apply_headers(self, rewrites: List[ParameterRule], handler: Callable):
         rewrites = list(filter(lambda rewrite: rewrite.type == request_component.HEADER, rewrites))
-        return self.__apply_rewrites(self.request.headers, rewrites, handler)
+        self.__apply_rewrites(self.request.headers, rewrites, handler)
+
+    def __apply_queries(self, rewrites: List[ParameterRule], handler: Callable):
+        rewrites = list(filter(lambda rewrite: rewrite.type == request_component.QUERY_PARAM, rewrites))
+        self.__apply_rewrites(self.request.query, rewrites, handler)
 
     def __apply_content(self, rewrites: List[ParameterRule], handler: Callable):
         parsed_content = self.__body.get(self.content_type)
