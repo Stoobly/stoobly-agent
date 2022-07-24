@@ -10,6 +10,7 @@ from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.utils import jmespath
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
@@ -139,16 +140,10 @@ class MitmproxyRequestFacade(Request):
         if len(rewrites) == 0:
             return
 
-        for param_name in params:
-            for rewrite in rewrites:
-                val = params[param_name]
-
-                # For body params, will be given of the form key => [param1, param2]
-                if type(val) == list and len(val) == 1:
-                    val = val[0]
-
-                # Convert to bytes
-                params[param_name] = handler(rewrite, param_name, val)
+        for rewrite in rewrites:
+            jmespath.search(rewrite.name, params, {
+                'replacements': [rewrite.value]
+            })
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
