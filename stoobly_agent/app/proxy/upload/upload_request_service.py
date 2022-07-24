@@ -14,7 +14,7 @@ from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
 
 from ..utils.publish_change_service import publish_change
-from .join_request_service import join_redacted_request
+from .join_request_service import join_rewritten_request
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -45,7 +45,7 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow
 ):
-    joined_request = join_redacted_request(flow, intercept_settings)
+    joined_request = join_rewritten_request(flow, intercept_settings)
 
     Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {joined_request.proxy_request.url()}")
 
