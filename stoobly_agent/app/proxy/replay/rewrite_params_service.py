@@ -1,19 +1,12 @@
 import pdb
-import jmespath
-
-from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
-
-from .visitor import TreeInterpreter, Visitor
-
-# Monkey patch jmespath with replacement functionality
-jmespath.parser.visitor.Vistor = Visitor
-jmespath.parser.visitor.TreeInterpreter = TreeInterpreter
 
 from typing import Callable, Dict, List, TypedDict, Union
 
+from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.config.constants import alias_resolve_strategy
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, RequestComponentName
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
+from stoobly_agent.lib.utils import jmespath
 
 AliasMap = Dict[str, RequestComponentName]
 

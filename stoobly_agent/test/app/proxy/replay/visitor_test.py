@@ -1,12 +1,6 @@
-import jmespath
-
-from stoobly_agent.app.proxy.replay.visitor import TreeInterpreter, Visitor
-
-# Monkey patch jmespath with replacement functionality
-jmespath.parser.visitor.Vistor = Visitor
-jmespath.parser.visitor.TreeInterpreter = TreeInterpreter
-
 import json
+
+from stoobly_agent.lib.utils import jmespath
 
 class TestSearch():
     def test_a(self):
