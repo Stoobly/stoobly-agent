@@ -15,6 +15,11 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+DEBUG = 'debug'
+INFO = 'info'
+WARNING = 'warning'
+ERROR = 'error'
+
 class Logger:
     _instance = None
 
@@ -28,12 +33,12 @@ class Logger:
 
             log_level = os.getenv(LOG_LEVEL) or ''
 
-            if log_level.lower() == 'debug':
+            if log_level.lower() == DEBUG:
                 logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
                 logging.basicConfig(level=logging.DEBUG)
-            elif log_level.lower() == 'warning':
+            elif log_level.lower() == WARNING:
                 logging.basicConfig(level=logging.WARNING)
-            elif log_level.lower() == 'error':
+            elif log_level.lower() == ERROR:
                 logging.basicConfig(level=logging.ERROR)
             else:
                 logging.basicConfig(level=logging.INFO)
