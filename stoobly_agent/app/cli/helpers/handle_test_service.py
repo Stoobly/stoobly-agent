@@ -3,7 +3,7 @@ import sys
 
 from typing import TypedDict
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import default_format_handler, print_request
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
@@ -21,7 +21,7 @@ def print_test(context: ReplayContext, res: TestShowResponse):
     print_request(context)
     print("\nTest failed to run")
   else:
-    print_request(context, f" (Expected {res['expected_latency']}ms)")
+    print_request(context, lambda context: default_format_handler(context, f" (Expected {res['expected_latency']}ms)"))
 
     if not res['passed']:
       passed_message = f"{bcolors.FAIL}failed{bcolors.ENDC}"
