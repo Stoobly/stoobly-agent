@@ -3,9 +3,8 @@ import os
 import pdb
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import print_request_query
-
-from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import print_request, print_request_query
+from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response 
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext

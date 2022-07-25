@@ -1,9 +1,16 @@
 import pdb
+
+from typing import Callable
+
 from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.cli.helpers.handle_test_service import print_request
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
+
+def print_request(context: ReplayContext, format_handler: Callable[[ReplayContext], None] = None):
+  format_handler = format_handler or default_format_handler 
+
+  print(format_handler(context))
 
 def print_request_query(context: ReplayContext, query: str):
   response = context.response
@@ -18,3 +25,12 @@ def print_request_query(context: ReplayContext, query: str):
     print_request(context)
   else:
     print(jmespath.search(query, decoded_response))
+
+def default_format_handler(context: ReplayContext):
+  response = context.response
+  print(response.content.decode())
+
+  seconds = context.end_time - context.start_time
+  ms = round(seconds * 1000)
+  print(f"Completed {response.status_code} in {ms}ms")
+

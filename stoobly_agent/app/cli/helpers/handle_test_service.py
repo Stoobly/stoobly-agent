@@ -3,6 +3,7 @@ import sys
 
 from typing import TypedDict
 
+from stoobly_agent.app.cli.helpers.handle_replay_service import print_request
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
@@ -14,15 +15,6 @@ class SessionContext(TypedDict):
   project_id: int
   test_facade: TestFacade
   total: int
-
-def print_request(context: ReplayContext, additional: str = ''):
-  response = context.response
-
-  seconds = context.end_time - context.start_time
-  ms = round(seconds * 1000)
-
-  print(response.content)
-  print(f"Completed {response.status_code} in {ms}ms{additional}")
 
 def print_test(context: ReplayContext, res: TestShowResponse):
   if not res:
