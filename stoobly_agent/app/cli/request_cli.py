@@ -4,14 +4,16 @@ import pdb
 import requests
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import print_request_query
-from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import print_request, print_request_query
+from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response 
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
+from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.print_service import print_requests
@@ -183,6 +185,21 @@ def get(**kwargs):
   res = __replay(request.mock, kwargs)
 
   print(res.content)
+
+@response.command()
+@click.option('--query', required=True)
+@click.argument('request-key')
+def query(**kwargs):
+  validate_request_key(kwargs['request_key'])
+
+  request = RequestFacade(Settings.instance())
+  res = __replay(request.mock, kwargs)
+
+  content = res.content
+  content_type = res.headers.get('content-type')
+  decoded_response = decode_response(content, content_type)
+
+  print(jmespath.search(kwargs['query'], decoded_response))
 
 @response.command(
   help="Set new mocked response"
