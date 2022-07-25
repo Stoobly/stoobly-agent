@@ -14,3 +14,6 @@ class Options(TypedDict):
 
 def search(query: str, o: Union[dict, list], options: Options = {}):
   return jmespath.search(query, o, options)
+
+def compile(expression: str):
+  return jmespath.compile(expression)
