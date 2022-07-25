@@ -1,4 +1,5 @@
 import click
+import os
 import pdb
 import requests
 import sys
@@ -7,7 +8,8 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
+from stoobly_agent.lib import logger
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -17,6 +19,8 @@ from .helpers.validations import *
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote
+
+log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
 @click.group(
   epilog="Run 'stoobly-agent request COMMAND --help' for more information on a command.",
@@ -70,11 +74,20 @@ def list(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+@click.option(
+  '--log-level', default=logger.INFO, type=click.Choice(log_levels), 
+  help='''
+    Log levels can be "debug", "info", "warning", or "error"
+  '''
+)
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('request_key')
 def replay(**kwargs):
+  if not os.getenv(env_vars.LOG_LEVEL):
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
   validate_request_key(kwargs['request_key'])
 
   if kwargs.get('scenario_key'):
@@ -106,11 +119,20 @@ if is_remote:
   @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+  @click.option(
+      '--log-level', default=logger.INFO, type=click.Choice(log_levels), 
+      help='''
+          Log levels can be "debug", "info", "warning", or "error"
+      '''
+  )
   @click.option('--report-key', help='Save to report.')
   @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
   @click.option('--trace-id', help='Use existing trace.')
   @click.argument('request_key')
   def test(**kwargs):
+    if not os.getenv(env_vars.LOG_LEVEL):
+      os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
     settings = Settings.instance()
     request_key = validate_request_key(kwargs['request_key'])
 
