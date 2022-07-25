@@ -4,6 +4,7 @@ import pdb
 import requests
 import sys
 
+from stoobly_agent.app.cli.helpers.handle_replay_service import print_request_query
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response, print_request
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -80,6 +81,7 @@ def list(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
   '''
 )
+@click.option('--query', help='Print a specific property in the response.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.option('--trace-id', help='Use existing trace.')
@@ -99,7 +101,11 @@ def replay(**kwargs):
 
   __assign_default_alias_resolve_strategy(kwargs)
 
-  kwargs['on_response'] = print_request
+  on_response_handler = print_request
+  if kwargs['query']:
+      on_response_handler = lambda context: print_request_query(context, kwargs['query'])
+
+  kwargs['on_response'] = on_response_handler
 
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
