@@ -6,7 +6,6 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants import mode, replay_policy
 from stoobly_agent.config.constants import mock_policy, record_policy
-from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource

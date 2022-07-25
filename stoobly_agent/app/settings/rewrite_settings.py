@@ -18,5 +18,8 @@ class RewriteSettings:
   def rewrite_rules(self, project_id: str) -> List[RewriteRule]:
     return self.__rewrite_rules_map.get(project_id) or []
 
+  def set_rewrite_rules(self, project_id: str, v: List[RewriteRule]):
+    self.__rewrite_rules_map[project_id] = v
+
   def to_dict(self):
     return {k: list(map(lambda rule: rule.to_dict(), v)) for k, v in self.__rewrite_rules_map.items()}

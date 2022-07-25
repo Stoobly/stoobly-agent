@@ -1,10 +1,13 @@
+from typing import List
 import click
 import json
 import pdb
-import sys
 import time
 
-from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings import Settings, parameter_rule
+from stoobly_agent.app.settings.constants import request_component
+from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
+from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 from .helpers.validations import *
@@ -124,6 +127,88 @@ if is_remote:
 
         print("API Key updated!")
 
+    @click.group(
+        help="Manage rewrite rules."
+    )
+    @click.pass_context
+    def rewrite(ctx):
+        pass
+
+    @rewrite.command(
+        help="Set rewrite rule."
+    )
+    @click.option(
+        '--method', 
+        multiple=True, 
+        required=True,
+        type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+        help='HTTP methods.'
+    )
+    @click.option(
+        '--mode',
+        multiple=True,
+        required=True,
+        type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
+    )
+    @click.option('--name', required=True, help='Name of the request component.')
+    @click.option('--pattern', required=True, help='URLs pattern.')
+    @click.option('--project_key', help='Project to add rewrite rule to.')
+    @click.option(
+        '--type', 
+        required=True,
+        type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
+        help='Request component type.'
+    )
+    @click.option('--value', required=True, help='Rewrite value.')
+    def set(**kwargs):
+        settings = Settings.instance()
+        project_key_str = resolve_project_key_and_validate(kwargs, settings)
+        project_key = ProjectKey(project_key_str)
+
+        methods = list(kwargs['method'])
+        modes = list(kwargs['mode'])
+    
+        rewrite_rules = settings.proxy.rewrite.rewrite_rules(project_key.id)
+
+        rewrite_rule_filter = lambda rule: rule.pattern == kwargs['pattern'] and rule.methods == methods
+        filtered_rewrite_rules: List[RewriteRule] = list(filter(rewrite_rule_filter, rewrite_rules))
+
+        if len(filtered_rewrite_rules) == 0:
+            rewrite_rule = RewriteRule({
+                'methods': methods,
+                'pattern': kwargs['pattern'],
+                'parameter_rules': [__select_parameter_rule(kwargs)]
+            })
+            rewrite_rules.append(rewrite_rule)
+            settings.proxy.rewrite.set_rewrite_rules(project_key.id, rewrite_rules)
+        else:
+            parameter_rule_filter = lambda rule: rule.name == kwargs['name'] and rule.type == kwargs['type'] and rule.modes == modes
+            for rewrite_rule in filtered_rewrite_rules:
+                parameter_rules = rewrite_rule.parameter_rules
+                filtered_parameter_rules: List[ParameterRule] = list(filter(parameter_rule_filter, parameter_rules))
+                parameter_rule_dict = __select_parameter_rule(kwargs)
+
+                if len(filtered_parameter_rules) == 0:
+                    parameter_rule = ParameterRule(parameter_rule_dict)
+                    parameter_rules.append(parameter_rule)
+                    rewrite_rule.parameter_rules = parameter_rules
+                else:
+                    for parameter_rule in filtered_parameter_rules:
+                        parameter_rule.update(parameter_rule_dict)
+
+        settings.commit()
+
+        print("Rewrite rule updated!")
+
     config.add_command(api_key)
     config.add_command(project)
+    config.add_command(rewrite)
     config.add_command(scenario)
+
+def __select_parameter_rule(kwargs):
+    return {
+        'modes': list(kwargs['mode']),
+        'name': kwargs['name'],
+        'value': kwargs['value'],
+        'type': kwargs['type'],
+    }
