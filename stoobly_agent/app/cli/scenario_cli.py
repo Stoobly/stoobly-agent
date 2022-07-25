@@ -3,7 +3,7 @@ import os
 import pdb
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import print_request, print_request_query
+from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, default_format_handler, json_format_handler
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response 
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -56,6 +56,7 @@ def create(**kwargs):
     help='Strategy for resolving dynamic values for aliases.'
 )
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+@click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
@@ -64,7 +65,6 @@ def create(**kwargs):
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@click.option('--query', help='Print a specific property in the response.')
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--trace-id', help='Use existing trace.')
@@ -84,9 +84,9 @@ def replay(**kwargs):
 
     __assign_default_alias_resolve_strategy(kwargs)
 
-    on_response_handler = print_request
-    if kwargs['query']:
-        on_response_handler = lambda context: print_request_query(context, kwargs['query'])
+    on_response_handler = default_format_handler
+    if kwargs['format'] == JSON_FORMAT:
+        on_response_handler = json_format_handler 
 
     kwargs['on_response'] = on_response_handler 
 

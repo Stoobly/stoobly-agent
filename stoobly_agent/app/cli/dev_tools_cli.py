@@ -31,5 +31,5 @@ def migrate():
 @click.option('--content-type', default='application/json')
 @click.argument('query')
 def query(**kwargs):
-  decoded_response = decode_response(kwargs['response'], kwargs['content_type'])
+  decoded_response = decode_response(kwargs['content'], kwargs['content_type'])
   print(jmespath.search(kwargs['query'], decoded_response))
