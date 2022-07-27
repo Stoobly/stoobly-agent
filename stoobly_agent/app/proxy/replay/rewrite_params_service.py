@@ -13,9 +13,9 @@ AliasMap = Dict[str, RequestComponentName]
 def __handle_after_replace(trace: TraceAlias, value):
   pass
 
-def __handle_replace(replacement_options: list, number_of_replacements: int, strategy: alias_resolve_strategy.AliasResolveStrategy):
+def __handle_replace(replacement_options: list, number_of_replacements: int, strategy: alias_resolve_strategy.AliasResolveStrategy) -> int:
   if strategy == alias_resolve_strategy.NONE:
-    return
+    return -1
 
   if strategy == alias_resolve_strategy.FIFO:
     index = number_of_replacements
@@ -36,7 +36,11 @@ def rewrite_params(
   id_to_alias: AliasMap, 
   alias_resolver: AliasResolver,
   **options: jmespath.Options
-):
+) -> None:
+  # If no resolve strategy is set, return
+  if alias_resolver.strategy == alias_resolve_strategy.NONE:
+    return
+
   for param_name in param_names:
     _alias: Alias = id_to_alias.get(param_name['alias_id'])
     if not _alias:
