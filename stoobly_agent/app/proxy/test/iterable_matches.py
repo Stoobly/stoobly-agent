@@ -150,7 +150,7 @@ def list_matches(expected: dict, actual: dict, response_param_names_facade: Resp
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
     if not __length_matches(expected, actual):
-        if parent_context.is_selected():
+        if __required(parent_context) and parent_context.is_selected():
             return __length_match_error(parent_context.path_key, expected, actual)
 
     for i, expected_value in enumerate(expected):
