@@ -1,8 +1,9 @@
 import json
+import pdb
 
 from stoobly_agent.lib.utils import jmespath
 
-class TestSearch():
+class TestReplace():
     def test_a(self):
         a = {'foo': 1}
         jmespath.search('foo', a, { 'replacements': ['*'] })
@@ -52,6 +53,16 @@ class TestSearch():
         a = [{'a': 1}, {'a': 'a'}, {'a': None}]
         jmespath.search('[*].a', a, { 'replacements': ['*'] })
         assert self.equals(a, [{'a': '*'}, {'a': '*'}, {'a': '*'}]), print(a)
+
+    def equals(self, a, b):
+        return json.dumps(a) == json.dumps(b)
+
+
+class TestSearch():
+    def test_a(self):
+        a = [{'foo': [1, [2], [3]]}, {'foo': [1, [2], [3]]}]
+        res = jmespath.search('[*].foo[*][*]', a)
+        assert self.equals(res, [[[2], [3]], [[2], [3]]]), print(a)
 
     def equals(self, a, b):
         return json.dumps(a) == json.dumps(b)
