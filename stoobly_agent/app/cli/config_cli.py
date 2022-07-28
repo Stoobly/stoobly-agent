@@ -198,7 +198,7 @@ if is_remote:
 
         settings.commit()
 
-        print("Rewrite rule updated!")
+        print(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
 
     config.add_command(api_key)
     config.add_command(project)

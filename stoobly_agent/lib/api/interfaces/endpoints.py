@@ -15,6 +15,7 @@ class Alias(TypedDict):
   name: str
 
 class ResponseParamName(RequestComponentName):
+  inferred_type: str
   is_deterministic: bool
   query: str
 
@@ -25,3 +26,5 @@ class EndpointShowResponse(TypedDict):
   path_segment_names: List[RequestComponentName]
   query_param_names: List[RequestComponentName]
   response_param_names: List[ResponseParamName]
+
+ARRAY_TYPE = 'Array'

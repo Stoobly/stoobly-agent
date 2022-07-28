@@ -11,7 +11,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName
+from stoobly_agent.lib.api.interfaces.endpoints import ARRAY_TYPE, Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
@@ -212,7 +212,7 @@ class TraceContext:
 
     for response_param_name in response_param_names:
       try:
-        values = self.__query_resolves_response(response_param_name['query'], content)
+        values = self.__query_resolves_response(response_param_name, content)
         Logger.instance().debug(f"\tValues: {values}")
       except Exception as e:
         Logger.instance().error(e)
@@ -239,26 +239,36 @@ class TraceContext:
       trace_alias.save()
       Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
-  def __query_resolves_response(self, query: str, response: Union[list, dict]) -> list:
+  def __query_resolves_response(self, response_param_name: ResponseParamName, response: Union[list, dict]) -> list:
     '''
     Return value in response specified by query
     '''
     if not isinstance(response, dict) and not isinstance(response, list):
       raise
 
+    query = response_param_name['query']
     expression = jmespath.compile(query)
     value = expression.search(response)
 
-    while isinstance(value, list):
-      if len(value) == 0:
-        raise
+    array_count = query.count('[*]')
+    if array_count == 0 or not isinstance(value, list):
+      return [value]
+    else:
+      return self.__flatten(value, array_count)
 
-      if len(value) == 1:
-        value = value[0]
+  def __flatten(self, ar, depth, cur_depth = 0):
+    if cur_depth == depth:
+      return ar
 
-      break
-
-    return value if isinstance(value, list) else [value]
+    next_ar = []
+    for el in ar:
+      if cur_depth == depth - 1:
+        next_ar.append(el)
+      else:
+        if isinstance(el, list):
+          next_ar.append(el)
+    
+    return self.__flatten(next_ar, depth, cur_depth + 1)
 
   def __get_endpoint(self, endpoint_id: int) -> Union[EndpointShowResponse, None]:
     res = self.__endpoints_resource.show(endpoint_id,
