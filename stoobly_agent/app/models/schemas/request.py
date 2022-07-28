@@ -5,7 +5,7 @@ import pdb
 from mitmproxy.net.http.url import encode as urlencode
 from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response, is_traversable
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
 from typing import List, Union
 
@@ -117,7 +117,7 @@ class Request():
 
   @body_params.setter
   def body_params(self, v):
-    if not isinstance(v, dict) and not isinstance(v, list):
+    if not is_traversable(v):
       self.body = v
     else:
       content_type = self.headers.get('content-type')

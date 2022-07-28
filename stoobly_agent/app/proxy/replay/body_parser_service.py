@@ -12,7 +12,7 @@ JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
 WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
 
-def decode_response(content, content_type: Union[bytes, None, str]):
+def decode_response(content, content_type: Union[bytes, None, str]) -> Union[dict, list, MultiDict]:
     if not content_type:
         return content
 
@@ -31,7 +31,7 @@ def decode_response(content, content_type: Union[bytes, None, str]):
 
     return decoded_response
 
-def encode_response(content, content_type: Union[bytes, None, str]):
+def encode_response(content, content_type: Union[bytes, None, str]) -> Union[dict, list, MultiDict]:
     if not content_type:
         raise ValueError('Missing content_type value')
 
@@ -99,3 +99,6 @@ def normalize_header( header):
     if isinstance(header, bytes):
         header = header.decode('utf-8')
     return cgi.parse_header(header)[0].lower()
+
+def is_traversable(content):
+    return isinstance(content, list) or isinstance(content, dict) or isinstance(content, MultiDict)

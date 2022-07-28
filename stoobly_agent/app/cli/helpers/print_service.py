@@ -1,5 +1,3 @@
-
-
 from .tabulate_print_service import tabulate_print
 
 def select_print_options(kwargs):

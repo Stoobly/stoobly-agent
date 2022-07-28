@@ -6,6 +6,7 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
+from stoobly_agent.app.proxy.replay.body_parser_service import is_traversable
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
@@ -134,7 +135,7 @@ class TestContext():
     if not trace:
       return _decoded_expected_response_content
 
-    if not isinstance(_decoded_expected_response_content, list) and not isinstance(_decoded_expected_response_content, dict):
+    if not is_traversable(_decoded_expected_response_content):
       return _decoded_expected_response_content
 
     if not self.response_param_names:

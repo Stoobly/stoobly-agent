@@ -1,5 +1,6 @@
 import pdb
 
+from mitmproxy.coretypes.multidict import MultiDict
 from requests import Response
 from typing import Callable, Dict, List, Union
 
@@ -7,7 +8,7 @@ from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
@@ -144,7 +145,7 @@ class TraceContext:
   ):
     body_params = request.body_params
 
-    if isinstance(body_params, list) or isinstance(body_params, dict):
+    if is_traversable(body_params):
       rewrite_params(
         body_params, 
         body_param_names, 
@@ -201,6 +202,8 @@ class TraceContext:
     2. Create TraceAlias records for each parsed aliased propert
     '''
     content = decode_response(response.content, response.headers.get('content-type'))
+    if not is_traversable(content):
+        return Logger.instance().warning('Skipping creating aliases, content is not traversable')
 
     id_to_alias = {}
     aliases = endpoint['aliases']
@@ -243,8 +246,6 @@ class TraceContext:
     '''
     Return value in response specified by query
     '''
-    if not isinstance(response, dict) and not isinstance(response, list):
-      raise
 
     query = response_param_name['query']
     expression = jmespath.compile(query)
