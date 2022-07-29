@@ -81,10 +81,13 @@ def serialize_json(o):
 def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]):
     _o = MultiDict()
     for k, v in o.items():
-        if not isinstance(k, bytes):
+        if isinstance(k, str):
             k = k.encode()
 
-        if not isinstance(v, bytes):
+        if not isinstance(v, str) and not isinstance(v, bytes):
+            v = str(v)
+
+        if isinstance(v, str):
             v = v.encode()
         
         _o.add(k, v)
