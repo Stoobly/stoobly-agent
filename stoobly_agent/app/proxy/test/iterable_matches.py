@@ -53,7 +53,7 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
 
         actual_value = actual[key]
         if not __value_fuzzy_matches(actual_value, expected_value):
-            if not context.is_selected():
+            if __ignored(context, expected_value, actual_value):
                 continue
 
             return __type_match_error(path_key, expected_value, actual_value)
@@ -94,7 +94,7 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
         path_key = context.path_key
 
         if not __valid_value_type(value, valid_types):
-            if not context.is_selected():
+            if not context.is_selected() or not __required(context):
                 continue
 
             return __valid_type_error(path_key, value, valid_types)
@@ -117,15 +117,17 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
         context.visit_dict(key)
         path_key = context.path_key
 
+        # Check if key exists in actual
         if not __param_name_exists(key, actual):
             if not context.is_selected() or not __required(context):
                 continue
 
             return __param_name_exists_error(path_key)
-        
+
+        # Check if types match 
         actual_value = actual[key]
         if not __value_fuzzy_matches(expected_value, actual_value):
-            if not context.is_selected():
+            if __ignored(context, expected_value, actual_value):
                 continue
 
             return __type_match_error(path_key, expected_value, actual_value)
@@ -136,6 +138,7 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
         if type(actual_value) is list:
             return __list_matches(expected_value, actual_value, context)
 
+        # Check if value matches
         if not __value_matches(expected_value, actual_value):
             if not context.is_selected() or not __deterministic(context):
                 continue
@@ -150,7 +153,7 @@ def list_matches(expected: dict, actual: dict, response_param_names_facade: Resp
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
     if not __length_matches(expected, actual):
-        if __required(parent_context) and parent_context.is_selected():
+        if __deterministic(parent_context) and parent_context.is_selected():
             return __length_match_error(parent_context.path_key, expected, actual)
 
     for i, expected_value in enumerate(expected):
@@ -163,7 +166,7 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
 
         actual_value = actual[i]
         if not __value_fuzzy_matches(expected_value, actual_value):
-            if not context.is_selected():
+            if __ignored(context, expected_value, actual_value):
                 continue
 
             return __type_match_error(path_key, expected_value, actual_value)
@@ -200,6 +203,9 @@ def __deterministic(context: MatchContext) -> bool:
     deterministic_param_names: ResponseParamName = response_param_names_facade.deterministic
     return __param_name_matches(query, deterministic_param_names)
 
+def __ignored(context: MatchContext, expected_value, actual_value):
+    return not context.is_selected() or (not __required(context) and __required_matches(expected_value, actual_value))
+
 ### Matchers
 
 def __length_matches(v1, v2):
@@ -223,6 +229,9 @@ def __value_matches(v1, v2):
 
 def __valid_value_type(value, valid_types: list):
     return type(value) in valid_types
+
+def __required_matches(v1, v2):
+    return v1 == None or v2 == None
 
 ### Match Errors
 
