@@ -1,5 +1,6 @@
 import operator
 import pdb
+from typing import Callable
 
 from jmespath import functions
 from jmespath.compat import string_type
@@ -159,13 +160,13 @@ class TreeInterpreter(Visitor):
 
         if isinstance(options, dict):
             if 'replacements' in options:
-                self.replacements = options.get('replacements') or []
+                self.replacements: list = options.get('replacements') or []
 
             if 'handle_after_replace' in options:
-                self.handle_after_replace = options['handle_after_replace']
+                self.handle_after_replace: Callable = options['handle_after_replace']
 
             if 'handle_replace' in options:
-                self.handle_replace = options['handle_replace']
+                self.handle_replace: Callable = options['handle_replace']
 
             options = None
 
@@ -189,14 +190,17 @@ class TreeInterpreter(Visitor):
         if not self.is_leaf():
             return
 
-        if len(self.replacements) > 0:
+        if self.__do_replace():
             self.replace(obj, key)
 
-    def get_replacement_index(self):
+    def __handle_replace(self, name, value):
         if self.handle_replace:
-            return self.handle_replace(self.replacements, self.replacement_number)
+            return self.handle_replace(name, value, self.replacement_number)
         else: 
-            return self.replacement_number % len(self.replacements)
+            return self.replacements[self.replacement_number % len(self.replacements)]
+
+    def __do_replace(self):
+        return self.handle_replace or (self.replacements and isinstance(self.replacements, list) and len(self.replacements) > 0)
         
     def replace(self, obj, key):
         current_value = None
@@ -207,12 +211,10 @@ class TreeInterpreter(Visitor):
         except IndexError:
             pass
 
-        replacement_index = self.get_replacement_index()
-        if replacement_index != -1:
-            obj[key] = self.replacements[replacement_index]
+        obj[key] = self.__handle_replace(key, current_value)
 
-            if self.handle_after_replace:
-                self.handle_after_replace(current_value, self.replacement_number)
+        if self.handle_after_replace:
+            self.handle_after_replace(key, current_value, self.replacement_number)
 
     def default_visit(self, node, *args, **kwargs):
         raise NotImplementedError(node['type'])

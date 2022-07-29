@@ -1,6 +1,5 @@
 import pdb
 
-from mitmproxy.coretypes.multidict import MultiDict
 from requests import Response
 from typing import Callable, Dict, List, Union
 
@@ -80,12 +79,7 @@ class TraceContext:
     self.__requests.append((request, response))
 
   def create_trace_alias(self, alias_name, value, trace_request = None):
-    trace_alias = TraceAlias.create(
-      name=alias_name,
-      value=value,
-      trace_id=self.__trace.id,
-      trace_request_id=trace_request.id if trace_request else None
-    )
+    trace_alias = self.__alias_resolver.create_alias(alias_name, value, trace_request)
     Logger.instance().info(f"{bcolors.OKGREEN}Resolved {trace_alias.name}: {value}{bcolors.ENDC}")
     return trace_alias
 
@@ -151,7 +145,7 @@ class TraceContext:
         body_param_names, 
         id_to_alias, 
         self.__alias_resolver,
-        handle_after_replace=lambda trace_alias, v: self.__assign_trace_alias(trace_alias, v)
+        handle_after_replace=lambda name, value, trace_alias: self.__assign_trace_alias(trace_alias, value)
       )
 
       request.body_params = body_params
@@ -251,25 +245,7 @@ class TraceContext:
     expression = jmespath.compile(query)
     value = expression.search(response)
 
-    array_count = query.count('[*]')
-    if array_count == 0 or not isinstance(value, list):
-      return [value]
-    else:
-      return self.__flatten(value, array_count)
-
-  def __flatten(self, ar, depth, cur_depth = 0):
-    if cur_depth == depth:
-      return ar
-
-    next_ar = []
-    for el in ar:
-      if cur_depth == depth - 1:
-        next_ar.append(el)
-      else:
-        if isinstance(el, list):
-          next_ar.append(el)
-    
-    return self.__flatten(next_ar, depth, cur_depth + 1)
+    return jmespath.flatten(value, query)
 
   def __get_endpoint(self, endpoint_id: int) -> Union[EndpointShowResponse, None]:
     res = self.__endpoints_resource.show(endpoint_id,

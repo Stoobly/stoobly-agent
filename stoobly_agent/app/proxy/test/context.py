@@ -143,6 +143,7 @@ class TestContext():
 
     aliased_response_param_names = self.response_param_names.aliased
     aliases = self.__endpoint_show_response.get('aliases') or []
+
     if len(aliased_response_param_names) == 0 or len(aliases) == 0:
       return _decoded_expected_response_content
 
