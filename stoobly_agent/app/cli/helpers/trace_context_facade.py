@@ -30,9 +30,15 @@ class TraceContextFacade():
 
     def parse_alias_string(_alias):
       toks = _alias.split('=', 1)
+
+      try:
+        value = eval(toks[1])
+      except Exception as e:
+        value = toks[1]
+
       return {
         'name': toks[0],
-        'value': toks[1],
+        'value': value,
       }
 
     return map(parse_alias_string, aliases)
