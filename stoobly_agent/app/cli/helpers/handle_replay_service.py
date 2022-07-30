@@ -11,8 +11,12 @@ from stoobly_agent.lib.utils import jmespath
 DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'
 
-def print_request(context: ReplayContext, format_handler: Callable[[ReplayContext], None] = None):
-  format_handler = format_handler or default_format_handler 
+def print_request(context: ReplayContext, format = None):
+  format_handler = default_format_handler 
+  
+  if format == JSON_FORMAT:
+    format_handler = json_format_handler
+
   format_handler(context)
 
 def print_request_query(context: ReplayContext, query: str):
