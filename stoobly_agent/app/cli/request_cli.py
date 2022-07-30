@@ -4,8 +4,8 @@ import pdb
 import requests
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, default_format_handler, json_format_handler, print_request, print_request_query
-from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_on_test_response 
+from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, print_request
+from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -103,11 +103,9 @@ def replay(**kwargs):
 
   __assign_default_alias_resolve_strategy(kwargs)
 
-  on_response_handler = default_format_handler
-  if kwargs['format'] == JSON_FORMAT:
-      on_response_handler = json_format_handler
-
-  kwargs['on_response'] = on_response_handler
+  kwargs['on_response'] = lambda context: print_request(
+    context, kwargs['format']
+  )
 
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
@@ -125,6 +123,7 @@ if is_remote:
   @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
   @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
   @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
+  @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
   @click.option(
@@ -157,12 +156,14 @@ if is_remote:
         'total': 0 
     }
 
-    kwargs['on_response'] = lambda context: handle_on_test_response(
-      context, session_context
+    kwargs['on_response'] = lambda context: handle_test_complete(
+      context, session_context, kwargs['format']
     )
 
     request = RequestFacade(settings)
     __replay(request.test, kwargs)
+
+    handle_test_session_complete(session_context)
 
     exit_on_failure(session_context)
 
