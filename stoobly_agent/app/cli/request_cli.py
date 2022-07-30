@@ -4,7 +4,7 @@ import pdb
 import requests
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, print_request
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -103,7 +103,10 @@ def replay(**kwargs):
 
   __assign_default_alias_resolve_strategy(kwargs)
 
-  kwargs['on_response'] = lambda context: print_request(
+  kwargs['before_replay'] = lambda context: handle_before_replay(
+    context, kwargs['format']
+  )
+  kwargs['after_replay'] = lambda context: print_request(
     context, kwargs['format']
   )
 
@@ -156,7 +159,10 @@ if is_remote:
         'total': 0 
     }
 
-    kwargs['on_response'] = lambda context: handle_test_complete(
+    kwargs['before_replay'] = lambda context: handle_before_replay(
+      context, kwargs['format']
+    )
+    kwargs['after_replay'] = lambda context: handle_test_complete(
       context, session_context, kwargs['format']
     )
 

@@ -10,7 +10,6 @@ from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.lib.api.api import Api
-from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
 
@@ -19,7 +18,8 @@ class ReplayRequestOptions(TypedDict):
   group_by: str
   lifecycle_hooks_script_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
-  on_response: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
+  before_replay: Union[Callable[[ReplayContext], None], None]
+  after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
@@ -33,7 +33,8 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
-  __log(context)
+  if 'before_replay' in options and callable(options['after_replay']):
+    options['before_replay'](context)
 
   request = context.request
   headers = request.headers
@@ -81,9 +82,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     verify = not MitmproxyConfig.instance().get('ssl_insecure')
   ))
 
-  if 'on_response' in options and callable(options['on_response']):
+  if 'after_replay' in options and callable(options['after_replay']):
     context.with_response(res)
-    res = options['on_response'](context) or res
+    res = options['after_replay'](context) or res
 
   return res
 
@@ -106,16 +107,6 @@ def __handle_mode_option(_mode, request: Request, headers):
     # If recording, then it's actually a replay and record
     headers[custom_headers.PROXY_MODE] = mode.REPLAY
     headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
-
-def __log(context: ReplayContext):
-  request = context.request
-
-  # If request is not the first of a sequence, print extra new line
-  sequence = context.sequence
-  if sequence and sequence > 1:
-    print()
-
-  Logger.instance().info(f"{bcolors.OKCYAN}{request.method} {request.url}{bcolors.ENDC}")
 
 def __get_cookies(headers: Request.headers):
   return SimpleCookie(headers.get('Cookie'))
