@@ -56,6 +56,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
         # Commit test to API
         res = upload_test(
             flow,
+            expected_response=test_context.cached_expected_response_content,
             log=log,
             passed=passed,
             request_id=request_id,

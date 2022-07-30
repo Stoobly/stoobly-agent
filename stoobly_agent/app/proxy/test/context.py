@@ -6,7 +6,7 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
-from stoobly_agent.app.proxy.replay.body_parser_service import is_traversable
+from stoobly_agent.app.proxy.replay.body_parser_service import encode_response, is_traversable
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
@@ -37,6 +37,8 @@ class TestContext():
     self.__response_param_names = None
     self.__skipped = False
 
+    self.__cached_rewritten_expected_response_content = None
+
   def with_response_param_names(self, resource: EndpointsResource):
     endpoint_id = self.mock_request_endpoint_id
 
@@ -58,6 +60,13 @@ class TestContext():
     self.__response_param_names = ResponseParamNamesFacade(
       response_param_names      
     ).with_aliases(aliases).with_filter(self.filter).with_trace(self.trace)
+
+  @property
+  def cached_expected_response_content(self) -> Union[bytes, None, str]:
+    if not self.__cached_rewritten_expected_response_content:
+      return None
+
+    return encode_response(self.__cached_rewritten_expected_response_content, self.__expected_response.content_type) 
 
   @property
   def lifecycle_hooks(self):
@@ -150,6 +159,8 @@ class TestContext():
     id_to_alias_map = build_id_to_alias_map(aliases)
     alias_resolver = AliasResolver(trace, self.intercept_settings.alias_resolve_strategy)
     rewrite_params(_decoded_expected_response_content, aliased_response_param_names, id_to_alias_map, alias_resolver)
+
+    self.__cached_rewritten_expected_response_content = _decoded_expected_response_content
 
     return _decoded_expected_response_content
 
