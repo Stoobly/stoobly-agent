@@ -46,10 +46,11 @@ class ReplayFacade():
       trace_context = facade.trace_context
 
     return {
+      'after_replay': cli_options.get('after_replay'),
       'alias_resolve_strategy': cli_options.get('alias_resolve_strategy'),
+      'before_replay': cli_options.get('before_replay'),
       'group_by': cli_options.get('group_by'),
       'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
-      'on_response': cli_options.get('on_response'),
       'request_origin': request_origin.CLI,
       'trace_context': trace_context,
     }

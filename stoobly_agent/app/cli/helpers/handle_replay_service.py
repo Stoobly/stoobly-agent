@@ -11,6 +11,19 @@ from stoobly_agent.lib.utils import jmespath
 DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'
 
+def handle_before_replay(context: ReplayContext, format = None):
+  format = format or DEFAULT_FORMAT
+
+  if format == DEFAULT_FORMAT:
+    request = context.request
+
+    # If request is not the first of a sequence, print extra new line
+    sequence = context.sequence
+    if sequence and sequence > 1:
+      print()
+
+    Logger.instance().info(f"{bcolors.OKCYAN}{request.method} {request.url}{bcolors.ENDC}")
+
 def print_request(context: ReplayContext, format = None):
   format_handler = default_format_handler 
   
