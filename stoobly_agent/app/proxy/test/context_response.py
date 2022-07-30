@@ -1,6 +1,6 @@
 import pdb
 
-from ..replay.body_parser_service import decode_response
+from ..replay.body_parser_service import decode_response, encode_response
 
 class TestContextResponse():
 
@@ -14,6 +14,10 @@ class TestContextResponse():
     return self._content  
 
   @property
+  def content_type(self):
+    return self.headers.get('content-type')
+
+  @property
   def headers(self):
     return self._headers
 
@@ -22,8 +26,12 @@ class TestContextResponse():
     return self._status_code
 
   def decode_content(self):
-    content_type = self.headers.get('content-type')
+    content_type = self.content_type
     return decode_response(self.content, content_type)
+
+  def encode_content(self):
+    content_type = self.content_type
+    return encode_response(self.content, content_type)
 
   def with_content(self, content):
     self._content = content

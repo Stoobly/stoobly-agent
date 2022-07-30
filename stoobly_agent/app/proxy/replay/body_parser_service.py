@@ -31,7 +31,7 @@ def decode_response(content, content_type: Union[bytes, None, str]) -> Union[dic
 
     return decoded_response
 
-def encode_response(content, content_type: Union[bytes, None, str]) -> Union[dict, list, MultiDict]:
+def encode_response(content, content_type: Union[bytes, None, str]) -> Union[bytes, str]:
     if not content_type:
         raise ValueError('Missing content_type value')
 
@@ -78,7 +78,7 @@ def parse_www_form_urlencoded(content):
 def serialize_json(o):
     return json.dumps(o)
 
-def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]):
+def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]) -> bytes:
     _o = MultiDict()
     for k, v in o.items():
         if isinstance(k, str):
