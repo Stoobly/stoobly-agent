@@ -1,4 +1,5 @@
 import pdb
+from typing import TypedDict
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from requests import Response
@@ -11,6 +12,14 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ..intercept_settings import InterceptSettings
 from .join_request_service import join_rewritten_request
+
+class UploadTestData(TypedDict):
+  expected_response: str
+  log: str
+  passed: bool
+  request_id: int
+  status: int
+  strategy: str
 
 def inject_upload_test(
   api: TestsResource,
