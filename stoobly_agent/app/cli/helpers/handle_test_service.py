@@ -20,9 +20,6 @@ class SessionContext(TypedDict):
   total: int
 
 def handle_test_session_complete(session_context: SessionContext, format = None):
-  if not 'output' in session_context:
-    return
-
   format_handler = __default_session_complete_formatter
 
   if format == JSON_FORMAT:
@@ -66,11 +63,13 @@ def __json_test_complete_formatter(context: ReplayContext, session_context: Sess
   else:
     if 'tests' not in output:
       output['tests'] = []
-    
+
+    seconds = context.end_time - context.start_time
+    latency = round(seconds * 1000)
     test = {
       'log': res['log'] if 'log' in res else '',
       'passed': res['passed'],
-      'response': __build_json_response(context.response)
+      'response': { **__build_json_response(context.response), 'latency': latency} 
     }
 
     if not res['passed']:
@@ -79,7 +78,7 @@ def __json_test_complete_formatter(context: ReplayContext, session_context: Sess
       expected_response = __get_test_expected_response_with_context(context, project_id, test_facade)
 
       if expected_response:
-        test['expected_response'] = __build_json_response(expected_response)
+        test['expected_response'] = { **__build_json_response(expected_response), 'latency': res['expected_latency']}
 
     output['tests'].append(test)
 
@@ -90,7 +89,7 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
   elif isinstance(res, str):
     print(res, file=sys.stderr)
   else:
-    print_request(context, lambda context: __default_test_complete_formatter(context, f" (Expected {res['expected_latency']}ms)"))
+    print_request(context)
 
     if not res['passed']:
       passed_message = f"{bcolors.FAIL}failed{bcolors.ENDC}"
@@ -108,13 +107,29 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
       expected_response = __get_test_expected_response_with_context(context, project_id, test_facade)
 
       if expected_response:
-        print("\nExpected Response")
+        print(f"\n{bcolors.BOLD}Expected Response{bcolors.ENDC}")
         print(expected_response.content.decode())
+        print(f"Completed {expected_response.status_code} in {res['expected_latency']}ms")
 
 def __default_session_complete_formatter(session_context: SessionContext):
-  print(session_context['output'])
+  if 'output' in session_context:
+    print(session_context['output'])
+
+  passed = session_context['passed']
+  total = session_context['total']
+
+  if total > 1:
+    if passed == total:
+      print(f"\n{passed} / {total} {bcolors.OKGREEN}passed{bcolors.ENDC}")
+    else:
+      print(f"\n{passed} / {total} {bcolors.OKGREEN}passed{bcolors.ENDC} {total - passed} {bcolors.FAIL}failed{bcolors.ENDC}")
 
 def __json_session_complete_formatter(session_context: SessionContext):
+  if 'output' not in session_context:
+    return
+
+  session_context['output']['passed'] = session_context['passed']
+  session_context['output']['total'] = session_context['total']
   print(json.dumps(session_context['output']))
 
 def __get_test_response_with_context(context: ReplayContext, project_id: str, test_facade: TestFacade) -> Union[requests.Response, str]:

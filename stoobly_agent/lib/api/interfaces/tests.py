@@ -5,6 +5,7 @@ from stoobly_agent.config.constants import test_strategy
 from .pagination_query_params import PaginationQueryParams
 
 class TestShowResponse(TypedDict):
+  expected_latency: int
   id: int
   passed: bool
   project_id: str
