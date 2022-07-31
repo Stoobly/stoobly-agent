@@ -22,7 +22,7 @@ def handle_before_replay(context: ReplayContext, format = None):
     if sequence and sequence > 1:
       print()
 
-    Logger.instance().info(f"{bcolors.OKCYAN}{request.method} {request.url}{bcolors.ENDC}")
+    print(f"{bcolors.OKCYAN}{request.method} {request.url}{bcolors.ENDC}")
 
 def print_request(context: ReplayContext, format = None):
   format_handler = default_format_handler 

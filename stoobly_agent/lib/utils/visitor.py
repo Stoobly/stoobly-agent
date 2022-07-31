@@ -121,7 +121,6 @@ class Visitor(object):
         Logger.instance().debug('Traverse Path')
         for i, node in enumerate(self.nodes):
             Logger.instance().debug(f"{i + 1} {node}")
-        Logger.instance().debug('*')
 
     def build_traverse_path_traverse(self, node):
         if node['type'] == 'projection':

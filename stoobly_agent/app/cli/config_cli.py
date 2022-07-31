@@ -1,14 +1,16 @@
-from typing import List
 import click
 import json
 import pdb
 import time
 
-from stoobly_agent.app.settings import Settings, parameter_rule
+from typing import List
+
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
+from stoobly_agent.lib.logger import Logger
 
 from .helpers.validations import *
 
@@ -198,7 +200,7 @@ if is_remote:
 
         settings.commit()
 
-        print(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
+        Logger.instance().debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
 
     config.add_command(api_key)
     config.add_command(project)

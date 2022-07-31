@@ -1,6 +1,7 @@
 import logging
 import logging.config
 import os
+import pdb
 
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 
@@ -31,16 +32,26 @@ class Logger:
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
 
-            log_level = os.getenv(LOG_LEVEL) or ''
-
-            if log_level.lower() == DEBUG:
-                logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
-                logging.basicConfig(level=logging.DEBUG)
-            elif log_level.lower() == WARNING:
-                logging.basicConfig(level=logging.WARNING)
-            elif log_level.lower() == ERROR:
-                logging.basicConfig(level=logging.ERROR)
-            else:
-                logging.basicConfig(level=logging.INFO)
+        cls._instance.load()
 
         return logging
+
+    @classmethod
+    def reload(cls):
+        if cls._instance is None:
+            cls._instance = cls.__new__(cls)
+
+        cls._instance.load()
+
+    def load(self):
+        log_level = os.getenv(LOG_LEVEL) or ''
+
+        if log_level.lower() == DEBUG:
+            logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
+            logging.basicConfig(level=logging.DEBUG)
+        elif log_level.lower() == WARNING:
+            logging.basicConfig(level=logging.WARNING)
+        elif log_level.lower() == ERROR:
+            logging.basicConfig(level=logging.ERROR)
+        else:
+            logging.basicConfig(level=logging.INFO)

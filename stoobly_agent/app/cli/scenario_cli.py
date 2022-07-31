@@ -60,7 +60,7 @@ def create(**kwargs):
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
-    '--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
+    '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
     help='''
         Log levels can be "debug", "info", "warning", or "error"
     '''
@@ -70,8 +70,7 @@ def create(**kwargs):
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def replay(**kwargs):
-    if not os.getenv(env_vars.LOG_LEVEL):
-        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
     validate_scenario_key(kwargs['key'])
 
@@ -115,7 +114,7 @@ def replay(**kwargs):
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
-    '--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
+    '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
     help='''
         Log levels can be "debug", "info", "warning", or "error"
     '''
@@ -130,8 +129,8 @@ def replay(**kwargs):
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('key')
 def test(**kwargs):
-    if not os.getenv(env_vars.LOG_LEVEL):
-        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+    logger.Logger.reload()
 
     settings = Settings.instance()
     scenario_key = validate_scenario_key(kwargs['key'])
