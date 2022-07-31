@@ -79,7 +79,7 @@ def list(**kwargs):
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
-  '--log-level', default=logger.INFO, type=click.Choice(log_levels), 
+  '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
   help='''
     Log levels can be "debug", "info", "warning", or "error"
   '''
@@ -89,8 +89,7 @@ def list(**kwargs):
 @click.option('--trace-id', help='Use existing trace.')
 @click.argument('request_key')
 def replay(**kwargs):
-  if not os.getenv(env_vars.LOG_LEVEL):
-    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   validate_request_key(kwargs['request_key'])
 
@@ -130,7 +129,7 @@ if is_remote:
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
   @click.option(
-      '--log-level', default=logger.INFO, type=click.Choice(log_levels), 
+      '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
       help='''
           Log levels can be "debug", "info", "warning", or "error"
       '''
@@ -140,8 +139,7 @@ if is_remote:
   @click.option('--trace-id', help='Use existing trace.')
   @click.argument('request_key')
   def test(**kwargs):
-    if not os.getenv(env_vars.LOG_LEVEL):
-      os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
     settings = Settings.instance()
     request_key = validate_request_key(kwargs['request_key'])
