@@ -59,10 +59,12 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
-            return __dict_fuzzy_matches(expected_value, actual_value, context)
+            __dict_fuzzy_matches(expected_value, actual_value, context)
+            continue
 
         if type(actual_value) is list:
-            return __list_fuzzy_matches(expected_value, actual_value, context)
+            __list_fuzzy_matches(expected_value, actual_value, context)
+            continue
 
     return True, ''
 
@@ -100,10 +102,12 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
             return __valid_type_error(path_key, value, valid_types)
 
         if type(value) is dict:
-            return __dict_fuzzy_matches(type_examples[dict], value, context)
+            __dict_fuzzy_matches(type_examples[dict], value, context)
+            continue
 
         if type(value) is list:
-            return __list_fuzzy_matches(type_examples[list], value, context)
+            __list_fuzzy_matches(type_examples[list], value, context)
+            continue
 
     return True, ''
 
@@ -133,10 +137,12 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
-            return __dict_matches(expected_value, actual_value, context)
+            __dict_matches(expected_value, actual_value, context)
+            continue
 
         if type(actual_value) is list:
-            return __list_matches(expected_value, actual_value, context)
+            __list_matches(expected_value, actual_value, context)
+            continue
 
         # Check if value matches
         if not __value_matches(expected_value, actual_value):
@@ -172,10 +178,12 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
             return __type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
-            return __dict_matches(expected_value, actual_value, context)
+            __dict_matches(expected_value, actual_value, context)
+            continue
 
         if type(actual_value) is list:
-            return __list_matches(expected_value, actual_value, context)
+            __list_matches(expected_value, actual_value, context)
+            continue
 
         if not __value_matches(actual_value, expected_value):
             if not context.is_selected() or not __deterministic(context):
