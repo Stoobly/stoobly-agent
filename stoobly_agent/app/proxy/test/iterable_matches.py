@@ -146,7 +146,7 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
 
         # Check if value matches
         if not __value_matches(expected_value, actual_value):
-            if not context.is_selected() or not __deterministic(context):
+            if __ignored(context, expected_value, actual_value) or not __deterministic(context):
                 continue
 
             return __value_match_error(path_key, expected_value, actual_value)
@@ -171,6 +171,7 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
         path_key = context.path_key
 
         actual_value = actual[i]
+
         if not __value_fuzzy_matches(expected_value, actual_value):
             if __ignored(context, expected_value, actual_value):
                 continue
@@ -186,7 +187,7 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
             continue
 
         if not __value_matches(actual_value, expected_value):
-            if not context.is_selected() or not __deterministic(context):
+            if __ignored(context, expected_value, actual_value) or not __deterministic(context):
                 continue
 
             return __value_match_error(path_key, expected_value, actual_value)
