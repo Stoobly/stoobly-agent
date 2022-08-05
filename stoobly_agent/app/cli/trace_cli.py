@@ -61,19 +61,24 @@ def alias(ctx):
 @alias.command(
     help="Show all aliases for a trace"
 )
+@click.option('--name', help='Filter by name.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--size', default=10)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
-@click.option('--trace-id')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('trace_id')
 def list(**kwargs):
   print_options = select_print_options(kwargs)
-  trace_aliases = TraceAlias
 
-  if kwargs['trace_id']:
-    trace_aliases = trace_aliases.where_for(trace_id=kwargs['trace_id'])
+  columns = {
+    'trace_id': kwargs['trace_id']
+  }
 
+  if kwargs['name']:
+    columns['name'] = kwargs['name']
+
+  trace_aliases = TraceAlias.where_for(**columns)
   trace_aliases = trace_aliases.limit(kwargs['size']).order_by(kwargs['sort_by'], kwargs['sort_order'])
 
   __print(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
