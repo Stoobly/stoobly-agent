@@ -8,7 +8,7 @@ DICT_TYPE = type({}).__name__
 LIST_TYPE = type([]).__name__
 
 class TraceAlias(Base):
-  __fillable__ = ['assigned_to', 'inferred_type', 'name', 'trace_id', 'value']
+  __fillable__ = ['assigned_to', 'inferred_type', 'name', 'trace_id', 'trace_request_id', 'value']
 
   @belongs_to
   def trace(self):
