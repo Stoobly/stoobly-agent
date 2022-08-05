@@ -197,7 +197,7 @@ class TraceContext:
     '''
     content = decode_response(response.content, response.headers.get('content-type'))
     if not is_traversable(content):
-        return Logger.instance().warning('Skipping creating aliases, content is not traversable')
+        return Logger.instance().debug('Skipping creating aliases, content is not traversable')
 
     id_to_alias = {}
     aliases = endpoint['aliases']
