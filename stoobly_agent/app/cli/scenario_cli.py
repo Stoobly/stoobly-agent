@@ -158,7 +158,7 @@ def test(**kwargs):
     scenario = ScenarioFacade(settings)
     scenario.test(kwargs['key'], kwargs)
 
-    handle_test_session_complete(session_context)
+    handle_test_session_complete(session_context, kwargs['format'])
 
     exit_on_failure(session_context)
 
