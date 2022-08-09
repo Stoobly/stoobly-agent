@@ -1,10 +1,16 @@
+import pdb
 import click
+import re
 import sys
 
+from typing import Union
+
+from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import InvalidOrganizationKey, InvalidProjectKey, InvalidReportKey, InvalidRequestKey, InvalidScenarioKey
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey, ReportKey, RequestKey, ScenarioKey
-from stoobly_agent.lib.logger import Logger
+
+from .trace_aliases import adapt_trace_aliases, Alias, parse_aliases
 
 # Print
 
@@ -19,6 +25,21 @@ def handle_invalid_key(resource: str):
 
 def handle_missing_key(resource: str):
   print(f"Error: Missing {resource} key", file=sys.stderr) 
+  sys.exit(1)
+
+def handle_invalid_alias(expected_alias: Alias, alias_value: str, format = DEFAULT_FORMAT):
+  if format == JSON_FORMAT:
+    pass
+  else:
+    print(f"Error: Invalid alias {expected_alias['name']} value, got {alias_value}, expected {expected_alias['value']}") 
+
+  sys.exit(1)
+
+def handle_missing_alias(expected_alias: Alias, format = DEFAULT_FORMAT):
+  if format == JSON_FORMAT:
+    pass
+  else:
+    print(f"Error: Missing alias {expected_alias['name']}")
   sys.exit(1)
 
 # Validate
@@ -52,6 +73,25 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
     return ScenarioKey(scenario_key)
   except InvalidScenarioKey:
     handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
+
+def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
+  assigns = kwargs.get('assign')
+  trace_id = kwargs.get('trace_id')
+
+  aliases = parse_aliases(assigns) + adapt_trace_aliases(trace_id)
+  aliases_map = {}
+  for _alias in aliases:
+    aliases_map[_alias.get('name')] = _alias.get('value')
+
+  for validation in validations:
+    parsed_validation = parse_aliases([validation])[0]
+    name = parsed_validation['name']
+
+    if name not in aliases_map:
+      handle_missing_alias(parsed_validation)
+
+    if not re.match(parsed_validation['value'], aliases_map[name]):
+      handle_invalid_alias(parsed_validation, aliases_map[name])
 
 # Prompt
 

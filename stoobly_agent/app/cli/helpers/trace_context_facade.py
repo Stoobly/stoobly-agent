@@ -1,8 +1,9 @@
 import pdb
 
 from typing import List
-from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
+from stoobly_agent.app.cli.helpers.trace_aliases import parse_aliases
+from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
@@ -28,17 +29,4 @@ class TraceContextFacade():
     if not aliases:
       return []
 
-    def parse_alias_string(_alias):
-      toks = _alias.split('=', 1)
-
-      try:
-        value = eval(toks[1])
-      except Exception as e:
-        value = toks[1]
-
-      return {
-        'name': toks[0],
-        'value': value,
-      }
-
-    return map(parse_alias_string, aliases)
+    return parse_aliases(aliases) 

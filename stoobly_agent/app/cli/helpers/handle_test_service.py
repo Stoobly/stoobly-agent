@@ -8,13 +8,14 @@ from typing import Callable, TypedDict, Union
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, print_request
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.cli.types.output import TestOutput
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import bcolors
 
 class SessionContext(TypedDict):
   aggregate_failures: bool 
   passed: int
-  output: dict
+  output: TestOutput
   project_id: int
   test_facade: TestFacade
   total: int

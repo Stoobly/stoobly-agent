@@ -4,6 +4,7 @@ import pdb
 from typing import Callable
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.cli.types.output import ReplayOutput
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
@@ -59,5 +60,5 @@ def json_format_handler(context: ReplayContext):
   headers = dict(response.headers)
   content = response.content.decode()
 
-  output = {'headers': headers, 'content': content}
+  output: ReplayOutput = {'headers': headers, 'content': content}
   print(json.dumps(output))

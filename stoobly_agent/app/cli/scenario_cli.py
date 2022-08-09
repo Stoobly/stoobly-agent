@@ -127,6 +127,7 @@ def replay(**kwargs):
     help='How to test responses.'
 )
 @click.option('--trace-id', help='Use existing trace.')
+@click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
 @click.argument('key')
 def test(**kwargs):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -137,6 +138,9 @@ def test(**kwargs):
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
+
+    if len(kwargs['validate']):
+        validate_aliases(kwargs['validate'], assign=kwargs['assign'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
 
