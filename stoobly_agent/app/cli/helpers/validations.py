@@ -1,3 +1,4 @@
+import json
 import pdb
 import click
 import re
@@ -28,18 +29,25 @@ def handle_missing_key(resource: str):
   sys.exit(1)
 
 def handle_invalid_alias(expected_alias: Alias, alias_value: str, format = DEFAULT_FORMAT):
+  error_message = f"Error: Invalid alias {expected_alias['name']} value, got {alias_value}, expected {expected_alias['value']}"
+
   if format == JSON_FORMAT:
-    pass
+    output = { 'error': error_message }
+    print(json.dumps(output))
   else:
-    print(f"Error: Invalid alias {expected_alias['name']} value, got {alias_value}, expected {expected_alias['value']}") 
+    print(error_message) 
 
   sys.exit(1)
 
 def handle_missing_alias(expected_alias: Alias, format = DEFAULT_FORMAT):
+  error_message = f"Error: Missing alias {expected_alias['name']}"
+
   if format == JSON_FORMAT:
-    pass
+    output = { 'error': error_message }
+    print(json.dumps(output))
   else:
-    print(f"Error: Missing alias {expected_alias['name']}")
+    print(error_message)
+
   sys.exit(1)
 
 # Validate
@@ -88,10 +96,10 @@ def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
     name = parsed_validation['name']
 
     if name not in aliases_map:
-      handle_missing_alias(parsed_validation)
+      handle_missing_alias(parsed_validation, kwargs.get('format'))
 
     if not re.match(parsed_validation['value'], aliases_map[name]):
-      handle_invalid_alias(parsed_validation, aliases_map[name])
+      handle_invalid_alias(parsed_validation, aliases_map[name], kwargs.get('format'))
 
 # Prompt
 
