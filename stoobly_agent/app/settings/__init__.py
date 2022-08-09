@@ -114,9 +114,10 @@ class Settings:
         copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
 
     def write(self, contents):
-        fp = open(self.__settings_file_path, 'w')
-        yaml.dump(contents, fp, allow_unicode=True)
-        fp.close()
+        if contents:
+            fp = open(self.__settings_file_path, 'w')
+            yaml.dump(contents, fp, allow_unicode=True)
+            fp.close()
 
     def commit(self):
         settings = self.to_dict()
