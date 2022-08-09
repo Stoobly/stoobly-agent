@@ -15,27 +15,41 @@ from .trace_aliases import adapt_trace_aliases, Alias, parse_aliases
 
 # Print
 
-def print_invalid_key(resource: str):
-  print(f"Error: Invalid {resource} key", file=sys.stderr) 
+def print_invalid_key(resource: str, format = DEFAULT_FORMAT):
+  error_message = f"Error: Invalid {resource} key"
+
+  if format == JSON_FORMAT:
+    print_error_json_format(error_message)
+  else:
+    print(error_message, file=sys.stderr) 
+
+def print_error_json_format(error_message):
+    output = { 'error': error_message }
+    print(json.dumps(output), file=sys.stderr)
 
 # Handle
 
-def handle_invalid_key(resource: str):
-  print_invalid_key(resource)
+def handle_invalid_key(resource: str, format = DEFAULT_FORMAT):
+  print_invalid_key(resource, format)
   sys.exit(1)
 
-def handle_missing_key(resource: str):
-  print(f"Error: Missing {resource} key", file=sys.stderr) 
+def handle_missing_key(resource: str, format = DEFAULT_FORMAT):
+  error_message = f"Error: Missing {resource} key"
+
+  if format == JSON_FORMAT:
+    print_error_json_format(error_message)
+  else:
+    print(error_message, file=sys.stderr) 
+
   sys.exit(1)
 
 def handle_invalid_alias(expected_alias: Alias, alias_value: str, format = DEFAULT_FORMAT):
   error_message = f"Error: Invalid alias {expected_alias['name']} value, got {alias_value}, expected {expected_alias['value']}"
 
   if format == JSON_FORMAT:
-    output = { 'error': error_message }
-    print(json.dumps(output))
+    print_error_json_format(error_message)
   else:
-    print(error_message) 
+    print(error_message, file=sys.stderr) 
 
   sys.exit(1)
 
@@ -43,10 +57,9 @@ def handle_missing_alias(expected_alias: Alias, format = DEFAULT_FORMAT):
   error_message = f"Error: Missing alias {expected_alias['name']}"
 
   if format == JSON_FORMAT:
-    output = { 'error': error_message }
-    print(json.dumps(output))
+    print_error_json_format(error_message)
   else:
-    print(error_message)
+    print(error_message, file=sys.stderr)
 
   sys.exit(1)
 
