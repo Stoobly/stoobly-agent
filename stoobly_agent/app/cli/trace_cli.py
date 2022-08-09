@@ -83,6 +83,21 @@ def list(**kwargs):
 
   __print(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
 
+@alias.command(
+  help="Create an alias for a trace"
+)
+@click.option('--name', required=True)
+@click.option('--value', required=True)
+@click.argument('trace_id')
+def create(**kwargs):
+  try:
+    value = eval(kwargs['value'])
+  except Exception as e:
+    value = kwargs['value']
+
+  trace_alias = TraceAlias.create(trace_id=kwargs['trace_id'], name=kwargs['name'], value=value)
+  print(trace_alias.id)
+
 def __print(traces, **kwargs):
   tabulate_print(
       traces, 
