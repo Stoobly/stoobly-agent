@@ -108,7 +108,7 @@ def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
     parsed_validation = parse_aliases([validation])[0]
     name = parsed_validation['name']
 
-    if name not in aliases_map:
+    if name not in aliases_map or not aliases_map[name]:
       handle_missing_alias(parsed_validation, kwargs.get('format'))
 
     if not re.match(parsed_validation['value'], aliases_map[name]):
