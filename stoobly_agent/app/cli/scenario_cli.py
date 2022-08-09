@@ -68,6 +68,7 @@ def create(**kwargs):
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--trace-id', help='Use existing trace.')
+@click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
 @click.argument('key')
 def replay(**kwargs):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -80,6 +81,9 @@ def replay(**kwargs):
             sys.exit(1)
 
         validate_scenario_key(kwargs['scenario_key'])
+
+    if len(kwargs['validate']):
+        validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
 
@@ -140,7 +144,7 @@ def test(**kwargs):
         validate_report_key(kwargs['report_key'])
 
     if len(kwargs['validate']):
-        validate_aliases(kwargs['validate'], assign=kwargs['assign'], trace_id=kwargs['trace_id'])
+        validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
 
