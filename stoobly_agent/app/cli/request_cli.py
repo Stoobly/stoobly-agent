@@ -76,6 +76,7 @@ def list(**kwargs):
 )
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
+@click.option('--host', help='Rewrite request host.')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
@@ -86,6 +87,7 @@ def list(**kwargs):
 )
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
+@click.option('--scheme', help='Rewrite request scheme.')
 @click.option('--trace-id', help='Use existing trace.')
 @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
 @click.argument('request_key')
@@ -131,6 +133,7 @@ if is_remote:
   @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
   @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
   @click.option('--group-by', help='Repeat for each alias name.')
+  @click.option('--host', help='Rewrite request host.')
   @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
   @click.option(
       '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
@@ -139,6 +142,7 @@ if is_remote:
       '''
   )
   @click.option('--report-key', help='Save to report.')
+  @click.option('--scheme', help='Rewrite request scheme.')
   @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
   @click.option('--trace-id', help='Use existing trace.')
   @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')

@@ -16,6 +16,7 @@ from stoobly_agent.config.constants import mode
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
   group_by: str
+  host: str
   lifecycle_hooks_script_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   before_replay: Union[Callable[[ReplayContext], None], None]
@@ -24,6 +25,7 @@ class ReplayRequestOptions(TypedDict):
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
+  scheme: str
   test_filter: test_filter.TestFilter
   test_strategy: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
   trace_context: TraceContext
@@ -38,6 +40,13 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   request = context.request
   headers = request.headers
+
+  if options.get('host'):
+    request.host = options['host']
+    headers['host'] = options['host']
+
+  if options.get('scheme'):
+    request.scheme = options['scheme']
 
   if 'alias_resolve_strategy' in options:
     headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
