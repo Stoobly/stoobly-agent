@@ -58,6 +58,7 @@ def create(**kwargs):
 @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
 @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
 @click.option('--group-by', help='Repeat for each alias name.')
+@click.option('--host', help='Rewrite request host.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
@@ -67,6 +68,7 @@ def create(**kwargs):
 )
 @click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
 @click.option('--scenario-key', help='Record to scenario.')
+@click.option('--scheme', help='Rewrite request scheme.')
 @click.option('--trace-id', help='Use existing trace.')
 @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
 @click.argument('key')
@@ -116,6 +118,7 @@ def replay(**kwargs):
 )
 @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
 @click.option('--group-by', help='Repeat for each alias name.')
+@click.option('--host', help='Rewrite request host.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
@@ -124,6 +127,7 @@ def replay(**kwargs):
     '''
 )
 @click.option('--report-key', help='Save to report.')
+@click.option('--scheme', help='Rewrite request scheme.')
 @click.option(
     '--strategy', 
     default=test_strategy.DIFF, 

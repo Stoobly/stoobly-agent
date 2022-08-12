@@ -21,6 +21,22 @@ class Request():
     return Request(copy.deepcopy(self.request))
 
   @property
+  def host(self):
+    return self.__url.netloc
+
+  @host.setter
+  def host(self, v):
+    self.__url = self.__url._replace(netloc=v)
+
+  @property
+  def scheme(self):
+    return self.__url.scheme
+
+  @scheme.setter
+  def scheme(self, v):
+    self.__url = self.__url._replace(scheme=v)
+
+  @property
   def id(self):
     return self.request.get('id')
 

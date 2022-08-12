@@ -13,10 +13,12 @@ class ReplayCliOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
   assign: List[str]
   group_by: str
+  host: str
   lifecycle_hooks_script_path: str
   on_response: Callable
   record: bool
   scenario_key: str
+  scheme: str
   trace: Trace
 
 class TestCliOptions(ReplayCliOptions):
@@ -50,8 +52,10 @@ class ReplayFacade():
       'alias_resolve_strategy': cli_options.get('alias_resolve_strategy'),
       'before_replay': cli_options.get('before_replay'),
       'group_by': cli_options.get('group_by'),
+      'host': cli_options.get('host'),
       'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
       'request_origin': request_origin.CLI,
+      'scheme': cli_options.get('scheme'),
       'trace_context': trace_context,
     }
 

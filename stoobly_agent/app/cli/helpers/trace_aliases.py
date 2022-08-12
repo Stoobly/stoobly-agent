@@ -38,5 +38,5 @@ def adapt_trace_aliases(trace_id: int) -> List[Alias]:
       'name': trace_alias.name,
       'value': trace_alias.value,
     }
-
+    
   return list(map(trace_alias_to_alias, trace_aliases))
