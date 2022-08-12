@@ -46,15 +46,20 @@ feature.add_command(exec)
 def remote(ctx):
   pass
 
-def __handle_enable_before_action():
+def __handle_enable_before_action(**kwargs):
   api_key = settings.remote.api_key
   if not api_key or len(api_key) == 0:
-    api_key = click.prompt('Please enter your API key', type=str)
+    if kwargs.get('api_key'):
+      api_key = kwargs['api_key']
+    else:
+      api_key = click.prompt('Please enter your API key', type=str)
+
     settings.remote.api_key = api_key
 
 ConfigDecorator(remote, settings, 'cli.features.remote', {
   'enable': {
-    'before_action': __handle_enable_before_action
+    'before_action': __handle_enable_before_action,
+    'set_options': lambda f: click.option('--api-key')(f), # TODO: support more than one option
   }
 }).decorate()
 
