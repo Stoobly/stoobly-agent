@@ -3,6 +3,7 @@ import pdb
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 class LifeCycleOptions(TypedDict):
   before_action: Callable[[], None]
@@ -31,13 +32,15 @@ class ConfigDecorator():
     return self.__main
 
   def __with_enable(self):
+    life_cycle_options = self.__options.get('enable') or {}
+
     @self.__main.command()
-    def enable():
-      life_cycle_options = self.__options.get('enable')
+    @ConditionalDecorator(life_cycle_options.get('set_options'), bool(life_cycle_options.get('set_options')))
+    def enable(**kwargs):
       if life_cycle_options:
         before_action = life_cycle_options['before_action']
         if isinstance(before_action, Callable):
-          before_action()
+          before_action(**kwargs)
 
       settings_hash = self.__settings.to_dict()
       self.__resolve(settings_hash, self.__setting, value=True)
