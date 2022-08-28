@@ -2,69 +2,8 @@ import pdb
 
 from typing import List, Tuple, TypedDict
 
-from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
-from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
-
-class IMatchContext(TypedDict):
-    path_key: str
-    query: str
-    response_param_names_facade: ResponseParamNamesFacade
-
-class MatchContext():
-
-    def __init__(self, context: IMatchContext):
-        self.path_key = context['path_key']
-        self.query = context['query']
-        self.response_param_names_facade = context['response_param_names_facade']
-
-    def to_dict(self) -> IMatchContext:
-        return {
-            'path_key': self.path_key,
-            'query': self.query,
-            'response_param_names_facade': self.response_param_names_facade,
-        }
-
-    def visit_list(self, key):
-        self.path_key = f"{self.path_key}[{key}]"
-        self.query = f"{self.query}[*]"
-
-    def visit_dict(self, key):
-        self.path_key = '.'.join([self.path_key, key]) if len(self.path_key) > 0 else key
-        self.query = '.'.join([self.query, key]) if len(self.query) > 0 else key
-
-    def selected(self):
-        return self.response_param_names_facade.is_selected(self.query)
-
-    def ignored(self, expected_value, actual_value):
-        return not self.selected() or (not self.required() and self.__required_matches(expected_value, actual_value))
-
-    def deterministic(self) -> bool:
-        response_param_names_facade: ResponseParamNamesFacade = self.response_param_names_facade
-        if not response_param_names_facade or len(response_param_names_facade.all) == 0:
-            return True
-
-        query: str = self.query
-        deterministic_param_names: ResponseParamName = response_param_names_facade.deterministic
-        return self.__param_name_matches(query, deterministic_param_names)
-
-    def required(self) -> bool:
-        response_param_names_facade: ResponseParamNamesFacade = self.response_param_names_facade
-        if not response_param_names_facade or len(response_param_names_facade.all) == 0:
-            return True
-
-        query: str = self.query
-        required_param_names: ResponseParamName = response_param_names_facade.required
-        return self.__param_name_matches(query, required_param_names)
-
-    def __param_name_matches(query, param_names: List[ResponseParamName]) -> bool:
-        for param_name in param_names:
-            if param_name['query'] == query:
-                return True
-
-        return False
-
-    def __required_matches(v1, v2):
-        return v1 == None or v2 == None
+from .match_context import MatchContext
+from .response_param_names_facade import ResponseParamNamesFacade
 
 def dict_fuzzy_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade):
     context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
@@ -229,13 +168,6 @@ def __list_matches(expected: list, actual: list, parent_context: MatchContext) -
 
 def __length_matches(v1, v2):
     return len(v1) == len(v2)
-
-def __param_name_matches(query, param_names: List[ResponseParamName]) -> bool:
-    for param_name in param_names:
-        if param_name['query'] == query:
-            return True
-
-    return False
 
 def __param_name_exists(key, actual):
     return key in actual
