@@ -1,8 +1,6 @@
 name: Publish artifacts
 on:
-  push:
-    branches:
-      - master
+  create:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
