@@ -2,12 +2,14 @@ import pdb
 
 from typing import List, Tuple, TypedDict
 
+from .context import TestContext
 from .match_context import MatchContext
 from .response_param_names_facade import ResponseParamNamesFacade
 
-def dict_fuzzy_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade):
-    context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
-    return __dict_fuzzy_matches(expected, actual, context)
+def dict_fuzzy_matches(context: TestContext, expected: dict, actual: dict):
+    response_param_names_facade: ResponseParamNamesFacade = context.response_param_names
+    match_context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
+    return __dict_fuzzy_matches(expected, actual, match_context)
 
 def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchContext) -> Tuple[bool, str]:
     for key, expected_value in expected.items():
@@ -38,9 +40,10 @@ def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchCont
 
     return True, ''
 
-def list_fuzzy_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade):
-    context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
-    return __list_fuzzy_matches(expected, actual, context)
+def list_fuzzy_matches(context: TestContext, expected: dict, actual: dict):
+    response_param_names_facade: ResponseParamNamesFacade = context.response_param_names
+    match_context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
+    return __list_fuzzy_matches(expected, actual, match_context)
 
 ###
 #
@@ -81,9 +84,10 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
 
     return True, ''
 
-def dict_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade) -> Tuple[bool, str]:
-    context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
-    return __dict_matches(expected, actual, context)
+def dict_matches(context: TestContext, expected: dict, actual: dict) -> Tuple[bool, str]:
+    response_param_names_facade: ResponseParamNamesFacade = context.response_param_names
+    match_context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
+    return __dict_matches(expected, actual, match_context)
 
 def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -> Tuple[bool, str]:
     for key, expected_value in expected.items():
@@ -123,9 +127,10 @@ def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -
 
     return True, ''
 
-def list_matches(expected: dict, actual: dict, response_param_names_facade: ResponseParamNamesFacade) -> Tuple[bool, str]:
-    context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
-    return __list_matches(expected, actual, context)
+def list_matches(context: TestContext, expected: dict, actual: dict) -> Tuple[bool, str]:
+    response_param_names_facade: ResponseParamNamesFacade = context.response_param_names
+    match_context = MatchContext({ 'path_key': '', 'query': '', 'response_param_names_facade': response_param_names_facade })
+    return __list_matches(expected, actual, match_context)
 
 def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
     if not __length_matches(expected, actual):

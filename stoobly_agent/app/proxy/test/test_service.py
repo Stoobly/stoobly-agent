@@ -8,7 +8,7 @@ from typing import Union
 from stoobly_agent.config.constants import test_strategy
 
 from .iterable_matches import dict_fuzzy_matches, dict_matches, list_fuzzy_matches, list_matches
-from ..test.context import TestContext
+from .context import TestContext
 
 FuzzyContent = Union[dict, list, str]
 
@@ -74,9 +74,9 @@ def test_default(context: TestContext, match_handlers: MatchHandlers):
             return False, f"Expected types to match: got {type(content)}, expected {type(expected_content)}"
         else:
             if type(content) == dict:
-                return match_handlers.dict_matches_handler(expected_content, content, context.response_param_names)
+                return match_handlers.dict_matches_handler(context, expected_content, content)
             elif type(content) == list:
-                return match_handlers.list_matches_handler(expected_content, content, context.response_param_names)
+                return match_handlers.list_matches_handler(context, expected_content, content)
     else:
         response_matches = match_handlers.value_matches_handler(content, expected_content)
         log_lines = []
