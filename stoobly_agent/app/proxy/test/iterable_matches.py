@@ -65,7 +65,7 @@ def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchCont
         context.visit_list(i)
         path_key = context.path_key
 
-        if not __valid_value_type(value, valid_types):
+        if not __value_type_exists(value, valid_types):
             if not context.selected() or not context.required():
                 continue
 
@@ -178,7 +178,7 @@ def __value_fuzzy_matches(v1, v2):
 def __value_matches(v1, v2):
     return v1 == v2
 
-def __valid_value_type(value, valid_types: list):
+def __value_type_exists(value, valid_types: list):
     return type(value) in valid_types
 
 ### Match Errors
