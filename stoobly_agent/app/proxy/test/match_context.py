@@ -1,3 +1,7 @@
+import pdb
+
+from typing import List, TypedDict
+
 from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
 from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
 
@@ -13,12 +17,12 @@ class MatchContext():
         self.path_key = context['path_key']
         self.query = context['query']
 
-        self.__lifecyle_hooks = context.get('lifecycle_hooks') # Optional
+        self.__lifecycle_hooks = context.get('lifecycle_hooks') # Optional
         self.__response_param_names_facade = context['response_param_names_facade']
 
     def to_dict(self) -> IMatchContext:
         return {
-            'lifecycle_hooks': self.__lifecyle_hook,
+            'lifecycle_hooks': self.__lifecycle_hooks,
             'path_key': self.path_key,
             'query': self.query,
             'response_param_names_facade': self.__response_param_names_facade,
@@ -105,14 +109,14 @@ class MatchContext():
         if not self.__lifecycle_hooks:
             return
 
-        return self.lifecycle_hooks.get(name)
+        return self.__lifecycle_hooks.get(name)
 
-    def __param_name_matches(query, param_names: List[ResponseParamName]) -> bool:
+    def __param_name_matches(self, query, param_names: List[ResponseParamName]) -> bool:
         for param_name in param_names:
             if param_name['query'] == query:
                 return True
 
         return False
 
-    def __required_matches(v1, v2):
+    def __required_matches(self, v1, v2):
         return v1 == None or v2 == None
