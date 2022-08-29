@@ -10,7 +10,7 @@ def dict_fuzzy_matches(context: TestContext, expected: dict, actual: dict):
 
     return __dict_fuzzy_matches(match_context, expected, actual)
 
-def __dict_fuzzy_matches(expected: dict, actual: dict, parent_context: MatchContext) -> Tuple[bool, str]:
+def __dict_fuzzy_matches(parent_context: MatchContext, expected: dict, actual: dict) -> Tuple[bool, str]:
     for key, expected_value in expected.items():
         context = MatchContext(parent_context.to_dict())
         context.visit_dict(key)
@@ -51,7 +51,7 @@ def list_fuzzy_matches(context: TestContext, expected: dict, actual: dict):
 #
 # If list value is traversable, traverse
 #
-def __list_fuzzy_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
+def __list_fuzzy_matches(parent_context: MatchContext, expected: list, actual: list) -> Tuple[bool, str]:
     valid_types = []
     type_examples = {}
     for i, value in enumerate(expected):
@@ -88,7 +88,7 @@ def dict_matches(context: TestContext, expected: dict, actual: dict) -> Tuple[bo
 
     return __dict_matches(match_context, expected, actual)
 
-def __dict_matches(expected: dict, actual: dict, parent_context: MatchContext) -> Tuple[bool, str]:
+def __dict_matches(parent_context: MatchContext, expected: dict, actual: dict) -> Tuple[bool, str]:
     for key, expected_value in expected.items():
         context = MatchContext(parent_context.to_dict())
         context.visit_dict(key)
@@ -131,8 +131,8 @@ def list_matches(context: TestContext, expected: dict, actual: dict) -> Tuple[bo
 
     return __list_matches(match_context, expected, actual)
 
-def __list_matches(expected: list, actual: list, parent_context: MatchContext) -> Tuple[bool, str]:
-    if not context.length_matches(expected, actual):
+def __list_matches(parent_context: MatchContext, expected: list, actual: list) -> Tuple[bool, str]:
+    if not parent_context.length_matches(expected, actual):
         if parent_context.deterministic() and parent_context.selected():
             return __length_match_error(parent_context.path_key, expected, actual)
 
