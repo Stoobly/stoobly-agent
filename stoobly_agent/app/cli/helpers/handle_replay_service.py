@@ -1,8 +1,6 @@
 import json
 import pdb
 
-from typing import Callable
-
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import ReplayOutput
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
@@ -49,7 +47,11 @@ def print_request_query(context: ReplayContext, query: str):
 
 def default_format_handler(context: ReplayContext, additional=''):
   response = context.response
-  print(response.content.decode())
+  
+  try:
+    print(response.content.decode())
+  except UnicodeDecodeError as e:
+    print(response.content)
 
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)

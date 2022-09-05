@@ -10,7 +10,7 @@ from .ca_cert_installer import CACertInstaller
 )
 @click.pass_context
 def ca_cert(ctx):
-    print("Not yet implemented. Stay tuned!")
+    pass
 
 @ca_cert.command()
 def install(**kwargs):
@@ -32,4 +32,4 @@ def install(**kwargs):
 
 @ca_cert.command()
 def uninstall():
-    return
+    print("Not yet implemented. Stay tuned!")
