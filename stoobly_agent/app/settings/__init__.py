@@ -1,6 +1,7 @@
 import os
-import yaml
 import pdb
+import time
+import yaml
 
 from shutil import copyfile
 from typing import TypedDict
@@ -33,6 +34,8 @@ class Settings:
 
     __settings_file_path = None
     __schema_file_path = None
+
+    __load_lock = False
 
     def __init__(self, **kwargs: SettingsOptions):
         if Settings.__instance:
@@ -129,6 +132,10 @@ class Settings:
         with open(self.__settings_file_path, 'r') as stream:
             try:
                 settings = yaml.safe_load(stream)
+                if not settings:
+                    time.sleep(1) # TODO: Sometimes it takes a bit to read, should look into this
+                    settings = yaml.safe_load(stream)
+
                 self.__settings = settings
                 if settings:
                     self.__cli_settings = CLISettings(settings.get('cli'))
@@ -137,10 +144,15 @@ class Settings:
                     self.__ui_settings = UISettings(settings.get('ui'))
             except yaml.YAMLError as exc:
                 Logger.instance().error(exc)
-
+        
     def __reload_settings(self, event):
-        Logger.instance().info(f"{self.LOG_ID}.reload_settings")
-        self.__load_settings()
+        if not self.__load_lock:
+            self.__load_lock = True
+
+            Logger.instance().info(f"{self.LOG_ID}.reload_settings")
+            self.__load_settings()
+
+        self.__load_lock = False
 
     def __validate(self):
         try:
