@@ -1,15 +1,16 @@
 import pdb
 
-from typing import List, TypedDict
+from typing import List, TypedDict, Union
 
-from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
-from stoobly_agent.lib.api.interfaces.endpoints import ResponseParamName
+from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
+from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName, ResponseParamName
+from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
 class IMatchContext(TypedDict):
     lifecycle_hooks: dict
     path_key: str
     query: str
-    response_param_names_facade: ResponseParamNamesFacade
+    response_param_names_facade: RequestComponentNamesFacade
 
 class MatchContext():
 
@@ -46,7 +47,7 @@ class MatchContext():
         return not self.selected() or (not self.required() and self.__required_matches(expected_value, actual_value))
 
     def deterministic(self) -> bool:
-        response_param_names_facade: ResponseParamNamesFacade = self.__response_param_names_facade
+        response_param_names_facade: RequestComponentNamesFacade = self.__response_param_names_facade
         if not response_param_names_facade or len(response_param_names_facade.all) == 0:
             return True
 
@@ -55,7 +56,7 @@ class MatchContext():
         return self.__param_name_matches(query, deterministic_param_names)
 
     def required(self) -> bool:
-        response_param_names_facade: ResponseParamNamesFacade = self.__response_param_names_facade
+        response_param_names_facade: RequestComponentNamesFacade = self.__response_param_names_facade
         if not response_param_names_facade or len(response_param_names_facade.all) == 0:
             return True
 
@@ -80,6 +81,23 @@ class MatchContext():
             return handle_param_name_exists(self.clone(), key, actual)
         else:
             return key in actual
+
+    def value_contract_matches(self, v1, contracts: Union[RequestComponentName, List[RequestComponentName]]):
+        if not contracts:
+            return True
+
+        if not isinstance(contracts, list):
+            contracts = [contracts]
+
+        v_type = type(v1)
+        for contract in contracts:
+            if not contract.get('inferred_type'):
+                return True
+
+            if convert(v_type) == contract.get('inferred_type'):
+                return True
+
+        return False
 
     def value_fuzzy_matches(self, v1, v2):
         handle_fuzzy_matches = self.__lifecyle_hook('handle_fuzzy_matches')
