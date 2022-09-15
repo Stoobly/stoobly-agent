@@ -2,7 +2,7 @@ import pdb
 import pytest
 
 from stoobly_agent.app.proxy.test.iterable_matches import list_fuzzy_matches, list_matches
-from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
+from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.config.constants import test_filter
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
@@ -12,12 +12,12 @@ from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_re
 def endpoints_list_response_param_names_facade():
   response_param_names = endpoint_show_response['response_param_names']
   aliases = endpoint_show_response['aliases']
-  return ResponseParamNamesFacade(response_param_names).with_aliases(aliases)
+  return RequestComponentNamesFacade(response_param_names).with_aliases(aliases)
 
 @pytest.fixture
 def empty_response_param_names_facade():
   response_param_names = []
-  return ResponseParamNamesFacade(response_param_names)
+  return RequestComponentNamesFacade(response_param_names)
 
 class TestListMatchesList():
 
@@ -141,7 +141,7 @@ class TestMatchesListOfDicts():
     assert not matches, log
 
 class TestAliasFilterMatchesListOfDicts():
-  def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+  def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     endpoints_list_response_param_names_facade.with_filter(test_filter.ALIAS)
 
     actual = [
@@ -175,7 +175,7 @@ class TestAliasFilterMatchesListOfDicts():
     matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
     assert matches, log
 
-  def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+  def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     endpoints_list_response_param_names_facade.with_filter(test_filter.ALIAS)
 
     # Set aliased params as deterministic to prevent ignore due to not deterministic
@@ -214,7 +214,7 @@ class TestAliasFilterMatchesListOfDicts():
     assert not matches, log
 
   class TestLinkFilterMatchesListOfDicts():
-    def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+    def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
       trace = Trace.create()
 
       TraceAlias.create(trace_id=trace.id, name=':endpointId', value=1001)
@@ -253,7 +253,7 @@ class TestAliasFilterMatchesListOfDicts():
       matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
       assert matches, log
 
-    def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: ResponseParamNamesFacade):
+    def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
       trace = Trace.create()
 
       TraceAlias.create(trace_id=trace.id, name=':endpointId', value=1001)
