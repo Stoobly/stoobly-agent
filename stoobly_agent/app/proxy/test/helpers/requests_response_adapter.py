@@ -1,6 +1,6 @@
 from requests import Response
 
-from .context_response import TestContextResponse
+from ..context_response import TestContextResponse
 
 class RequestsResponseAdapter():
 

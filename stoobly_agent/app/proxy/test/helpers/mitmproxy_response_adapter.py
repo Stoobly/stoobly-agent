@@ -1,6 +1,6 @@
 from mitmproxy.http import Response as MitmproxyResponse
 
-from .context_response import TestContextResponse
+from ..context_response import TestContextResponse
 
 class MitmproxyResponseAdapter():
 
