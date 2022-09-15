@@ -7,6 +7,7 @@ class EndpointsIndexQueryParams(PaginationQueryParams):
 
 class RequestComponentName(TypedDict):
   alias_id: int
+  is_deterministic: bool
   name: str
   value: str
 
@@ -16,7 +17,6 @@ class Alias(TypedDict):
 
 class ResponseParamName(RequestComponentName):
   inferred_type: str
-  is_deterministic: bool
   query: str
 
 class EndpointShowResponse(TypedDict):
