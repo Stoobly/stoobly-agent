@@ -43,7 +43,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     settings = Settings.instance()
-    test_context.with_response_param_names(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
+    test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
     
     # Run test
     passed, log = test(test_context)
