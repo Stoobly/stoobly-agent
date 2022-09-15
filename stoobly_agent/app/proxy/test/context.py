@@ -8,9 +8,10 @@ from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response, is_traversable
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
-from stoobly_agent.app.proxy.test.mitmproxy_response_adapter import MitmproxyResponseAdapter
-from stoobly_agent.app.proxy.test.requests_response_adapter import RequestsResponseAdapter
-from stoobly_agent.app.proxy.test.response_param_names_facade import ResponseParamNamesFacade
+from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
+from stoobly_agent.app.proxy.test.helpers.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from stoobly_agent.app.proxy.test.helpers.requests_response_adapter import RequestsResponseAdapter
+from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
@@ -31,35 +32,21 @@ class TestContext():
     upstream_response = self.__flow.response
     self.__response = MitmproxyResponseAdapter(upstream_response).adapt()
 
-    self.__endpoint_show_response = None
     self.__log = ''
     self.__passed = None
-    self.__response_param_names = None
     self.__skipped = False
 
+    # Optional
+    self.__endpoints_resource: EndpointsResource = None
+
+    # Cache
     self.__cached_rewritten_expected_response_content = None
+    self.__cached_endpoint_show_response = None
+    self.__cached_response_param_names = None
 
-  def with_response_param_names(self, resource: EndpointsResource):
-    endpoint_id = self.mock_request_endpoint_id
-
-    if not resource or not endpoint_id:
-      return 
-
-    try:
-      res = resource.show(endpoint_id, aliases=True, response_param_names=True)
-    except Exception as e:
-      return 
-
-    if not res.ok:
-      return 
-
-    self.__endpoint_show_response: EndpointShowResponse = res.json()
-    aliases = self.__endpoint_show_response['aliases']
-    response_param_names = self.__endpoint_show_response['response_param_names']
-
-    self.__response_param_names = ResponseParamNamesFacade(
-      response_param_names      
-    ).with_aliases(aliases).with_filter(self.filter).with_trace(self.trace)
+  def with_endpoints_resource(self, resource: EndpointShowResponse):
+    self.__endpoints_resource = resource
+    return self 
 
   @property
   def cached_expected_response_content(self) -> Union[bytes, None, str]:
@@ -67,6 +54,16 @@ class TestContext():
       return None
 
     return encode_response(self.__cached_rewritten_expected_response_content, self.__expected_response.content_type) 
+
+  @property
+  def endpoint(self) -> EndpointFacade:
+    resource = self.__endpoints_resource
+    endpoint_id = self.mock_request_endpoint_id
+
+    if not resource or not endpoint_id:
+      return 
+
+    return EndpointFacade(resource, endpoint_id)
 
   @property
   def lifecycle_hooks(self):
@@ -133,8 +130,13 @@ class TestContext():
     return self.__response
 
   @property
-  def response_param_names(self) -> ResponseParamNamesFacade:
-    return self.__response_param_names
+  def response_param_names(self) -> RequestComponentNamesFacade:
+    if self.__cached_response_param_names:
+      return self.__cached_response_param_names
+
+    self.__cached_response_param_names = self.endpoint.response_param_names
+
+    return self.__cached_response_param_names
 
   @property
   def rewritten_expected_response_content(self):
@@ -151,7 +153,7 @@ class TestContext():
       return _decoded_expected_response_content
 
     aliased_response_param_names = self.response_param_names.aliased
-    aliases = self.__endpoint_show_response.get('aliases') or []
+    aliases = self.endpoint.aliases or []
 
     if len(aliased_response_param_names) == 0 or len(aliases) == 0:
       return _decoded_expected_response_content
