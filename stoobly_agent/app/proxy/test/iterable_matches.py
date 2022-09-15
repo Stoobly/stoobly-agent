@@ -2,6 +2,8 @@ import pdb
 
 from typing import List, Tuple, TypedDict
 
+from stoobly_agent.app.proxy.test.helpers.errors import length_match_error, param_name_missing_error, type_match_error, valid_type_error, value_match_error
+
 from .context import TestContext
 from .match_context import MatchContext
 
@@ -20,14 +22,14 @@ def __dict_fuzzy_matches(parent_context: MatchContext, expected: dict, actual: d
             if not context.selected() or not context.required():
                 continue 
 
-            return __param_name_exists_error(path_key)
+            return param_name_missing_error(path_key)
 
         actual_value = actual[key]
         if not context.value_fuzzy_matches(actual_value, expected_value):
             if context.ignored(expected_value, actual_value):
                 continue
 
-            return __type_match_error(path_key, expected_value, actual_value)
+            return type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
             __dict_fuzzy_matches(context, expected_value, actual_value)
@@ -71,7 +73,7 @@ def __list_fuzzy_matches(parent_context: MatchContext, expected: list, actual: l
             if not context.selected() or not context.required():
                 continue
 
-            return __valid_type_error(path_key, value, valid_types)
+            return valid_type_error(path_key, value, valid_types)
 
         if type(value) is dict:
             __dict_fuzzy_matches(context, type_examples[dict], value)
@@ -99,7 +101,7 @@ def __dict_matches(parent_context: MatchContext, expected: dict, actual: dict) -
             if not context.selected() or not context.required():
                 continue
 
-            return __param_name_exists_error(path_key)
+            return param_name_missing_error(path_key)
 
         # Check if types match 
         actual_value = actual[key]
@@ -107,7 +109,7 @@ def __dict_matches(parent_context: MatchContext, expected: dict, actual: dict) -
             if context.ignored(expected_value, actual_value):
                 continue
 
-            return __type_match_error(path_key, expected_value, actual_value)
+            return type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
             __dict_matches(context, expected_value, actual_value)
@@ -122,7 +124,7 @@ def __dict_matches(parent_context: MatchContext, expected: dict, actual: dict) -
             if context.ignored(expected_value, actual_value) or not context.deterministic():
                 continue
 
-            return __value_match_error(path_key, expected_value, actual_value)
+            return value_match_error(path_key, expected_value, actual_value)
 
     return True, ''
 
@@ -134,7 +136,7 @@ def list_matches(context: TestContext, expected: dict, actual: dict) -> Tuple[bo
 def __list_matches(parent_context: MatchContext, expected: list, actual: list) -> Tuple[bool, str]:
     if not parent_context.length_matches(expected, actual):
         if parent_context.deterministic() and parent_context.selected():
-            return __length_match_error(parent_context.path_key, expected, actual)
+            return length_match_error(parent_context.path_key, expected, actual)
 
     for i, expected_value in enumerate(expected):
         if i >= len(actual):
@@ -150,7 +152,7 @@ def __list_matches(parent_context: MatchContext, expected: list, actual: list) -
             if context.ignored(expected_value, actual_value):
                 continue
 
-            return __type_match_error(path_key, expected_value, actual_value)
+            return type_match_error(path_key, expected_value, actual_value)
 
         if type(actual_value) is dict:
             __dict_matches(context, expected_value, actual_value)
@@ -164,7 +166,7 @@ def __list_matches(parent_context: MatchContext, expected: list, actual: list) -
             if context.ignored(expected_value, actual_value) or not context.deterministic():
                 continue
 
-            return __value_match_error(path_key, expected_value, actual_value)
+            return value_match_error(path_key, expected_value, actual_value)
 
     return True, ''
 
@@ -175,20 +177,3 @@ def __initialize_match_context(context: TestContext):
         'query': '', 
         'response_param_names_facade': context.response_param_names
     })
-
-### Match Errors
-
-def __length_match_error(path_key, expected_value, actual_value):
-    return False, f"Key '{path_key}' length did not match: got {len(actual_value)}, expected {len(expected_value)}"
-
-def __param_name_exists_error(path_key):
-    return False, f"Missing key: expected {path_key} to exist"
-
-def __type_match_error(path_key, expected_value, actual_value):
-    return False, f"Key '{path_key}' type did not match: got {type(actual_value)}, expected {type(expected_value)}"
-
-def __valid_type_error(path_key, value, valid_types):
-    return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"
-
-def __value_match_error(path_key, expected_value, actual_value):
-    return False, f"Key '{path_key}' did not match: got {actual_value}, expected {expected_value}"
