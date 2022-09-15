@@ -5,6 +5,7 @@ from mitmproxy.coretypes.multidict import MultiDict
 from typing import List, Dict, TypedDict, Union
 
 from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.utils.python_to_ruby_type import type_map
 
 class IgnoredParam(TypedDict):
   inferred_type: str
@@ -18,12 +19,7 @@ class RequestHasher():
     if self._instance:
         raise RuntimeError('Call instance() instead')
     else:
-        self.type_map = {}
-        self.type_map[str(list)] = 'Array'
-        self.type_map[str(dict)] = 'Hash'
-        self.type_map[str(int)] = 'Integer'
-        self.type_map[str(float)] = 'Float'
-        self.type_map[str(str)] = 'String'
+        self.type_map = type_map
 
   @classmethod
   def instance(cls):
