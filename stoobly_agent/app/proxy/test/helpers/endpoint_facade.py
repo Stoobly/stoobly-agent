@@ -14,8 +14,10 @@ class EndpointFacade():
     self.filter = test_filter.ALL
 
     # Cache
+    self.__cached_body_param_names = None
     self.__cached_endpoint_show_response = None
     self.__cached_header_names = None
+    self.__cached_query_param_names = None
     self.__cached_response_param_names = None
 
   def get(self) -> EndpointShowResponse:
@@ -53,6 +55,24 @@ class EndpointFacade():
     self.__cached_header_names = self.__request_component_names('header_names')
 
     return self.__cached_header_names
+
+  @property
+  def query_param_names(self) -> RequestComponentNamesFacade:
+    if self.__cached_query_param_names:
+      return self.__cached_query_param_names
+
+    self.__cached_query_param_names = self.__request_component_names('query_param_names')
+
+    return self.__cached_query_param_names
+
+  @property
+  def body_param_names(self) -> RequestComponentNamesFacade:
+    if self.__cached_body_param_names:
+      return self.__cached_body_param_names
+
+    self.__cached_body_param_names = self.__request_component_names('body_param_names')
+
+    return self.__cached_body_param_names
 
   @property
   def response_param_names(self) -> RequestComponentNamesFacade:
