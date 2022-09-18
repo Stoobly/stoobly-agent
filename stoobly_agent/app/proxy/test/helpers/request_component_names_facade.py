@@ -1,7 +1,9 @@
 import pdb
+import re
 from typing import List
 
 from mitmproxy.coretypes.multidict import MultiDict
+from requests import request
 
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map
 from stoobly_agent.config.constants import test_filter
@@ -30,18 +32,49 @@ class RequestComponentNamesFacade():
 
     self.__id_to_alias_map = {}
 
+    # Cache
+    self.__edges_index_cache = None
+    self.__query_index_cache = None
+
   @property
-  def index(self):
-    index = MultiDict()
+  def query_index(self):
+    if self.__query_index_cache:
+      return self.__query_index_cache
+
+    _index = MultiDict()
 
     for request_component_name in self.__request_component_names:
       query = request_component_name.get('query')
       if not query:
         query = request_component_name.get('name')
 
-      index.add(query, request_component_name)
+      _index.add(query, request_component_name)
 
-    return index
+    self.__query_index_cache = _index
+
+    return _index
+
+  @property
+  def edges_index(self):
+    if self.__edges_index_cache:
+      return self.__edges_index_cache
+
+    _index = {}
+
+    for request_component_name in self.__request_component_names:
+      # TODO: make this less hacky, right now only response_param_names and body_param_names have children though
+      parent_id = request_component_name.get('response_param_name_id')
+      if not parent_id:
+        parent_id = request_component_name.get('body_param_name_id')
+
+      if parent_id not in _index:
+        _index[parent_id] = []
+
+      _index[parent_id].append(request_component_name)
+
+    self.__edges_index_cache = _index 
+
+    return _index
 
   @property
   def aliased(self) -> List[RequestComponentName]: 
