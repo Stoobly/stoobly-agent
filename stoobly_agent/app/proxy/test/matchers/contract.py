@@ -1,12 +1,12 @@
 import pdb
 from typing import List, Tuple, Union
 
-from stoobly_agent.app.proxy.test.helpers.errors import length_match_error, param_name_exists_error, param_name_missing_error, type_match_error, valid_type_error
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
 
-from .context import TestContext
-from .match_context import MatchContext, build_match_context
+from ..context import TestContext
+from .context import MatchContext, build_match_context
+from .errors import length_match_error, param_name_exists_error, param_name_missing_error, type_match_error, valid_type_error
 
 def matches(context: TestContext, facade: RequestComponentNamesFacade, actual):
     match_context = build_match_context(context, facade)
