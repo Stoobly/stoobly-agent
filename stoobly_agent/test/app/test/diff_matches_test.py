@@ -1,8 +1,9 @@
 import pdb
 import pytest
 
-from stoobly_agent.app.proxy.test.iterable_matches import list_fuzzy_matches, list_matches
+from stoobly_agent.app.proxy.test.diff_matches import list_matches
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
+from stoobly_agent.app.proxy.test.match_context import MatchContext
 from stoobly_agent.config.constants import test_filter
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
@@ -19,63 +20,55 @@ def empty_response_param_names_facade():
   response_param_names = []
   return RequestComponentNamesFacade(response_param_names)
 
-class TestListMatchesList():
-
-  def test_matches_list_of_numbers(self, empty_response_param_names_facade):
-    matches, log = list_matches([1], [1], empty_response_param_names_facade)
+class TestMatchesDiffSanity():
+  def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      [], [], 
+    )
     assert matches, log
+  
+  def test_matches_list_of_numbers(self, empty_response_param_names_facade):
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': empty_response_param_names_facade
+      }),
+      [1], [1]
+    )
+    assert matches, log
+
+  def test_not_matches(self, endpoints_list_response_param_names_facade):
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      [], {}
+    )
+    assert log == "Key '' type did not match: got <class 'dict'>, expected <class 'list'>", log
 
   def test_not_matches_list_of_numbers(self, empty_response_param_names_facade):
-    matches, log = list_matches([1], [2], empty_response_param_names_facade)
-    assert not matches, log
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': empty_response_param_names_facade
+      }),
+      [1], [2]
+    )
+
+    assert log == "Key '[0]' did not match: got 2, expected 1", log
 
   def test_not_matches_different_length(self, empty_response_param_names_facade):
-    matches, log = list_matches([1], [1, 2], empty_response_param_names_facade)
-    assert not matches, log
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': empty_response_param_names_facade
+      }),
+      [1], [1, 2]
+    )
 
-class TestFuzzyMatchesListOfDicts():
-
-  def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
-    matches, log = list_fuzzy_matches([], [], endpoints_list_response_param_names_facade)
-    assert matches, log
-
-  def test_matches_response_one_object(self, endpoints_list_response_param_names_facade):
-    actual = [
-      {
-        "id": 1000,
-        "requests_count": 8,
-        "category": 2,
-        "path": "/abc",
-        "method": "POST",
-        "created_at": "2022-05-26T23:46:49.968Z",
-        "updated_at": "2022-05-26T23:46:49.968Z",
-        "components": [],
-        "url": "https://alpha.api.stoobly.com/endpoints/930"
-      },
-    ]
-
-    expected = [
-      {
-        "id": 930,
-        "requests_count": 6,
-        "category": 1,
-        "path": "/abc",
-        "method": "GET",
-        "created_at": "2022-05-26T23:46:49.968Z",
-        "updated_at": "2022-05-26T23:46:49.968Z",
-        "components": [],
-        "url": "https://alpha.api.stoobly.com/endpoints/930"
-      },
-    ] 
-
-    matches, log = list_fuzzy_matches(expected, actual, endpoints_list_response_param_names_facade)
-    assert matches, log
+    assert log == "Key '' length did not match: got 2, expected 1", log
 
 class TestMatchesListOfDicts():
-  def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
-    matches, log = list_matches([], [], endpoints_list_response_param_names_facade)
-    assert matches, log
-
   def test_matches_id_not_deterministic(self, endpoints_list_response_param_names_facade):
     actual = [
       {
@@ -105,7 +98,12 @@ class TestMatchesListOfDicts():
       },
     ] 
 
-    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      expected, actual
+    )
     assert matches, log
 
   def test_not_matches_requests_count(self, endpoints_list_response_param_names_facade):
@@ -137,8 +135,14 @@ class TestMatchesListOfDicts():
       },
     ] 
 
-    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
-    assert not matches, log
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      expected, actual
+    )
+
+    assert log == "Key '[0].requests_count' did not match: got 8, expected 6", log
 
 class TestAliasFilterMatchesListOfDicts():
   def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -172,7 +176,12 @@ class TestAliasFilterMatchesListOfDicts():
       },
     ] 
 
-    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      expected, actual
+    )
     assert matches, log
 
   def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -210,8 +219,14 @@ class TestAliasFilterMatchesListOfDicts():
       },
     ] 
 
-    matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
-    assert not matches, log
+    matches, log = list_matches(
+      MatchContext({
+        'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      }),
+      expected, actual
+    )
+
+    assert log == "Key '[0].id' did not match: got 1000, expected 1001", log
 
   class TestLinkFilterMatchesListOfDicts():
     def test_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -250,7 +265,12 @@ class TestAliasFilterMatchesListOfDicts():
         },
       ] 
 
-      matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
+      matches, log = list_matches(
+        MatchContext({
+          'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+        }),
+        expected, actual
+      )
       assert matches, log
 
     def test_not_matches_id_aliased(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -288,5 +308,11 @@ class TestAliasFilterMatchesListOfDicts():
         },
       ] 
 
-      matches, log = list_matches(expected, actual, endpoints_list_response_param_names_facade)
-      assert not matches, log
+      matches, log = list_matches(
+        MatchContext({
+          'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+        }), 
+        expected, actual, 
+      )
+
+      assert log == "Key '[0].id' did not match: got 1001, expected 1000", log
