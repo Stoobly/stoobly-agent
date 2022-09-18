@@ -3,6 +3,7 @@ import pdb
 
 from runpy import run_path
 from typing import Callable, Union
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 
 from stoobly_agent.config.constants import test_strategy
 
@@ -12,12 +13,6 @@ from .matchers.diff import matches as diff_matches
 from .matchers.fuzzy import matches as fuzzy_matches
 
 FuzzyContent = Union[dict, list, str]
-
-class MatchHandlers():
-    def __init__(self):
-        self.dict_matches_handler = None
-        self.list_matches_handler = None
-        self.value_matches_handler = None
 
 def test(context: TestContext):
     __before_test_hook(context)
@@ -70,8 +65,19 @@ def test_request_contract(context: TestContext):
 
     headers = request.headers
     header_names_facade = endpoint.header_names
-
     matches, log = contract_matches(context, header_names_facade, headers)
+    if not matches:
+        return matches, log
+
+    query_params = request.query
+    query_param_names_facade = endpoint.query_param_names
+    matches, log = contract_matches(context, query_param_names_facade, query_params)
+    if not matches:
+        return matches, log
+
+    body_params = decode_response(request.content, headers.get('content-type'))
+    body_param_names_facade = endpoint.body_param_names
+    matches, log = contract_matches(context, body_param_names_facade, body_params)
     if not matches:
         return matches, log
 
