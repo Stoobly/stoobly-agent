@@ -1,10 +1,30 @@
 import pdb
 
 from typing import Tuple
+from stoobly_agent.app.proxy.test.context import TestContext
 
 from stoobly_agent.app.proxy.test.helpers.errors import length_match_error, param_name_missing_error, type_match_error, value_match_error
+from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 
-from .match_context import MatchContext
+from .match_context import MatchContext, build_match_context
+
+def matches(context: TestContext, facade: RequestComponentNamesFacade, expected, actual):
+    match_context = build_match_context(context, facade)
+
+    if type(expected) != type(actual):
+        return type_match_error(match_context.path_key, expected, actual)
+
+    if isinstance(actual, dict) and isinstance(actual, dict):
+        return dict_matches(match_context, expected, actual)
+    elif isinstance(actual, list):
+        return list_matches(match_context, expected, actual)
+    else:
+        return value_matches(match_context, expected, actual)
+
+def value_matches(parent_context: MatchContext, expected, actual):
+    if not parent_context.value_matches(expected, actual):
+        return value_match_error(parent_context.path_key, expected, actual)
+    return True, ''
 
 def dict_matches(parent_context: MatchContext, expected: dict, actual: dict) -> Tuple[bool, str]:
     if type(actual) != dict:
