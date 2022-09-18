@@ -54,7 +54,7 @@ class TestListMatchesList():
 
     assert log == "Key '[0].id' type did not match: got <class 'str'>, expected valid types Integer", log
 
-  def test_not_matches_list_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+  def test_not_matches_list_element_missing_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     match_context = MatchContext({
       'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
     })
@@ -65,8 +65,18 @@ class TestListMatchesList():
 
     assert log == "Missing key: expected [0].requests_count to exist", log
 
+  def test_not_matches_list_element_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+    match_context = MatchContext({
+      'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+    })
 
-  def test_not_matches_list_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+    matches, log = list_matches(
+      match_context, [{ "random_property": 934 }]
+    )
+
+    assert log == "Extra key: expected [0].random_property to not exist", log
+
+  def test_not_matches_list_length(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     match_context = MatchContext({
       'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
     })
