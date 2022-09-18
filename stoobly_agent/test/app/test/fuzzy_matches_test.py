@@ -1,6 +1,6 @@
 import pytest
 
-from stoobly_agent.app.proxy.test.fuzzy_matches import list_fuzzy_matches
+from stoobly_agent.app.proxy.test.fuzzy_matches import list_matches
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.match_context import MatchContext
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
@@ -18,7 +18,7 @@ def empty_response_param_names_facade():
 
 class TestMatchesFuzzySanity():
   def test_matches_empty_response(self, endpoints_list_response_param_names_facade):
-    matches, log = list_fuzzy_matches(
+    matches, log = list_matches(
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
       }),
@@ -27,7 +27,7 @@ class TestMatchesFuzzySanity():
     assert matches, log
 
   def test_matches_list_of_numbers(self, empty_response_param_names_facade):
-    matches, log = list_fuzzy_matches(
+    matches, log = list_matches(
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': empty_response_param_names_facade
       }),
@@ -36,7 +36,7 @@ class TestMatchesFuzzySanity():
     assert matches, log
 
   def test_not_matches_mixed(self, endpoints_list_response_param_names_facade):
-    matches, log = list_fuzzy_matches(
+    matches, log = list_matches(
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
       }),
@@ -46,7 +46,7 @@ class TestMatchesFuzzySanity():
     assert log == "Key '[1]' type did not match: got <class 'int'>, expected valid types <class 'dict'>", log 
 
   def test_not_matches(self, endpoints_list_response_param_names_facade):
-    matches, log = list_fuzzy_matches(
+    matches, log = list_matches(
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
       }),
@@ -85,7 +85,7 @@ class TestFuzzyMatchesListOfDicts():
       },
     ] 
 
-    matches, log = list_fuzzy_matches(
+    matches, log = list_matches(
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
       }),

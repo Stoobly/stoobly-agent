@@ -2,15 +2,14 @@ import os
 import pdb
 
 from runpy import run_path
-from typing import Union
+from typing import Callable, Union
 
 from stoobly_agent.config.constants import test_strategy
 
 from .context import TestContext
 from .contract_matches import matches as contract_matches
-from .diff_matches import dict_matches, list_matches
-from .fuzzy_matches import dict_fuzzy_matches, list_fuzzy_matches
-from .match_context import build_match_context
+from .diff_matches import matches as diff_matches
+from .fuzzy_matches import matches as fuzzy_matches
 
 FuzzyContent = Union[dict, list, str]
 
@@ -26,69 +25,40 @@ def test(context: TestContext):
     if context.skipped:
         return None, ''
 
+    valid_strategies = [test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
     active_test_strategy = context.strategy
 
-    if active_test_strategy == test_strategy.CUSTOM:
-        context.passed, context.log = test_custom(context)
-    elif active_test_strategy == test_strategy.DIFF or active_test_strategy == test_strategy.FUZZY:
-        match_handlers = MatchHandlers()
-        match_handlers.value_matches_handler = __value_matches
-
-        if active_test_strategy == test_strategy.DIFF: 
-            match_handlers.dict_matches_handler = dict_matches
-            match_handlers.list_matches_handler = list_matches
-        else:
-            match_handlers.dict_matches_handler = dict_fuzzy_matches
-            match_handlers.list_matches_handler = list_fuzzy_matches
-
-        status_code_matches, status_code_log = __test_status_code(context)
-        response_matches, log = test_default(context, match_handlers)
-
-        log_lines = []
-        if not response_matches:
-            log_lines.append(log)
-
-        if not status_code_matches:
-            log_lines.append(status_code_log)
-
-        context.passed = status_code_matches and response_matches, 
-        context.log = "\n".join(log_lines)
-    else:
-        test_strategies = ','.join([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY])
+    if active_test_strategy not in valid_strategies:
+        test_strategies = ','.join(valid_strategies)
         context.passed = False
         context.log = f"Could not find matching test strategy: valid options [{test_strategies}]"
+    else:
+        if active_test_strategy == test_strategy.CUSTOM:
+            context.passed, context.log = test_custom(context)
+        else:
+            match_handler = None
+
+            if active_test_strategy == test_strategy.DIFF: 
+                match_handler = diff_matches
+            elif active_test_strategy == test_strategy.FUZZY:
+                match_handler = fuzzy_matches
+
+            status_code_matches, status_code_log = __test_status_code(context)
+            response_matches, log = test_default(context, match_handler)
+
+            log_lines = []
+            if not response_matches:
+                log_lines.append(log)
+
+            if not status_code_matches:
+                log_lines.append(status_code_log)
+
+            context.passed = status_code_matches and response_matches, 
+            context.log = "\n".join(log_lines)
 
     __after_test_hook(context)
 
     return context.passed, context.log
-
-#
-# Defaults to diff if content is not traversable
-#
-def test_default(context: TestContext, match_handlers: MatchHandlers):
-    response = context.response
-    content: FuzzyContent = response.decode_content()
-
-    expected_content: FuzzyContent = context.rewritten_expected_response_content
-
-    if __is_traversable(content) and __is_traversable(expected_content):
-        if type(content) != type(expected_content):
-            return False, f"Expected types to match: got {type(content)}, expected {type(expected_content)}"
-        else:
-            match_context = build_match_context(context, context.response_param_names)
-
-            if type(content) == dict:
-                return match_handlers.dict_matches_handler(match_context, expected_content, content)
-            elif type(content) == list:
-                return match_handlers.list_matches_handler(match_context, expected_content, content)
-    else:
-        response_matches = match_handlers.value_matches_handler(content, expected_content)
-        log_lines = []
-
-        if not response_matches:
-            log_lines.append('Response did not match')
-
-        return response_matches, "\n".join(log_lines)
 
 def test_request_contract(context: TestContext):
     endpoint = context.endpoint
@@ -106,6 +76,13 @@ def test_request_contract(context: TestContext):
         return matches, log
 
     return True, ''
+
+def test_default(context: TestContext, match_handler: Callable):
+    response = context.response
+    content: FuzzyContent = response.decode_content()
+    expected_content: FuzzyContent = context.rewritten_expected_response_content
+
+    return match_handler(context, context.response_param_names, expected_content, content)
 
 def test_custom(context: TestContext):
     script_path = __lifecycle_hooks_path(context)
@@ -148,12 +125,6 @@ def __test_status_code(context: TestContext) -> bool:
         log = f"Status codes did not match: got {response.status_code} expected {expected_response.status_code}"
 
     return matches, log
-
-def __value_matches(content: FuzzyContent, expected_content: FuzzyContent) -> bool:
-    return content == expected_content
-
-def __is_traversable(content: FuzzyContent):
-    return type(content) is dict or type(content) is list
 
 def __lifecycle_hooks_path(context: TestContext):
     if not context.lifecycle_hooks:

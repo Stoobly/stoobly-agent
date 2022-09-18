@@ -20,4 +20,7 @@ def valid_type_error(path_key, value, valid_types):
     return False, f"Key '{path_key}' type did not match: got {type(value)}, expected valid types {', '.join(valid_types)}"
 
 def value_match_error(path_key, expected_value, actual_value):
-    return False, f"Key '{path_key}' did not match: got {actual_value}, expected {expected_value}"
+    if len(path_key) == 0:
+        return False, f"Match error: got {actual_value}, expected {expected_value}"
+    else:
+        return False, f"Key '{path_key}' did not match: got {actual_value}, expected {expected_value}"
