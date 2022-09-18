@@ -2,15 +2,24 @@ import pdb
 
 from typing import List, TypedDict, Union
 
+from stoobly_agent.app.proxy.test.context import TestContext
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName, ResponseParamName
 from stoobly_agent.lib.utils.python_to_ruby_type import convert
+
+def build_match_context(context: TestContext, facade: RequestComponentNamesFacade):
+    return MatchContext({ 
+        'lifecycle_hooks': context.lifecycle_hooks,
+        'path_key': '', 
+        'query': '', 
+        'request_component_names_facade': facade
+    })
 
 class IMatchContext(TypedDict):
     lifecycle_hooks: dict
     path_key: str
     query: str
-    response_param_names_facade: RequestComponentNamesFacade
+    request_component_names_facade: RequestComponentNamesFacade
 
 class MatchContext():
 
@@ -19,14 +28,36 @@ class MatchContext():
         self.query = context['query']
 
         self.__lifecycle_hooks = context.get('lifecycle_hooks') # Optional
-        self.__response_param_names_facade = context['response_param_names_facade']
+        self.__request_component_names_facade = context['request_component_names_facade']
+
+    @property
+    def request_component_names_query_index(self):
+        return self.__request_component_names_facade.query_index
+
+    @property
+    def children(self) -> List[RequestComponentName]:
+        component_names = self.request_component_names_query_index.get(self.query)
+        if not component_names:
+            return []
+
+        if not isinstance(component_names, list):
+            component_names = [component_names]
+
+        edges_index = self.__request_component_names_facade.edges_index
+
+        for component_name in component_names:
+            edges = edges_index.get(component_name.get('id'))
+            if edges:
+                return edges
+
+        return []
 
     def to_dict(self) -> IMatchContext:
         return {
             'lifecycle_hooks': self.__lifecycle_hooks,
             'path_key': self.path_key,
             'query': self.query,
-            'response_param_names_facade': self.__response_param_names_facade,
+            'request_component_names_facade': self.__request_component_names_facade,
         }
 
     def clone(self):
@@ -41,27 +72,27 @@ class MatchContext():
         self.query = '.'.join([self.query, key]) if len(self.query) > 0 else key
 
     def selected(self):
-        return self.__response_param_names_facade.is_selected(self.query)
+        return self.__request_component_names_facade.is_selected(self.query)
 
     def ignored(self, expected_value, actual_value):
         return not self.selected() or (not self.required() and self.__required_matches(expected_value, actual_value))
 
     def deterministic(self) -> bool:
-        response_param_names_facade: RequestComponentNamesFacade = self.__response_param_names_facade
-        if not response_param_names_facade or len(response_param_names_facade.all) == 0:
+        request_component_names_facade: RequestComponentNamesFacade = self.__request_component_names_facade
+        if not request_component_names_facade or len(request_component_names_facade.all) == 0:
             return True
 
         query: str = self.query
-        deterministic_param_names: ResponseParamName = response_param_names_facade.deterministic
+        deterministic_param_names: ResponseParamName = request_component_names_facade.deterministic
         return self.__param_name_matches(query, deterministic_param_names)
 
     def required(self) -> bool:
-        response_param_names_facade: RequestComponentNamesFacade = self.__response_param_names_facade
-        if not response_param_names_facade or len(response_param_names_facade.all) == 0:
+        request_component_names_facade: RequestComponentNamesFacade = self.__request_component_names_facade
+        if not request_component_names_facade or len(request_component_names_facade.all) == 0:
             return True
 
         query: str = self.query
-        required_param_names: ResponseParamName = response_param_names_facade.required
+        required_param_names: ResponseParamName = request_component_names_facade.required
         return self.__param_name_matches(query, required_param_names)
 
     ### Matchers
@@ -89,7 +120,7 @@ class MatchContext():
         if not isinstance(contracts, list):
             contracts = [contracts]
 
-        v_type = type(v1)
+        v_type = str(type(v1))
         for contract in contracts:
             if not contract.get('inferred_type'):
                 return True
@@ -137,4 +168,6 @@ class MatchContext():
         return False
 
     def __required_matches(self, v1, v2):
-        return v1 == None or v2 == None
+        if v1 == None or v2 == None:
+            return v1 == v2
+        return True
