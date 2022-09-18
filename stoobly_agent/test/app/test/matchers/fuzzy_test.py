@@ -1,8 +1,8 @@
 import pytest
 
-from stoobly_agent.app.proxy.test.fuzzy_matches import list_matches
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
-from stoobly_agent.app.proxy.test.match_context import MatchContext
+from stoobly_agent.app.proxy.test.matchers.context import MatchContext
+from stoobly_agent.app.proxy.test.matchers.fuzzy import list_matches
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
 @pytest.fixture

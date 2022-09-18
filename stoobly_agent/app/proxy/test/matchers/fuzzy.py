@@ -2,12 +2,10 @@ import pdb
 
 from typing import Tuple
 from stoobly_agent.app.proxy.test.context import TestContext
-from stoobly_agent.app.proxy.test.contract_matches import dict_matches, list_matches
-
-from stoobly_agent.app.proxy.test.helpers.errors import param_name_missing_error, type_match_error, valid_type_error
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
+from stoobly_agent.app.proxy.test.matchers.errors import param_name_missing_error, type_match_error, valid_type_error
 
-from .match_context import MatchContext, build_match_context
+from .context import MatchContext, build_match_context
 
 def matches(context: TestContext, facade: RequestComponentNamesFacade, expected, actual):
     match_context = build_match_context(context, facade)

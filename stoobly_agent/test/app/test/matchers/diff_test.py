@@ -1,9 +1,9 @@
 import pdb
 import pytest
 
-from stoobly_agent.app.proxy.test.diff_matches import list_matches
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
-from stoobly_agent.app.proxy.test.match_context import MatchContext
+from stoobly_agent.app.proxy.test.matchers.context import MatchContext
+from stoobly_agent.app.proxy.test.matchers.diff import list_matches
 from stoobly_agent.config.constants import test_filter
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias

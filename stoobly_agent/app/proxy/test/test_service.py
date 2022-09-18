@@ -7,9 +7,9 @@ from typing import Callable, Union
 from stoobly_agent.config.constants import test_strategy
 
 from .context import TestContext
-from .contract_matches import matches as contract_matches
-from .diff_matches import matches as diff_matches
-from .fuzzy_matches import matches as fuzzy_matches
+from .matchers.contract import matches as contract_matches
+from .matchers.diff import matches as diff_matches
+from .matchers.fuzzy import matches as fuzzy_matches
 
 FuzzyContent = Union[dict, list, str]
 
