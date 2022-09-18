@@ -1,4 +1,3 @@
-from difflib import Match
 import os
 import pdb
 
@@ -7,8 +6,11 @@ from typing import Union
 
 from stoobly_agent.config.constants import test_strategy
 
-from .iterable_matches import dict_fuzzy_matches, dict_matches, list_fuzzy_matches, list_matches
 from .context import TestContext
+from .contract_matches import matches as contract_matches
+from .diff_matches import dict_matches, list_matches
+from .fuzzy_matches import dict_fuzzy_matches, list_fuzzy_matches
+from .match_context import build_match_context
 
 FuzzyContent = Union[dict, list, str]
 
@@ -73,10 +75,12 @@ def test_default(context: TestContext, match_handlers: MatchHandlers):
         if type(content) != type(expected_content):
             return False, f"Expected types to match: got {type(content)}, expected {type(expected_content)}"
         else:
+            match_context = build_match_context(context, context.response_param_names)
+
             if type(content) == dict:
-                return match_handlers.dict_matches_handler(context, expected_content, content)
+                return match_handlers.dict_matches_handler(match_context, expected_content, content)
             elif type(content) == list:
-                return match_handlers.list_matches_handler(context, expected_content, content)
+                return match_handlers.list_matches_handler(match_context, expected_content, content)
     else:
         response_matches = match_handlers.value_matches_handler(content, expected_content)
         log_lines = []
@@ -85,6 +89,23 @@ def test_default(context: TestContext, match_handlers: MatchHandlers):
             log_lines.append('Response did not match')
 
         return response_matches, "\n".join(log_lines)
+
+def test_request_contract(context: TestContext):
+    endpoint = context.endpoint
+
+    if not endpoint:
+        return True, ''
+
+    request = context.flow.request
+
+    headers = request.headers
+    header_names_facade = endpoint.header_names
+
+    matches, log = contract_matches(context, header_names_facade, headers)
+    if not matches:
+        return matches, log
+
+    return True, ''
 
 def test_custom(context: TestContext):
     script_path = __lifecycle_hooks_path(context)
