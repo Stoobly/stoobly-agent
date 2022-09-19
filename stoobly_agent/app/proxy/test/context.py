@@ -20,6 +20,8 @@ from stoobly_agent.lib.orm.trace import Trace
 
 from .context_response import TestContextResponse
 
+FuzzyContent = Union[dict, list, str]
+
 class TestContext():
   def __init__(self, replay_context: ReplayContext, mock_context: MockContext):
     self.__flow = mock_context.flow
@@ -82,7 +84,11 @@ class TestContext():
     return self.__expected_response
 
   @property
-  def decoded_expected_response_content(self):
+  def decoded_response_content(self) -> FuzzyContent:
+    return self.__response.decode_content()
+
+  @property
+  def decoded_expected_response_content(self) -> FuzzyContent:
     return self.__expected_response.decode_content()
 
   @property
