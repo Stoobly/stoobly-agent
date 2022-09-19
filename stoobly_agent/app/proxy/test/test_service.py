@@ -20,42 +20,61 @@ def test(context: TestContext):
     if context.skipped:
         return None, ''
 
+    valid_test_strategy, log = __validate_test_strategy(context)
+    if not valid_test_strategy:
+        __after_test_hook(context)
+        return False, log
+    
+    # Test contract
+    contract_matches, contract_log = __test_request_contract(context)
+
+    # Test status code
+    status_code_matches, status_code_log = __test_status_code(context)
+    
+    # Test response
+    active_test_strategy = context.strategy
+    if active_test_strategy == test_strategy.CUSTOM:
+        response_matches, log = __test_custom(context)
+    else:
+        match_handler = None
+
+        if active_test_strategy == test_strategy.DIFF: 
+            match_handler = diff_matches
+        elif active_test_strategy == test_strategy.FUZZY:
+            match_handler = fuzzy_matches
+
+        response_matches, log = __test_default(context, match_handler)
+
+    __after_test_hook(context)
+
+    # Format test results
+    log_lines = []
+
+    if not contract_matches:
+        log_lines.append(contract_log)
+
+    if not status_code_matches:
+        log_lines.append(status_code_log)
+
+    if not response_matches:
+        log_lines.append(log)
+
+    context.log = "\n".join(log_lines)
+    context.passed = status_code_matches and contract_matches and response_matches 
+
+    return context.passed, context.log
+
+def __validate_test_strategy(context: TestContext):
     valid_strategies = [test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
     active_test_strategy = context.strategy
 
     if active_test_strategy not in valid_strategies:
         test_strategies = ','.join(valid_strategies)
-        context.passed = False
-        context.log = f"Could not find matching test strategy: valid options [{test_strategies}]"
-    else:
-        if active_test_strategy == test_strategy.CUSTOM:
-            context.passed, context.log = test_custom(context)
-        else:
-            match_handler = None
+        return False, f"Could not find matching test strategy: valid options [{test_strategies}]"
 
-            if active_test_strategy == test_strategy.DIFF: 
-                match_handler = diff_matches
-            elif active_test_strategy == test_strategy.FUZZY:
-                match_handler = fuzzy_matches
+    return True, ''
 
-            status_code_matches, status_code_log = __test_status_code(context)
-            response_matches, log = test_default(context, match_handler)
-
-            log_lines = []
-            if not response_matches:
-                log_lines.append(log)
-
-            if not status_code_matches:
-                log_lines.append(status_code_log)
-
-            context.passed = status_code_matches and response_matches, 
-            context.log = "\n".join(log_lines)
-
-    __after_test_hook(context)
-
-    return context.passed, context.log
-
-def test_request_contract(context: TestContext):
+def __test_request_contract(context: TestContext):
     endpoint = context.endpoint
 
     if not endpoint:
@@ -83,14 +102,14 @@ def test_request_contract(context: TestContext):
 
     return True, ''
 
-def test_default(context: TestContext, match_handler: Callable):
+def __test_default(context: TestContext, match_handler: Callable):
     response = context.response
     content: FuzzyContent = response.decode_content()
     expected_content: FuzzyContent = context.rewritten_expected_response_content
 
     return match_handler(context, context.response_param_names, expected_content, content)
 
-def test_custom(context: TestContext):
+def __test_custom(context: TestContext):
     script_path = __lifecycle_hooks_path(context)
 
     if not script_path:
