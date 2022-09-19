@@ -8,6 +8,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.config.constants import test_strategy
 
 from .context import TestContext
+from .matchers.custom import matches as custom_matches
 from .matchers.contract import matches as contract_matches
 from .matchers.diff import matches as diff_matches
 from .matchers.fuzzy import matches as fuzzy_matches
@@ -100,27 +101,11 @@ def __test_response(context: TestContext):
     elif active_test_strategy == test_strategy.FUZZY:
         return fuzzy_matches(context, response_param_names_facade, expected_content, content)
     elif active_test_strategy == test_strategy.CUSTOM:
-        return __test_custom(context)
+        return custom_matches(context)
     elif active_test_strategy == test_strategy.CONTRACT:
         return contract_matches(context, response_param_names_facade, content)
     else:
         raise 'Setting Error: missing test test strategy'
-
-def __test_custom(context: TestContext):
-    lifecycle_hooks = context.lifecycle_hooks 
-
-    if not 'handle_test' in lifecycle_hooks:
-        return False, f"Expected function 'handle_test' to be defined in {context.lifecycle_hooks_script_path}"
-
-    try:
-        status, log = lifecycle_hooks['handle_test'](context)
-    except Exception as e:
-        return False, f"Exception: {e}"
-
-    if not type(status) is bool or not type(log) is str:
-        return False, f"Expected function 'test' to return [bool, str], got [{type(status)}, {type(log)}]"
-
-    return status, log
 
 def __test_status_code(context: TestContext) -> bool:
     response = context.response
