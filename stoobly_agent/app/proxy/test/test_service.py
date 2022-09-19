@@ -66,12 +66,12 @@ def __test_request_contract(context: TestContext):
 
     if not endpoint:
         return True, ''
-
+ 
     request = context.flow.request
 
     headers = request.headers
     header_names_facade = endpoint.header_names
-    matches, log = contract_matches(context, header_names_facade, headers)
+    matches, log = contract_matches(context, header_names_facade, dict(headers))
     if not matches:
         return matches, log
 
