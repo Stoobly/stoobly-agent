@@ -12,8 +12,6 @@ from .matchers.contract import matches as contract_matches
 from .matchers.diff import matches as diff_matches
 from .matchers.fuzzy import matches as fuzzy_matches
 
-FuzzyContent = Union[dict, list, str]
-
 def test(context: TestContext):
     __before_test_hook(context)
 
@@ -32,18 +30,7 @@ def test(context: TestContext):
     status_code_matches, status_code_log = __test_status_code(context)
     
     # Test response
-    active_test_strategy = context.strategy
-    if active_test_strategy == test_strategy.CUSTOM:
-        response_matches, log = __test_custom(context)
-    else:
-        match_handler = None
-
-        if active_test_strategy == test_strategy.DIFF: 
-            match_handler = diff_matches
-        elif active_test_strategy == test_strategy.FUZZY:
-            match_handler = fuzzy_matches
-
-        response_matches, log = __test_default(context, match_handler)
+    response_matches, log = __test_response(context) 
 
     __after_test_hook(context)
 
@@ -102,12 +89,22 @@ def __test_request_contract(context: TestContext):
 
     return True, ''
 
-def __test_default(context: TestContext, match_handler: Callable):
-    response = context.response
-    content: FuzzyContent = response.decode_content()
-    expected_content: FuzzyContent = context.rewritten_expected_response_content
+def __test_response(context: TestContext):
+    active_test_strategy = context.strategy
+    content = context.decoded_response_content
+    expected_content = context.rewritten_expected_response_content
+    response_param_names_facade = context.response_param_names
 
-    return match_handler(context, context.response_param_names, expected_content, content)
+    if active_test_strategy == test_strategy.DIFF: 
+        return diff_matches(context, response_param_names_facade, expected_content, content)
+    elif active_test_strategy == test_strategy.FUZZY:
+        return fuzzy_matches(context, response_param_names_facade, expected_content, content)
+    elif active_test_strategy == test_strategy.CUSTOM:
+        return __test_custom(context)
+    elif active_test_strategy == test_strategy.CONTRACT:
+        return contract_matches(context, response_param_names_facade, content)
+    else:
+        raise 'Setting Error: missing test test strategy'
 
 def __test_custom(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 

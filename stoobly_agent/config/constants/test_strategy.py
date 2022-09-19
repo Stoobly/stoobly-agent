@@ -1,7 +1,8 @@
 from typing import Literal
 
+CONTRACT = 'contract'
 CUSTOM = 'custom'
 DIFF = 'diff'
 FUZZY = 'fuzzy'
 
-TestStrategy = Literal[CUSTOM, DIFF, FUZZY]
+TestStrategy = Literal[CONTRACT, CUSTOM, DIFF, FUZZY]
