@@ -1,3 +1,4 @@
+import pdb
 
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.config.constants import test_filter
@@ -31,7 +32,13 @@ class EndpointFacade():
       return 
 
     try:
-      res = resource.show(endpoint_id, aliases=True, response_param_names=True)
+      res = resource.show(
+        endpoint_id, aliases=True, 
+        header_names=True,
+        query_param_names=True,
+        body_param_names=True,
+        response_param_names=True
+      )
     except Exception as e:
       return 
 
@@ -86,8 +93,7 @@ class EndpointFacade():
   def __request_component_names(self, component_name):
     endpoint_show_response: EndpointShowResponse = self.get()
     aliases = self.aliases
-
-    component_names = endpoint_show_response[component_name]
+    component_names = endpoint_show_response.get(component_name) or []
 
     return RequestComponentNamesFacade(
       component_names      

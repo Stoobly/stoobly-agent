@@ -1,6 +1,6 @@
 from stoobly_agent.app.proxy.test.context import TestContext
 
-def match(context: TestContext):
+def matches(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 
 
     if not 'handle_test' in lifecycle_hooks:

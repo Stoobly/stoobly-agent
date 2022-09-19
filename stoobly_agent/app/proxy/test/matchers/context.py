@@ -1,6 +1,6 @@
 import pdb
 
-from typing import List, TypedDict, Union
+from typing import Iterable, List, TypedDict, Union
 
 from stoobly_agent.app.proxy.test.context import TestContext
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
@@ -153,6 +153,28 @@ class MatchContext():
             return handle_type_exists(self.clone(), value, valid_types)
         else:
             return type(value) in valid_types
+
+    def value_type_matches(self, t1, t2):
+        if type(t1) == type(t2):
+            return True
+
+        if t1 == dict or t2 == dict:
+            return self.value_is_dict(t1) and self.value_is_dict(t2)
+
+        if t1 == list or t2 == list:
+            return self.value_is_list(t1) and self.value_is_list(t2)
+
+        return False
+
+    def value_is_dict(self, d):
+        if isinstance(d, dict):
+            return True
+        return hasattr(d, 'items') and isinstance(d, Iterable)
+
+    def value_is_list(self, l):
+        if isinstance(l, list):
+            return True
+        return hasattr(l, 'sort') and isinstance(l, Iterable)
 
     def __lifecyle_hook(self, name):
         if not self.__lifecycle_hooks:

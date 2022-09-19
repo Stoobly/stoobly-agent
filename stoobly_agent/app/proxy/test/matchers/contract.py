@@ -1,4 +1,6 @@
 import pdb
+
+from collections import Iterable
 from typing import List, Tuple, Union
 
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
@@ -8,19 +10,19 @@ from ..context import TestContext
 from .context import MatchContext, build_match_context
 from .errors import length_match_error, param_name_exists_error, param_name_missing_error, type_match_error, valid_type_error
 
-def matches(context: TestContext, facade: RequestComponentNamesFacade, actual):
-    match_context = build_match_context(context, facade)
+def matches(test_context: TestContext, facade: RequestComponentNamesFacade, actual):
+    context = build_match_context(test_context, facade)
 
-    if isinstance(actual, dict):
-        return dict_matches(match_context, actual)
-    elif isinstance(actual, list):
-        return list_matches(match_context, actual)
+    if context.value_is_dict(actual):
+        return dict_matches(context, actual)
+    elif context.value_is_list(actual):
+        return list_matches(context, actual)
     else:
         # TODO: handle non-traversible content
-        return True
+        return True, ''
 
 def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]:
-    if not isinstance(actual, dict):
+    if not parent_context.value_is_dict(actual):
         return type_match_error(parent_context.path_key, dict, type(actual))
 
     index = parent_context.request_component_names_query_index
@@ -44,11 +46,11 @@ def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]
             valid_types = __build_valid_types(contracts)
             return valid_type_error(path_key, actual_value, valid_types)
 
-        if type(actual_value) is dict:
+        if context.value_is_dict(actual_value):
             matches, log = dict_matches(context, actual_value)
             if not matches:
                 return matches, log
-        elif type(actual_value) is list:
+        elif context.value_is_list(actual_value):
             matches, log = list_matches(context, actual_value)
             if not matches:
                 return matches, log
@@ -72,7 +74,7 @@ def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]
 #
 def list_matches(parent_context: MatchContext, actual: list) -> Tuple[bool, str]:
     parent_path_key = f"{parent_context.path_key}[*]"
-    if not isinstance(actual, list):
+    if not parent_context.value_is_list(actual):
         return type_match_error(parent_path_key, list, type(actual))
 
     index = parent_context.request_component_names_query_index
@@ -95,11 +97,11 @@ def list_matches(parent_context: MatchContext, actual: list) -> Tuple[bool, str]
 
             return valid_type_error(path_key, value, valid_types)
 
-        if type(value) is dict:
+        if context.value_is_dict(value):
             matches, log = dict_matches(context, value)
             if not matches:
                 return matches, log
-        elif type(value) is list:
+        elif context.value_is_list(value):
             matches, log = list_matches(context, value)
             if not matches:
                 return matches, log
