@@ -110,27 +110,13 @@ def __test_default(context: TestContext, match_handler: Callable):
     return match_handler(context, context.response_param_names, expected_content, content)
 
 def __test_custom(context: TestContext):
-    script_path = __lifecycle_hooks_path(context)
+    lifecycle_hooks = context.lifecycle_hooks 
 
-    if not script_path:
-        return False, f"Lifecycle script path not set"
-
-    if not os.path.isabs(script_path):
-        script_path = os.path.join(os.path.abspath('.'), script_path)
-
-    if not os.path.exists(script_path):
-        return False, f"Expected {script_path} to exist"
+    if not 'handle_test' in lifecycle_hooks:
+        return False, f"Expected function 'handle_test' to be defined in {context.lifecycle_hooks_script_path}"
 
     try:
-        module = run_path(script_path)
-    except Exception as e:
-        return False, f"Exception: {e}"
-
-    if not 'handle_test' in module:
-        return False, f"Expected function 'handle_test' to be defined in {script_path}"
-
-    try:
-        status, log = module['handle_test'](context)
+        status, log = lifecycle_hooks['handle_test'](context)
     except Exception as e:
         return False, f"Exception: {e}"
 
@@ -150,17 +136,6 @@ def __test_status_code(context: TestContext) -> bool:
         log = f"Status codes did not match: got {response.status_code} expected {expected_response.status_code}"
 
     return matches, log
-
-def __lifecycle_hooks_path(context: TestContext):
-    if not context.lifecycle_hooks:
-        return
-
-    script_path = context.lifecycle_hooks_script_path
-
-    if not os.path.isabs(script_path):
-        script_path = os.path.join(os.path.abspath('.'), script_path)
-
-    return script_path
 
 def __after_test_hook(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 
