@@ -1,8 +1,5 @@
-import os
 import pdb
 
-from runpy import run_path
-from typing import Callable, Union
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 
 from stoobly_agent.config.constants import test_strategy
@@ -62,6 +59,8 @@ def __validate_test_strategy(context: TestContext):
 
     return True, ''
 
+# Tests
+
 def __test_request_contract(context: TestContext):
     endpoint = context.endpoint
 
@@ -88,6 +87,10 @@ def __test_request_contract(context: TestContext):
     if not matches:
         return matches, log
 
+    return True, ''
+
+# TODO
+def __test_response_headers(context):
     return True, ''
 
 def __test_response(context: TestContext):
@@ -118,6 +121,8 @@ def __test_status_code(context: TestContext) -> bool:
         log = f"Status codes did not match: got {response.status_code} expected {expected_response.status_code}"
 
     return matches, log
+
+# Hooks
 
 def __after_test_hook(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 
