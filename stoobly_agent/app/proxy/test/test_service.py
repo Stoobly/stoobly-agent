@@ -69,7 +69,7 @@ def __test_request_contract(context: TestContext):
  
     request = context.flow.request
 
-    headers = request.headers
+    headers = context.request_headers
     header_names_facade = endpoint.header_names
     matches, log = contract_matches(context, header_names_facade, dict(headers))
     if not matches:
