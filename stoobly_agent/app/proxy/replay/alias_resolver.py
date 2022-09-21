@@ -2,7 +2,7 @@ import pdb
 from typing import Collection
 
 from stoobly_agent.config.constants import alias_resolve_strategy
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
@@ -19,6 +19,13 @@ class AliasResolver():
   @strategy.setter
   def strategy(self, v: alias_resolve_strategy.AliasResolveStrategy):
     self.__strategy = v
+
+  def assign_alias(self, trace_alias: TraceAlias, value):
+    if not trace_alias.assigned_to:
+      trace_alias.assigned_to = value
+      trace_alias.save()
+
+      Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
   def resolve_alias(self, alias_name: str, value: str):
     trace_alias = self.__resolve_alias(alias_name, value)

@@ -11,11 +11,12 @@ from stoobly_agent.lib.utils import jmespath
 
 AliasMap = Dict[str, RequestComponentName]
 
-def __handle_after_replace(name, value, trace: TraceAlias):
+def __handle_after_replace(name, value, trace_alias: TraceAlias):
   pass
 
-def __handle_replace(name, value, alias_resolver: AliasContext):
-  trace_alias = alias_resolver.resolve_alias(name, value)
+def __handle_replace(name, value, alias_context: AliasContext):
+  trace_alias = alias_context.resolve_alias(name, value)
+
   return trace_alias.value
 
 def build_id_to_alias_map(aliases: List[Alias]):
@@ -35,9 +36,8 @@ def rewrite_params(
   if alias_resolver.strategy == alias_resolve_strategy.NONE:
     return
 
-  alias_context = AliasContext(alias_resolver)
-
   for param_name in param_names:
+    alias_context = AliasContext(alias_resolver)
     _alias: Alias = id_to_alias.get(param_name['alias_id'])
 
     if not _alias:
@@ -53,7 +53,7 @@ def rewrite_params(
 
     jmespath.search(
       param_name['query'], params, { 
-        'handle_replace': lambda name, value, i: __handle_replace(_alias['name'], value, alias_context),
-        'handle_after_replace': lambda name, value, i: __handle_after_replace(name, value, alias_context.resolved_aliases[i])
+        'handle_replace': lambda name, value, i: handle_replace(_alias['name'], value, alias_context),
+        'handle_after_replace': lambda name, value, i: handle_after_replace(name, value, alias_context.resolved_aliases[i])
       }
     )

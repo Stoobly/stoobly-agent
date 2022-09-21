@@ -145,7 +145,7 @@ class TraceContext:
         body_param_names, 
         id_to_alias, 
         self.__alias_resolver,
-        handle_after_replace=lambda name, value, trace_alias: self.__assign_trace_alias(trace_alias, value)
+        handle_after_replace=lambda name, value, trace_alias: self.__alias_resolver.assign_alias(trace_alias, value)
       )
 
       request.body_params = body_params
@@ -226,15 +226,9 @@ class TraceContext:
     trace_alias = self.__alias_resolver.resolve_alias(alias_name, value)
 
     if trace_alias:
-      self.__assign_trace_alias(trace_alias, value)
+      self.__alias_resolver.assign_alias(trace_alias, value)
 
       return trace_alias
-
-  def __assign_trace_alias(self, trace_alias: TraceAlias, value):
-    if not trace_alias.assigned_to:
-      trace_alias.assigned_to = value
-      trace_alias.save()
-      Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
   def __query_resolves_response(self, response_param_name: ResponseParamName, response: Union[list, dict]) -> list:
     '''
