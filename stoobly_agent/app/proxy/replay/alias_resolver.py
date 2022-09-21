@@ -25,7 +25,7 @@ class AliasResolver():
       trace_alias.assigned_to = value
       trace_alias.save()
 
-      Logger.instance().info(f"{bcolors.OKBLUE}Assigned {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
+      Logger.instance().info(f"{bcolors.OKBLUE}ASSIGN alias {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
 
   def resolve_alias(self, alias_name: str, value: str):
     trace_alias = self.__resolve_alias(alias_name, value)
@@ -44,7 +44,12 @@ class AliasResolver():
       return trace_alias
 
     columns['value'] = value
-    return TraceAlias.create(**columns)
+    trace_alias = TraceAlias.create(**columns)
+
+    if trace_alias:
+      Logger.instance().info(f"{bcolors.OKGREEN}CREATE alias {trace_alias.name}: {value}{bcolors.ENDC}")
+
+    return trace_alias
 
   def __resolve_alias(self, alias_name: str, value: str):
     strategy = self.__strategy
