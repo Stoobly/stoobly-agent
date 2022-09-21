@@ -203,6 +203,7 @@ class TreeInterpreter(Visitor):
         
     def replace(self, obj, key):
         current_value = None
+
         try:
             current_value = obj[key]
         except KeyError:
