@@ -107,3 +107,33 @@ def __print(traces, **kwargs):
   )
 
 trace.add_command(alias)
+
+@alias.command(
+  help="Create an alias for a trace"
+)
+@click.option('--name', required=True)
+@click.option('--value', required=True)
+@click.argument('trace_id')
+def update(**kwargs):
+  try:
+    value = eval(kwargs['value'])
+  except Exception as e:
+    value = kwargs['value']
+
+  trace_alias = TraceAlias.find_by(trace_id=kwargs['trace_id'], name=kwargs['name'])
+  if not trace_alias:
+    trace_alias = TraceAlias.create(trace_id=kwargs['trace_id'], name=kwargs['name'], value=value)
+  else:
+    trace_alias.update(value=value)
+  
+  print(trace_alias.id)
+
+def __print(traces, **kwargs):
+  tabulate_print(
+      traces, 
+      filter=kwargs.get('filter') or [],
+      headers=not kwargs.get('without_headers'),
+      select=kwargs.get('select') or []
+  )
+
+trace.add_command(alias)
