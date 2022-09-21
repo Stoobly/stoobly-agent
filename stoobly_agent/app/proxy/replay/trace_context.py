@@ -79,9 +79,7 @@ class TraceContext:
     self.__requests.append((request, response))
 
   def create_trace_alias(self, alias_name, value, trace_request = None):
-    trace_alias = self.__alias_resolver.create_alias(alias_name, value, trace_request)
-    Logger.instance().info(f"{bcolors.OKGREEN}Resolved {trace_alias.name}: {value}{bcolors.ENDC}")
-    return trace_alias
+    return self.__alias_resolver.create_alias(alias_name, value, trace_request)
 
   def __rewrite_request(self, request: Request, endpoint: EndpointShowResponse):
     if not endpoint:
@@ -220,7 +218,7 @@ class TraceContext:
 
       for value in values:  
         if _alias and value:
-          self.create_trace_alias(_alias['name'], value, trace_request) 
+          self.__alias_resolver.create_alias(_alias['name'], value, trace_request) 
 
   def __resolve_and_assign_alias(self, alias_name: str, value) -> Union[TraceAlias, None]:
     trace_alias = self.__alias_resolver.resolve_alias(alias_name, value)
