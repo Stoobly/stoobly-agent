@@ -16,8 +16,8 @@ def __handle_after_replace(name, value, trace_alias: TraceAlias):
 
 def __handle_replace(name, value, alias_context: AliasContext):
   trace_alias = alias_context.resolve_alias(name, value)
-
-  return trace_alias.value
+  if trace_alias:
+    return trace_alias.value
 
 def build_id_to_alias_map(aliases: List[Alias]):
     id_to_alias = {}

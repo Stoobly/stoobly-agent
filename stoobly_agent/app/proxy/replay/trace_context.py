@@ -161,7 +161,8 @@ class TraceContext:
       else:
         visited[name] = True
 
-      new_values = []
+      new_values = [] # Find new values
+
       current_values = components.get_all(name)
       if len(current_values) == 0:
         trace_alias = self.__alias_resolver.resolve_alias(_alias['name'], None)
@@ -176,15 +177,15 @@ class TraceContext:
 
         for current_value in current_values:
           new_values.append(current_value)
-          trace_alias = self.__resolve_and_assign_alias(_alias['name'], current_value)
+          trace_alias = self.__alias_resolver.resolve_alias(_alias['name'], current_value)
 
           if not trace_alias:
             continue
           
-          # An alias is found, use alias value instead of current_value
           new_values.pop()
           new_values.append(trace_alias.value)
 
+      # Update with new values
       for new_value in new_values:
         components.add(name, new_value)
 
