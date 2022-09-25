@@ -3,6 +3,7 @@ import pdb
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 
 from stoobly_agent.config.constants import test_strategy
+from stoobly_agent.lib.logger import bcolors
 
 from .context import TestContext
 from .matchers.custom import matches as custom_matches
@@ -36,12 +37,15 @@ def test(context: TestContext):
     log_lines = []
 
     if not contract_matches:
+        log_lines.append(f"\n{bcolors.BOLD}Contract Test{bcolors.ENDC}")
         log_lines.append(contract_log)
 
     if not status_code_matches:
+        log_lines.append(f"\n{bcolors.BOLD}Status Code Test{bcolors.ENDC}")
         log_lines.append(status_code_log)
 
     if not response_matches:
+        log_lines.append(f"\n{bcolors.BOLD}Response Test{bcolors.ENDC}")
         log_lines.append(log)
 
     context.log = "\n".join(log_lines)
