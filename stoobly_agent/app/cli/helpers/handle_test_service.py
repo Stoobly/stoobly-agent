@@ -108,9 +108,12 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
       expected_response = __get_test_expected_response_with_context(context, project_id, test_facade)
 
       if expected_response:
-        print(f"\n{bcolors.BOLD}Expected Response{bcolors.ENDC}")
-        print(expected_response.content.decode())
-        print(f"Completed {expected_response.status_code} in {res['expected_latency']}ms")
+        if isinstance(expected_response, requests.Response):
+          print(f"\n{bcolors.BOLD}Expected Response{bcolors.ENDC}")
+          print(expected_response.content.decode())
+          print(f"Completed {expected_response.status_code} in {res['expected_latency']}ms")
+        else:
+          print("API Error: Invalid response")
 
 def __default_session_complete_formatter(session_context: SessionContext):
   if 'output' in session_context:
