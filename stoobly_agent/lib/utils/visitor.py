@@ -210,8 +210,11 @@ class TreeInterpreter(Visitor):
             pass
         except IndexError:
             pass
-
-        obj[key] = self.__handle_replace(key, current_value)
+        
+        try:
+            obj[key] = self.__handle_replace(key, current_value)
+        except ValueError:
+            return
 
         if self.handle_after_replace:
             self.handle_after_replace(key, current_value, self.replacement_number)
