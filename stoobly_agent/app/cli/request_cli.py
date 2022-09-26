@@ -181,7 +181,7 @@ if is_remote:
 
     handle_test_session_complete(session_context)
 
-    exit_on_failure(session_context)
+    exit_on_failure(session_context, format=kwargs['format'])
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",

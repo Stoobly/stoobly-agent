@@ -20,6 +20,10 @@ class SessionContext(TypedDict):
   test_facade: TestFacade
   total: int
 
+class ExitOnFailureOptions(TypedDict):
+  complete: bool
+  format: Union[str, None] 
+
 def handle_test_session_complete(session_context: SessionContext, format = None):
   format_handler = __default_session_complete_formatter
 
@@ -45,10 +49,14 @@ def handle_test_complete(
 
   format_handler(context, session_context, test)
 
-def exit_on_failure(session_context: SessionContext, complete = True):
+def exit_on_failure(session_context: SessionContext, **options: ExitOnFailureOptions):
+  complete = options.get('complete') 
+  if complete == None:
+    complete = True
+
   if session_context['passed'] != session_context['total']:
     if not complete:
-      handle_test_session_complete(session_context)
+      handle_test_session_complete(session_context, options.get('format'))
 
     sys.exit(1)
 
@@ -110,7 +118,7 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
       if expected_response:
         if isinstance(expected_response, requests.Response):
           print(f"\n{bcolors.BOLD}Expected Response{bcolors.ENDC}")
-          print(expected_response.content.decode())
+          print(__decode_response(expected_response))
           print(f"Completed {expected_response.status_code} in {res['expected_latency']}ms")
         else:
           print("API Error: Invalid response")
@@ -152,6 +160,12 @@ def __get_test_expected_response_with_context(context: ReplayContext, project_id
 
 def __build_json_response(response: requests.Response):
   return {
-    'content': response.content.decode(),
+    'content': __decode_response(response),
     'status_code': response.status_code,
   }
+
+def __decode_response(response: requests.Response):
+  if isinstance(response, requests.Response):
+    return response.content.decode()
+  else:
+    return "API Error: Internal Error"
