@@ -172,7 +172,7 @@ def test(**kwargs):
 
     handle_test_session_complete(session_context, kwargs['format'])
 
-    exit_on_failure(session_context)
+    exit_on_failure(session_context, format=kwargs['format'])
 
 @scenario.command(
     help="Show all scenarios"
@@ -227,7 +227,7 @@ def __handle_on_test_response(replay_context: ReplayContext, session_context: Se
     handle_test_complete(replay_context, session_context, format)
 
     if not session_context['aggregate_failures']:
-        exit_on_failure(session_context, False)
+        exit_on_failure(session_context, complete=False, format=format)
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
