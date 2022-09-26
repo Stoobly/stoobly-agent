@@ -1,6 +1,6 @@
 import pdb
 
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, normalize_header
 
 from stoobly_agent.config.constants import test_strategy
 from stoobly_agent.lib.logger import bcolors
@@ -74,8 +74,9 @@ def __test_request_contract(context: TestContext):
     request = context.flow.request
 
     headers = context.request_headers
+    normalized_headers = {k.lower(): v for k, v in headers.items()} # Headers are case insensitive
     header_names_facade = endpoint.header_names
-    matches, log = contract_matches(context, header_names_facade, dict(headers))
+    matches, log = contract_matches(context, header_names_facade, normalized_headers)
     if not matches:
         return matches, log
 
