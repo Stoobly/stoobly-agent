@@ -1,5 +1,6 @@
 import operator
 import pdb
+
 from typing import Callable
 
 from jmespath import functions
@@ -88,12 +89,12 @@ class Visitor(object):
         self._method_cache = {}
 
         # EDITED
-        self.visits = 0
         self.visited_nodes = []
         self.nodes = []
 
     def visit(self, node, *args, **kwargs):
-        self.build_traverse_path(node)
+        self.build_traverse_path(node) # On first visit, build expected traverse path
+
         self.increment_visits(node)
 
         node_type = node['type']
@@ -106,9 +107,8 @@ class Visitor(object):
         return method(node, *args, **kwargs)
 
     def increment_visits(self, node):
-        self.visits += 1
         self.visited_nodes.append(node)
-        Logger.instance().debug(f"{self.visits} {node}")
+        Logger.instance().debug(f"{len(self.visited_nodes)} {node}")
 
     def build_traverse_path(self, node):
         if len(self.nodes) > 0:
@@ -182,7 +182,7 @@ class TreeInterpreter(Visitor):
 
     # Greater than or equal is if there's multiple leaves
     def is_leaf(self):
-        r =  self.visits >= len(self.nodes)
+        r =  len(self.visited_nodes) >= len(self.nodes)
         return r
 
     def on_visit_leaf(self, obj, key):
@@ -225,9 +225,30 @@ class TreeInterpreter(Visitor):
     def visit_subexpression(self, node, value):
         result = value
 
-        length = len(node['children'])
+        _visited_nodes = self.visited_nodes.copy()
+
         for i, node in enumerate(node['children']):
             result = self.visit(node, result)
+            self.visited_nodes = _visited_nodes.copy()
+
+        '''
+        For each element in list, a new subexpression node gets created
+
+        e.g. 
+        For: [{'alias': { 'id': 1}}, {'alias': { 'id': 2}}]
+
+        The parse results will look like:
+        {'type': 'subexpression', 'children': [{'type': 'field', 'children': [], 'value': 'alias'}, {'type': 'field', 'children': [], 'value': 'id'}]}, 
+        {'type': 'field', 'children': [], 'value': 'alias'}, 
+        {'type': 'field', 'children': [], 'value': 'id'}, 
+        {'type': 'subexpression', 'children': [{'type': 'field', 'children': [], 'value': 'alias'}, {'type': 'field', 'children': [], 'value': 'id'}]}, 
+        {'type': 'field', 'children': [], 'value': 'alias'}
+        {'type': 'field', 'children': [], 'value': 'id'}, 
+
+        We don't want this, pop after each subexpression
+        ''' 
+        self.visited_nodes.pop() 
+
         return result
 
     def visit_field(self, node, value):
