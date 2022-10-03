@@ -82,13 +82,13 @@ def __test_request_contract(context: TestContext):
 
     query_params = request.query
     query_param_names_facade = endpoint.query_param_names
-    matches, log = contract_matches(context, query_param_names_facade, query_params)
+    matches, log = contract_matches(context, query_param_names_facade, query_params, strict=True)
     if not matches:
         return matches, f"{log} in query params" 
 
     body_params = decode_response(request.content, headers.get('content-type'))
     body_param_names_facade = endpoint.body_param_names
-    matches, log = contract_matches(context, body_param_names_facade, body_params)
+    matches, log = contract_matches(context, body_param_names_facade, body_params, strict=True)
     if not matches:
         return matches, f"{log} in body params" 
 
