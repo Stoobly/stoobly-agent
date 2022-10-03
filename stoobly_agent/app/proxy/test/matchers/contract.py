@@ -1,7 +1,7 @@
 import pdb
 
 from collections import Iterable
-from typing import List, Tuple, Union
+from typing import List, Tuple, TypedDict, Union
 
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
@@ -10,18 +10,21 @@ from ..context import TestContext
 from .context import MatchContext, build_match_context
 from .errors import length_match_error, param_name_exists_error, param_name_missing_error, type_match_error, valid_type_error
 
-def matches(test_context: TestContext, facade: RequestComponentNamesFacade, actual):
+class Options(TypedDict):
+    strict: bool
+
+def matches(test_context: TestContext, facade: RequestComponentNamesFacade, actual, **options: Options):
     context = build_match_context(test_context, facade)
 
     if context.value_is_dict(actual):
-        return dict_matches(context, actual)
+        return dict_matches(context, actual, **options)
     elif context.value_is_list(actual):
-        return list_matches(context, actual)
+        return list_matches(context, actual, **options)
     else:
         # TODO: handle non-traversible content
         return True, ''
 
-def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]:
+def dict_matches(parent_context: MatchContext, actual: dict, **options: Options) -> Tuple[bool, str]:
     if not parent_context.value_is_dict(actual):
         return type_match_error(parent_context.path_key, dict, type(actual))
 
@@ -36,7 +39,10 @@ def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]
         query = context.query
 
         if query not in index:
-            return param_name_exists_error(path_key)
+            if not options.get('strict'):
+                continue
+            else:
+                return param_name_exists_error(path_key)
         
         contracts = index[query]
         if not context.value_contract_matches(actual_value, contracts):
@@ -47,11 +53,11 @@ def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]
             return valid_type_error(path_key, actual_value, valid_types)
 
         if context.value_is_dict(actual_value):
-            matches, log = dict_matches(context, actual_value)
+            matches, log = dict_matches(context, actual_value, **options)
             if not matches:
                 return matches, log
         elif context.value_is_list(actual_value):
-            matches, log = list_matches(context, actual_value)
+            matches, log = list_matches(context, actual_value, **options)
             if not matches:
                 return matches, log
 
@@ -72,7 +78,7 @@ def dict_matches(parent_context: MatchContext, actual: dict) -> Tuple[bool, str]
 #
 # If list value is traversable, traverse
 #
-def list_matches(parent_context: MatchContext, actual: list) -> Tuple[bool, str]:
+def list_matches(parent_context: MatchContext, actual: list, **options: Options) -> Tuple[bool, str]:
     parent_path_key = f"{parent_context.path_key}[*]"
     if not parent_context.value_is_list(actual):
         return type_match_error(parent_path_key, list, type(actual))
@@ -98,11 +104,11 @@ def list_matches(parent_context: MatchContext, actual: list) -> Tuple[bool, str]
             return valid_type_error(path_key, value, valid_types)
 
         if context.value_is_dict(value):
-            matches, log = dict_matches(context, value)
+            matches, log = dict_matches(context, value, **options)
             if not matches:
                 return matches, log
         elif context.value_is_list(value):
-            matches, log = list_matches(context, value)
+            matches, log = list_matches(context, value, **options)
             if not matches:
                 return matches, log
 
