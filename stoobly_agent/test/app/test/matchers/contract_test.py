@@ -38,7 +38,7 @@ class TestListMatchesList():
       MatchContext({
         'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
       }),
-      [1]
+      [1], strict=True
     )
 
     assert log == "Key '[0]' type did not match: got <class 'int'>, expected valid types Hash", log
@@ -49,7 +49,7 @@ class TestListMatchesList():
     })
 
     matches, log = list_matches(
-      match_context, [{ "id": "934" }]
+      match_context, [{ "id": "934" }], strict=True
     )
 
     assert log == "Key '[0].id' type did not match: got <class 'str'>, expected valid types Integer", log
@@ -60,7 +60,7 @@ class TestListMatchesList():
     })
 
     matches, log = list_matches(
-      match_context, [{ "id": 934 }]
+      match_context, [{ "id": 934 }], strict=True
     )
 
     assert log == "Missing key: expected [0].requests_count to exist", log
@@ -71,7 +71,7 @@ class TestListMatchesList():
     })
 
     matches, log = list_matches(
-      match_context, [{ "random_property": 934 }]
+      match_context, [{ "random_property": 934 }], strict=True
     )
 
     assert log == "Extra key: expected [0].random_property to not exist", log
@@ -82,7 +82,7 @@ class TestListMatchesList():
     })
 
     matches, log = list_matches(
-      match_context, []
+      match_context, [], strict=True
     )
 
     assert log == "Key '[*]' length did not match: got 0", log
@@ -93,7 +93,7 @@ class TestListMatchesList():
     })
 
     matches, log = list_matches(
-      match_context, {}
+      match_context, {}, strict=True
     )
 
     assert log == "Key '[*]' type did not match: got <class 'dict'>, expected <class 'list'>", log
