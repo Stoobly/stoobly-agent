@@ -64,6 +64,11 @@ class TestReplace():
         jmespath.search('a[*].a.a', a, { 'replacements': ['*', '**', '***', '****'] })
         assert self.equals(a, {'a': [{'a': {'a': '*'}}, {'a': {'a': '**'}}, {'a': {'a': '***'}}, {'a': {'a': '****'}}], }), print(a)
 
+    def test_m(self):
+        a = {'a': [[{'a': 1}], [{'a': 2}]]}
+        jmespath.search('a[*][*].a', a, { 'replacements': ['*'] })
+        assert self.equals(a, {'a': [[{'a': '*'}], [{'a': '*'}]]}), print(a)
+
     def equals(self, a, b):
         return json.dumps(a) == json.dumps(b)
 
