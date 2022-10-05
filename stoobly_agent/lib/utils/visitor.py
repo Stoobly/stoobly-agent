@@ -185,6 +185,16 @@ class TreeInterpreter(Visitor):
         r =  len(self.visited_nodes) >= len(self.nodes)
         return r
 
+    def is_path(self):
+        if self.is_leaf():
+            return False
+
+        for i, visited_node in enumerate(self.visited_nodes):
+            if visited_node != self.nodes[i]:
+                return False
+
+        return True
+
     def on_visit_leaf(self, obj, key):
         if not self.is_leaf():
             return
@@ -224,12 +234,17 @@ class TreeInterpreter(Visitor):
 
     def visit_subexpression(self, node, value):
         result = value
+        flushed = False # Flushed denotes whether we are visiting a list
 
         _visited_nodes = self.visited_nodes.copy()
 
         for i, node in enumerate(node['children']):
             result = self.visit(node, result)
-            self.visited_nodes = _visited_nodes.copy()
+
+            # If current subexpression has deviated from the path, then flush
+            if not self.is_path():
+                self.visited_nodes = _visited_nodes.copy()
+                flushed = True
 
         '''
         For each element in list, a new subexpression node gets created
@@ -247,7 +262,8 @@ class TreeInterpreter(Visitor):
 
         We don't want this, pop after each subexpression
         ''' 
-        self.visited_nodes.pop() 
+        if flushed:
+            self.visited_nodes.pop() 
 
         return result
 
