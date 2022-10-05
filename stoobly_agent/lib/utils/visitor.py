@@ -203,10 +203,14 @@ class TreeInterpreter(Visitor):
             self.replace(obj, key)
 
     def __handle_replace(self, name, value):
+        replacement_value = None
+
         if self.handle_replace:
-            return self.handle_replace(name, value, self.replacement_number)
+            replacement_value = self.handle_replace(name, value, self.replacement_number)
         else: 
-            return self.replacements[self.replacement_number % len(self.replacements)]
+            replacement_value = self.replacements[self.replacement_number % len(self.replacements)]
+
+        return replacement_value
 
     def __do_replace(self):
         return self.handle_replace or (self.replacements and isinstance(self.replacements, list) and len(self.replacements) > 0)
@@ -228,6 +232,8 @@ class TreeInterpreter(Visitor):
 
         if self.handle_after_replace:
             self.handle_after_replace(key, current_value, self.replacement_number)
+
+        self.replacement_number += 1
 
     def default_visit(self, node, *args, **kwargs):
         raise NotImplementedError(node['type'])
