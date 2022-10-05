@@ -31,7 +31,7 @@ def replay(
 
   while True:
     requests_index = __get_requests(
-      request_model, scenario_key, { 'page': page, 'size': PAGE_SIZE }
+      request_model, scenario_key, { 'page': page, 'size': PAGE_SIZE, 'sort_order': 'asc' }
     )
 
     if not requests_index:
@@ -70,6 +70,7 @@ def __get_requests(
     'scenario_id': scenario_id,
     'page': query_params.get('page'),
     'size': query_params.get('size'),
+    'sort_order': query_params.get('sort_order'),
   })
 
 def __get_request(
