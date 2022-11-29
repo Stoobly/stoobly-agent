@@ -27,7 +27,7 @@ class HeadersController:
         })
         
         requests = HeaderModel(Settings.instance()).index(context.params.get('requestId'))
-        pdb.set_trace()
+
         context.render(
             json = requests,
             status = 200
