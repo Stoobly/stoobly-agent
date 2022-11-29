@@ -109,5 +109,5 @@ class LocalDBRequestAdapter():
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
     for request in requests:
-      request['key'] = RequestKey.encode(None, request['id'])
+      request['key'] = RequestKey.encode(None, request['id']).decode()
     return requests
