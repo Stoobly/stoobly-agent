@@ -13,10 +13,10 @@ from stoobly_agent.lib.api.keys.request_key import RequestKey
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
-from stoobly_agent.lib.orm.transformers.orm_to_stoobly_request_transformer import ORMTOStooblyRequestTransformer
+from stoobly_agent.lib.orm.transformers.orm_to_stoobly_request_transformer import ORMToStooblyRequestTransformer
 from stoobly_agent.lib.orm.types.request_columns import RequestColumns
 from stoobly_agent.lib.orm.types.response_columns import ResponseColumns
-from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer, ORMTOStooblyResponseTransformer
+from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer, ORMToStooblyResponseTransformer
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
 
 from .types import RequestCreateParams, RequestShowParams
@@ -65,7 +65,7 @@ class LocalDBRequestAdapter():
   def show(self, request_id: str, **options: RequestShowParams) -> RequestShowResponse:
     request = self.__request_orm.find(request_id)
 
-    return ORMTOStooblyRequestTransformer(request, options).transform()
+    return ORMToStooblyRequestTransformer(request, options).transform()
 
   def response(self, **query_params: RequestColumns) -> requests.Response:
     request_columns = { **query_params }
