@@ -53,7 +53,7 @@ if settings.cli.features.remote:
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')(f), is_remote)
+@click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
 @click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES), type=click.Choice(INTERCEPT_MODES))
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
@@ -68,8 +68,8 @@ if settings.cli.features.remote:
 ''')
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
-@ConditionalDecorator(lambda f: click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--ui-port', default=4200, help='UI service port.')(f), is_remote)
+@click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
+@click.option('--ui-port', default=4200, help='UI service port.')
 def run(**kwargs):
     os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
 
