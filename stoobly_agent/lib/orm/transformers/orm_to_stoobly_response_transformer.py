@@ -7,7 +7,7 @@ from stoobly_agent.lib.api.interfaces import ResponseShowResponse
 from ..response import Response as ORMResponse
 from ..utils.response_parse_handler import Response as ResponseDict, ResponseParseHandler
 
-class ORMTOStooblyResponseTransformer():
+class ORMToStooblyResponseTransformer():
   __response: ORMResponse = None
   __response_dict: ResponseDict = None
 

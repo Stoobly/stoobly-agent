@@ -10,9 +10,9 @@ from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse, Re
 
 from ..request import Request as ORMRequest
 from ..utils.request_parse_handler import Request as RequestDict, RequestParseHandler
-from .orm_to_stoobly_response_transformer import ORMTOStooblyResponseTransformer
+from .orm_to_stoobly_response_transformer import ORMToStooblyResponseTransformer
 
-class ORMTOStooblyRequestTransformer():
+class ORMToStooblyRequestTransformer():
   __options: RequestShowParams
   __request: ORMRequest = None
 
@@ -30,7 +30,7 @@ class ORMTOStooblyRequestTransformer():
 
     response = self.__request.response
     if response:
-      transformer = ORMTOStooblyResponseTransformer(response)
+      transformer = ORMToStooblyResponseTransformer(response)
       stoobly_request['status']  = transformer.response_dict['status_code']
 
       if 'response' in self.__options:
