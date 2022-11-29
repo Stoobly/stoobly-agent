@@ -5,17 +5,20 @@ from httptools import HttpRequestParser, parse_url
 from typing import List
 from urllib.parse import parse_qs
 
+from stoobly_agent.app.models.adapters.types.request_show_params import RequestShowParams
 from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse, ResponseShowResponse
 
 from ..request import Request as ORMRequest
-from .orm_to_stoobly_response_transformer import ORMTOStooblyResponseTransformer
 from ..utils.request_parse_handler import Request as RequestDict, RequestParseHandler
+from .orm_to_stoobly_response_transformer import ORMTOStooblyResponseTransformer
 
 class ORMTOStooblyRequestTransformer():
+  __options: RequestShowParams
   __request: ORMRequest = None
 
   # TODO: filter by options
-  def __init__(self, request: ORMRequest, options = {}):
+  def __init__(self, request: ORMRequest, options: RequestShowParams):
+    self.__options = options
     self.__request = request
 
     self.__request_dict: RequestDict = {}
@@ -28,22 +31,29 @@ class ORMTOStooblyRequestTransformer():
     response = self.__request.response
     if response:
       transformer = ORMTOStooblyResponseTransformer(response)
-      stoobly_response: ResponseShowResponse = transformer.transform()
-      self.__decorate_with_stoobly_response(stoobly_request, stoobly_response)
       stoobly_request['status']  = transformer.response_dict['status_code']
+
+      if 'response' in self.__options:
+        stoobly_response: ResponseShowResponse = transformer.transform()
+        self.__decorate_with_stoobly_response(stoobly_request, stoobly_response)
     
     return stoobly_request
 
   def __request_dict_to_request(self, request_dict: RequestDict) -> RequestShowResponse:
     stoobly_request: RequestShowResponse = {}
 
-    stoobly_request['headers'] = self.__transform_headers(request_dict['headers'])
     stoobly_request['method'] = request_dict['method'].decode()
-    stoobly_request['body'] = b64encode(request_dict['body'])
     stoobly_request['url'] = request_dict['url'].decode()
 
-    parsed_url = parse_url(request_dict['url'])
-    stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
+    if 'headers' in self.__options:
+      stoobly_request['headers'] = self.__transform_headers(request_dict['headers'])
+
+    if 'body' in self.__options:
+      stoobly_request['body'] = b64encode(request_dict['body'])
+
+    if 'query_params' in self.__options:
+      parsed_url = parse_url(request_dict['url'])
+      stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
 
     return stoobly_request
 
