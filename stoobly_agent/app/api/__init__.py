@@ -8,6 +8,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
+from stoobly_agent.app.api.headers_controller import HeadersController
 from stoobly_agent.config.constants import env_vars, headers
 
 from .configs_controller import ConfigsController
@@ -19,7 +20,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     CONFIGS_PATH = '/api/v1/admin/configs'
     PROXY_PATH = '/proxy'
+    REQUESTS_PATH = '/requests'
     STATUSES_PATH = '/api/v1/admin/statuses'
+
+    HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/headers")
     STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
     @property
@@ -225,6 +229,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().get_configs_summary],
             ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
             ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
+            [HEADERS_PATH, HeadersController.instance().index],
             [STATUS_PATH, StatusesController.instance().get_status],
         ],
         'POST': [
