@@ -1,5 +1,6 @@
 from base64 import b64encode
 import pdb
+from re import I
 
 from httptools import HttpRequestParser, parse_url
 from typing import List
@@ -12,6 +13,16 @@ from ..request import Request as ORMRequest
 from ..utils.request_parse_handler import Request as RequestDict, RequestParseHandler
 from .orm_to_stoobly_response_transformer import ORMToStooblyResponseTransformer
 
+FILTER_LIST = [
+  'headers_hash',
+  'body_text_hash',
+  'query_params_hash',
+  'body_params_hash',
+  'control',
+  'raw',
+  'committed_at',
+] 
+
 class ORMToStooblyRequestTransformer():
   __options: RequestShowParams
   __request: ORMRequest = None
@@ -21,26 +32,19 @@ class ORMToStooblyRequestTransformer():
     self.__options = options
     self.__request = request
 
-    self.__request_dict: RequestDict = {}
-    parser = self.__new_parser(self.__request_dict)
-    self.__decorate_request_dict_with_parser(self.__request_dict, parser) 
-
   def transform(self) -> RequestShowResponse:
-    stoobly_request = self.__request_dict_to_request(self.__request_dict)
+    stoobly_request: RequestShowResponse = self.__request.to_dict()
 
-    response = self.__request.response
-    if response:
-      transformer = ORMToStooblyResponseTransformer(response)
-      stoobly_request['status']  = transformer.response_dict['status_code']
+    self.__decorate_with_request(stoobly_request, self.__request)
+    self.__decorate_with_response(stoobly_request, self.__request.response)
 
-      if 'response' in self.__options:
-        stoobly_response: ResponseShowResponse = transformer.transform()
-        self.__decorate_with_stoobly_response(stoobly_request, stoobly_response)
-    
+    for property in FILTER_LIST:
+      del stoobly_request[property]
+
     return stoobly_request
 
-  def __request_dict_to_request(self, request_dict: RequestDict) -> RequestShowResponse:
-    stoobly_request: RequestShowResponse = {}
+  def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest) -> RequestShowResponse:
+    request_dict = self.__parse_raw_request(request.raw)
 
     stoobly_request['method'] = request_dict['method'].decode()
     stoobly_request['url'] = request_dict['url'].decode()
@@ -51,11 +55,10 @@ class ORMToStooblyRequestTransformer():
     if 'body' in self.__options:
       stoobly_request['body'] = b64encode(request_dict['body'])
 
+    parsed_url = parse_url(request_dict['url'])
+    stoobly_request['query'] = parsed_url.query.decode()
     if 'query_params' in self.__options:
-      parsed_url = parse_url(request_dict['url'])
       stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
-
-    return stoobly_request
 
   def __transform_headers(self, headers: dict):
     headers_list = []
@@ -75,14 +78,21 @@ class ORMToStooblyRequestTransformer():
       })
     return query_params_list
 
-  def __new_parser(self, request_dict: RequestDict):    
+  def __parse_raw_request(self, raw_request: bytes):
+    request_dict = {}
     handler = RequestParseHandler(request_dict)
     parser = HttpRequestParser(handler)
-    parser.feed_data(memoryview(self.__request.raw))
-    return parser
+    parser.feed_data(memoryview(raw_request))
+    request_dict['method'] = parser.get_method()
+    return request_dict
   
-  def __decorate_request_dict_with_parser(self, stoobly_request: RequestShowResponse, parser):
-    stoobly_request['method'] = parser.get_method()
-  
-  def __decorate_with_stoobly_response(self, stoobly_request: RequestShowResponse, stoobly_response: ResponseShowResponse):
-    stoobly_request['response'] = stoobly_response
+  def __decorate_with_response(self, stoobly_request: RequestShowResponse, stoobly_response: ResponseShowResponse):
+    if not stoobly_response:
+      return
+
+    transformer = ORMToStooblyResponseTransformer(stoobly_response)
+    stoobly_request['status']  = transformer.response_dict['status_code']
+
+    if 'response' in self.__options:
+      stoobly_response: ResponseShowResponse = transformer.transform()
+      stoobly_request['response'] = stoobly_response
