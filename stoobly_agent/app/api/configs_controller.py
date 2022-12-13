@@ -69,7 +69,7 @@ class ConfigsController:
         scenario_id =  ScenarioKey(scenario_key).id if scenario_key else None
 
         # Check to make sure the scenario still exists
-        if scenario_id:
+        if settings.cli.features.remote and scenario_id:
             resource = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
             res = resource.show(scenario_id)
 
