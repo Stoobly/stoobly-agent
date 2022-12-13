@@ -8,6 +8,7 @@ class Request(Base):
   __fillable__ = [
     'control',
     'scheme', 
+    'latency',
     'method', 
     'host', 
     'path', 
@@ -17,7 +18,11 @@ class Request(Base):
     'query_params_hash', 
     'body_params_hash', 
     'raw', 
-    'committed_at'
+    'committed_at',
+    'user',
+    'password',
+    'status',
+    'query',
   ]
 
   @has_one
