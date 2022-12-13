@@ -5,10 +5,10 @@ import pdb
 from typing import Union
 
 from .proxy_request import ProxyRequest
+from .request_string_control import RequestStringControl
 
 class RequestString:
     ENCODING = 'utf-8'
-    REQUEST_TYPE = 1
     CLRF = "\r\n"
 
     __current_time = None
@@ -34,7 +34,10 @@ class RequestString:
             return self.CLRF.join(self.lines).encode(self.ENCODING)
 
     def control(self):
-        return "{} {} {}".format(self.REQUEST_TYPE, self.request_id, self.__current_time)
+        control = RequestStringControl()
+        control.id = self.request_id
+        control.timestamp = self.__current_time
+        return control.serialize()
 
     def __request_line(self):
         self.lines.append("{} {} HTTP/1.1".format(self.request.method, self.proxy_request.url()))
