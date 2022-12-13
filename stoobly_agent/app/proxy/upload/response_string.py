@@ -2,6 +2,8 @@ import re
 import time
 import pdb
 
+from .response_string_control import ResponseStringControl
+
 class ResponseString:
     ENCODING = 'utf-8'
     RESPONSE_TYPE = 2
@@ -35,8 +37,12 @@ class ResponseString:
     # 4 - response latency in nano seconds
     #
     def control(self):
-        line = "{} {} {} {}".format(self.RESPONSE_TYPE, self.request_id, self.__current_time, self.latency)
-        return line.encode(self.ENCODING)
+        control = ResponseStringControl()
+        control.id = self.request_id
+        control.timestamp = self.__current_time
+        control.latency = self.latency
+
+        return control.serialize().encode(self.ENCODING)
 
     def with_latency(self, latency):
         self.latency = latency
