@@ -34,7 +34,8 @@ class LocalDBRequestAdapter():
     joined_request: JoinedRequest = params['joined_request']
 
     request: MitmproxyRequest = flow.request
-    hashed_request = HashedRequestDecorator(MitmproxyRequestFacade(request))
+    request_facade = MitmproxyRequestFacade(request)
+    hashed_request = HashedRequestDecorator(request_facade)
 
     with ORM.instance().db.transaction():
       request_columns: RequestColumns = {
@@ -43,12 +44,15 @@ class LocalDBRequestAdapter():
         'control': joined_request.request_string.control(), 
         'headers_hash': hashed_request.headers_hash(),
         'host': request.host,
+        'latency': joined_request.response_string.latency,
         'method': request.method,
-        'path': request.path,
+        'path': request_facade.path,
         'port': request.port,
+        'query': request_facade.query_string,
         'query_params_hash': hashed_request.query_params_hash(),
         'raw': joined_request.request_string.get(),
         'scheme': request.scheme,
+        'status': flow.response.status_code,
       }
       request_record = self.__request_orm.create(**request_columns)
 
@@ -105,7 +109,7 @@ class LocalDBRequestAdapter():
     del request_columns['headers_hash']
 
   def __transform_index_list(self, records: List[Request]):
-    allowed_keys = list(RequestShowResponse.__annotations__.keys())
+    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['query']
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
     for request in requests:

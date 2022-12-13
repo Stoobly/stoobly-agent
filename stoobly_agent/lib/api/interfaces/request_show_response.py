@@ -8,10 +8,12 @@ class QueryParam(TypedDict):
 
 class RequestShowResponse(TypedDict):
   body: str
+  created_at: str
   endpoint_id: int
   headers: Union[list, None]
   host: str
   id: str
+  latency: int
   method: str
   path: str
   port: str
