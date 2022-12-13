@@ -72,6 +72,11 @@ class MitmproxyRequestFacade(Request):
         return self.request.query
 
     @property
+    def query_string(self):
+        from urllib.parse import urlencode
+        return urlencode(self.query)
+
+    @property
     def content_type(self):
         return self.headers.get('content-type')
 
