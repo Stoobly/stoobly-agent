@@ -1,5 +1,3 @@
-from typing import Union
-
 from stoobly_agent.app.settings import RemoteSettings
 from stoobly_agent.lib.orm.request import Request
 
