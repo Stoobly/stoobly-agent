@@ -10,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 
 from stoobly_agent.app.api.headers_controller import HeadersController
 from stoobly_agent.app.api.requests_controller import RequestsController
+from stoobly_agent.app.api.response_headers_controller import ResponseHeadersController
 from stoobly_agent.config.constants import env_vars, headers
 
 from .configs_controller import ConfigsController
@@ -25,6 +26,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     STATUSES_PATH = '/api/v1/admin/statuses'
 
     HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/headers")
+    RESPONSE_HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/response_headers")
     REQUEST_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]")
     STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
@@ -232,6 +234,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
             ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
             [HEADERS_PATH, HeadersController.instance().index],
+            [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().index],
             [REQUESTS_PATH, RequestsController.instance().index],
             [REQUEST_PATH, RequestsController.instance().get],
             [STATUS_PATH, StatusesController.instance().get_status],
