@@ -109,9 +109,20 @@ class LocalDBRequestAdapter():
     del request_columns['headers_hash']
 
   def __transform_index_list(self, records: List[Request]):
-    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['query']
+    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['body_params_hash', 'query', 'query_params_hash']
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
+
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
     for request in requests:
       request['key'] = RequestKey.encode(None, request['id']).decode()
+
+      components = []
+      if len(request['query_params_hash']) != 0:
+        components.append('query_params')
+
+      if len(request['body_params_hash']) != 0:
+        components.append('body_params')
+
+      request['components'] = components
+
     return requests
