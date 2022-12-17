@@ -56,9 +56,11 @@ class ORMToStooblyRequestTransformer():
       stoobly_request['body'] = b64encode(request_dict['body'])
 
     parsed_url = parse_url(request_dict['url'])
-    stoobly_request['query'] = parsed_url.query.decode()
-    if 'query_params' in self.__options:
-      stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
+
+    if parsed_url.query:
+      stoobly_request['query'] = parsed_url.query.decode()
+      if 'query_params' in self.__options:
+        stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
 
   def __transform_headers(self, headers: dict):
     headers_list = []
