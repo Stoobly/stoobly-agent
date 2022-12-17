@@ -4,10 +4,9 @@ import requests
 from typing import Union
 from stoobly_agent.app.models.adapters.header_adapter_factory import HeaderAdapterFactory
 
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.app.models.types.request_components import HeaderIndexResponse
 from stoobly_agent.app.settings import Settings
-
-from .types.requests_model_index import RequestsModelIndex
+from stoobly_agent.lib.logger import Logger
 
 class HeaderModel():
 
@@ -19,7 +18,7 @@ class HeaderModel():
 
     self.settings = settings
 
-  def index(self, request_id: str, **query_params) -> Union[RequestsModelIndex, None]:
+  def index(self, request_id: str, **query_params) -> Union[HeaderIndexResponse, None]:
     try:
       return self.adapter.index(request_id, **query_params)
     except requests.exceptions.RequestException as e:
