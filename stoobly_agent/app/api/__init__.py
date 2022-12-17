@@ -8,8 +8,11 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
+from stoobly_agent.app.api.bodies_controller import BodiesController
 from stoobly_agent.app.api.headers_controller import HeadersController
+from stoobly_agent.app.api.query_params_controller import QueryParamsController
 from stoobly_agent.app.api.requests_controller import RequestsController
+from stoobly_agent.app.api.responses_controller import ResponsesController
 from stoobly_agent.app.api.response_headers_controller import ResponseHeadersController
 from stoobly_agent.config.constants import env_vars, headers
 
@@ -25,7 +28,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     REQUESTS_PATH = '/requests'
     STATUSES_PATH = '/api/v1/admin/statuses'
 
+    BODIES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/bodies/mock")
     HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/headers")
+    RESPONSES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/responses/mock")
+    QUERY_PARAMS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/query_params")
     RESPONSE_HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/response_headers")
     REQUEST_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]")
     STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
@@ -66,9 +72,14 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     ### Helpers
 
-    def enable_cors(self):
+    def enable_cors(self, _headers = {}):
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
+        #if _headers.get('Access-Control-Allow-Methods'):
+        #    del _headers['Access-Control-Allow-Methods'] # Don't send duplicate headers
+
         self.send_header('Access-Control-Allow-Origin', '*')
+        #if _headers.get('Access-Control-Allow-Origin'):
+        #    del _headers['Access-Control-Allow-Origin']
 
         allowed_headers = ', '.join([
             'Content-Type'.upper(),
@@ -78,8 +89,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             headers.SERVICE_URL.upper(),
         ])
         self.send_header('Access-Control-Allow-Headers', allowed_headers)
+        #if _headers.get('Access-Control-Allow-Headers'):
+        #    del _headers['Access-Control-Allow-Headers']
 
         self.send_header('Access-Control-Max-Age', '7200')
+        #if _headers.get('Access-Control-Max-Age'):
+        #    del _headers['Access-Control-Max-Age']
 
     def preprocess(self):
         self.uri = urlparse(self.path)
@@ -195,7 +210,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             'TRANSFER-ENCODING': 'CHUNKED',
         })
         headers['Content-Length'] = len(body)
-        self.enable_cors()
+        self.enable_cors(headers)
         self.render_headers(headers)
         self.end_headers()
 
@@ -233,7 +248,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().get_configs_summary],
             ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
             ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
+            [BODIES_PATH, BodiesController.instance().mock],
             [HEADERS_PATH, HeadersController.instance().index],
+            [QUERY_PARAMS_PATH, QueryParamsController.instance().index],
+            [RESPONSES_PATH, ResponsesController.instance().mock],
             [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().index],
             [REQUESTS_PATH, RequestsController.instance().index],
             [REQUEST_PATH, RequestsController.instance().get],

@@ -1,7 +1,7 @@
 from stoobly_agent.app.settings import RemoteSettings
 from stoobly_agent.lib.orm.request import Request
 
-from .local_db_header_adapter import LocalDBHeaderAdapter
+from .local_db.header_adapter import LocalDBHeaderAdapter
 
 class HeaderAdapterFactory():
 
