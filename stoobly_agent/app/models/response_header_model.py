@@ -3,11 +3,11 @@ import requests
 
 from typing import Union
 
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.app.models.types.request_components import ResponseHeaderIndexResponse
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.logger import Logger
 
 from .adapters.response_header_adapter_factory import ResponseHeaderAdapterFactory
-from .types.requests_model_index import RequestsModelIndex
 
 class ResponseHeaderModel():
 
@@ -19,7 +19,7 @@ class ResponseHeaderModel():
 
     self.settings = settings
 
-  def index(self, request_id: str, **query_params) -> Union[RequestsModelIndex, None]:
+  def index(self, request_id: str, **query_params) -> Union[ResponseHeaderIndexResponse, None]:
     try:
       return self.adapter.index(request_id, **query_params)
     except requests.exceptions.RequestException as e:
