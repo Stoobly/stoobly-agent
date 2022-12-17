@@ -17,8 +17,8 @@ class RawHttpResponseAdapter():
         self.headers[header_key] = header_value
         ind += 1
     ind += 1
-    self.data = req_lines[ind:] if ind < len(req_lines) else None
-    self.body = CRLF.join(self.data)
+    data_lines = req_lines[ind:] if ind < len(req_lines) else None
+    self.body = CRLF.join(data_lines)
 
   def __parse_response_line(self, response_line):
     response_parts = response_line.split(b' ')
