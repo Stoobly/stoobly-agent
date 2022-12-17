@@ -2,10 +2,6 @@ from typing import TypedDict, Union
 
 from .response_show_response import ResponseShowResponse
 
-class QueryParam(TypedDict):
-  name: str
-  value: str
-
 class RequestShowResponse(TypedDict):
   body: str
   created_at: str

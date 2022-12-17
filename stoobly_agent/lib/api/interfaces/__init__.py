@@ -1,10 +1,11 @@
 from .endpoints import EndpointsIndexQueryParams
 from .pagination_query_params import PaginationQueryParams
 from .projects import ProjectCreateParams, ProjectDetails, ProjectShowResponse, ProjectsIndexQueryParams, ProjectsIndexResponse
+from .query_param_show_response import QueryParam
 from .report_show_response import ReportShowResponse
 from .request_create_params import RequestCreateParams
 from .request_show_query_params import RequestShowQueryParams
-from .request_show_response import QueryParam, RequestShowResponse
+from .request_show_response import RequestShowResponse
 from .requests_index_query_params import RequestsIndexQueryParams
 from .requests_index_response import RequestsIndexResponse
 from .response_show_response import ResponseShowResponse

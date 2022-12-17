@@ -1,6 +1,8 @@
 from typing import TypedDict
 
-class HeaderShowResponse(TypedDict):
-  id: str
+class Header(TypedDict):
   name: str
   value: str
+  
+class HeaderShowResponse(Header):
+  id: str
