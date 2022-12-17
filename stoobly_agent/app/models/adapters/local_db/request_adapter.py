@@ -19,7 +19,7 @@ from stoobly_agent.lib.orm.types.response_columns import ResponseColumns
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer, ORMToStooblyResponseTransformer
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
 
-from .types import RequestCreateParams, RequestShowParams
+from ..types import RequestCreateParams, RequestShowParams
 
 class LocalDBRequestAdapter():
   __request_orm = None
@@ -104,9 +104,14 @@ class LocalDBRequestAdapter():
     }
 
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
-    del request_columns['project_id']
-    del request_columns['scenario_id']
-    del request_columns['headers_hash']
+    if request_columns.get('project_id'):
+      del request_columns['project_id']
+
+    if request_columns.get('scenario_id'):
+      del request_columns['scenario_id']
+
+    if request_columns.get('headers_hash'):
+      del request_columns['headers_hash']
 
   def __transform_index_list(self, records: List[Request]):
     allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['body_params_hash', 'query', 'query_params_hash']
