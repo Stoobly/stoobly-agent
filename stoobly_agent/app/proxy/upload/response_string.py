@@ -19,15 +19,19 @@ class ResponseString:
         self.latency = 0
         self.request_id = request_id
 
-        self.__response_line()
-        self.__headers()
-        self.__body()
+        if response:
+            self.__response_line()
+            self.__headers()
+            self.__body()
 
     def get(self, **kwargs):
         if kwargs.get('control'):
-            return self.CLRF.join([self.control()] + self.lines)
+            return self.CLRF.join([self.control] + self.lines)
         else:
             return self.CLRF.join(self.lines)
+
+    def set(self, s: bytes):
+        self.lines = s.split(self.CLRF)
 
     ###
     #
@@ -36,6 +40,7 @@ class ResponseString:
     # 3 - timestamp in nano seconds
     # 4 - response latency in nano seconds
     #
+    @property
     def control(self):
         control = ResponseStringControl()
         control.id = self.request_id
@@ -44,8 +49,20 @@ class ResponseString:
 
         return control.serialize().encode(self.ENCODING)
 
+    @control.setter
+    def control(self, c):
+        control = ResponseStringControl(c)
+        self.request_id = control.id
+        self.__current_time = control.timestamp
+        self.latency = control.latency
+
     def with_latency(self, latency):
         self.latency = latency
+        return self
+
+    def with_request_id(self, request_id):
+        self.request_id = request_id
+        return self
 
     def __response_line(self):
         line = "HTTP/1.1 {}".format(self.response.code)
