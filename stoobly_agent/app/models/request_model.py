@@ -14,14 +14,20 @@ from .types.requests_model_index import RequestsModelIndex
 class RequestModel():
 
   def __init__(self, settings: Settings):
-    if not settings.cli.features.remote:
-      self.adapter =  RequestAdapterFactory(settings.remote).local_db()
-    else:
-      self.adapter =  RequestAdapterFactory(settings.remote).stoobly()
-
     self.settings = settings
 
-  def create(self, **body_params: RequestCreateParams) -> Union[Request, None]:
+    if not settings.cli.features.remote:
+      self.as_local()
+    else:
+      self.as_remote()
+
+  def as_local(self):
+      self.adapter = RequestAdapterFactory(self.settings.remote).local_db()
+
+  def as_remote(self):
+      self.adapter = RequestAdapterFactory(self.settings.remote).stoobly()
+
+  def create(self, **body_params: RequestCreateParams) -> Union[RequestsModelIndex, None]:
     try:
       return self.adapter.create(**body_params)
     except requests.exceptions.RequestException as e:
