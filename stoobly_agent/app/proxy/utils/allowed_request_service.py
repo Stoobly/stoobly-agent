@@ -9,10 +9,6 @@ from stoobly_agent.config.constants import mock_policy, request_origin
 from stoobly_agent.lib.logger import Logger
 
 def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
-    # If we're in local only mode, default to ALL
-    if not intercept_settings.settings.cli.features.remote:
-        return mock_policy.ALL
-
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
 
