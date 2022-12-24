@@ -20,7 +20,6 @@ FILTER_LIST = [
   'body_params_hash',
   'control',
   'raw',
-  'committed_at',
 ] 
 
 class ORMToStooblyRequestTransformer():
