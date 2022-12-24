@@ -41,7 +41,7 @@ class LocalDBRequestAdapter():
       request_columns: RequestColumns = {
         'body_params_hash': hashed_request.body_params_hash(),
         'body_text_hash': hashed_request.body_text_hash(),
-        'control': joined_request.request_string.control(), 
+        'control': joined_request.request_string.control, 
         'headers_hash': hashed_request.headers_hash(),
         'host': request.host,
         'latency': joined_request.response_string.latency,
@@ -57,7 +57,7 @@ class LocalDBRequestAdapter():
       request_record = self.__request_orm.create(**request_columns)
 
       response_columns: ResponseColumns = {
-        'control': joined_request.response_string.control(),
+        'control': joined_request.response_string.control,
         'raw': joined_request.response_string.get(),
         'request_id': request_record.id,
       }
@@ -114,7 +114,7 @@ class LocalDBRequestAdapter():
       del request_columns['headers_hash']
 
   def __transform_index_list(self, records: List[Request]):
-    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['body_params_hash', 'query', 'query_params_hash']
+    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['committed_at', 'body_params_hash', 'query', 'query_params_hash']
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
 
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
