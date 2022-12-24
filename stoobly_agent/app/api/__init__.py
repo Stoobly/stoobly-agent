@@ -1,40 +1,21 @@
 import json
 import mimetypes
 import os
+import pdb
 import re
+import requests
 import threading
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
-from stoobly_agent.app.api.bodies_controller import BodiesController
-from stoobly_agent.app.api.headers_controller import HeadersController
-from stoobly_agent.app.api.query_params_controller import QueryParamsController
-from stoobly_agent.app.api.requests_controller import RequestsController
-from stoobly_agent.app.api.responses_controller import ResponsesController
-from stoobly_agent.app.api.response_headers_controller import ResponseHeadersController
 from stoobly_agent.config.constants import env_vars, headers
 
-from .configs_controller import ConfigsController
-from .proxy_controller import ProxyController
-from .statuses_controller import StatusesController
+from .routes import ROUTES
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     ROOT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')
-
-    CONFIGS_PATH = '/api/v1/admin/configs'
-    PROXY_PATH = '/proxy'
-    REQUESTS_PATH = '/requests'
-    STATUSES_PATH = '/api/v1/admin/statuses'
-
-    BODIES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/bodies/mock")
-    HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/headers")
-    RESPONSES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/responses/mock")
-    QUERY_PARAMS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/query_params")
-    RESPONSE_HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/response_headers")
-    REQUEST_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]")
-    STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
     @property
     def public_dir(self):
@@ -47,6 +28,15 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             plain = 'OK',
             status = 200
         )
+
+    def do_POST(self):
+        self.preprocess()
+
+        if not self.route('POST'):
+            self.render(
+                plain = 'NOT FOUND',
+                status = 404
+            )
 
     def do_GET(self):
         self.preprocess()
@@ -65,6 +55,15 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.preprocess()
 
         if not self.route('PUT'):
+            self.render(
+                plain = 'NOT FOUND',
+                status = 404
+            )
+
+    def do_DELETE(self):
+        self.preprocess()
+
+        if not self.route('DELETE'):
             self.render(
                 plain = 'NOT FOUND',
                 status = 404
@@ -105,7 +104,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.parse_query_params()
 
     def route(self, method):
-        for endpoint_handler in self.ROUTES[method]:
+        for endpoint_handler in ROUTES[method]:
             path = endpoint_handler[0]
 
             matches = isinstance(path, str) and self.path == path
@@ -217,6 +216,31 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         # Send body
         self.wfile.write(body)
 
+    def pass_on(self, res: requests.Request):
+        self.render(
+            headers = res.headers,
+            data = res.raw.data,
+            status = res.status_code,
+        )
+
+    def bad_request(self, message = ''):
+        self.render(
+            plain = message,
+            status = 400
+        )
+
+    def not_found(self, message = ''):
+        self.render(
+            plain = message,
+            status = 404
+        )
+
+    def internal_error(self, message = ''):
+        self.render(
+            plain = message,
+            status = 500
+        )
+
     def filter_headers(self, headers, blacklist = {}):
         if not headers:
             return {}
@@ -240,32 +264,17 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             for key, val in headers.items():
                 self.send_header(key, val)
 
-    ### Routes
+    def required_params(self, params: dict, required_params: list):
+        if not isinstance(params, dict):
+            self.not_found(f"Body is empty")
+            return False
 
-    ROUTES = {
-        'GET': [
-            [CONFIGS_PATH, ConfigsController.instance().get_configs],
-            ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().get_configs_summary],
-            ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().get_configs_policies],
-            ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
-            [BODIES_PATH, BodiesController.instance().mock],
-            [HEADERS_PATH, HeadersController.instance().index],
-            [QUERY_PARAMS_PATH, QueryParamsController.instance().index],
-            [RESPONSES_PATH, ResponsesController.instance().mock],
-            [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().index],
-            [REQUESTS_PATH, RequestsController.instance().index],
-            [REQUEST_PATH, RequestsController.instance().get],
-            [STATUS_PATH, StatusesController.instance().get_status],
-        ],
-        'POST': [
-            ['/'.join([PROXY_PATH, 'post']), ProxyController.instance().do_POST],
-        ],
-        'PUT': [
-            [CONFIGS_PATH, ConfigsController.instance().put_configs],
-            ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
-            [STATUS_PATH, StatusesController.instance().put_status],
-        ]
-    }
+        for param in required_params:
+            if param not in params:
+                self.not_found(f"Missing param {param}")
+                return False
+
+        return True
 
 def start_server(host, port):
     httpd = HTTPServer((host, port), SimpleHTTPRequestHandler)

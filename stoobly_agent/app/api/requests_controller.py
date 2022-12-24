@@ -1,6 +1,12 @@
 import pdb
+
+from datetime import datetime
+
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.orm.request import Request
+
+from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 
 class RequestsController:
     _instance = None
@@ -40,7 +46,45 @@ class RequestsController:
                 plain = '',
                 status = 404
             )
+        
+            return None
         else:
+            context.render(
+                json = request,
+                status = 200
+            )
+
+    # POST /requests/:id/upload
+    def upload(self, context):
+        context.parse_path_params({
+            'id': 1,
+        })
+
+        request = Request.find_by(id=context.params.get('id'))
+
+        if not request:
+            return
+
+        body_params = context.parse_body()
+
+        if not context.required_params(body_params, ['project_key']):
+            return
+
+        request_model = RequestModel(Settings.instance())
+        request_model.as_remote()
+        res = upload_staged_request(
+            request, 
+            request_model, 
+            body_params.get('project_key'),
+            body_params.get('scenario_key')
+        )
+
+        if not res: 
+            context.internal_error()
+        else:
+            request.update(committed_at = datetime.now())
+            request = RequestModel(Settings.instance()).show(request.id)
+
             context.render(
                 json = request,
                 status = 200
