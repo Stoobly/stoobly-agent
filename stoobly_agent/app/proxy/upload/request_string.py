@@ -16,28 +16,40 @@ class RequestString:
     def __init__(self, proxy_request: ProxyRequest):
         self.__current_time = self.__get_current_time()
 
-        self.request = proxy_request.request
-        self.proxy_request = proxy_request
-
         self.lines = []
 
-        self.__request_line()
-        self.__headers()
-        self.__body()
+        if proxy_request:
+            self.request = proxy_request.request
+            self.proxy_request = proxy_request
+
+            self.__request_line()
+            self.__headers()
+            self.__body()
 
         self.request_id = self.__generate_request_id()
 
     def get(self, **kwargs):
         if kwargs.get('control'):
-            return self.CLRF.join([self.control()] + self.lines).encode(self.ENCODING)
+            return self.CLRF.join([self.control] + self.lines).encode(self.ENCODING)
         else:
             return self.CLRF.join(self.lines).encode(self.ENCODING)
 
+    def set(self, s: bytes):
+        decoded_s = s.decode(self.ENCODING)
+        self.lines = decoded_s.split(self.CLRF)
+
+    @property
     def control(self):
         control = RequestStringControl()
         control.id = self.request_id
         control.timestamp = self.__current_time
         return control.serialize()
+
+    @control.setter
+    def control(self, c: str):
+        control = RequestStringControl(c)
+        self.request_id = control.id
+        self.__current_time = control.timestamp
 
     def __request_line(self):
         self.lines.append("{} {} HTTP/1.1".format(self.request.method, self.proxy_request.url()))
