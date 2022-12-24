@@ -1,11 +1,16 @@
+from typing import Union
+
 class ResponseStringControl():
   RESPONSE_TYPE = 2
 
-  def __init__(self):
-    self.__response_type = self.RESPONSE_TYPE
-    self.__id = None
-    self.__timestamp = 0
-    self.__latency = 0
+  def __init__(self, c: Union[bytes, str] = None):
+    if not c:
+      self.__response_type = self.RESPONSE_TYPE
+      self.__id = None
+      self.__timestamp = 0
+      self.__latency = 0
+    else:
+      self.parse(c)
 
   @property
   def id(self):
@@ -36,6 +41,9 @@ class ResponseStringControl():
     self.__timestamp = t
 
   def parse(self, s: str):
+    if isinstance(s, bytes):
+      s = s.decode()
+
     toks = s.split(' ')
     self.__id = toks[1]
     self.__timestamp = int(toks[2])
