@@ -11,19 +11,28 @@ class JoinedRequest:
     __request_string = None
     __response_string = None
 
-    def __init__(self, proxy_request: ProxyRequest):
+    def __init__(self, proxy_request: ProxyRequest = None):
         self.timestamp = time.time()
         self.proxy_request = proxy_request
 
-        self.__request_string = RequestString(proxy_request)
+        if proxy_request:
+            self.__request_string = RequestString(proxy_request)
 
     @property
     def request_string(self):
         return self.__request_string
 
+    @request_string.setter
+    def request_string(self, s: str):
+        self.__request_string = s
+
     @property
     def response_string(self):
         return self.__response_string
+
+    @response_string.setter
+    def response_string(self, s: str):
+        self.__response_string = s
 
     def with_response(self, response):
         now = time.time()
