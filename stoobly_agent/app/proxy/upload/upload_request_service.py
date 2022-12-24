@@ -9,9 +9,11 @@ from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.upload import JoinedRequest, RequestString, ResponseString
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
+
 
 from ..utils.publish_change_service import publish_change
 from .join_request_service import join_rewritten_request
@@ -43,20 +45,60 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 # @param res [Net::HTTP::Response]
 #
 def upload_request(
-    request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow
+    request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
 ):
     joined_request = join_rewritten_request(flow, intercept_settings)
 
-    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {joined_request.proxy_request.url()}")
-
-    if intercept_settings.settings.is_debug():
+    if flow and intercept_settings.settings.is_debug():
         __debug_request(flow.request, joined_request.build())
 
-    body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
-    body_params.with_resource_scoping(intercept_settings)
+    project_key = intercept_settings.project_key
+    scenario_key = intercept_settings.scenario_key
+    body_params = __build_body_params(
+        project_key,
+        joined_request, 
+        flow=flow,
+        scenario_key=scenario_key
+    )
+
+    return __upload_request_with_body_params(request_model, body_params)
+
+def upload_staged_request(
+    request, request_model: RequestModel, project_key: str, scenario_key: str = None
+):
+    response = request.response
+
+    if not response:
+        return
+
+    request_string = RequestString(None)
+    request_string.set(request.raw)
+    request_string.control = request.control
+
+    response_string = ResponseString(None, None)
+    response_string.set(response.raw)
+    response_string.control = response.control
+
+    joined_request = JoinedRequest()
+    joined_request.request_string = request_string
+    joined_request.response_string = response_string
+
+    body_params =__build_body_params(
+        project_key,
+        joined_request,
+        scenario_key=scenario_key
+    )
+
+    return __upload_request_with_body_params(request_model, body_params)
+
+def __upload_request_with_body_params(request_model: RequestModel, body_params: dict):
+    joined_request: JoinedRequest = body_params.get('joined_request')
+
+    if joined_request.proxy_request:
+        Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {joined_request.proxy_request.url()}")
 
     #try:
-    request = request_model.create(**body_params.build())
+    request = request_model.create(**body_params)
     #except Exception as e:
         # If anything bad happens, just log it
     #    Logger.instance().error(e)
@@ -67,10 +109,22 @@ def upload_request(
 
     return request
 
+def __build_body_params(project_key: str, joined_request: JoinedRequest, **kwargs):
+    flow: MitmproxyHTTPFlow = kwargs.get('flow')
+    scenario_key = kwargs.get('scenario_key')
+
+    body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
+    body_params.with_resource_scoping(project_key, scenario_key)
+
+    return body_params.build()
+
 # Write the request to a file to help debug
 def __debug_request(request: MitmproxyRequest, raw_requests: bytes):
     # Build file path, replace slashes with underscores
     request_path = request.path.replace('/', '_')
+    if len(request_path) > os.pathconf('/', 'PC_NAME_MAX'):
+        request_path = f"{request_path[0:252]}..."
+
     timestamp = str(int(time.time() * 1000))
     file_path = os.path.join(tempfile.gettempdir(), NAMESPACE_FOLDER, request_path, timestamp)
 
@@ -85,4 +139,3 @@ def __debug_request(request: MitmproxyRequest, raw_requests: bytes):
 
     with open(file_path, 'wb') as f:
         f.write(raw_requests)
-
