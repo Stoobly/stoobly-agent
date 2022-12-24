@@ -23,7 +23,7 @@ def config(ctx):
     pass
 
 @config.command(
-    help="Display config contents."
+    help="Display config contents"
 )
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):

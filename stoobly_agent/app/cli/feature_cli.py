@@ -28,7 +28,7 @@ feature.add_command(dev_tools)
 
 @click.group(
   epilog="Run 'stoobly-agent exec COMMAND --help' for more information on a command.",
-  help="Toggle whether exec command is enabled.",
+  help="Toggle whether exec command is enabled",
 )
 @click.pass_context
 def exec(ctx):
@@ -40,7 +40,7 @@ feature.add_command(exec)
 
 @click.group(
   epilog="Run 'stoobly-agent remote COMMAND --help' for more information on a command.",
-  help="Toggle whether local or remote storage is used."
+  help="Toggle whether local or remote storage is used"
 )
 @click.pass_context
 def remote(ctx):
