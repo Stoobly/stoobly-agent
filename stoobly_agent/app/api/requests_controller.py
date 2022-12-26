@@ -89,3 +89,25 @@ class RequestsController:
                 json = request,
                 status = 200
             )
+
+    def destroy(self):
+        context.parse_path_params({
+            'id': 1
+        })
+
+        request_id = context.params.get('id')
+
+        request = RequestModel(Settings.instance()).destroy(request_id)
+
+        if not request:
+            context.render(
+                plain = '',
+                status = 404
+            )
+        
+            return None
+        else:
+            context.render(
+                json = request,
+                status = 200
+            )
