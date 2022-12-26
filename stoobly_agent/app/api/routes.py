@@ -25,6 +25,9 @@ REQUEST_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]")
 STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
 ROUTES = {
+  'DELETE': [
+    [REQUEST_PATH, RequestsController.instance().destroy],
+  ],
   'GET': [
       [CONFIGS_PATH, ConfigsController.instance().get_configs],
       ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().get_configs_summary],

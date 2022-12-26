@@ -103,6 +103,16 @@ class LocalDBRequestAdapter():
       'total': total,
     }
 
+  def destroy(self, request_id: int):
+    request = Request.find(request_id)
+
+    if not request:
+      return
+
+    request.destroy()
+
+    return ORMToStooblyRequestTransformer(request, {})
+
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
     if request_columns.get('project_id'):
       del request_columns['project_id']
