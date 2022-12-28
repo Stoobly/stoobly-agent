@@ -109,6 +109,15 @@ class LocalDBRequestAdapter():
       'total': total,
     }
 
+  def update(self, request_id: int,  **params: RequestShowResponse):
+    request = Request.find(request_id)
+
+    if not request:
+      return
+
+    if request.update(params):
+      return ORMToStooblyRequestTransformer(request, {}).transform()
+
   def destroy(self, request_id: int):
     request = Request.find(request_id)
 

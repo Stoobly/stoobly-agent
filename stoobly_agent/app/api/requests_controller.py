@@ -91,6 +91,29 @@ class RequestsController:
                 status = 200
             )
 
+    # PUT /requests/:id
+    def update(self, context):
+        context.parse_path_params({
+            'id': 1
+        })
+
+        request_id = context.params.get('id')
+        request = RequestModel(Settings.instance()).update(request_id, **context.params.get('request'))
+
+        if not request:
+            context.render(
+                plain = '',
+                status = 404
+            )
+        
+            return None
+        else:
+            context.render(
+                json = request,
+                status = 200
+            )
+
+    # DELETE /requests/:id
     def destroy(self, context):
         context.parse_path_params({
             'id': 1
