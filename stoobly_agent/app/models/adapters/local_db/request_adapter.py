@@ -1,4 +1,5 @@
 import pdb
+from urllib.parse import urlparse
 import requests
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
@@ -89,14 +90,19 @@ class LocalDBRequestAdapter():
     return ORMToRequestsResponseTransformer(response_record).transform()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> RequestsIndexResponse:
-    page = query_params.get('page') or 0
-    size = query_params.get('size') or 20
+    page = int(query_params.get('page')) or 0
+    size = int(query_params.get('size')) or 20
     sort_by = query_params.get('sort_by') or 'created_at'
     sort_order = query_params.get('sort_order') or 'desc'
+    query = query_params.get('q')
 
-    total = Request.count()
-    
-    requests = Request.offset(page).limit(size).order_by(sort_by, sort_order).get()
+    requests = Request
+
+    if query:
+      requests = self.__search(requests, query)
+
+    total = requests.count()
+    requests = requests.offset(page).limit(size).order_by(sort_by, sort_order).get()
 
     return {
       'list': self.__transform_index_list(requests.items),
@@ -141,3 +147,11 @@ class LocalDBRequestAdapter():
       request['components'] = components
 
     return requests
+
+  def __search(self, base_model: Request, query: str) -> Request:
+    uri = urlparse(query)
+
+    if uri.hostname:
+      return base_model.where('host', uri.hostname).where('path', uri.path)
+    else:
+      return base_model.where('path', query)
