@@ -136,7 +136,13 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 pass
 
     def parse_query_params(self):
-        merge(self.params, parse_qs(self.uri.query))
+        query_params = parse_qs(self.uri.query)
+
+        for key, value in query_params.items():
+            if len(value) == 1:
+                query_params[key] = value[0]
+
+        merge(self.params, query_params)
 
     def parse_body(self):
         if not self.headers.get('Content-Length'):
