@@ -51,7 +51,7 @@ class RequestModel():
       self.__handle_request_error(e)
       return None
 
-  def destroy(self, request_id) -> Union[RequestShowResponse, None]:
+  def destroy(self, request_id) -> Union[Request, None]:
     try:
       return self.adapter.destroy(request_id)
     except requests.exceptions.RequestException as e:
