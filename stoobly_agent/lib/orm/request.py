@@ -6,23 +6,25 @@ from .response import Response
 
 class Request(Base):
   __fillable__ = [
+    'body_params_hash', 
+    'body_text_hash', 
+    'committed_at',
     'control',
-    'scheme', 
+    'headers_hash', 
+    'host', 
+    'is_deleted',
     'latency',
     'method', 
-    'host', 
+    'password',
     'path', 
     'port', 
-    'headers_hash', 
-    'body_text_hash', 
-    'query_params_hash', 
-    'body_params_hash', 
-    'raw', 
-    'committed_at',
-    'user',
-    'password',
-    'status',
     'query',
+    'query_params_hash', 
+    'raw', 
+    'scheme', 
+    'starred',
+    'status',
+    'user',
   ]
 
   @has_one

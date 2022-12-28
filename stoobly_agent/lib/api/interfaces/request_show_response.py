@@ -9,11 +9,13 @@ class RequestShowResponse(TypedDict):
   headers: Union[list, None]
   host: str
   id: str
+  is_deleted: bool
   latency: int
   method: str
   path: str
   port: str
   query_params: Union[list, None]
   response: ResponseShowResponse
+  starred: bool
   status: int
   url: str
