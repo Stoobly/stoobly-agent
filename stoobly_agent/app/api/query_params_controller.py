@@ -26,7 +26,7 @@ class QueryParamsController:
             'requestId': 1
         })
         
-        requests = QueryParamModel(Settings.instance()).index(context.params.get('requestId'))
+        requests = QueryParamModel(Settings.instance()).index(context.params.get('requestId'), **context.params)
 
         context.render(
             json = requests,
