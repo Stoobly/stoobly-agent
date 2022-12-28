@@ -25,7 +25,7 @@ class ResponseHeadersController:
             'requestId': 1
         })
         
-        requests = ResponseHeaderModel(Settings.instance()).index(context.params.get('requestId'))
+        requests = ResponseHeaderModel(Settings.instance()).index(context.params.get('requestId'), **context.params)
 
         context.render(
             json = requests,

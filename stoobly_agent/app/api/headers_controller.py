@@ -26,7 +26,7 @@ class HeadersController:
             'requestId': 1
         })
         
-        requests = HeaderModel(Settings.instance()).index(context.params.get('requestId'))
+        requests = HeaderModel(Settings.instance()).index(context.params.get('requestId'), **context.params)
 
         context.render(
             json = requests,
