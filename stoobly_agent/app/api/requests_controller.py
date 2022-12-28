@@ -66,7 +66,7 @@ class RequestsController:
         if not request:
             return
 
-        body_params = context.parse_body()
+        body_params = context.params
 
         if not context.required_params(body_params, ['project_key']):
             return
