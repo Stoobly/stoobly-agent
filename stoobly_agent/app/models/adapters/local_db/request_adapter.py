@@ -111,7 +111,7 @@ class LocalDBRequestAdapter():
 
     request.destroy()
 
-    return ORMToStooblyRequestTransformer(request, {})
+    return ORMToStooblyRequestTransformer(request, {}).transform()
 
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
     if request_columns.get('project_id'):

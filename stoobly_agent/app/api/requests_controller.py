@@ -90,7 +90,7 @@ class RequestsController:
                 status = 200
             )
 
-    def destroy(self):
+    def destroy(self, context):
         context.parse_path_params({
             'id': 1
         })
