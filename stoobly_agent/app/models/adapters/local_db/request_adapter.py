@@ -91,12 +91,18 @@ class LocalDBRequestAdapter():
 
   def index(self, **query_params: RequestsIndexQueryParams) -> RequestsIndexResponse:
     page = int(query_params.get('page') or 0)
-    size = int(query_params.get('size') or 20)
-    sort_by = query_params.get('sort_by') or 'created_at'
-    sort_order = query_params.get('sort_order') or 'desc'
     query = query_params.get('q')
+    size = int(query_params.get('size') or 20)
+    sort_by = query_params.get('sort_by') or 'id'
+    sort_order = query_params.get('sort_order') or 'desc'
 
-    requests = Request
+    is_deleted = query_params.get('filter') == 'is_deleted'
+    starred = query_params.get('filter') == 'starred'
+
+    requests = Request.where('is_deleted', is_deleted)
+
+    if starred:
+      requests = requests.where('starred', starred)
 
     if query:
       requests = self.__search(requests, query)
@@ -124,7 +130,10 @@ class LocalDBRequestAdapter():
     if not request:
       return
 
-    request.destroy()
+    if request.is_deleted:
+      request.destroy()
+    else:
+      request.update({'is_deleted': True})
 
     return ORMToStooblyRequestTransformer(request, {}).transform()
 
@@ -140,6 +149,7 @@ class LocalDBRequestAdapter():
 
   def __transform_index_list(self, records: List[Request]):
     allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['committed_at', 'body_params_hash', 'query', 'query_params_hash']
+
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
 
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
