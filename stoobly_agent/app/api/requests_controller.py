@@ -1,6 +1,7 @@
 import pdb
 
 from datetime import datetime
+from urllib.parse import parse_qs
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.settings import Settings
@@ -26,7 +27,7 @@ class RequestsController:
 
     # GET /requests
     def index(self, context):
-        requests = RequestModel(Settings.instance()).index()
+        requests = RequestModel(Settings.instance()).index(**context.params)
 
         context.render(
             json = requests,
