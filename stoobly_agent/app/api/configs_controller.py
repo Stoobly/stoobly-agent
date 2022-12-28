@@ -92,9 +92,8 @@ class ConfigsController:
 
     # PUT /api/v1/admin/configs
     def put_configs(self, context):
-        updated_settings = context.parse_body()
         settings = Settings.instance()
-        merged_settings = merge(settings.to_dict(), updated_settings)
+        merged_settings = merge(settings.to_dict(), context.params)
         settings.write(merged_settings)
 
         context.render(
