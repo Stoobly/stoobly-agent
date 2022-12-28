@@ -41,6 +41,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.preprocess()
 
+        merge(self.params, self.parse_query_params())
+
         if not self.route('GET'):
             path = os.path.join(self.public_dir, self.path[1:] if self.path != '/' else 'index.html')
             if not os.path.exists(path):
@@ -53,6 +55,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         self.preprocess()
+
+        merge(self.params, self.parse_body()) 
 
         if not self.route('PUT'):
             self.render(
@@ -101,7 +105,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.fullpath = self.path
         self.path = self.uri.path
         self.params = {}
-        self.parse_query_params()
 
     def route(self, method):
         for endpoint_handler in ROUTES[method]:
@@ -142,7 +145,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             if len(value) == 1:
                 query_params[key] = value[0]
 
-        merge(self.params, query_params)
+        return query_params
 
     def parse_body(self):
         if not self.headers.get('Content-Length'):
