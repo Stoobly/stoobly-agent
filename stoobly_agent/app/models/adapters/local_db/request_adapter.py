@@ -65,7 +65,10 @@ class LocalDBRequestAdapter():
 
       self.__response_orm.create(**response_columns)
 
-      return request_record.to_dict()
+      return {
+        'list': [ORMToStooblyRequestTransformer(request_record, {}).transform()],
+        'total': 1,
+      }
 
   def show(self, request_id: str, **options: RequestShowParams) -> RequestShowResponse:
     request = self.__request_orm.find(request_id)

@@ -3,11 +3,15 @@ import pdb
 from datetime import datetime
 from urllib.parse import parse_qs
 
+from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
+from stoobly_agent.app.models.adapters.mitmproxy_request_adapter import MitmproxyRequestAdapter
+from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.request import Request
-
-from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 
 class RequestsController:
     _instance = None
@@ -24,6 +28,52 @@ class RequestsController:
             cls._instance = cls()
 
         return cls._instance
+
+    def create(self, context):
+        body_params = context.params
+        if not context.required_params(body_params, ['payloads_delimitter', 'requests']):
+            return
+
+        raw_requests = body_params.get('requests') 
+        payloads_delimitter = body_params.get('payloads_delimitter')
+
+        toks = raw_requests.split(payloads_delimitter)
+        if len(toks) != 2:
+            return context.bad_request('Invalid requests format')
+
+        joined_request = JoinedRequestAdapter(raw_requests, payloads_delimitter).adapt()
+
+        request_adapter = RawHttpRequestAdapter(joined_request.request_string.get())
+        response_adapter = RawHttpResponseAdapter(joined_request.response_string.get())
+
+        mitmproxy_request = MitmproxyRequestAdapter(request_adapter.protocol, request_adapter.to_request()).adapt()
+        mitmproxy_response = MitmproxyResponseAdapter(response_adapter.protocol, response_adapter.to_response()).adapt()
+
+        class MitmproxyFlowMock():
+            def __init__(self, request, response):
+                self.request = request
+                self.response = response
+
+        mitmproxy_flow_mock = MitmproxyFlowMock(mitmproxy_request, mitmproxy_response)
+
+        request = RequestModel(Settings.instance()).create(**{
+            'flow': mitmproxy_flow_mock,
+            'joined_request': joined_request,
+        })
+
+        if not request:
+            context.render(
+                plain = '',
+                status = 500
+            )
+        
+            return None
+        else:
+            context.render(
+                json = request,
+                status = 200
+            )
+
 
     # GET /requests
     def index(self, context):
