@@ -4,12 +4,12 @@ class ResponseStringControl():
   RESPONSE_TYPE = 2
 
   def __init__(self, c: Union[bytes, str] = None):
-    if not c:
-      self.__response_type = self.RESPONSE_TYPE
-      self.__id = None
-      self.__timestamp = 0
-      self.__latency = 0
-    else:
+    self.__latency = 0
+    self.__response_type = self.RESPONSE_TYPE
+    self.__id = None
+    self.__timestamp = 0
+
+    if c:
       self.parse(c)
 
   @property
@@ -47,7 +47,9 @@ class ResponseStringControl():
     toks = s.split(' ')
     self.__id = toks[1]
     self.__timestamp = int(toks[2])
-    self.__latency = int(toks[3])
+
+    if len(toks) > 3:
+      self.__latency = int(toks[3])
 
   def serialize(self):
     return "{} {} {} {}".format(self.RESPONSE_TYPE, self.__id, self.__timestamp, self.__latency)
