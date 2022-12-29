@@ -27,7 +27,7 @@ class ConfigsController:
         return cls._instance
 
     # GET /api/v1/admin/configs/policies
-    def get_configs_policies(self, context):
+    def policies(self, context):
         settings = Settings.instance()
         active_mode = settings.proxy.intercept.active
 
@@ -48,7 +48,7 @@ class ConfigsController:
             )
 
     # GET /api/v1/admin/configs
-    def get_configs(self, context):
+    def show(self, context):
         settings = Settings.instance()
 
         context.render(
@@ -57,7 +57,7 @@ class ConfigsController:
         )
 
     # GET /api/v1/admin/configs/summary
-    def get_configs_summary(self, context):
+    def summary(self, context):
         settings = Settings.instance()
         proxy = settings.proxy
         intercept_settings = InterceptSettings(settings)
@@ -91,7 +91,7 @@ class ConfigsController:
         )
 
     # PUT /api/v1/admin/configs
-    def put_configs(self, context):
+    def update(self, context):
         settings = Settings.instance()
         merged_settings = merge(settings.to_dict(), context.params)
         settings.write(merged_settings)

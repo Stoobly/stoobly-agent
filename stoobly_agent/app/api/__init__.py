@@ -10,6 +10,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from mergedeep import merge
 from urllib.parse import urlparse, parse_qs
 
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.config.constants import env_vars, headers
 
 from .routes import ROUTES
@@ -31,6 +32,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.preprocess()
+
+        merge(self.params, self.parse_body()) 
 
         if not self.route('POST'):
             self.render(
@@ -156,11 +159,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         if not self.headers['Content-Type']:
             return body
-
-        if self.headers['Content-Type'].lower() == 'application/json':
-            return json.loads(body)
-        else:
-            return body
+        
+        return decode_response(body, self.headers['Content-Type'])
 
     def render(self, **kwargs):
         if kwargs.get('file') != None:
@@ -280,7 +280,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         for param in required_params:
             if param not in params:
-                self.not_found(f"Missing param {param}")
+                self.bad_request(f"Missing param {param}")
                 return False
 
         return True
