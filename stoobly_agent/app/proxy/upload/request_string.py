@@ -7,9 +7,10 @@ from typing import Union
 from .proxy_request import ProxyRequest
 from .request_string_control import RequestStringControl
 
+CLRF = "\r\n"
+
 class RequestString:
     ENCODING = 'utf-8'
-    CLRF = "\r\n"
 
     __current_time = None
 
@@ -30,13 +31,15 @@ class RequestString:
 
     def get(self, **kwargs):
         if kwargs.get('control'):
-            return self.CLRF.join([self.control] + self.lines).encode(self.ENCODING)
+            return CLRF.join([self.control] + self.lines).encode(self.ENCODING)
         else:
-            return self.CLRF.join(self.lines).encode(self.ENCODING)
+            return CLRF.join(self.lines).encode(self.ENCODING)
 
     def set(self, s: bytes):
-        decoded_s = s.decode(self.ENCODING)
-        self.lines = decoded_s.split(self.CLRF)
+        decoded_s = s
+        if isinstance(s, bytes):
+            decoded_s = s.decode(self.ENCODING)
+        self.lines = decoded_s.split(CLRF)
 
     @property
     def control(self):
@@ -65,7 +68,7 @@ class RequestString:
             self.lines.append(line)
 
     def __body(self):
-        self.lines.append("{}{}".format(self.CLRF, self.request.body))
+        self.lines.append("{}{}".format(CLRF, self.request.body))
 
     def __to_header_case(self, header: str) -> str:
         toks = header.split('_')
@@ -76,7 +79,7 @@ class RequestString:
         return "-".join(toks)
 
     def __generate_request_id(self):
-        joined_lines = self.CLRF.join(self.lines)
+        joined_lines = CLRF.join(self.lines)
         return hashlib.md5(joined_lines.encode(self.ENCODING)).hexdigest()
 
     def __get_current_time(self):
