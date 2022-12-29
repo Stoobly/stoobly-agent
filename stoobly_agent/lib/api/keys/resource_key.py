@@ -30,4 +30,4 @@ class ResourceKey():
 
     def get(self, k: str):
         v = self.decoded_key.get(k)
-        return str(v) if v else None
+        return str(v) if v != None else None
