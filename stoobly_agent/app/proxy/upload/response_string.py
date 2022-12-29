@@ -4,10 +4,11 @@ import pdb
 
 from .response_string_control import ResponseStringControl
 
+CLRF = b"\r\n"
+
 class ResponseString:
     ENCODING = 'utf-8'
     RESPONSE_TYPE = 2
-    CLRF = b"\r\n"
 
     __current_time = None
 
@@ -26,12 +27,15 @@ class ResponseString:
 
     def get(self, **kwargs):
         if kwargs.get('control'):
-            return self.CLRF.join([self.control] + self.lines)
+            return CLRF.join([self.control] + self.lines)
         else:
-            return self.CLRF.join(self.lines)
+            return CLRF.join(self.lines)
 
     def set(self, s: bytes):
-        self.lines = s.split(self.CLRF)
+        if not isinstance(s, bytes):
+            s = s.encode(self.ENCODING)
+
+        self.lines = s.split(CLRF)
 
     ###
     #
@@ -79,9 +83,9 @@ class ResponseString:
         body = self.response.body
 
         if not body:
-            self.lines.append(self.CLRF)
+            self.lines.append(CLRF)
         elif isinstance(body, bytes):
-            self.lines.append(self.CLRF + body)
+            self.lines.append(CLRF + body)
         else:
             raise Exception('Unsupported body type')
 
