@@ -69,6 +69,11 @@ class TestReplace():
         jmespath.search('a[*][*].a', a, { 'replacements': ['*'] })
         assert self.equals(a, {'a': [[{'a': '*'}], [{'a': '*'}]]}), print(a)
 
+    def test_n(self):
+        a = {'access-token': '123'}
+        jmespath.search('"access-token"', a, { 'replacements': ['']})
+        assert self.equals(a, {'access-token': ''}), print(a)
+
     def equals(self, a, b):
         return json.dumps(a) == json.dumps(b)
 
