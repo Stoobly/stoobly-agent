@@ -93,7 +93,18 @@ class ConfigsController:
     # PUT /api/v1/admin/configs
     def update(self, context):
         settings = Settings.instance()
+
+        project_key = settings.proxy.intercept.project_key
+
         merged_settings = merge(settings.to_dict(), context.params)
+        settings.from_dict(merged_settings)
+
+        # If the active project changed, stop intercepting 
+        if project_key != settings.proxy.intercept.project_key:
+            if settings.proxy.intercept.active:
+                settings.proxy.intercept.active = False
+                merged_settings = settings.to_dict()
+
         settings.write(merged_settings)
 
         context.render(
