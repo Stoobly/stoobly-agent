@@ -33,7 +33,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.preprocess()
 
-        merge(self.params, self.parse_body()) 
+        self.body = self.parse_body()
+        if isinstance(self.body, dict):
+            merge(self.params, self.body) 
 
         if not self.route('POST'):
             self.render(
@@ -59,7 +61,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         self.preprocess()
 
-        merge(self.params, self.parse_body()) 
+        self.body = self.parse_body()
+        if isinstance(self.body, dict):
+            merge(self.params, self.body) 
 
         if not self.route('PUT'):
             self.render(
@@ -108,6 +112,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.fullpath = self.path
         self.path = self.uri.path
         self.params = {}
+        self.body = ''
 
     def route(self, method):
         for endpoint_handler in ROUTES[method]:
