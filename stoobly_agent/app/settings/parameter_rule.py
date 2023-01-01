@@ -23,8 +23,8 @@ class ParameterRule:
   def type(self):
     return self.__type
 
-  def update(self, paramter_rule: IParameterRule):
-    self.__parameter_rule = paramter_rule
+  def update(self, parameter_rule: IParameterRule):
+    self.__parameter_rule = parameter_rule
     self.__modes = self.__parameter_rule.get('modes')
     self.__name = self.__parameter_rule.get('name')
     self.__value = self.__parameter_rule.get('value')
