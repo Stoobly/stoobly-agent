@@ -113,6 +113,14 @@ class Settings:
 
     ### Set
 
+    def from_dict(self, settings):
+        self.__settings = settings
+        if settings:
+            self.__cli_settings = CLISettings(settings.get('cli'))
+            self.__proxy_settings = ProxySettings(settings.get('proxy'))
+            self.__remote_settings = RemoteSettings(settings.get('remote'))
+            self.__ui_settings = UISettings(settings.get('ui'))
+
     def reset(self):
         copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
 
@@ -136,12 +144,7 @@ class Settings:
                     time.sleep(1) # TODO: Sometimes it takes a bit to read, should look into this
                     settings = yaml.safe_load(stream)
 
-                self.__settings = settings
-                if settings:
-                    self.__cli_settings = CLISettings(settings.get('cli'))
-                    self.__proxy_settings = ProxySettings(settings.get('proxy'))
-                    self.__remote_settings = RemoteSettings(settings.get('remote'))
-                    self.__ui_settings = UISettings(settings.get('ui'))
+                self.from_dict(settings)
             except yaml.YAMLError as exc:
                 Logger.instance().error(exc)
         
