@@ -13,7 +13,11 @@ class Options(TypedDict):
   handle_replace: Callable
 
 def search(query: str, o: Union[dict, list], options: Options = {}):
-  return jmespath.search(query, o, options)
+  try:
+    return jmespath.search(query, o, options)
+  except jmespath.exceptions.LexerError as e:
+    # On LexerError, try escaping the query
+    return jmespath.search(f"\"{query}\"", o, options)
 
 def compile(expression: str):
   return jmespath.compile(expression)
