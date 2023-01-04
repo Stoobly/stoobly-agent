@@ -2,7 +2,9 @@ import requests
 
 from typing import Union
 
-class AgentApi:
+from .api import Api
+
+class AgentApi(Api):
     STATUSES_ENDPOINT = '/api/v1/admin/statuses'
 
     def __init__(self, service_url):
@@ -16,4 +18,4 @@ class AgentApi:
 
     def update_status(self, status_id: str, project_id: Union[int, str]):
         url = f"{self.service_url}{self.STATUSES_ENDPOINT}/{status_id}"
-        return requests.put(url, data=str(project_id), headers=self.default_headers)
+        return self.put(url, data=str(project_id), headers=self.default_headers)

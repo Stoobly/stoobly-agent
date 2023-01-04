@@ -36,7 +36,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.body = self.parse_body()
         if isinstance(self.body, dict):
             merge(self.params, self.body) 
-
+        
         if not self.route('POST'):
             self.render(
                 plain = 'NOT FOUND',

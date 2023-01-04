@@ -14,7 +14,6 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
 
-
 from ..utils.publish_change_service import publish_change
 from .join_request_service import join_rewritten_request
 

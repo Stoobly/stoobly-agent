@@ -65,3 +65,7 @@ class Api():
     def post(self, url, **kwargs):
       handler = lambda: requests.post(url, **kwargs)
       return self.without_proxy(handler)
+
+    def put(self, url, **kwargs):
+      handler = lambda: requests.put(url, **kwargs)
+      return self.without_proxy(handler)
