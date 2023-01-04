@@ -1,0 +1,12 @@
+1 eva045jomcj 1672379988650000000
+GET /users?filter=starred HTTP/1.1
+access-token: 123
+Content-Length: 0
+
+🙈🙉🐵🙈
+2 eva045jomcj 1672379988650000
+HTTP/1.1 200
+Content-Type: application/json
+Content-Length: 59
+
+'{"total": 1, "list": [{"age": 30, "name": "John Smith"}]}'
