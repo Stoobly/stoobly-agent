@@ -1,3 +1,5 @@
+import threading
+
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.agent_api import AgentApi
 from stoobly_agent.lib.api.keys import ProjectKey
@@ -17,7 +19,11 @@ def publish_change(status: str):
     Logger.instance().warn('Settings.ui.url not configured')
     return False
   else:
-    api: AgentApi = AgentApi(ui_url)
     project_key = ProjectKey(settings.proxy.intercept.project_key)
-    api.update_status(status, project_key.id)
+    thread = threading.Thread(target=__put_status, args=(ui_url, status, project_key.id))
+    thread.start()
     return True
+
+def __put_status(ui_url, status, project_id):
+    api: AgentApi = AgentApi(ui_url)
+    api.update_status(status, project_id)
