@@ -3,6 +3,7 @@ import pdb
 from datetime import datetime
 from urllib.parse import parse_qs
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.adapters.mitmproxy_request_adapter import MitmproxyRequestAdapter
 from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import MitmproxyResponseAdapter
@@ -29,7 +30,7 @@ class RequestsController:
 
         return cls._instance
 
-    def create(self, context):
+    def create(self, context: SimpleHTTPRequestHandler):
         body_params = context.params
         if not context.required_params(body_params, ['payloads_delimitter', 'requests']):
             return
@@ -62,22 +63,21 @@ class RequestsController:
         })
 
         if not request:
-            context.render(
-                plain = '',
-                status = 500
-            )
-        
-            return None
-        else:
-            context.render(
-                json = request,
-                status = 200
-            )
+            return context.internal_error()
+
+        context.render(
+            json = request,
+            status = 200
+        )
 
 
     # GET /requests
-    def index(self, context):
-        requests = RequestModel(Settings.instance()).index(**context.params)
+    def index(self, context: SimpleHTTPRequestHandler):
+        request_model = self.__request_model(context)
+        requests = request_model.index(**context.params)
+
+        if not requests:
+            return context.not_found()
 
         context.render(
             json = requests,
@@ -85,7 +85,7 @@ class RequestsController:
         )
 
     # GET /requests/:id
-    def get(self, context):
+    def get(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1
         })
@@ -93,20 +93,15 @@ class RequestsController:
         request = RequestModel(Settings.instance()).show(context.params.get('id'))
 
         if not request:
-            context.render(
-                plain = '',
-                status = 404
-            )
+            return context.not_found()
         
-            return None
-        else:
-            context.render(
-                json = request,
-                status = 200
-            )
+        context.render(
+            json = request,
+            status = 200
+        )
 
     # POST /requests/:id/upload
-    def upload(self, context):
+    def upload(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1,
         })
@@ -131,18 +126,18 @@ class RequestsController:
         )
 
         if not res: 
-            context.internal_error()
-        else:
-            request.update(committed_at = datetime.now())
-            request = RequestModel(Settings.instance()).show(request.id)
+            return context.internal_error()
 
-            context.render(
-                json = request,
-                status = 200
-            )
+        request.update(committed_at = datetime.now())
+        request = RequestModel(Settings.instance()).show(request.id)
+
+        context.render(
+            json = request,
+            status = 200
+        )
 
     # PUT /requests/:id
-    def update(self, context):
+    def update(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1
         })
@@ -151,20 +146,15 @@ class RequestsController:
         request = RequestModel(Settings.instance()).update(request_id, **context.params.get('request'))
 
         if not request:
-            context.render(
-                plain = '',
-                status = 404
-            )
-        
-            return None
-        else:
-            context.render(
-                json = request,
-                status = 200
-            )
+            return context.not_found()
+            
+        context.render(
+            json = request,
+            status = 200
+        )
 
     # DELETE /requests/:id
-    def destroy(self, context):
+    def destroy(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1
         })
@@ -174,14 +164,14 @@ class RequestsController:
         request = RequestModel(Settings.instance()).destroy(request_id)
 
         if not request:
-            context.render(
-                plain = '',
-                status = 404
-            )
-        
-            return None
-        else:
-            context.render(
-                json = request,
-                status = 200
-            )
+           return context.not_found()
+
+        context.render(
+            json = request,
+            status = 200
+        )
+
+    def __request_model(self, context: SimpleHTTPRequestHandler):
+        request_model = RequestModel(Settings.instance())
+        request_model.as_remote() if context.headers.get('access-token') else request_model.as_local()
+        return request_model
