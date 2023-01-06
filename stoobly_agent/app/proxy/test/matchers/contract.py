@@ -1,6 +1,5 @@
 import pdb
 
-from collections import Iterable
 from typing import List, Tuple, TypedDict, Union
 
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
