@@ -59,6 +59,7 @@ def __get_intercept_handler_path():
     return script
 
 def __with_static_options(config: MitmproxyConfig, cli_options):
+    config.set('block_global=false')
     config.set('flow_detail=1')
     config.set(f"scripts={__get_intercept_handler_path()}")
     config.set('upstream_cert=false')
