@@ -1,6 +1,7 @@
 import pdb
 import requests
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.response_model import ResponseModel
 from stoobly_agent.app.settings import Settings
 
@@ -21,13 +22,13 @@ class ResponsesController:
         return cls._instance
 
     # GET /requests/:requestId/bodies/mock
-    def mock(self, context):
-
+    def mock(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'requestId': 1
         })
-        
-        response: requests.Response = ResponseModel(Settings.instance()).mock(context.params.get('requestId'))
+
+        response_model = self.__response_model(context) 
+        response: requests.Response = response_model.mock(context.params.get('requestId'))
 
         if response == None:
             return context.render(
@@ -35,17 +36,25 @@ class ResponsesController:
                 status = 404
             )
 
-        # Extract content-type header
+        # Extract specific headers
         headers = {}
 
+        accepted_headers = ['content-encoding', 'content-length', 'content-type']
         for header, val in response.headers.items():
-            decoded_header = header.decode()
-            if decoded_header.lower() == 'content-type':
-                headers[decoded_header] = val.decode()
-                break
+            decoded_header = header.decode().lower()
+
+            if decoded_header not in accepted_headers:
+                continue 
+
+            headers[decoded_header] = val.decode()
 
         context.render(
             data = response.content,
             headers = headers,
             status = 200
         )
+
+    def __response_model(self, context: SimpleHTTPRequestHandler):
+        response_model = ResponseModel(Settings.instance())
+        response_model.as_remote() if context.headers.get('access-token') else response_model.as_local()
+        return response_model

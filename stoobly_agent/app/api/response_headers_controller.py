@@ -1,5 +1,6 @@
 import pdb
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.response_header_model import ResponseHeaderModel
 from stoobly_agent.app.settings import Settings
 
@@ -24,10 +25,16 @@ class ResponseHeadersController:
         context.parse_path_params({
             'requestId': 1
         })
-        
-        requests = ResponseHeaderModel(Settings.instance()).index(context.params.get('requestId'), **context.params)
+
+        response_header_model = self.__response_header_model(context)
+        requests = response_header_model.index(context.params.get('requestId'), **context.params)
 
         context.render(
             json = requests,
             status = 200
         )
+
+    def __response_header_model(self, context: SimpleHTTPRequestHandler):
+        response_header_model = ResponseHeaderModel(Settings.instance())
+        response_header_model.as_remote() if context.headers.get('access-token') else response_header_model.as_local()
+        return response_header_model

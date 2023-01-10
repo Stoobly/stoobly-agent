@@ -1,6 +1,7 @@
 import pdb
 import requests
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.body_model import BodyModel
 from stoobly_agent.app.settings import Settings
 
@@ -25,8 +26,9 @@ class BodiesController:
         context.parse_path_params({
             'requestId': 1
         })
-        
-        request: requests.Request = BodyModel(Settings.instance()).mock(context.params.get('requestId'))
+
+        body_model = self.__body_model(context)
+        request: requests.Request = body_model.mock(context.params.get('requestId'))
 
         if request == None:
             return context.render(
@@ -34,17 +36,25 @@ class BodiesController:
                 status = 404
             )
 
-        # Extract content-type header
+        # Extract specific headers
         headers = {}
 
+        accepted_headers = ['content-encoding', 'content-length', 'content-type']
         for header, val in request.headers.items():
-            decoded_header = header.decode()
-            if decoded_header.lower() == 'content-type':
-                headers[decoded_header] = val.decode()
-                break
+            decoded_header = header.decode().lower()
+
+            if decoded_header not in accepted_headers:
+                continue 
+
+            headers[decoded_header] = val.decode()
 
         context.render(
             data = request.data,
             headers = headers,
             status = 200
         )
+
+    def __body_model(self, context: SimpleHTTPRequestHandler):
+        body_model = BodyModel(Settings.instance())
+        body_model.as_remote() if context.headers.get('access-token') else body_model.as_local()
+        return body_model
