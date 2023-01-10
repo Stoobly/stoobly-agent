@@ -8,12 +8,19 @@ from stoobly_agent.lib.logger import Logger
 class BodyModel():
 
   def __init__(self, settings: Settings):
-    if not settings.cli.features.remote:
-      self.adapter =  BodyAdapterFactory(settings.remote).local_db()
-    else:
-      raise('Not yet supported.')
-
     self.settings = settings
+
+    if not settings.cli.features.remote:
+      self.as_local()
+    else:
+      self.as_remote()
+
+  def as_local(self):
+    self.adapter = BodyAdapterFactory(self.settings.remote).local_db()
+
+  def as_remote(self):
+    # 'Not yet supported.'
+    pass 
 
   def mock(self, request_id: str) -> requests.Request:
     try:
