@@ -57,7 +57,8 @@ class RequestsController:
 
         mitmproxy_flow_mock = MitmproxyFlowMock(mitmproxy_request, mitmproxy_response)
 
-        request = RequestModel(Settings.instance()).create(**{
+        request_model = self.__request_model(context)
+        request = request_model.create(**{
             'flow': mitmproxy_flow_mock,
             'joined_request': joined_request,
         })
@@ -90,7 +91,8 @@ class RequestsController:
             'id': 1
         })
 
-        request = RequestModel(Settings.instance()).show(context.params.get('id'))
+        request_model = self.__request_model(context)
+        request = request_model.show(context.params.get('id'))
 
         if not request:
             return context.not_found()
@@ -129,7 +131,8 @@ class RequestsController:
             return context.internal_error()
 
         request.update(committed_at = datetime.now())
-        request = RequestModel(Settings.instance()).show(request.id)
+        request_model.as_local()
+        request = request_model.show(request.id)
 
         context.render(
             json = request,
@@ -143,7 +146,9 @@ class RequestsController:
         })
 
         request_id = context.params.get('id')
-        request = RequestModel(Settings.instance()).update(request_id, **context.params.get('request'))
+
+        request_model = self.__request_model(context)
+        request = request_model.update(request_id, **context.params.get('request'))
 
         if not request:
             return context.not_found()
@@ -161,7 +166,8 @@ class RequestsController:
 
         request_id = context.params.get('id')
 
-        request = RequestModel(Settings.instance()).destroy(request_id)
+        request_model = self.__request_model(context)
+        request = request_model.destroy(request_id)
 
         if not request:
            return context.not_found()
