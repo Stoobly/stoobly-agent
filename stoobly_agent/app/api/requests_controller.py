@@ -108,15 +108,15 @@ class RequestsController:
             'id': 1,
         })
 
-        request = Request.find_by(id=context.params.get('id'))
-
-        if not request:
-            return
-
         body_params = context.params
 
         if not context.required_params(body_params, ['project_key']):
             return
+
+        request = Request.find_by(id=body_params.get('id'))
+
+        if not request:
+            return context.not_found(f"Could not find request {body_params.get('id')}")
 
         request_model = RequestModel(Settings.instance())
         request_model.as_remote()

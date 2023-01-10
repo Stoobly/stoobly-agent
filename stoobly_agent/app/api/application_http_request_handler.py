@@ -78,34 +78,32 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     ### Helpers
 
+    # Override
     def enable_cors(self, _headers = {}):
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
-        #if _headers.get('Access-Control-Allow-Methods'):
-        #    del _headers['Access-Control-Allow-Methods'] # Don't send duplicate headers
+        header = 'Access-Control-Allow-Origin'
+        self.send_header(header, _headers.get(header) or '*')
 
-        self.send_header('Access-Control-Allow-Origin', '*')
-        #if _headers.get('Access-Control-Allow-Origin'):
-        #    del _headers['Access-Control-Allow-Origin']
+        if self.command == 'OPTIONS':
+            header = 'Access-Control-Allow-Methods'
+            self.send_header(header, _headers.get(header) or 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
 
-        allowed_headers = ', '.join([
-            'Content-Type'.upper(),
-            headers.ACCESS_TOKEN.upper(),
-            headers.CLIENT.upper(),
-            headers.DO_PROXY.upper(),
-            headers.EXPIRY.upper(),
-            headers.PROXY_HEADERS.upper(),
-            headers.REQUEST_PATH.upper(),
-            headers.SERVICE_URL.upper(),
-            headers.TOKEN_TYPE.upper(),
-            headers.UID.upper(),
-        ])
-        self.send_header('Access-Control-Allow-Headers', allowed_headers)
-        #if _headers.get('Access-Control-Allow-Headers'):
-        #    del _headers['Access-Control-Allow-Headers']
+            header = 'Access-Control-Allow-Headers'
+            allowed_headers = _headers.get(header) or ', '.join([
+                'Content-Type',
+                headers.ACCESS_TOKEN.title(),
+                headers.CLIENT.title(),
+                headers.DO_PROXY.title(),
+                headers.EXPIRY.title(),
+                headers.PROXY_HEADERS.title(),
+                headers.REQUEST_PATH.title(),
+                headers.SERVICE_URL.title(),
+                headers.TOKEN_TYPE.title(),
+                headers.UID.title(),
+            ])
+            self.send_header(header, allowed_headers)
 
-        self.send_header('Access-Control-Max-Age', '7200')
-        #if _headers.get('Access-Control-Max-Age'):
-        #    del _headers['Access-Control-Max-Age']
+            header = 'Access-Control-Max-Age'
+            self.send_header(header, _headers.get(header) or '7200')
 
     def preprocess(self):
         self.uri = urlparse(self.path)
