@@ -41,14 +41,12 @@ class StatusesController:
 
     # PUT /api/v1/admin/statuses/:id
     def put_status(self, context):
-        value = { **context.params }
-
         context.parse_path_params({
             'id': 4
         })
 
         cache = Cache.instance()
-        cache.write(context.params.get('id'), value)
+        cache.write(context.params.get('id'), context.body)
 
         context.render(
             plain = '',
