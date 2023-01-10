@@ -12,12 +12,19 @@ from .adapters.response_header_adapter_factory import ResponseHeaderAdapterFacto
 class ResponseHeaderModel():
 
   def __init__(self, settings: Settings):
-    if not settings.cli.features.remote:
-      self.adapter =  ResponseHeaderAdapterFactory(settings.remote).local_db()
-    else:
-      raise('Not yet supported.')
-
     self.settings = settings
+
+    if not settings.cli.features.remote:
+      self.as_local()
+    else:
+      self.as_remote()
+
+  def as_local(self):
+    self.adapter =  ResponseHeaderAdapterFactory(self.settings.remote).local_db()
+
+  def as_remote(self):
+    # raise('Not yet supported.')
+    pass
 
   def index(self, request_id: str, **query_params) -> Union[ResponseHeaderIndexResponse, None]:
     try:

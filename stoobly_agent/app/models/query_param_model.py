@@ -12,12 +12,19 @@ from .adapters.query_param_adapter_factory import QueryParamAdapterFactory
 class QueryParamModel():
 
   def __init__(self, settings: Settings):
-    if not settings.cli.features.remote:
-      self.adapter =  QueryParamAdapterFactory(settings.remote).local_db()
-    else:
-      raise('Not yet supported.')
-
     self.settings = settings
+
+    if not settings.cli.features.remote:
+      self.as_local()
+    else:
+      self.as_remote()
+
+  def as_local(self):
+    self.adapter =  QueryParamAdapterFactory(self.settings.remote).local_db()
+
+  def as_remote(self):
+    #raise('Not yet supported.')
+    pass
 
   def index(self, request_id: str, **query_params) -> Union[QueryParamIndexResponse, None]:
     try:
