@@ -63,6 +63,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             'TRANSFER-ENCODING': 'CHUNKED',
         })
         headers['Content-Length'] = len(body)
+
         self.enable_cors(headers)
         self.render_headers(headers)
         self.end_headers()
@@ -128,3 +129,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             if param not in params:
                 self.bad_request(f"Missing param {param}")
                 return False
+
+        return True
+
+    def enable_cors(self):
+        pass
