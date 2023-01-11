@@ -46,7 +46,7 @@ def eval_request(
     **options: EvalRequestOptions
 ) -> Response:
     query_params = ParamBuilder()
-    query_params.with_resource_scoping(intercept_settings)
+    query_params.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params.with_params(__build_request_params(request, ignored_components))
