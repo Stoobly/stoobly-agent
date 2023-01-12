@@ -69,7 +69,7 @@ class ConfigsController:
         scenario_id =  ScenarioKey(scenario_key).id if scenario_key else None
 
         # Check to make sure the scenario still exists
-        if settings.cli.features.remote and scenario_id:
+        if self.is_remote_enabled(context) and scenario_id:
             resource = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
             res = resource.show(scenario_id)
 
@@ -111,3 +111,6 @@ class ConfigsController:
             json = merged_settings,
             status = 200
         )
+
+    def is_remote_enabled(self, context):
+        return context.headers.get('access-token')

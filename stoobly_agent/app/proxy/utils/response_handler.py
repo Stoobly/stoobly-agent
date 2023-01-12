@@ -11,10 +11,10 @@ from requests import Response
 def pass_on(flow: MitmproxyHTTPFlow, res: Response):
     if not isinstance(res, Response):
         return
-        
+  
     headers = {}
     for key, value in res.headers.items():
-        headers[key.capitalize()] = value
+        headers[key.title()] = value
 
     # Without specifying a length to read, requests will compare content length
     # with Content-Length header. If the content is gzipped, an IncompleteRead error will be thrown
