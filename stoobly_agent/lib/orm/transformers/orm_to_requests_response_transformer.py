@@ -2,6 +2,7 @@ import pdb
 
 from httptools import HttpResponseParser
 from io import BytesIO
+from mitmproxy.net import encoding
 from requests import Response
 from requests.structures import CaseInsensitiveDict
 
@@ -23,11 +24,15 @@ class ORMToRequestsResponseTransformer():
     requests_response = Response()
     requests_response.headers = CaseInsensitiveDict()
     for key, val in response_dict['headers'].items():
-      requests_response.headers[key] = val
+      _key = key if not isinstance(key, bytes) else key.decode()
+      _val = val if not isinstance(val, bytes) else val.decode()
+      requests_response.headers[_key] = _val
 
-    requests_response.raw = BytesIO(response_dict.get('body'))
+    # Unless we can create an object with the stream method, have to self decode
+    decoded_response = encoding.decode(response_dict.get('body'), requests_response.headers.get('content-encoding'))
+    requests_response.raw = BytesIO(decoded_response)
+
     requests_response.reason = response_dict.get('status')
-    requests_response.encoding = requests_response.headers.get('content-encoding')
     requests_response.status_code = response_dict['status_code']
 
     # TODO: parse cookies, url. Not high priority, these aren't used
