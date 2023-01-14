@@ -85,6 +85,7 @@ class ConfigsController:
                 'modes': [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY],
                 'project_id': project_id,
                 'proxy_url': proxy.url,
+                'remote_enabled': settings.cli.features.remote,
                 'scenario_id': scenario_id,
             },
             status = 200
