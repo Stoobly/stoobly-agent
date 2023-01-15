@@ -50,7 +50,6 @@ def eval_request(
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params.with_params(__build_request_params(request, ignored_components))
-
     query_params.with_params(__build_optional_params(request, options))
 
     return request_model.response(**query_params.build())

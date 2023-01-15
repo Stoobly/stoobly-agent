@@ -10,7 +10,7 @@ from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IgnoreRule, RedactRule
+from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RedactRule
 from stoobly_agent.config.constants import custom_headers, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.logger import Logger
@@ -39,6 +39,7 @@ class InterceptSettings:
     self.__rewrite_rules = self.__settings.proxy.rewrite.rewrite_rules(project_id)
     self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
     self.__intercept_settings = self.__settings.proxy.intercept 
+    self.__match_rules = self.__settings.proxy.match.match_rules(project_id)
 
     self.__lifecycle_hooks = None
     self.__initialize_lifecycle_hooks()
@@ -140,6 +141,11 @@ class InterceptSettings:
   @property
   def include_rules(self) -> List[FirewallRule]:
     return list(filter(lambda rule: rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+
+  @property
+  def match_rules(self) -> List[MatchRule]:
+    _mode = self.mode
+    return list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
 
   @property
   def redact_rules(self) -> List[RedactRule]:
