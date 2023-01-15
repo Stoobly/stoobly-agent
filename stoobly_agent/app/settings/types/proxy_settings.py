@@ -1,12 +1,11 @@
 from typing import Dict, List, Literal, TypedDict
 
-from ..constants import firewall_action
-from ..constants import intercept_mode
+from ..constants.firewall_action import FirewallAction
+from ..constants.intercept_mode import Mode
+from ..constants.request_component import RequestComponent
 
-FirewallAction = Literal[firewall_action.EXCLUDE, firewall_action.INCLUDE]
 Method = Literal['DELETE,GET,OPTIONS,POST,PUT']
 MockPolicy = Literal['all', 'found', 'none']
-Mode = Literal[intercept_mode.MOCK, intercept_mode.RECORD, intercept_mode.TEST]
 RecordPolicy = Literal['all','found','none']
 TestPolicy = Literal['all','found','none']
 
@@ -21,6 +20,11 @@ class DataRules(TypedDict):
   RecordPolicy: RecordPolicy
   scenario_id: str
   TestPolicy: TestPolicy
+
+class MatchRule(TypedDict):
+  components: List[RequestComponent]
+  modes: List[Mode]
+  pattern: str
 
 class RewriteRule(TypedDict):
   methods: List[Method]
@@ -40,6 +44,8 @@ class InterceptSettings(TypedDict):
   upstream_url: str
 
 DataSettings = Dict[str, DataRules]
+MatchRules = Dict[str, List[MatchRule]]
+MatchSettings = Dict[str, MatchRules]
 RewriteRules = List[RewriteRule]
 RewriteSettings = Dict[str, RewriteRules]
 FirewallRules = Dict[str, List[FirewallRule]]
@@ -50,4 +56,5 @@ class ProxySettings(TypedDict):
   filter: RewriteSettings
   firewall: FirewallSettings
   intercept: InterceptSettings
+  match: MatchSettings
   url: str
