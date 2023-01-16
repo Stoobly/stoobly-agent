@@ -147,9 +147,6 @@ class LocalDBRequestAdapter():
     if request_columns.get('scenario_id'):
       del request_columns['scenario_id']
 
-    if request_columns.get('headers_hash'):
-      del request_columns['headers_hash']
-
   def __transform_index_list(self, records: List[Request]):
     allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['committed_at', 'body_params_hash', 'query', 'query_params_hash']
 
