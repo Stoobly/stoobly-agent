@@ -39,7 +39,7 @@ class ResponsesController:
         # Extract specific headers
         headers = {}
 
-        accepted_headers = ['content-encoding', 'content-length', 'content-type']
+        accepted_headers = ['content-type']
         for header, val in response.headers.items():
             decoded_header = header.lower()
 
