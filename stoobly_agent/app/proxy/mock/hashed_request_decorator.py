@@ -1,7 +1,7 @@
 import hashlib
 import pdb
 
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import bcolors, Logger
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 from .request_hasher import RequestHasher
@@ -48,7 +48,11 @@ class HashedRequestDecorator:
     def headers_hash(self, with_ignored = False):
         headers = self.request.headers
 
-        serialized_params = self.__serialize_params(headers, {} if with_ignored else self.ignored_headers)
+        ignored_headers = {} if with_ignored else self.ignored_headers
+
+        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing headers...{bcolors.ENDC}")
+        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_headers}")
+        serialized_params = self.__serialize_params(headers, ignored_headers)
 
         return self.__hash_serialized_params(serialized_params)
 
@@ -59,8 +63,11 @@ class HashedRequestDecorator:
         query_params = self.request.query
 
         params = self.__deflatten_multi_dict(query_params)
+        ignored_params = {} if with_ignored else self.ignored_query_params
 
-        serialized_params = self.__serialize_params(params, {} if with_ignored else self.ignored_query_params)
+        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing query params...{bcolors.ENDC}")
+        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
+        serialized_params = self.__serialize_params(params, ignored_params)
 
         return self.__hash_serialized_params(serialized_params)
 
@@ -69,7 +76,12 @@ class HashedRequestDecorator:
 
     def body_params_hash(self, with_ignored = False):
         params = self.request.parsed_body
-        return RequestHasher.instance().hash_params(params, {} if with_ignored else self.ignored_body_params)
+        ignored_params = {} if with_ignored else self.ignored_body_params
+
+        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing body params...{bcolors.ENDC}")
+        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
+
+        return RequestHasher.instance().hash_params(params, ignored_params)
 
     def body_text_hash(self):
         text = self.request.body

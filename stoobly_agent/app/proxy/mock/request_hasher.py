@@ -29,9 +29,6 @@ class RequestHasher():
       return cls._instance
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
-    Logger.instance().debug(f"{bcolors.OKCYAN}Hashing params...{bcolors.ENDC}")
-    Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
-
     if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict):
       return self.__serialize(None, params, None, ignored_params)
     else:
