@@ -6,7 +6,7 @@ from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants import mock_policy, request_origin
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import bcolors, Logger
 
 def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
     if intercept_settings.request_origin == request_origin.CLI:
@@ -27,6 +27,7 @@ def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSett
         rules = list(filter(lambda rule: active_mode in rule.modes, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
+            Logger.instance().info(f"{bcolors.WARNING}Excluded by firewall rule{bcolors.ENDC}")
             return False
 
     # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
@@ -35,6 +36,7 @@ def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSett
         rules = list(filter(lambda rule: active_mode in rule.modes, include_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if not __include(request, patterns):
+            Logger.instance().info(f"{bcolors.WARNING}Not included by firewall rule{bcolors.ENDC}")
             return False
 
     # If there are no exclude or include patterns, request is allowed
@@ -57,7 +59,7 @@ def __include(request: MitmproxyRequest, patterns: List[str]) -> bool:
                 return True
         except re.error as e:
             Logger.instance().error(f"RegExp error '{e}' for {pattern}")
-            return True
+            return False
 
     return False
 
