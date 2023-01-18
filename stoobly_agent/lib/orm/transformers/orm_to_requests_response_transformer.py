@@ -29,7 +29,12 @@ class ORMToRequestsResponseTransformer():
       requests_response.headers[_key] = _val
 
     # Unless we can create an object with the stream method, have to self decode
-    decoded_response = encoding.decode(response_dict.get('body'), requests_response.headers.get('content-encoding'))
+    content_encoding = requests_response.headers.get('content-encoding')
+    if content_encoding:
+      decoded_response = encoding.decode(response_dict.get('body'), content_encoding)
+    else:
+      decoded_response = response_dict.get('body')
+
     requests_response.raw = BytesIO(decoded_response)
 
     requests_response.reason = response_dict.get('status')
