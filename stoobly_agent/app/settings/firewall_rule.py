@@ -8,8 +8,8 @@ class FirewallRule:
     self.__firewall_rule = firewall_rule
 
     self.__action = self.__firewall_rule.get('action')
-    self.__methods = self.__firewall_rule.get('methods')
-    self.__modes = self.__firewall_rule.get('modes')
+    self.__methods = self.__firewall_rule.get('methods') or []
+    self.__modes = self.__firewall_rule.get('modes') or []
     self.__pattern = self.__firewall_rule.get('pattern')
 
 
