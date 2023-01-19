@@ -2,17 +2,21 @@ from .types.proxy_settings import MatchRule as IMatchRule
 
 class MatchRule:
 
-  def __init__(self, firewall_rule: IMatchRule):
-    self.__firewall_rule = firewall_rule
+  def __init__(self, match_rule: IMatchRule):
+    self.__match_rule = match_rule
 
-    self.__components = self.__firewall_rule.get('components')
-    self.__modes = self.__firewall_rule.get('modes')
-    self.__pattern = self.__firewall_rule.get('pattern')
-
+    self.__components = self.__match_rule.get('components') or []
+    self.__methods = self.__match_rule.get('methods') or []
+    self.__modes = self.__match_rule.get('modes') or []
+    self.__pattern = self.__match_rule.get('pattern')
 
   @property 
   def components(self):
     return self.__components
+
+  @property
+  def methods(self):
+    return self.__methods
 
   @property
   def modes(self):
@@ -25,6 +29,7 @@ class MatchRule:
   def to_dict(self):
     return {
       'components': self.__components,
+      'methods': self.__methods,
       'modes': self.__modes,
       'pattern': self.__pattern,
     }
