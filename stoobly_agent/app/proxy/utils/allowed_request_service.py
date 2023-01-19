@@ -19,24 +19,24 @@ def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: Interc
         return mock_policy.NONE
 
 def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
-    active_mode = intercept_settings.mode
-
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed
     exclude_rules = intercept_settings.exclude_rules
     if exclude_rules:
-        rules = list(filter(lambda rule: active_mode in rule.modes, exclude_rules))
+        method = request.method.upper()
+        rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
-            Logger.instance().info(f"{bcolors.WARNING}Excluded by firewall rule{bcolors.ENDC}")
+            Logger.instance().info(f"{bcolors.OKBLUE}Excluded by firewall rule{bcolors.ENDC}")
             return False
 
     # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
     include_rules = intercept_settings.include_rules
     if include_rules:
-        rules = list(filter(lambda rule: active_mode in rule.modes, include_rules))
+        method = request.method.upper()
+        rules = list(filter(lambda rule: method in rule.methods, include_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if not __include(request, patterns):
-            Logger.instance().info(f"{bcolors.WARNING}Not included by firewall rule{bcolors.ENDC}")
+            Logger.instance().info(f"{bcolors.OKBLUE}Not included by firewall rule{bcolors.ENDC}")
             return False
 
     # If there are no exclude or include patterns, request is allowed

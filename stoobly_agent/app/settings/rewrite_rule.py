@@ -8,7 +8,7 @@ class RewriteRule:
   def __init__(self, rewrite_rule: IRewriteRule):
     self.__rewrite_rule = rewrite_rule
 
-    self.__methods = self.__rewrite_rule.get('methods')
+    self.__methods = self.__rewrite_rule.get('methods') or []
     self.__pattern = self.__rewrite_rule.get('pattern')
 
     self.__raw_parameter_rules = self.__rewrite_rule.get('parameter_rules') or []

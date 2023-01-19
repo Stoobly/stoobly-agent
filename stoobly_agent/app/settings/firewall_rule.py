@@ -8,6 +8,7 @@ class FirewallRule:
     self.__firewall_rule = firewall_rule
 
     self.__action = self.__firewall_rule.get('action')
+    self.__methods = self.__firewall_rule.get('methods')
     self.__modes = self.__firewall_rule.get('modes')
     self.__pattern = self.__firewall_rule.get('pattern')
 
@@ -15,6 +16,10 @@ class FirewallRule:
   @property 
   def action(self):
     return self.__action
+
+  @property 
+  def methods(self):
+    return self.__methods
 
   @property
   def modes(self):
@@ -27,6 +32,7 @@ class FirewallRule:
   def to_dict(self):
     return {
       'action': self.__action,
+      'methods': self.__methods,
       'modes': self.__modes,
       'pattern': self.__pattern,
     }

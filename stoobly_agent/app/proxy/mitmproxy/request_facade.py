@@ -140,7 +140,8 @@ class MitmproxyRequestFacade(Request):
             Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return False
 
-        method_matches = self.method in rewrite_rule.methods
+        method = self.method.upper()
+        method_matches = method in rewrite_rule.methods
         return url_matches and method_matches
     
     def __apply_rewrites(self, params: dict, rewrites: List[ParameterRule], handler: Callable):
