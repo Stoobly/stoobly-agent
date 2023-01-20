@@ -9,17 +9,13 @@ from stoobly_agent.app.settings import Settings
 
 from .adapters.request_adapter_factory import RequestAdapterFactory
 from .adapters.types import RequestCreateParams, RequestShowParams
+from .model import Model
 from .types.requests_model_index import RequestsModelIndex
 
-class RequestModel():
+class RequestModel(Model):
 
   def __init__(self, settings: Settings):
-    self.settings = settings
-
-    if not settings.cli.features.remote:
-      self.as_local()
-    else:
-      self.as_remote()
+    super().__init__(settings)
 
   def as_local(self):
       self.adapter = RequestAdapterFactory(self.settings.remote).local_db()

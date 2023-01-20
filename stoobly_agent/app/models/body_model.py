@@ -5,15 +5,12 @@ from stoobly_agent.app.models.adapters.body_adapter_factory import BodyAdapterFa
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
-class BodyModel():
+from .model import Model
+
+class BodyModel(Model):
 
   def __init__(self, settings: Settings):
-    self.settings = settings
-
-    if not settings.cli.features.remote:
-      self.as_local()
-    else:
-      self.as_remote()
+    super().__init__(settings)
 
   def as_local(self):
     self.adapter = BodyAdapterFactory(self.settings.remote).local_db()
