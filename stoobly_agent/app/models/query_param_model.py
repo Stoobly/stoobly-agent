@@ -8,16 +8,12 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
 from .adapters.query_param_adapter_factory import QueryParamAdapterFactory
+from .model import Model
 
-class QueryParamModel():
+class QueryParamModel(Model):
 
   def __init__(self, settings: Settings):
-    self.settings = settings
-
-    if not settings.cli.features.remote:
-      self.as_local()
-    else:
-      self.as_remote()
+    super().__init__(settings)
 
   def as_local(self):
     self.adapter =  QueryParamAdapterFactory(self.settings.remote).local_db()

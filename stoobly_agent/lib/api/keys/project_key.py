@@ -1,5 +1,7 @@
 from .resource_key import ResourceKey
 
+LOCAL_PROJECT_ID = 0
+
 class InvalidProjectKey(Exception):
   pass
 
