@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class AddFilterColumnsToRequests(Migration):
 
     def up(self):

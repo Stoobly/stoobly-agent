@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class AddScenarioIdReferenceToRequests(Migration):
 
     def up(self):

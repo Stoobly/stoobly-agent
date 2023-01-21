@@ -9,7 +9,7 @@ from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpR
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.app.proxy.upload.response_string_control import ResponseStringControl
 
-class AlignRequestsTable(Migration):
+class AlignRequests(Migration):
 
     def up(self):
         """

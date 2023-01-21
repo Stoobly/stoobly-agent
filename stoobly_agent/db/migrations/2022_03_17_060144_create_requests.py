@@ -1,7 +1,6 @@
 from orator.migrations import Migration
 
-
-class CreateRequestsTable(Migration):
+class CreateRequests(Migration):
 
     def up(self):
         """

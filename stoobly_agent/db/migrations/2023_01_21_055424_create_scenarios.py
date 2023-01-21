@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class CreateScenarios(Migration):
 
     def up(self):
