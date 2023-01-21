@@ -4,8 +4,7 @@ import requests
 from typing import List
 from urllib.parse import parse_qs
 
-from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
-from stoobly_agent.lib.api.interfaces.query_param_show_response import QueryParamShowResponse
+from stoobly_agent.lib.api.interfaces import QueryParamShowResponse
 from stoobly_agent.lib.orm.request import Request
 
 class LocalDBQueryParamAdapter():

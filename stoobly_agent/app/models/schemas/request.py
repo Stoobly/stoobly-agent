@@ -5,11 +5,11 @@ import pdb
 from mitmproxy.net.http.url import encode as urlencode
 from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response, is_traversable
-from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
 from typing import List, Union
 
-from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowResponse
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response, is_traversable
+from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
+from stoobly_agent.lib.api.interfaces import RequestShowResponse
 
 class Request():
 

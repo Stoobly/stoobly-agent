@@ -4,7 +4,7 @@ import requests
 from typing import List
 
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
-from stoobly_agent.lib.api.interfaces.header_show_response import HeaderShowResponse
+from stoobly_agent.lib.api.interfaces import HeaderShowResponse
 from stoobly_agent.lib.orm.request import Request
 
 class LocalDBResponseHeaderAdapter():

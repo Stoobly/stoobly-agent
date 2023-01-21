@@ -2,8 +2,7 @@ import pdb
 import requests
 
 from stoobly_agent.lib.api.requests_resource import RequestsResource
-from stoobly_agent.lib.api.interfaces.request_show_response import RequestShowResponse
-from stoobly_agent.lib.api.interfaces.requests_index_response import RequestsIndexResponse
+from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexResponse
 
 from .types import RequestCreateParams, RequestShowParams
 
