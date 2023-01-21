@@ -6,6 +6,7 @@ from stoobly_agent.app.api.query_params_controller import QueryParamsController
 from stoobly_agent.app.api.requests_controller import RequestsController
 from stoobly_agent.app.api.responses_controller import ResponsesController
 from stoobly_agent.app.api.response_headers_controller import ResponseHeadersController
+from stoobly_agent.app.api.scenarios_controller import ScenariosController
 
 from .configs_controller import ConfigsController
 from .proxy_controller import ProxyController
@@ -14,6 +15,7 @@ from .statuses_controller import StatusesController
 CONFIGS_PATH = '/api/v1/admin/configs'
 PROXY_PATH = '/proxy'
 REQUESTS_PATH = '/requests'
+SCENARIOS_PATH = '/scenarios'
 STATUSES_PATH = '/api/v1/admin/statuses'
 
 BODIES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/bodies/mock")
@@ -22,6 +24,7 @@ RESPONSES_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/responses/mock")
 QUERY_PARAMS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/query_params")
 RESPONSE_HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]/response_headers")
 REQUEST_PATH = re.compile(f"{REQUESTS_PATH}/.*[^/]")
+SCENARIO_PATH = re.compile(f"{SCENARIOS_PATH}/.*[^/]")
 STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 
 ROUTES = {
@@ -40,12 +43,15 @@ ROUTES = {
       [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().index],
       [REQUESTS_PATH, RequestsController.instance().index],
       [REQUEST_PATH, RequestsController.instance().get],
+      [SCENARIOS_PATH, ScenariosController.instance().index],
+      [SCENARIO_PATH, ScenariosController.instance().get],
       [STATUS_PATH, StatusesController.instance().get_status],
   ],
   'POST': [
       ['/'.join([PROXY_PATH, 'post']), ProxyController.instance().do_POST],
       [REQUESTS_PATH, RequestsController.instance().create],
       [re.compile('/'.join([REQUEST_PATH.pattern, 'upload'])), RequestsController.instance().upload],
+      [SCENARIOS_PATH, ScenariosController.instance().create],
   ],
   'PUT': [
       [CONFIGS_PATH, ConfigsController.instance().update],
