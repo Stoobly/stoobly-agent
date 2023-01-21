@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class CreateTraceAliases(Migration):
 
     def up(self):

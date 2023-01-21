@@ -1,6 +1,5 @@
 from orator.migrations import Migration
 
-
 class CreateTraceRequests(Migration):
 
     def up(self):
