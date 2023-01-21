@@ -176,4 +176,4 @@ class LocalDBRequestAdapter():
     if uri.hostname:
       return base_model.where('host', uri.hostname).where('path', uri.path)
     else:
-      return base_model.where('path', 'like', f"%query%")
+      return base_model.where('path', 'like', f"%{query}%")

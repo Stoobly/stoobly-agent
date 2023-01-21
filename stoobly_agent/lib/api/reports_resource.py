@@ -1,7 +1,6 @@
 import urllib
 
 from ..logger import Logger
-from .interfaces.requests_index_query_params import RequestsIndexQueryParams
 from .stoobly_api import StooblyApi
 
 class ReportsResource(StooblyApi):
