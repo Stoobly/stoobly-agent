@@ -1,7 +1,7 @@
 from typing import List, TypedDict, Union
 
 from .pagination_query_params import PaginationQueryParams
-from .response_show_response import ResponseShowResponse
+from .responses import ResponseShowResponse
 
 class RequestCreateParams(TypedDict):
   importer: str
