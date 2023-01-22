@@ -30,6 +30,7 @@ STATUS_PATH = re.compile(f"{STATUSES_PATH}/.*[^/]$")
 ROUTES = {
   'DELETE': [
     [REQUEST_PATH, RequestsController.instance().destroy],
+    [SCENARIO_PATH, ScenariosController.instance().destroy],
   ],
   'GET': [
       [CONFIGS_PATH, ConfigsController.instance().show],
@@ -58,5 +59,6 @@ ROUTES = {
       ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
       [REQUEST_PATH, RequestsController.instance().update],
       [STATUS_PATH, StatusesController.instance().put_status],
+      [SCENARIO_PATH, ScenariosController.instance().update],
   ]
 }
