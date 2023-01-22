@@ -73,7 +73,7 @@ class ScenariosController:
         scenario_id = context.params.get('id')
 
         scenario_model = self.__scenario_model(context)
-        sceanrio = scenario_model.destroy(scenario_id)
+        scenario = scenario_model.destroy(scenario_id)
 
         if not scenario:
            return context.not_found()
