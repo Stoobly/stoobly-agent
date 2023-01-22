@@ -46,7 +46,7 @@ ROUTES = {
       [REQUEST_PATH, RequestsController.instance().get],
       [SCENARIOS_PATH, ScenariosController.instance().index],
       [SCENARIO_PATH, ScenariosController.instance().get],
-      [STATUS_PATH, StatusesController.instance().get_status],
+      [STATUS_PATH, StatusesController.instance().get],
   ],
   'POST': [
       ['/'.join([PROXY_PATH, 'post']), ProxyController.instance().do_POST],
@@ -58,7 +58,7 @@ ROUTES = {
       [CONFIGS_PATH, ConfigsController.instance().update],
       ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
       [REQUEST_PATH, RequestsController.instance().update],
-      [STATUS_PATH, StatusesController.instance().put_status],
+      [STATUS_PATH, StatusesController.instance().update],
       [SCENARIO_PATH, ScenariosController.instance().update],
   ]
 }
