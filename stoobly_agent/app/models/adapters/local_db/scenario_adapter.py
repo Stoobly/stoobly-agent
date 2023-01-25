@@ -1,9 +1,10 @@
 import pdb
 
 from stoobly_agent.app.models.adapters.types.scenario_create_params import ScenarioCreateParams
+from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
+from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
-from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
 
 from ..types import ScenarioCreateParams
 
@@ -16,13 +17,11 @@ class LocalDBScenarioAdapter():
   def create(self, **params: ScenarioCreateParams) -> ScenarioShowResponse:
     with ORM.instance().db.transaction():
       scenario_record = self.__scenario_orm.create(params)
-
-      return scenario_record.to_hash()
+      return scenario_record.to_dict()
 
   def show(self, scenario_id: str) -> ScenarioShowResponse:
     scenario_record = self.__scenario_orm.find(scenario_id)
-
-    return scenario_record.to_hash()
+    return self.__to_show_response(scenario_record)
 
   def index(self, **query_params: ScenariosIndexQueryParams) -> ScenariosIndexResponse:
     page = int(query_params.get('page') or 0)
@@ -46,7 +45,7 @@ class LocalDBScenarioAdapter():
     scenarios = scenarios.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
 
     return {
-      'list': list(map(lambda scenario: scenario.to_hash(), scenarios.items)),
+      'list': list(map(lambda scenario: self.__to_show_response(scenario), scenarios.items)),
       'total': total,
     }
 
@@ -57,7 +56,7 @@ class LocalDBScenarioAdapter():
       return
 
     if scenario.update(params):
-      return scenario.to_hash()
+      return self.__to_show_response(scenario)
 
   def destroy(self, scenario_id: int) -> ScenarioShowResponse:
     scenario = Scenario.find(scenario_id)
@@ -66,11 +65,15 @@ class LocalDBScenarioAdapter():
       return
 
     if scenario.is_deleted:
-      scenario.destroy()
+      scenario.delete()
     else:
       scenario.update({'is_deleted': True})
 
-    return scenario.to_hash()
+    return self.__to_show_response(scenario)
 
   def __search(self, base_model: Scenario, query: str) -> Scenario:
     return base_model.where('name', 'like', f"%{query}%")
+
+  def __to_show_response(self, scenario: Scenario) -> ScenarioShowResponse:
+    res = scenario.to_dict()
+    return res

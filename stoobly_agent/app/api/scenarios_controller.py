@@ -27,7 +27,7 @@ class ScenariosController:
             return
 
         scenario_model = self.__scenario_model(context)
-        scenario = scenario_model.create(context.params)
+        scenario = scenario_model.create(**context.params)
 
         if not scenario:
             return context.internal_error()
@@ -64,7 +64,26 @@ class ScenariosController:
             status = 200
         )
 
-    # DELETE /requests/:id
+    # PUT /scenarios/:id
+    def update(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'id': 1
+        })
+
+        scenario_id = context.params.get('id')
+
+        scenario_model = self.__scenario_model(context)
+        scenario = scenario_model.update(scenario_id, **context.params.get('scenario'))
+
+        if not scenario:
+            return context.not_found()
+            
+        context.render(
+            json = scenario,
+            status = 200
+        )
+
+    # DELETE /scenarios/:id
     def destroy(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1
@@ -79,7 +98,7 @@ class ScenariosController:
            return context.not_found()
 
         context.render(
-            json = scenario,
+            plain = '',
             status = 200
         )
 

@@ -5,6 +5,7 @@ from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpR
 from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
+from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 from stoobly_agent.lib.orm.trace_request import TraceRequest

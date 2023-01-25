@@ -10,7 +10,6 @@ from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestD
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
 
-from stoobly_agent.lib.api.keys.request_key import RequestKey
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -52,6 +51,7 @@ class LocalDBRequestAdapter():
         'query': request_facade.query_string,
         'query_params_hash': hashed_request.query_params_hash(),
         'raw': joined_request.request_string.get(),
+        'scenario_id': int(params['scenario_id']) if params.get('scenario_id') else None,
         'scheme': request.scheme,
         'status': flow.response.status_code,
       }
@@ -93,6 +93,7 @@ class LocalDBRequestAdapter():
     return ORMToRequestsResponseTransformer(response_record).transform()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> RequestsIndexResponse:
+    scenario_id = query_params.get('scenario_id')
     page = int(query_params.get('page') or 0)
     query = query_params.get('q')
     size = int(query_params.get('size') or 20)
@@ -103,6 +104,9 @@ class LocalDBRequestAdapter():
     starred = query_params.get('filter') == 'starred'
 
     requests = Request.where('is_deleted', is_deleted)
+
+    if scenario_id: 
+      requests = requests.where('scenario_id', int(scenario_id))
 
     if starred:
       requests = requests.where('starred', starred)
@@ -134,7 +138,7 @@ class LocalDBRequestAdapter():
       return
 
     if request.is_deleted:
-      request.destroy()
+      request.delete()
     else:
       request.update({'is_deleted': True})
 
@@ -148,14 +152,14 @@ class LocalDBRequestAdapter():
       del request_columns['scenario_id']
 
   def __transform_index_list(self, records: List[Request]):
-    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + ['committed_at', 'body_params_hash', 'body_text_hash', 'query', 'query_params_hash']
+    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + [
+      'committed_at', 'body_params_hash', 'body_text_hash', 'key', 'query', 'query_params_hash'
+    ]
 
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
 
     requests = list(map(lambda request: filter_keys(request.to_dict()), records))
     for request in requests:
-      request['key'] = RequestKey.encode(None, request['id']).decode()
-
       components = []
       if len(request['query_params_hash']) != 0:
         components.append('query_params')
