@@ -21,3 +21,10 @@ class ScenarioKey(ResourceKey):
   @property
   def id(self) -> str:
     return self.get('i')
+
+  @staticmethod
+  def encode(project_id: str, request_id: str):
+    return ResourceKey.encode({
+      'p': project_id,
+      'i': request_id,
+    })
