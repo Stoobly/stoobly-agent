@@ -3,6 +3,7 @@ import pdb
 import re
 
 from mergedeep import merge
+from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse, parse_qs
 
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -30,7 +31,7 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.preprocess()
 
         self.body = self.parse_body()
-        if isinstance(self.body, dict):
+        if isinstance(self.body, dict) or isinstance(self.body, MultiDict):
             merge(self.params, self.body) 
         
         if not self.route('POST'):
@@ -163,5 +164,5 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
         if not self.headers['Content-Type']:
             return body
-        
+
         return decode_response(body, self.headers['Content-Type'])
