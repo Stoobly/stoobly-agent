@@ -24,7 +24,6 @@ class ResourceKey():
     def encode(data: dict):
         return base64.b64encode(json.dumps({
             **data,
-            't': random.randint(1000000, 10000000),
         }).encode())
 
 
