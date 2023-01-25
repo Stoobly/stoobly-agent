@@ -173,7 +173,7 @@ class RequestsController:
            return context.not_found()
 
         context.render(
-            json = request,
+            plain = '',
             status = 200
         )
 
