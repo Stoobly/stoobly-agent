@@ -145,7 +145,12 @@ class TestContext():
     if self.__cached_response_param_names:
       return self.__cached_response_param_names
 
-    self.__cached_response_param_names = self.endpoint.response_param_names
+    endpoint = self.endpoint
+
+    if not endpoint:
+      return RequestComponentNamesFacade([])
+  
+    self.__cached_response_param_names = endpoint.response_param_names
 
     return self.__cached_response_param_names
 
