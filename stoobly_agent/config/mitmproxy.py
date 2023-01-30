@@ -2,6 +2,7 @@ import json
 import os
 import pdb
 
+from mitmproxy.options import Options
 from mitmproxy.tools.dump import DumpMaster
 
 from stoobly_agent.config.data_dir import DataDir
@@ -55,10 +56,12 @@ class MitmproxyConfig():
       except Exception as e:
         pass
     else:
-      options = self.__master.options
+      options: Options = self.__master.options
 
       if key in options:
-        return options[key].current()
+        for k, val in options.items():
+          if key == k:
+            return val.current()
 
   def set(self, option: str):
     if self.__master:
