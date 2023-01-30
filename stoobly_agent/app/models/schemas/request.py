@@ -51,7 +51,11 @@ class Request():
     query_tuples = []
     for key in query_params:
       for value in query_params.get_all(key):
-        query_tuples.append((key, value))
+        if not isinstance(value, list):
+          query_tuples.append((key, value))
+        else:
+          for v in value:
+            query_tuples.append((key, v))
 
     url = self.__url._replace(path=self.path, query=urlencode(query_tuples))
     return url.geturl()
