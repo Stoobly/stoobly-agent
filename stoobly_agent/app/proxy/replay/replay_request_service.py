@@ -35,7 +35,7 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
-  if 'before_replay' in options and callable(options['after_replay']):
+  if 'before_replay' in options and callable(options['before_replay']):
     options['before_replay'](context)
 
   request = context.request
