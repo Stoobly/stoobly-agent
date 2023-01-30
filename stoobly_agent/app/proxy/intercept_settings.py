@@ -160,6 +160,10 @@ class InterceptSettings:
     return self.__select_rewrite_rules()
 
   @property
+  def replay_rewrite_rules(self) -> List[RewriteRule]:
+    return self.__select_rewrite_rules(mode.REPLAY)
+
+  @property
   def upstream_url(self):
     if self.__headers and custom_headers.SERVICE_URL in self.__headers:
       return self.__headers[custom_headers.SERVICE_URL]
@@ -197,7 +201,7 @@ class InterceptSettings:
 
     # Filter only parameters matching active intercept mode
     for rewrite_rule in self.__rewrite_rules:
-      parameter_rules = self.__select_parameter_rules(rewrite_rule)
+      parameter_rules = self.__select_parameter_rules(rewrite_rule, mode)
 
       # If no parameters rules were found, then this filter rule is not applied
       if len(parameter_rules) == 0:

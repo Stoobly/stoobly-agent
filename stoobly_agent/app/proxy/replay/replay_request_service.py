@@ -4,14 +4,17 @@ import requests
 
 from http.cookies import SimpleCookie
 from typing import Callable, TypedDict, Union
-from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 
+from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
+from stoobly_agent.app.proxy.replay.trace_context import TraceContext
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
-from stoobly_agent.lib.api.api import Api
-from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.config.constants import mode
+from stoobly_agent.lib.api.api import Api
 
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
@@ -33,6 +36,11 @@ class ReplayRequestOptions(TypedDict):
 def replay_with_trace(context: ReplayContext, trace_context: TraceContext, options: ReplayRequestOptions):
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
+
+def replay_with_rewrite(context: ReplayContext):
+  return replay(context, {
+      'before_replay': __handle_before_replay
+  })
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
   if 'before_replay' in options and callable(options['before_replay']):
@@ -119,3 +127,10 @@ def __handle_mode_option(_mode, request: Request, headers):
 
 def __get_cookies(headers: Request.headers):
   return SimpleCookie(headers.get('Cookie'))
+
+def __handle_before_replay(context: ReplayContext):
+  request = context.request
+  request_facade = MitmproxyRequestFacade(request)
+  intercept_settings = InterceptSettings(Settings.instance())
+  rewrite_rules = intercept_settings.replay_rewrite_rules
+  request_facade.with_rewrite_rules(rewrite_rules).rewrite()

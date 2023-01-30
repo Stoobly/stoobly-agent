@@ -21,7 +21,7 @@ class ResponsesController:
 
         return cls._instance
 
-    # GET /requests/:requestId/bodies/mock
+    # GET /requests/:requestId/responses/mock
     def mock(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'requestId': 1

@@ -1,18 +1,20 @@
 import pdb
 
 from datetime import datetime
-from urllib.parse import parse_qs
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
+from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.adapters.mitmproxy_request_adapter import MitmproxyRequestAdapter
 from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import MitmproxyResponseAdapter
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.request_model import RequestModel
+from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.proxy.replay.replay_request_service import replay_with_rewrite
 from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.request import Request as OrmRequest
 
 class RequestsController:
     _instance = None
@@ -113,7 +115,7 @@ class RequestsController:
         if not context.required_params(body_params, ['project_key']):
             return
 
-        request = Request.find_by(id=body_params.get('id'))
+        request = OrmRequest.find_by(id=body_params.get('id'))
 
         if not request:
             return context.not_found(f"Could not find request {body_params.get('id')}")
@@ -175,6 +177,31 @@ class RequestsController:
         context.render(
             plain = '',
             status = 200
+        )
+
+    # GET /requests/:id/replay
+    def replay(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'id': 1
+        })
+        project_id = context.params.get('project_id')
+        request_id = context.params.get('id')
+
+        request_model = self.__request_model(context)
+        request_response = request_model.show(request_id, **{
+            'body': True,
+            'headers': True,
+            'project_id': project_id,
+            'query_params': True,
+            'response': True,
+        })
+        replay_context = ReplayContext(Request(request_response))
+        res = replay_with_rewrite(replay_context)
+
+        context.render(
+            data = res.content,
+            headers = res.headers,
+            status = res.status_code
         )
 
     def __request_model(self, context: SimpleHTTPRequestHandler):

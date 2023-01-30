@@ -43,6 +43,7 @@ ROUTES = {
       [RESPONSES_PATH, ResponsesController.instance().mock],
       [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().index],
       [REQUESTS_PATH, RequestsController.instance().index],
+      [re.compile('/'.join([REQUEST_PATH.pattern, 'replay'])), RequestsController.instance().replay],
       [REQUEST_PATH, RequestsController.instance().get],
       [SCENARIOS_PATH, ScenariosController.instance().index],
       [SCENARIO_PATH, ScenariosController.instance().get],

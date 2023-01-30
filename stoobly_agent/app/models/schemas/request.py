@@ -87,7 +87,7 @@ class Request():
   def headers(self) -> MultiDict:
     headers = MultiDict()
 
-    for header in (self.request['headers'] or []):
+    for header in (self.request.get('headers') or []):
       headers.add(header['name'], header['value'])
 
     return headers 
@@ -100,7 +100,7 @@ class Request():
   def query_params(self) -> MultiDict:
     query_params = MultiDict()
 
-    for query_param in (self.request['query_params'] or []):
+    for query_param in (self.request.get('query_params') or []):
       query_params.add(query_param['name'], query_param['value'])
 
     return query_params
