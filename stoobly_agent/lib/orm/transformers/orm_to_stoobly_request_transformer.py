@@ -68,6 +68,7 @@ class ORMToStooblyRequestTransformer():
         'name': key,
         'value': val,
       })
+    return headers_list
 
   def __transform_query_params(self, query_params):
     query_params_list: List[QueryParam] = []
