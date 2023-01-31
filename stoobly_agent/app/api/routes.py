@@ -58,6 +58,7 @@ ROUTES = {
   'PUT': [
       [CONFIGS_PATH, ConfigsController.instance().update],
       ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
+      ['/'.join([REQUESTS_PATH, 'send']), RequestsController.instance().send],
       [REQUEST_PATH, RequestsController.instance().update],
       [STATUS_PATH, StatusesController.instance().update],
       [SCENARIO_PATH, ScenariosController.instance().update],

@@ -37,7 +37,7 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
-def replay_with_rewrite(context: ReplayContext):
+def replay_with_rewrite(context: ReplayContext) -> requests.Response:
   return replay(context, {
       'before_replay': __handle_before_replay
   })

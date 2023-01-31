@@ -59,7 +59,7 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.preprocess()
 
         self.body = self.parse_body()
-        if isinstance(self.body, dict):
+        if isinstance(self.body, dict) or isinstance(self.body, MultiDict):
             merge(self.params, self.body) 
 
         if not self.route('PUT'):

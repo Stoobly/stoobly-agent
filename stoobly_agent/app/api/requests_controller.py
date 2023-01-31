@@ -1,6 +1,7 @@
 import pdb
 
 from datetime import datetime
+from urllib.parse import urlparse
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
@@ -193,16 +194,43 @@ class RequestsController:
             'headers': True,
             'project_id': project_id,
             'query_params': True,
-            'response': True,
         })
+        if not request_response:
+            return context.bad_request(f"Could not find request {request_id}")
+
         replay_context = ReplayContext(Request(request_response))
         res = replay_with_rewrite(replay_context)
 
         context.render(
-            data = res.content,
+            data = res.raw.data,
             headers = res.headers,
             status = res.status_code
         )
+
+    # PUT /requests/send
+    def send(self, context: SimpleHTTPRequestHandler):
+        url = urlparse(context.params.get('url'))
+        request_response = {
+            'body': context.params.get('body'),
+            'headers': context.params.get('headers'),
+            'method': context.params.get('method'),
+            'path': url.path,
+            'password': url.password,
+            'port': url.port,
+            'query': url.query,
+            'url': url.geturl(),
+            'username': url.username,
+        }
+
+        replay_context = ReplayContext(Request(request_response))
+        res = replay_with_rewrite(replay_context)
+
+        context.render(
+            data = res.raw.data,
+            headers = res.headers,
+            status = res.status_code
+        )
+
 
     def __request_model(self, context: SimpleHTTPRequestHandler):
         request_model = RequestModel(Settings.instance())

@@ -4,8 +4,9 @@ import requests
 from typing import Union
 
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.api.interfaces import RequestShowResponse
+from stoobly_agent.lib.logger import Logger
 
 from .adapters.request_adapter_factory import RequestAdapterFactory
 from .adapters.types import RequestCreateParams, RequestShowParams
@@ -30,7 +31,7 @@ class RequestModel(Model):
       self.__handle_request_error(e)
       return None
 
-  def show(self, request_id: str, **params: RequestShowParams) -> Union[Request, None]:
+  def show(self, request_id: str, **params: RequestShowParams) -> Union[RequestShowResponse, None]:
     try:
       return self.adapter.show(request_id, **params)
     except requests.exceptions.RequestException as e:
