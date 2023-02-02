@@ -19,4 +19,4 @@ class LocalDBResponseAdapter():
       return []
 
     response = request.response
-    return ORMToRequestsResponseTransformer(response).transform()
+    return ORMToRequestsResponseTransformer(response).with_response_id().transform()

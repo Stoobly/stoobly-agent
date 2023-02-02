@@ -6,6 +6,8 @@ from mitmproxy.net import encoding
 from requests import Response
 from requests.structures import CaseInsensitiveDict
 
+from stoobly_agent.config.constants import custom_headers
+
 from ..response import Response as ORMResponse
 from ..utils.response_parse_handler import Response as ResponseDict, ResponseParseHandler
 
@@ -13,12 +15,24 @@ class ORMToRequestsResponseTransformer():
 
   def __init__(self, response: ORMResponse):
     self.__response = response
+    self.__with_response_id = False
 
   def transform(self) -> Response:
     response_dict: ResponseDict = {}
     parser = self.__new_parser(response_dict)
     response_dict['status_code'] = parser.get_status_code()
+
+    if 'headers' not in response_dict:
+      response_dict['headers'] = {}
+
+    if self.__with_response_id:
+      response_dict['headers'][custom_headers.RESPONSE_ID] = self.__response.id
+
     return self.__response_dict_to_response(response_dict)
+
+  def with_response_id(self):
+    self.__with_response_id = True
+    return self
 
   def __response_dict_to_response(self, response_dict: ResponseDict):
     requests_response = Response()

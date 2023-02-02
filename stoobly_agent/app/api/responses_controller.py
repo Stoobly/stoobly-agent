@@ -4,6 +4,7 @@ import requests
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.response_model import ResponseModel
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import custom_headers
 
 class ResponsesController:
     _instance = None
@@ -37,9 +38,11 @@ class ResponsesController:
             )
 
         # Extract specific headers
-        headers = {}
+        headers = {
+            'Access-Control-Expose-Headers': custom_headers.RESPONSE_ID,
+        }
 
-        accepted_headers = ['content-type']
+        accepted_headers = ['content-type', custom_headers.RESPONSE_ID.lower()]
         for header, val in response.headers.items():
             decoded_header = header.lower()
 
