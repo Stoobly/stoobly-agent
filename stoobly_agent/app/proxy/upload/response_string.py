@@ -2,6 +2,8 @@ import re
 import time
 import pdb
 
+from stoobly_agent.app.proxy.mitmproxy.response_facade import MitmproxyResponseFacade
+
 from .response_string_control import ResponseStringControl
 
 CLRF = b"\r\n"
@@ -12,7 +14,7 @@ class ResponseString:
 
     __current_time = None
 
-    def __init__(self, response, request_id):
+    def __init__(self, response: MitmproxyResponseFacade, request_id):
         self.__current_time = self.__get_current_time()
 
         self.response = response

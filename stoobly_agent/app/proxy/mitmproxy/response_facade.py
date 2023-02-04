@@ -4,7 +4,7 @@ from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 
 from .response import Response
 
-class MitmproxyResponseAdapter(Response):
+class MitmproxyResponseFacade(Response):
 
     def __init__(self, response: MitmproxyResponse):
         self.response = response
@@ -29,6 +29,10 @@ class MitmproxyResponseAdapter(Response):
             return b''
 
         return content
+
+    @property
+    def http_verison(self):
+        return self.response.http_version
 
     def decode_body(self):
         # Decodes content (if Content-Encoding header is set)
