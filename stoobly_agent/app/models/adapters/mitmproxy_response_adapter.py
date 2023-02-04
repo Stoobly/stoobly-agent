@@ -16,8 +16,16 @@ class MitmproxyResponseAdapter():
     return self
 
   @property
-  def status_code(self):
-    return int(self.__response.status_code.decode())
+  def status_code(self) -> int:
+    status_code = self.__response.status_code
+
+    if isinstance(status_code, str):
+      return int(status_code)
+
+    if isinstance(status_code, bytes):
+      return int(status_code.decode())
+
+    return status_code
 
   @property
   def headers(self):
@@ -32,12 +40,19 @@ class MitmproxyResponseAdapter():
     return self.__timestamp_start + self.__latency
 
   def adapt(self):
+    body = b''
+
+    try:
+      body = self.__response.raw.data
+    except:
+      body = self.__response.content
+
     return MitmproxyResponse(
       self.__http_version,
       self.status_code,
       self.reason,
       self.headers,
-      self.__response.content,
+      body,
       Headers(), # Trailers
       self.__timestamp_start,
       self.timestamp_end
@@ -46,5 +61,5 @@ class MitmproxyResponseAdapter():
   def __decode_dict(self, d):
     new_d = {}
     for k, v in d.items():
-      new_d[k.decode()] = v.decode()
+      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(k, bytes) else v
     return new_d
