@@ -118,7 +118,7 @@ class LocalDBRequestAdapter():
     requests = requests.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
 
     return {
-      'list': self.__transform_index_list(requests.items),
+      'list': list(map(lambda request: ORMToStooblyRequestTransformer(request, {}).transform(), requests)),
       'total': total,
     }
 
@@ -147,32 +147,6 @@ class LocalDBRequestAdapter():
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
     if request_columns.get('project_id'):
       del request_columns['project_id']
-
-    if request_columns.get('scenario_id'):
-      del request_columns['scenario_id']
-
-  def __transform_index_list(self, records: List[Request]):
-    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + [
-      'committed_at', 'body_params_hash', 'body_text_hash', 'key', 'query', 'query_params_hash'
-    ]
-
-    filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
-
-    requests = list(map(lambda request: filter_keys(request.to_dict()), records))
-    for request in requests:
-      components = []
-      if len(request['query_params_hash']) != 0:
-        components.append('query_params')
-
-      if len(request['body_params_hash']) != 0:
-        components.append('body_params')
-
-      if len(request['body_text_hash']) != 0:
-        components.append('body')
-
-      request['components'] = components
-
-    return requests
 
   def __search(self, base_model: Request, query: str) -> Request:
     uri = urlparse(query)

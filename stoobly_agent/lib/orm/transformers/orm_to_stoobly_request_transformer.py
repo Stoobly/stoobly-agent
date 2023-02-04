@@ -10,6 +10,7 @@ from stoobly_agent.app.models.adapters.types.request_show_params import RequestS
 from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse, ResponseShowResponse
 
 from ..request import Request as ORMRequest
+from ..response import Response
 from ..utils.request_parse_handler import Request as RequestDict, RequestParseHandler
 from .orm_to_stoobly_response_transformer import ORMToStooblyResponseTransformer
 
@@ -36,13 +37,40 @@ class ORMToStooblyRequestTransformer():
 
     self.__decorate_with_request(stoobly_request, self.__request)
     self.__decorate_with_response(stoobly_request, self.__request.response)
+    self.__decorate_with_components(stoobly_request, self.__request)
+    self.__decorate_with_scenario(stoobly_request, self.__request)
+    
+    return self.__filter_properties(stoobly_request)
 
-    for property in FILTER_LIST:
-      del stoobly_request[property]
+  def __filter_properties(self, stoobly_request: RequestShowResponse):
+    allowed_keys = list(RequestShowResponse.__annotations__.keys()) + [
+      'committed_at', 'body_params_hash', 'body_text_hash', 'key', 'query', 'query_params_hash'
+    ]
 
-    return stoobly_request
+    filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)
+    return filter_keys(stoobly_request)
 
-  def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest) -> RequestShowResponse:
+  def __decorate_with_scenario(self, stoobly_request: RequestShowResponse, request: ORMRequest):
+    if not request.scenario_id:
+      return
+
+    scenario = request.scenario
+    stoobly_request['scenario'] = scenario.name
+
+  def __decorate_with_components(self, stoobly_request: RequestShowResponse, request: ORMRequest):
+    components = []
+    if len(request.query_params_hash) != 0:
+      components.append('query_params')
+
+    if len(request.body_params_hash) != 0:
+      components.append('body_params')
+
+    if len(request.body_text_hash) != 0:
+      components.append('body')
+
+    stoobly_request['components'] = components
+
+  def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest):
     request_dict = self.__parse_raw_request(request.raw)
 
     stoobly_request['method'] = request_dict['method'].decode()
@@ -88,13 +116,13 @@ class ORMToStooblyRequestTransformer():
     request_dict['method'] = parser.get_method()
     return request_dict
   
-  def __decorate_with_response(self, stoobly_request: RequestShowResponse, stoobly_response: ResponseShowResponse):
-    if not stoobly_response:
+  def __decorate_with_response(self, stoobly_request: RequestShowResponse, orm_response: Response):
+    if not orm_response:
       return
 
-    transformer = ORMToStooblyResponseTransformer(stoobly_response)
-    stoobly_request['status']  = transformer.response_dict['status_code']
+    transformer = ORMToStooblyResponseTransformer(orm_response)
+    stoobly_request['status'] = int(transformer.python_response.status_code)
 
     if 'response' in self.__options:
-      stoobly_response: ResponseShowResponse = transformer.transform()
+      stoobly_response = transformer.transform()
       stoobly_request['response'] = stoobly_response

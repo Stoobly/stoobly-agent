@@ -42,8 +42,11 @@ class RequestShowResponse(TypedDict):
   method: str
   path: str
   port: str
+  query: str
   query_params: Union[list, None]
   response: ResponseShowResponse
+  scenario: str
+  scenario_id: int
   starred: bool
   status: int
   url: str
