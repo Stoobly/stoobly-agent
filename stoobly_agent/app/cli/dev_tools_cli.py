@@ -2,7 +2,8 @@ import click
 import pdb
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
-from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate
+from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate, rollback as database_rollback
+from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.scenario import Scenario
@@ -26,6 +27,10 @@ def debug(**kwargs):
 @dev_tools.command()
 def migrate():
   database_migrate()
+
+@dev_tools.command()
+def rollback():
+  database_rollback()
 
 @dev_tools.command()
 @click.option('--content')
