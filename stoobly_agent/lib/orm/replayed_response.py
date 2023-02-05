@@ -8,7 +8,7 @@ from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import Mitmpro
 from .base import Base
 
 class ReplayedResponse(Base):
-  __fillable__ = ['latency', 'timestamp', 'raw', 'received_at', 'request_id']
+  __fillable__ = ['latency', 'timestamp', 'raw', 'received_at', 'status', 'request_id']
 
   def with_python_response(self, response: requests.Response):
     http_version = f"HTTP/{response.raw.version / 10.0}"
@@ -16,3 +16,4 @@ class ReplayedResponse(Base):
     adapted_response = MitmproxyResponseFacade(mitmproxy_response)
     response_string = ResponseString(adapted_response, None) 
     self.raw = response_string.get()
+    self.status = response.status_code
