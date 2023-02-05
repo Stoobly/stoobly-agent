@@ -1,6 +1,7 @@
 import pdb
 
 from datetime import datetime
+from time import time
 from urllib.parse import urlparse
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
@@ -15,6 +16,7 @@ from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay_with_rewrite
 from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.request import Request as OrmRequest
 
 class RequestsController:
@@ -185,8 +187,8 @@ class RequestsController:
         context.parse_path_params({
             'id': 1
         })
-        project_id = context.params.get('project_id')
-        request_id = context.params.get('id')
+        project_id = int(context.params.get('project_id'))
+        request_id = int(context.params.get('id'))
 
         request_model = self.__request_model(context)
         request_response = request_model.show(request_id, **{
@@ -199,7 +201,17 @@ class RequestsController:
             return context.bad_request(f"Could not find request {request_id}")
 
         replay_context = ReplayContext(Request(request_response))
+
+        now = time()
         res = replay_with_rewrite(replay_context)
+        received_at = time()
+
+        replayed_response = ReplayedResponse()
+        replayed_response.request_id = request_id
+        replayed_response.with_python_response(res)
+        replayed_response.received_at = received_at
+        replayed_response.latency = (received_at - now) * 1000 # ms
+        replayed_response.save()
 
         context.render(
             data = res.raw.data,

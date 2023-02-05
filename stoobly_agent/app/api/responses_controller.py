@@ -5,6 +5,9 @@ from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestH
 from stoobly_agent.app.models.response_model import ResponseModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
+
+from app.models.request_model import RequestModel
 
 class ResponsesController:
     _instance = None
@@ -31,6 +34,14 @@ class ResponsesController:
         response_model = self.__response_model(context) 
         response: requests.Response = response_model.mock(context.params.get('requestId'))
 
+        return self.__render_response(response)
+
+    def __response_model(self, context: SimpleHTTPRequestHandler):
+        response_model = ResponseModel(Settings.instance())
+        response_model.as_remote() if context.headers.get('access-token') else response_model.as_local()
+        return response_model
+
+    def __render_response(context: SimpleHTTPRequestHandler, response: requests.Response):
         if response == None:
             return context.render(
                 plain = '',
@@ -56,8 +67,3 @@ class ResponsesController:
             headers = headers,
             status = 200
         )
-
-    def __response_model(self, context: SimpleHTTPRequestHandler):
-        response_model = ResponseModel(Settings.instance())
-        response_model.as_remote() if context.headers.get('access-token') else response_model.as_local()
-        return response_model

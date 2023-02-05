@@ -4,6 +4,7 @@ import requests
 from typing import List
 
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer
 
 class LocalDBResponseAdapter():
@@ -20,3 +21,14 @@ class LocalDBResponseAdapter():
 
     response = request.response
     return ORMToRequestsResponseTransformer(response).with_response_id().transform()
+
+  def update(self, response_id, **columns):
+    response = Response.find(response_id)
+
+    if not response:
+      return
+
+    if response.update(columns):
+      return response.to_dict()
+
+
