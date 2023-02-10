@@ -5,7 +5,6 @@ from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestH
 from stoobly_agent.app.models.response_model import ResponseModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers
-from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 
 class ResponsesController:
     _instance = None

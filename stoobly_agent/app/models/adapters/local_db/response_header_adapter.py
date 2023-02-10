@@ -29,8 +29,8 @@ class LocalDBResponseHeaderAdapter():
     headers = []
     for key, val in response.headers.items():
       headers.append({
-        'name': key.decode(),
-        'value': val.decode(),
+        'name': key,
+        'value': val,
       })
 
     return headers

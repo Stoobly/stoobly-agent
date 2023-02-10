@@ -1,23 +1,21 @@
 import pdb
 import requests
 
-from typing import List
-
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer
 
 class LocalDBResponseAdapter():
-  __request_orm = None
+  __response_orm = None
 
-  def __init__(self, request_orm: Request.__class__ = Request):
-    self.__request_orm = request_orm
+  def __init__(self, response_orm: Request.__class__ = Request):
+    self.__response_orm = response_orm
 
   def mock(self, request_id) -> requests.Response:
-    request = self.__request_orm.find(request_id)
+    request = self.__response_orm.find(request_id)
 
     if not request:
-      return []
+      return None
 
     response = request.response
     return ORMToRequestsResponseTransformer(response).with_response_id().transform()
