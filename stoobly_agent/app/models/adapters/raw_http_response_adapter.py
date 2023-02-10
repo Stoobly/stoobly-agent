@@ -1,9 +1,11 @@
+import pdb
 import requests
 
 from httptools import HttpResponseParser
 from io import BytesIO
 from mitmproxy.net import encoding
 from requests.structures import CaseInsensitiveDict
+from typing import Union
 
 from stoobly_agent.app.proxy.mitmproxy.response import Response
 from stoobly_agent.lib.orm.utils.response_parse_handler import Response as ResponseDict, ResponseParseHandler
@@ -15,25 +17,28 @@ class RawHttpResponseAdapter():
 
   def __init__(self, req_text):
     self.__req_text = req_text
+
+  def to_response(self):
     req_lines = self.__req_text.split(CRLF)
     self.__parse_response_line(req_lines[0])
     ind = 1
-    self.headers = dict()
+    headers = CaseInsensitiveDict()
     while ind < len(req_lines) and len(req_lines[ind]) > 0:
         colon_ind = req_lines[ind].find(b':')
         header_key = req_lines[ind][:colon_ind]
         header_value = req_lines[ind][colon_ind + 1:]
-        self.headers[header_key] = header_value
+        headers[self.__decode(header_key)] = self.__decode(header_value).strip()
         ind += 1
     ind += 1
     data_lines = req_lines[ind:] if ind < len(req_lines) else None
-    self.body = CRLF.join(data_lines)
 
-  def to_response(self):
     response = requests.Response()
     response.status_code = self.status
-    response._content = self.body
-    response.headers = self.headers
+    response.headers = headers
+
+    content_encoding = response.headers.get('content-encoding')
+    body = CRLF.join(data_lines)
+    response.raw = self.__decode_body(body, content_encoding)
 
     return response
 
@@ -51,12 +56,7 @@ class RawHttpResponseAdapter():
 
     # Unless we can create an object with the stream method, have to self decode
     content_encoding = requests_response.headers.get('content-encoding')
-    if content_encoding:
-      decoded_response = encoding.decode(response_dict.get('body'), content_encoding)
-    else:
-      decoded_response = response_dict.get('body')
-
-    requests_response.raw = BytesIO(decoded_response)
+    requests_response.raw = self.__decode_body(response_dict.get('body'), content_encoding)
 
     requests_response.reason = response_dict.get('status')
     requests_response.status_code = response_dict['status_code']
@@ -80,3 +80,14 @@ class RawHttpResponseAdapter():
     parser = HttpResponseParser(handler)
     parser.feed_data(memoryview(self.__req_text))
     return parser
+
+  def __decode(self, s: Union[bytes, str]):
+    return s if isinstance(s, str) else s.decode()
+
+  def __decode_body(self, body: bytes, content_encoding):
+    if content_encoding:
+      decoded_response = encoding.decode(body, content_encoding)
+    else:
+      decoded_response = body 
+
+    return BytesIO(decoded_response)

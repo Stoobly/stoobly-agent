@@ -42,8 +42,8 @@ class AlignRequests(Migration):
 
                     request.latency = response_control.latency
 
-                    _response = RawHttpResponseAdapter(response.raw)
-                    request.status = int(_response.status)
+                    _response = RawHttpResponseAdapter(response.raw).to_response()
+                    request.status = int(_response.status_code)
 
                 request.update()
 
