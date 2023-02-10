@@ -209,7 +209,6 @@ class RequestsController:
         replayed_response = ReplayedResponse()
         replayed_response.request_id = request_id
         replayed_response.with_python_response(res)
-        replayed_response.received_at = received_at
         replayed_response.latency = (received_at - now) * 1000 # ms
         replayed_response.save()
 

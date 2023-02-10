@@ -14,7 +14,6 @@ class CreateReplayedResponses(Migration):
             table.binary('raw')
             table.integer('status')
             table.integer('latency')
-            table.timestamp('received_at')
             table.timestamps()
 
     def down(self):
