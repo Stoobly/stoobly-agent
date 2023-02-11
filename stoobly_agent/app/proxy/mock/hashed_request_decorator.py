@@ -86,8 +86,8 @@ class HashedRequestDecorator:
     def body_text_hash(self):
         text = self.request.body
 
-        if len(text) == 0:
-            return text
+        if not text or len(text) == 0:
+            return ''
 
         return self.__hash(text)
 

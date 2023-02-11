@@ -1,17 +1,16 @@
 from base64 import b64encode
 import pdb
-from re import I
 
-from httptools import HttpRequestParser, parse_url
+from httptools import parse_url
 from typing import List
 from urllib.parse import parse_qs
 
+from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.types.request_show_params import RequestShowParams
-from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse, ResponseShowResponse
+from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse
 
 from ..request import Request as ORMRequest
 from ..response import Response
-from ..utils.request_parse_handler import Request as RequestDict, RequestParseHandler
 from .orm_to_stoobly_response_transformer import ORMToStooblyResponseTransformer
 
 FILTER_LIST = [
@@ -71,23 +70,23 @@ class ORMToStooblyRequestTransformer():
     stoobly_request['components'] = components
 
   def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest):
-    request_dict = self.__parse_raw_request(request.raw)
+    python_request = RawHttpRequestAdapter(request.raw).to_request()
 
-    stoobly_request['method'] = request_dict['method'].decode()
-    stoobly_request['url'] = request_dict['url'].decode()
+    stoobly_request['method'] = python_request.method.decode()
+    stoobly_request['url'] = python_request.url.decode()
 
-    if 'headers' in self.__options:
-      stoobly_request['headers'] = self.__transform_headers(request_dict['headers'])
-
-    if 'body' in self.__options:
-      stoobly_request['body'] = b64encode(request_dict['body'])
-
-    parsed_url = parse_url(request_dict['url'])
+    parsed_url = parse_url(python_request.url)
 
     if parsed_url.query:
       stoobly_request['query'] = parsed_url.query.decode()
       if 'query_params' in self.__options:
         stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
+
+    if 'headers' in self.__options:
+      stoobly_request['headers'] = self.__transform_headers(python_request.headers)
+
+    if 'body' in self.__options:
+      stoobly_request['body'] = b64encode(python_request.data)
 
   def __transform_headers(self, headers: dict):
     headers_list = []
@@ -107,14 +106,6 @@ class ORMToStooblyRequestTransformer():
         'value': val,
       })
     return query_params_list
-
-  def __parse_raw_request(self, raw_request: bytes):
-    request_dict = {}
-    handler = RequestParseHandler(request_dict)
-    parser = HttpRequestParser(handler)
-    parser.feed_data(memoryview(raw_request))
-    request_dict['method'] = parser.get_method()
-    return request_dict
   
   def __decorate_with_response(self, stoobly_request: RequestShowResponse, orm_response: Response):
     if not orm_response:
