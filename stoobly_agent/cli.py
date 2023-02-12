@@ -4,6 +4,7 @@ import pdb
 import sys
 
 from stoobly_agent.config.constants import env_vars
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
@@ -49,6 +50,12 @@ if settings.cli.features.remote:
     main.add_command(project)
     main.add_command(report)
     main.add_command(scenario)
+
+@main.command(
+    help="Initialize a new context"
+)
+def init(**kwargs):
+    DataDir.instance().create()
 
 @main.command(
     help="Run proxy and/or UI",

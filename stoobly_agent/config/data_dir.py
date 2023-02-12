@@ -12,7 +12,11 @@ class DataDir:
         if DataDir._instance:
             raise RuntimeError('Call instance() instead')
         else:
-            self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
+            self.__data_dir_path = os.path.join(os.getcwd(), self.DATA_DIR_NAME)
+
+            # If the current working directory does not contain a .stoobly folder, default to home directory
+            if not os.path.exists(self.__data_dir_path):
+                self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
 
             if not os.path.exists(self.__data_dir_path):
                 os.mkdir(self.__data_dir_path)
@@ -58,3 +62,12 @@ class DataDir:
     @property
     def settings_file_path(self):
         return os.path.join(self.path, 'settings.yml')
+
+    def create(self, directoy_path = None):
+        if not directoy_path:
+            directoy_path = os.getcwd()
+
+        self.__data_dir_path = os.path.join(directoy_path, self.DATA_DIR_NAME)
+
+        if not os.path.exists(self.__data_dir_path):
+            os.mkdir(self.__data_dir_path)
