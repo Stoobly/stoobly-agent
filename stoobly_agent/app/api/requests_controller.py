@@ -1,4 +1,5 @@
 import pdb
+import requests
 
 from datetime import datetime
 from time import time
@@ -201,22 +202,7 @@ class RequestsController:
             return context.bad_request(f"Could not find request {request_id}")
 
         replay_context = ReplayContext(Request(request_response))
-
-        now = time()
-        res = replay_with_rewrite(replay_context)
-        received_at = time()
-
-        replayed_response = ReplayedResponse()
-        replayed_response.request_id = request_id
-        replayed_response.with_python_response(res)
-        replayed_response.latency = (received_at - now) * 1000 # ms
-        replayed_response.save()
-
-        context.render(
-            data = res.raw.data,
-            headers = res.headers,
-            status = res.status_code
-        )
+        self.__replay(context, replay_context)
 
     # PUT /requests/send
     def send(self, context: SimpleHTTPRequestHandler):
@@ -234,7 +220,23 @@ class RequestsController:
         }
 
         replay_context = ReplayContext(Request(request_response))
+        self.__send(context, replay_context) 
+
+    def __request_model(self, context: SimpleHTTPRequestHandler):
+        request_model = RequestModel(Settings.instance())
+        request_model.as_remote() if context.headers.get('access-token') else request_model.as_local()
+        return request_model
+
+    def __replay(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext):
+        self.__send(context, replay_context, self.__create_replayed_response) 
+
+    def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, callback = None):
+        now = time()
         res = replay_with_rewrite(replay_context)
+        received_at = time()
+
+        if callback:
+            callback(context, res, int((received_at - now) * 1000))
 
         context.render(
             data = res.raw.data,
@@ -242,8 +244,10 @@ class RequestsController:
             status = res.status_code
         )
 
-
-    def __request_model(self, context: SimpleHTTPRequestHandler):
-        request_model = RequestModel(Settings.instance())
-        request_model.as_remote() if context.headers.get('access-token') else request_model.as_local()
-        return request_model
+    def __create_replayed_response(self, context: SimpleHTTPRequestHandler, res: requests.Response, latency: int):   
+        request_id = int(context.params.get('id'))
+        replayed_response = ReplayedResponse()
+        replayed_response.request_id = request_id
+        replayed_response.with_python_response(res)
+        replayed_response.latency = latency # ms
+        replayed_response.save()
