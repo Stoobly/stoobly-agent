@@ -1,6 +1,5 @@
 import click
 import collections
-import pdb
 
 from functools import reduce
 from typing import List, TypedDict
@@ -27,23 +26,23 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['dev-tools', 'exec', 'feature'],
+        'commands': ['dev-tools', 'exec', 'feature', 'init'],
       },
       {
         'name': 'Proxy Commands',
         'commands': ['ca-cert', 'config', 'intercept', 'run'],
-      }  
+      }
     ]
 
     if self.__settings.cli.features.remote:
       command_groups.append({
         'name': 'Remote Commands',
-        'commands': ['project', 'report', 'scenario', 'request', 'trace'],
+        'commands': ['project', 'report', 'request', 'scenario', 'trace'],
       })
     else:
       command_groups.append({
         'name': 'Local Commands',
-        'commands': ['request'],
+        'commands': ['request', 'scenario'],
       })
 
     self.__print(formatter, command_groups)
@@ -69,6 +68,6 @@ class MainGroup(click.Group):
 
   def __get_commands(self, command_names: List[str]):
     return list(filter(
-      lambda c: c != None, 
+      lambda c: c != None,
       map(lambda c: self.commands.get(c), command_names)
     ))

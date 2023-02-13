@@ -8,7 +8,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, feature, intercept, MainGroup, project, request, trace
+from .app.cli import ca_cert, config, feature, intercept, MainGroup, request, scenario, trace
 from .app.proxy import CONNECTION_STRATEGIES, INTERCEPT_MODES, run as run_proxy
 from .app.settings import Settings
 from .lib import logger
@@ -35,6 +35,7 @@ main.add_command(config)
 main.add_command(feature)
 main.add_command(intercept)
 main.add_command(request)
+main.add_command(scenario)
 main.add_command(trace)
 
 if settings.cli.features.dev_tools:
@@ -46,10 +47,9 @@ if settings.cli.features.exec:
     ExecDecorator(main).decorate()
 
 if settings.cli.features.remote:
-    from .app.cli import report, scenario
+    from .app.cli import project, report
     main.add_command(project)
     main.add_command(report)
-    main.add_command(scenario)
 
 @main.command(
     help="Initialize a new context"
