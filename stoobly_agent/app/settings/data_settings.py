@@ -14,7 +14,9 @@ class DataSettings:
     self.__data_rules_map = {k: DataRules(v) for k, v in self.__data_settings.items()}
 
   def data_rules(self, project_id: str) -> DataRules:
-    return self.__data_rules_map.get(project_id) or DataRules({})
+    if not self.__data_rules_map.get(project_id):
+      self.__data_rules_map[project_id] = DataRules({})
+    return self.__data_rules_map[project_id]
 
   def to_dict(self):
     return {k: v.to_dict() for k, v in self.__data_rules_map.items()}
