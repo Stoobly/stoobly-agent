@@ -1,6 +1,8 @@
 import requests
 import urllib
 
+from stoobly_agent.app.models.adapters.types.scenario_create_params import ScenarioCreateParams
+
 from ..logger import Logger
 from .interfaces.pagination_query_params import PaginationQueryParams
 from .stoobly_api import StooblyApi
@@ -8,19 +10,9 @@ from .stoobly_api import StooblyApi
 class ScenariosResource(StooblyApi):
   SCENARIOS_ENDPOINT = 'scenarios'
 
-  def create(self, project_id: str, params, raw_requests = ''):
+  def create(self, **params: ScenarioCreateParams):
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}"
-
-    body = {
-        'project_id': project_id,
-        **params,
-    }
-
-    files = {}
-    if len(raw_requests) > 0:
-      files = { 'file': raw_requests }
-
-    return self.post(url, headers=self.default_headers, data=body, files=files)
+    return self.post(url, headers=self.default_headers, data=params)
 
   def index(self, **query_params: PaginationQueryParams) -> requests.Response:
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}"

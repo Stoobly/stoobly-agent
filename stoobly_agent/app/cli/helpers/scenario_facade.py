@@ -3,53 +3,35 @@ import requests
 
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
+from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.replay.replay_scenario_service import inject_replay
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
-from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 
 class ScenarioFacade(ReplayFacade):
 
   def __init__(self, settings: Settings):
-    self.__api = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
     super().__init__(settings)
+    self.__model = ScenarioModel(settings)
 
   def create(self, project_key: str, name: str, description: str = ''):
-    res: requests.Response = self.__api.from_project_key(
-      project_key, 
-      lambda project_id: self.__api.create(
-        project_id, {
-          'description': description,
-          'name': name,
-        }
-      )
-    )
-
-    if not res.ok:
-      raise AssertionError(res.content)
-
-    return res.json()
+    key = ProjectKey(project_key)
+    return self.__model.create(**{
+      'project_id': key.id, 
+      'description': description,
+      'name': name,
+    })
 
   def index(self, project_key, cli_options: dict) -> ScenariosIndexResponse:
     key = ProjectKey(project_key)
-    res = self.__api.index(**{ 'project_id': key.id, **cli_options})
-
-    if not res.ok:
-      raise AssertionError(res.content)
-
-    return res.json()
+    return self.__model.index(**{ 'project_id': key.id, **cli_options})
 
   def show(self, scenario_key: str) -> ScenarioShowResponse:
     key = ScenarioKey(scenario_key)
-    res = self.__api.show(key.id)
-
-    if not res.ok:
-      raise AssertionError(res.content)
-
-    return res.json()
+    return self.__model.show(key.id)
 
   def replay(self, source_key: str, cli_options: ReplayCliOptions):
     return self.__replay(source_key, {

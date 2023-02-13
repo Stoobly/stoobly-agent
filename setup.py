@@ -1,5 +1,8 @@
 import os
+
 from setuptools import find_packages, setup
+
+from stoobly_agent import VERSION
 
 def package_files(directory):
     paths = []
@@ -48,6 +51,6 @@ setup(
     },
     #scripts=['bin/stoobly-agent'],
     url='https://github.com/Stoobly/stoobly-agent',
-    version='0.21.1',
+    version=VERSION,
 )
 
