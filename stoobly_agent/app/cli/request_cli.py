@@ -68,16 +68,16 @@ def list(**kwargs):
 @request.command(
   help="Replay a request"
 )
-@click.option(
+@ConditionalDecorator(lambda f: click.option(
     '--alias-resolve-strategy', 
     default=alias_resolve_strategy.NONE, 
     type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
     help='Strategy for resolving dynamic values for aliases.'
-)
-@click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+)(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')(f), is_remote)
 @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
 @click.option('--host', help='Rewrite request host.')
-@click.option('--group-by', help='Repeat for each alias name.')
+@ConditionalDecorator(lambda f: click.option('--group-by', help='Repeat for each alias name.')(f), is_remote)
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
 @click.option(
   '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
@@ -88,8 +88,8 @@ def list(**kwargs):
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
 @ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
 @click.option('--scheme', help='Rewrite request scheme.')
-@click.option('--trace-id', help='Use existing trace.')
-@click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
+@ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')(f), is_remote)
 @click.argument('request_key')
 def replay(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
