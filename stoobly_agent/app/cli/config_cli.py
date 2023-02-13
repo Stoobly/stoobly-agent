@@ -5,8 +5,6 @@ import time
 
 from typing import List
 
-from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
-from stoobly_agent.app.cli.helpers.scenario_facade import ScenarioFacade
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
@@ -14,6 +12,8 @@ from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
+from .helpers import  ProjectFacade, ScenarioFacade
+from .helpers.print_service import print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
 @click.group(
@@ -60,11 +60,16 @@ def scenario(ctx):
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def show(**kwargs):
     settings = Settings.instance()
+    print_options = select_print_options(kwargs)
+
     project_key = __project_key(settings)
     data_rule = settings.proxy.data.data_rules(project_key.id)
+
+    if not data_rule.scenario_key or len(data_rule.scenario_key) == 0:
+        return
+
     kwargs['key'] = data_rule.scenario_key
 
-    print_options = select_print_options(kwargs)
 
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
     scenario = ScenarioFacade(settings)
@@ -216,6 +221,31 @@ if is_remote:
     @click.pass_context
     def project(ctx):
         pass
+
+    @project.command(
+        help="Describe project"
+    )
+    @click.option('--select', multiple=True, help='Select column(s) to display.')
+    @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+    def show(**kwargs):
+        settings = Settings.instance()
+        print_options = select_print_options(kwargs)
+
+        project_key = __project_key(settings)
+        if project_key.is_local:
+            return
+
+        kwargs['project_key'] = project_key.raw
+
+        project_key = resolve_project_key_and_validate(kwargs, settings)
+        project = ProjectFacade(settings)
+
+        try:
+            project_response = project.show(project_key)
+        except AssertionError as e:
+            return print(e, file=sys.stderr)
+
+        print_projects([project_response], **print_options)
 
     @project.command(
         help="Set active project."

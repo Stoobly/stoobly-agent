@@ -11,6 +11,14 @@ def select_print_options(kwargs):
 
     return print_options
 
+def print_projects(projects, **kwargs):
+    tabulate_print(
+        projects, 
+        filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select') or []
+    )
+
 def print_requests(requests, **kwargs):
     tabulate_print(
       requests, 

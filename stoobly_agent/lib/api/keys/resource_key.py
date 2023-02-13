@@ -1,11 +1,11 @@
 import base64
 import json
-import random
-import time
 
 class ResourceKey():
 
     def __init__(self, key):
+        self.__raw = key
+
         try:
             key = base64.b64decode(key)
         except:
@@ -19,13 +19,15 @@ class ResourceKey():
         except:
             self.decoded_key = {}
 
+    @property
+    def raw(self):
+        return self.__raw
 
     @staticmethod
     def encode(data: dict):
         return base64.b64encode(json.dumps({
             **data,
         }).encode())
-
 
     def get(self, k: str):
         v = self.decoded_key.get(k)

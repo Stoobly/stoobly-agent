@@ -17,6 +17,10 @@ class ProjectKey(ResourceKey):
       raise InvalidProjectKey('Missing organization_id')
 
   @property
+  def is_local(self) -> bool:
+    return int(self.id) == LOCAL_PROJECT_ID
+
+  @property
   def id(self) -> str:
     return self.get('i')
   
