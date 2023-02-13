@@ -5,6 +5,7 @@ import tempfile
 class DataDir:
     DATA_DIR_NAME = '.stoobly'
     DB_FILE_NAME = 'stoobly_agent.sqlite3'
+    DB_VERSION_NAME = 'VERSION'
 
     _instance = None
 
@@ -58,6 +59,10 @@ class DataDir:
     @property
     def db_file_path(self):
         return os.path.join(self.db_dir_path, self.DB_FILE_NAME)
+
+    @property
+    def db_version_path(self):
+        return os.path.join(self.db_dir_path, self.DB_VERSION_NAME)
 
     @property
     def settings_file_path(self):

@@ -1,5 +1,7 @@
 import click
 import pdb
+
+from stoobly_agent import VERSION
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate, rollback as database_rollback
@@ -26,7 +28,7 @@ def debug(**kwargs):
 
 @dev_tools.command()
 def migrate():
-  database_migrate()
+  database_migrate(VERSION)
 
 @dev_tools.command()
 def rollback():

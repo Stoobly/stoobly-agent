@@ -3,6 +3,7 @@ import os
 import pdb
 import sys
 
+from stoobly_agent import VERSION
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
@@ -16,6 +17,9 @@ from .lib.orm.migrate_service import migrate as migrate_database
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote
+
+# Makes sure database is up to date
+migrate_database(VERSION)
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -93,7 +97,5 @@ def run(**kwargs):
     if kwargs['intercept_mode'] and kwargs['intercept_mode'] not in INTERCEPT_MODES:
         print(f"Error: Invalid value for --intercept-mode, values: {', '.join(INTERCEPT_MODES)}", file=sys.stderr)
         sys.exit(1)
-
-    migrate_database()
 
     run_proxy(**kwargs)
