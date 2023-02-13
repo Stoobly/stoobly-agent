@@ -26,14 +26,14 @@ class AlignRequests(Migration):
                 _request: requests.Request = RawHttpRequestAdapter(request.raw)
 
                 parsed_url = urlparse(_request.url)
-                request.path = parsed_url.path.decode()
-                request.query = parsed_url.query.decode()
+                request.path = parsed_url.path
+                request.query = parsed_url.query
 
                 if parsed_url.username:
-                    request.user = parsed_url.username.decode()
+                    request.user = parsed_url.username
 
                 if parsed_url.password:
-                    request.password = parsed_url.password.decode()
+                    request.password = parsed_url.password
 
                 response = request.response
                 if response:
