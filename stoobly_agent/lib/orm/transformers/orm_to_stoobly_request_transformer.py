@@ -72,15 +72,15 @@ class ORMToStooblyRequestTransformer():
   def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest):
     python_request = RawHttpRequestAdapter(request.raw).to_request()
 
-    stoobly_request['method'] = python_request.method.decode()
-    stoobly_request['url'] = python_request.url.decode()
+    stoobly_request['method'] = python_request.method
+    stoobly_request['url'] = python_request.url
 
-    parsed_url = parse_url(python_request.url)
+    parsed_url = parse_url(python_request.url.encode())
 
     if parsed_url.query:
       stoobly_request['query'] = parsed_url.query.decode()
       if 'query_params' in self.__options:
-        stoobly_request['query_params'] = self.__transform_query_params(parsed_url.query)
+        stoobly_request['query_params'] = self.__transform_query_params(stoobly_request['query'])
 
     if 'headers' in self.__options:
       stoobly_request['headers'] = self.__transform_headers(python_request.headers)
