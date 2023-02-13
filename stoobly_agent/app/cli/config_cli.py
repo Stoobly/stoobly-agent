@@ -5,6 +5,8 @@ import time
 
 from typing import List
 
+from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
+from stoobly_agent.app.cli.helpers.scenario_facade import ScenarioFacade
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
@@ -42,12 +44,37 @@ def dump(**kwargs):
     else:
         print(output)
 
+### Scenario
+
 @click.group(
     help="Manage active scenario"
 )
 @click.pass_context
 def scenario(ctx):
     pass
+
+@scenario.command(
+    help="Describe scenario"
+)
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+def show(**kwargs):
+    settings = Settings.instance()
+    project_key = __project_key(settings)
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    kwargs['key'] = data_rule.scenario_key
+
+    print_options = select_print_options(kwargs)
+
+    scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
+    scenario = ScenarioFacade(settings)
+
+    try:
+        scenario_response = scenario.show(scenario_key)
+    except AssertionError as e:
+        return print(e, file=sys.stderr)
+
+    print_scenarios([scenario_response], **print_options)
 
 @scenario.command(
     help="Set active scenario."
@@ -58,9 +85,7 @@ def set(**kwargs):
     scenario_key = ScenarioKey(kwargs['scenario_key'])
 
     settings = Settings.instance()
-    project_key = settings.proxy.intercept.project_key
-    validate_project_key(project_key)
-    project_key = ProjectKey(project_key)
+    project_key = __project_key(settings)
 
     if scenario_key.project_id != project_key.id:
         return print("Please provide a scenario that belongs to the current project.\n")
@@ -77,15 +102,15 @@ def set(**kwargs):
 def clear(**kwargs):
     settings = Settings.instance()
 
-    project_key = settings.proxy.intercept.project_key
-    validate_project_key(project_key)
-    project_key = ProjectKey(project_key)
+    project_key = __project_key(settings) 
 
     data_rule = settings.proxy.data.data_rules(project_key.id)
     data_rule.scenario_key = ''
     settings.commit()
 
     print("Scenario cleared!")
+
+### Rewrite
 
 @click.group(
     help="Manage rewrite rules"
@@ -160,6 +185,8 @@ def set(**kwargs):
 
     Logger.instance().debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
 
+### API Key
+
 @click.group(
     help="Manage API key"
 )
@@ -230,3 +257,8 @@ def __select_parameter_rule(kwargs):
         'value': kwargs['value'],
         'type': kwargs['type'],
     }
+
+def __project_key(settings):
+    project_key = settings.proxy.intercept.project_key
+    validate_project_key(project_key)
+    return ProjectKey(project_key)
