@@ -126,7 +126,8 @@ def __handle_mode_option(_mode, request: Request, headers):
     headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
 
 def __get_cookies(headers: Request.headers):
-  return SimpleCookie(headers.get('Cookie'))
+  cookies = SimpleCookie(headers.get('Cookie')).items()
+  return {k: v.value for k, v in cookies}
 
 def __handle_before_replay(context: ReplayContext):
   request = context.request
