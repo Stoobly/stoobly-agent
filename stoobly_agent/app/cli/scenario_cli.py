@@ -88,7 +88,7 @@ def replay(**kwargs):
 
         validate_scenario_key(kwargs['scenario_key'])
 
-    if len(kwargs['validate']):
+    if 'validate' in kwargs and len(kwargs['validate']):
         validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
@@ -238,5 +238,5 @@ def __handle_on_test_response(replay_context: ReplayContext, session_context: Se
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
-    if len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
+    if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
