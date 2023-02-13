@@ -9,7 +9,7 @@ proxy:
     intercept:
         active: false
         mode: record
-        project_key: ''
+        project_key: eyJpIjowLCJvIjowfQ==
     firewall: {}
     rewrite: {}
 proxy_config_path: config/settings.yml
