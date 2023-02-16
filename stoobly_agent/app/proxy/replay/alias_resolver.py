@@ -25,12 +25,19 @@ class AliasResolver():
     return trace_alias
 
   def create_alias(self, alias_name, value, trace_request = None):
-    return TraceAlias.first_or_create(
-      name=alias_name,
-      value=value, # TODO: serialize?
-      trace_id=self.__trace.id,
-      trace_request_id=trace_request.id if trace_request else None
-    )
+    columns = {
+      'name': alias_name,
+      'value': self.__serialize(value),
+      'trace_id': self.__trace.id,
+      'trace_request_id': trace_request.id if trace_request else None
+    }
+
+    trace_alias = TraceAlias.find_by(**columns)
+    if trace_alias:
+      return trace_alias
+
+    columns['value'] = value
+    return TraceAlias.create(**columns)
 
   def __resolve_alias(self, alias_name: str, value: str):
     strategy = self.__strategy
