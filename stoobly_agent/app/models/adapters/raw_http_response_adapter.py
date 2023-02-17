@@ -70,7 +70,7 @@ class RawHttpResponseAdapter():
   def __parse_response_line(self, response_line):
     response_parts = response_line.split(b' ')
     self.protocol = self.__decode(response_parts[0]) if len(response_parts) > 2 else DEFAULT_HTTP_VERSION
-    self.status = self.__decode(response_parts[1])
+    self.status = int(self.__decode(response_parts[1]))
     self.reason = self.__decode(response_parts[2]) if len(response_parts) > 2 else ''
 
   def __str__(self):

@@ -41,12 +41,12 @@ class BodiesController:
 
         accepted_headers = ['content-encoding', 'content-length', 'content-type']
         for header, val in request.headers.items():
-            decoded_header = header.decode().lower()
+            decoded_header = header.lower()
 
             if decoded_header not in accepted_headers:
                 continue 
 
-            headers[decoded_header] = val.decode()
+            headers[decoded_header] = val
 
         context.render(
             data = request.data,
