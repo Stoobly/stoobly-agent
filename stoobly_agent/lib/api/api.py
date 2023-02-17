@@ -44,16 +44,16 @@ class Api():
     def set_proxy(self, val):
       current = {}
 
-      current[HTTP_PROXY] = os.environ.get(HTTP_PROXY)
+      current[HTTP_PROXY] = os.environ.get(HTTP_PROXY) or ''
       os.environ[HTTP_PROXY] = val
 
-      current[HTTPS_PROXY] = os.environ.get(HTTPS_PROXY)
+      current[HTTPS_PROXY] = os.environ.get(HTTPS_PROXY) or ''
       os.environ[HTTPS_PROXY] = val
 
-      current[HTTP_PROXY.lower()] = os.environ.get(HTTP_PROXY.lower())
+      current[HTTP_PROXY.lower()] = os.environ.get(HTTP_PROXY.lower()) or ''
       os.environ[HTTP_PROXY.lower()] = val
 
-      current[HTTPS_PROXY.lower()] = os.environ.get(HTTPS_PROXY.lower())
+      current[HTTPS_PROXY.lower()] = os.environ.get(HTTPS_PROXY.lower()) or ''
       os.environ[HTTPS_PROXY.lower()] = val
 
       return current

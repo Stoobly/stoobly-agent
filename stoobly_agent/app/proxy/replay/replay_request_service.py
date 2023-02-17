@@ -11,6 +11,7 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.config.constants import mode
@@ -96,7 +97,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     headers=headers, 
     #params=request.query_params, # Do not send query params, they should be a part of the URL
     stream = True,
-    verify = not MitmproxyConfig.instance().get('ssl_insecure')
+    verify = CACertInstaller().mitm_crt_absolute_path or not MitmproxyConfig.instance().get('ssl_insecure')
   ))
 
   if 'after_replay' in options and callable(options['after_replay']):

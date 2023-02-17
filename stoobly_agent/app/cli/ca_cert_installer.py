@@ -10,6 +10,10 @@ class CACertInstaller():
         self.cer_file_name = 'mitmproxy-ca-cert.cer'
         self.crt_file_name = 'mitmproxy-ca-cert.crt'
 
+    @property
+    def mitm_crt_absolute_path(self):
+        return os.path.join(self.mitmproxy_certs_dir, self.crt_file_name)
+
     # https://askubuntu.com/a/94861
     def handle_debian(self):
         extra_ca_certs_dir = '/usr/local/share/ca-certificates/extra'
