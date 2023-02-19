@@ -228,7 +228,10 @@ class RequestsController:
         return request_model
 
     def __replay(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext):
-        self.__send(context, replay_context, self.__create_replayed_response) 
+        save = bool(context.params.get('save'))
+        callback = self.__create_replayed_response if save else None
+
+        self.__send(context, replay_context, callback) 
 
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, callback = None):
         now = time()
