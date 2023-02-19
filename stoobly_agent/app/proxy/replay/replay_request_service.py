@@ -11,6 +11,7 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
+
 from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
@@ -26,6 +27,7 @@ class ReplayRequestOptions(TypedDict):
   before_replay: Union[Callable[[ReplayContext], None], None]
   after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
+  proxies: dict
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
@@ -38,10 +40,9 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
-def replay_with_rewrite(context: ReplayContext) -> requests.Response:
-  return replay(context, {
-      'before_replay': __handle_before_replay
-  })
+def replay_with_rewrite(context: ReplayContext, options: ReplayRequestOptions = {}) -> requests.Response:
+  __rewrite_before_replay(context)
+  return replay(context, options)
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
   if 'before_replay' in options and callable(options['before_replay']):
@@ -49,6 +50,10 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   request = context.request
   headers = request.headers
+  method = request.method
+  cookies = __get_cookies(headers)
+  proxies = None
+  handler = getattr(requests, method.lower())
 
   if options.get('host'):
     request.host = options['host']
@@ -69,6 +74,13 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if 'project_key' in options:
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
+  if options.get('proxy'):
+    settings = Settings.instance()
+    proxies = {
+      'http': settings.proxy.url,
+      'https': settings.proxy.url, 
+    }
+
   if 'report_key' in options:
     headers[custom_headers.REPORT_KEY] = options['report_key']
 
@@ -84,21 +96,21 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if 'test_strategy' in options:
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
 
-  method = request.method
-  handler = getattr(requests, method.lower())
-  cookies = __get_cookies(request.headers)
+  request_options = {
+    'allow_redirects': True,
+    'cookies': cookies,
+    'data': request.body,
+    'headers': headers, 
+    #'params': request.query_params, # Do not send query params, they should be a part of the URL
+    'proxies': proxies,
+    'stream': True,
+    'verify': CACertInstaller().mitm_crt_absolute_path or not MitmproxyConfig.instance().get('ssl_insecure'),
+  }
 
-  # Set proxy env vars to ensure request gets sent to proxy
-  res: requests.Response = Api().with_proxy(lambda: handler(
+  res: requests.Response = handler(
     request.url, 
-    allow_redirects = True,
-    cookies = cookies,
-    data=request.body,
-    headers=headers, 
-    #params=request.query_params, # Do not send query params, they should be a part of the URL
-    stream = True,
-    verify = CACertInstaller().mitm_crt_absolute_path or not MitmproxyConfig.instance().get('ssl_insecure')
-  ))
+    **request_options
+  )
 
   if 'after_replay' in options and callable(options['after_replay']):
     context.with_response(res)
@@ -130,7 +142,7 @@ def __get_cookies(headers: Request.headers):
   cookies = SimpleCookie(headers.get('Cookie')).items()
   return {k: v.value for k, v in cookies}
 
-def __handle_before_replay(context: ReplayContext):
+def __rewrite_before_replay(context: ReplayContext):
   request = context.request
   request_facade = MitmproxyRequestFacade(request)
   intercept_settings = InterceptSettings(Settings.instance())

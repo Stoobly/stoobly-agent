@@ -73,6 +73,9 @@ class LocalDBRequestAdapter():
   def show(self, request_id: str, **options: RequestShowParams) -> RequestShowResponse:
     request = self.__request_orm.find(request_id)
 
+    if not request:
+      return CustomNotFoundResponseBuilder().build()
+
     return ORMToStooblyRequestTransformer(request, options).transform()
 
   def response(self, **query_params: RequestColumns) -> requests.Response:
