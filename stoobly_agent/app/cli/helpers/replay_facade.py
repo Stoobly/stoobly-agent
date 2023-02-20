@@ -54,7 +54,6 @@ class ReplayFacade():
       'group_by': cli_options.get('group_by'),
       'host': cli_options.get('host'),
       'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
-      'proxy': True,
       'request_origin': request_origin.CLI,
       'scheme': cli_options.get('scheme'),
       'trace_context': trace_context,

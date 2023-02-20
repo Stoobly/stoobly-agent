@@ -5,18 +5,17 @@ import requests
 from http.cookies import SimpleCookie
 from typing import Callable, TypedDict, Union
 
+from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
+from stoobly_agent.app.proxy.simulate_intercept_service import simulate_intercept
 from stoobly_agent.app.settings import Settings
-
-from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.config.constants import mode
-from stoobly_agent.lib.api.api import Api
 
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
@@ -52,8 +51,6 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   headers = request.headers
   method = request.method
   cookies = __get_cookies(headers)
-  proxies = None
-  handler = getattr(requests, method.lower())
 
   if options.get('host'):
     request.host = options['host']
@@ -74,13 +71,6 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if 'project_key' in options:
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
-  if options.get('proxy'):
-    settings = Settings.instance()
-    proxies = {
-      'http': settings.proxy.url,
-      'https': settings.proxy.url, 
-    }
-
   if 'report_key' in options:
     headers[custom_headers.REPORT_KEY] = options['report_key']
 
@@ -96,21 +86,43 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if 'test_strategy' in options:
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
 
-  request_options = {
+  request_config = {
     'allow_redirects': True,
+    'stream': True,
+    'verify': not MitmproxyConfig.instance().get('ssl_insecure')
+  }
+  request_dict = {
     'cookies': cookies,
     'data': request.body,
     'headers': headers, 
     #'params': request.query_params, # Do not send query params, they should be a part of the URL
-    'proxies': proxies,
-    'stream': True,
-    'verify': CACertInstaller().mitm_crt_absolute_path or not MitmproxyConfig.instance().get('ssl_insecure'),
   }
 
-  res: requests.Response = handler(
-    request.url, 
-    **request_options
-  )
+  res: requests.Response = None
+  if not options.get('proxy'):
+    request = requests.Request(**{
+      **request_dict,
+      'method': method,
+      'url': request.url,
+    })
+
+    res = simulate_intercept(request, **request_config)
+  else:
+    settings = Settings.instance()
+    handler = getattr(requests, method.lower())
+
+    res = handler(
+      request.url, 
+      **{
+        **request_config,
+        **request_dict,
+        'proxies': {
+          'http': settings.proxy.url,
+          'https': settings.proxy.url,
+        },
+        'verify': CACertInstaller().mitm_crt_absolute_path if request_config['verify'] else False,
+      }
+    )
 
   if 'after_replay' in options and callable(options['after_replay']):
     context.with_response(res)

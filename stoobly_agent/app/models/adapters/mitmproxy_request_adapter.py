@@ -38,6 +38,7 @@ class MitmproxyRequestAdapter():
     return self.__timestamp_start + self.__latency
 
   def adapt(self):
+    data = self.__request.data if isinstance(self.__request.data, bytes) else self.__request.data.encode() 
     return MitmproxyRequest(
       self.__parsed_url.hostname or '',
       self.__parsed_url.port or 80,
@@ -47,7 +48,7 @@ class MitmproxyRequestAdapter():
       self.__parsed_url.path,
       self.__http_version,
       self.headers,
-      self.__request.data,
+      data,
       Headers(), # Trailers
       self.__timestamp_start,
       self.timestamp_end
@@ -56,5 +57,5 @@ class MitmproxyRequestAdapter():
   def __decode_dict(self, d):
     new_d = {}
     for k, v in d.items():
-      new_d[k.decode()] = v.decode()
+      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(k, bytes) else k
     return new_d

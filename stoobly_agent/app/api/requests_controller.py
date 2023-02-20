@@ -235,7 +235,7 @@ class RequestsController:
 
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, callback = None):
         now = time()
-        res = replay_with_rewrite(replay_context, { 'proxy': True })
+        res = replay_with_rewrite(replay_context)
         received_at = time()
 
         if callback:
