@@ -14,6 +14,21 @@ class ReplayContext():
 
     self.__sequence = None
 
+  @classmethod
+  def from_python_request(cls, request: requests.Request):
+    headers = []
+    for k, v in request.headers.items():
+      headers.append({
+        'name': k,
+        'value': v
+      })
+
+    return cls(Request({
+      'body': request.data,
+      'method': request.method,
+      'url': request.url,
+    }))
+
   @property
   def end_time(self):
     return self.__end_time

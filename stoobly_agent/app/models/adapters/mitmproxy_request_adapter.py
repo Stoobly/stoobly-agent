@@ -41,11 +41,11 @@ class MitmproxyRequestAdapter():
     data = self.__request.data if isinstance(self.__request.data, bytes) else self.__request.data.encode() 
     return MitmproxyRequest(
       self.__parsed_url.hostname or '',
-      self.__parsed_url.port or 80,
+      self.__parsed_url.port or self.__default_port(),
       self.__request.method,
       self.__parsed_url.scheme,
       self.authority,
-      self.__parsed_url.path,
+      self.__parsed_url.path or '/',
       self.__http_version,
       self.headers,
       data,
@@ -54,8 +54,11 @@ class MitmproxyRequestAdapter():
       self.timestamp_end
     )
 
+  def __default_port(self):
+    return 443 if self.__parsed_url.scheme.lower() == 'https' else 80
+
   def __decode_dict(self, d):
     new_d = {}
     for k, v in d.items():
-      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(k, bytes) else k
+      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(v, bytes) else v
     return new_d

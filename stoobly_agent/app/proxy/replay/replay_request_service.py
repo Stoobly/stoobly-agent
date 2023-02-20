@@ -15,7 +15,7 @@ from stoobly_agent.app.proxy.simulate_intercept_service import simulate_intercep
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
-from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import mock_policy, mode
 
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
@@ -144,7 +144,10 @@ def __handle_mode_option(_mode, request: Request, headers):
 
   if _mode == mode.MOCK or _mode == mode.TEST:
     # If mocking or testing, we already know which request to get response from 
-    headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+    if request.id:
+      headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+
+    headers[custom_headers.MOCK_POLICY] = mock_policy.ALL
   elif _mode == mode.RECORD:
     # If recording, then it's actually a replay and record
     headers[custom_headers.PROXY_MODE] = mode.REPLAY

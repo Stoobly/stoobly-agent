@@ -79,11 +79,17 @@ class LocalDBRequestAdapter():
     return ORMToStooblyRequestTransformer(request, options).transform()
 
   def response(self, **query_params: RequestColumns) -> requests.Response:
-    request_columns = { **query_params }
-    self.__filter_request_response_columns(request_columns)
+    request = None
 
-    # Find most recent matching record
-    request = self.__request_orm.where_for(**request_columns).get().last()
+    if not query_params.get('request_id'):
+      request_columns = { **query_params }
+
+      self.__filter_request_response_columns(request_columns)
+
+      # Find most recent matching record
+      request = self.__request_orm.where_for(**request_columns).get().last()
+    else:
+      request = self.__request_orm.find(query_params.get('request_id'))
 
     if not request:
       return CustomNotFoundResponseBuilder().build()
