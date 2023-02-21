@@ -10,7 +10,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, feature, intercept, MainGroup, request, scenario, trace
-from .app.proxy import CONNECTION_STRATEGIES, INTERCEPT_MODES, run as run_proxy
+from .app.proxy import CONNECTION_STRATEGIES, run as run_proxy
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
@@ -67,7 +67,6 @@ def init(**kwargs):
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
-@click.option('--intercept-mode', help=', '.join(INTERCEPT_MODES), type=click.Choice(INTERCEPT_MODES))
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -93,9 +92,5 @@ def run(**kwargs):
 
     if 'headless' in kwargs and not kwargs['headless']:
         run_api(**kwargs)
-
-    if kwargs['intercept_mode'] and kwargs['intercept_mode'] not in INTERCEPT_MODES:
-        print(f"Error: Invalid value for --intercept-mode, values: {', '.join(INTERCEPT_MODES)}", file=sys.stderr)
-        sys.exit(1)
 
     run_proxy(**kwargs)

@@ -83,10 +83,6 @@ def __commit_options(options: dict):
     if options.get('proxy_host') and options.get('proxy_port'):
         settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
 
-    if options.get('intercept_mode'):
-        settings.proxy.intercept.mode = options['intercept_mode']
-        settings.proxy.intercept.active = True
-
     settings.ui.active = not options.get('headless')
 
     settings.commit()
@@ -112,7 +108,6 @@ def __filter_options(options):
     if 'ui_port' in options:
         del options['ui_port']
 
-    del options['intercept_mode']
     del options['log_level']
     del options['proxy_host']
     del options['proxy_mode']
