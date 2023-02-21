@@ -28,7 +28,6 @@ LOG_ID = 'InterceptHandler'
 
 def request(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
-
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
     active_mode = intercept_settings.mode

@@ -1,6 +1,8 @@
+import pdb
 import requests
 import time
 
+from stoobly_agent.app.models.adapters.stoobly_request_adapter import StooblyRequestAdapter
 from stoobly_agent.app.models.schemas.request import Request
 
 class ReplayContext():
@@ -16,18 +18,8 @@ class ReplayContext():
 
   @classmethod
   def from_python_request(cls, request: requests.Request):
-    headers = []
-    for k, v in request.headers.items():
-      headers.append({
-        'name': k,
-        'value': v
-      })
-
-    return cls(Request({
-      'body': request.data,
-      'method': request.method,
-      'url': request.url,
-    }))
+    stoobly_request = StooblyRequestAdapter(request).adapt()
+    return cls(Request(stoobly_request))
 
   @property
   def end_time(self):

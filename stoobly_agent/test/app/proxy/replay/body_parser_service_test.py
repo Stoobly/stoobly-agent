@@ -19,7 +19,6 @@ class TestMultipart():
     assert multidict.get('author') == 'John Smith'
     assert multidict.get('file') == 'Hello World'
 
-
   def test_encodes_response(self, content_type: str):
     expected_params = { 'author': 'John Smith', 'file': 'Hello World'}
     multipart_string = encode_response(expected_params, content_type)

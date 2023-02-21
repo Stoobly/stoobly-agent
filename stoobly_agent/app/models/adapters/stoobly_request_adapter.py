@@ -1,38 +1,50 @@
 import pdb
 import requests
 
-from stoobly_agent.lib.api.requests_resource import RequestsResource
-from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexResponse
-
-from .types import RequestCreateParams, RequestShowParams
+from urllib.parse import parse_qs, urlparse
 
 class StooblyRequestAdapter():
 
-  def __init__(self, __api: RequestsResource):
-    self.__api = __api
+  def __init__(self, request: requests.Request):
+    self.__request = request
 
-  def create(self, **params: RequestCreateParams) -> RequestShowResponse:
-    body_params = { **params }
-    joined_request = body_params['joined_request']
+  def adapt(self):
+    parsed_url = urlparse(self.__request.url)
 
-    del body_params['flow']
-    del body_params['joined_request']
+    return {
+      'body': self.__request.data,
+      'headers': self.adapt_headers(),
+      'method': self.__request.method,
+      'path': parsed_url.path,
+      'query_params': self.adapt_query_params(parsed_url.query),
+      'url': self.__request.url,
+    }
 
-    res = self.__api.create(**{ 'importer': 'gor', 'requests': joined_request.build(), **body_params })
-    res.raise_for_status()  
-    return res.json()
+  def adapt_query_params(self, query = None):
+    if not query:
+      parsed_url = urlparse(self.__request.url)
+      query = parsed_url.query
 
-  def response(self, **query_params) -> requests.Response:
-    return self.__api.response(**query_params)
+    _query_params = parse_qs(query)
 
-  def show(self, request_id: str, **params: RequestShowParams) -> RequestShowResponse:
-    query_params = { **params } 
+    query_params = []
+    for k, v in _query_params.items():
+      for param in v:
+        query_params.append({
+          'name': k,
+          'value': param,
+        })
 
-    res = self.__api.show(request_id, **query_params)
-    res.raise_for_status()  
-    return res.json()
+    return query_params
 
-  def index(self, **query_params) -> RequestsIndexResponse:
-    res = self.__api.index(**query_params)
-    res.raise_for_status()  
-    return res.json()
+
+  def adapt_headers(self):
+    headers = []
+
+    for k, v in self.__request.headers.items():
+      headers.append({
+        'name': k,
+        'value': v
+      })
+
+    return headers

@@ -3,7 +3,7 @@ from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 from stoobly_agent.app.settings import RemoteSettings
 
 from .local_db.scenario_adapter import LocalDBScenarioAdapter
-from .stoobly_scenario_adapter import StooblyScenarioAdapter
+from .stoobly.scenario_adapter import StooblyScenarioAdapter
 
 class ScenarioAdapterFactory():
 

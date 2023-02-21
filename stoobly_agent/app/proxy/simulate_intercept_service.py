@@ -7,6 +7,7 @@ from .intercept_handler import request as handle_request, response as handle_res
 
 def simulate_intercept(request: requests.Request, **config):
   flow = MitmproxyFlowMock()
+
   flow.request = request
 
   handle_request(flow)
