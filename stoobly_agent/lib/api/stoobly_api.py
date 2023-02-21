@@ -1,10 +1,10 @@
 import base64
 import json
-import requests
-import urllib
+import os
 import pdb
 
-from ..logger import Logger
+from stoobly_agent.config.constants import custom_headers, env_vars
+
 from .api import Api
 
 class StooblyApi(Api):
@@ -71,10 +71,14 @@ class StooblyApi(Api):
 
     @property
     def default_headers(self):
-        return {
+        headers = {
             'X-API-KEY': self.api_key,
-            'X-Do-Proxy': '1',
         }
+
+        if not os.environ.get(env_vars.AGENT_SELF_INTERCEPT_ENABLED):
+            headers[custom_headers.DO_PROXY] = '1'
+
+        return headers
 
     # Request
 
