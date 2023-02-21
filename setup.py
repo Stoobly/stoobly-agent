@@ -2,7 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
-from stoobly_agent import VERSION
+from stoobly_agent import COMMAND, VERSION
 
 def package_files(directory):
     paths = []
@@ -42,7 +42,7 @@ setup(
         "yamale>=4.0.0,<=4.0.2"
     ],
     license='MIT',
-    name='stoobly-agent',
+    name=COMMAND,
     packages=find_packages(include=[
         'stoobly_agent', 'stoobly_agent.*',
     ]),

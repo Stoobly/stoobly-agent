@@ -59,31 +59,31 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if options.get('scheme'):
     request.scheme = options['scheme']
 
-  if 'alias_resolve_strategy' in options:
+  if options.get('alias_resolve_strategy'):
     headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
 
-  if 'lifecycle_hooks_script_path' in options:
+  if options.get('lifecycle_hooks_script_path'):
     __handle_lifecycle_hooks_script_path(options['lifecycle_hooks_script_path'], headers) 
 
-  if 'mode' in options:
+  if options.get('mode'):
     __handle_mode_option(options['mode'], request, headers)
 
-  if 'project_key' in options:
+  if options.get('project_key'):
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
-  if 'report_key' in options:
+  if options.get('report_key'):
     headers[custom_headers.REPORT_KEY] = options['report_key']
 
-  if 'request_origin' in options:
+  if options.get('request_origin'):
     headers[custom_headers.REQUEST_ORIGIN] = options['request_origin']
 
-  if 'scenario_key' in options:
+  if options.get('scenario_key'):
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
 
-  if 'test_filter' in options:
+  if options.get('test_filter'):
     headers[custom_headers.TEST_FILTER] = options['test_filter']
 
-  if 'test_strategy' in options:
+  if options.get('test_strategy'):
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
 
   request_config = {

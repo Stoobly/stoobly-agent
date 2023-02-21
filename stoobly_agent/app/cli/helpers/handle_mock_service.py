@@ -16,4 +16,4 @@ def print_raw_response(response: requests.Response):
   facade = MitmproxyResponseFacade(mitmproxy_response)
   response_string = ResponseString(facade, None)
 
-  print(response_string.get())
+  print(response_string.get().decode())

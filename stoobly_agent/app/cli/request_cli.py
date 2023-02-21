@@ -42,7 +42,7 @@ def request(ctx):
 )
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--scenario-key')(f), is_remote)
+@click.option('--scenario-key')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
@@ -90,7 +90,7 @@ def list(**kwargs):
   '''
 )
 @click.option('--record', is_flag=True, default=False, help='Replay and record request.')
-@ConditionalDecorator(lambda f: click.option('--scenario-key', help='Record to scenario.')(f), is_remote)
+@click.option('--scenario-key', help='Record to scenario.')
 @click.option('--scheme', help='Rewrite request scheme.')
 @ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')(f), is_remote)
@@ -193,7 +193,9 @@ if is_remote:
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
+@click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
   headers = {}
