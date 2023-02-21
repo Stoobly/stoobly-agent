@@ -10,52 +10,21 @@ class MitmproxyRequestAdapter():
 
   def __init__(self, http_version, request: requests.Request):
     self.__http_version = http_version
-    self.__latency = 0 # Seconds
     self.__request = request
-    self.__timestamp_start = time()
-
-    self.url = request.url
-    self.__parsed_url = urlparse(self.__request.url)
 
   @property
   def headers(self):
     return Headers(**self.__decode_dict(self.__request.headers))
 
-  @property
-  def authority(self):
-    authority = ''
-
-    if self.__parsed_url.hostname:
-      authority = f"{self.__parsed_url.hostname}"
-
-      if self.__parsed_url.port:
-        authority = authority + f":{self.__parsed_url.port}"
-
-    return authority
-
-  @property
-  def timestamp_end(self):
-    return self.__timestamp_start + self.__latency
-
   def adapt(self):
-    data = self.__request.data if isinstance(self.__request.data, bytes) else self.__request.data.encode() 
-    return MitmproxyRequest(
-      self.__parsed_url.hostname or '',
-      self.__parsed_url.port or self.__default_port(),
+    request = MitmproxyRequest.make(
       self.__request.method,
-      self.__parsed_url.scheme,
-      self.authority,
-      self.__parsed_url.path or '/',
-      self.__http_version,
+      self.__request.url,
+      self.__request.data,
       self.headers,
-      data,
-      Headers(), # Trailers
-      self.__timestamp_start,
-      self.timestamp_end
     )
-
-  def __default_port(self):
-    return 443 if self.__parsed_url.scheme.lower() == 'https' else 80
+    request.http_version = self.__http_version
+    return request
 
   def __decode_dict(self, d):
     new_d = {}
