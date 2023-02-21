@@ -1,0 +1,36 @@
+cli:
+  features:
+    dev_tools: false
+    exec: false
+    remote: false
+proxy:
+  data:
+    '0':
+      mock_policy: found
+      record_policy: all
+      replay_policy: all
+      scenario_key: eyJwIjogMCwgImkiOiA1fQ==
+      test_policy: found
+      test_strategy: diff
+    '67':
+      mock_policy: found
+      record_policy: all
+      replay_policy: all
+      scenario_key: null
+      test_policy: found
+      test_strategy: diff
+  firewall: {}
+  intercept:
+    active: false
+    mode: record
+    project_key: eyJpIjowLCJvIjowfQ==
+  match: {}
+  rewrite: {}
+  url: http://0.0.0.0:8080
+proxy_config_path: config/settings.yml
+remote:
+  api_key: ckuuPTdckqfcQADTh5o1sD55
+  api_url: http://localhost:3000
+ui:
+  active: true
+  url: http://localhost:4200
