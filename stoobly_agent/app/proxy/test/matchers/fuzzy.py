@@ -1,7 +1,7 @@
 import pdb
 
 from typing import Iterable, Tuple
-from stoobly_agent.app.proxy.test.context import TestContext
+from stoobly_agent.app.proxy.test.context_abc import TestContextABC as TestContext
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.matchers.errors import param_name_missing_error, type_match_error, valid_type_error
 

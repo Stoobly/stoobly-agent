@@ -1,6 +1,7 @@
 import os
 import pdb
-import tempfile
+
+from stoobly_agent.config.constants.env_vars import ENV
 
 class DataDir:
     DATA_DIR_NAME = '.stoobly'
@@ -20,8 +21,8 @@ class DataDir:
                 self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
 
             if not os.path.exists(self.__data_dir_path):
-                os.mkdir(self.__data_dir_path)
-
+                os.makedirs(self.__data_dir_path, exist_ok=True)
+            
     @classmethod
     def instance(cls):
         if cls._instance is None:
@@ -31,6 +32,13 @@ class DataDir:
 
     @property
     def path(self):
+        if os.environ.get(ENV) == 'test':
+            test_path = os.path.join(self.__data_dir_path, 'tmp', self.DATA_DIR_NAME)
+            
+            if not os.path.exists(test_path):
+                os.makedirs(test_path, exist_ok=True)
+            return test_path
+
         return self.__data_dir_path
 
     @property
@@ -50,11 +58,6 @@ class DataDir:
             os.mkdir(db_dir_path)
 
         return db_dir_path
-
-    @property
-    def tmp_db_file_path(self):
-        tmp = tempfile.NamedTemporaryFile(delete=False)
-        return tmp.name
 
     @property
     def db_file_path(self):

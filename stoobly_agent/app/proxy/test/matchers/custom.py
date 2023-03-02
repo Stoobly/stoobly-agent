@@ -1,4 +1,4 @@
-from stoobly_agent.app.proxy.test.context import TestContext
+from stoobly_agent.app.proxy.test.context_abc import TestContextABC as TestContext
 
 def matches(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 

@@ -19,7 +19,7 @@ class ORM():
                 'default': os.environ.get(ENV) or 'production',
                 'test': {
                     'driver': 'sqlite',
-                    'database': DataDir.instance().tmp_db_file_path,
+                    'database': DataDir.instance().db_file_path,
                 },
                 'production': {
                     'driver': 'sqlite',

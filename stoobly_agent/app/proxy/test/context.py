@@ -20,10 +20,11 @@ from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
 
 from .context_response import TestContextResponse
+from .context_abc import TestContextABC
 
 FuzzyContent = Union[dict, list, str]
 
-class TestContext():
+class TestContext(TestContextABC):
   def __init__(self, replay_context: ReplayContext, mock_context: MockContext):
     self.__flow = mock_context.flow
     self.__intercept_settings = mock_context.intercept_settings

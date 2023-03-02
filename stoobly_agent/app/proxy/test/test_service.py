@@ -4,7 +4,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, 
 
 from stoobly_agent.config.constants import test_strategy
 
-from .context import TestContext
+from .context_abc import TestContextABC as TestContext
 from .matchers.custom import matches as custom_matches
 from .matchers.contract import matches as contract_matches
 from .matchers.diff import matches as diff_matches

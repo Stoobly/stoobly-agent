@@ -13,7 +13,7 @@ from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
-from .test.context import TestContext
+from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
 from .upload.upload_test_service import inject_upload_test
 
