@@ -1,3 +1,5 @@
+import inspect
+import os
 import pdb
 import subprocess
 
@@ -5,6 +7,8 @@ from typing import TypedDict
 
 from stoobly_agent import COMMAND
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
+from stoobly_agent.config.constants.env_vars import ENV
+from stoobly_agent.config.constants.mode import TEST
 
 class MockOptions(TypedDict):
   data: str
@@ -63,6 +67,14 @@ class Mock():
         command.append(' '.join(options))
 
     command.append(url)
+
+    # We do not want the child process to run in test mode
+    if os.environ.get(ENV) == TEST:
+      del os.environ[ENV]
+
+    # Change dir to caller file's directory
+    dir_path = inspect.stack()[2].filename # Path of calling method
+    os.chdir(os.path.dirname(dir_path))
 
     completed_process = subprocess.run(command, check=True, stdout=subprocess.PIPE)
 
