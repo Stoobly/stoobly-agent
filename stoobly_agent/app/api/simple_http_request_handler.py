@@ -62,7 +62,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         headers = self.filter_headers(kwargs.get('headers'), {
             'TRANSFER-ENCODING': 'CHUNKED',
         })
-        headers['Content-Length'] = len(body)
+        headers['Content-Length'] = str(len(body))
 
         self.enable_cors(headers)
         self.render_headers(headers)
