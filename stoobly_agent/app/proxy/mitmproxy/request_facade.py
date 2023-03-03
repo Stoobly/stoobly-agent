@@ -5,6 +5,7 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest
 from mitmproxy.coretypes import multidict
 from typing import Callable, List, Union
 from urllib.parse import urlparse
+import requests
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
@@ -96,6 +97,14 @@ class MitmproxyRequestFacade(Request):
     def rewrite_rules(self) -> List[ParameterRule]:
         return self.__rewrite_rules
 
+    def to_python_request(self):
+        return requests.Request(
+            method=self.request.method,
+            url=self.request.url,
+            headers=self.request.headers,
+            data=self.request.content
+        )
+
     def with_rewrite_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
             self.__rewrite_rules = self.select_parameter_rules(rules)
@@ -154,7 +163,7 @@ class MitmproxyRequestFacade(Request):
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:
-        Logger.instance().debug(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {rewrite.name} => {rewrite.value}")
+        Logger.instance().info(f"{bcolors.OKCYAN}Rewriting {rewrite.type.lower()}{bcolors.ENDC} {rewrite.name} => {rewrite.value}")
         return rewrite.value
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
