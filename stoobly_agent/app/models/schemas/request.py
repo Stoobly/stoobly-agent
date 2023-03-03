@@ -97,6 +97,10 @@ class Request():
     self.__set_dict('headers', v)
 
   @property
+  def query(self) -> str:
+    return urlencode(self.query_params)
+
+  @property
   def query_params(self) -> MultiDict:
     query_params = MultiDict()
 
