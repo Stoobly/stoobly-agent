@@ -14,9 +14,10 @@ from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRe
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.replay.replay_request_service import replay_with_rewrite
+from stoobly_agent.app.proxy.replay.replay_request_service import replay
 from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.request import Request as OrmRequest
 
@@ -235,14 +236,14 @@ class RequestsController:
 
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, callback = None):
         now = time()
-        res = replay_with_rewrite(replay_context)
+        res = replay(replay_context, { 'mode': mode.REPLAY })
         received_at = time()
 
         if callback:
             callback(context, res, int((received_at - now) * 1000))
 
         context.render(
-            data = res.raw.data,
+            data = res.raw.data if hasattr(res, 'raw') else res.content,
             headers = res.headers,
             status = res.status_code
         )

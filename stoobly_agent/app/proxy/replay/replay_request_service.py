@@ -39,10 +39,6 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
-def replay_with_rewrite(context: ReplayContext, options: ReplayRequestOptions = {}) -> requests.Response:
-  __rewrite_before_replay(context)
-  return replay(context, options)
-
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
   if 'before_replay' in options and callable(options['before_replay']):
     options['before_replay'](context)
@@ -156,10 +152,3 @@ def __handle_mode_option(_mode, request: Request, headers):
 def __get_cookies(headers: Request.headers):
   cookies = SimpleCookie(headers.get('Cookie')).items()
   return {k: v.value for k, v in cookies}
-
-def __rewrite_before_replay(context: ReplayContext):
-  request = context.request
-  request_facade = MitmproxyRequestFacade(request)
-  intercept_settings = InterceptSettings(Settings.instance())
-  rewrite_rules = intercept_settings.replay_rewrite_rules
-  request_facade.with_rewrite_rules(rewrite_rules).rewrite()
