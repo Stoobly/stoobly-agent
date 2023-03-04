@@ -119,7 +119,10 @@ class Request():
     if not encoded_body:
       return ''
 
-    return base64.b64decode(encoded_body)
+    try:
+      return base64.b64decode(encoded_body)
+    except Exception as e:
+      return encoded_body
 
   @body.setter
   def body(self, v: Union[bytes, str]):

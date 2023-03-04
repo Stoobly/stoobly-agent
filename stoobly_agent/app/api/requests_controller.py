@@ -1,3 +1,4 @@
+import json
 import pdb
 import requests
 
@@ -207,10 +208,17 @@ class RequestsController:
 
     # PUT /requests/send
     def send(self, context: SimpleHTTPRequestHandler):
+        headers = []
+
+        try:
+            headers = json.load(context.params.get('headers'))
+        except Exception as e:
+            pass
+
         url = urlparse(context.params.get('url'))
         request_response = {
             'body': context.params.get('body'),
-            'headers': context.params.get('headers'),
+            'headers': headers,
             'method': context.params.get('method'),
             'path': url.path,
             'password': url.password,
