@@ -53,5 +53,4 @@ class JoinedRequest:
         response_string = self.__response_string.get(control=True)
 
         joined = self.REQUEST_DELIMITTER.join([request_string, response_string])
-
         return joined

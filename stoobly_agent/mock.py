@@ -14,6 +14,8 @@ class MockOptions(TypedDict):
   data: str
   headers: dict
   method: str
+  project_key: str
+  scenario_key: str
 
 class Mock():
 
@@ -49,22 +51,30 @@ class Mock():
   def mock(url: str, **options: MockOptions):
     command = [COMMAND, 'request', 'mock', '--format', 'raw']
 
-    if isinstance(options.get('method'), str):
-      command.append('--request')
-      command.append(f"{options.get('method')}")      
-
     if isinstance(options.get('data'), str):
-      data_option = f"--data {options.get('data')}"
+      data_option = f"--data {options['data']}"
       command.append(data_option)
 
     if isinstance(options.get('headers'), dict):
       options = []
-      for k, v in options.get('headers').items:
+      for k, v in options['headers'].items:
         options.append('--header')
         options.append(f"{k}: {v}")
 
       if len(options) > 0:
         command.append(' '.join(options))
+
+    if isinstance(options.get('project_key'), str):
+      command.append('--project_key')
+      command.append(options['project_key'])
+
+    if isinstance(options.get('method'), str):
+      command.append('--request')
+      command.append(f"{options['method']}")      
+
+    if isinstance(options.get('scenario_key'), str):
+      command.append('--scenario_key')
+      command.append(options['scenario_key'])
 
     command.append(url)
 

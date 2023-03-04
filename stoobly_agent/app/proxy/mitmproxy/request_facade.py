@@ -54,7 +54,7 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def body(self):
-        content = self.request.raw_content
+        content = self.request.raw_content or ''
 
         try:
             if isinstance(content, bytes):
