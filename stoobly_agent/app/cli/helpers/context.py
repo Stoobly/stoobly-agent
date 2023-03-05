@@ -2,7 +2,7 @@ import pdb
 import requests
 import time
 
-from stoobly_agent.app.models.adapters.stoobly_request_adapter import StooblyRequestAdapter
+from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.schemas.request import Request
 
 class ReplayContext():
@@ -18,7 +18,7 @@ class ReplayContext():
 
   @classmethod
   def from_python_request(cls, request: requests.Request):
-    stoobly_request = StooblyRequestAdapter(request).adapt()
+    stoobly_request = PythonRequestAdapterFactory(request).stoobly_request()
     return cls(Request(stoobly_request))
 
   @property

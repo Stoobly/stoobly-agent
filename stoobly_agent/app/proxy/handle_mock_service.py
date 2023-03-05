@@ -2,15 +2,12 @@ import requests
 import time
 import pdb
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.app.settings import intercept_settings
 from stoobly_agent.config.constants import custom_headers, mock_policy
 from stoobly_agent.lib.logger import Logger
 

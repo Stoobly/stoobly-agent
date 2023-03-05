@@ -9,8 +9,7 @@ from urllib.parse import urlparse
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
-from stoobly_agent.app.models.adapters.mitmproxy_request_adapter import MitmproxyRequestAdapter
-from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.request_model import RequestModel
@@ -55,8 +54,8 @@ class RequestsController:
         request_adapter = RawHttpRequestAdapter(joined_request.request_string.get())
         response_adapter = RawHttpResponseAdapter(joined_request.response_string.get())
 
-        mitmproxy_request = MitmproxyRequestAdapter(request_adapter.protocol, request_adapter.to_request()).adapt()
-        mitmproxy_response = MitmproxyResponseAdapter(response_adapter.protocol, response_adapter.to_response()).adapt()
+        mitmproxy_request = PythonRequestAdapterFactory(request_adapter.to_request()).mitmproxy_request(request_adapter.protocol)
+        mitmproxy_response = PythonRequestAdapterFactory(response_adapter.to_response()).mitmproxy_response(response_adapter.protocol)
 
         class MitmproxyFlowMock():
             def __init__(self, request, response):

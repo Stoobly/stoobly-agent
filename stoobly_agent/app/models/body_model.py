@@ -1,10 +1,10 @@
 import pdb
 import requests
 
-from stoobly_agent.app.models.adapters.body_adapter_factory import BodyAdapterFactory
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
+from .factories.resource.body import BodyResourceFactory
 from .model import Model
 
 class BodyModel(Model):
@@ -13,7 +13,7 @@ class BodyModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-    self.adapter = BodyAdapterFactory(self.settings.remote).local_db()
+    self.adapter = BodyResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
     # 'Not yet supported.'

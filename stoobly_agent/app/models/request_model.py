@@ -8,10 +8,9 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.interfaces import RequestShowResponse
 from stoobly_agent.lib.logger import Logger
 
-from .adapters.request_adapter_factory import RequestAdapterFactory
-from .adapters.types import RequestCreateParams, RequestShowParams
+from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types.requests_model_index import RequestsModelIndex
+from .types import RequestCreateParams, RequestShowParams, RequestsModelIndex
 
 class RequestModel(Model):
 
@@ -19,10 +18,10 @@ class RequestModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-      self.adapter = RequestAdapterFactory(self.settings.remote).local_db()
+      self.adapter = RequestResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
-      self.adapter = RequestAdapterFactory(self.settings.remote).stoobly()
+      self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
 
   def create(self, **body_params: RequestCreateParams) -> Union[RequestsModelIndex, None]:
     try:

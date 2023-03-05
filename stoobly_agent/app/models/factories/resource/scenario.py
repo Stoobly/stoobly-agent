@@ -5,7 +5,7 @@ from stoobly_agent.app.settings import RemoteSettings
 from .local_db.scenario_adapter import LocalDBScenarioAdapter
 from .stoobly.scenario_adapter import StooblyScenarioAdapter
 
-class ScenarioAdapterFactory():
+class ScenarioResourceFactory():
 
   def __init__(self, settings: RemoteSettings):
     self.__remote_settings = settings

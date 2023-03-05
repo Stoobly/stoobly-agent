@@ -1,7 +1,7 @@
 import requests
 import urllib
 
-from stoobly_agent.app.models.adapters.types.scenario_create_params import ScenarioCreateParams
+from stoobly_agent.app.models.types import ScenarioCreateParams
 
 from ..logger import Logger
 from .interfaces.pagination_query_params import PaginationQueryParams

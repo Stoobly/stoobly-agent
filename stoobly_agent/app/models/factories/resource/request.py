@@ -5,7 +5,7 @@ from stoobly_agent.app.settings import RemoteSettings
 from .local_db.request_adapter import LocalDBRequestAdapter
 from .stoobly.request_adapter import StooblyRequestAdapter
 
-class RequestAdapterFactory():
+class RequestResourceFactory():
 
   def __init__(self, settings: RemoteSettings):
     self.__remote_settings = settings

@@ -2,12 +2,12 @@ import pdb
 import requests
 
 from typing import Union
-from stoobly_agent.app.models.adapters.header_adapter_factory import HeaderAdapterFactory
 
 from stoobly_agent.app.models.types.request_components import HeaderIndexResponse
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
+from .factories.resource.header import HeaderResourceFactory
 from .model import Model
 
 class HeaderModel(Model):
@@ -16,7 +16,7 @@ class HeaderModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-    self.adapter =  HeaderAdapterFactory(self.settings.remote).local_db()
+    self.adapter =  HeaderResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
     # raise('Not yet supported.')

@@ -7,8 +7,8 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
 from stoobly_agent.app.settings import Settings
 
-from .adapters.scenario_adapter_factory import ScenarioAdapterFactory
-from .adapters.types import ScenarioCreateParams
+from .types import ScenarioCreateParams
+from .factories.resource.scenario import ScenarioResourceFactory
 from .model import Model
 
 class ScenarioModel(Model):
@@ -17,10 +17,10 @@ class ScenarioModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-      self.adapter = ScenarioAdapterFactory(self.settings.remote).local_db()
+      self.adapter = ScenarioResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
-      self.adapter = ScenarioAdapterFactory(self.settings.remote).stoobly()
+      self.adapter = ScenarioResourceFactory(self.settings.remote).stoobly()
 
   def create(self, **body_params: ScenarioCreateParams) -> Union[ScenarioShowResponse, None]:
     try:

@@ -6,7 +6,7 @@ from typing import List
 from urllib.parse import parse_qs
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
-from stoobly_agent.app.models.adapters.types.request_show_params import RequestShowParams
+from stoobly_agent.app.models.types import RequestShowParams
 from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse
 
 from ..request import Request as ORMRequest

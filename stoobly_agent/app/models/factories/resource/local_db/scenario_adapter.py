@@ -1,12 +1,10 @@
 import pdb
 
-from stoobly_agent.app.models.adapters.types.scenario_create_params import ScenarioCreateParams
+from stoobly_agent.app.models.types import ScenarioCreateParams
 from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
-
-from ..types import ScenarioCreateParams
 
 class LocalDBScenarioAdapter():
   __scenario_orm = None

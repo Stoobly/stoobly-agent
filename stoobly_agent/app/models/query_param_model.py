@@ -7,7 +7,7 @@ from stoobly_agent.app.models.types.request_components import QueryParamIndexRes
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
-from .adapters.query_param_adapter_factory import QueryParamAdapterFactory
+from .factories.resource.query_param import QueryParamResourceFactory
 from .model import Model
 
 class QueryParamModel(Model):
@@ -16,7 +16,7 @@ class QueryParamModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-    self.adapter =  QueryParamAdapterFactory(self.settings.remote).local_db()
+    self.adapter =  QueryParamResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
     #raise('Not yet supported.')

@@ -7,7 +7,7 @@ from stoobly_agent.app.models.types.request_components import ResponseHeaderInde
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
-from .adapters.response_header_adapter_factory import ResponseHeaderAdapterFactory
+from .factories.resource.response_header import ResponseHeaderResourceFactory
 from .model import Model
 
 class ResponseHeaderModel(Model):
@@ -16,7 +16,7 @@ class ResponseHeaderModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-    self.adapter =  ResponseHeaderAdapterFactory(self.settings.remote).local_db()
+    self.adapter =  ResponseHeaderResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
     # raise('Not yet supported.')

@@ -1,13 +1,12 @@
 import pdb
 import requests
 
+from stoobly_agent.app.models.types import ReplayedResponseIndexQueryParams
 from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.transformers.orm_to_requests_response_transformer import ORMToRequestsResponseTransformer
 from stoobly_agent.lib.orm.transformers.orm_to_stoobly_request_transformer import ORMToStooblyRequestTransformer
 from stoobly_agent.lib.orm.utils.response_parse_handler import Response
-
-from ..types.replayed_response import ReplayedResponseIndexQueryParams
 
 class LocalDBReplayedResponseAdapter():
   __replayed_response_orm = None

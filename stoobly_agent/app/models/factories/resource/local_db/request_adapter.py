@@ -3,13 +3,12 @@ from urllib.parse import urlparse
 import requests
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
-from typing import List
 
+from stoobly_agent.app.models.types import RequestCreateParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
-
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -18,8 +17,6 @@ from stoobly_agent.lib.orm.types.request_columns import RequestColumns
 from stoobly_agent.lib.orm.types.response_columns import ResponseColumns
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer, ORMToStooblyResponseTransformer
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
-
-from ..types import RequestCreateParams, RequestShowParams
 
 class LocalDBRequestAdapter():
   __request_orm = None

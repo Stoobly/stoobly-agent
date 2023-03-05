@@ -3,7 +3,7 @@ from stoobly_agent.lib.orm.request import Request
 
 from .local_db.query_param_adapter import LocalDBQueryParamAdapter
 
-class QueryParamAdapterFactory():
+class QueryParamResourceFactory():
 
   def __init__(self, settings: RemoteSettings):
     self.__remote_settings = settings

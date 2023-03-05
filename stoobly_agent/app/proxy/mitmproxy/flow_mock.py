@@ -1,7 +1,6 @@
 import requests
 
-from stoobly_agent.app.models.adapters.mitmproxy_request_adapter import MitmproxyRequestAdapter
-from stoobly_agent.app.models.adapters.mitmproxy_response_adapter import MitmproxyResponseAdapter
+from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory, PythonResponseAdapterFactory
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import DEFAULT_HTTP_VERSION
 
 class MitmproxyFlowMock():
@@ -20,8 +19,8 @@ class MitmproxyFlowMock():
 
   @request.setter
   def request(self, _request: requests.Request):
-    self.__request = MitmproxyRequestAdapter(DEFAULT_HTTP_VERSION, _request).adapt()
+    self.__request = PythonRequestAdapterFactory(_request).mitmproxy_request(DEFAULT_HTTP_VERSION)
 
   @response.setter
   def response(self, _response: requests.Response):
-    self.__response = MitmproxyResponseAdapter(DEFAULT_HTTP_VERSION, _response).adapt()
+    self.__response = PythonResponseAdapterFactory(_response).mitmproxy_response(DEFAULT_HTTP_VERSION)

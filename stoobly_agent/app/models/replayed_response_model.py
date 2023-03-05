@@ -1,10 +1,10 @@
 import pdb
 import requests
 
-from stoobly_agent.app.models.adapters.replayed_response_adapter_factory import ReplayedResponseAdapterFactory
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import Logger
 
+from .factories.resource.replayed_response import ReplayedResponseResourceFactory
 from .model import Model
 
 class ReplayedResponseModel(Model):
@@ -13,7 +13,7 @@ class ReplayedResponseModel(Model):
     super().__init__(settings)
 
   def as_local(self):
-    self.adapter =  ReplayedResponseAdapterFactory(self.settings.remote).local_db()
+    self.adapter =  ReplayedResponseResourceFactory(self.settings.remote).local_db()
 
   def as_remote(self):
     # raise('Not yet supported.')

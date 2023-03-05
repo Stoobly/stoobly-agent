@@ -1,10 +1,9 @@
 import pdb
 import requests
 
+from stoobly_agent.app.models.types import RequestCreateParams, RequestShowParams
 from stoobly_agent.lib.api.requests_resource import RequestsResource
 from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexResponse
-
-from ..types import RequestCreateParams, RequestShowParams
 
 class StooblyRequestAdapter():
 

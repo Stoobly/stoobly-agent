@@ -3,7 +3,7 @@ from stoobly_agent.lib.orm.request import Request
 
 from .local_db.response_header_adapter import LocalDBResponseHeaderAdapter
 
-class ResponseHeaderAdapterFactory():
+class ResponseHeaderResourceFactory():
 
   def __init__(self, settings: RemoteSettings):
     self.__remote_settings = settings

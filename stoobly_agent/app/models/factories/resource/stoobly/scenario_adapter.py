@@ -1,9 +1,8 @@
 import pdb
 
+from stoobly_agent.app.models.types import ScenarioCreateParams
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
-
-from ..types import ScenarioCreateParams
 
 class StooblyScenarioAdapter():
 
