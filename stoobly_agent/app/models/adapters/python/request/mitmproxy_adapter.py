@@ -16,11 +16,21 @@ class MitmproxyRequestAdapter():
   def headers(self):
     return Headers(**self.__decode_dict(self.__request.headers))
 
+  @property
+  def data(self):
+    _data = self.__request.data
+
+    # If no data is provided to python requests.Request, it is sent to []
+    if _data == []:
+      return b''
+
+    return _data
+
   def adapt(self):
     request = MitmproxyRequest.make(
       self.__request.method,
       self.__request.url,
-      self.__request.data,
+      self.data,
       self.headers,
     )
     request.http_version = self.__http_version

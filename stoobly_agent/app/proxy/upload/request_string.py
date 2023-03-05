@@ -74,7 +74,7 @@ class RequestString:
         toks = header.split('_')
 
         for index, tok in enumerate(toks):
-            toks[index] = tok.lower().capitalize()
+            toks[index] = tok.lower().title()
 
         return "-".join(toks)
 

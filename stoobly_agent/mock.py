@@ -8,7 +8,7 @@ from typing import TypedDict
 from stoobly_agent import COMMAND
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.config.constants.env_vars import ENV
-from stoobly_agent.config.constants.mode import TEST
+from stoobly_agent.app.settings.constants.mode import TEST
 
 class MockOptions(TypedDict):
   data: str

@@ -11,7 +11,7 @@ class PythonRequestAdapterFactory():
   def __init__(self, request: requests.Request):
     self.__request = request
 
-  def mitmproxy_request(self, http_version: str):
+  def mitmproxy_request(self, http_version: str = 'HTTP/1.1'):
     return MitmproxyRequestAdapter(http_version, self.__request).adapt()
 
   def stoobly_request(self):
