@@ -2,10 +2,12 @@ import click
 import os
 import pdb
 import requests
+import sys
 
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
@@ -116,6 +118,10 @@ def mock(**kwargs):
     **kwargs,
     'mode': mode.MOCK,
   })
+
+  if response.status_code == custom_response_codes.NOT_FOUND:
+    print(f"Error: {response.content.decode()}")
+    sys.exit(1)
 
   if kwargs['format'] == RAW_FORMAT:
     print_raw_response(response)
