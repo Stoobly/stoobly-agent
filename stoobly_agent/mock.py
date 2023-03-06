@@ -49,7 +49,7 @@ class Mock():
 
   @staticmethod
   def mock(url: str, **options: MockOptions):
-    command = [COMMAND, 'request', 'mock', '--format', 'raw']
+    command = [COMMAND, 'mock', '--format', 'raw']
 
     if isinstance(options.get('data'), str):
       data_option = f"--data {options['data']}"
