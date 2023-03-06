@@ -198,26 +198,36 @@ if is_remote:
 @click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
-  headers = {}
-  for header in kwargs['header']:
-    toks = header.split(':')
-
-    if len(toks) != 2:
-      continue
-    
-    headers[toks[0]] = toks[1]
-
-  request = requests.Request(
-    data=kwargs['data'],
-    headers=headers,
-    method=kwargs['request'],
-    url=kwargs['url']
-  )
+  request = __build_request_from_curl(**kwargs)
 
   context = ReplayContext.from_python_request(request)
   response: requests.Response = replay_request(context, {
     **kwargs,
     'mode': mode.MOCK,
+  })
+
+  if kwargs['format'] == RAW_FORMAT:
+    print_raw_response(response)
+  else:
+    print(response.content.decode())
+
+@request.command(
+  help="Record request"
+)
+@click.option('-d', '--data', default='', help='HTTP POST data')
+@click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
+@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('-X', '--request', default='GET', help='Specify request command to use')
+@click.option('--scenario-key')
+@click.argument('url')
+def record(**kwargs):
+  request = __build_request_from_curl(**kwargs)
+
+  context = ReplayContext.from_python_request(request)
+  response: requests.Response = replay_request(context, {
+    **kwargs,
+    'mode': mode.RECORD,
   })
 
   if kwargs['format'] == RAW_FORMAT:
@@ -278,3 +288,20 @@ def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
     if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
+
+def __build_request_from_curl(**kwargs):
+  headers = {}
+  for header in kwargs['header']:
+    toks = header.split(':')
+
+    if len(toks) != 2:
+      continue
+    
+    headers[toks[0]] = toks[1]
+
+  return requests.Request(
+    data=kwargs['data'],
+    headers=headers,
+    method=kwargs['request'],
+    url=kwargs['url']
+  )
