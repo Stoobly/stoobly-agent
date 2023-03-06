@@ -1,9 +1,7 @@
 import pdb
 import requests
 
-from mitmproxy.net.http import url
 from mitmproxy.http import Headers, Request as MitmproxyRequest
-from time import time
 from urllib.parse import urlparse
 
 class MitmproxyRequestAdapter():
@@ -11,6 +9,18 @@ class MitmproxyRequestAdapter():
   def __init__(self, http_version, request: requests.Request):
     self.__http_version = http_version
     self.__request = request
+
+  @property
+  def url(self):
+    parsed_url = urlparse(self.__request.url)
+
+    if not parsed_url.netloc:
+      parsed_url = parsed_url._replace(netloc=parsed_url.path, path='')
+
+    if not parsed_url.scheme:
+      parsed_url = parsed_url._replace(scheme='https')
+
+    return parsed_url.geturl()
 
   @property
   def headers(self):
@@ -29,7 +39,7 @@ class MitmproxyRequestAdapter():
   def adapt(self):
     request = MitmproxyRequest.make(
       self.__request.method,
-      self.__request.url,
+      self.url,
       self.data,
       self.headers,
     )
