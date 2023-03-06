@@ -1,10 +1,13 @@
 import click
 import os
 import pdb
-import sys
+import requests
 
 from stoobly_agent import VERSION
-from stoobly_agent.config.constants import env_vars
+from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
+from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -94,3 +97,68 @@ def run(**kwargs):
         run_api(**kwargs)
 
     run_proxy(**kwargs)
+
+@main.command(
+  help="Mock request"
+)
+@click.option('-d', '--data', default='', help='HTTP POST data')
+@click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
+@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('-X', '--request', default='GET', help='Specify request command to use')
+@click.option('--scenario-key')
+@click.argument('url')
+def mock(**kwargs):
+  request = __build_request_from_curl(**kwargs)
+
+  context = ReplayContext.from_python_request(request)
+  response: requests.Response = replay_request(context, {
+    **kwargs,
+    'mode': mode.MOCK,
+  })
+
+  if kwargs['format'] == RAW_FORMAT:
+    print_raw_response(response)
+  else:
+    print(response.content.decode())
+
+@main.command(
+  help="Record request"
+)
+@click.option('-d', '--data', default='', help='HTTP POST data')
+@click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
+@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('-X', '--request', default='GET', help='Specify request command to use')
+@click.option('--scenario-key')
+@click.argument('url')
+def record(**kwargs):
+  request = __build_request_from_curl(**kwargs)
+
+  context = ReplayContext.from_python_request(request)
+  response: requests.Response = replay_request(context, {
+    **kwargs,
+    'mode': mode.RECORD,
+  })
+
+  if kwargs['format'] == RAW_FORMAT:
+    print_raw_response(response)
+  else:
+    print(response.content.decode())
+
+def __build_request_from_curl(**kwargs):
+  headers = {}
+  for header in kwargs['header']:
+    toks = header.split(':')
+
+    if len(toks) != 2:
+      continue
+    
+    headers[toks[0]] = toks[1]
+
+  return requests.Request(
+    data=kwargs['data'],
+    headers=headers,
+    method=kwargs['request'],
+    url=kwargs['url']
+  )

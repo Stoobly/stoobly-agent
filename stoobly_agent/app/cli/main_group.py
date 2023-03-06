@@ -26,7 +26,7 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['dev-tools', 'exec', 'feature', 'init'],
+        'commands': ['dev-tools', 'exec', 'feature', 'init', 'mock', 'record'],
       },
       {
         'name': 'Proxy Commands',
@@ -36,12 +36,12 @@ class MainGroup(click.Group):
 
     if self.__settings.cli.features.remote:
       command_groups.append({
-        'name': 'Remote Commands',
+        'name': 'Remote Resource Commands',
         'commands': ['project', 'report', 'request', 'scenario', 'trace'],
       })
     else:
       command_groups.append({
-        'name': 'Local Commands',
+        'name': 'Local Resource Commands',
         'commands': ['request', 'scenario'],
       })
 

@@ -4,14 +4,11 @@ import pdb
 import requests
 import sys
 
-from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, print_request
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
-from stoobly_agent.config.constants import mode
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
-from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
 from stoobly_agent.lib import logger
@@ -19,7 +16,6 @@ from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .helpers.handle_mock_service import print_raw_response, RAW_FORMAT
 from .helpers.print_service import print_requests
 from .helpers.request_facade import RequestFacade
 from .helpers.validations import *
@@ -187,54 +183,6 @@ if is_remote:
 
     exit_on_failure(session_context, format=kwargs['format'])
 
-@request.command(
-  help="Mock request"
-)
-@click.option('-d', '--data', default='', help='HTTP POST data')
-@click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
-@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
-@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('-X', '--request', default='GET', help='Specify request command to use')
-@click.option('--scenario-key')
-@click.argument('url')
-def mock(**kwargs):
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.MOCK,
-  })
-
-  if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
-  else:
-    print(response.content.decode())
-
-@request.command(
-  help="Record request"
-)
-@click.option('-d', '--data', default='', help='HTTP POST data')
-@click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
-@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
-@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('-X', '--request', default='GET', help='Specify request command to use')
-@click.option('--scenario-key')
-@click.argument('url')
-def record(**kwargs):
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.RECORD,
-  })
-
-  if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
-  else:
-    print(response.content.decode())
-
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
   help="Manage request responses"
@@ -288,20 +236,3 @@ def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
     if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
-
-def __build_request_from_curl(**kwargs):
-  headers = {}
-  for header in kwargs['header']:
-    toks = header.split(':')
-
-    if len(toks) != 2:
-      continue
-    
-    headers[toks[0]] = toks[1]
-
-  return requests.Request(
-    data=kwargs['data'],
-    headers=headers,
-    method=kwargs['request'],
-    url=kwargs['url']
-  )
