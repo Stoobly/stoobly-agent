@@ -6,6 +6,7 @@ from io import BytesIO
 from mitmproxy.net import encoding
 from requests.structures import CaseInsensitiveDict
 from typing import Union
+from urllib3 import HTTPResponse
 
 from stoobly_agent.app.proxy.mitmproxy.response import Response
 from stoobly_agent.lib.orm.utils.response_parse_handler import Response as ResponseDict, ResponseParseHandler
@@ -39,8 +40,14 @@ class RawHttpResponseAdapter():
     response.status_code = self.status
     response.headers = self.headers
 
-    content_encoding = response.headers.get('content-encoding')
-    response.raw = self.__decode_body(self.body, content_encoding)
+    response.raw = HTTPResponse(
+      body=BytesIO(self.body),
+      decode_content=False,
+      headers=self.headers,
+      preload_content=False
+    )
+
+    #response.raw = self.__decode_body(self.body, content_encoding)
 
     return response
 
