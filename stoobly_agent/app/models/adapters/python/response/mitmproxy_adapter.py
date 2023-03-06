@@ -1,13 +1,21 @@
-from time import time
+import pdb
 import requests
 
 from mitmproxy.http import Headers, Response as MitmproxyResponse
+from time import time
+
+from stoobly_agent.app.models.adapters.raw_http_request_adapter import DEFAULT_HTTP_VERSION
 
 class MitmproxyResponseAdapter():
 
-  def __init__(self, http_version, response: requests.Response):
+  def __init__(self, response: requests.Response):
     self.__timestamp_start = time()
-    self.__http_version = http_version
+
+    if hasattr(response, 'raw'):
+      self.__http_version = f"HTTP/{response.raw.version / 10.0}"
+    else:
+      self.__http_version = DEFAULT_HTTP_VERSION
+
     self.__latency = 0 # Seconds
     self.__response = response
  
@@ -41,11 +49,11 @@ class MitmproxyResponseAdapter():
 
   def adapt(self):
     body = b''
-
-    try:
-      body = self.__response.raw.data
-    except:
+    
+    if self.__response._content_consumed or not hasattr(self.__response, 'raw'):
       body = self.__response.content
+    else:
+      body = self.__response.raw.data
 
     return MitmproxyResponse(
       self.__http_version,
