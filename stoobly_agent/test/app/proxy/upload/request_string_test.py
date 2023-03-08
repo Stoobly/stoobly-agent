@@ -24,7 +24,7 @@ class TestRequestString():
         raw_request_string = request_string.get()
         _request = RawHttpRequestAdapter(raw_request_string).to_request()
 
-        self.__test_equivalence(request, _request)
+        self.__test_equivalence(_request, request)
 
     def test_stoobly_com(self):
         data = b'{"name": "test", "description": "test"}'
@@ -42,17 +42,17 @@ class TestRequestString():
         raw_request_string = request_string.get()
         _request = RawHttpRequestAdapter(raw_request_string).to_request()
 
-        self.__test_equivalence(request, _request)
+        self.__test_equivalence(_request, request)
 
     def __test_equivalence(self, request: requests.Request, _request: requests.Request):
         assert _request.method == request.method
 
         # MitmproxyRequest adds a trailing /
-        assert os.path.join(_request.url, '/') == os.path.join(request.url, '/')
+        assert _request.url.rstrip('/') == request.url.rstrip('/')
 
         assert _request.data == request.data
 
-        for key, val in request.headers.items():
+        for key, val in _request.headers.items():
             assert val == request.headers.get(key)
 
     def __to_request_string(self, request: requests.Request):

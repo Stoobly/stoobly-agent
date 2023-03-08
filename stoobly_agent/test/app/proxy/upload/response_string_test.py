@@ -16,12 +16,12 @@ class TestRequestString():
         raw_response_string = response_string.get()
         _response = RawHttpResponseAdapter(raw_response_string).to_response()
 
-        self.__test_equivalence(response, _response)
+        self.__test_equivalence(_response, response)
 
     def __test_equivalence(self, response: requests.Response, _response: requests.Response):
         assert _response.raw.data == response.raw.data
 
-        for key, val in response.headers.items():
+        for key, val in _response.headers.items():
             assert val == response.headers.get(key)
 
     def __to_response_string(self, response: requests.Response):

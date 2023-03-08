@@ -37,7 +37,6 @@ class StooblyRequestAdapter():
 
     return query_params
 
-
   def adapt_headers(self):
     headers = []
 
