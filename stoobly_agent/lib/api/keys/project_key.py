@@ -1,4 +1,5 @@
 from .resource_key import ResourceKey
+from .organization_key import LOCAL_ORGANIZATION_ID
 
 LOCAL_PROJECT_ID = 0
 
@@ -15,6 +16,14 @@ class ProjectKey(ResourceKey):
 
     if not self.organization_id:
       raise InvalidProjectKey('Missing organization_id')
+
+  @property
+  @classmethod
+  def local_key(cls) -> str:
+    return cls.encode({
+      'i': LOCAL_PROJECT_ID,
+      'o': LOCAL_ORGANIZATION_ID,
+    })
 
   @property
   def is_local(self) -> bool:

@@ -223,7 +223,16 @@ if is_remote:
         pass
 
     @project.command(
-        help="Describe project"
+        help="Use local project."
+    )
+    def local(**kwargs):
+        project_key = ProjectKey.local_key
+        __set_project_key(project_key)
+
+        print("Using local project!")
+
+    @project.command(
+        help="Describe project."
     )
     @click.option('--select', multiple=True, help='Select column(s) to display.')
     @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
@@ -233,7 +242,7 @@ if is_remote:
 
         project_key = __project_key(settings)
         if project_key.is_local:
-            return
+            return print('Using local project')
 
         kwargs['project_key'] = project_key.raw
 
@@ -252,25 +261,9 @@ if is_remote:
     )
     @click.argument('project_key')
     def set(**kwargs):
-        settings = Settings.instance()
-
         project_key = kwargs['project_key']
-        validate_project_key(project_key)
-        _project_key = ProjectKey(project_key)
 
-        data_rule = settings.proxy.data.data_rules(_project_key.id)
-        scenario_key = data_rule.scenario_key
-
-        if scenario_key:
-            validate_scenario_key(scenario_key)
-            scenario_key = ScenarioKey(scenario_key)
-
-            if project_key.id != scenario_key.project_id:
-                data_rule.scenario_key = None
-                print("Current scenario does not belong to current project, unsetting current scenario.\n")
-
-        settings.proxy.intercept.project_key = project_key 
-        settings.commit()
+        __set_project_key(project_key)
 
         print("Project updated!")
 
@@ -292,3 +285,22 @@ def __project_key(settings):
     project_key = settings.proxy.intercept.project_key
     validate_project_key(project_key)
     return ProjectKey(project_key)
+
+def __set_project_key(project_key: str):
+    settings = Settings.instance()
+    validate_project_key(project_key)
+    _project_key = ProjectKey(project_key)
+
+    data_rule = settings.proxy.data.data_rules(_project_key.id)
+    scenario_key = data_rule.scenario_key
+
+    if scenario_key:
+        validate_scenario_key(scenario_key)
+        scenario_key = ScenarioKey(scenario_key)
+
+        if project_key.id != scenario_key.project_id:
+            data_rule.scenario_key = None
+            print("Current scenario does not belong to current project, unsetting current scenario.\n")
+
+    settings.proxy.intercept.project_key = project_key 
+    settings.commit()

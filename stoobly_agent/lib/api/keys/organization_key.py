@@ -1,5 +1,7 @@
 from .resource_key import ResourceKey
 
+LOCAL_ORGANIZATION_ID = 0
+
 class InvalidOrganizationKey(Exception):
   pass
 

@@ -14,7 +14,7 @@ def select_print_options(kwargs):
 def print_projects(projects, **kwargs):
     tabulate_print(
         projects, 
-        filter=['created_at', 'organization_id', 'project_id', 'starred', 'updated_at'],
+        filter=['created_at', 'is_deleted', 'organization_id', 'project_id', 'starred', 'updated_at'],
         headers=not kwargs.get('without_headers'),
         select=kwargs.get('select') or []
     )

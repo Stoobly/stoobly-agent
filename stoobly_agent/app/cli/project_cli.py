@@ -57,7 +57,9 @@ def list(**kwargs):
     if not organization_key:
         try:
             project_key = ProjectKey(settings.proxy.intercept.project_key)
-            organization_key = OrganizationKey.encode(project_key.organization_id)
+
+            if not project_key.is_local:
+                organization_key = OrganizationKey.encode(project_key.organization_id)
         except InvalidProjectKey as e:
             pass
 
