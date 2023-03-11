@@ -14,14 +14,11 @@ class ReplayedResponse(Base):
   __fillable__ = ['latency', 'timestamp', 'raw', 'status', 'request_id']
 
   def with_python_response(self, response: requests.Response):
-    http_version = 'HTTP/1.1'
-    if hasattr(response, 'raw'):
-      http_version = f"HTTP/{response.raw.version / 10.0}"
-
-    mitmproxy_response = PythonResponseAdapterFactory(http_version).mitmproxy_response(response).adapt()
+    mitmproxy_response = PythonResponseAdapterFactory(response).mitmproxy_response()
     adapted_response = MitmproxyResponseFacade(mitmproxy_response)
     response_string = ResponseString(adapted_response, None) 
     self.raw = response_string.get()
+
     self.status = response.status_code
 
   @belongs_to

@@ -30,6 +30,6 @@ class MitmproxyFlowMock():
   @response.setter
   def response(self, _response: Union[MitmproxyResponse, requests.Response]):
     if isinstance(_response, requests.Response):
-      self.__response = PythonResponseAdapterFactory(_response).mitmproxy_response(DEFAULT_HTTP_VERSION)
+      self.__response = PythonResponseAdapterFactory(_response).mitmproxy_response()
     else:
       self.__response = _response
