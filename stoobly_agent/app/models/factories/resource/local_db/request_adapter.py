@@ -113,6 +113,7 @@ class LocalDBRequestAdapter():
 
     if scenario_id: 
       requests = requests.where('scenario_id', int(scenario_id))
+      sort_order = query_params.get('sort_order') or 'asc' 
 
     if starred:
       requests = requests.where('starred', starred)

@@ -49,13 +49,31 @@ class Request(Base):
     h['key'] = self.key()
     return h
 
-# Handles creating and updating
 def handle_created(request):
-  scenario = request.scenario
+  pass
 
-  if scenario:
-    scenario.requests_count += 1
-    scenario.save()
+def handle_saving(request):
+  if request.is_deleted:
+    request.scenario_id = None
+
+def handle_saved(request):
+  request_before = request.get_original()
+
+  if not request_before.get('scenario_id'):
+    scenario = request.scenario
+    if scenario:
+      scenario.requests_count += 1
+      scenario.save()
+  else:
+    if request_before.get('scenario_id') != request.scenario_id:
+      scenario = Scenario.find(request_before.get('scenario_id'))
+      scenario.requests_count -= 1
+      scenario.save()
+
+      scenario = request.scenario
+      if scenario:
+        scenario.requests_count += 1
+        scenario.save()
 
 def handle_deleting(request):
   response = request.response
@@ -70,6 +88,8 @@ def handle_deleted(request):
     scenario.requests_count -= 1
     scenario.save()
 
+Request.saved(handle_saved)
+Request.saving(handle_saving)
 Request.created(handle_created)
 Request.deleted(handle_deleted)
 Request.deleting(handle_deleting)

@@ -28,13 +28,21 @@ class LocalDBScenarioAdapter():
     sort_by = query_params.get('sort_by') or 'id'
     sort_order = query_params.get('sort_order') or 'desc'
 
-    is_deleted = query_params.get('filter') == 'is_deleted'
-    starred = query_params.get('filter') == 'starred'
+    filter = query_params.get('filter')
+    is_deleted = filter == 'is_deleted'
 
     scenarios = Scenario.where('is_deleted', is_deleted)
 
-    if starred:
-      scenarios = scenarios.where('starred', starred)
+    if filter == 'starred':
+      scenarios = scenarios.where('starred', True)
+    elif filter == 'high_priority':
+      scenarios = scenarios.where('priority', 3)
+    elif filter == 'medium_priority':
+      scenarios = scenarios.where('priority', 2)
+    elif filter == 'low_priority':
+      scenarios = scenarios.where('priority', 1)
+    elif filter == 'none_priority':
+      scenarios = scenarios.where('priority', 0)
 
     if query:
       scenarios = self.__search(scenarios, query)

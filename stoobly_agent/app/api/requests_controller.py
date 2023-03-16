@@ -55,7 +55,7 @@ class RequestsController:
         response_adapter = RawHttpResponseAdapter(joined_request.response_string.get())
 
         mitmproxy_request = PythonRequestAdapterFactory(request_adapter.to_request()).mitmproxy_request(request_adapter.protocol)
-        mitmproxy_response = PythonResponseAdapterFactory(response_adapter.to_response()).mitmproxy_response(response_adapter.protocol)
+        mitmproxy_response = PythonResponseAdapterFactory(response_adapter.to_response()).mitmproxy_response()
 
         class MitmproxyFlowMock():
             def __init__(self, request, response):
@@ -68,6 +68,7 @@ class RequestsController:
         request = request_model.create(**{
             'flow': mitmproxy_flow_mock,
             'joined_request': joined_request,
+            'scenario_id': body_params.get('scenario_id'),
         })
 
         if not request:
@@ -228,7 +229,13 @@ class RequestsController:
         }
 
         replay_context = ReplayContext(Request(request_response))
-        self.__send(context, replay_context) 
+        self.__send(context, replay_context)
+
+    def export(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'id': 1
+        })
+        request_id = int(context.params.get('id'))
 
     def __request_model(self, context: SimpleHTTPRequestHandler):
         request_model = RequestModel(Settings.instance())
