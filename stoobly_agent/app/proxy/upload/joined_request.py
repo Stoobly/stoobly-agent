@@ -4,10 +4,10 @@ from .proxy_request import ProxyRequest
 from .request_string import RequestString
 from .response_string import ResponseString
 
-class JoinedRequest:
-    ENCODING = 'utf-8'
-    REQUEST_DELIMITTER = '🐵🙈🙉'.encode(ENCODING)
+ENCODING = 'utf-8'
+REQUEST_DELIMITTER = '🐵🙈🙉'.encode(ENCODING)
 
+class JoinedRequest:
     __request_string = None
     __response_string = None
 
@@ -52,5 +52,5 @@ class JoinedRequest:
         request_string = self.__request_string.get(control=True)
         response_string = self.__response_string.get(control=True)
 
-        joined = self.REQUEST_DELIMITTER.join([request_string, response_string])
+        joined = REQUEST_DELIMITTER.join([request_string, response_string])
         return joined
