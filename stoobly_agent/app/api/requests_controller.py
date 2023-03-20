@@ -8,10 +8,9 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
+from stoobly_agent.app.models.adapters import JoinedRequestAdapter, RawHttpRequestAdapter, RawHttpResponseAdapter
+from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory, PythonResponseAdapterFactory
-from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
-from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
@@ -231,11 +230,24 @@ class RequestsController:
         replay_context = ReplayContext(Request(request_response))
         self.__send(context, replay_context)
 
-    def export(self, context: SimpleHTTPRequestHandler):
+    def download(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1
         })
         request_id = int(context.params.get('id'))
+        format = context.params.get('format')
+        request = OrmRequest.find(request_id)
+
+        if not request:
+            return context.not_found()
+        if format == 'gor':
+            context.render(
+                download = JoinedRequestStringAdapter(request).adapt(),
+                filename = f"REQUEST-{int(datetime.now().timestamp())}.gor",
+                status = 200
+            )
+        else:
+            return context.bad_request('Invalid format')
 
     def __request_model(self, context: SimpleHTTPRequestHandler):
         request_model = RequestModel(Settings.instance())

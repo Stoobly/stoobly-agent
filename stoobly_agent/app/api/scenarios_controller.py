@@ -1,8 +1,12 @@
 import pdb
 
+from datetime import datetime
+
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
+from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.orm.scenario import Scenario
 
 class ScenariosController:
     _instance = None
@@ -101,6 +105,31 @@ class ScenariosController:
             plain = '',
             status = 200
         )
+
+    def download(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'id': 1
+        })
+        scenario_id = int(context.params.get('id'))
+        format = context.params.get('format')
+        scenario = Scenario.find(scenario_id)
+
+        if not scenario:
+            return context.not_found()
+        if format == 'gor':
+            requests = scenario.requests
+
+            content = ''
+            for request in requests:
+                content = JoinedRequestStringAdapter(request).adapt(content)
+
+            context.render(
+                download = content,
+                filename = f"SCENARIO-{int(datetime.now().timestamp())}.gor",
+                status = 200
+            )
+        else:
+            return context.bad_request('Invalid format')
 
     def __scenario_model(self, context: SimpleHTTPRequestHandler):
         scenario_model = ScenarioModel(Settings.instance())

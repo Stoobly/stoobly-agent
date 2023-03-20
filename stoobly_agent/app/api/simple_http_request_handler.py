@@ -16,6 +16,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.render_plain(kwargs)
         elif kwargs.get('data') != None:
             self.render_data(kwargs)
+        elif kwargs.get('download') != None:
+            self.render_download(kwargs)
 
     def render_file(self, kwargs):
         if not 'headers' in kwargs:
@@ -47,6 +49,15 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         kwargs['headers']['Content-Type'] = 'text/plain'
         kwargs['data'] = kwargs['plain']
+        self.render_data(kwargs)
+
+
+    def render_download(self, kwargs):
+        if not 'headers' in kwargs:
+            kwargs['headers'] = {}
+
+        kwargs['headers']['Content-Disposition'] = f"attachment; filename=\"{kwargs.get('filename') or 'download.txt'}\""
+        kwargs['data'] = kwargs['download']
         self.render_data(kwargs)
 
     def render_data(self, kwargs):
