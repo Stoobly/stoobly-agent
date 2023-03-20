@@ -244,9 +244,11 @@ class RequestsController:
         if not request:
             return context.not_found()
         if format == 'gor':
+            filename = f"REQUEST-{int(datetime.now().timestamp())}.gor"
+            text = JoinedRequestStringAdapter(request).adapt()
+
             context.render(
-                download = JoinedRequestStringAdapter(request).adapt(),
-                filename = f"REQUEST-{int(datetime.now().timestamp())}.gor",
+                plain = b"\n".join([filename.encode(), text]),
                 status = 200
             )
         else:
