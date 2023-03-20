@@ -90,6 +90,7 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
             header = 'Access-Control-Allow-Headers'
             allowed_headers = _headers.get(header) or ', '.join([
+                'Content-Disposition',
                 'Content-Type',
                 headers.ACCESS_TOKEN.title(),
                 headers.CLIENT.title(),
@@ -118,8 +119,7 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
         for endpoint_handler in ROUTES[method]:
             path = endpoint_handler[0]
 
-            matches = isinstance(path, str) and self.path == path
-            matches = matches or not isinstance(path, str) and re.match(path, self.path)
+            matches = self.path == path if isinstance(path, str) else bool(re.match(path, self.path))
 
             if matches:
                 handler = endpoint_handler[1]
