@@ -53,7 +53,7 @@ def handle_created(request):
   pass
 
 def handle_saving(request):
-  if request.is_deleted:
+  if hasattr(request, 'is_deleted') and request.is_deleted:
     request.scenario_id = None
 
 def handle_saved(request):
