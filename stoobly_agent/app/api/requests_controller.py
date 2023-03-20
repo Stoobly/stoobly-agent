@@ -38,17 +38,20 @@ class RequestsController:
 
     def create(self, context: SimpleHTTPRequestHandler):
         body_params = context.params
-        if not context.required_params(body_params, ['payloads_delimitter', 'requests']):
+        if not context.required_params(body_params, ['requests']):
             return
 
         raw_requests = body_params.get('requests') 
-        payloads_delimitter = body_params.get('payloads_delimitter')
+        payloads_delimitter = body_params.get('payloads_delimitter') or '🐵🙈🙉'
 
         toks = raw_requests.split(payloads_delimitter)
         if len(toks) != 2:
             return context.bad_request('Invalid requests format')
 
-        joined_request = JoinedRequestAdapter(raw_requests, payloads_delimitter).adapt()
+        try:
+            joined_request = JoinedRequestAdapter(raw_requests, payloads_delimitter).adapt()
+        except Exception as e:
+            return context.bad_request('Could not parse requests')
 
         request_adapter = RawHttpRequestAdapter(joined_request.request_string.get())
         response_adapter = RawHttpResponseAdapter(joined_request.response_string.get())
