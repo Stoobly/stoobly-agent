@@ -36,6 +36,7 @@ class RequestShowResponse(TypedDict):
   endpoint_id: int
   headers: Union[list, None]
   host: str
+  http_version: float
   id: str
   is_deleted: bool
   latency: int

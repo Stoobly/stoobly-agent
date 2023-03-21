@@ -8,7 +8,7 @@ from stoobly_agent.app.models.schemas.request import Request
 class MitmproxyRequestAdapter():
 
   def __init__(self, request: Request):
-    self.__http_version = 'HTTP/1.1'
+    self.__http_version = request.http_version
     self.__request = request
 
   @property

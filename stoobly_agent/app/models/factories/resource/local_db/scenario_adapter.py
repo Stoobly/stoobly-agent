@@ -19,6 +19,8 @@ class LocalDBScenarioAdapter():
 
   def show(self, scenario_id: str) -> ScenarioShowResponse:
     scenario_record = self.__scenario_orm.find(scenario_id)
+    if not scenario_record:
+      return {}
     return self.__to_show_response(scenario_record)
 
   def index(self, **query_params: ScenariosIndexQueryParams) -> ScenariosIndexResponse:

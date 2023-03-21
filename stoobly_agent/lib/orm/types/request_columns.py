@@ -6,6 +6,7 @@ class RequestColumns(TypedDict):
   control: str
   headers_hash: str
   host: str
+  http_version: float
   method: str
   path: str
   port: int

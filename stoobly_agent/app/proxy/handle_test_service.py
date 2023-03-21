@@ -24,6 +24,8 @@ LOG_ID = 'HandleTest'
 # Mock and Test modes share the same policies
 #
 def handle_response_test(context: ReplayContext) -> None:
+    from .test.context import TestContext
+
     flow: MitmproxyHTTPFlow = context.flow
 
     disable_transfer_encoding(flow.response)

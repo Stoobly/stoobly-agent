@@ -2,9 +2,9 @@ import pdb
 
 from mitmproxy.http import Request
 from typing import Union
+
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
-
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response, is_traversable

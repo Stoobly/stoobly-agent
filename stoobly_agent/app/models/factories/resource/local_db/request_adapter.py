@@ -41,6 +41,7 @@ class LocalDBRequestAdapter():
         'control': joined_request.request_string.control, 
         'headers_hash': hashed_request.headers_hash(),
         'host': request.host,
+        'http_version':self.__http_version(request.http_version),
         'latency': joined_request.response_string.latency,
         'method': request.method,
         'path': request_facade.path,
@@ -56,11 +57,12 @@ class LocalDBRequestAdapter():
 
       response_columns: ResponseColumns = {
         'control': joined_request.response_string.control,
+        'http_version': self.__http_version(flow.response.http_version),
         'raw': joined_request.response_string.get(),
         'request_id': request_record.id,
       }
 
-      self.__response_orm.create(**response_columns)
+      response_record = self.__response_orm.create(**response_columns)
 
       return {
         'list': [ORMToStooblyRequestTransformer(request_record, {}).transform()],
@@ -162,3 +164,9 @@ class LocalDBRequestAdapter():
       return base_model.where('host', uri.hostname).where('path', uri.path)
     else:
       return base_model.where('path', 'like', f"%{query}%")
+
+  def __http_version(self, http_version: str):
+    if not isinstance(http_version, str):
+      return http_version
+    _version = http_version.split('/')[1]
+    return float(_version)

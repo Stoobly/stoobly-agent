@@ -29,6 +29,10 @@ class Request():
     self.__url = self.__url._replace(netloc=v)
 
   @property
+  def http_version(self):
+    return self.request.get('http_version')
+
+  @property
   def scheme(self):
     return self.__url.scheme
 

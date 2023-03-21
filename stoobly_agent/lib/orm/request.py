@@ -16,6 +16,7 @@ class Request(Base):
     'control',
     'headers_hash', 
     'host', 
+    'http_version',
     'is_deleted',
     'latency',
     'method', 

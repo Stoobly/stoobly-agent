@@ -32,6 +32,10 @@ class MitmproxyRequestFacade(Request):
         self.__body = MitmproxyRequestBodyFacade(request)
 
     @property
+    def http_version(self):
+        return self.request.http_version
+
+    @property
     def url(self):
         return self.request.url
 

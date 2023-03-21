@@ -2,6 +2,7 @@ request_show_response = {
   "created_at": "2022-06-08T04:06:58.000Z",
   "endpoint_id": 1308,
   "host": "alpha.api.stoobly.com",
+  "http_version": 1.1,
   "id": 11131,
   "latency": 373,
   "method": "GET",
