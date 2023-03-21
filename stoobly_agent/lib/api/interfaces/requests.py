@@ -32,6 +32,7 @@ class RequestShowQueryParams():
 
 class RequestShowResponse(TypedDict):
   body: str
+  components: List[str]
   created_at: str
   endpoint_id: int
   headers: Union[list, None]
