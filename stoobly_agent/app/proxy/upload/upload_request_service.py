@@ -13,6 +13,7 @@ from stoobly_agent.app.proxy.upload import JoinedRequest, RequestString, Respons
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.orm.request import Request
 
 from ..utils.publish_change_service import publish_change
 from .join_request_service import join_rewritten_request
@@ -46,6 +47,8 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
 ):
+    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {flow.request.url}")
+
     joined_request = join_rewritten_request(flow, intercept_settings)
 
     if flow and intercept_settings.settings.is_debug():
@@ -63,8 +66,10 @@ def upload_request(
     return __upload_request_with_body_params(request_model, body_params)
 
 def upload_staged_request(
-    request, request_model: RequestModel, project_key: str, scenario_key: str = None
+    request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
 ):
+    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {request.url}")
+
     response = request.response
 
     if not response:
@@ -91,11 +96,6 @@ def upload_staged_request(
     return __upload_request_with_body_params(request_model, body_params)
 
 def __upload_request_with_body_params(request_model: RequestModel, body_params: dict):
-    joined_request: JoinedRequest = body_params.get('joined_request')
-
-    if joined_request.proxy_request:
-        Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {joined_request.proxy_request.url()}")
-
     #try:
     request = request_model.create(**body_params)
     #except Exception as e:
