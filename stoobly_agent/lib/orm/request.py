@@ -50,6 +50,31 @@ class Request(Base):
     h['key'] = self.key()
     return h
 
+  @property
+  def url(self):
+    s = self.host
+
+    if self.user:
+      if not self.password:
+        s = f"{self.user}@{s}"
+      else:
+        s = f"{self.user}:{self.password}@#{s}"
+
+    if self.scheme and len(self.scheme) > 0:
+      s = f"{self.scheme}://{s}"
+
+    if self.port != None:
+      if not ((self.scheme == 'https' and self.port == 443) or (self.scheme == 'http' and self.port == 80)):
+        s = f"{s}:{self.port}"
+
+    s += self.path
+
+    _query = self.to_dict().get('query')
+    if _query and len(_query) > 0:
+      s = f"{s}?{_query}"
+
+    return s
+
 def handle_created(request):
   pass
 
