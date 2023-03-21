@@ -11,13 +11,7 @@ class AddHttpVersionColumnToRequests(Migration):
         Run the migrations.
         """
         with self.schema.table('requests') as table:
-            table.decimal('http_version').nullable()
-
-        for request in Request.all():
-            request.update(http_version=1.1)
-
-        with self.schema.table('requests') as table:
-            table.decimal('http_version').default(1.1).change()
+            table.decimal('http_version').default(1.1)
 
     def down(self):
         """
