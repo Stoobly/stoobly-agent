@@ -160,7 +160,7 @@ def __build_request_from_curl(**kwargs):
     if len(toks) != 2:
       continue
     
-    headers[toks[0]] = toks[1]
+    headers[toks[0].strip()] = toks[1].strip()
 
   return requests.Request(
     data=kwargs['data'],
