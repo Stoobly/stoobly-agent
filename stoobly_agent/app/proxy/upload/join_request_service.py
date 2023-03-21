@@ -24,23 +24,9 @@ def join_rewritten_request(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
 
     # Adapt flow.response
     response = MitmproxyResponseFacade(flow.response)
+    rewrite_rules = intercept_settings.record_rewrite_rules
 
-    rewrite_rules = intercept_settings.rewrite_rules
     request.with_rewrite_rules(rewrite_rules).rewrite()
     response.with_rewrite_rules(rewrite_rules).rewrite()
-
-    return join_request(request, response, intercept_settings)
-
-def join_redacted_request(flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings) -> JoinedRequest:
-    # Adapt flow.request
-    request = MitmproxyRequestFacade(flow.request)
-
-    # Adapt flow.response
-    response = MitmproxyResponseFacade(flow.response)
-
-    redact_rules: list = intercept_settings.redact_rules
- 
-    request.with_redact_rules(redact_rules).redact()
-    response.with_redact_rules(redact_rules).redact()
 
     return join_request(request, response, intercept_settings)

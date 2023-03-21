@@ -128,6 +128,7 @@ class MitmproxyRequestFacade(Request):
 
     def rewrite(self):
         rewrites = self.__rewrite_rules
+
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
             self.__rewrite_query(rewrites)
@@ -163,7 +164,7 @@ class MitmproxyRequestFacade(Request):
 
         for rewrite in rewrites:
             jmespath.search(rewrite.name, params, {
-                'replacements': [handler(rewrite) if handler else rewrite.value]
+                'replacements': [handler(rewrite) if handler else rewrite.value],
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:

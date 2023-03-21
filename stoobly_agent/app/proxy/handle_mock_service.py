@@ -38,7 +38,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
     # Rewrite request with paramter rules for mock
     request_facade = MitmproxyRequestFacade(request)
-    rewrite_rules = intercept_settings.rewrite_rules
+    rewrite_rules = intercept_settings.mock_rewrite_rules
     request_facade.with_rewrite_rules(rewrite_rules).rewrite()
 
     # If ignore rules are set, then ignore specified request parameters

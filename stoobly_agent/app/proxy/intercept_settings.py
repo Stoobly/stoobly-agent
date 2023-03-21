@@ -147,10 +147,7 @@ class InterceptSettings:
     _mode = self.mode
     return list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
 
-  @property
-  def redact_rules(self) -> List[RedactRule]:
-    return self.__select_rewrite_rules(mode.RECORD)
-
+  # TODO: explore if should support specifying components to ignore
   @property
   def ignore_rules(self) -> List[IgnoreRule]:
     return []
@@ -158,6 +155,14 @@ class InterceptSettings:
   @property
   def rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules()
+
+  @property
+  def record_rewrite_rules(self) -> List[RedactRule]:
+    return self.__select_rewrite_rules(mode.RECORD)
+
+  @property
+  def mock_rewrite_rules(self) -> List[RedactRule]:
+    return self.__select_rewrite_rules(mode.MOCK)
 
   @property
   def replay_rewrite_rules(self) -> List[RewriteRule]:
