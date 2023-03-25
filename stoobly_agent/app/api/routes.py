@@ -56,8 +56,8 @@ ROUTES = {
       [REQUEST_PATH, RequestsController.instance().get],
       [SCENARIOS_PATH, ScenariosController.instance().index],
       [re.compile('/'.join([SCENARIO_PATH.pattern, 'download$'])), ScenariosController.instance().download],
+      [STATUSES_PATH, StatusesController.instance().index],
       [SCENARIO_PATH, ScenariosController.instance().get],
-      [STATUS_PATH, StatusesController.instance().get],
   ],
   'POST': [
       ['/'.join([PROXY_PATH, 'post']), ProxyController.instance().do_POST],

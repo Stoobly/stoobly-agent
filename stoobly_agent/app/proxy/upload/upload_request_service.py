@@ -15,7 +15,7 @@ from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.request import Request
 
-from ..utils.publish_change_service import publish_change
+from ..utils.publish_change_service import publish_requests_modified
 from .join_request_service import join_rewritten_request
 
 AGENT_STATUSES = {
@@ -104,7 +104,7 @@ def __upload_request_with_body_params(request_model: RequestModel, body_params: 
     #    return None
 
     if request:
-        publish_change(AGENT_STATUSES['REQUESTS_MODIFIED'])
+        publish_requests_modified(body_params['project_id'])
 
     return request
 

@@ -9,7 +9,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
 
-from stoobly_agent.config.constants import env_vars
+from stoobly_agent.config.constants import env_vars, statuses
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir
 from stoobly_agent.lib.logger import Logger
@@ -36,6 +36,7 @@ class Settings:
     __schema_file_path = None
 
     __load_lock = False
+    __watching = False
 
     def __init__(self, **kwargs: SettingsOptions):
         if Settings.__instance:
@@ -84,6 +85,9 @@ class Settings:
         return self.__remote_settings
 
     def watch(self):
+        if self.__watching:
+            return False
+
         patterns = ['settings.yml']
         ignore_patterns = None
         ignore_directories = False
@@ -96,6 +100,10 @@ class Settings:
 
         observer.schedule(event_handler, watch_dir)
         observer.start()
+
+        self.__watching = True
+
+        return True
 
     ### Get
 
@@ -150,10 +158,14 @@ class Settings:
         
     def __reload_settings(self, event):
         if not self.__load_lock:
+            from stoobly_agent.app.proxy.utils.publish_change_service import publish_change
+
             self.__load_lock = True
 
             Logger.instance().info(f"{self.LOG_ID}.reload_settings")
             self.__load_settings()
+
+            publish_change(statuses.SETTINGS_MODIFIED, self.__settings)
 
         self.__load_lock = False
 

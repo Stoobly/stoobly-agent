@@ -18,6 +18,27 @@ class StatusesController:
 
         return cls._instance
 
+    def index(self, context):
+        version = -1
+
+        try:
+            version = int(context.params.get('version'))
+        except ValueError as e:
+            pass
+
+        cache = Cache.instance()
+        statuses = []
+        if not version or version != cache.version:
+            statuses = cache.read_all()
+
+        context.render(
+            json = {
+                'statuses': statuses,
+                'version': cache.version,
+            },
+            status = 200
+        )
+
     # GET /api/v1/admin/statuses/:id
     def get(self, context):
         context.parse_path_params({
@@ -33,9 +54,11 @@ class StatusesController:
                 status = 204
             )
         else:
-            cache.delete(context.params.get('id'))
             context.render(
-                plain = status,
+                json = {
+                    'status': status,
+                    'version': cache.version
+                },
                 status = 200
             )
 
@@ -46,7 +69,7 @@ class StatusesController:
         })
 
         cache = Cache.instance()
-        cache.write(context.params.get('id'), context.body)
+        cache.write(context.params.get('id'), context.body.decode())
 
         context.render(
             plain = '',

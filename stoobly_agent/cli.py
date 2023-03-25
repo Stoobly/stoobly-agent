@@ -89,6 +89,9 @@ def init(**kwargs):
 def run(**kwargs):
     os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
 
+    # Observe config for changes
+    Settings.instance().watch()
+
     if not os.getenv(env_vars.LOG_LEVEL):
         os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
