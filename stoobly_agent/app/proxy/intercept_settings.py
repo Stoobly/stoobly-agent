@@ -57,8 +57,11 @@ class InterceptSettings:
   def active(self):
     if self.__intercept_settings.active:
       return True
+
+    if not self.__headers:
+      return False
     
-    return self.__headers and custom_headers.PROXY_MODE in self.__headers
+    return custom_headers.PROXY_MODE in self.__headers
 
   @property
   def lifecycle_hooks_script_path(self):

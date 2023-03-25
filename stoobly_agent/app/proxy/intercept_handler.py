@@ -21,9 +21,6 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
 
-# Observe config for changes
-Settings.instance().watch()
-
 LOG_ID = 'InterceptHandler'
 
 def request(flow: MitmproxyHTTPFlow):
