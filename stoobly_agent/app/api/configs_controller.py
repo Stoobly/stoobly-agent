@@ -26,7 +26,7 @@ class ConfigsController:
 
         return cls._instance
 
-    # GET /api/v1/admin/configs/policies
+    # GET /configs/policies
     def policies(self, context):
         settings = Settings.instance()
         active_mode = settings.proxy.intercept.active
@@ -47,7 +47,7 @@ class ConfigsController:
                 status = 200
             )
 
-    # GET /api/v1/admin/configs
+    # GET /configs
     def show(self, context):
         settings = Settings.instance()
 
@@ -56,7 +56,7 @@ class ConfigsController:
             status = 200
         )
 
-    # GET /api/v1/admin/configs/summary
+    # GET /configs/summary
     def summary(self, context):
         settings = Settings.instance()
         proxy = settings.proxy
@@ -78,20 +78,22 @@ class ConfigsController:
                 intercept_settings.scenario_key = None
                 settings.commit()
 
+        modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY] if not context.params.get('agent') else [mode.RECORD, mode.MOCK, mode.REPLAY]
+
         context.render(
             json = {
                 'active': intercept_settings.active,
                 'mode': intercept_settings.mode,
-                'modes': [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY],
-                'project_id': project_id,
+                'modes': modes,
+                'project_id': int(project_id) if project_id != None else None,
                 'proxy_url': proxy.url,
                 'remote_enabled': settings.cli.features.remote,
-                'scenario_id': scenario_id,
+                'scenario_id': int(scenario_id) if scenario_id != None else None,
             },
             status = 200
         )
 
-    # PUT /api/v1/admin/configs
+    # PUT /configs
     def update(self, context):
         settings = Settings.instance()
 

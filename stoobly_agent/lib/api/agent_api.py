@@ -5,7 +5,7 @@ from typing import Union
 from .api import Api
 
 class AgentApi(Api):
-    STATUSES_ENDPOINT = '/api/v1/admin/statuses'
+    STATUSES_ENDPOINT = '/statuses'
 
     def __init__(self, service_url):
         self.service_url = service_url

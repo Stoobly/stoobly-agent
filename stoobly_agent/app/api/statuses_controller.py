@@ -39,7 +39,7 @@ class StatusesController:
             status = 200
         )
 
-    # GET /api/v1/admin/statuses/:id
+    # GET /statuses/:id
     def get(self, context):
         context.parse_path_params({
             'id': 4
@@ -62,7 +62,7 @@ class StatusesController:
                 status = 200
             )
 
-    # PUT /api/v1/admin/statuses/:id
+    # PUT /statuses/:id
     def update(self, context):
         context.parse_path_params({
             'id': 4

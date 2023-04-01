@@ -14,11 +14,11 @@ from .proxy_controller import ProxyController
 from .replayed_response_headers_controller import ReplayedResponseHeadersController
 from .statuses_controller import StatusesController
 
-CONFIGS_PATH = '/api/v1/admin/configs'
+CONFIGS_PATH = '/configs'
 PROXY_PATH = '/proxy'
 REQUESTS_PATH = '/requests'
 SCENARIOS_PATH = '/scenarios'
-STATUSES_PATH = '/api/v1/admin/statuses'
+STATUSES_PATH = '/statuses'
 
 BODIES_PATH = re.compile(f"{REQUESTS_PATH}/[^/]+/bodies/mock")
 HEADERS_PATH = re.compile(f"{REQUESTS_PATH}/[^/]+/headers")
