@@ -84,7 +84,9 @@ class Mock():
 
     # Change dir to caller file's directory
     dir_path = inspect.stack()[2].filename # Path of calling method
-    os.chdir(os.path.dirname(dir_path))
+    parent_dir = os.path.dirname(dir_path)
+    if len(parent_dir) > 0:
+      os.chdir(parent_dir)
 
     completed_process = subprocess.run(command, check=True, stdout=subprocess.PIPE)
 
