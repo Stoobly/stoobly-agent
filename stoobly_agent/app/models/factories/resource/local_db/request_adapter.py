@@ -110,10 +110,13 @@ class LocalDBRequestAdapter():
 
     is_deleted = query_params.get('filter') == 'is_deleted'
     starred = query_params.get('filter') == 'starred'
+    unassigned = query_params.get('filter') == 'unassigned'
 
     requests = Request.where('is_deleted', is_deleted)
 
-    if scenario_id: 
+    if unassigned:
+      requests = requests.where('scenario_id', None)
+    elif scenario_id: 
       requests = requests.where('scenario_id', int(scenario_id))
       sort_order = query_params.get('sort_order') or 'asc' 
 
