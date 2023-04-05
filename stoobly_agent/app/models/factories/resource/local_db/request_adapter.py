@@ -163,7 +163,8 @@ class LocalDBRequestAdapter():
     if uri.hostname:
       return base_model.where('host', uri.hostname).where('path', uri.path)
     else:
-      return base_model.where('path', 'like', f"%{query}%")
+      pattern = f"%{query}%"
+      return base_model.where('path', 'like', pattern).or_where('host', 'like', pattern)
 
   def __http_version(self, http_version: str):
     if not isinstance(http_version, str):
