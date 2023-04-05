@@ -14,6 +14,10 @@ class LocalDBReplayedResponseAdapter():
   def __init__(self, replayed_response_orm: ReplayedResponse.__class__ = ReplayedResponse):
     self.__replayed_response_orm = replayed_response_orm
 
+  def create(self, **body_params):
+    replayed_response = ReplayedResponse.create(**body_params)
+    return self.__transform_replayed_response(replayed_response)
+
   def index(self, **query_params: ReplayedResponseIndexQueryParams):
     request_id = int(query_params.get('request_id')) if query_params.get('request_id') else None
     page = int(query_params.get('page') or 0)
@@ -75,6 +79,37 @@ class LocalDBReplayedResponseAdapter():
     Response.create(replayed_response_dict)
 
     return ORMToStooblyRequestTransformer(new_request, {}).transform()
+
+  def activate(self, replayed_response_id: int):
+    replayed_response: ReplayedResponse = self.__replayed_response_orm.find(replayed_response_id)
+
+    if not replayed_response:
+      return None
+
+    request = replayed_response.request
+    response = request.response
+
+    _replayed_response = ReplayedResponse.create(
+      latency=request.latency,
+      raw=response.raw,
+      request_id=request.id,
+      status=request.status,
+    )
+    _replayed_response.created_at = request.created_at
+    _replayed_response.save()
+
+    request.created_at = replayed_response.created_at
+    request.latency = replayed_response.latency
+    request.status = replayed_response.status
+    request.save()
+
+    response.created_at = replayed_response.created_at
+    response.raw = replayed_response.raw
+    response.save()
+
+    replayed_response.delete()
+
+    return self.__transform_replayed_response(_replayed_response)
     
   def __transform_replayed_response(self, replayed_response: ReplayedResponse):
     res = replayed_response.to_dict()

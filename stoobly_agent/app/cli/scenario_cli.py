@@ -70,7 +70,13 @@ def create(**kwargs):
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@click.option('--record', is_flag=True, default=False, help='Replay and record scenario.')
+@ConditionalDecorator(
+  lambda f: click.option(
+    '--overwrite', is_flag=True, default=False, help='Replay scenario and overwrite existing responses.'
+  )(f), not is_remote
+)
+@click.option('--record', is_flag=True, default=False, help='Replay scenario and record.')
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay scenario and save to history.')(f), not is_remote)
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--scheme', help='Rewrite request scheme.')
 @ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)

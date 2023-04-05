@@ -85,7 +85,13 @@ def list(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
   '''
 )
-@click.option('--record', is_flag=True, default=False, help='Replay and record request.')
+@ConditionalDecorator(
+  lambda f: click.option(
+    '--overwrite', is_flag=True, default=False, help='Replay request and overwrite existing response.'
+  )(f), not is_remote
+)
+@click.option('--record', is_flag=True, default=False, help='Replay request and record.')
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), not is_remote)
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--scheme', help='Rewrite request scheme.')
 @ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)
@@ -111,10 +117,8 @@ def replay(**kwargs):
   kwargs['before_replay'] = lambda context: handle_before_replay(
     context, kwargs['format']
   )
-  kwargs['after_replay'] = lambda context: print_request(
-    context, kwargs['format']
-  )
-
+  kwargs['after_replay'] = lambda context: print_request(context, kwargs['format'])
+  
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
 

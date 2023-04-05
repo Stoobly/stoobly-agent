@@ -3,6 +3,7 @@ import pdb
 import requests
 
 from .mitmproxy_adapter import MitmproxyResponseAdapter
+from .raw_adapter import RawResponseAdapter
 
 class PythonResponseAdapterFactory():
 
@@ -11,3 +12,6 @@ class PythonResponseAdapterFactory():
 
   def mitmproxy_response(self):
     return MitmproxyResponseAdapter(self.__response).adapt()
+
+  def raw_response(self):
+    return RawResponseAdapter(self.__response).adapt()

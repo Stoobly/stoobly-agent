@@ -3,12 +3,12 @@ import requests
 
 from orator.orm import belongs_to
 
-from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.mitmproxy.response_facade import MitmproxyResponseFacade
 from stoobly_agent.app.proxy.upload.response_string import ResponseString
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 
 from .base import Base
+from .request import Request
 
 class ReplayedResponse(Base):
   __fillable__ = ['latency', 'timestamp', 'raw', 'status', 'request_id']

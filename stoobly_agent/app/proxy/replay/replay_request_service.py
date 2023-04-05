@@ -3,19 +3,21 @@ import pdb
 import requests
 
 from http.cookies import SimpleCookie
+from time import time
 from typing import Callable, TypedDict, Union
 
 from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
+from stoobly_agent.app.models.replayed_response_model import ReplayedResponseModel
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.proxy.simulate_intercept_service import simulate_intercept
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.config.constants import mock_policy, mode
+from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
@@ -94,6 +96,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     #'params': request.query_params, # Do not send query params, they should be a part of the URL
   }
 
+  now = time()
   res: requests.Response = None
   if not options.get('proxy'):
     request = requests.Request(**{
@@ -119,6 +122,15 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
         'verify': CACertInstaller().mitm_crt_absolute_path if request_config['verify'] else False,
       }
     )
+  received_at = time()
+  latency = int((received_at - now) * 1000)
+
+  if options['mode'] == mode.REPLAY:
+    if options.get('save') or options.get('overwrite'):
+      replayed_response = __create_replayed_response(context.request.id, res, latency)
+
+      if options.get('overwrite'):
+        __overwrite_response(replayed_response.get('id'))
 
   if 'after_replay' in options and callable(options['after_replay']):
     context.with_response(res)
@@ -152,3 +164,17 @@ def __handle_mode_option(_mode, request: Request, headers):
 def __get_cookies(headers: Request.headers):
   cookies = SimpleCookie(headers.get('Cookie')).items()
   return {k: v.value for k, v in cookies}
+
+def __create_replayed_response(request_id: int, res: requests.Response, latency: int):   
+  replayed_response_model = ReplayedResponseModel(Settings.instance())
+  raw = PythonResponseAdapterFactory(res).raw_response()
+  return replayed_response_model.create(
+    latency = latency,
+    raw = raw,
+    request_id = request_id,
+    status = res.status_code,
+  )
+
+def __overwrite_response(replayed_response_id):
+  replayed_response_model = ReplayedResponseModel(Settings.instance())
+  return replayed_response_model.activate(replayed_response_id)

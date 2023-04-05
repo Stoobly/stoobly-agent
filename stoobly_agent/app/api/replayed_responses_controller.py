@@ -50,6 +50,21 @@ class ReplayedResponsesController:
 
         return self.__render_response(context, response)
 
+    # PUT /requests/:requestId/replayed_responses/:replayedResponseId/activate
+    def activate(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'request_id': 1,
+            'replayed_response_id': 3,
+        })
+
+        replayed_response_model = self.__replayed_response_model(context) 
+        replayed_response = replayed_response_model.activate(context.params.get('replayed_response_id'))
+
+        context.render(
+            json = replayed_response,
+            status = 200
+        )
+
     def __replayed_response_model(self, context: SimpleHTTPRequestHandler):
         replayed_response_model = ReplayedResponseModel(Settings.instance())
         replayed_response_model.as_remote() if context.headers.get('access-token') else replayed_response_model.as_local()

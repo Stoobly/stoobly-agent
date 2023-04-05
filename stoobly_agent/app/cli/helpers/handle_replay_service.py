@@ -1,5 +1,6 @@
 import json
 import pdb
+import requests
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import ReplayOutput
@@ -33,7 +34,7 @@ def print_request(context: ReplayContext, format = None):
 
 def print_request_query(context: ReplayContext, query: str):
   response = context.response
-  content = response.content
+  content = __content(response)
   content_type = response.headers.get('content-type')
 
   decoded_response = decode_response(content, content_type)
@@ -47,11 +48,9 @@ def print_request_query(context: ReplayContext, query: str):
 
 def default_format_handler(context: ReplayContext, additional=''):
   response = context.response
-  
-  try:
-    print(response.content.decode())
-  except UnicodeDecodeError as e:
-    print(response.content)
+  content = __content(response)
+
+  print(content)
 
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)
@@ -60,7 +59,19 @@ def default_format_handler(context: ReplayContext, additional=''):
 def json_format_handler(context: ReplayContext):
   response = context.response
   headers = dict(response.headers)
-  content = response.content.decode()
+  content = __content(response)
 
   output: ReplayOutput = {'headers': headers, 'content': content}
   print(json.dumps(output))
+
+def __content(res: requests.Response):
+  content = ''
+  if hasattr(res, 'raw'):
+    content = res.raw.data
+  else:
+    content = res.content
+
+  try:
+    return content.decode()
+  except UnicodeDecodeError as e:
+    return content

@@ -1,9 +1,7 @@
 import json
 import pdb
-import requests
 
 from datetime import datetime
-from time import time
 from urllib.parse import urlparse
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
@@ -17,7 +15,6 @@ from stoobly_agent.app.proxy.replay.replay_request_service import replay
 from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
-from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.request import Request as OrmRequest
 
 class RequestsController:
@@ -264,29 +261,17 @@ class RequestsController:
         return request_model
 
     def __replay(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext):
-        save = bool(context.params.get('save'))
-        callback = self.__create_replayed_response if save else None
+        options = {}
+        if bool(context.params.get('save')):
+            options['save'] = True
 
-        self.__send(context, replay_context, callback) 
+        self.__send(context, replay_context, **options) 
 
-    def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, callback = None):
-        now = time()
-        res = replay(replay_context, { 'mode': mode.REPLAY })
-        received_at = time()
-
-        if callback:
-            callback(context, res, int((received_at - now) * 1000))
+    def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, **replay_options):
+        res = replay(replay_context, { **replay_options, 'mode': mode.REPLAY })
 
         context.render(
             data = res.raw.data if hasattr(res, 'raw') else res.content,
             headers = res.headers,
             status = res.status_code
         )
-
-    def __create_replayed_response(self, context: SimpleHTTPRequestHandler, res: requests.Response, latency: int):   
-        request_id = int(context.params.get('id'))
-        replayed_response = ReplayedResponse()
-        replayed_response.request_id = request_id
-        replayed_response.with_python_response(res)
-        replayed_response.latency = latency # ms
-        replayed_response.save()
