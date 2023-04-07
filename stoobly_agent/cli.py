@@ -70,17 +70,25 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
+@click.option('--certs', help='''
+  SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
+  PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
+''')
+@click.option('--cert-passphrase', help='''
+  Passphrase for decrypting the private key provided in the --cert option. Note that passing cert_passphrase on the command line makes your passphrase visible in your system's process list. Specify it in
+  config.yaml to avoid this.
+''')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
+@click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxy-mode', default="regular", help='''
-    Proxy mode can be "regular", "transparent", "socks5",
-    "reverse:SPEC", or "upstream:SPEC". For reverse and
-    upstream proxy modes, SPEC is host specification in
-    the form of "http[s]://host[:port]".
+  Proxy mode can be "regular", "transparent", "socks5",
+  "reverse:SPEC", or "upstream:SPEC". For reverse and
+  upstream proxy modes, SPEC is host specification in
+  the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
