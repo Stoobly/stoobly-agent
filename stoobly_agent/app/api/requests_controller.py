@@ -73,9 +73,9 @@ class RequestsController:
         if not request:
             return context.internal_error()
 
-        from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
-        from stoobly_agent.app.proxy.utils.publish_change_service import publish_requests_modified
-        publish_requests_modified(body_params.get('project_id') or LOCAL_PROJECT_ID, sync=True)
+        #from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
+        #from stoobly_agent.app.proxy.utils.publish_change_service import publish_requests_modified
+        #publish_requests_modified(body_params.get('project_id') or LOCAL_PROJECT_ID, sync=True)
 
         context.render(
             json = request,

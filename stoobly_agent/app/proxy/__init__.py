@@ -112,3 +112,9 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
+
+    if 'certs' in options and not options['certs']:
+        del options['certs']
+
+    if 'cert_passphrase' in options and not options['cert_passphrase']:
+        del options['cert_passphrase']

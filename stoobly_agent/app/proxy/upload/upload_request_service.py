@@ -11,6 +11,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.upload import JoinedRequest, RequestString, ResponseString
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import request_origin
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.request import Request
@@ -63,7 +64,11 @@ def upload_request(
         scenario_key=scenario_key
     )
 
-    return __upload_request_with_body_params(request_model, body_params)
+    # If request_origin is WEB, then we are in proxy
+    # This means that we have access to Cache singleton
+    # and do not need send a request to update the status
+    sync = intercept_settings.request_origin == request_origin.WEB 
+    return __upload_request_with_body_params(request_model, body_params, sync)
 
 def upload_staged_request(
     request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
@@ -95,7 +100,7 @@ def upload_staged_request(
 
     return __upload_request_with_body_params(request_model, body_params)
 
-def __upload_request_with_body_params(request_model: RequestModel, body_params: dict):
+def __upload_request_with_body_params(request_model: RequestModel, body_params: dict, sync=True):
     #try:
     request = request_model.create(**body_params)
     #except Exception as e:
@@ -104,7 +109,7 @@ def __upload_request_with_body_params(request_model: RequestModel, body_params: 
     #    return None
 
     if request:
-        publish_requests_modified(body_params['project_id'])
+        publish_requests_modified(body_params['project_id'], sync=sync)
 
     return request
 

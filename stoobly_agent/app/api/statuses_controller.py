@@ -65,7 +65,7 @@ class StatusesController:
     # PUT /statuses/:id
     def update(self, context):
         context.parse_path_params({
-            'id': 4
+            'id': 2
         })
 
         cache = Cache.instance()
