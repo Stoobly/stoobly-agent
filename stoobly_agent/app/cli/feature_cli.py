@@ -63,4 +63,4 @@ ConfigDecorator(remote, settings, 'cli.features.remote', {
   }
 }).decorate()
 
-feature.add_command(remote)
+#feature.add_command(remote)
