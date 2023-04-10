@@ -1,16 +1,25 @@
 # Compiled python modules.
 *.pyc
 
-# Setuptools distribution folder.
-/dist/
-/build/
-
-# Python egg metadata, regenerated from source files by setuptools.
-/*.egg-info
-/*.egg
-
-stoobly_agent/public/*
-*.tar.gz
+# Python distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # vim
 [._]*.s[a-v][a-z]
@@ -35,4 +44,8 @@ tags
 # act
 .secrets
 
+# Stoobly
+stoobly_agent/public/*
+*.tar.gz
 **/.stoobly/tmp
+
