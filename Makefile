@@ -17,6 +17,9 @@ deploy\:pip:
 	python3 setup.py sdist bdist_wheel
 	twine upload dist/*
 
+test:
+	pytest stoobly_agent/test/
+
 clean:
 	rm -rf dist
 	rm -rf build
