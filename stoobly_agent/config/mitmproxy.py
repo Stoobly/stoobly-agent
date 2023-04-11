@@ -2,9 +2,6 @@ import json
 import os
 import pdb
 
-from mitmproxy.options import Options
-from mitmproxy.tools.dump import DumpMaster
-
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
@@ -15,7 +12,7 @@ class MitmproxyConfig():
   __instance = None
   __master = None
 
-  def __init__(self, master: DumpMaster):
+  def __init__(self, master):
     if self.__instance:
         raise RuntimeError('Call instance() instead')
     else:
@@ -42,8 +39,9 @@ class MitmproxyConfig():
 
       return path
 
-  def with_master(self, master: DumpMaster):
-    self.__master = master
+  def with_master(self, master):
+    from mitmproxy.tools.dump import DumpMaster
+    self.__master: DumpMaster = master
 
   def get(self, key: str):
     if not self.__master:
@@ -56,6 +54,7 @@ class MitmproxyConfig():
       except Exception as e:
         pass
     else:
+      from mitmproxy.options import Options
       options: Options = self.__master.options
 
       if key in options:

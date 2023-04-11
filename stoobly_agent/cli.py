@@ -15,7 +15,6 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, feature, intercept, MainGroup, request, scenario, trace
-from .app.proxy import CONNECTION_STRATEGIES, run as run_proxy
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
@@ -26,6 +25,7 @@ is_remote = settings.cli.features.remote
 # Makes sure database is up to date
 migrate_database(VERSION)
 
+CONNECTION_STRATEGIES = ['eager', 'lazy']
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.version_option()
@@ -95,6 +95,8 @@ def init(**kwargs):
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
 def run(**kwargs):
+    from .app.proxy.run import run as run_proxy
+
     os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
 
     # Observe config for changes
