@@ -6,10 +6,10 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download stoobly-dashboard from Artifactory
         env:
@@ -36,14 +36,14 @@ jobs:
           docker push --all-tags stoobly/agent
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           # Semantic version range syntax or exact version of a Python version
-          python-version: '3.8.11'
+          python-version: '3.10'
 
       - name: Push to Pypi
         run: |
-          pip install twine wheel
+          python -m pip install twine wheel
           twine --help
 
           make clean

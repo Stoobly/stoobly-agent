@@ -14,7 +14,7 @@ See our docs for more detailed information! https://docs.stoobly.com
 
 ## Prerequisite
 
-- Python >= 3.8
+- Python >= 3.8, < 3.11
 
 ## Installation
 
