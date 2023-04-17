@@ -14,18 +14,14 @@ class ORMRequestBuilder():
       'host': request.host,
       'http_version':self.__http_version(request.http_version),
       'method': request.method,
+      'password': request_facade.password,
       'path': request_facade.path,
       'port': request.port,
       'query': request_facade.query_string,
       'query_params_hash': hashed_request.query_params_hash(),
       'scheme': request.scheme,
+      'user': request_facade.username,
     }
-
-  def create(self, **columns):
-    pass
-
-  def update(self):
-    pass
 
   def __http_version(self, http_version: str):
     if not isinstance(http_version, str):

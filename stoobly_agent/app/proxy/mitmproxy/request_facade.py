@@ -3,9 +3,8 @@ import re
 
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 from mitmproxy.coretypes import multidict
-from typing import Callable, List, Union
+from typing import Callable, List
 from urllib.parse import urlparse
-import requests
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
@@ -26,6 +25,8 @@ class MitmproxyRequestFacade(Request):
     #
     def __init__(self, request: MitmproxyRequest):
         self.request = request
+        self.uri = urlparse(self.request.url)
+
         self.__redact_rules: List[ParameterRule] = []
         self.__rewrite_rules: List[ParameterRule] = []
 
@@ -37,12 +38,20 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def url(self):
-        return self.request.url
+        uri = self.uri._replace(path=self.uri.path.rstrip('/'))
+        return uri.geturl()
+
+    @property
+    def password(self):
+        return self.uri.password
+
+    @property
+    def username(self):
+        return self.uri.username
 
     @property
     def path(self):
-        uri = urlparse(self.request.path)
-        return uri.path
+        return self.uri.path
 
     @property
     def base_url(self):
@@ -100,14 +109,6 @@ class MitmproxyRequestFacade(Request):
     @property
     def rewrite_rules(self) -> List[ParameterRule]:
         return self.__rewrite_rules
-
-    def to_python_request(self):
-        return requests.Request(
-            method=self.request.method,
-            url=self.request.url,
-            headers=self.request.headers,
-            data=self.request.content
-        )
 
     def with_rewrite_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
