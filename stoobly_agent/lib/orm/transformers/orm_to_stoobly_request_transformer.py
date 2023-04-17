@@ -67,6 +67,9 @@ class ORMToStooblyRequestTransformer():
     if len(request.body_text_hash) != 0:
       components.append('body')
 
+    if len(request.headers_hash) != 0:
+      components.append('headers')
+
     stoobly_request['components'] = components
 
   def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest):
@@ -112,7 +115,7 @@ class ORMToStooblyRequestTransformer():
       return
 
     transformer = ORMToStooblyResponseTransformer(orm_response)
-    stoobly_request['status'] = int(transformer.python_response.status_code)
+    stoobly_request['status'] = self.__request.status
 
     if 'response' in self.__options:
       stoobly_response = transformer.transform()

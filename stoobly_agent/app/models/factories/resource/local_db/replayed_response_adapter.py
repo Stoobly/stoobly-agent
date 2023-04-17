@@ -59,27 +59,6 @@ class LocalDBReplayedResponseAdapter():
 
     return replayed_response.raw
 
-  def record(self, replayed_response_id: int) -> RequestShowResponse:
-    replayed_response: ReplayedResponse = self.__replayed_response_orm.find(replayed_response_id)
-
-    if not replayed_response:
-      return None
-
-    request = replayed_response.request
-
-    new_request = request.replicate()
-    new_request.status = replayed_response.status
-    new_request.latency = replayed_response.latency
-    new_request.save()
-
-    replayed_response_dict = replayed_response.to_dict()
-    replayed_response_dict['request_id'] = new_request.id
-    replayed_response_dict.pop('status')
-    replayed_response_dict.pop('latency')
-    Response.create(replayed_response_dict)
-
-    return ORMToStooblyRequestTransformer(new_request, {}).transform()
-
   def activate(self, replayed_response_id: int):
     replayed_response: ReplayedResponse = self.__replayed_response_orm.find(replayed_response_id)
 

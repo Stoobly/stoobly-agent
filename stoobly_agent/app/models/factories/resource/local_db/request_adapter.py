@@ -1,13 +1,12 @@
 import pdb
-from urllib.parse import urlparse
 import requests
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
+from urllib.parse import urlparse
 
+from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.types import RequestCreateParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
-from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
-from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
@@ -15,8 +14,11 @@ from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers.orm_to_stoobly_request_transformer import ORMToStooblyRequestTransformer
 from stoobly_agent.lib.orm.types.request_columns import RequestColumns
 from stoobly_agent.lib.orm.types.response_columns import ResponseColumns
-from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer, ORMToStooblyResponseTransformer
+from stoobly_agent.lib.orm.transformers import ORMToRequestTransformer, ORMToRequestsResponseTransformer
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
+
+from .orm_request_builder import ORMRequestBuilder
+from .response_adapter import LocalDBResponseAdapter
 
 class LocalDBRequestAdapter():
   __request_orm = None
@@ -31,26 +33,17 @@ class LocalDBRequestAdapter():
     joined_request: JoinedRequest = params['joined_request']
 
     request: MitmproxyRequest = flow.request
-    request_facade = MitmproxyRequestFacade(request)
-    hashed_request = HashedRequestDecorator(request_facade)
 
     with ORM.instance().db.transaction():
+      builder = ORMRequestBuilder()
+      columns = builder.columns_from_mitmproxy_request(request)
+
       request_columns: RequestColumns = {
-        'body_params_hash': hashed_request.body_params_hash(),
-        'body_text_hash': hashed_request.body_text_hash(),
+        **columns,
         'control': joined_request.request_string.control, 
-        'headers_hash': hashed_request.headers_hash(),
-        'host': request.host,
-        'http_version':self.__http_version(request.http_version),
         'latency': joined_request.response_string.latency,
-        'method': request.method,
-        'path': request_facade.path,
-        'port': request.port,
-        'query': request_facade.query_string,
-        'query_params_hash': hashed_request.query_params_hash(),
         'raw': joined_request.request_string.get(),
         'scenario_id': int(params['scenario_id']) if params.get('scenario_id') else None,
-        'scheme': request.scheme,
         'status': flow.response.status_code,
       }
       request_record = self.__request_orm.create(**request_columns)
@@ -139,6 +132,39 @@ class LocalDBRequestAdapter():
 
     if not request:
       return
+
+    transformer = ORMToRequestTransformer(request)
+
+    if params.get('method'):
+      transformer.with_method(params['method'])
+
+    if params.get('url'):
+      transformer.with_url(params['url'])
+      del params['url']
+
+    if params.get('headers'):
+      transformer.with_headers(params['headers'])
+      del params['headers']
+
+    if params.get('body'):
+      transformer.with_body(params['body'])
+      del params['body']
+
+    if transformer.dirty:
+      python_request = transformer.transform()
+      adapter_factory = PythonRequestAdapterFactory(python_request) 
+
+      builder = ORMRequestBuilder()
+      columns = builder.columns_from_mitmproxy_request(adapter_factory.mitmproxy_request())
+      params = {
+        'raw': adapter_factory.raw_request(),
+        **params,
+        **columns,
+      }
+
+    if params.get('status'):
+      response = request.response
+      LocalDBResponseAdapter(self.__request_orm).update(response.id, **{ 'status': params['status'] })
 
     if request.update(params):
       return ORMToStooblyRequestTransformer(request, {}).transform()

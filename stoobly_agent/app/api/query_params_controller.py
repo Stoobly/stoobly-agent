@@ -20,19 +20,85 @@ class QueryParamsController:
 
         return cls._instance
 
+    # POST /requests/:requestId/query_params
+    def create(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1,
+            'queryParamId': 3,
+        })
+
+        if not context.params.get('name'):
+            return context.bad_request('Missing name')
+
+        if not context.params.get('value'):
+            return context.bad_request('Missing value')
+
+        query_param_model = self.__query_param_model(context)
+        query_param = query_param_model.create(context.params.get('requestId'), **{
+            'name': context.params['name'],
+            'value': context.params['value'],
+        })
+
+        context.render(
+            json = query_param,
+            status = 200
+        )
+
     # GET /requests/:requestId/query_params
-    def index(self, context):
+    def index(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'requestId': 1
         })
 
         query_param_model = self.__query_param_model(context)
-        requests = query_param_model.index(context.params.get('requestId'), **context.params)
+        query_params = query_param_model.index(context.params.get('requestId'), **context.params)
 
         context.render(
-            json = requests,
+            json = query_params,
             status = 200
         )
+
+    # PUT /requests/:requestId/query_params/:queryParamId
+    def update(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1,
+            'queryParamId': 3,
+        })
+
+        if not context.params.get('name'):
+            return context.bad_request('Missing name')
+
+        if not context.params.get('value'):
+            return context.bad_request('Missing value')
+
+        query_param_model = self.__query_param_model(context)
+        query_param = query_param_model.update(context.params.get('requestId'), context.params.get('queryParamId'), **{
+            'name': context.params['name'],
+            'value': context.params['value'],
+        })
+
+        context.render(
+            json = query_param,
+            status = 200
+        )
+
+    # DELETE /requests/:requestId/query_params/:queryParamId
+    def destroy(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1,
+            'queryParamId': 3,
+        })
+
+        query_param_model = self.__query_param_model(context)
+        query_param = query_param_model.destroy(context.params.get('requestId'), context.params.get('queryParamId'))
+
+        if not query_param:
+            context.internal_error()
+        else:
+            context.render(
+                plain = '',
+                status = 200
+            )
 
     def __query_param_model(self, context: SimpleHTTPRequestHandler):
         query_param_model = QueryParamModel(Settings.instance())

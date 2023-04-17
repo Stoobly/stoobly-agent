@@ -20,6 +20,20 @@ class ResponseHeadersController:
 
         return cls._instance
 
+    # POST /requests/:requestId/response_headers
+    def create(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1
+        })
+
+        response_header_model = self.__response_header_model(context)
+        header = response_header_model.create(context.params.get('requestId'), **context.params)
+        
+        context.render(
+            json = header,
+            status = 200
+        )
+
     # GET /requests/:requestId/headers
     def index(self, context):
         context.parse_path_params({
@@ -27,12 +41,44 @@ class ResponseHeadersController:
         })
 
         response_header_model = self.__response_header_model(context)
-        requests = response_header_model.index(context.params.get('requestId'), **context.params)
+        response_headers = response_header_model.index(context.params.get('requestId'), **context.params)
 
         context.render(
-            json = requests,
+            json = response_headers,
             status = 200
         )
+
+    # PUT /requests/:requestId/response_headers/:headerId
+    def update(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1
+        })
+
+        response_header_model = self.__response_header_model(context)
+        header = response_header_model.update(context.params.get('requestId'), **context.params)
+        
+        context.render(
+            json = header,
+            status = 200
+        )
+
+    # PUT /requests/:requestId/response_headers/:responseHeaderId
+    def destroy(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1,
+            'responseHeaderId': 3,
+        })
+
+        response_header_model = self.__response_header_model(context)
+        header = response_header_model.destroy(context.params.get('requestId'), context.params.get('responseHeaderId'))
+
+        if not header: 
+            context.internal_error()
+        else:
+            context.render(
+                plain = '',
+                status = 200
+            )
 
     def __response_header_model(self, context: SimpleHTTPRequestHandler):
         response_header_model = ResponseHeaderModel(Settings.instance())

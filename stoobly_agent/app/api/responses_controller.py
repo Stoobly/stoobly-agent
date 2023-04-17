@@ -22,6 +22,47 @@ class ResponsesController:
 
         return cls._instance
 
+    # GET /requests/:requestId/responses
+    def show(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1
+        })
+
+        response_model = self.__response_model(context) 
+        response = response_model.show(context.params.get('requestId'))
+
+        if response == None:
+            return context.render(
+                plain = '',
+                status = 404
+            )
+
+        return context.render(
+            json = response,
+            status = 200
+        )
+
+    # PUT /requests/:requestId/responses/:responseId
+    def update(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1,
+            'responseId': 3,
+        })
+
+        response_model = self.__response_model(context) 
+        response = response_model.update(context.params.get('requestId'), **context.params)
+
+        if response == None:
+            return context.render(
+                plain = '',
+                status = 404
+            )
+
+        return context.render(
+            json = response,
+            status = 200
+        )
+
     # GET /requests/:requestId/responses/mock
     def mock(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({

@@ -1,5 +1,5 @@
 from .endpoints import EndpointsIndexQueryParams
-from .headers import HeaderShowResponse
+from .headers import Header, HeaderShowResponse
 from .pagination_query_params import PaginationQueryParams
 from .projects import ProjectCreateParams, ProjectDetails, ProjectShowResponse, ProjectsIndexQueryParams, ProjectsIndexResponse
 from .query_params import QueryParam, QueryParamShowResponse

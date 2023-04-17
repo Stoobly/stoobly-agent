@@ -19,6 +19,13 @@ class BodyModel(Model):
     # 'Not yet supported.'
     pass 
 
+  def update(self, request_id: int, text: str):
+    try:
+      return self.adapter.update(request_id, text)
+    except requests.exceptions.RequestException as e:
+      self.__handle_request_error(e)
+      return None
+
   def mock(self, request_id: str) -> requests.Request:
     try:
       return self.adapter.mock(request_id)

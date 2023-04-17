@@ -21,6 +21,45 @@ class BodiesController:
 
         return cls._instance
 
+    def create(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1
+        })
+
+        text = context.params.get('text')
+        if not text:
+            return context.bad_request('Missing text')
+
+        body_model = self.__body_model(context)
+        body_model.create(context.params.get('requestId'), text)
+
+        context.render(
+            json = {
+                'text': text,
+            },
+            status = 200 
+        )
+
+    # PUT /requests/:requestId/bodies/:bodyId
+    def update(self, context: SimpleHTTPRequestHandler):
+        context.parse_path_params({
+            'requestId': 1
+        })
+
+        text = context.params.get('text')
+        if text == None:
+            return context.bad_request('Missing text')
+
+        body_model = self.__body_model(context)
+        body_model.update(context.params.get('requestId'), text)
+
+        context.render(
+            json = {
+                'text': text,
+            },
+            status = 200 
+        )
+
     # GET /requests/:requestId/bodies/mock
     def mock(self, context):
         context.parse_path_params({
