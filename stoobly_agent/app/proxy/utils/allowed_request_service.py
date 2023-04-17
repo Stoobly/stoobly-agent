@@ -26,7 +26,7 @@ def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSett
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
-            Logger.instance().info(f"{bcolors.OKBLUE}Excluded by firewall rule{bcolors.ENDC}")
+            Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} excluded by firewall rule{bcolors.ENDC}")
             return False
 
     # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
@@ -36,7 +36,7 @@ def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSett
         rules = list(filter(lambda rule: method in rule.methods, include_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if not __include(request, patterns):
-            Logger.instance().info(f"{bcolors.OKBLUE}Not included by firewall rule{bcolors.ENDC}")
+            Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
             return False
 
     # If there are no exclude or include patterns, request is allowed
