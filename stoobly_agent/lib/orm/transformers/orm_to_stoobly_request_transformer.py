@@ -72,6 +72,12 @@ class ORMToStooblyRequestTransformer():
     if len(request.headers_hash) != 0:
       components.append('headers')
 
+    if len(request.response_hash) != 0:
+      components.append('response')
+
+    if len(request.response_headers_hash) != 0:
+      components.append('response_headers')
+
     stoobly_request['components'] = components
 
   def __decorate_with_request(self, stoobly_request: RequestShowResponse, request: ORMRequest):

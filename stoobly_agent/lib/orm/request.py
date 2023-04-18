@@ -26,6 +26,8 @@ class Request(Base):
     'query',
     'query_params_hash', 
     'raw', 
+    'response_hash',
+    'response_headers_hash',
     'scenario_id',
     'scheme', 
     'starred',

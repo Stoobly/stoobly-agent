@@ -63,7 +63,7 @@ def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
             )
 
 def __record_request(request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow):
-    if os.environ[ENV] == TEST:
+    if os.environ.get(ENV) == TEST:
         inject_upload_request(request_model, intercept_settings)(flow) 
     else:
         thread = threading.Thread(

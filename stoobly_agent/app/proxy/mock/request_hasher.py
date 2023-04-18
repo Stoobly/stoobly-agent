@@ -1,5 +1,6 @@
 import hashlib
 import pdb
+import requests
 
 from mitmproxy.coretypes.multidict import MultiDict
 from typing import List, Dict, TypedDict, Union
@@ -29,15 +30,15 @@ class RequestHasher():
       return cls._instance
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
-    if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict):
+    if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict) or isinstance(params, requests.structures.CaseInsensitiveDict):
       return self.__serialize(None, params, None, ignored_params)
     else:
       return ''
 
   def hash_text(self, text: str) -> str:
     if len(text) == 0:
-      return 
-    return hashlib.md5(text.encode()).hexdigest()
+      return ''
+    return hashlib.md5(text.encode() if isinstance(text, str) else text).hexdigest()
  
   def __serialize(
     self, key: str, value: Union[dict, list, MultiDict, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
