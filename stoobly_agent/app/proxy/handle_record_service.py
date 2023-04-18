@@ -1,11 +1,14 @@
+import os
 import pdb
 import threading
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
 
+from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.constants import record_policy
 from stoobly_agent.lib.logger import Logger
 
@@ -60,8 +63,11 @@ def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
             )
 
 def __record_request(request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow):
-    thread = threading.Thread(
-        target=inject_upload_request(request_model, intercept_settings), 
-        args=[flow]
-    )
-    thread.start()
+    if os.environ[ENV] == TEST:
+        inject_upload_request(request_model, intercept_settings)(flow) 
+    else:
+        thread = threading.Thread(
+            target=inject_upload_request(request_model, intercept_settings), 
+            args=[flow]
+        )
+        thread.start()
