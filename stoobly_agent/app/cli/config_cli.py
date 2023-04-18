@@ -7,6 +7,7 @@ from typing import List
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
+from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
@@ -15,6 +16,8 @@ from stoobly_agent.lib.logger import Logger
 from .helpers import  ProjectFacade, ScenarioFacade
 from .helpers.print_service import print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
+
+settings = Settings.instance()
 
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
@@ -138,7 +141,7 @@ def rewrite(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if settings.cli.features.remote else []))
 )
 @click.option('--name', required=True, help='Name of the request component.')
 @click.option('--pattern', required=True, help='URLs pattern.')
@@ -189,6 +192,71 @@ def set(**kwargs):
     settings.commit()
 
     Logger.instance().debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
+
+### Match
+
+@click.group(
+    help="Manage match rules"
+)
+@click.pass_context
+def match(ctx):
+    pass
+
+@match.command(
+    help="Set match rule."
+)
+@click.option(
+    '--method', 
+    multiple=True, 
+    required=True,
+    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+    help='HTTP methods.'
+)
+@click.option(
+    '--mode',
+    multiple=True,
+    required=True,
+    type=click.Choice([mode.MOCK] + ([mode.TEST] if settings.cli.features.remote else []))
+)
+@click.option('--pattern', required=True, help='URLs pattern.')
+@click.option('--project_key', help='Project to add rewrite rule to.')
+@click.option(
+    '--component', 
+    multiple=True,
+    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
+    help='Request component type.'
+)
+def set(**kwargs):
+    settings = Settings.instance()
+    project_key_str = resolve_project_key_and_validate(kwargs, settings)
+    project_key = ProjectKey(project_key_str)
+
+    methods = list(kwargs['method'])
+    modes = list(kwargs['mode'])
+    match_rule = MatchRule({
+        'components': list(kwargs['component']),
+        'methods': methods,
+        'modes': modes,
+        'pattern': kwargs['pattern'],
+    })
+
+    match_rules = settings.proxy.match.match_rules(project_key.id)
+    index = -1
+    i = 0
+    for rule in match_rules:
+        if rule.pattern == kwargs['pattern'] and rule.methods == methods:
+            index = i
+        i += 1
+
+    if index == -1:
+        match_rules.append(match_rule)
+        settings.proxy.match.set_match_rules(project_key.id, match_rules)
+    else:
+        match_rules[index] = match_rule
+
+    settings.commit()
+
+    Logger.instance().debug(f"Match {kwargs['method']} {kwargs['pattern']} -> {kwargs['component']} set!")
 
 ### API Key
 
@@ -270,6 +338,7 @@ if is_remote:
     config.add_command(project)
 
 config.add_command(api_key)
+config.add_command(match)
 config.add_command(rewrite)
 config.add_command(scenario)
 
