@@ -2,6 +2,8 @@ import pdb
 import requests
 
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
+from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
+from stoobly_agent.app.proxy.upload.response_string_control import ResponseStringControl
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer
@@ -38,8 +40,11 @@ class LocalDBResponseAdapter():
     
     transformer = ORMToRequestsResponseTransformer(response)
 
+    request_params = {}
+
     if params.get('headers'):
       transformer.with_headers(params['headers'])
+      request_params['response_headers_hash'] = RequestHasher.instance().hash_params(params['headers'])
 
     if params.get('status'):
       transformer.with_status(params['status'])
@@ -47,6 +52,15 @@ class LocalDBResponseAdapter():
     if params.get('text'):
       encoded_text = params['text'].encode()
       transformer.with_body(encoded_text)
+      request_params['response_hash'] = RequestHasher.instance().hash_text(encoded_text)
+
+    if params.get('latency'):
+      control = response.control
+      control = ResponseStringControl(control)
+      control.timestamp = control.timestamp - control.latency * 1000 + int(params['latency']) * 1000
+      control.latency = params['latency']
+      params['control'] = control.serialize()
+      del params['latency']
 
     if transformer.dirty:
       python_response = transformer.transform()
@@ -56,6 +70,13 @@ class LocalDBResponseAdapter():
       }
 
     if response.update(params):
+
+      if len(request_params.keys()) != 0:
+        request = self.__request_orm.find(response.request_id)
+
+        if request:
+          request.update(request_params)
+
       return self.__to_show_response(response)
 
   def __to_show_response(self, response: Response):

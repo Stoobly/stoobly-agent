@@ -1,6 +1,7 @@
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
+from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 
 class ORMRequestBuilder():
   def columns_from_mitmproxy_request(self, request: MitmproxyRequest):
@@ -21,6 +22,12 @@ class ORMRequestBuilder():
       'query_params_hash': hashed_request.query_params_hash(),
       'scheme': request.scheme,
       'user': request_facade.username,
+    }
+
+  def columns_from_mitmproxy_response(self, response: MitmproxyResponse):
+    return {
+      'response_hash': RequestHasher.instance().hash_text(response.content.decode()),
+      'response_headers_hash': RequestHasher.instance().hash_params(response.headers)
     }
 
   def __http_version(self, http_version: str):

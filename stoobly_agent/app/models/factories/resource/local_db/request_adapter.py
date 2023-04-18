@@ -32,14 +32,14 @@ class LocalDBRequestAdapter():
     flow: MitmproxyHTTPFlow = params['flow']
     joined_request: JoinedRequest = params['joined_request']
 
-    request: MitmproxyRequest = flow.request
-
     with ORM.instance().db.transaction():
       builder = ORMRequestBuilder()
-      columns = builder.columns_from_mitmproxy_request(request)
+      request_columns = builder.columns_from_mitmproxy_request(flow.request)
+      response_columns = builder.columns_from_mitmproxy_response(flow.response)
 
       request_columns: RequestColumns = {
-        **columns,
+        **request_columns,
+        **response_columns,
         'control': joined_request.request_string.control, 
         'latency': joined_request.response_string.latency,
         'raw': joined_request.request_string.get(),
@@ -162,11 +162,24 @@ class LocalDBRequestAdapter():
         **columns,
       }
 
+    # Some params need to be reflected in response record
+    response_params = {}
+
+    if params.get('latency'):
+      latency = int(params['latency'])
+      latency = latency = 0 if latency < 0 else latency
+      params['latency'] = latency
+      response_params['latency'] = latency
+
     if params.get('status'):
-      response = request.response
-      LocalDBResponseAdapter(self.__request_orm).update(response.id, **{ 'status': params['status'] })
+      response_params['status'] = params['status']
 
     if request.update(params):
+
+      if len(response_params.keys()) != 0:
+        response = request.response
+        LocalDBResponseAdapter(self.__request_orm).update(response.id, **response_params)
+
       return ORMToStooblyRequestTransformer(request, {}).transform()
 
   def destroy(self, request_id: int):

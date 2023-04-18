@@ -7,7 +7,7 @@ class RequestStringControl():
     if not c:
       self.__request_type = self.REQUEST_TYPE
       self.__id = None
-      self.__timestamp = None
+      self.__timestamp = None # nanosecond
     else:
       self.parse(c)
 
