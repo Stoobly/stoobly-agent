@@ -54,7 +54,9 @@ class ORMToStooblyRequestTransformer():
       return
 
     scenario = request.scenario
-    stoobly_request['scenario'] = scenario.name
+
+    if scenario:
+      stoobly_request['scenario'] = scenario.name
 
   def __decorate_with_components(self, stoobly_request: RequestShowResponse, request: ORMRequest):
     components = []

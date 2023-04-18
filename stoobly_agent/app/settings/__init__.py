@@ -132,6 +132,10 @@ class Settings:
     def reset(self):
         copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
 
+    def reset_and_load(self):
+        self.reset()
+        self.__load_settings()
+
     def write(self, contents):
         if contents:
             fp = open(self.__settings_file_path, 'w')

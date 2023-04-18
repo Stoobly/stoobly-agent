@@ -1,5 +1,6 @@
 import os
 import pdb
+import shutil
 
 from stoobly_agent.config.constants.env_vars import ENV
 
@@ -22,7 +23,7 @@ class DataDir:
 
             if not os.path.exists(self.__data_dir_path):
                 os.makedirs(self.__data_dir_path, exist_ok=True)
-            
+
     @classmethod
     def instance(cls):
         if cls._instance is None:
@@ -70,6 +71,10 @@ class DataDir:
     @property
     def settings_file_path(self):
         return os.path.join(self.path, 'settings.yml')
+
+    def remove(self):
+        if os.path.exists(self.path):
+           shutil.rmtree(self.path) 
 
     def create(self, directoy_path = None):
         if not directoy_path:

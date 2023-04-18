@@ -15,23 +15,26 @@ class ORM():
         if ORM._instance:
             raise RuntimeError('Call instance() instead')
         else:
-            config = {
-                'default': os.environ.get(ENV) or 'production',
-                'test': {
-                    'driver': 'sqlite',
-                    'database': DataDir.instance().db_file_path,
-                },
-                'production': {
-                    'driver': 'sqlite',
-                    'database': DataDir.instance().db_file_path,
-                }
-            }
-
-            db = DatabaseManager(config)
-            Model.set_connection_resolver(db)
-
+            self.initialize_db()
             self._model = Model
-            self._db = db
+            
+    def initialize_db(self):
+        config = {
+            'default': os.environ.get(ENV) or 'production',
+            'test': {
+                'driver': 'sqlite',
+                'database': DataDir.instance().db_file_path,
+            },
+            'production': {
+                'driver': 'sqlite',
+                'database': DataDir.instance().db_file_path,
+            }
+        }
+
+        db = DatabaseManager(config)
+        Model.set_connection_resolver(db)
+
+        self._db = db
 
     @classmethod
     def instance(cls):

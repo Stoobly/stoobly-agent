@@ -12,3 +12,7 @@ class Base(ORM.instance().base):
   @classmethod
   def find_by(cls, **kwargs):
     return cls.where_for(**kwargs).first()
+
+  @classmethod
+  def last(cls):
+    return cls.order_by('id', 'desc').first()

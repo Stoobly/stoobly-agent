@@ -19,5 +19,8 @@ class MatchSettings:
   def match_rules(self, project_id: str) -> List[MatchRule]:
     return self.__match_rules_map.get(project_id) or []
 
+  def set_match_rules(self, project_id: str, v: List[MatchRule]):
+    self.__match_rules_map[project_id] = v
+
   def to_dict(self):
     return {k: list(map(lambda rule: rule.to_dict(), v)) for k, v in self.__match_rules_map.items()}
