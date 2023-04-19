@@ -19,5 +19,8 @@ class FirewallSettings:
   def firewall_rules(self, project_id: str) -> List[FirewallRule]:
     return self.__firewall_rules_map.get(project_id) or []
 
+  def set_firewall_rules(self, project_id: str, v: List[FirewallRule]):
+    self.__firewall_rules_map[project_id] = v
+
   def to_dict(self):
     return {k: list(map(lambda rule: rule.to_dict(), v)) for k, v in self.__firewall_rules_map.items()}

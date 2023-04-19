@@ -6,7 +6,8 @@ import time
 from typing import List
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.constants import request_component
+from stoobly_agent.app.settings.constants import firewall_action, request_component
+from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import mode
@@ -258,6 +259,72 @@ def set(**kwargs):
 
     Logger.instance().debug(f"Match {kwargs['method']} {kwargs['pattern']} -> {kwargs['component']} set!")
 
+### Firewall
+
+@click.group(
+    help="Manage firewall rules"
+)
+@click.pass_context
+def firewall(ctx):
+    pass
+
+@firewall.command(
+    help="Set firewall rule."
+)
+@click.option(
+    '--method', 
+    multiple=True, 
+    required=True,
+    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+    help='HTTP methods.'
+)
+@click.option(
+    '--mode',
+    multiple=True,
+    required=True,
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if settings.cli.features.remote else []))
+)
+@click.option('--pattern', required=True, help='URLs pattern.')
+@click.option('--project_key', help='Project to add firewall rule to.')
+@click.option(
+    '--action', 
+    required=True,
+    type=click.Choice([firewall_action.EXCLUDE, firewall_action.INCLUDE]), 
+    help='Action to take on match.'
+)
+def set(**kwargs):
+    settings = Settings.instance()
+    project_key_str = resolve_project_key_and_validate(kwargs, settings)
+    project_key = ProjectKey(project_key_str)
+
+    methods = list(kwargs['method'])
+    modes = list(kwargs['mode'])
+ 
+    firewall_rule = FirewallRule({
+        'action': kwargs['action'],
+        'methods': methods,
+        'modes': modes,
+        'pattern': kwargs['pattern'],
+    })
+
+    firewall_rules = settings.proxy.firewall.firewall_rules(project_key.id)
+    index = -1
+    i = 0
+    for rule in firewall_rules:
+        if rule.pattern == kwargs['pattern'] and rule.methods == methods:
+            index = i
+        i += 1
+
+    if index == -1:
+        firewall_rules.append(firewall_rule)
+        settings.proxy.firewall.set_firewall_rules(project_key.id, firewall_rules)
+    else:
+        firewall_rules[index] = firewall_rule
+
+    settings.commit()
+
+    Logger.instance().debug(f"Firewall {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
+
 ### API Key
 
 @click.group(
@@ -338,6 +405,7 @@ if is_remote:
     config.add_command(project)
 
 config.add_command(api_key)
+config.add_command(firewall)
 config.add_command(match)
 config.add_command(rewrite)
 config.add_command(scenario)
