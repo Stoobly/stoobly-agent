@@ -19,9 +19,6 @@ from .proxy_settings import ProxySettings
 from .remote_settings import RemoteSettings
 from .ui_settings import UISettings
 
-class SettingsOptions(TypedDict):
-    validate: bool
-
 class Settings:
     LOG_ID = 'app.settings'
 
@@ -38,7 +35,7 @@ class Settings:
     __load_lock = False
     __watching = False
 
-    def __init__(self, **kwargs: SettingsOptions):
+    def __init__(self):
         if Settings.__instance:
             raise RuntimeError('Call instance() instead')
 
@@ -49,9 +46,6 @@ class Settings:
         if not os.path.exists(self.__settings_file_path):
             self.reset()
 
-        if kwargs.get('validate'):
-            self.__validate()
-        
         self.__load_settings()
 
     @classmethod
@@ -146,6 +140,15 @@ class Settings:
         settings = self.to_dict()
         self.write(settings)
 
+    def validate(self):
+        try:
+            schema = yamale.make_schema(self.__schema_file_path)
+            data = yamale.make_data(self.__settings_file_path)
+            yamale.validate(schema, data)
+        except YamaleError as e:
+            for result in e.results:
+                print(f"{result}\n")
+
     ### Helpers
 
     def __load_settings(self):
@@ -172,12 +175,3 @@ class Settings:
             publish_change(statuses.SETTINGS_MODIFIED, self.__settings, sync=True)
 
         self.__load_lock = False
-
-    def __validate(self):
-        try:
-            schema = yamale.make_schema(self.__schema_file_path)
-            data = yamale.make_data(self.__settings_file_path)
-            yamale.validate(schema, data)
-        except YamaleError as e:
-            for result in e.results:
-                print(f"{result}\n")

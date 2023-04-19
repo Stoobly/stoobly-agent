@@ -404,6 +404,12 @@ if is_remote:
 
     config.add_command(project)
 
+@config.command(
+    help="Check config validity"
+)
+def validate(**kwargs):
+    Settings.instance().validate()
+
 config.add_command(api_key)
 config.add_command(firewall)
 config.add_command(match)

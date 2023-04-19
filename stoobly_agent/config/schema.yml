@@ -6,13 +6,14 @@ cli:
 proxy:
   data: map(include('data_rules'), key=include('project_id'))
   firewall: map(list(include('firewall_rule')), key=include('project_id'))
-  filter: map(list(include('rewrite_rule')), key=include('project_id'))
+  match: map(list(include('match_rule')), key=include('project_id'))
+  rewrite: map(list(include('rewrite_rule')), key=include('project_id'))
   intercept:
     active: bool()
     mode: include('mode')
     project_key: str()
-    upstream_url: str(required=False)
   url: str()
+proxy_config_path: str(required=False)
 remote: 
   api_url: str()
   api_key: str()
@@ -20,15 +21,16 @@ ui:
   active: bool()
   url: str()
 ---
-firewall_action: str(matches='exclude'|'include')
-method: str(matches='DELETE|GET|OPTIONS|POST|PUT')
-mock_policy: str(matches='all'|'found'|'none')
-mode: str(matches='mock'|'record'|'test')
+component: enum('Body Param', 'Header', 'Query Param')
+firewall_action: enum('exclude', 'include')
+method: enum('DELETE', 'GET', 'OPTIONS', 'POST', 'PUT')
+mock_policy: enum('all', 'found', 'none')
+mode: enum('mock', 'record', 'replay', 'test')
 project_id: str()
-record_policy: str(matches='all'|'found'|'not_found'|'none')
-replay_policy: str(matches='all'|'none')
-test_policy: str(matches='all'|'found'|'none')
-test_strategy: str(matches='custom'|'diff'|'fuzzy')
+record_policy: enum('all', 'found', 'not_found', 'none')
+replay_policy: enum('all', 'none')
+test_policy: enum('all', 'found', 'none')
+test_strategy: enum('custom', 'diff', 'fuzzy')
 
 data_rules:
   mock_policy: include('mock_policy')
@@ -38,7 +40,7 @@ data_rules:
   test_policy: include('test_policy')
   test_strategy: include('test_strategy')
 parameter_rule:
-  modes: list(include('mode'), min=1, max=3)
+  modes: list(include('mode'), min=1, max=4)
   name: str()
   type: str()
   value: str(required=False)
@@ -48,5 +50,11 @@ rewrite_rule:
   parameter_rules: list(include('parameter_rule'))
 firewall_rule:
   action: include('firewall_action')
-  modes: list(include('mode'), min=1, max=3)
+  methods: list(include('method'))
+  modes: list(include('mode'), min=1, max=4)
+  pattern: str()
+match_rule:
+  components: include('component')
+  methods: list(include('method'))
+  modes: list(include('mode'), min=1, max=4)
   pattern: str()
