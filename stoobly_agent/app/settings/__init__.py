@@ -113,7 +113,20 @@ class Settings:
             **{ 'ui': self.__ui_settings.to_dict() },
         }
 
+    def validate(self):
+        try:
+            schema = yamale.make_schema(self.__schema_file_path)
+            data = yamale.make_data(self.__settings_file_path)
+            yamale.validate(schema, data)
+        except YamaleError as e:
+            for result in e.results:
+                print(f"{result}\n")
+
     ### Set
+
+    def commit(self):
+        settings = self.to_dict()
+        self.write(settings)
 
     def from_dict(self, settings):
         self.__settings = settings
@@ -122,6 +135,9 @@ class Settings:
             self.__proxy_settings = ProxySettings(settings.get('proxy'))
             self.__remote_settings = RemoteSettings(settings.get('remote'))
             self.__ui_settings = UISettings(settings.get('ui'))
+
+    def load(self):
+        self.__load_settings()
 
     def reset(self):
         copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
@@ -135,19 +151,6 @@ class Settings:
             fp = open(self.__settings_file_path, 'w')
             yaml.dump(contents, fp, allow_unicode=True)
             fp.close()
-
-    def commit(self):
-        settings = self.to_dict()
-        self.write(settings)
-
-    def validate(self):
-        try:
-            schema = yamale.make_schema(self.__schema_file_path)
-            data = yamale.make_data(self.__settings_file_path)
-            yamale.validate(schema, data)
-        except YamaleError as e:
-            for result in e.results:
-                print(f"{result}\n")
 
     ### Helpers
 

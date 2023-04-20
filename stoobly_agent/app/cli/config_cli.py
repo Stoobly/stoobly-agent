@@ -74,7 +74,6 @@ def show(**kwargs):
 
     kwargs['key'] = data_rule.scenario_key
 
-
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
     scenario = ScenarioFacade(settings)
 
