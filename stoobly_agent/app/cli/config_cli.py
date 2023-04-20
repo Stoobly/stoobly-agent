@@ -19,6 +19,7 @@ from .helpers.print_service import print_projects, print_scenarios, select_print
 from .helpers.validations import *
 
 settings = Settings.instance()
+is_remote = settings.cli.features.remote
 
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
@@ -141,7 +142,7 @@ def rewrite(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if settings.cli.features.remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--name', required=True, help='Name of the request component.')
 @click.option('--pattern', required=True, help='URLs pattern.')
@@ -216,7 +217,7 @@ def match(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK] + ([mode.TEST] if settings.cli.features.remote else []))
+    type=click.Choice([mode.MOCK] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @click.option('--project_key', help='Project to add rewrite rule to.')
@@ -281,7 +282,7 @@ def firewall(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if settings.cli.features.remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @click.option('--project_key', help='Project to add firewall rule to.')
@@ -324,31 +325,38 @@ def set(**kwargs):
 
     Logger.instance().debug(f"Firewall {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
 
-### API Key
+### Validate
 
-@click.group(
-    help="Manage API key"
+@config.command(
+    help="Check config validity"
 )
-@click.pass_context
-def api_key(ctx):
-    pass
+def validate(**kwargs):
+    Settings.instance().validate()
 
-@api_key.command(
-    help="Set API Key"
-)
-@click.argument('api_key')
-def set(**kwargs):
-    settings = Settings.instance()
-
-    api_key = kwargs['api_key']
-    settings.remote.api_key = api_key
-
-    settings.commit()
-
-    print("API Key updated!")
-
-is_remote = Settings.instance().cli.features.remote
 if is_remote:
+    ### API Key
+
+    @click.group(
+        help="Manage API key"
+    )
+    @click.pass_context
+    def api_key(ctx):
+        pass
+
+    @api_key.command(
+        help="Set API Key"
+    )
+    @click.argument('api_key')
+    def set(**kwargs):
+        settings = Settings.instance()
+
+        api_key = kwargs['api_key']
+        settings.remote.api_key = api_key
+
+        settings.commit()
+
+        print("API Key updated!")
+
     @click.group(
         help="Manage active project"
     )
@@ -401,17 +409,16 @@ if is_remote:
 
         print("Project updated!")
 
-    config.add_command(project)
 
-@config.command(
-    help="Check config validity"
-)
-def validate(**kwargs):
-    Settings.instance().validate()
+if is_remote:
+    config.add_command(api_key)
 
-config.add_command(api_key)
 config.add_command(firewall)
 config.add_command(match)
+
+if is_remote:
+    config.add_command(project)
+
 config.add_command(rewrite)
 config.add_command(scenario)
 
