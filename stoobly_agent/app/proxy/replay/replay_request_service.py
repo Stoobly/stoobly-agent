@@ -48,7 +48,6 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   request = context.request
   headers = request.headers
   method = request.method
-  cookies = __get_cookies(headers)
 
   if options.get('host'):
     request.host = options['host']
@@ -90,7 +89,6 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     'verify': not MitmproxyConfig.instance().get('ssl_insecure')
   }
   request_dict = {
-    'cookies': cookies,
     'data': request.body,
     'headers': headers, 
     #'params': request.query_params, # Do not send query params, they should be a part of the URL
@@ -161,10 +159,6 @@ def __handle_mode_option(_mode, request: Request, headers):
     # If recording, then it's actually a replay and record
     headers[custom_headers.PROXY_MODE] = mode.REPLAY
     headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
-
-def __get_cookies(headers: Request.headers):
-  cookies = SimpleCookie(headers.get('Cookie')).items()
-  return {k: v.value for k, v in cookies}
 
 def __create_replayed_response(request_id: int, res: requests.Response, latency: int):   
   replayed_response_model = ReplayedResponseModel(Settings.instance())
