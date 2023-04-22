@@ -35,7 +35,7 @@ class RequestHasher():
     else:
       return ''
 
-  def hash_text(self, text: str) -> str:
+  def hash_text(self, text: Union[bytes, str]) -> str:
     if len(text) == 0:
       return ''
     return hashlib.md5(text.encode() if isinstance(text, str) else text).hexdigest()

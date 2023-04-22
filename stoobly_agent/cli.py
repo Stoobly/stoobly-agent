@@ -1,4 +1,5 @@
 import click
+import json
 import os
 import pdb
 import requests
@@ -133,13 +134,15 @@ def mock(**kwargs):
   })
 
   if response.status_code == custom_response_codes.NOT_FOUND:
-    print(f"Error: {response.content.decode()}")
+    content = response.content
+    print(f"Error: {content.decode(json.detect_encoding(content))}")
     sys.exit(1)
 
   if kwargs['format'] == RAW_FORMAT:
     print_raw_response(response)
   else:
-    print(response.content.decode())
+    content = response.content
+    print(content.decode(json.detect_encoding(content)))
 
 @main.command(
   help="Record request"
@@ -163,7 +166,8 @@ def record(**kwargs):
   if kwargs['format'] == RAW_FORMAT:
     print_raw_response(response)
   else:
-    print(response.content.decode())
+    content = response.content
+    print(content.decode(json.detect_encoding(content)))
 
 def __build_request_from_curl(**kwargs):
   headers = {}

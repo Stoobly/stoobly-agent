@@ -71,7 +71,4 @@ def __content(res: requests.Response):
   else:
     content = res.content
 
-  try:
-    return content.decode()
-  except UnicodeDecodeError as e:
-    return content
+  return content.decode(json.detect_encoding(content))

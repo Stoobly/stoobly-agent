@@ -166,6 +166,7 @@ def __build_json_response(response: requests.Response):
 
 def __decode_response(response: requests.Response):
   if isinstance(response, requests.Response):
-    return response.content.decode()
+    content = response.content
+    return content.decode(json.detect_encoding(content))
   else:
     return "API Error: Internal Error"

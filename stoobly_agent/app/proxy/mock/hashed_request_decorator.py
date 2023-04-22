@@ -2,6 +2,7 @@ import hashlib
 import pdb
 
 from stoobly_agent.lib.logger import bcolors, Logger
+from typing import Union
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 from .request_hasher import RequestHasher
@@ -98,8 +99,10 @@ class HashedRequestDecorator:
         serialized_params.sort()
         return self.__hash('.'.join(serialized_params))
 
-    def __hash(self, text):
-        return hashlib.md5(text.encode('utf-8')).hexdigest()
+    def __hash(self, text: Union[bytes, str]):
+        if isinstance(text, str):
+            text = text.encode()
+        return hashlib.md5(text).hexdigest()
 
     def __serialize_param(self, key, val):
         if isinstance(key, bytes):

@@ -26,7 +26,7 @@ class ORMRequestBuilder():
 
   def columns_from_mitmproxy_response(self, response: MitmproxyResponse):
     return {
-      'response_hash': RequestHasher.instance().hash_text(response.content.decode()),
+      'response_hash': RequestHasher.instance().hash_text(response.content),
       'response_headers_hash': RequestHasher.instance().hash_params(response.headers)
     }
 

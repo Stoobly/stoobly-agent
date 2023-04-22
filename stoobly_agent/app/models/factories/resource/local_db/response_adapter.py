@@ -1,3 +1,4 @@
+import json
 import pdb
 import requests
 
@@ -81,10 +82,12 @@ class LocalDBResponseAdapter():
 
   def __to_show_response(self, response: Response):
     python_response = ORMToRequestsResponseTransformer(response).transform()
+    content = python_response.content
+    encoding = json.detect_encoding(content)
 
     return {
       'id': response.id,
       'mime_type': python_response.headers.get('content-type'),
-      'text': python_response.content.decode(),
+      'text': content.decode(encoding),
     }
 

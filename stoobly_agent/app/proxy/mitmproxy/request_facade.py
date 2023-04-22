@@ -1,3 +1,4 @@
+import json
 import pdb
 import re
 
@@ -69,11 +70,8 @@ class MitmproxyRequestFacade(Request):
     def body(self):
         content = self.request.raw_content or ''
 
-        try:
-            if isinstance(content, bytes):
-                content = content.decode('utf-8')
-        except:
-            content = ''.join(map(chr, content))
+        if isinstance(content, bytes):
+            content = content.decode(json.detect_encoding(content))
 
         return content
 

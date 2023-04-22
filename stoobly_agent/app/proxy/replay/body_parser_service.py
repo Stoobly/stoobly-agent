@@ -12,7 +12,7 @@ JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
 WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
 
-def decode_response(content, content_type: Union[bytes, None, str]) -> Union[dict, list, MultiDict]:
+def decode_response(content: Union[bytes, str], content_type: Union[None, str]) -> Union[dict, list, MultiDict]:
     if not content_type:
         return content
 
@@ -21,7 +21,7 @@ def decode_response(content, content_type: Union[bytes, None, str]) -> Union[dic
     decoded_response = content
     if _content_type == JSON:
         if isinstance(content, bytes):
-            content = content.decode('utf-8')
+            content = content.decode(json.detect_encoding(content))
 
         decoded_response = parse_json(content)
     elif _content_type == WWW_FORM_URLENCODED:
@@ -40,7 +40,7 @@ def encode_response(content, content_type: Union[bytes, None, str]) -> Union[byt
     encoded_response = content
     if _content_type == JSON:
         if isinstance(content, bytes):
-            content = content.decode('utf-8')
+            content = content.decode(json.detect_encoding(content))
 
         encoded_response = serialize_json(content)
     elif _content_type == WWW_FORM_URLENCODED:
@@ -98,7 +98,7 @@ def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str])
 def serialize_www_form_urlencoded(o):
     return urllib.parse.urlencode(o)
 
-def normalize_header( header):
+def normalize_header(header):
     if isinstance(header, bytes):
         header = header.decode('utf-8')
     return cgi.parse_header(header)[0].lower()
