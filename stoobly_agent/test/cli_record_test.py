@@ -127,7 +127,7 @@ class TestCli():
 
     class TestWhenNotFoundPolicy():
 
-      def test_it_does_not_record_twice(self, settings: Settings):
+      def test_it_records_only_not_found_requests(self, settings: Settings):
         runner = CliRunner()
 
         intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.NOT_FOUND])
@@ -137,8 +137,60 @@ class TestCli():
         record_result = runner.invoke(record, [url])
         assert record_result.exit_code == 0
 
+        assert Request.count() == 1
+
         url = 'www.google.com'
         record_result = runner.invoke(record, [url])
         assert record_result.exit_code == 0
 
         assert Request.count() == 1
+
+        url = 'www.facebook.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 2
+
+    class TestWhenNotFoundPolicy():
+
+      def test_it_does_not_record_any_requests(self, settings: Settings):
+        runner = CliRunner()
+
+        intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])
+        assert intercept_result.exit_code == 0
+
+        url = 'www.google.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 0
+
+        url = 'www.facebook.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 0
+
+      def test_it_records_only_found_requests(self, settings: Settings):
+        runner = CliRunner()
+
+        url = 'www.google.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 1
+
+        intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])
+        assert intercept_result.exit_code == 0
+
+        url = 'www.facebook.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 1
+
+        url = 'www.google.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 2
