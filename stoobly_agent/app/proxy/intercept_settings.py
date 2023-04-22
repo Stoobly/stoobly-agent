@@ -121,21 +121,15 @@ class InterceptSettings:
 
   @property
   def policy(self):
-    mode = self.mode
-    if mode == intercept_mode.MOCK:
-      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
-        return self.__headers[custom_headers.MOCK_POLICY]
+    return self.__policy(self.mode)
 
-      return self.__data_rules.mock_policy
-    elif mode == intercept_mode.RECORD:
-      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
-        return self.__headers[custom_headers.RECORD_POLICY]
+  @property
+  def response_policy(self):
+    if self.__headers and custom_headers.RESPONSE_PROXY_MODE in self.__headers:
+      mode = self.__headers[custom_headers.RESPONSE_PROXY_MODE]
+      return self.__policy(mode)
 
-      return self.__data_rules.record_policy
-    elif mode == intercept_mode.TEST:
-      return self.__data_rules.test_policy
-    elif mode == intercept_mode.REPLAY:
-      return self.__data_rules.replay_policy
+    return self.policy
 
   @property
   def exclude_rules(self) -> List[FirewallRule]:
@@ -247,4 +241,19 @@ class InterceptSettings:
         self.__lifecycle_hooks = run_path(script_path)
     except Exception as e:
         return Logger.instance().error(e)
-    
+
+  def __policy(self, mode):
+    if mode == intercept_mode.MOCK:
+      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
+        return self.__headers[custom_headers.MOCK_POLICY]
+
+      return self.__data_rules.mock_policy
+    elif mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
+        return self.__headers[custom_headers.RECORD_POLICY]
+
+      return self.__data_rules.record_policy
+    elif mode == intercept_mode.TEST:
+      return self.__data_rules.test_policy
+    elif mode == intercept_mode.REPLAY:
+      return self.__data_rules.replay_policy

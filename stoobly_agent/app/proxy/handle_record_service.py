@@ -15,7 +15,7 @@ from stoobly_agent.lib.logger import Logger
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .upload.upload_request_service import inject_upload_request
-from .utils.allowed_request_service import get_active_mode_policy
+from .utils.allowed_request_service import get_active_mode_response_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 
@@ -38,8 +38,8 @@ def handle_response_record(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
     disable_transfer_encoding(flow.response)
 
     request_model = RequestModel(intercept_settings.settings)
- 
-    active_record_policy = get_active_mode_policy(request, intercept_settings)
+
+    active_record_policy = get_active_mode_response_policy(request, intercept_settings)
     Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
 
     if active_record_policy == record_policy.ALL:

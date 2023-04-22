@@ -16,10 +16,10 @@ class ParameterRule(TypedDict):
   value: str
 
 class DataRules(TypedDict):
-  MockPolicy: MockPolicy
-  RecordPolicy: RecordPolicy
+  mock_policy: MockPolicy
+  record_policy: RecordPolicy
   scenario_id: str
-  TestPolicy: TestPolicy
+  test_policy: TestPolicy
 
 class MatchRule(TypedDict):
   components: List[RequestComponent]

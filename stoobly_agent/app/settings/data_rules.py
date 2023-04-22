@@ -22,6 +22,11 @@ class DataRules:
   def record_policy(self):
     return self.__record_policy 
 
+  @record_policy.setter
+  def record_policy(self, v):
+    self.__record_policy = v
+    self.__data_rules['record_policy'] = v
+
   @property
   def replay_policy(self):
     return self.__replay_policy
