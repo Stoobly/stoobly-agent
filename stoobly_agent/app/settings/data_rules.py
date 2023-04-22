@@ -18,6 +18,11 @@ class DataRules:
   def mock_policy(self):
     return self.__mock_policy 
 
+  @mock_policy.setter
+  def mock_policy(self, v):
+    self.__mock_policy = v
+    self.__data_rules['mock_policy'] = v
+
   @property
   def record_policy(self):
     return self.__record_policy 
@@ -30,6 +35,11 @@ class DataRules:
   @property
   def replay_policy(self):
     return self.__replay_policy
+
+  @replay_policy.setter
+  def replay_policy(self, v):
+    self.__record_policy = v
+    self.__data_rules['replay_policy'] = v
 
   @property
   def scenario_key(self):
@@ -45,6 +55,11 @@ class DataRules:
   @property
   def test_policy(self):
     return self.__test_policy 
+
+  @test_policy.setter
+  def test_policy(self, v):
+    self.__test_policy = v
+    self.__data_rules['test_policy'] = v
 
   @property
   def test_strategy(self):

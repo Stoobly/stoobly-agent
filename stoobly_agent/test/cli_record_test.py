@@ -7,10 +7,11 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.test.test_helper import reset
 
-from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import mode, record_policy
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
-from stoobly_agent.cli import config, mock, record, scenario
+from stoobly_agent.cli import config, intercept, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
 
@@ -114,7 +115,7 @@ class TestCli():
 
     class TestWhenToScenario():
 
-      def test_it_sets_scenario_id(settings, scenario_key: ScenarioKey):
+      def test_it_sets_scenario_id(self, settings, scenario_key: ScenarioKey):
         runner = CliRunner()
 
         url = 'www.google.com'
@@ -123,3 +124,21 @@ class TestCli():
 
         _request = Request.last()
         assert _request.scenario_id == int(scenario_key.id)
+
+    class TestWhenNotFoundPolicy():
+
+      def test_it_does_not_record_twice(self, settings: Settings):
+        runner = CliRunner()
+
+        intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.NOT_FOUND])
+        assert intercept_result.exit_code == 0
+
+        url = 'www.google.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        url = 'www.google.com'
+        record_result = runner.invoke(record, [url])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 1
