@@ -1,6 +1,6 @@
 from argparse import ONE_OR_MORE
 import pdb
-from orator.orm import belongs_to, has_one
+from orator.orm import belongs_to, has_many, has_one 
 
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 from stoobly_agent.lib.api.keys.request_key import RequestKey
@@ -39,6 +39,10 @@ class Request(Base):
   @has_one
   def response(self):
     return Response
+
+  @has_many
+  def replayed_responses(self):
+    return ReplayedResponse
 
   @belongs_to
   def scenario(self):
@@ -109,6 +113,11 @@ def handle_deleting(request):
   if response:
     response.delete()
 
+  replayed_responses = request.replayed_responses
+
+  for replayed_response in replayed_responses:
+    replayed_response.delete()
+
 def handle_deleted(request):
   scenario = request.scenario
 
@@ -122,4 +131,5 @@ Request.created(handle_created)
 Request.deleted(handle_deleted)
 Request.deleting(handle_deleting)
 
+from .replayed_response import ReplayedResponse
 from .scenario import Scenario

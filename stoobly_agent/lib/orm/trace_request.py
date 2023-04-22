@@ -14,3 +14,11 @@ class TraceRequest(Base):
   @has_many
   def trace_aliases(self):
     return TraceAlias
+
+def handle_deleting(trace):
+  trace_aliaces = trace.trace_aliases
+
+  for trace_alias in trace_aliaces:
+    trace_alias.delete()
+
+TraceRequest.deleting(handle_deleting)
