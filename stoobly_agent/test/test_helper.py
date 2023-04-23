@@ -10,6 +10,9 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.migrate_service import migrate
 
+DETERMINISTIC_GET_REQUEST_URL = 'https://dog.ceo/api/breeds/list/all'
+NON_DETERMINISTIC_GET_REQUEST_URL = 'https://www.google.com'
+
 def reset():
   os.environ[ENV] = TEST
 
