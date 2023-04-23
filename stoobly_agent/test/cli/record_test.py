@@ -19,13 +19,6 @@ from stoobly_agent.lib.orm.request import Request
 def settings():
   return reset()
 
-@pytest.fixture
-def scenario_key() -> ScenarioKey:
-  runner = CliRunner()
-  res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
-  assert res.exit_code == 0
-  return ScenarioKey(res.stdout.strip())
-
 class TestCli():
 
   class TestWhenRecording():
@@ -114,6 +107,13 @@ class TestCli():
         assert json.loads(body).get(body_param) == body_param_value
 
     class TestWhenToScenario():
+
+      @pytest.fixture()
+      def scenario_key(self):
+        runner = CliRunner()
+        res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
+        assert res.exit_code == 0
+        return ScenarioKey(res.stdout.strip())
 
       def test_it_sets_scenario_id(self, settings, scenario_key: ScenarioKey):
         runner = CliRunner()

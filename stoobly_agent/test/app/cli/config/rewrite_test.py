@@ -15,39 +15,38 @@ from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 def settings():
   return reset()
 
-class TestConfigCli():
-  class TestRewrite():
+class TestRewrite():
 
-    def test_it_sets_rule(self, settings: Settings):
-      runner = CliRunner()
+  def test_it_sets_rule(self, settings: Settings):
+    runner = CliRunner()
 
-      header_name = 'access-token'
-      header_value = ''
-      method = 'GET'
-      _mode = mode.RECORD
-      pattern = '.*?'
+    header_name = 'access-token'
+    header_value = ''
+    method = 'GET'
+    _mode = mode.RECORD
+    pattern = '.*?'
 
-      rewrite_result = runner.invoke(config, [
-          'rewrite', 'set', 
-          '--method', method, '--mode', _mode, '--name', header_name, '--value', header_value, '--pattern', pattern, '--type', request_component.HEADER
-        ]
-      )
-      assert rewrite_result.exit_code == 0
+    rewrite_result = runner.invoke(config, [
+        'rewrite', 'set', 
+        '--method', method, '--mode', _mode, '--name', header_name, '--value', header_value, '--pattern', pattern, '--type', request_component.HEADER
+      ]
+    )
+    assert rewrite_result.exit_code == 0
 
-      settings.load()
+    settings.load()
 
-      rewrite_rules = settings.proxy.rewrite.rewrite_rules(str(LOCAL_PROJECT_ID))
-      assert len(rewrite_rules) == 1
+    rewrite_rules = settings.proxy.rewrite.rewrite_rules(str(LOCAL_PROJECT_ID))
+    assert len(rewrite_rules) == 1
 
-      rewrite_rule = rewrite_rules[0]
-      assert rewrite_rule.pattern == pattern
-      assert rewrite_rule.methods == [method]
+    rewrite_rule = rewrite_rules[0]
+    assert rewrite_rule.pattern == pattern
+    assert rewrite_rule.methods == [method]
 
-      parameter_rules = rewrite_rule.parameter_rules
-      assert len(parameter_rules) == 1
+    parameter_rules = rewrite_rule.parameter_rules
+    assert len(parameter_rules) == 1
 
-      parameter_rule = parameter_rules[0]
-      assert parameter_rule.modes == [_mode]
-      assert parameter_rule.type == request_component.HEADER
-      assert parameter_rule.name == header_name
-      assert parameter_rule.value == header_value
+    parameter_rule = parameter_rules[0]
+    assert parameter_rule.modes == [_mode]
+    assert parameter_rule.type == request_component.HEADER
+    assert parameter_rule.name == header_name
+    assert parameter_rule.value == header_value
