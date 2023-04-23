@@ -3,7 +3,7 @@ import os
 import pdb
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, handle_before_replay, print_request
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete 
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -60,7 +60,7 @@ def create(**kwargs):
     help='Strategy for resolving dynamic values for aliases.'
 )(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')(f), is_remote)
-@click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
+@click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
 @ConditionalDecorator(lambda f: click.option('--group-by', help='Repeat for each alias name.')(f), is_remote)
 @click.option('--host', help='Rewrite request host.')
 @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
@@ -178,7 +178,7 @@ if is_remote:
         type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), 
         help='For iterable responses, selectively test properties.'
     )
-    @click.option('--format', default=DEFAULT_FORMAT, type=click.Choice([DEFAULT_FORMAT, JSON_FORMAT]), help='Format replay response.')
+    @click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
     @click.option('--group-by', help='Repeat for each alias name.')
     @click.option('--host', help='Rewrite request host.')
     @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')

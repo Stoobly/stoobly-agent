@@ -9,6 +9,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
 
 DEFAULT_FORMAT = 'default'
+BODY_FORMAT = 'body'
 JSON_FORMAT = 'json'
 
 def handle_before_replay(context: ReplayContext, format = None):
@@ -29,6 +30,8 @@ def print_request(context: ReplayContext, format = None):
   
   if format == JSON_FORMAT:
     format_handler = json_format_handler
+  elif format == BODY_FORMAT:
+    format_handler = body_format_handler
 
   format_handler(context)
 
@@ -55,6 +58,11 @@ def default_format_handler(context: ReplayContext, additional=''):
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)
   print(f"Completed {response.status_code} in {ms}ms{additional}")
+
+def body_format_handler(context: ReplayContext):
+  response = context.response
+  content = __content(response)
+  print(content)
 
 def json_format_handler(context: ReplayContext):
   response = context.response
