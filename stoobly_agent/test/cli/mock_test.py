@@ -11,23 +11,18 @@ from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.cli import config, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
-@pytest.fixture
-def settings():
-  return reset()
+@pytest.fixture()
+def runner():
+  return CliRunner()
 
-@pytest.fixture
-def scenario_key() -> ScenarioKey:
-  runner = CliRunner()
-  res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
-  assert res.exit_code == 0
-  return ScenarioKey(res.stdout.strip())
+class TestMocking():
+  class TestRewriting():
+    class TestWhenHeaders():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
 
-class TestCli():
-  class TestWhenMocking():
-    class TestWhenRewriting():
-
-      def test_it_rewrites_headers(self, settings):
-        runner = CliRunner()
+      def test_it_rewrites(self, runner: CliRunner):
         header_name = 'foo'
         header_value = 'bar'
 
@@ -56,8 +51,12 @@ class TestCli():
         mock_result = runner.invoke(mock, [url])
         assert mock_result.exit_code == 0
 
-      def test_it_rewrites_query_params(self, settings):
-        runner = CliRunner()
+    class TestWhenQueryParams():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      def test_it_rewrites(self, runner: CliRunner):
         query_param_name = 'foo'
         query_param_value = 'bar'
 
@@ -86,8 +85,12 @@ class TestCli():
         mock_result = runner.invoke(mock, [url])
         assert mock_result.exit_code == 0
 
-      def test_it_rewrites_body_params(self, settings):
-        runner = CliRunner()
+    class TestWhenBodyParams():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      def test_it_rewrites(self, runner: CliRunner):
         body_param_name = 'foo'
         body_param_value = 'bar'
 
@@ -119,3 +122,12 @@ class TestCli():
 
         mock_result = runner.invoke(mock, [url])
         assert mock_result.exit_code == 0
+
+  class TestScenario():
+
+    @pytest.fixture
+    def scenario_key():
+      runner = CliRunner()
+      res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
+      assert res.exit_code == 0
+      return ScenarioKey(res.stdout.strip())
