@@ -1,10 +1,9 @@
-from multiprocessing.connection import Client
 import pdb
 import pytest
 
 from click.testing import CliRunner
 
-from stoobly_agent.test.test_helper import reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.cli import record, request
 from stoobly_agent.lib.api.keys import RequestKey
@@ -21,8 +20,7 @@ class TestList():
     return reset()
 
   def test_it_shows_request(self, runner: CliRunner):
-    url = 'https://www.google.com/'
-    self.__record_request(url)
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
 
     request_result = runner.invoke(request, ['list', '--without-headers', '--select', 'key'])
     assert request_result.exit_code == 0
@@ -32,11 +30,11 @@ class TestList():
 
     _request = Request.find(request_key.id)
 
-    assert _request.url == url
+    assert _request.url == DETERMINISTIC_GET_REQUEST_URL
 
   def test_it_shows_all_requests(self, runner: CliRunner):
-    self.__record_request('www.google.com')
-    self.__record_request('www.google.com')
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
 
     request_result = runner.invoke(request, ['list', '--without-headers', '--select', 'key'])
     assert request_result.exit_code == 0
@@ -45,8 +43,8 @@ class TestList():
     assert len(output.strip().split("\n")) == 2
 
   def test_it_shows_requests_on_page(self, runner: CliRunner):
-    self.__record_request('www.google.com')
-    self.__record_request('www.google.com')
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
 
     request_result = runner.invoke(request, ['list', '--without-headers', '--select', 'key', '--page', '2', '--size', '1'])
     assert request_result.exit_code == 0
@@ -55,18 +53,16 @@ class TestList():
     assert len(output.strip().split("\n")) == 1
 
   def test_it_sorts_by_host(self, runner: CliRunner):
-    self.__record_request('www.google.com')
-    url = 'www.facebook.com'
-    self.__record_request(url)
+    self.__record_request(runner, 'https://www.google.com')
+    self.__record_request(runner, 'https://www.facebook.com')
 
     request_result = runner.invoke(request, ['list', '--without-headers', '--select', 'host', '--sort-by', 'host', '--sort-order', 'asc'])
     assert request_result.exit_code == 0
 
     output = request_result.stdout
     host = output.strip().split("\n")[0]
-    assert host == url
+    assert host == 'www.facebook.com'
 
-  def __record_request(self, url):
-    runner = CliRunner()
+  def __record_request(self, runner: CliRunner, url: str):
     record_result = runner.invoke(record, [url])
     assert record_result.exit_code == 0
