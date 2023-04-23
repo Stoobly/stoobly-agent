@@ -4,7 +4,7 @@ import pytest
 
 from click.testing import CliRunner
 
-from stoobly_agent.test.test_helper import reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.config.constants import mode
 from stoobly_agent.app.settings.constants import request_component
@@ -26,7 +26,7 @@ class TestMocking():
         header_name = 'foo'
         header_value = 'bar'
 
-        url = 'www.google.com'
+        url = DETERMINISTIC_GET_REQUEST_URL
         record_result = runner.invoke(record, [url, '-H', f"{header_name}: {header_value}"])
         assert record_result.exit_code == 0
 
@@ -60,7 +60,7 @@ class TestMocking():
         query_param_name = 'foo'
         query_param_value = 'bar'
 
-        url = 'www.google.com'
+        url = DETERMINISTIC_GET_REQUEST_URL
         record_result = runner.invoke(record, [f"{url}?{query_param_name}={query_param_value}"])
         assert record_result.exit_code == 0
 
@@ -98,7 +98,7 @@ class TestMocking():
         content[body_param_name] = body_param_value
         body = json.dumps(content)
 
-        url = 'www.google.com'
+        url = DETERMINISTIC_GET_REQUEST_URL
         record_result = runner.invoke(record, [url, '-d', body, '-H', 'Content-Type: application/json'])
         assert record_result.exit_code == 0
 
@@ -126,8 +126,7 @@ class TestMocking():
   class TestScenario():
 
     @pytest.fixture
-    def scenario_key():
-      runner = CliRunner()
+    def scenario_key(self, runner: CliRunner):
       res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
       assert res.exit_code == 0
       return ScenarioKey(res.stdout.strip())

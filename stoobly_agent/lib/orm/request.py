@@ -51,8 +51,9 @@ class Request(Base):
   def key(self):
     return RequestKey.encode(LOCAL_PROJECT_ID, self.id).decode()
 
+  # Override
   def to_dict(self):
-    h = super().to_dict()
+    h = super().attributes_to_dict()
     h['key'] = self.key()
     return h
 
@@ -75,7 +76,7 @@ class Request(Base):
 
     s += self.path
 
-    _query = self.to_dict().get('query')
+    _query = self.get_raw_attribute('query')
     if _query and len(_query) > 0:
       s = f"{s}?{_query}"
 

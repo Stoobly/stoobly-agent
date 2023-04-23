@@ -24,3 +24,7 @@ class ReplayedResponse(Base):
   @belongs_to
   def request(self):
     return Request
+
+  # Override
+  def to_dict(self):
+    return super().attributes_to_dict()

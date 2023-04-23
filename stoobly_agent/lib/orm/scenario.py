@@ -17,8 +17,9 @@ class Scenario(Base):
   def key(self):
     return ScenarioKey.encode(LOCAL_PROJECT_ID, self.id).decode()
 
+  # Override
   def to_dict(self):
-    h = super().to_dict()
+    h = super().attributes_to_dict()
     h['key'] = self.key()
     return h
 

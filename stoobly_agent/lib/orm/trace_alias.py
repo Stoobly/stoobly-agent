@@ -46,6 +46,10 @@ class TraceAlias(Base):
     except KeyError as e:
       return None
 
+  # Override
+  def to_dict(self):
+    return super().attributes_to_dict()
+
   def serialize_assigned_to(self):
     _assigned_to = self.raw_assigned_to
     assigned_to_inferred_type = type(_assigned_to).__name__

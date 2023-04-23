@@ -1,6 +1,5 @@
 import json
 import pdb
-from telnetlib import DET
 import pytest
 
 from click.testing import CliRunner
@@ -84,7 +83,7 @@ class TestRecording():
 
         _request = Request.last()
 
-        query_params = parse_qs(_request.to_dict()['query'])
+        query_params = parse_qs(_request.get_raw_attribute('query'))
         values = query_params.get(query_param)
         assert values != None and len(values) == 1
         assert query_param_value in values
