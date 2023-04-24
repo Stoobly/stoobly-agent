@@ -73,10 +73,5 @@ def json_format_handler(context: ReplayContext):
   print(json.dumps(output))
 
 def __content(res: requests.Response):
-  content = ''
-  if hasattr(res, 'raw'):
-    content = res.raw.data
-  else:
-    content = res.content
-
+  content = res.content
   return content.decode(json.detect_encoding(content))

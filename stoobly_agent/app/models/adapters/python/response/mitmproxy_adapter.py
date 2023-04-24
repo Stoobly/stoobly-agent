@@ -48,23 +48,17 @@ class MitmproxyResponseAdapter():
     return self.__timestamp_start + self.__latency
 
   def adapt(self):
-    body = b''
-    
-    if self.__response._content_consumed or not hasattr(self.__response, 'raw'):
-      body = self.__response.content
-    else:
-      body = self.__response.raw.data
-
-    return MitmproxyResponse(
-      self.__http_version,
+    res = MitmproxyResponse.make(
       self.status_code,
-      self.reason,
+      self.__response.content,
       self.headers,
-      body,
-      Headers(), # Trailers
-      self.__timestamp_start,
-      self.timestamp_end
     )
+
+    # After reading .content, .raw.data will be empty
+    # However, setting ._body will set .raw.data
+    self.__response.raw._body = res.raw_content
+
+    return res
 
   def __decode_dict(self, d):
     new_d = {}
