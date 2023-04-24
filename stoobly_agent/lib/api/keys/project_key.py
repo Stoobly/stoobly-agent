@@ -36,3 +36,7 @@ class ProjectKey(ResourceKey):
   @property
   def organization_id(self) -> str:
     return self.get('o')
+
+  @staticmethod
+  def check_is_local(id):
+    return int(id) == LOCAL_PROJECT_ID

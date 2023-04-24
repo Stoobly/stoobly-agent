@@ -16,7 +16,7 @@ class RequestKey(ResourceKey):
       settings = Settings.instance()
       if settings.cli.features.remote:
         raise InvalidRequestKey('Missing request_id')
-
+    
   @property
   def id(self) -> str:
     return self.get('i')
