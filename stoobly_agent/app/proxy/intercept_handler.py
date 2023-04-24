@@ -6,7 +6,7 @@ from mitmproxy.http import Request as MitmproxyRequest
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
-from stoobly_agent.app.proxy.upload.context import RecordContext
+from stoobly_agent.app.proxy.record.context import RecordContext
 
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.settings import Settings

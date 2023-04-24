@@ -12,7 +12,7 @@ from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
-from stoobly_agent.app.proxy.upload.upload_request_service import upload_staged_request
+from stoobly_agent.app.proxy.record.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.orm.request import Request as OrmRequest

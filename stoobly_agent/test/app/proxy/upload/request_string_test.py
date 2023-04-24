@@ -4,8 +4,8 @@ import requests
 
 from stoobly_agent.app.models.adapters.python.request import PythonRequestAdapterFactory
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
-from stoobly_agent.app.proxy.upload.proxy_request import ProxyRequest
-from stoobly_agent.app.proxy.upload.request_string import RequestString
+from stoobly_agent.app.proxy.record.proxy_request import ProxyRequest
+from stoobly_agent.app.proxy.record.request_string import RequestString
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 
 class TestRequestString():

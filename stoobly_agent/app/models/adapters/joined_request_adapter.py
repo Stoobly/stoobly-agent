@@ -1,8 +1,8 @@
 import pdb
 
-from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
-from stoobly_agent.app.proxy.upload.request_string import CLRF as RequestStringCLRF, RequestString
-from stoobly_agent.app.proxy.upload.response_string import CLRF as ResponseStringCLRF, ResponseString
+from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
+from stoobly_agent.app.proxy.record.request_string import CLRF as RequestStringCLRF, RequestString
+from stoobly_agent.app.proxy.record.response_string import CLRF as ResponseStringCLRF, ResponseString
 
 class JoinedRequestAdapter():
 

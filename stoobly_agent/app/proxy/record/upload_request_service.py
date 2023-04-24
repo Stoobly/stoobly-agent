@@ -9,7 +9,7 @@ from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.proxy.upload import JoinedRequest, RequestString, ResponseString
+from stoobly_agent.app.proxy.record import JoinedRequest, RequestString, ResponseString
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import request_origin
 from stoobly_agent.lib.api.param_builder import ParamBuilder

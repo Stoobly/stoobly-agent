@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.types import RequestCreateParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
-from stoobly_agent.app.proxy.upload.joined_request import JoinedRequest
+from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response

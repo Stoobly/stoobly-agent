@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.app.proxy.upload.response_string_control import ResponseStringControl
+from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
 
 class AlignRequests(Migration):
 

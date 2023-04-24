@@ -2,7 +2,7 @@ import pdb
 import requests
 
 from stoobly_agent.app.proxy.mitmproxy.response_facade import MitmproxyResponseFacade
-from stoobly_agent.app.proxy.upload.response_string import ResponseString
+from stoobly_agent.app.proxy.record.response_string import ResponseString
 
 from .mitmproxy_adapter import MitmproxyResponseAdapter
 

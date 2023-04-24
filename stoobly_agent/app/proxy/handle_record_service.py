@@ -14,8 +14,8 @@ from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
-from .upload.context import RecordContext
-from .upload.upload_request_service import inject_upload_request
+from .record.context import RecordContext
+from .record.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import get_active_mode_response_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, disable_transfer_encoding 

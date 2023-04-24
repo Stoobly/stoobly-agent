@@ -15,7 +15,7 @@ from .handle_mock_service import handle_request_mock_generic
 from .mock.context import MockContext
 from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
-from .upload.upload_test_service import inject_upload_test
+from .record.upload_test_service import inject_upload_test
 
 LOG_ID = 'HandleTest'
 

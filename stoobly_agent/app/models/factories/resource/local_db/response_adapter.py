@@ -4,7 +4,7 @@ import requests
 
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
-from stoobly_agent.app.proxy.upload.response_string_control import ResponseStringControl
+from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer

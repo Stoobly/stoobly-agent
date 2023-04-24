@@ -1,5 +1,5 @@
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.app.proxy.upload import REQUEST_DELIMITTER, RequestString, ResponseString
+from stoobly_agent.app.proxy.record import REQUEST_DELIMITTER, RequestString, ResponseString
 
 class JoinedRequestStringAdapter():
 
