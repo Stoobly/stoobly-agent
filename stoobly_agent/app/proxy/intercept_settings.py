@@ -133,11 +133,13 @@ class InterceptSettings:
 
   @property
   def exclude_rules(self) -> List[FirewallRule]:
-    return list(filter(lambda rule: rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+    _mode = self.mode
+    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
 
   @property
   def include_rules(self) -> List[FirewallRule]:
-    return list(filter(lambda rule: rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+    _mode = self.mode
+    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
 
   @property
   def match_rules(self) -> List[MatchRule]:
