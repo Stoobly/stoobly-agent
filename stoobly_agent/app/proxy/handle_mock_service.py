@@ -8,7 +8,7 @@ from typing import Callable, TypedDict
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, mock_policy
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -48,6 +48,8 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
         options['ignored_components'] += ignored_components  if 'ignored_components' in options else ignored_components
 
+    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
+
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     
@@ -81,6 +83,8 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
             "Valid env MOCK_POLICY: %s, %s, %s, Got: %s" %
             [mock_policy.ALL, mock_policy.FOUND, policy]
         )
+
+    __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
     return pass_on(context.flow, res)
 
@@ -145,3 +149,10 @@ def __simulate_latency(expected_latency: str, start_time: float) -> float:
         time.sleep(wait_time)
 
     return wait_time
+
+def __mock_hook(hook: str, context: MockContext):
+    intercept_settings = context.intercept_settings
+    lifecycle_hooks_module = intercept_settings.lifecycle_hooks
+
+    if hook in lifecycle_hooks_module:
+        lifecycle_hooks_module[hook](context)

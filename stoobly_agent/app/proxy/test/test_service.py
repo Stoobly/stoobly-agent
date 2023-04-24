@@ -1,6 +1,6 @@
 import pdb
 
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, normalize_header
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 
 from stoobly_agent.config.constants import test_strategy
 
@@ -11,14 +11,11 @@ from .matchers.diff import matches as diff_matches
 from .matchers.fuzzy import matches as fuzzy_matches
 
 def test(context: TestContext):
-    __before_test_hook(context)
-
     if context.skipped:
         return None, ''
 
     valid_test_strategy, log = __validate_test_strategy(context)
     if not valid_test_strategy:
-        __after_test_hook(context)
         return False, log
     
     # Test contract
@@ -29,8 +26,6 @@ def test(context: TestContext):
     
     # Test response
     response_matches, log = __test_response(context) 
-
-    __after_test_hook(context)
 
     # Format test results
     log_lines = []
@@ -125,21 +120,3 @@ def __test_status_code(context: TestContext) -> bool:
         log = f"Status codes did not match: got {response.status_code} expected {expected_response.status_code}"
 
     return matches, log
-
-# Hooks
-
-def __after_test_hook(context: TestContext):
-    lifecycle_hooks = context.lifecycle_hooks 
-
-    if not 'handle_after_test' in lifecycle_hooks:
-        return
-
-    lifecycle_hooks['handle_after_test'](context)
-
-def __before_test_hook(context: TestContext):
-    lifecycle_hooks = context.lifecycle_hooks 
-
-    if not 'handle_after_test' in lifecycle_hooks:
-        return
-
-    lifecycle_hooks['handle_before_test'](context)

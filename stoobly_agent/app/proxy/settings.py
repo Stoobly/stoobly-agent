@@ -50,17 +50,3 @@ def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> 
         return headers[custom_headers.RECORD_POLICY]
     else:
         return settings.get('policy') or record_policy.ALL
-
-def get_service_url(request: MitmproxyRequest, settings: IProjectModeSettings) -> str:
-    service_url = request.headers.get(custom_headers.SERVICE_URL)
-
-    if service_url:
-        return service_url
-    else:
-        if settings.up and len(settings.get('service_url')) > 0:
-            return settings.get('service_url')
-
-        return __upstream_url(request)
-
-def __upstream_url(request: MitmproxyRequest) -> str:
-    return f"{request.scheme}://{request.host}:{request.port}"

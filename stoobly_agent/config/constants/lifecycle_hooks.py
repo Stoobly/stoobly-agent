@@ -1,2 +1,8 @@
+AFTER_MOCK = 'handle_after_mock'
+AFTER_RECORD = 'handle_after_record'
 AFTER_REPLAY = 'handle_after_replay'
+AFTER_TEST = 'handle_after_test'
+BEFORE_MOCK = 'handle_before_mock'
+BEFORE_RECORD = 'handle_before_record'
 BEFORE_REPLAY = 'handle_before_replay'
+BEFORE_TEST = 'handle_before_test'

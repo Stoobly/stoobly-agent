@@ -6,7 +6,7 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import custom_headers, request_origin
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, request_origin
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
@@ -46,7 +46,9 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     settings = Settings.instance()
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
-    
+
+    __test_hook(lifecycle_hooks.BEFORE_TEST, test_context)
+
     # Run test
     passed, log = test(test_context)
 
@@ -69,6 +71,8 @@ def __handle_mock_success(test_context: TestContext) -> None:
         # If the origin was from a CLI, send test ID in response header
         if intercept_settings.request_origin == request_origin.CLI and res.ok:
             __decorate_test_id(flow, res.json())
+
+    __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
     
     return flow.response
 
@@ -79,3 +83,10 @@ def __handle_mock_failure(test_context: TestContext) -> None:
 
     if intercept_settings.request_origin == request_origin.CLI:
         return build_response(False, 'No test found')
+
+def __test_hook(hook: str, context: TestContext):
+    intercept_settings = context.intercept_settings
+    lifecycle_hooks_module = intercept_settings.lifecycle_hooks
+
+    if hook in lifecycle_hooks_module:
+        lifecycle_hooks_module[hook](context)
