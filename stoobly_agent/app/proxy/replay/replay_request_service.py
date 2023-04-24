@@ -2,7 +2,6 @@ import os
 import pdb
 import requests
 
-from http.cookies import SimpleCookie
 from time import time
 from typing import Callable, TypedDict, Union
 
@@ -17,7 +16,6 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers, request_origin, test_filter, test_strategy
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.config.constants import mock_policy, mode
-from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 
 class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
@@ -42,9 +40,6 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
-  if 'before_replay' in options and callable(options['before_replay']):
-    options['before_replay'](context)
-
   request = context.request
   headers = request.headers
   method = request.method
@@ -82,6 +77,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   if options.get('test_strategy'):
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
+
+  if 'before_replay' in options and callable(options['before_replay']):
+    options['before_replay'](context)
 
   request_config = {
     'allow_redirects': True,
