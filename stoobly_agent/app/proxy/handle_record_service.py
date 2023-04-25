@@ -2,7 +2,6 @@ import os
 import pdb
 import threading
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants.mode import TEST
@@ -16,8 +15,7 @@ from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
 from .record.upload_request_service import inject_upload_request
-from .utils.allowed_request_service import get_active_mode_response_policy
-from .utils.request_handler import reverse_proxy
+from .utils.allowed_request_service import get_active_mode_policy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 
 LOG_ID = 'HandleRecord'
@@ -31,7 +29,7 @@ def handle_response_record(context: RecordContext):
 
     request_model = RequestModel(intercept_settings.settings)
 
-    active_record_policy = get_active_mode_response_policy(request, intercept_settings)
+    active_record_policy = get_active_mode_policy(request, intercept_settings)
     Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
 
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)

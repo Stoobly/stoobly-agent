@@ -20,10 +20,8 @@ class InterceptSettings:
   def __init__(self, settings: Settings, request: MitmproxyRequest = None):
     self.__settings = settings
     self.__request = request
-    self.__headers: MitmproxyRequest.headers = None
-
-    if request:
-      self.__headers = request.headers
+    self.__headers: MitmproxyRequest.headers = request.headers if request else None
+    self.__for_response = False
 
     project_id = None
 
@@ -75,6 +73,9 @@ class InterceptSettings:
   @property
   def mode(self):
     if self.__headers:
+      if self.__for_response and custom_headers.RESPONSE_PROXY_MODE in self.__headers:
+        return self.__headers[custom_headers.RESPONSE_PROXY_MODE]
+
       access_control_header = self.__headers.get('Access-Control-Request-Headers')
       do_proxy_header = custom_headers.DO_PROXY
 
@@ -95,13 +96,6 @@ class InterceptSettings:
         return self.__headers[custom_headers.PROJECT_KEY]
 
     return self.__settings.proxy.intercept.project_key
-
-  @property
-  def response_mode(self):
-    if custom_headers.RESPONSE_PROXY_MODE in self.__headers:
-      return self.__headers[custom_headers.RESPONSE_PROXY_MODE]
-
-    return self.mode
 
   @property
   def scenario_key(self):
@@ -199,6 +193,9 @@ class InterceptSettings:
       return self.__headers[custom_headers.REQUEST_ORIGIN]
 
     return request_origin.WEB
+
+  def for_response(self):
+    self.__for_response = True
 
   def __select_rewrite_rules(self, mode = None):
     rules = []

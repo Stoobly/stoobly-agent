@@ -5,6 +5,7 @@ from mitmproxy.http import Request as MitmproxyRequest
 from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.config.constants import mock_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 
@@ -18,38 +19,39 @@ def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: Interc
         # If the request path does not match accepted paths, do not mock
         return mock_policy.NONE
 
-def get_active_mode_response_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
-    if intercept_settings.request_origin == request_origin.CLI:
-        return intercept_settings.response_policy 
-
-    if intercept_settings.active and allowed_request(request, intercept_settings):
-        return intercept_settings.response_policy
-    else:
-        # If the request path does not match accepted paths, do not mock
-        return mock_policy.NONE
-
 def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed
     exclude_rules = intercept_settings.exclude_rules
+    if __request_excluded(request, exclude_rules):
+        return False
+
+    # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
+    include_rules = intercept_settings.include_rules
+    if not __request_included(request, include_rules) :
+        return False
+
+    # If there are no exclude or include patterns, request is allowed
+    return True
+
+def __request_excluded(request: MitmproxyRequest, exclude_rules: List[FirewallRule]):
     if exclude_rules:
         method = request.method.upper()
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
             Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} excluded by firewall rule{bcolors.ENDC}")
-            return False
+            return True
+    
+    return False
 
-    # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
-    include_rules = intercept_settings.include_rules
-    if include_rules:
-        method = request.method.upper()
-        rules = list(filter(lambda rule: method in rule.methods, include_rules))
-        patterns = list(map(lambda rule: rule.pattern, rules))
-        if not __include(request, patterns):
-            Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
-            return False
+def __request_included(request: MitmproxyRequest, include_rules: List[FirewallRule]):
+    method = request.method.upper()
+    rules = list(filter(lambda rule: method in rule.methods, include_rules))
+    patterns = list(map(lambda rule: rule.pattern, rules))
+    if not __include(request, patterns):
+        Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
+        return False
 
-    # If there are no exclude or include patterns, request is allowed
     return True
 
 ###

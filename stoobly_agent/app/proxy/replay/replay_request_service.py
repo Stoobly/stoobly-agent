@@ -95,7 +95,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   now = time()
   res: requests.Response = None
   if not options.get('proxy'):
-    headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
+    if custom_headers.REQUEST_ORIGIN not in headers:
+      headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
+
     request = requests.Request(**{
       **request_dict,
       'method': method,

@@ -50,8 +50,9 @@ def response(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
+    intercept_settings.for_response()
 
-    active_mode = intercept_settings.response_mode
+    active_mode = intercept_settings.mode
 
     if active_mode == mode.RECORD:
         context = RecordContext(flow, intercept_settings)
