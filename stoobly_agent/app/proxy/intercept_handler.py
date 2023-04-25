@@ -3,21 +3,19 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
+
+from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
+from stoobly_agent.app.proxy.handle_record_service import handle_response_record
+from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
-
-from stoobly_agent.lib.logger import Logger
-from stoobly_agent.app.settings import Settings
-
-from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
-from stoobly_agent.app.proxy.handle_record_service import handle_response_record
-from stoobly_agent.app.proxy.handle_test_service import handle_response_test
-from stoobly_agent.config.constants import mode
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
-
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import mode
+from stoobly_agent.lib.logger import Logger
 
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
@@ -36,9 +34,12 @@ def request(flow: MitmproxyHTTPFlow):
         handle_request_mock(context)
     elif active_mode == mode.RECORD:
         __disable_web_cache(request)
-    elif active_mode == mode.REPLAY or active_mode == mode.TEST:
+    elif active_mode == mode.REPLAY:
         context = ReplayContext(flow, intercept_settings)
         handle_request_replay(context)
+    elif active_mode == mode.TEST:
+        context = ReplayContext(flow, intercept_settings)
+        handle_request_test(context)
     else:
         if active_mode != mode.NONE:
             bad_request(
@@ -76,5 +77,3 @@ def __disable_web_cache(request: MitmproxyRequest) -> None:
 
     if 'IF-MODIFIED-SINCE' in request.headers:
         del request.headers['IF-MODIFIED-SINCE']
-
-

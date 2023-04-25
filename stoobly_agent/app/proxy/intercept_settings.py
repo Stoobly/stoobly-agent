@@ -147,7 +147,8 @@ class InterceptSettings:
 
   @property
   def rewrite_rules(self) -> List[RewriteRule]:
-    return self.__select_rewrite_rules()
+    _mode = self.mode
+    return self.__select_rewrite_rules(_mode)
 
   @property
   def record_rewrite_rules(self) -> List[RedactRule]:
@@ -160,6 +161,10 @@ class InterceptSettings:
   @property
   def replay_rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules(mode.REPLAY)
+
+  @property
+  def test_rewrite_rules(self) -> List[RewriteRule]:
+    return self.__select_rewrite_rules(mode.TEST)
 
   @property
   def upstream_url(self):

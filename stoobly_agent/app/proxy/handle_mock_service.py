@@ -33,22 +33,18 @@ class MockOptions(TypedDict):
 #
 def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     intercept_settings = context.intercept_settings
-    request_model = RequestModel(intercept_settings.settings)
     request: MitmproxyRequest = context.flow.request
+    request_model = RequestModel(intercept_settings.settings)
 
-    # Rewrite request with paramter rules for mock
-    request_facade = MitmproxyRequestFacade(request)
-    rewrite_rules = intercept_settings.mock_rewrite_rules
-    request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
     # If ignore rules are set, then ignore specified request parameters
     ignore_rules = intercept_settings.ignore_rules
     if len(ignore_rules) > 0:
+        request_facade = MitmproxyRequestFacade(request)
         _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
         ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
         options['ignored_components'] += ignored_components  if 'ignored_components' in options else ignored_components
-
-    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
@@ -101,6 +97,15 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
     return res
 
 def handle_request_mock(context: MockContext):
+    intercept_settings = context.intercept_settings
+    rewrite_rules = intercept_settings.rewrite_rules
+
+    if len(rewrite_rules) > 0:
+        # Rewrite request with paramter rules for mock
+        request: MitmproxyRequest = context.flow.request
+        request_facade = MitmproxyRequestFacade(request)
+        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+
     handle_request_mock_generic(
         context,
         failure=lambda context: __handle_mock_failure(context),

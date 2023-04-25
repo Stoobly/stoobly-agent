@@ -2,6 +2,7 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
+from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
@@ -12,12 +13,16 @@ from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import handle_request_mock_generic
+from .handle_replay_service import handle_request_replay
 from .mock.context import MockContext
+from .record.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
-from .record.upload_test_service import inject_upload_test
 
 LOG_ID = 'HandleTest'
+
+def handle_request_test(context: ReplayContext) -> None:
+    handle_request_replay(context)
 
 ###
 #
@@ -27,11 +32,20 @@ def handle_response_test(context: ReplayContext) -> None:
     from .test.context import TestContext
 
     flow: MitmproxyHTTPFlow = context.flow
+    intercept_settings = context.intercept_settings
 
     disable_transfer_encoding(flow.response)
 
+    # At this point, the request may already been rewritten for replay purposes
+
+    # Rewrite request again for mocking purposes
+    rewrite_rules = intercept_settings.test_rewrite_rules
+    if len(rewrite_rules) > 0:
+        request_facade = MitmproxyRequestFacade(flow.request)
+        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+
     handle_request_mock_generic(
-        MockContext(flow, context.intercept_settings),
+        MockContext(flow, intercept_settings),
         failure=lambda mock_context: __handle_mock_failure(TestContext(context, mock_context)),
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=lambda mock_context: __handle_mock_success(TestContext(context, mock_context))
