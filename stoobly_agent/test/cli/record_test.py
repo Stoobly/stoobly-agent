@@ -38,6 +38,29 @@ class TestRecording():
       assert mock_result.stdout == record_result.stdout
 
   class TestRewriting():
+    @pytest.fixture(autouse=True)
+    def settings(self):
+      return reset()
+
+    def test_it_checks_mode(self, runner: CliRunner):
+      header_name = 'foo'
+      header_value = 'bar'
+
+      rewrite_result = runner.invoke(config, [
+          'rewrite', 'set', 
+          '--method', 'GET', '--mode', mode.MOCK, '--name', header_name, '--value', header_value, '--pattern', '.*?', '--type', request_component.HEADER
+        ]
+      )
+      assert rewrite_result.exit_code == 0
+
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+
+      _request = Request.last()
+      python_request = RawHttpRequestAdapter(_request.raw).to_request()
+
+      assert python_request.headers.get(header_name.title()) == None
+
     class TestWhenHeaders():
       @pytest.fixture(autouse=True)
       def settings(self):
@@ -170,6 +193,19 @@ class TestRecording():
         assert record_result.exit_code == 0
 
         assert Request.count() == 0
+
+      def test_it_checks_mode(self, runner: CliRunner):
+        rewrite_result = runner.invoke(config, [
+            'firewall', 'set', 
+            '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
+          ]
+        )
+        assert rewrite_result.exit_code == 0
+
+        record_result = runner.invoke(record, ['--header', f"{custom_headers.REQUEST_ORIGIN}: {request_origin.WEB}", DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        assert Request.count() == 1
 
       def test_it_includes(self, runner: CliRunner):
         rewrite_result = runner.invoke(config, [
