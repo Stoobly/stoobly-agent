@@ -7,7 +7,7 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DE
 
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 
-class TestMitmproxyAdapter():
+class TestMitmproxyResponseAdapter():
 
   def test_deterministic_request(self):
     res = requests.get(DETERMINISTIC_GET_REQUEST_URL) 
