@@ -69,6 +69,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if options.get('request_origin'):
     headers[custom_headers.REQUEST_ORIGIN] = options['request_origin']
 
+  if custom_headers.REQUEST_ORIGIN not in headers:
+    headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
+
   if options.get('scenario_key'):
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
 
@@ -95,9 +98,6 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   now = time()
   res: requests.Response = None
   if not options.get('proxy'):
-    if custom_headers.REQUEST_ORIGIN not in headers:
-      headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
-
     request = requests.Request(**{
       **request_dict,
       'method': method,
