@@ -2,7 +2,6 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
@@ -36,13 +35,8 @@ def handle_response_test(context: ReplayContext) -> None:
 
     disable_transfer_encoding(flow.response)
 
-    # At this point, the request may already been rewritten for replay purposes
-
-    # Rewrite request again for mocking purposes
-    rewrite_rules = intercept_settings.test_rewrite_rules
-    if len(rewrite_rules) > 0:
-        request_facade = MitmproxyRequestFacade(flow.request)
-        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+    # At this point, the request may already been rewritten during replay
+    # Request will be rewritten again for mocking purposes
 
     handle_request_mock_generic(
         MockContext(flow, intercept_settings),

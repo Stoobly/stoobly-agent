@@ -27,7 +27,7 @@ def __replay_request(replay_context: ReplayContext):
     Before replaying a request, see if the request needs to be rewritten
     """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
-    rewrite_rules = intercept_settings.replay_rewrite_rules
+    rewrite_rules = intercept_settings.rewrite_rules
     if len(rewrite_rules) > 0:
         request: MitmproxyRequest = replay_context.flow.request
         request_facade = MitmproxyRequestFacade(request)

@@ -36,6 +36,13 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     request: MitmproxyRequest = context.flow.request
     request_model = RequestModel(intercept_settings.settings)
 
+    rewrite_rules = intercept_settings.mock_rewrite_rules
+    if len(rewrite_rules) > 0:
+        # Rewrite request with paramter rules for mock
+        request: MitmproxyRequest = context.flow.request
+        request_facade = MitmproxyRequestFacade(request)
+        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+
     __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
     # If ignore rules are set, then ignore specified request parameters
@@ -97,15 +104,6 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
     return res
 
 def handle_request_mock(context: MockContext):
-    intercept_settings = context.intercept_settings
-    rewrite_rules = intercept_settings.rewrite_rules
-
-    if len(rewrite_rules) > 0:
-        # Rewrite request with paramter rules for mock
-        request: MitmproxyRequest = context.flow.request
-        request_facade = MitmproxyRequestFacade(request)
-        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
-
     handle_request_mock_generic(
         context,
         failure=lambda context: __handle_mock_failure(context),
