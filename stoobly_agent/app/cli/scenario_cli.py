@@ -107,6 +107,11 @@ def replay(**kwargs):
     )
 
     scenario = ScenarioFacade(Settings.instance())
+    scenario_response = scenario.show(kwargs.get('key'))
+    if not scenario_response.get('id'):
+        print("Error: Invalid scenario.", file=sys.stderr)
+        sys.exit(1)
+
     scenario.replay(kwargs.get('key'), kwargs)
 
 @scenario.command(

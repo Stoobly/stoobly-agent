@@ -91,12 +91,21 @@ def validate_request_key(request_key) -> RequestKey:
     is_local = ProjectKey.check_is_local(request_key.project_id)
     if project_key.is_local != is_local:
       raise InvalidRequestKey(f"Error: Change to {'local' if is_local else 'remote'} project")
+
+    return request_key
   except InvalidRequestKey:
     handle_invalid_key('request') if request_key else handle_missing_key('request')
 
 def validate_scenario_key(scenario_key) -> ScenarioKey:
   try:
-    return ScenarioKey(scenario_key)
+    scenario_key = ScenarioKey(scenario_key)
+    project_key = ProjectKey(Settings.instance().proxy.intercept.project_key)
+
+    is_local = ProjectKey.check_is_local(scenario_key.project_id)
+    if project_key.is_local != is_local:
+      raise InvalidRequestKey(f"Error: Change to {'local' if is_local else 'remote'} project")
+
+    return scenario_key
   except InvalidScenarioKey:
     handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
 
