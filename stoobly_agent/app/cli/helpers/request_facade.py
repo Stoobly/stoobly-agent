@@ -19,6 +19,11 @@ class RequestFacade(ReplayFacade):
 
     super().__init__(settings)
 
+  def delete(self, request_key: str):
+    key = RequestKey(request_key)
+
+    return self.__model.destroy(key.id)
+
   def show(self, request_key: str, cli_options: dict):
     key = RequestKey(request_key)
 

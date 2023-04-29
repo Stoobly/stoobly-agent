@@ -34,6 +34,30 @@ def request(ctx):
     pass
 
 @request.command(
+  help="Delete recorded request"
+)
+@click.argument('request_key')
+def delete(**kwargs):
+  validate_request_key(kwargs['request_key'])
+
+  request = RequestFacade(settings.instance())
+  res = request.show(kwargs['request_key'], {})
+  is_deleted = res.get('is_deleted')
+  if not res:
+    print('Error: Could not find request', file=sys.stderr)
+    sys.exit(1)
+
+  res = request.delete(kwargs['request_key'])
+  if not res:
+    print('Error: Could not delete request', file=sys.stderr)
+    sys.exit(1)
+
+  if not is_deleted:
+    print('Request moved to trash!')
+  else:
+    print('Request deleted!')
+
+@request.command(
   help="Show recorded requests"
 )
 @click.option('--page', default=0)
