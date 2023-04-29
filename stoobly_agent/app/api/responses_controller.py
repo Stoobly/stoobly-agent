@@ -29,13 +29,10 @@ class ResponsesController:
         })
 
         response_model = self.__response_model(context) 
-        response = response_model.show(context.params.get('requestId'))
-
-        if response == None:
-            return context.render(
-                plain = '',
-                status = 404
-            )
+        response, status = response_model.show(context.params.get('requestId'))
+        
+        if context.filter_response(response, status):
+            return
 
         return context.render(
             json = response,
@@ -50,13 +47,10 @@ class ResponsesController:
         })
 
         response_model = self.__response_model(context) 
-        response = response_model.update(context.params.get('requestId'), **context.params)
+        response, status = response_model.update(context.params.get('requestId'), **context.params)
 
-        if response == None:
-            return context.render(
-                plain = '',
-                status = 404
-            )
+        if context.filter_response(response, status):
+            return
 
         return context.render(
             json = response,
@@ -70,7 +64,10 @@ class ResponsesController:
         })
 
         response_model = self.__response_model(context) 
-        response: requests.Response = response_model.mock(context.params.get('requestId'))
+        response, status = response_model.mock(context.params.get('requestId'))
+
+        if context.filter_response(response, status):
+            return
 
         return self.__render_response(context, response)
 

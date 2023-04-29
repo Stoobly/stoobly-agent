@@ -21,25 +21,6 @@ class BodiesController:
 
         return cls._instance
 
-    def create(self, context: SimpleHTTPRequestHandler):
-        context.parse_path_params({
-            'requestId': 1
-        })
-
-        text = context.params.get('text')
-        if not text:
-            return context.bad_request('Missing text')
-
-        body_model = self.__body_model(context)
-        body_model.create(context.params.get('requestId'), text)
-
-        context.render(
-            json = {
-                'text': text,
-            },
-            status = 200 
-        )
-
     # PUT /requests/:requestId/bodies/:bodyId
     def update(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
@@ -51,7 +32,10 @@ class BodiesController:
             return context.bad_request('Missing text')
 
         body_model = self.__body_model(context)
-        body_model.update(context.params.get('requestId'), text)
+        request, status = body_model.update(context.params.get('requestId'), text)
+
+        if context.filter_response(request, status):
+            return
 
         context.render(
             json = {
@@ -61,19 +45,16 @@ class BodiesController:
         )
 
     # GET /requests/:requestId/bodies/mock
-    def mock(self, context):
+    def mock(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'requestId': 1
         })
 
         body_model = self.__body_model(context)
-        request: requests.Request = body_model.mock(context.params.get('requestId'))
+        request, status = body_model.mock(context.params.get('requestId'))
 
-        if request == None:
-            return context.render(
-                plain = '',
-                status = 404
-            )
+        if context.filter_response(request, status):
+            return
 
         # Extract specific headers
         headers = {}
@@ -93,7 +74,7 @@ class BodiesController:
             status = 200
         )
 
-    def __body_model(self, context: SimpleHTTPRequestHandler):
+    def __body_model(self, context: SimpleHTTPRequestHandler) -> BodyModel:
         body_model = BodyModel(Settings.instance())
         body_model.as_remote() if context.headers.get('access-token') else body_model.as_local()
         return body_model

@@ -31,11 +31,11 @@ class ScenariosController:
             return
 
         scenario_model = self.__scenario_model(context)
-        scenario = scenario_model.create(**context.params)
+        scenario, status = scenario_model.create(**context.params)
 
-        if not scenario:
-            return context.internal_error()
-        
+        if context.filter_response(scenario, status):
+            return
+
         context.render(
             json = scenario,
             status = 200
@@ -48,10 +48,10 @@ class ScenariosController:
         })
 
         scenario_model = self.__scenario_model(context)
-        scenario = scenario_model.show(context.params.get('id'))
+        scenario, status = scenario_model.show(context.params.get('id'))
 
-        if not scenario:
-            return context.not_found()
+        if context.filter_response(scenario, status):
+            return
         
         context.render(
             json = scenario,
@@ -59,12 +59,15 @@ class ScenariosController:
         )
 
     # GET /scenarios
-    def index(self, context):
+    def index(self, context: SimpleHTTPRequestHandler):
         scenario_model = self.__scenario_model(context)
-        requests = scenario_model.index(**context.params)
+        scenarios, status = scenario_model.index(**context.params)
+
+        if context.filter_response(scenarios, status):
+            return
 
         context.render(
-            json = requests,
+            json = scenarios,
             status = 200
         )
 
@@ -77,10 +80,10 @@ class ScenariosController:
         scenario_id = context.params.get('id')
 
         scenario_model = self.__scenario_model(context)
-        scenario = scenario_model.update(scenario_id, **context.params.get('scenario'))
+        scenario, status = scenario_model.update(scenario_id, **context.params.get('scenario'))
 
-        if not scenario:
-            return context.not_found()
+        if context.filter_response(scenario, status):
+            return
             
         context.render(
             json = scenario,
@@ -96,10 +99,10 @@ class ScenariosController:
         scenario_id = context.params.get('id')
 
         scenario_model = self.__scenario_model(context)
-        scenario = scenario_model.destroy(scenario_id)
+        scenario, status = scenario_model.destroy(scenario_id)
 
-        if not scenario:
-           return context.not_found()
+        if context.filter_response(scenario, status):
+            return
 
         context.render(
             plain = '',
@@ -116,6 +119,7 @@ class ScenariosController:
 
         if not scenario:
             return context.not_found()
+
         if format == 'gor':
             requests = scenario.requests
 

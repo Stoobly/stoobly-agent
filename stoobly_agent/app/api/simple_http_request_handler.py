@@ -82,7 +82,18 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         # Send body
         self.wfile.write(body)
 
-    def pass_on(self, res: requests.Request):
+    def filter_response(self, res, status):
+        if status < 400:
+            return False
+
+        self.render(
+            plain = res,
+            status = status 
+        )
+
+        return True
+
+    def pass_on(self, res: requests.Response):
         self.render(
             headers = res.headers,
             data = res.raw.data,
