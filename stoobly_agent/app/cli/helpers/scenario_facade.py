@@ -8,7 +8,6 @@ from stoobly_agent.app.proxy.replay.replay_scenario_service import inject_replay
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
-from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 
 class ScenarioFacade(ReplayFacade):
@@ -25,11 +24,11 @@ class ScenarioFacade(ReplayFacade):
       'name': name,
     })
 
-  def index(self, project_key, cli_options: dict) -> ScenariosIndexResponse:
+  def index(self, project_key, cli_options: dict):
     key = ProjectKey(project_key)
     return self.__model.index(**{ 'project_id': key.id, **cli_options})
 
-  def show(self, scenario_key: str) -> ScenarioShowResponse:
+  def show(self, scenario_key: str):
     key = ScenarioKey(scenario_key)
     return self.__model.show(key.id)
 

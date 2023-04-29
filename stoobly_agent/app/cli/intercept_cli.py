@@ -74,6 +74,8 @@ def configure(**kwargs):
 
         print(f"Updating intercept mode to {kwargs['mode']}")
 
+    _mode = kwargs['mode'] or settings.proxy.intercept.mode 
+
     if kwargs['policy']:
         active_mode = settings.proxy.intercept.mode
         valid_policies = __get_policy_options(active_mode)
@@ -94,7 +96,7 @@ def configure(**kwargs):
         elif active_mode == mode.TEST:
             data_rule.test_policy = kwargs['policy']
 
-        print(f"Updating {kwargs['mode']} policy to {kwargs['policy']}")
+        print(f"Updating {_mode} policy to {kwargs['policy']}")
     
     settings.commit()
 
@@ -104,7 +106,7 @@ def configure(**kwargs):
 def show(**kwargs):
     settings = Settings.instance()
 
-    mode = settings.proxy.intercept.mode
+    _mode = settings.proxy.intercept.mode
     project_key = ProjectKey(settings.proxy.intercept.project_key)
     data_rule = settings.proxy.data.data_rules(project_key.id)
     policy = None
@@ -118,7 +120,7 @@ def show(**kwargs):
     elif active_mode == mode.TEST:
         policy = data_rule.test_policy
 
-    if not mode:
+    if not _mode:
         print('No intercept mode set')
     else:
-        print(f"{mode.capitalize()} with policy {policy} {'enabled' if settings.proxy.intercept.active else 'disabled'}")
+        print(f"{_mode.capitalize()} with policy {policy} {'enabled' if settings.proxy.intercept.active else 'disabled'}")

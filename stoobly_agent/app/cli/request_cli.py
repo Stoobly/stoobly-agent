@@ -41,10 +41,14 @@ def delete(**kwargs):
   validate_request_key(kwargs['request_key'])
 
   request = RequestFacade(settings.instance())
-  res = request.show(kwargs['request_key'], {})
+  res, status = request.show(kwargs['request_key'], {})
+
+  if filter_response(res, status):
+    sys.exit(1)
+
   is_deleted = res.get('is_deleted')
   if not res:
-    print('Error: Could not find request', file=sys.stderr)
+    print(f"Error: Could not find request", file=sys.stderr)
     sys.exit(1)
 
   res = request.delete(kwargs['request_key'])
@@ -82,7 +86,10 @@ def list(**kwargs):
     validate_scenario_key(kwargs['scenario_key'])
 
   request = RequestFacade(settings)
-  requests_response = request.index(project_key, kwargs)
+  requests_response, status = request.index(project_key, kwargs)
+
+  if filter_response(requests_response, status):
+    sys.exit(1)
 
   if not requests_response or len(requests_response['list']) == 0:
     print('No requests found.')
