@@ -52,9 +52,6 @@ def upload_request(
 
     joined_request = join_rewritten_request(flow, intercept_settings)
 
-    if flow and intercept_settings.settings.is_debug():
-        __debug_request(flow.request, joined_request.build())
-
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
     body_params = __build_body_params(
@@ -65,10 +62,18 @@ def upload_request(
     )
 
     # If request_origin is WEB, then we are in proxy
-    # This means that we have access to Cache singleton
-    # and do not need send a request to update the status
+    # This means that we have access to Cache singleton and do not need send a request to update the status
     sync = intercept_settings.request_origin == request_origin.WEB 
-    return __upload_request_with_body_params(request_model, body_params, sync)
+    res = __upload_request_with_body_params(request_model, body_params, sync)
+ 
+    if intercept_settings.settings.is_debug():
+        file_path = __debug_request(flow.request, joined_request.build())
+        Logger.instance().debug(f"{LOG_ID}: Writing request to {file_path}")
+    elif not res:
+        file_path = __debug_request(flow.request, joined_request.build())
+        Logger.instance().error(f"Error: Failed to upload, writing request to {file_path}")
+
+    return res
 
 def upload_staged_request(
     request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
@@ -101,17 +106,12 @@ def upload_staged_request(
     return __upload_request_with_body_params(request_model, body_params)
 
 def __upload_request_with_body_params(request_model: RequestModel, body_params: dict, sync=True):
-    #try:
-    request = request_model.create(**body_params)
-    #except Exception as e:
-        # If anything bad happens, just log it
-    #    Logger.instance().error(e)
-    #    return None
+    request, status = request_model.create(**body_params)
 
-    if request:
+    if status < 400:
         publish_requests_modified(body_params['project_id'], sync=sync)
 
-    return request
+        return request
 
 def __build_body_params(project_key: str, joined_request: JoinedRequest, **kwargs):
     flow: MitmproxyHTTPFlow = kwargs.get('flow')
@@ -139,7 +139,7 @@ def __debug_request(request: MitmproxyRequest, raw_requests: bytes):
             if err.errno != errno.EEXIST:
                 raise err
 
-    Logger.instance().debug(f"{LOG_ID}: Writing request to {file_path}")
-
     with open(file_path, 'wb') as f:
         f.write(raw_requests)
+
+    return file_path

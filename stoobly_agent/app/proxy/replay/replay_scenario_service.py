@@ -30,7 +30,7 @@ def replay(
   count = 0
 
   while True:
-    requests_index = __get_requests(
+    requests_index, status = __get_requests(
       request_model, scenario_key, { 'page': page, 'size': PAGE_SIZE, 'sort_order': 'asc' }
     )
 
@@ -47,7 +47,7 @@ def replay(
       count += 1
 
       request_id = request_partial.id
-      request_response = __get_request(request_model, scenario_key, request_id)
+      request_response, status = __get_request(request_model, scenario_key, request_id)
       if not request_response:
         continue
       
@@ -73,9 +73,7 @@ def __get_requests(
     'sort_order': query_params.get('sort_order'),
   })
 
-def __get_request(
-  request_model: RequestModel, scenario_key: ScenarioKey, request_id: int
-) -> RequestShowResponse:
+def __get_request(request_model: RequestModel, scenario_key: ScenarioKey, request_id: int):
   project_id = scenario_key.project_id
 
   return request_model.show(
