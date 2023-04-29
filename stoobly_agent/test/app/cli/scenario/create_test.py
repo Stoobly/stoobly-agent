@@ -11,7 +11,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 
 @pytest.fixture(scope='module')
 def runner():
-      return CliRunner()
+  return CliRunner()
 
 @pytest.fixture(autouse=True, scope='module')
 def settings():

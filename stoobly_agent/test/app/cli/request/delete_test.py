@@ -6,12 +6,11 @@ from click.testing import CliRunner
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.cli import record, request
-from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.orm.request import Request
 
 @pytest.fixture(scope='module')
 def runner():
-      return CliRunner()
+  return CliRunner()
 
 @pytest.fixture(autouse=True, scope='module')
 def settings():

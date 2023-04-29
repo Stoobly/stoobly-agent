@@ -85,6 +85,7 @@ class ORMToStooblyRequestTransformer():
 
     stoobly_request['method'] = python_request.method
     stoobly_request['url'] = python_request.url
+    stoobly_request['is_deleted'] = bool(stoobly_request.get('is_deleted'))
 
     parsed_url = parse_url(python_request.url.encode())
 
