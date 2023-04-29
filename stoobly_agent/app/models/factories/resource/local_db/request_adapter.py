@@ -1,7 +1,8 @@
 import pdb
 import requests
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from typing import Tuple
 from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
@@ -17,18 +18,19 @@ from stoobly_agent.lib.orm.types.response_columns import ResponseColumns
 from stoobly_agent.lib.orm.transformers import ORMToRequestTransformer, ORMToRequestsResponseTransformer
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
 
+from .local_db_adapter import LocalDBAdapter
 from .orm_request_builder import ORMRequestBuilder
 from .response_adapter import LocalDBResponseAdapter
 
-class LocalDBRequestAdapter():
+class LocalDBRequestAdapter(LocalDBAdapter):
   __request_orm = None
   __response_orm = None
 
   def __init__(self, request_orm: Request.__class__ = Request, response_orm: Response.__class__ = Response):
-    self.__request_orm = request_orm
-    self.__response_orm = response_orm
+    self.__request_orm: Request = request_orm
+    self.__response_orm: Response = response_orm
 
-  def create(self, **params: RequestCreateParams) -> RequestShowResponse:
+  def create(self, **params: RequestCreateParams) -> Tuple[RequestShowResponse, int]:
     flow: MitmproxyHTTPFlow = params['flow']
     joined_request: JoinedRequest = params['joined_request']
 
@@ -56,19 +58,22 @@ class LocalDBRequestAdapter():
       }
 
       response_record = self.__response_orm.create(**response_columns)
+      if not response_record:
+        request_record.delete()
+        return self.internal_error('Could not create requeset response')
 
-      return {
+      return self.success({
         'list': [ORMToStooblyRequestTransformer(request_record, {}).transform()],
         'total': 1,
-      }
+      })
 
-  def show(self, request_id: str, **options: RequestShowParams) -> RequestShowResponse:
+  def show(self, request_id: str, **options: RequestShowParams) -> Tuple[RequestShowResponse, int]:
     request = self.__request_orm.find(request_id)
 
     if not request:
-      return CustomNotFoundResponseBuilder().build()
+      return self.__request_not_found()
 
-    return ORMToStooblyRequestTransformer(request, options).transform()
+    return self.success(ORMToStooblyRequestTransformer(request, options).transform())
 
   def response(self, **query_params: RequestColumns) -> requests.Response:
     request = None
@@ -93,7 +98,7 @@ class LocalDBRequestAdapter():
 
     return ORMToRequestsResponseTransformer(response_record).transform()
 
-  def index(self, **query_params: RequestsIndexQueryParams) -> RequestsIndexResponse:
+  def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     scenario_id = query_params.get('scenario_id')
     page = int(query_params.get('page') or 0)
     query = query_params.get('q')
@@ -122,16 +127,16 @@ class LocalDBRequestAdapter():
     total = requests.count()
     requests = requests.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
 
-    return {
+    return self.success({
       'list': list(map(lambda request: ORMToStooblyRequestTransformer(request, {}).transform(), requests)),
       'total': total,
-    }
+    })
 
   def update(self, request_id: int,  **params: RequestShowResponse):
     request = Request.find(request_id)
 
     if not request:
-      return
+      return self.__request_not_found()
 
     transformer = ORMToRequestTransformer(request)
 
@@ -180,20 +185,22 @@ class LocalDBRequestAdapter():
         response = request.response
         LocalDBResponseAdapter(self.__request_orm).update(response.id, **response_params)
 
-      return ORMToStooblyRequestTransformer(request, {}).transform()
+      return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
+
+    return self.internal_error('Could not update request')
 
   def destroy(self, request_id: int):
     request = Request.find(request_id)
 
     if not request:
-      return
+      return self.__request_not_found()
 
     if request.is_deleted:
       request.delete()
     else:
       request.update({'is_deleted': True})
 
-    return ORMToStooblyRequestTransformer(request, {}).transform()
+    return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
 
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
     if request_columns.get('project_id'):
@@ -213,3 +220,6 @@ class LocalDBRequestAdapter():
       return http_version
     _version = http_version.split('/')[1]
     return float(_version)
+
+  def __request_not_found(self):
+    return self.not_found('Request not found')

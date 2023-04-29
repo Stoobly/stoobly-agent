@@ -2,11 +2,10 @@ import pdb
 import requests
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.logger import Logger
 
 from .factories.resource.replayed_response import ReplayedResponseResourceFactory
 from .model import Model
-from .types import ReplayeResponseCreateParams, ReplayedResponseShowParams
+from .types import ReplayeResponseCreateParams
 
 class ReplayedResponseModel(Model):
 
@@ -20,49 +19,38 @@ class ReplayedResponseModel(Model):
     # raise('Not yet supported.')
     pass
 
-  def create(self, **body_params: ReplayeResponseCreateParams) -> ReplayedResponseShowParams:
+  def create(self, **body_params: ReplayeResponseCreateParams):
     try:
       return self.adapter.create(**body_params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
   def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def mock(self, replayed_response_id: str) -> requests.Response:
+  def mock(self, replayed_response_id: str):
     try:
       return self.adapter.mock(replayed_response_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
   def activate(self, replayed_response_id: str):
     try:
       return self.adapter.activate(replayed_response_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def raw(self, replayed_response_id: str) -> requests.Response:
+  def raw(self, replayed_response_id: str):
     try:
       return self.adapter.raw(replayed_response_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
   def update(self, replayed_response_id: str, **params) -> requests.Response:
     try:
       return self.adapter.update(replayed_response_id, **params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
-
-  def __handle_request_error(self, e: requests.exceptions.RequestException):
-      response: requests.Response = e.response
-      if response:
-        Logger.instance().error(f"{response.status_code} {response.content}")
+      return self.handle_request_error(e)

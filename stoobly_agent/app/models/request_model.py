@@ -1,16 +1,12 @@
 import pdb
 import requests
 
-from typing import Union
-
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.api.interfaces import RequestShowResponse
-from stoobly_agent.lib.logger import Logger
 
 from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types import RequestCreateParams, RequestShowParams, RequestsModelIndex
+from .types import RequestCreateParams, RequestShowParams
 
 class RequestModel(Model):
 
@@ -23,45 +19,35 @@ class RequestModel(Model):
   def as_remote(self):
       self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
 
-  def create(self, **body_params: RequestCreateParams) -> Union[RequestsModelIndex, None]:
+  def create(self, **body_params: RequestCreateParams):
     try:
       return self.adapter.create(**body_params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def show(self, request_id: str, **params: RequestShowParams) -> Union[RequestShowResponse, None]:
+  def show(self, request_id: str, **params: RequestShowParams):
     try:
       return self.adapter.show(request_id, **params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
   def response(self, **query_params):
     return self.adapter.response(**query_params)
 
-  def index(self, **query_params) -> Union[RequestsModelIndex, None]:
+  def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def update(self, request_id: str, **params: Request) -> Union[Request, None]:
+  def update(self, request_id: str, **params: Request):
     try:
       return self.adapter.update(request_id, **params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def destroy(self, request_id) -> Union[Request, None]:
+  def destroy(self, request_id):
     try:
       return self.adapter.destroy(request_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None 
-
-  def __handle_request_error(self, e: requests.exceptions.RequestException):
-      response: requests.Response = e.response
-      if response:
-        Logger.instance().error(f"{response.status_code} {response.content}")
+      return self.handle_request_error(e)

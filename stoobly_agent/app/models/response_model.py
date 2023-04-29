@@ -2,11 +2,9 @@ import pdb
 import requests
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.logger import Logger
 
 from .factories.resource.response import ResponseResourceFactory
 from .model import Model
-from .types import ResponseShowResponse
 
 class ResponseModel(Model):
 
@@ -20,28 +18,20 @@ class ResponseModel(Model):
     # raise('Not yet supported.')
     pass
 
-  def show(self, request_id: str) -> ResponseShowResponse:
+  def show(self, request_id: str):
     try:
       return self.adapter.show(request_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def mock(self, request_id: str) -> requests.Response:
+  def mock(self, request_id: str):
     try:
       return self.adapter.mock(request_id)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
+      return self.handle_request_error(e)
 
-  def update(self, request_id: str, **params) -> requests.Response:
+  def update(self, request_id: str, **params):
     try:
       return self.adapter.update(request_id, **params)
     except requests.exceptions.RequestException as e:
-      self.__handle_request_error(e)
-      return None
-
-  def __handle_request_error(self, e: requests.exceptions.RequestException):
-      response: requests.Response = e.response
-      if response:
-        Logger.instance().error(f"{response.status_code} {response.content}")
+      return self.handle_request_error(e)
