@@ -29,6 +29,8 @@ def simulate_intercept(request: requests.Request, **config):
       res = __response(b'Gateway Timeout', 504)
     except requests.exceptions.ConnectionError:
       res = __response(b'Bad Gateway', 502)
+    except Exception:
+      res = __response(b'Unknown Error', 0)
 
     flow.response = res
 
