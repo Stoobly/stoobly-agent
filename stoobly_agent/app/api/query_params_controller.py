@@ -34,10 +34,13 @@ class QueryParamsController:
             return context.bad_request('Missing value')
 
         query_param_model = self.__query_param_model(context)
-        query_param = query_param_model.create(context.params.get('requestId'), **{
+        query_param, status = query_param_model.create(context.params.get('requestId'), **{
             'name': context.params['name'],
             'value': context.params['value'],
         })
+
+        if context.filter_response(query_param, status):
+            return
 
         context.render(
             json = query_param,
@@ -51,7 +54,10 @@ class QueryParamsController:
         })
 
         query_param_model = self.__query_param_model(context)
-        query_params = query_param_model.index(context.params.get('requestId'), **context.params)
+        query_params, status = query_param_model.index(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(query_params, status):
+            return
 
         context.render(
             json = query_params,
@@ -72,10 +78,13 @@ class QueryParamsController:
             return context.bad_request('Missing value')
 
         query_param_model = self.__query_param_model(context)
-        query_param = query_param_model.update(context.params.get('requestId'), context.params.get('queryParamId'), **{
+        query_param, status = query_param_model.update(context.params.get('requestId'), context.params.get('queryParamId'), **{
             'name': context.params['name'],
             'value': context.params['value'],
         })
+
+        if context.filter_response(query_param, status):
+            return
 
         context.render(
             json = query_param,
@@ -90,15 +99,15 @@ class QueryParamsController:
         })
 
         query_param_model = self.__query_param_model(context)
-        query_param = query_param_model.destroy(context.params.get('requestId'), context.params.get('queryParamId'))
+        query_param, status = query_param_model.destroy(context.params.get('requestId'), context.params.get('queryParamId'))
 
-        if not query_param:
-            context.internal_error()
-        else:
-            context.render(
-                plain = '',
-                status = 200
-            )
+        if context.filter_response(query_param, status):
+            return
+        
+        context.render(
+            plain = query_param,
+            status = status
+        )
 
     def __query_param_model(self, context: SimpleHTTPRequestHandler):
         query_param_model = QueryParamModel(Settings.instance())

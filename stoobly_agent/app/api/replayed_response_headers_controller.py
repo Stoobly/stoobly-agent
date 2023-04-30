@@ -22,14 +22,17 @@ class ReplayedResponseHeadersController:
         return cls._instance
 
     # GET /requests/:requestId/replayed_response/:replayedResponseId/headers
-    def index(self, context):
+    def index(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'request_id': 1,
             'replayed_response_id': 3,
         })
 
         replayed_response_model = self.__replayed_response_model(context)
-        raw = replayed_response_model.raw(context.params.get('replayed_response_id'))
+        raw, status = replayed_response_model.raw(context.params.get('replayed_response_id'))
+
+        if context.filter_response(raw, status):
+            return
 
         response = RawHttpResponseAdapter(raw).to_response()
 

@@ -2,6 +2,8 @@ import json
 import pdb
 import requests
 
+from typing import Tuple
+
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
@@ -9,7 +11,9 @@ from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer
 
-class LocalDBResponseAdapter():
+from .local_db_adapter import LocalDBAdapter
+
+class LocalDBResponseAdapter(LocalDBAdapter):
   __request_orm = None
 
   def __init__(self, request_orm: Request.__class__ = Request):
@@ -19,25 +23,25 @@ class LocalDBResponseAdapter():
     request = self.__request_orm.find(request_id)
 
     if not request:
-      return None
+      return self.__request_not_found()
 
     response = request.response
-    return [self.__to_show_response(response)]
+    return self.success([self.__to_show_response(response)])
 
-  def mock(self, request_id) -> requests.Response:
+  def mock(self, request_id) -> Tuple[requests.Response, int]:
     request = self.__request_orm.find(request_id)
 
     if not request:
-      return None
+      return self.__request_not_found()
 
     response = request.response
-    return ORMToRequestsResponseTransformer(response).with_response_id().transform()
+    return self.success(ORMToRequestsResponseTransformer(response).with_response_id().transform())
 
   def update(self, response_id, **params):
     response = Response.find(response_id)
 
     if not response:
-      return
+      return self.__request_not_found()
     
     transformer = ORMToRequestsResponseTransformer(response)
 
@@ -78,7 +82,9 @@ class LocalDBResponseAdapter():
         if request:
           request.update(request_params)
 
-      return self.__to_show_response(response)
+      return self.success(self.__to_show_response(response))
+
+    return self.internal_error('Could not update response')
 
   def __to_show_response(self, response: Response):
     python_response = ORMToRequestsResponseTransformer(response).transform()
@@ -91,3 +97,5 @@ class LocalDBResponseAdapter():
       'text': content.decode(encoding),
     }
 
+  def __request_not_found(self):
+    return self.not_found('Request not found')

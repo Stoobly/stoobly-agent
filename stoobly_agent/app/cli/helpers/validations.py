@@ -129,6 +129,14 @@ def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
       if not re.match(parsed_validation['value'], aliases_map[name]):
         handle_invalid_alias(parsed_validation, aliases_map[name], kwargs.get('format'))
 
+def filter_response(res, status: int):
+    if status < 400:
+        return False
+
+    print(f"Error: {res}", file=sys.stderr)
+
+    return True
+
 # Prompt
 
 def prompt_project_key(settings: Settings):

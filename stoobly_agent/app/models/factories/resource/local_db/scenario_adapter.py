@@ -1,29 +1,32 @@
 import pdb
 
+from typing import Tuple
+
 from stoobly_agent.app.models.types import ScenarioCreateParams
 from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
-from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
 
-class LocalDBScenarioAdapter():
+from .local_db_adapter import LocalDBAdapter
+
+class LocalDBScenarioAdapter(LocalDBAdapter):
   __scenario_orm = None
 
   def __init__(self, scenario_orm: Scenario.__class__ = Scenario):
     self.__scenario_orm = scenario_orm
 
-  def create(self, **params: ScenarioCreateParams) -> ScenarioShowResponse:
+  def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
     with ORM.instance().db.transaction():
       scenario_record = self.__scenario_orm.create(params)
-      return scenario_record.to_dict()
+      return self.success(scenario_record.to_dict())
 
-  def show(self, scenario_id: str) -> ScenarioShowResponse:
+  def show(self, scenario_id: str) -> Tuple[ScenarioShowResponse, int]:
     scenario_record = self.__scenario_orm.find(scenario_id)
     if not scenario_record:
-      return {}
-    return self.__to_show_response(scenario_record)
+      return self.__scenario_not_found()
+    return self.success(self.__to_show_response(scenario_record))
 
-  def index(self, **query_params: ScenariosIndexQueryParams) -> ScenariosIndexResponse:
+  def index(self, **query_params: ScenariosIndexQueryParams) -> Tuple[ScenariosIndexResponse, int]:
     page = int(query_params.get('page') or 0)
     query = query_params.get('q')
     size = int(query_params.get('size') or 20)
@@ -52,36 +55,41 @@ class LocalDBScenarioAdapter():
     total = scenarios.count()
     scenarios = scenarios.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
 
-    return {
+    return self.success({
       'list': list(map(lambda scenario: self.__to_show_response(scenario), scenarios.items)),
       'total': total,
-    }
+    })
 
-  def update(self, scenario_id: int, **params: ScenarioCreateParams) -> ScenarioShowResponse:
+  def update(self, scenario_id: int, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
     scenario = Scenario.find(scenario_id)
 
     if not scenario:
-      return
+      return self.__scenario_not_found()
 
     if scenario.update(params):
-      return self.__to_show_response(scenario)
+      return self.success(self.__to_show_response(scenario))
 
-  def destroy(self, scenario_id: int) -> ScenarioShowResponse:
+    return self.internal_error('Could not update scenario')
+
+  def destroy(self, scenario_id: int) -> Tuple[ScenarioShowResponse, int]:
     scenario = Scenario.find(scenario_id)
 
     if not scenario:
-      return
+      return self.__scenario_not_found()
 
     if scenario.is_deleted:
       scenario.delete()
     else:
       scenario.update({'is_deleted': True})
 
-    return self.__to_show_response(scenario)
+    return self.success(self.__to_show_response(scenario))
 
-  def __search(self, base_model: Scenario, query: str) -> Scenario:
+  def __search(self, base_model: Scenario, query: str):
     return base_model.where('name', 'like', f"%{query}%")
 
   def __to_show_response(self, scenario: Scenario) -> ScenarioShowResponse:
     res = scenario.to_dict()
     return res
+
+  def __scenario_not_found(self):
+    return self.not_found('Scenario not found')

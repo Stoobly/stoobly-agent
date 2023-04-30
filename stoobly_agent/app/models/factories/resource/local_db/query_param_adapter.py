@@ -1,17 +1,17 @@
 import base64
 import json
 import pdb
-import requests
 
-from typing import List
+from typing import List, Tuple
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from stoobly_agent.lib.api.interfaces import QueryParam, QueryParamShowResponse
 from stoobly_agent.lib.orm.request import Request
 
+from .local_db_adapter import LocalDBAdapter
 from .request_adapter import LocalDBRequestAdapter
 
-class LocalDBQueryParamAdapter():
+class LocalDBQueryParamAdapter(LocalDBAdapter):
   __request_orm = None
 
   def __init__(self, request_orm: Request.__class__ = Request):
@@ -21,7 +21,7 @@ class LocalDBQueryParamAdapter():
     request = self.__request_orm.find(request_id)
     
     if not request:
-      return None
+      return self.__request_not_found()
 
     parsed_url = urlparse(request.url)
 
@@ -35,20 +35,20 @@ class LocalDBQueryParamAdapter():
 
     request = LocalDBRequestAdapter(self.__request_orm).update(request_id, url=parsed_url.geturl())
 
-    return {
+    return self.success({
       'name': params['name'],
       'value': params['value'],
-    }
+    })
 
-  def update(self, request_id, query_param_id, **params: QueryParam) -> QueryParamShowResponse:
+  def update(self, request_id, query_param_id, **params: QueryParam) -> Tuple[QueryParamShowResponse, int]:
     request = self.__request_orm.find(request_id)
     
     if not request:
-      return None
+      return self.__request_not_found()
 
     decoded_id = self.__decode_id(query_param_id)
     if not decoded_id:
-      return None
+      return self.bad_request('Invalid id')
 
     name = params['name']
     value = params['value']
@@ -61,23 +61,23 @@ class LocalDBQueryParamAdapter():
     try:
       index = _query_params[name].index(decoded_id['value'])
     except ValueError as e:
-      return None
+      return self.not_found()
 
     _query_params[name][index] = value
     parsed_url = parsed_url._replace(query=urlencode(_query_params, True))
 
     request = LocalDBRequestAdapter(self.__request_orm).update(request_id, url=parsed_url.geturl())
 
-    return {
+    return self.success({
       'name': name,
       'value': value,
-    }
+    })
 
-  def index(self, request_id, **query_params) -> List[QueryParamShowResponse]:
+  def index(self, request_id, **query_params) -> Tuple[List[QueryParamShowResponse], int]:
     request = self.__request_orm.find(request_id)
 
     if not request:
-      return []
+      return self.__request_not_found()
 
     request_dict = request.to_dict()
     parsed_query = parse_qs(request_dict['query'])
@@ -90,17 +90,17 @@ class LocalDBQueryParamAdapter():
           'value': param,
         })
 
-    return query_params
+    return self.success(query_params)
 
   def destroy(self, request_id, id):
     request = self.__request_orm.find(request_id)
     
     if not request:
-      return None
+      return self.__request_not_found()
 
     decoded_id = self.__decode_id(id)
     if not decoded_id or not decoded_id.get('value'):
-      return None
+      return self.bad_request('Invalid id')
 
     parsed_url = urlparse(request.url)
     _query_params = parse_qs(parsed_url.query)
@@ -111,7 +111,7 @@ class LocalDBQueryParamAdapter():
     try:
       index = _query_params[name].index(value)
     except ValueError as e:
-      return None
+      return self.not_found()
 
     del _query_params[name][index]
 
@@ -141,3 +141,6 @@ class LocalDBQueryParamAdapter():
       return None
 
     return id
+
+  def __request_not_found(self):
+    return self.not_found('Request not found')

@@ -28,10 +28,10 @@ class ReplayedResponsesController:
             'request_id': 1
         })
         replayed_response_model = self.__replayed_response_model(context)
-        replayed_responses = replayed_response_model.index(**context.params)
+        replayed_responses, status = replayed_response_model.index(**context.params)
 
-        if not replayed_responses:
-            return context.not_found()
+        if context.filter_response(replayed_responses, status):
+            return
 
         context.render(
             json = replayed_responses,
@@ -46,7 +46,10 @@ class ReplayedResponsesController:
         })
 
         replayed_response_model = self.__replayed_response_model(context) 
-        response: requests.Response = replayed_response_model.mock(context.params.get('replayed_response_id'))
+        response, status = replayed_response_model.mock(context.params.get('replayed_response_id'))
+
+        if context.filter_response(response, status):
+            return
 
         return self.__render_response(context, response)
 
@@ -58,7 +61,10 @@ class ReplayedResponsesController:
         })
 
         replayed_response_model = self.__replayed_response_model(context) 
-        replayed_response = replayed_response_model.activate(context.params.get('replayed_response_id'))
+        replayed_response, status = replayed_response_model.activate(context.params.get('replayed_response_id'))
+
+        if context.filter_response(replayed_response, status):
+            return
 
         context.render(
             json = replayed_response,

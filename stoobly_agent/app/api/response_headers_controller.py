@@ -27,7 +27,10 @@ class ResponseHeadersController:
         })
 
         response_header_model = self.__response_header_model(context)
-        header = response_header_model.create(context.params.get('requestId'), **context.params)
+        header, status = response_header_model.create(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(header, status):
+            return
         
         context.render(
             json = header,
@@ -35,13 +38,16 @@ class ResponseHeadersController:
         )
 
     # GET /requests/:requestId/headers
-    def index(self, context):
+    def index(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'requestId': 1
         })
 
         response_header_model = self.__response_header_model(context)
-        response_headers = response_header_model.index(context.params.get('requestId'), **context.params)
+        response_headers, status = response_header_model.index(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(response_headers, status):
+            return
 
         context.render(
             json = response_headers,
@@ -55,7 +61,10 @@ class ResponseHeadersController:
         })
 
         response_header_model = self.__response_header_model(context)
-        header = response_header_model.update(context.params.get('requestId'), **context.params)
+        header, status = response_header_model.update(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(header, status):
+            return
         
         context.render(
             json = header,
@@ -70,15 +79,15 @@ class ResponseHeadersController:
         })
 
         response_header_model = self.__response_header_model(context)
-        header = response_header_model.destroy(context.params.get('requestId'), context.params.get('responseHeaderId'))
+        header, status = response_header_model.destroy(context.params.get('requestId'), context.params.get('responseHeaderId'))
 
-        if not header: 
-            context.internal_error()
-        else:
-            context.render(
-                plain = '',
-                status = 200
-            )
+        if context.filter_response(header, status):
+            return
+
+        context.render(
+            plain = '',
+            status = 200
+        )
 
     def __response_header_model(self, context: SimpleHTTPRequestHandler):
         response_header_model = ResponseHeaderModel(Settings.instance())

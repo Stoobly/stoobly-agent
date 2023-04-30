@@ -74,7 +74,7 @@ class RequestFacade(ReplayFacade):
     return self.__replay(replay_context, trace_context, replay_options)
 
   def __build_replay_context(self, request_key: str):
-    request_response = self.show(request_key, {
+    request_response, status = self.show(request_key, {
       'body': True,
       'headers': True,
       'query_params': True,

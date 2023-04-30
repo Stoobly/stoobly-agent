@@ -1,12 +1,15 @@
 import pdb
 import requests
 
+from typing import Tuple
+
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.lib.orm.request import Request
 
+from .local_db_adapter import LocalDBAdapter 
 from .request_adapter import LocalDBRequestAdapter
 
-class LocalDBBodyAdapter():
+class LocalDBBodyAdapter(LocalDBAdapter):
   __request_orm = None
 
   def __init__(self, request_orm: Request.__class__ = Request):
@@ -16,15 +19,17 @@ class LocalDBBodyAdapter():
     request = self.__request_orm.find(request_id)
     
     if not request:
-      return None
+      return self.__request_not_found()
 
-    return LocalDBRequestAdapter(self.__request_orm).update(request_id, body=text)
+    return self.success(LocalDBRequestAdapter(self.__request_orm).update(request_id, body=text))
 
-  def mock(self, request_id) -> requests.Request:
+  def mock(self, request_id) -> Tuple[requests.Request, int]:
     request = self.__request_orm.find(request_id)
 
     if not request:
-      return []
+      return self.__request_not_found()
 
-    return RawHttpRequestAdapter(request.raw).to_request()
-    
+    return self.success(RawHttpRequestAdapter(request.raw).to_request())
+  
+  def __request_not_found(self):
+    return self.not_found('Request not found')  

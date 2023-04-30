@@ -43,10 +43,10 @@ def create(**kwargs):
 
     scenario = ScenarioFacade(settings)
 
-    try:
-        res = scenario.create(project_key, kwargs['name'], kwargs['description'])
-    except AssertionError as e:
-        return print(e, file=sys.stderr)
+    res, status = scenario.create(project_key, kwargs['name'], kwargs['description'])
+
+    if filter_response(res, status):
+        sys.exit(1)
 
     print_scenarios([res], **print_options)
 
@@ -107,9 +107,9 @@ def replay(**kwargs):
     )
 
     scenario = ScenarioFacade(Settings.instance())
-    scenario_response = scenario.show(kwargs.get('key'))
-    if not scenario_response.get('id'):
-        print("Error: Invalid scenario.", file=sys.stderr)
+
+    scenario_response, status = scenario.show(kwargs.get('key'))
+    if filter_response(scenario_response, status):
         sys.exit(1)
 
     scenario.replay(kwargs.get('key'), kwargs)
@@ -135,10 +135,9 @@ def list(**kwargs):
 
     scenario = ScenarioFacade(settings)
 
-    try:
-        scenarios_response = scenario.index(project_key, kwargs)
-    except AssertionError as e:
-        return print(e, file=sys.stderr)
+    scenarios_response, status = scenario.index(project_key, kwargs)
+    if filter_response(scenarios_response, status):
+        sys.exit(1)
 
     if len(scenarios_response['list']) == 0:
         print('No scenarios found.')
@@ -158,10 +157,9 @@ def show(**kwargs):
     scenario_key = resolve_scenario_key_and_validate(kwargs, settings)
     scenario = ScenarioFacade(settings)
 
-    try:
-        scenario_response = scenario.show(scenario_key)
-    except AssertionError as e:
-        return print(e, file=sys.stderr)
+    scenario_response, status = scenario.show(scenario_key)
+    if filter_response(scenario_response, status):
+        sys.exit(1)
 
     print_scenarios([scenario_response], **print_options)
 

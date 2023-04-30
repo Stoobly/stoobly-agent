@@ -64,18 +64,14 @@ class RequestsController:
         mitmproxy_flow_mock = MitmproxyFlowMock(mitmproxy_request, mitmproxy_response)
 
         request_model = self.__request_model(context)
-        request = request_model.create(**{
+        request, status = request_model.create(**{
             'flow': mitmproxy_flow_mock,
             'joined_request': joined_request,
             'scenario_id': body_params.get('scenario_id'),
         })
 
-        if not request:
-            return context.internal_error()
-
-        #from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
-        #from stoobly_agent.app.proxy.utils.publish_change_service import publish_requests_modified
-        #publish_requests_modified(body_params.get('project_id') or LOCAL_PROJECT_ID, sync=True)
+        if context.filter_response(request, status):
+            return
 
         context.render(
             json = request,
@@ -86,10 +82,10 @@ class RequestsController:
     # GET /requests
     def index(self, context: SimpleHTTPRequestHandler):
         request_model = self.__request_model(context)
-        requests = request_model.index(**context.params)
+        requests, status = request_model.index(**context.params)
 
-        if not requests:
-            return context.not_found()
+        if context.filter_response(requests, status):
+            return
 
         context.render(
             json = requests,
@@ -103,10 +99,10 @@ class RequestsController:
         })
 
         request_model = self.__request_model(context)
-        request = request_model.show(context.params.get('id'))
+        request, status = request_model.show(context.params.get('id'))
 
-        if not request:
-            return context.not_found()
+        if context.filter_response(request, status):
+            return
         
         context.render(
             json = request,
@@ -143,7 +139,10 @@ class RequestsController:
 
         request.update(committed_at = datetime.now())
         request_model.as_local()
-        request = request_model.show(request.id)
+        request, status = request_model.show(request.id)
+
+        if context.filter_response(request, status):
+            return
 
         context.render(
             json = request,
@@ -159,11 +158,11 @@ class RequestsController:
         request_id = context.params.get('id')
 
         request_model = self.__request_model(context)
-        request = request_model.update(request_id, **context.params.get('request'))
+        request, status = request_model.update(request_id, **context.params.get('request'))
 
-        if not request:
-            return context.not_found()
-            
+        if context.filter_response(request, status):
+            return
+
         context.render(
             json = request,
             status = 200
@@ -178,10 +177,10 @@ class RequestsController:
         request_id = context.params.get('id')
 
         request_model = self.__request_model(context)
-        request = request_model.destroy(request_id)
+        request, status = request_model.destroy(request_id)
 
-        if not request:
-           return context.not_found()
+        if context.filter_response(request, status):
+            return
 
         context.render(
             plain = '',
@@ -197,14 +196,15 @@ class RequestsController:
         request_id = int(context.params.get('id'))
 
         request_model = self.__request_model(context)
-        request_response = request_model.show(request_id, **{
+        request_response, status = request_model.show(request_id, **{
             'body': True,
             'headers': True,
             'project_id': project_id,
             'query_params': True,
         })
-        if not request_response:
-            return context.bad_request(f"Could not find request {request_id}")
+
+        if context.filter_response(request_response, status):
+            return
 
         replay_context = ReplayContext(Request(request_response))
         self.__replay(context, replay_context)

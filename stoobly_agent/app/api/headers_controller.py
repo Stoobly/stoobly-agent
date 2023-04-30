@@ -27,7 +27,10 @@ class HeadersController:
         })
 
         header_model = self.__header_model(context) 
-        header = header_model.create(context.params.get('requestId'), **context.params)
+        header, status = header_model.create(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(header, status):
+            return
         
         context.render(
             json = header,
@@ -41,7 +44,10 @@ class HeadersController:
         })
 
         header_model = self.__header_model(context) 
-        headers = header_model.index(context.params.get('requestId'), **context.params)
+        headers, status = header_model.index(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(headers, status):
+            return
 
         context.render(
             json = headers,
@@ -55,7 +61,10 @@ class HeadersController:
         })
 
         header_model = self.__header_model(context) 
-        header = header_model.update(context.params.get('requestId'), **context.params)
+        header, status = header_model.update(context.params.get('requestId'), **context.params)
+
+        if context.filter_response(header, status):
+            return
         
         context.render(
             json = header,
@@ -70,15 +79,15 @@ class HeadersController:
         })
 
         header_model = self.__header_model(context) 
-        header = header_model.destroy(context.params.get('requestId'), context.params.get('headerId'))
+        header, status = header_model.destroy(context.params.get('requestId'), context.params.get('headerId'))
 
-        if not header: 
-            context.internal_error()
-        else:
-            context.render(
-                plain = '',
-                status = 200
-            )
+        if context.filter_response(header, status):
+            return
+
+        context.render(
+            plain = '',
+            status = 200
+        )
 
     def __header_model(self, context: SimpleHTTPRequestHandler):
         header_model = HeaderModel(Settings.instance())
