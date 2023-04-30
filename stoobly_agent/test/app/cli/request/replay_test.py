@@ -16,11 +16,11 @@ def runner():
     return CliRunner()
 
 class TestReplay():
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
 
     class TestWhenNoOptions():
-        @pytest.fixture(scope='class', autouse=True)
-        def settings(self):
-            return reset()
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner):
@@ -44,9 +44,6 @@ class TestReplay():
             assert new_response == recorded_response_raw
 
     class TestWhenOverwritting():
-        @pytest.fixture(scope='class', autouse=True)
-        def settings(self):
-            return reset()
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner):
@@ -74,9 +71,6 @@ class TestReplay():
             assert replayed_response.raw == recorded_response_raw
 
     class TestWhenRecord():
-        @pytest.fixture(scope='class', autouse=True)
-        def settings(self):
-            return reset()
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner):
@@ -117,9 +111,6 @@ class TestReplay():
                 assert _request.scenario_id == int(scenario_key.id)
 
     class TestWhenScheme():
-        @pytest.fixture(scope='class', autouse=True)
-        def settings(self):
-            return reset()
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner):
@@ -135,9 +126,6 @@ class TestReplay():
             assert _request.scheme == 'http'
 
     class TestWhenHost():
-        @pytest.fixture(scope='class', autouse=True)
-        def settings(self):
-            return reset()
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner):

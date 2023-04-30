@@ -19,11 +19,11 @@ def runner():
   return CliRunner()
 
 class TestRecording():
-      
+  @pytest.fixture(autouse=True)
+  def settings(self):
+    return reset()
+
   class TestMocking():
-    @pytest.fixture(autouse=True)
-    def settings(self):
-      return reset()
 
     def test_it_mocks(self, runner: CliRunner):
       url = DETERMINISTIC_GET_REQUEST_URL
@@ -38,9 +38,6 @@ class TestRecording():
       assert mock_result.stdout == record_result.stdout
 
   class TestRewriting():
-    @pytest.fixture(autouse=True)
-    def settings(self):
-      return reset()
 
     def test_it_checks_mode(self, runner: CliRunner):
       header_name = 'foo'
@@ -62,9 +59,6 @@ class TestRecording():
       assert python_request.headers.get(header_name.title()) == None
 
     class TestWhenHeaders():
-      @pytest.fixture(autouse=True)
-      def settings(self):
-        return reset()
 
       def test_it_rewrites(self, runner: CliRunner):
         header_name = 'foo'
@@ -86,10 +80,7 @@ class TestRecording():
         assert python_request.headers.get(header_name.title()) == header_value
 
     class TestWhenQueryParams():
-      @pytest.fixture(autouse=True)
-      def settings(self):
-        return reset()
-
+    
       def test_it_rewrites(self, runner: CliRunner):
         query_param = 'foo'
         query_param_value = 'bar'
@@ -112,9 +103,6 @@ class TestRecording():
         assert query_param_value in values
 
     class TestWhenBodyParams():
-      @pytest.fixture(autouse=True)
-      def settings(self):
-        return reset()
 
       def test_it_rewrites(self, runner: CliRunner):
         body_param = 'foo'
@@ -141,9 +129,6 @@ class TestRecording():
 
   class TestFirewall():
     class TestWhenCli():
-      @pytest.fixture(autouse=True)
-      def settings(self):
-        return reset()
 
       def test_it_does_not_exclude(self, runner: CliRunner):
         rewrite_result = runner.invoke(config, [
@@ -177,9 +162,6 @@ class TestRecording():
         assert Request.count() == 2, 'Request should be included'
     
     class TestWhenNotCli():
-      @pytest.fixture(autouse=True)
-      def settings(self):
-        return reset()
 
       def test_it_excludes(self, runner: CliRunner):
         rewrite_result = runner.invoke(config, [
@@ -226,9 +208,6 @@ class TestRecording():
         assert Request.count() == 1, 'Request should be included'
 
   class TestScenario():
-    @pytest.fixture(autouse=True)
-    def settings(self):
-      return reset()
 
     @pytest.fixture()
     def scenario_key(self, runner: CliRunner):
@@ -244,9 +223,6 @@ class TestRecording():
       assert _request.scenario_id == int(scenario_key.id)
 
   class TestNotFoundPolicy():
-    @pytest.fixture(autouse=True)
-    def settings(self):
-      return reset()
 
     def test_it_records_only_not_found_requests(self, runner: CliRunner):
       intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.NOT_FOUND])
@@ -268,9 +244,6 @@ class TestRecording():
       assert Request.count() == 2
 
   class TestFoundPolicy():
-    @pytest.fixture(autouse=True)
-    def settings(self):
-      return reset()
 
     def test_it_does_not_record_any_requests(self, runner: CliRunner):
       intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])

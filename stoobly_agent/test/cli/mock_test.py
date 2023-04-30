@@ -17,10 +17,12 @@ def runner():
 
 class TestMocking():
   class TestRewriting():
+
+    @pytest.fixture(autouse=True, scope='class')
+    def settings(self):
+      return reset()
+
     class TestWhenHeaders():
-      @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
-        return reset()
 
       def test_it_rewrites(self, runner: CliRunner):
         header_name = 'foo'
@@ -52,9 +54,6 @@ class TestMocking():
         assert mock_result.exit_code == 0
 
     class TestWhenQueryParams():
-      @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
-        return reset()
 
       def test_it_rewrites(self, runner: CliRunner):
         query_param_name = 'foo'
@@ -86,9 +85,6 @@ class TestMocking():
         assert mock_result.exit_code == 0
 
     class TestWhenBodyParams():
-      @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
-        return reset()
 
       def test_it_rewrites(self, runner: CliRunner):
         body_param_name = 'foo'
