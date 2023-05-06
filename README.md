@@ -1,14 +1,14 @@
 # Stoobly Agent
 
-🌐 Stoobly is a man-in-the-middle proxy tool and REST API to **easily record, retrieve and mock stored HTTP/HTTPS requests and responses**
+🌐 Stoobly is a feature-rich man-in-the-middle proxy tool to **record and mock HTTP/HTTPS requests and responses.**
 
-🚀 Create scalable API mocks with little setup time. 
+🚀 Easily create scalable API mocks with little setup time. 
 
-⚡ **Maintaining hard-coded inputs and responses is expensive.** De-clutter your codebase and streamline updates by making schema changes and replaying requests to get the latest changes.
+⚡ Maintaining hard-coded inputs and responses is expensive. De-clutter your codebase and **streamline maintenance with replay and record.**
 
-💡 Stoobly works by recording requests and and their corresponding responses. The next time the request is sent to our agent proxy, **we compare the current response to the recorded response.**
+💡 Upon request interception, mocking is configurable to match against all request components.
 
-🔨 Need deep customization? Use **advanced features** like grouping requests into scenarios, rewriting requests, excluding requests using your own tailored matching rules, and test lifecycle hooks.
+🔨 Need advanced configuration? Take advantage of features like scenarios, filters, rewriting, match rules, and lifecycle hooks.
 
 See our docs for more detailed information! https://docs.stoobly.com
 

@@ -1,6 +1,6 @@
 name: Publish artifacts
 on:
-  create:
+  push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
@@ -23,18 +23,6 @@ jobs:
           echo "Extracting tar file..."
           tar xvf ${{ env.STOOBLY_DASHBOARD_FILE }}
 
-      - name: Build Docker image
-        run: |
-          make build-image image="stoobly/agent"
-          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
-          docker tag stoobly/agent stoobly/agent:alpha
-
-      - name: Push Docker image
-        run: |
-          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
-          docker images
-          docker push --all-tags stoobly/agent
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -50,3 +38,14 @@ jobs:
           python3 setup.py sdist bdist_wheel
           twine upload --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}" dist/*
 
+      - name: Build Docker image
+        run: |
+          make build-image image="stoobly/agent"
+          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
+          docker tag stoobly/agent stoobly/agent:alpha
+
+      - name: Push Docker image
+        run: |
+          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
+          docker images
+          docker push --all-tags stoobly/agent
