@@ -3,10 +3,20 @@ on:
   push:
     branches:
       - 'master'
+      - 'main'
       - 'release-*'
+    paths-ignore:
+      - '**/*.md'
+      - '.github/**/*.yaml'
+      - '.github/**/*.yml'
   pull_request:
     branches:
       - 'master'
+      - 'main'
+    paths-ignore:
+      - '**/*.md'
+      - '.github/**/*.yaml'
+      - '.github/**/*.yml'
 
 jobs:
   lint-python:
