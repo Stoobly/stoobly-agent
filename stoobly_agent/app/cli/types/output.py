@@ -22,5 +22,7 @@ class TestOutput(TypedDict):
   tests: List[Test]
 
 class ReplayOutput(TypedDict):
-  headers: dict
   content: str
+  headers: dict
+  method: str
+  url: str

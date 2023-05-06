@@ -5,7 +5,7 @@ import sys
 
 from typing import Callable, TypedDict, Union
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, format_request
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import TestOutput
@@ -93,12 +93,12 @@ def __json_test_complete_formatter(context: ReplayContext, session_context: Sess
 
 def __default_test_complete_formatter(context: ReplayContext, session_context: SessionContext, res: TestShowResponse):
   if not res:
-    print_request(context)
+    print(format_request(context))
     print("\nTest failed to run")
   elif isinstance(res, str):
     print(res, file=sys.stderr)
   else:
-    print_request(context)
+    print(format_request(context))
 
     if not res['passed']:
       passed_message = f"{bcolors.FAIL}failed{bcolors.ENDC}"

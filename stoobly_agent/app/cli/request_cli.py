@@ -4,7 +4,7 @@ import pdb
 import requests
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT, handle_before_replay, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -145,13 +145,20 @@ def replay(**kwargs):
 
   __assign_default_alias_resolve_strategy(kwargs)
 
-  kwargs['before_replay'] = lambda context: handle_before_replay(
-    context, kwargs['format']
-  )
-  kwargs['after_replay'] = lambda context: print_request(context, kwargs['format'])
+  session: ReplaySession = {
+    'buffer': kwargs['format'] != DEFAULT_FORMAT,
+    'contexts': [],
+    'format': kwargs['format'],
+    'total': 0,
+  }
+  
+  kwargs['before_replay'] = lambda context: handle_before_replay(context, session)
+  kwargs['after_replay'] = lambda context: handle_after_replay(context, session)
   
   request = RequestFacade(Settings.instance())
   __replay(request.replay, kwargs)
+
+  print_session(session)
 
 if is_remote:
   @request.command(
@@ -196,6 +203,13 @@ if is_remote:
 
     __assign_default_alias_resolve_strategy(kwargs)
 
+    session: ReplaySession = {
+      'buffer': kwargs['format'] != DEFAULT_FORMAT,
+      'contexts': [],
+      'format': kwargs['format'],
+      'total': 0,
+    }
+
     session_context: SessionContext = { 
         'aggregate_failures': kwargs['aggregate_failures'], 
         'passed': 0, 
@@ -205,7 +219,7 @@ if is_remote:
     }
 
     kwargs['before_replay'] = lambda context: handle_before_replay(
-      context, kwargs['format']
+      context, session
     )
     kwargs['after_replay'] = lambda context: handle_test_complete(
       context, session_context, kwargs['format']
