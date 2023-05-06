@@ -1,6 +1,9 @@
 import json
 import pdb
 import requests
+import sys
+
+from typing import List, TypedDict, Union
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import ReplayOutput
@@ -8,12 +11,19 @@ from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, 
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
 
-DEFAULT_FORMAT = 'default'
 BODY_FORMAT = 'body'
+DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'
 
-def handle_before_replay(context: ReplayContext, format = None):
-  format = format or DEFAULT_FORMAT
+class ReplaySession(TypedDict):
+  buffer: bool
+  contexts: List[ReplayContext] 
+  format: Union[BODY_FORMAT, DEFAULT_FORMAT, JSON_FORMAT, None]
+  scenario_id: int
+  total: int
+
+def handle_before_replay(context: ReplayContext, session: ReplaySession):
+  format = session.get('format') or DEFAULT_FORMAT
 
   if format == DEFAULT_FORMAT:
     request = context.request
@@ -25,15 +35,29 @@ def handle_before_replay(context: ReplayContext, format = None):
 
     print(f"{bcolors.OKCYAN}{request.method} {request.url}{bcolors.ENDC}")
 
-def print_request(context: ReplayContext, format = None):
-  format_handler = default_format_handler 
+def handle_after_replay(context: ReplayContext, session: ReplaySession):
+  if not 'contexts' in session:
+    session['contexts'] = []
+
+  if not 'total' in session:
+    session['total'] = 0
+
+  if not session.get('buffer'):
+    print(format_request(context))
+  else:
+    session['contexts'].append(context)
+
+  session['total'] += 1
+
+def format_request(context: ReplayContext, format = None):
+  format_handler = __default_format_handler 
   
   if format == JSON_FORMAT:
-    format_handler = json_format_handler
+    format_handler = __json_format_handler
   elif format == BODY_FORMAT:
-    format_handler = body_format_handler
+    format_handler = __body_format_handler
 
-  format_handler(context)
+  return format_handler(context)
 
 def print_request_query(context: ReplayContext, query: str):
   response = context.response
@@ -42,35 +66,65 @@ def print_request_query(context: ReplayContext, query: str):
 
   decoded_response = decode_response(content, content_type)
   if not is_traversable(decoded_response):
-    Logger.instance().error(
-      f"{bcolors.FAIL}Could not query request, expected responsed to be of type {dict} or {list}, got {decoded_response.__class__} {bcolors.ENDC}"
+    print(
+      f"{bcolors.FAIL}Could not query request, expected responsed to be of type {dict} or {list}, got {decoded_response.__class__} {bcolors.ENDC}",
+      file=sys.stderr
     )
-    print_request(context)
+    print(format_request(context), file=sys.stderr)
   else:
     print(jmespath.search(query, decoded_response))
 
-def default_format_handler(context: ReplayContext, additional=''):
+def print_session(session: ReplaySession):
+  if len(session['contexts']) == 0:
+    return 
+
+  format = session.get('format') or DEFAULT_FORMAT
+
+  outputs = []
+
+  for replay_context in session['contexts']:
+    outputs.append(format_request(replay_context, format))
+
+  if format == JSON_FORMAT:
+    if session.get('scenario_id'):
+      print(json.dumps(outputs))
+    else:
+      print(json.dumps(outputs[0]))
+  else:
+    print("\n\n".join(outputs))
+
+def __default_format_handler(context: ReplayContext, additional=''):
   response = context.response
   content = __content(response)
 
-  print(content)
+  output = ''
+  output += content
 
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)
-  print(f"Completed {response.status_code} in {ms}ms{additional}")
+  output += f"\nCompleted {response.status_code} in {ms}ms{additional}"
 
-def body_format_handler(context: ReplayContext):
+  return output
+
+def __body_format_handler(context: ReplayContext):
   response = context.response
   content = __content(response)
-  print(content)
+  return content
 
-def json_format_handler(context: ReplayContext):
+def __json_format_handler(context: ReplayContext):
+  request = context.request
   response = context.response
+
+  content = __content(response)
   headers = dict(response.headers)
-  content = __content(response)
+  method = request.method
+  url = request.url
 
-  output: ReplayOutput = {'headers': headers, 'content': content}
-  print(json.dumps(output))
+  seconds = context.end_time - context.start_time
+  ms = round(seconds * 1000)
+  output: ReplayOutput = {'content': content, 'headers': headers, 'latency': ms, 'method': method, 'url': url}
+
+  return output
 
 def __content(res: requests.Response):
   content = res.content

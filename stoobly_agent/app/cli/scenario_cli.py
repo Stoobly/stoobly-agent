@@ -3,7 +3,7 @@ import os
 import pdb
 import sys
 
-from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, handle_before_replay, print_request
+from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete 
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -85,7 +85,7 @@ def create(**kwargs):
 def replay(**kwargs):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-    validate_scenario_key(kwargs['key'])
+    scenario_key = validate_scenario_key(kwargs['key'])
 
     if kwargs.get('scenario_key'):
         if kwargs['scenario_key'] and not kwargs.get('record'):
@@ -94,25 +94,35 @@ def replay(**kwargs):
 
         validate_scenario_key(kwargs['scenario_key'])
 
-    if 'validate' in kwargs and len(kwargs['validate']):
-        validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
-
-    __assign_default_alias_resolve_strategy(kwargs)
-
-    kwargs['before_replay'] = lambda context: handle_before_replay(
-      context, kwargs['format']
-    )
-    kwargs['after_replay'] = lambda context: print_request(
-        context, kwargs['format']
-    )
-
     scenario = ScenarioFacade(Settings.instance())
 
     scenario_response, status = scenario.show(kwargs.get('key'))
     if filter_response(scenario_response, status):
         sys.exit(1)
 
+    if 'validate' in kwargs and len(kwargs['validate']):
+        validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
+
+    __assign_default_alias_resolve_strategy(kwargs)
+
+    session: ReplaySession = {
+        'buffer': kwargs['format'] != DEFAULT_FORMAT,
+        'contexts': [],
+        'format': kwargs['format'],
+        'scenario_id': scenario_key.id,
+        'total': 0,
+    }
+
+    kwargs['before_replay'] = lambda context: handle_before_replay(
+      context, session
+    )
+    kwargs['after_replay'] = lambda context: handle_after_replay(
+        context, session
+    )
+
     scenario.replay(kwargs.get('key'), kwargs)
+
+    print_session(session)
 
 @scenario.command(
     help="Show all scenarios"
@@ -217,6 +227,14 @@ if is_remote:
 
         __assign_default_alias_resolve_strategy(kwargs)
 
+        session: ReplaySession = {
+            'buffer': kwargs['format'] != DEFAULT_FORMAT,
+            'contexts': [],
+            'format': kwargs['format'],
+            'scenario_id': scenario_key.id,
+            'total': 0,
+        }
+
         session_context: SessionContext = { 
             'aggregate_failures': kwargs['aggregate_failures'], 
             'passed': 0, 
@@ -226,7 +244,7 @@ if is_remote:
         }
 
         kwargs['before_replay'] = lambda context: handle_before_replay(
-        context, kwargs['format']
+            context, session,
         )
         kwargs['after_replay'] = lambda context: __handle_on_test_response(
             context, session_context, kwargs['format']
