@@ -17,6 +17,11 @@ public_files = package_files(public_files_relative_path)
 db_files_relative_path = 'stoobly_agent/db'
 db_files = package_files(db_files_relative_path)
 
+test_dependencies = [
+    'mock',
+    'pytest',
+]
+
 setup(
     author='Michael Yen',
     author_email='michael@stoobly.com',
@@ -25,6 +30,9 @@ setup(
         'console_scripts': [
             'stoobly-agent=stoobly_agent.cli:main'
         ]
+    },
+    extras_require={
+        'test': test_dependencies,
     },
     include_package_data=True,
     install_requires=[
@@ -50,6 +58,7 @@ setup(
         'stoobly_agent': ['config/*'] + db_files + public_files
     },
     #scripts=['bin/stoobly-agent'],
+    tests_requires=test_dependencies,
     url='https://github.com/Stoobly/stoobly-agent',
     version=VERSION,
 )
