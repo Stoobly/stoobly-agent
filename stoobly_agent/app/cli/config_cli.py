@@ -146,7 +146,7 @@ def rewrite(ctx):
 )
 @click.option('--name', required=True, help='Name of the request component.')
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--project_key', help='Project to add rewrite rule to.')
+@click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
     required=True,
