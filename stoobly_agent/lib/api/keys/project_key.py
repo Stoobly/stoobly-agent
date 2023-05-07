@@ -40,3 +40,10 @@ class ProjectKey(ResourceKey):
   @staticmethod
   def check_is_local(id):
     return int(id) == LOCAL_PROJECT_ID
+
+  @staticmethod
+  def encode(id, organization_id = -1):
+    return super(ProjectKey, ProjectKey).encode({
+      'i': id,
+      'o': organization_id,
+    })
