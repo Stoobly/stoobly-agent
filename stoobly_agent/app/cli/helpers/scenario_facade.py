@@ -35,7 +35,8 @@ class ScenarioFacade(ReplayFacade):
   def replay(self, source_key: str, cli_options: ReplayCliOptions):
     return self.__replay(source_key, {
       'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
-      **self.common_replay_cli_options(cli_options)
+      **self.common_replay_cli_options(cli_options),
+      **self.__common_replay_options(source_key),
     })
 
   def test(self, scenario_key: str, cli_options: TestCliOptions):
@@ -43,8 +44,14 @@ class ScenarioFacade(ReplayFacade):
       'mode': mode.TEST,
       'report_key': cli_options.get('report_key'),
       'scenario_key': scenario_key, # Mock the request from the specified scenario instead of active scenario
-      **self.common_test_cli_options(cli_options)
+      **self.common_test_cli_options(cli_options),
+      **self.__common_replay_options(scenario_key),
     })
+
+  def __common_replay_options(self, scenario_key: str):
+    return {
+      'project_key': ProjectKey.encode(ScenarioKey(scenario_key).project_id),
+    }
 
   def __replay(self, scenario_key: str, replay_options: ReplayCliOptions):
     trace_context = replay_options['trace_context']

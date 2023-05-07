@@ -49,7 +49,7 @@ class RequestFacade(ReplayFacade):
     replay_context = self.__build_replay_context(request_key)
     replay_options = {
       'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
-      'scenario_key': '',
+      **self.__common_replay_options(request_key),
       **self.common_replay_cli_options(cli_options)
     }
     trace_context = replay_options.get('trace_context')
@@ -58,20 +58,30 @@ class RequestFacade(ReplayFacade):
 
   def mock(self, request_key: str, cli_options: ReplayCliOptions):
     replay_context = self.__build_replay_context(request_key)
-    cli_options['mode'] = mode.MOCK
-    return self.__replay(replay_context, None, cli_options)
+    replay_options = {
+      **cli_options,
+      **self.__common_replay_options(request_key),
+      'mode': mode.MOCK,
+    }
+    return self.__replay(replay_context, None, replay_options)
 
   def test(self, request_key: str, cli_options: TestCliOptions):
     replay_context = self.__build_replay_context(request_key)
     replay_options = {
       'mode': mode.TEST,
       'report_key': cli_options.get('report_key'),
-      'scenario_key': '', # When replaying a specific request, we don't want active scenario to be used
+      **self.__common_replay_options(request_key),
       **self.common_test_cli_options(cli_options)
     }
     trace_context = replay_options.get('trace_context')
 
     return self.__replay(replay_context, trace_context, replay_options)
+
+  def __common_replay_options(self, request_key: str):
+    return {
+      'project_key': ProjectKey.encode(RequestKey(request_key).project_id), # When replaying a specific request, we don't want active project to be used
+      'scenario_key': '', # When replaying a specific request, we don't want active scenario to be used
+    }
 
   def __build_replay_context(self, request_key: str):
     request_response, status = self.show(request_key, {

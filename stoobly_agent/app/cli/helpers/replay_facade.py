@@ -16,6 +16,7 @@ class ReplayCliOptions(TypedDict):
   host: str
   lifecycle_hooks_script_path: str
   on_response: Callable
+  project_key: str
   record: bool
   scenario_key: str
   scheme: str
@@ -64,8 +65,8 @@ class ReplayFacade():
   def common_replay_cli_options(self, cli_options: ReplayCliOptions) -> ReplayCliOptions:
     common_cli_options = self.common_cli_options(cli_options)
 
-    # Scenario key has no meaning if mode is replay
-    # Only set scenario key if mode is record
+    # Scenario key has no meaning unless mode is record
+    # If mode is record, then setting scenario key will record requests into the specified scenario 
     if cli_options.get('record'):
       scenario_key = cli_options.get('scenario_key')
       if not scenario_key:
