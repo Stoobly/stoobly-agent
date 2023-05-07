@@ -5,13 +5,12 @@ import pytest
 from click.testing import CliRunner
 from typing import List
 
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.cli.types.output import ReplayOutput
 from stoobly_agent.cli import record, request, scenario
-from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -56,6 +55,7 @@ class TestReplay():
 
             response = RawHttpResponseAdapter(recorded_response_raw).to_response()
             assert replay_output['content']  == response.content.decode()
+
 
         def test_it_does_not_override_response_raw(self, recorded_request: Request, recorded_response_raw: bytes):
             new_response = Request.find(recorded_request.id).response.raw
@@ -122,22 +122,31 @@ class TestReplay():
                 return reset()
 
             @pytest.fixture(scope='class')
-            def created_scenario(self, runner: CliRunner):
+            def source_scenario(self, runner: CliRunner):
+                create_result = runner.invoke(scenario, ['create', 'test'])
+                assert create_result.exit_code == 0
+                return Scenario.last()
+
+            @pytest.fixture(scope='class')
+            def destination_scenario(self, runner: CliRunner):
                 create_result = runner.invoke(scenario, ['create', 'test'])
                 assert create_result.exit_code == 0
                 return Scenario.last()
 
             @pytest.fixture(scope='class', autouse=True)
-            def recorded_request(self, runner: CliRunner, created_scenario: Scenario):
-                record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+            def recorded_request(self, runner: CliRunner, source_scenario: Scenario):
+                record_result = runner.invoke(record, ['--scenario-key', source_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
                 assert record_result.exit_code == 0
                 return Request.last()
 
-            def test_it_records_to_scenario(self, runner: CliRunner, created_scenario: Scenario, recorded_request: Request):
-                replay_result = runner.invoke(request, ['replay', '--record' , '--scenario-key', created_scenario.key(), recorded_request.key()])
+            def test_it_records_to_scenario(self, runner: CliRunner, source_scenario: Scenario, destination_scenario: Scenario):
+                replay_result = runner.invoke(scenario, ['replay', '--record' , '--scenario-key', destination_scenario.key(), source_scenario.key()])
                 assert replay_result.exit_code == 0
 
                 assert Request.count() == 2
 
-                _scenario = Scenario.find(created_scenario.id)
-                assert _scenario.requests.count() == 2
+                _scenario = Scenario.find(source_scenario.id)
+                assert _scenario.requests.count() == 1
+
+                _scenario = Scenario.find(destination_scenario.id)
+                assert _scenario.requests.count() == 1
