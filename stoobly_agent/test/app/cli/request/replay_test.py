@@ -39,7 +39,7 @@ class TestReplay():
             response = RawHttpResponseAdapter(recorded_response_raw).to_response()
             assert replay_result.stdout.rstrip() == response.content.decode()
 
-        def test_it_does_not_override_resonse_raw(self, recorded_request: Request, recorded_response_raw: bytes):
+        def test_it_does_not_override_response_raw(self, recorded_request: Request, recorded_response_raw: bytes):
             new_response = Request.find(recorded_request.id).response.raw
             assert new_response == recorded_response_raw
 
@@ -55,8 +55,7 @@ class TestReplay():
         def recorded_response_raw(self, recorded_request: Request):
             return recorded_request.response.raw
 
-        def test_it_overwrites_response_raw(self, recorded_request: Request, recorded_response_raw: bytes):
-            runner = CliRunner()
+        def test_it_overwrites_response_raw(self, runner: CliRunner, recorded_request: Request, recorded_response_raw: bytes):
             replay_result = runner.invoke(request, ['replay', '--overwrite', recorded_request.key()])
             assert replay_result.exit_code == 0
 
