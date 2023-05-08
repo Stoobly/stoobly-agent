@@ -34,8 +34,6 @@ class TestResponseGet():
     output = request_result.stdout
     assert type(output) is str
     assert type(output) is not bytes
-    assert isinstance(output, str)
-    assert not isinstance(output, bytes)
 
     # Note: the invoke result's stdout can actually return a string of
     # a byte literal so parse the json for extra validation
