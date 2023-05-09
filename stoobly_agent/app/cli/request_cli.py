@@ -244,13 +244,13 @@ def response(ctx):
   help="Retrieve mocked response"
 )
 @click.argument('request_key')
-def get(**kwargs):
+def get(**kwargs) -> None:
   validate_request_key(kwargs['request_key'])
 
   request = RequestFacade(Settings.instance())
   res = __replay(request.mock, kwargs)
 
-  print(res.content)
+  print(res.text)
 
 @response.command(
   help="Query properties in response"
@@ -285,3 +285,4 @@ def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
     if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
+
