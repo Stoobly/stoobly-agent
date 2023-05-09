@@ -13,7 +13,7 @@ from .routes import ROUTES
 from .simple_http_request_handler import SimpleHTTPRequestHandler
 
 class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
-    ROOT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')
+    ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..'))
 
     @property
     def public_dir(self):
@@ -46,9 +46,14 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
         merge(self.params, self.parse_query_params())
 
         if not self.route('GET'):
-            path = os.path.join(self.public_dir, self.path[1:] if self.path != '/' else 'index.html')
+            public_dir = self.public_dir
+            path = os.path.join(public_dir, self.path[1:] if self.path != '/' else 'index.html')
+
+            if not os.path.normpath(path).startswith(public_dir):
+                return self.not_found()
+
             if not os.path.exists(path):
-                path = os.path.join(self.public_dir, 'index.html')
+                path = os.path.join(public_dir, 'index.html')
 
             self.render(
                 file = path,
