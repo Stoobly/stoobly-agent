@@ -128,4 +128,7 @@ def __json_format_handler(context: ReplayContext):
 
 def __content(res: requests.Response):
   content = res.content
-  return content.decode(json.detect_encoding(content))
+  try:
+    return content.decode(json.detect_encoding(content))
+  except UnicodeDecodeError:
+    return content
