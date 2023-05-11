@@ -1,5 +1,12 @@
 # Stoobly Agent
 
+[![Release Version](https://img.shields.io/github/v/release/Stoobly/stoobly-agent)](https://github.com/Stoobly/stoobly-agent/releases/latest)
+![PyPI](https://img.shields.io/pypi/v/stoobly-agent?color=green)
+
+[![Integration tests](https://github.com/Stoobly/stoobly-agent/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/ci-tests.yaml)
+[![CodeQL](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql)
+
+
 🌐 Stoobly is a feature-rich man-in-the-middle proxy tool to **record and mock HTTP/HTTPS requests and responses.**
 
 🚀 Easily create scalable API mocks with little setup time. 
