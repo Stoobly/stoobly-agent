@@ -14,23 +14,19 @@ class AlignRequests(Migration):
         Run the migrations.
         """
         with self.schema.table('requests') as table:
-            table.string('response_hash').nullable()
-            table.string('response_headers_hash').nullable()
+            table.string('response_hash').default('')
+            table.string('response_headers_hash').default('')
 
-        for request in Request.all():
-            response = request.response
-            if not response:
-                continue
+            for request in Request.all():
+                response = request.response
+                if not response:
+                    continue
 
-            _response: requests.Response = RawHttpResponseAdapter(response.raw).to_response()
-            response_hash = RequestHasher.instance().hash_text(_response.content)
-            response_headers_hash = RequestHasher.instance().hash_params(_response.headers)
+                _response: requests.Response = RawHttpResponseAdapter(response.raw).to_response()
+                response_hash = RequestHasher.instance().hash_text(_response.content)
+                response_headers_hash = RequestHasher.instance().hash_params(_response.headers)
 
-            request.update(response_hash=response_hash, response_headers_hash=response_headers_hash)
-
-        with self.schema.table('requests') as table:
-            table.string('response_headers_hash').change()
-            table.string('response_hash').change()
+                request.update(response_hash=response_hash, response_headers_hash=response_headers_hash)
 
     def down(self):
         """
