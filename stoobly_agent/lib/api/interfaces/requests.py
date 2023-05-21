@@ -50,6 +50,7 @@ class RequestShowResponse(TypedDict):
   scenario_id: int
   starred: bool
   status: int
+  uuid: str
   url: str
 
 class RequestsIndexQueryParams(PaginationQueryParams):

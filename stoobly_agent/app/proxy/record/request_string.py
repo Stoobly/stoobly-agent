@@ -1,5 +1,6 @@
 import hashlib
 import time
+import uuid
 import pdb
 
 from typing import Union
@@ -79,8 +80,7 @@ class RequestString:
         return "-".join(toks)
 
     def __generate_request_id(self):
-        joined_lines = CLRF.join(self.lines)
-        return hashlib.md5(joined_lines.encode(self.ENCODING)).hexdigest()
+        return str(uuid.uuid4())
 
     def __get_current_time(self):
         now = time.time()
