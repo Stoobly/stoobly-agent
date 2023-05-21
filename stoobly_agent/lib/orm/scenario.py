@@ -1,4 +1,6 @@
 import pdb
+import uuid
+
 from orator.orm import has_many
 
 from stoobly_agent.lib import orm
@@ -8,7 +10,7 @@ from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from .base import Base
 
 class Scenario(Base):
-  __fillable__ = ['name','description', 'is_deleted', 'position', 'priority', 'starred']
+  __fillable__ = ['name','description', 'is_deleted', 'position', 'priority', 'starred', 'uuid']
   
   @has_many
   def requests(self):
@@ -23,6 +25,10 @@ class Scenario(Base):
     h['key'] = self.key()
     return h
 
+def handle_creating(scenario):
+  if not hasattr(scenario, 'uuid') or not scenario.uuid:
+    scenario.uuid = str(uuid.uuid4())
+
 def handle_deleting(scenario):
   requests = scenario.requests
   
@@ -31,6 +37,7 @@ def handle_deleting(scenario):
     request.scenario_id = None
     request.save()
 
+Scenario.creating(handle_creating)
 Scenario.deleting(handle_deleting)
 
 from .request import Request

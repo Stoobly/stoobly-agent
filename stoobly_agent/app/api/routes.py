@@ -74,7 +74,7 @@ ROUTES = {
       [QUERY_PARAMS_PATH, QueryParamsController.instance().create],
       [RESPONSE_HEADERS_PATH, ResponseHeadersController.instance().create],
       [REQUESTS_PATH, RequestsController.instance().create],
-      [re.compile('/'.join([REQUEST_PATH.pattern, 'upload$'])), RequestsController.instance().upload],
+      [re.compile('/'.join([REQUEST_PATH.pattern, 'push$'])), RequestsController.instance().push],
       [SCENARIOS_PATH, ScenariosController.instance().create],
   ],
   'PUT': [

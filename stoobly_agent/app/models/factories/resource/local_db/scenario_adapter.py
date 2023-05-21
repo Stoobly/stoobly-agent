@@ -7,6 +7,7 @@ from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, Scenario
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
 
+from .helpers.snapshot_service import snapshot_scenario
 from .local_db_adapter import LocalDBAdapter
 
 class LocalDBScenarioAdapter(LocalDBAdapter):
@@ -21,7 +22,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
       return self.success(scenario_record.to_dict())
 
   def show(self, scenario_id: str) -> Tuple[ScenarioShowResponse, int]:
-    scenario_record = self.__scenario_orm.find(scenario_id)
+    scenario_record = self.__scenario(scenario_id)
     if not scenario_record:
       return self.__scenario_not_found()
     return self.success(self.__to_show_response(scenario_record))
@@ -61,7 +62,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     })
 
   def update(self, scenario_id: int, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
-    scenario = Scenario.find(scenario_id)
+    scenario = self.__scenario(scenario_id)
 
     if not scenario:
       return self.__scenario_not_found()
@@ -72,7 +73,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     return self.internal_error('Could not update scenario')
 
   def destroy(self, scenario_id: int) -> Tuple[ScenarioShowResponse, int]:
-    scenario = Scenario.find(scenario_id)
+    scenario = self.__scenario(scenario_id)
 
     if not scenario:
       return self.__scenario_not_found()
@@ -83,6 +84,24 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
       scenario.update({'is_deleted': True})
 
     return self.success(self.__to_show_response(scenario))
+
+  def snapshot(self, scenario_id: str, **params):
+    scenario = self.__scenario(scenario_id)
+
+    if not scenario:
+      return self.__scenario_not_found()
+
+    file_path = snapshot_scenario(scenario, params.get('action'))
+    if not file_path:
+      return self.internal_error()
+
+    return self.success(file_path)
+
+  def __scenario(self, scenario_id: str):
+    if self.validate_uuid(scenario_id):
+      return self.__scenario_orm.find_by(uuid=scenario_id)
+    else:
+      return self.__scenario_orm.find(scenario_id)
 
   def __search(self, base_model: Scenario, query: str):
     return base_model.where('name', 'like', f"%{query}%")

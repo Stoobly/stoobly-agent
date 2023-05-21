@@ -1,3 +1,5 @@
+import uuid
+
 class LocalDBAdapter():
 
   def success(self, d):
@@ -11,3 +13,12 @@ class LocalDBAdapter():
 
   def internal_error(self, d = 'Internal Error'):
     return d, 500
+
+  def validate_uuid(self, id: str):
+    try:
+      uuid.UUID(id)
+      return True
+    except AttributeError:
+      return False
+    except ValueError:
+      return False

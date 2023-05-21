@@ -72,6 +72,49 @@ class DataDir:
     def settings_file_path(self):
         return os.path.join(self.path, 'settings.yml')
 
+    @property
+    def snapshots_dir_path(self):
+        snapshots_dir_path = os.path.join(self.path, 'snapshots')
+
+        if not os.path.exists(snapshots_dir_path):
+            os.mkdir(snapshots_dir_path)
+
+        return snapshots_dir_path
+
+    @property
+    def snapshots_requests_dir_path(self):
+        base_path = self.snapshots_dir_path
+        requests_dir_path = os.path.join(base_path, 'requests')
+
+        if not os.path.exists(requests_dir_path):
+            os.mkdir(requests_dir_path)
+
+        return requests_dir_path
+
+    @property
+    def snapshots_scenarios_dir_path(self):
+        base_path = self.snapshots_dir_path
+        scenarios_dir_path = os.path.join(base_path, 'scenarios')
+
+        if not os.path.exists(scenarios_dir_path):
+            os.mkdir(scenarios_dir_path)
+
+        return scenarios_dir_path
+
+    @property
+    def snapshots_scenario_requests_dir_path(self):
+        base_path = self.snapshots_scenarios_dir_path
+        requests_dir_path = os.path.join(base_path, 'requests')
+
+        if not os.path.exists(requests_dir_path):
+            os.mkdir(requests_dir_path)
+
+        return requests_dir_path
+
+    @property
+    def snapshosts_version_path(self):
+        return os.path.join(self.snapshots_dir_path, 'VERSION')
+
     def remove(self):
         if os.path.exists(self.path):
            shutil.rmtree(self.path) 
