@@ -2,7 +2,7 @@ import pdb
 
 from typing import Tuple
 
-from stoobly_agent.app.models.types import ScenarioCreateParams
+from stoobly_agent.app.models.types import ScenarioDestroyParams, ScenarioCreateParams
 from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
@@ -72,13 +72,13 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
     return self.internal_error('Could not update scenario')
 
-  def destroy(self, scenario_id: int) -> Tuple[ScenarioShowResponse, int]:
+  def destroy(self, scenario_id: int, **params: ScenarioDestroyParams) -> Tuple[ScenarioShowResponse, int]:
     scenario = self.__scenario(scenario_id)
 
     if not scenario:
       return self.__scenario_not_found()
 
-    if scenario.is_deleted:
+    if params.get('force') or scenario.is_deleted:
       scenario.delete()
     else:
       scenario.update({'is_deleted': True})

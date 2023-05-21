@@ -3,10 +3,9 @@ import requests
 
 from typing import Union
 
-from stoobly_agent.lib.api.interfaces.scenarios import ScenarioShowResponse, ScenariosIndexResponse
 from stoobly_agent.app.settings import Settings
 
-from .types import ScenarioCreateParams
+from .types import ScenarioDestroyParams, ScenarioCreateParams
 from .factories.resource.scenario import ScenarioResourceFactory
 from .model import Model
 
@@ -45,9 +44,9 @@ class ScenarioModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def destroy(self, scenario_id):
+  def destroy(self, scenario_id, **params: ScenarioDestroyParams):
     try:
-      return self.adapter.destroy(scenario_id)
+      return self.adapter.destroy(scenario_id, **params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 

@@ -6,7 +6,7 @@ from stoobly_agent.app.settings import Settings
 
 from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types import RequestCreateParams, RequestShowParams
+from .types import RequestCreateParams, RequestDestroyParams, RequestShowParams
 
 class RequestModel(Model):
 
@@ -46,9 +46,9 @@ class RequestModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def destroy(self, request_id: str):
+  def destroy(self, request_id: str, **params: RequestDestroyParams):
     try:
-      return self.adapter.destroy(request_id)
+      return self.adapter.destroy(request_id, **params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 

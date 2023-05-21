@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
-from stoobly_agent.app.models.types import RequestCreateParams, RequestShowParams
+from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
@@ -195,13 +195,13 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return self.internal_error('Could not update request')
 
-  def destroy(self, request_id: int):
+  def destroy(self, request_id: int, **params: RequestDestroyParams):
     request = self.__request(request_id)
 
     if not request:
       return self.__request_not_found()
 
-    if request.is_deleted:
+    if params.get('force') or request.is_deleted:
       request.delete()
     else:
       request.update({'is_deleted': True})
