@@ -22,30 +22,30 @@ class AlignRequests(Migration):
             table.integer('status').nullable()
             table.string('user').nullable()
 
-            for request in Request.all():
-                _request: requests.Request = RawHttpRequestAdapter(request.raw)
+        for request in Request.all():
+            _request: requests.Request = RawHttpRequestAdapter(request.raw)
 
-                parsed_url = urlparse(_request.url)
-                request.path = parsed_url.path
-                request.query = parsed_url.query
+            parsed_url = urlparse(_request.url)
+            request.path = parsed_url.path
+            request.query = parsed_url.query
 
-                if parsed_url.username:
-                    request.user = parsed_url.username
+            if parsed_url.username:
+                request.user = parsed_url.username
 
-                if parsed_url.password:
-                    request.password = parsed_url.password
+            if parsed_url.password:
+                request.password = parsed_url.password
 
-                response = request.response
-                if response:
-                    response_control = ResponseStringControl()
-                    response_control.parse(response.control.decode())
+            response = request.response
+            if response:
+                response_control = ResponseStringControl()
+                response_control.parse(response.control.decode())
 
-                    request.latency = response_control.latency
+                request.latency = response_control.latency
 
-                    _response = RawHttpResponseAdapter(response.raw).to_response()
-                    request.status = int(_response.status_code)
+                _response = RawHttpResponseAdapter(response.raw).to_response()
+                request.status = int(_response.status_code)
 
-                request.update()
+            request.update()
 
     def down(self):
         """

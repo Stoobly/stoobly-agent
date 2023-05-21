@@ -19,7 +19,7 @@ class CreateRequests(Migration):
             table.string('body_params_hash').index()
             table.binary('control')
             table.binary('raw')
-            table.timestamp('committed_at').nullable()
+            table.timestamp('pushed_at').nullable()
             table.timestamps()
 
     def down(self):
