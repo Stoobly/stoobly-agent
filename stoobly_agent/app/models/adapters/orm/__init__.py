@@ -1,1 +1,1 @@
-from .joined_request_string_adapter import JoinedRequestStringAdapter
+from .joined_request_string_adapter import JoinedRequestStringAdapter, REQUEST_DELIMITTER

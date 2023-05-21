@@ -46,8 +46,14 @@ class RequestModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def destroy(self, request_id):
+  def destroy(self, request_id: str):
     try:
       return self.adapter.destroy(request_id)
+    except requests.exceptions.RequestException as e:
+      return self.handle_request_error(e)
+
+  def snapshot(self, request_id: str, **params):
+    try:
+      return self.adapter.snapshot(request_id, **params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)

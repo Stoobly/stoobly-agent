@@ -39,6 +39,11 @@ class ScenarioFacade(ReplayFacade):
       **self.__common_replay_options(source_key),
     })
 
+  def snapshot(self, scenario_key: str, cli_options: dict):
+    key = ScenarioKey(scenario_key)
+
+    return self.__model.snapshot(key.id, **cli_options)
+
   def test(self, scenario_key: str, cli_options: TestCliOptions):
     return self.__replay(scenario_key, {
       'mode': mode.TEST,

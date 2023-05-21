@@ -8,6 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, DEF
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
@@ -159,6 +160,21 @@ def replay(**kwargs):
   __replay(request.replay, kwargs)
 
   print_session(session)
+
+if not is_remote:
+  @request.command(
+    help="Snapshot a request"
+  )
+  @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
+  @click.argument('request_key')
+  def snapshot(**kwargs):
+    request_key = kwargs['request_key']
+    del kwargs['request_key']
+
+    validate_request_key(request_key)
+
+    request = RequestFacade(Settings.instance())
+    res = request.snapshot(request_key, kwargs)
 
 if is_remote:
   @request.command(

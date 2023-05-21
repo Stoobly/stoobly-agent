@@ -50,3 +50,9 @@ class ScenarioModel(Model):
       return self.adapter.destroy(scenario_id)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
+
+  def snapshot(self, scenario_id: str, **params):
+    try:
+      return self.adapter.snapshot(scenario_id, **params)
+    except requests.exceptions.RequestException as e:
+      return self.handle_request_error(e)   

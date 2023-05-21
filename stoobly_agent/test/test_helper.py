@@ -25,4 +25,11 @@ def reset():
 
   return Settings.instance()
 
+def assert_orm_request_equivalent(request_1, request_2):
+  assert request_1.latency == request_2.latency
+  assert request_1.method == request_2.method
+  assert request_1.raw == request_2.raw
+  assert request_1.status == request_2.status
+  assert request_1.url == request_2.url
+
 reset()

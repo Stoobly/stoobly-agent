@@ -8,6 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
 from stoobly_agent.lib import logger
@@ -172,6 +173,21 @@ def show(**kwargs):
         sys.exit(1)
 
     print_scenarios([scenario_response], **print_options)
+
+if not is_remote:
+    @scenario.command(
+        help="Snapshot a scenario"
+    )
+    @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
+    @click.argument('scenario_key')
+    def snapshot(**kwargs):
+        scenario_key = kwargs['scenario_key']
+        del kwargs['scenario_key']
+
+        validate_scenario_key(scenario_key)
+
+        scenario = ScenarioFacade(Settings.instance())
+        res = scenario.snapshot(scenario_key, kwargs)
 
 if is_remote:
     @scenario.command(

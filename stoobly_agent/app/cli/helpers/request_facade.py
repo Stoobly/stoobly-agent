@@ -32,6 +32,11 @@ class RequestFacade(ReplayFacade):
       **cli_options 
     })
 
+  def snapshot(self, request_key: str, cli_options: dict):
+    key = RequestKey(request_key)
+
+    return self.__model.snapshot(key.id, **cli_options)
+
   def index(self, project_key, cli_options: dict):
     query_params = { **cli_options }
 

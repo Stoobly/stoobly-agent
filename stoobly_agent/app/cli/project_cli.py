@@ -10,7 +10,7 @@ from .helpers.validations import *
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
-    help="Manage request projects"
+    help="Manage projects"
 )
 @click.pass_context
 def project(ctx):

@@ -8,4 +8,5 @@ from .project_cli import project
 from .report_cli import report
 from .request_cli import request
 from .scenario_cli import scenario
+from .snapshot_cli import snapshot
 from .trace_cli import trace
