@@ -38,13 +38,6 @@ class TestApply():
         events = log.events
         return events[len(events) - 1]
 
-      def test_it_sets_is_deleted(self, runner: CliRunner, recorded_request: Request):
-        apply_result = runner.invoke(snapshot, ['apply'])
-        assert apply_result.exit_code == 0
-
-        _request = Request.find(recorded_request.id)
-        assert _request.is_deleted
-
       def test_it_deletes(self, runner: CliRunner, recorded_request: Request, delete_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', delete_event.uuid])
         assert apply_result.exit_code == 0
@@ -103,14 +96,6 @@ class TestApply():
         log = Log()
         events = log.events
         return events[len(events) - 1]
-
-      def test_it_sets_is_deleted(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(snapshot, ['apply'])
-        assert snapshot_result.exit_code == 0
-
-        scenario = Scenario.find(created_scenario.id)
-
-        assert scenario.is_deleted
 
       def test_it_deletes(self, runner: CliRunner, created_scenario: Scenario, delete_event: LogEvent):
         snapshot_result = runner.invoke(snapshot, ['apply', delete_event.uuid])

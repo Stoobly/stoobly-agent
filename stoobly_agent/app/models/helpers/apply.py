@@ -94,7 +94,7 @@ class Apply():
     }
 
   def __apply_delete_request(self, uuid: str):
-    res, status = self.request_model.destroy(uuid)
+    res, status = self.request_model.destroy(uuid, force=True)
 
     if status == 200:
       self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} request {uuid}") 
@@ -113,7 +113,7 @@ class Apply():
     return self.__put_request(uuid, raw_request)
 
   def __apply_delete_scenario(self, uuid: str):
-    res, status = self.scenario_model.destroy(uuid)
+    res, status = self.scenario_model.destroy(uuid, force=True)
 
     if self.__logger and status == 200:
       self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} scenario {uuid}")
