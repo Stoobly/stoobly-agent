@@ -1,5 +1,6 @@
-from argparse import ONE_OR_MORE
 import pdb
+import uuid
+
 from orator.orm import belongs_to, has_many, has_one 
 
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
@@ -12,7 +13,7 @@ class Request(Base):
   __fillable__ = [
     'body_params_hash', 
     'body_text_hash', 
-    'committed_at',
+    'pushed_at',
     'control',
     'headers_hash', 
     'host', 
@@ -32,6 +33,7 @@ class Request(Base):
     'scheme', 
     'starred',
     'status',
+    'uuid',
     'user',
   ]
   __primary_key__ = 'id'
@@ -82,6 +84,10 @@ class Request(Base):
 
     return s
 
+def handle_creating(request):
+  if not hasattr(request, 'uuid') or not request.uuid:
+    request.uuid = str(uuid.uuid4())
+
 def handle_created(request):
   pass
 
@@ -129,6 +135,7 @@ def handle_deleted(request):
 Request.saved(handle_saved)
 Request.saving(handle_saving)
 Request.created(handle_created)
+Request.creating(handle_creating)
 Request.deleted(handle_deleted)
 Request.deleting(handle_deleting)
 

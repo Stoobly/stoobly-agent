@@ -43,7 +43,7 @@ class ORMToStooblyRequestTransformer():
 
   def __filter_properties(self, stoobly_request: RequestShowResponse):
     allowed_keys = list(RequestShowResponse.__annotations__.keys()) + [
-      'committed_at', 'body_params_hash', 'body_text_hash', 'key', 'query', 'query_params_hash'
+      'pushed_at', 'body_params_hash', 'body_text_hash', 'key', 'query', 'query_params_hash'
     ]
 
     filter_keys = lambda request: dict((key, value) for key, value in request.items() if key in allowed_keys)

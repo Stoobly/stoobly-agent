@@ -39,7 +39,7 @@ class RequestsController:
             return
 
         raw_requests = body_params.get('requests') 
-        payloads_delimitter = body_params.get('payloads_delimitter') or '🐵🙈🙉'
+        payloads_delimitter = body_params.get('payloads_delimitter')
 
         toks = raw_requests.split(payloads_delimitter)
         if len(toks) != 2:
@@ -78,7 +78,6 @@ class RequestsController:
             status = 200
         )
 
-
     # GET /requests
     def index(self, context: SimpleHTTPRequestHandler):
         request_model = self.__request_model(context)
@@ -109,8 +108,8 @@ class RequestsController:
             status = 200
         )
 
-    # POST /requests/:id/upload
-    def upload(self, context: SimpleHTTPRequestHandler):
+    # POST /requests/:id/push
+    def push(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
             'id': 1,
         })
@@ -137,7 +136,7 @@ class RequestsController:
         if not res: 
             return context.internal_error()
 
-        request.update(committed_at = datetime.now())
+        request.update(pushed_at = datetime.now())
         request_model.as_local()
         request, status = request_model.show(request.id)
 
