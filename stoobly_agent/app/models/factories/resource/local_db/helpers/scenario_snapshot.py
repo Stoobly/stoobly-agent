@@ -2,12 +2,14 @@ import json
 import os
 import pdb
 
-from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from typing import Callable
+
 from stoobly_agent.lib.orm.scenario import Scenario
 
 from .snapshot import Snapshot
+from .request_snapshot import RequestSnapshot
 
-SCENARIO_DELIMITTER = '🐵🐵🐵'.encode()
+REQUEST_DELIMITTER = "\n"
 
 class ScenarioSnapshot(Snapshot):
   def __init__(self, uuid: str):
@@ -44,8 +46,11 @@ class ScenarioSnapshot(Snapshot):
     if not os.path.exists(requests_file_path):
       return
 
-    with open(requests_file_path, 'rb') as fp:
-      return fp.read().split(SCENARIO_DELIMITTER)
+    raw_requests = []
+    handler = lambda request_snapshot: raw_requests.append(request_snapshot.request)
+    self.iter_request_snapshots(handler)
+
+    return raw_requests
 
   @property
   def requests_backup(self):
@@ -61,11 +66,20 @@ class ScenarioSnapshot(Snapshot):
         self.__metadata_backup = fp.read()
 
   def backup_requests(self):
+    self.__requests_backup = {}
+
+    self.iter_request_snapshots(self.__handle_backup_requests)
+
+  def iter_request_snapshots(self, handler: Callable[[RequestSnapshot], None]):
     requests_file_path = self.requests_path
 
     if os.path.exists(requests_file_path):
-      with open(requests_file_path, 'rb') as fp:
-        self.__requests_backup = fp.read()
+      with open(requests_file_path, 'r') as fp:
+        self.__requests_backup = {}
+
+        for uuid in fp.read().split(REQUEST_DELIMITTER):
+          request_snapshot = RequestSnapshot(uuid)
+          handler(request_snapshot)
 
   def remove_metadata(self):
     metadata_file_path = self.metadata_path
@@ -77,6 +91,8 @@ class ScenarioSnapshot(Snapshot):
     requests_file_path = self.requests_path
 
     if os.path.exists(requests_file_path):
+      self.iter_request_snapshots(self.__handle_remove_requests)
+
       os.remove(requests_file_path)
 
   def write_metadata(self, scenario: Scenario):
@@ -88,13 +104,22 @@ class ScenarioSnapshot(Snapshot):
       fp.write(text)
 
   def write_requests(self, scenario: Scenario):
-    with open(self.requests_path, 'wb') as fp:
-      raw_requests = []
+    with open(self.requests_path, 'w') as fp:
+      uuids = []
       requests = scenario.requests
 
       for request in requests:
-        text = JoinedRequestStringAdapter(request).adapt()
-        raw_requests.append(text)
-      
-      fp.write(SCENARIO_DELIMITTER.join(raw_requests))
+        uuid = request.uuid
 
+        request_snapshot = RequestSnapshot(uuid)
+        request_snapshot.write(request)
+
+        uuids.append(uuid)
+      
+      fp.write(REQUEST_DELIMITTER.join(uuids))
+
+  def __handle_backup_requests(self, request_snapshot: RequestSnapshot):
+    self.__requests_backup[request_snapshot.uuid] = request_snapshot.request
+
+  def __handle_remove_requests(self, request_snapshot: RequestSnapshot):
+    request_snapshot.remove()
