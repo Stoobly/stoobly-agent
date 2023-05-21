@@ -37,12 +37,12 @@ class MainGroup(click.Group):
     if self.__settings.cli.features.remote:
       command_groups.append({
         'name': 'Remote Resource Commands',
-        'commands': ['project', 'report', 'request', 'scenario', 'trace'],
+        'commands': ['project', 'report', 'request', 'scenario', 'snapshot', 'trace'],
       })
     else:
       command_groups.append({
         'name': 'Local Resource Commands',
-        'commands': ['request', 'scenario'],
+        'commands': ['request', 'scenario', 'snapshot'],
       })
 
     self.__print(formatter, command_groups)
