@@ -107,7 +107,7 @@ def replay(**kwargs):
     __assign_default_alias_resolve_strategy(kwargs)
 
     session: ReplaySession = {
-        'buffer': kwargs['format'] != DEFAULT_FORMAT,
+        'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
         'contexts': [],
         'format': kwargs['format'],
         'scenario_id': scenario_key.id,
@@ -244,7 +244,7 @@ if is_remote:
         __assign_default_alias_resolve_strategy(kwargs)
 
         session: ReplaySession = {
-            'buffer': kwargs['format'] != DEFAULT_FORMAT,
+            'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
             'contexts': [],
             'format': kwargs['format'],
             'scenario_id': scenario_key.id,

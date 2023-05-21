@@ -43,7 +43,7 @@ def handle_after_replay(context: ReplayContext, session: ReplaySession):
     session['total'] = 0
 
   if not session.get('buffer'):
-    print(format_request(context))
+    __print(format_request(context))
   else:
     session['contexts'].append(context)
 
@@ -83,7 +83,7 @@ def print_session(session: ReplaySession):
   outputs = []
 
   for replay_context in session['contexts']:
-    outputs.append(format_request(replay_context, format))
+    outputs += format_request(replay_context, format)
 
   if format == JSON_FORMAT:
     if session.get('scenario_id'):
@@ -91,25 +91,23 @@ def print_session(session: ReplaySession):
     else:
       print(json.dumps(outputs[0]))
   else:
-    print("\n\n".join(outputs))
+    __print(outputs)
 
 def __default_format_handler(context: ReplayContext, additional=''):
   response = context.response
-  content = __content(response)
 
-  output = ''
-  output += content
+  output = [response.content]
 
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)
-  output += f"\nCompleted {response.status_code} in {ms}ms{additional}"
+  output.append(f"Completed {response.status_code} in {ms}ms{additional}")
 
   return output
 
 def __body_format_handler(context: ReplayContext):
   response = context.response
-  content = __content(response)
-  return content
+  content = response.content
+  return [content]
 
 def __json_format_handler(context: ReplayContext):
   request = context.request
@@ -124,11 +122,23 @@ def __json_format_handler(context: ReplayContext):
   ms = round(seconds * 1000)
   output: ReplayOutput = {'content': content, 'headers': headers, 'latency': ms, 'method': method, 'url': url}
 
-  return output
+  return [output]
 
 def __content(res: requests.Response):
   content = res.content
+  return __decode(content)
+
+def __decode(content: bytes):
   try:
     return content.decode(json.detect_encoding(content))
   except UnicodeDecodeError:
-    return content
+    return content.decode('ISO-8859-1')
+
+def __print(outputs: List[Union[bytes, str]]):
+  for output in outputs:
+    o = __decode(output) if isinstance(output, bytes) else output
+
+    if isinstance(o, bytes):
+      sys.stdout.buffer.write(o)
+    else:
+      print(o)
