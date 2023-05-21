@@ -33,9 +33,7 @@ def handle_deleting(scenario):
   requests = scenario.requests
   
   for request in requests:
-    request.is_deleted = True
-    request.scenario_id = None
-    request.save()
+    request.delete()
 
 Scenario.creating(handle_creating)
 Scenario.deleting(handle_deleting)
