@@ -9,12 +9,15 @@ class Model():
   def __init__(self, settings: Settings):
     self.settings = settings
 
-    project_key = ProjectKey(settings.proxy.intercept.project_key)
-
-    if int(project_key.id) == LOCAL_PROJECT_ID:
+    if not settings.cli.features.remote:
       self.as_local()
     else:
-      self.as_remote()
+      project_key = ProjectKey(settings.proxy.intercept.project_key)
+
+      if int(project_key.id) == LOCAL_PROJECT_ID:
+        self.as_local()
+      else:
+        self.as_remote()
 
   # Override
   def as_local(self):
@@ -26,6 +29,9 @@ class Model():
 
   def handle_request_error(self, e: requests.exceptions.RequestException):
       response: requests.Response = e.response
+
       if response:
         Logger.instance().error(f"{response.status_code} {response.content}")
-      return response.content, response.status_code
+        return response.content, response.status_code
+      else:
+        return 'Unknown Error', 0
