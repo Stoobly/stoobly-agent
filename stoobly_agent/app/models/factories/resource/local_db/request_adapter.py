@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
-from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestShowParams
+from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestFindParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
@@ -124,6 +124,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
   def update(self, request_id: int,  **params: RequestShowResponse):
     request = self.__request(request_id)
+    pdb.set_trace()
 
     if not request:
       return self.__request_not_found()
@@ -219,6 +220,25 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       return self.internal_error()
 
     return self.success(file_path)
+
+  def find_similar(self, params: RequestFindParams):
+    pattern = f"%{params['pattern']}"
+    candidates = self.__request_orm.where('host', params['host'])
+    candidates = candidates.where('port', params['port'])
+    candidates = candidates.where('method', params['method'])
+    # candidates = candidates.where_raw('path LIKE %?', [pattern])
+    candidates = candidates.where('path', 'like', pattern)
+
+    # candidates = candidates.select(
+    #   :body_params_hash, :body_text_hash, :endpoint_id, :headers_hash,
+    #   :id, :method, :path, :status, :position, :project_id, :query_params_hash,
+    #   :response_hash, :scenario_id, :response_headers_hash
+    # )
+
+    # pdb.set_trace()
+
+    return candidates.get()
+
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):

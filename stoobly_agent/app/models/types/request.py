@@ -12,9 +12,16 @@ class RequestCreateParams(TypedDict):
 class RequestDestroyParams(TypedDict):
   force: bool
 
+class RequestFindParams(TypedDict):
+  host: str
+  port: str
+  method: str
+  pattern: str
+
 class RequestShowParams(TypedDict):
   body: bool
   headers: bool
   project_id: str
   query_params: bool
   response: bool
+

@@ -111,6 +111,8 @@ def show(**kwargs):
     data_rule = settings.proxy.data.data_rules(project_key.id)
     policy = None
 
+    pdb.set_trace()
+
     if active_mode == mode.MOCK:
         policy = data_rule.mock_policy
     elif active_mode == mode.RECORD:

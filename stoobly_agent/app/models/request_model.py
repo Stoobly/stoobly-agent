@@ -1,4 +1,5 @@
 import pdb
+
 import requests
 
 from stoobly_agent.app.models.schemas.request import Request
@@ -6,7 +7,7 @@ from stoobly_agent.app.settings import Settings
 
 from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types import RequestCreateParams, RequestDestroyParams, RequestShowParams
+from .types import RequestCreateParams, RequestDestroyParams, RequestFindParams, RequestShowParams
 
 class RequestModel(Model):
 
@@ -28,6 +29,16 @@ class RequestModel(Model):
   def show(self, request_id: str, **params: RequestShowParams):
     try:
       return self.adapter.show(request_id, **params)
+    except requests.exceptions.RequestException as e:
+      return self.handle_request_error(e)
+
+  def find_similar(self, params: RequestFindParams):
+    try:
+      # TODO: fix adapter
+      local_adapter = RequestResourceFactory(self.settings.remote).local_db()
+      return local_adapter.find_similar(params)
+
+      # return self.adapter.find_similar(params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 

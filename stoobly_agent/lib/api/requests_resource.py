@@ -45,3 +45,4 @@ class RequestsResource(StooblyApi):
       Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
 
       return self.get(url, headers=self.default_headers, params=query_params)
+
