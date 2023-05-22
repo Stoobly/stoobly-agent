@@ -2,8 +2,6 @@ import json
 import os
 import pdb
 
-from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
-from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 

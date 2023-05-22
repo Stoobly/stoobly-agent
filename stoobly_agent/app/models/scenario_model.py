@@ -35,7 +35,7 @@ class ScenarioModel(Model):
   def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
-    except requests.exceptions.ScenarioException as e:
+    except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
   def update(self, scenario_id: str, **params: ScenarioCreateParams):

@@ -1,5 +1,3 @@
-import os
-
 from stoobly_agent.config.data_dir import DataDir
 
 class Snapshot():
