@@ -206,6 +206,7 @@ class Apply():
         self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     elif status == 200:
       params = {
+        'is_deleted': False,
         'request': raw_request,
         **base_params,
       }

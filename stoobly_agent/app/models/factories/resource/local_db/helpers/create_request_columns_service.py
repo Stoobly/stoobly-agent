@@ -16,7 +16,8 @@ def build_request_columns(flow: MitmproxyHTTPFlow, joined_request: JoinedRequest
   request_columns: RequestColumns = {
     **request_columns,
     **response_columns,
-    'control': joined_request.request_string.control, 
+    'control': joined_request.request_string.control,
+    'is_deleted': params.get('is_deleted') or False,
     'latency': joined_request.response_string.latency,
     'raw': joined_request.request_string.get(),
     'scenario_id': int(params['scenario_id']) if params.get('scenario_id') else None,
