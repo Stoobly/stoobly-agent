@@ -29,7 +29,12 @@ class RequestSnapshot(Snapshot):
 
   @property
   def path(self):
-    return os.path.join(self.__requests_dir_path, self.uuid)
+    dir_path = os.path.join(self.__requests_dir_path, self.uuid[0:2])
+
+    if not os.path.exists(dir_path):
+      os.mkdir(dir_path)
+
+    return os.path.join(dir_path, self.uuid)
 
   def backup(self):
     if os.path.exists(self.path):
