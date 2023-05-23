@@ -8,12 +8,17 @@ class EndpointsIndexQueryParams(PaginationQueryParams):
 class RequestComponentName(TypedDict):
   alias_id: int
   is_deterministic: bool
+  is_required: bool
   name: str
-  value: str
+  values: List[str] # Sample values for the component
 
 class Alias(TypedDict):
   id: int
   name: str
+
+class BodyParamName(RequestComponentName):
+  inferred_type: str
+  query: str
 
 class ResponseParamName(RequestComponentName):
   inferred_type: str
@@ -21,7 +26,7 @@ class ResponseParamName(RequestComponentName):
 
 class EndpointShowResponse(TypedDict):
   aliases: List[Alias]
-  body_param_names: List[RequestComponentName]
+  body_param_names: List[BodyParamName]
   header_names: List[RequestComponentName]
   path_segment_names: List[RequestComponentName]
   query_param_names: List[RequestComponentName]
