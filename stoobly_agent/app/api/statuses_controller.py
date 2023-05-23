@@ -1,6 +1,7 @@
 import pdb
 
 from stoobly_agent.lib.cache import Cache
+from stoobly_agent.lib.utils.decode import decode
 
 class StatusesController:
     _instance = None
@@ -69,7 +70,7 @@ class StatusesController:
         })
 
         cache = Cache.instance()
-        cache.write(context.params.get('id'), context.body.decode())
+        cache.write(context.params.get('id'), decode(context.body))
 
         context.render(
             plain = '',

@@ -1,9 +1,10 @@
-import hashlib
 import time
 import uuid
 import pdb
 
 from typing import Union
+
+from stoobly_agent.lib.utils.decode import decode
 
 from .proxy_request import ProxyRequest
 from .request_string_control import RequestStringControl
@@ -37,9 +38,7 @@ class RequestString:
             return CLRF.join(self.lines).encode(self.ENCODING)
 
     def set(self, s: bytes):
-        decoded_s = s
-        if isinstance(s, bytes):
-            decoded_s = s.decode(self.ENCODING)
+        decoded_s = decode(s, self.ENCODING)
         self.lines = decoded_s.split(CLRF)
 
     @property
@@ -89,6 +88,4 @@ class RequestString:
         return current_time
 
     def __to_str(self, s: Union[bytes, str]):
-        if isinstance(s, bytes):
-            return s.decode('utf-8')
-        return s
+        return decode(s)

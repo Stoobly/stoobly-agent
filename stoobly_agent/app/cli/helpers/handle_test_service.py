@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import TestOutput
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import bcolors
+from stoobly_agent.lib.utils.decode import decode
 
 class SessionContext(TypedDict):
   aggregate_failures: bool 
@@ -167,6 +168,6 @@ def __build_json_response(response: requests.Response):
 def __decode_response(response: requests.Response):
   if isinstance(response, requests.Response):
     content = response.content
-    return content.decode(json.detect_encoding(content))
+    return decode(content)
   else:
     return "API Error: Internal Error"

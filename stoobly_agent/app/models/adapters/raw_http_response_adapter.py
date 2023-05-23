@@ -9,6 +9,7 @@ from typing import Union
 from urllib3 import HTTPResponse
 
 from stoobly_agent.app.proxy.mitmproxy.response import Response
+from stoobly_agent.lib.utils.decode import decode
 from stoobly_agent.lib.orm.utils.response_parse_handler import Response as ResponseDict, ResponseParseHandler
 
 CRLF = b'\r\n'
@@ -28,7 +29,7 @@ class RawHttpResponseAdapter():
         colon_ind = req_lines[ind].find(b':')
         header_key = req_lines[ind][:colon_ind]
         header_value = req_lines[ind][colon_ind + 1:]
-        self.headers[self.__decode(header_key)] = self.__decode(header_value).strip()
+        self.headers[decode(header_key)] = decode(header_value).strip()
         ind += 1
     ind += 1
 
@@ -59,8 +60,8 @@ class RawHttpResponseAdapter():
     requests_response = Response()
     requests_response.headers = CaseInsensitiveDict()
     for key, val in response_dict['headers'].items():
-      _key = key if not isinstance(key, bytes) else key.decode()
-      _val = val if not isinstance(val, bytes) else val.decode()
+      _key = decode(key) 
+      _val = decode(key)
       requests_response.headers[_key] = _val
 
     # Unless we can create an object with the stream method, have to self decode
@@ -76,9 +77,9 @@ class RawHttpResponseAdapter():
 
   def __parse_response_line(self, response_line):
     response_parts = response_line.split(b' ')
-    self.protocol = self.__decode(response_parts[0]) if len(response_parts) > 2 else DEFAULT_HTTP_VERSION
-    self.status = int(self.__decode(response_parts[1]))
-    self.reason = self.__decode(response_parts[2]) if len(response_parts) > 2 else ''
+    self.protocol = decode(response_parts[0]) if len(response_parts) > 2 else DEFAULT_HTTP_VERSION
+    self.status = int(decode(response_parts[1]))
+    self.reason = decode(response_parts[2]) if len(response_parts) > 2 else ''
 
   def __str__(self):
     headers = CRLF.join(f'{key}: {self.headers[key]}' for key in self.headers)
@@ -90,9 +91,6 @@ class RawHttpResponseAdapter():
     parser = HttpResponseParser(handler)
     parser.feed_data(memoryview(self.__req_text))
     return parser
-
-  def __decode(self, s: Union[bytes, str]) -> str:
-    return s if isinstance(s, str) else s.decode()
 
   def __decode_body(self, body: bytes, content_encoding):
     if content_encoding:

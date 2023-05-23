@@ -1,4 +1,3 @@
-import json
 import pdb
 import requests
 
@@ -10,6 +9,7 @@ from stoobly_agent.app.proxy.record.response_string_control import ResponseStrin
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.transformers import ORMToRequestsResponseTransformer
+from stoobly_agent.lib.utils.decode import decode
 
 from .local_db_adapter import LocalDBAdapter
 
@@ -89,18 +89,11 @@ class LocalDBResponseAdapter(LocalDBAdapter):
   def __to_show_response(self, response: Response):
     python_response = ORMToRequestsResponseTransformer(response).transform()
     content = python_response.content
-    encoding = json.detect_encoding(content)
-
-    text = ''
-    try:
-      text = content.decode(encoding)
-    except Exception as e:
-      text = content.decode('ISO-8859-1')
 
     return {
       'id': response.id,
       'mime_type': python_response.headers.get('content-type'),
-      'text': text,
+      'text': decode(content),
     }
 
   def __request_not_found(self):

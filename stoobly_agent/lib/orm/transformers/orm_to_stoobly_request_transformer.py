@@ -8,6 +8,7 @@ from urllib.parse import parse_qs
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.types import RequestShowParams
 from stoobly_agent.lib.api.interfaces import QueryParam, RequestShowResponse
+from stoobly_agent.lib.utils.decode import decode
 
 from ..request import Request as ORMRequest
 from ..response import Response
@@ -90,7 +91,8 @@ class ORMToStooblyRequestTransformer():
     parsed_url = parse_url(python_request.url.encode())
 
     if parsed_url.query:
-      stoobly_request['query'] = parsed_url.query.decode()
+      stoobly_request['query'] = decode(parsed_url.query)
+
       if 'query_params' in self.__options:
         stoobly_request['query_params'] = self.__transform_query_params(stoobly_request['query'])
 

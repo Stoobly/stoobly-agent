@@ -4,6 +4,7 @@ import requests
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.lib.utils.decode import decode
 
 class MitmproxyRequestAdapter():
 
@@ -28,5 +29,5 @@ class MitmproxyRequestAdapter():
   def __decode_dict(self, d):
     new_d = {}
     for k, v in d.items():
-      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(v, bytes) else v
+      new_d[decode(k)] = decode(v)
     return new_d

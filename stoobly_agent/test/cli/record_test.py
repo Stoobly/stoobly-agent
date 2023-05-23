@@ -13,6 +13,7 @@ from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRe
 from stoobly_agent.cli import config, intercept, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.utils.decode import decode
 
 @pytest.fixture()
 def runner():
@@ -124,7 +125,7 @@ class TestRecording():
         # Since this request did not initially have a body, rewriting adds a body with header Content-Type: application/json
         assert python_request.headers.get('content-type'.title()) == 'application/json'
 
-        body = python_request.data.decode()
+        body = decode(python_request.data)
         assert json.loads(body).get(body_param) == body_param_value
 
   class TestFirewall():
