@@ -7,6 +7,7 @@ from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.lib.utils.decode import decode
 
 class ScenariosController:
     _instance = None
@@ -30,8 +31,16 @@ class ScenariosController:
         if not context.required_params(body_params, ['name']):
             return
 
+        description = decode(body_params['description'] if 'description' in body_params else '')
+        name = decode(body_params['name'])
+        priority = decode(body_params['priority'] if 'priority' in body_params else '0')
+
         scenario_model = self.__scenario_model(context)
-        scenario, status = scenario_model.create(**context.params)
+        scenario, status = scenario_model.create(**{
+            'name':name, 
+            'description': description,
+            'priority': priority,
+        })
 
         if context.filter_response(scenario, status):
             return
@@ -121,6 +130,7 @@ class ScenariosController:
             return context.not_found()
 
         if format == 'gor':
+            filename = f"SCENARIO-{int(datetime.now().timestamp())}.gor"
             requests = scenario.requests
 
             content = ''
@@ -129,7 +139,7 @@ class ScenariosController:
 
             context.render(
                 download = content,
-                filename = f"SCENARIO-{int(datetime.now().timestamp())}.gor",
+                filename = filename,
                 status = 200
             )
         else:

@@ -6,16 +6,17 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.models.adapters import JoinedRequestAdapter, RawHttpRequestAdapter, RawHttpResponseAdapter
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
-from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory, PythonResponseAdapterFactory
+from stoobly_agent.app.models.helpers.create_request_params_service import build_params
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
+from stoobly_agent.app.proxy.record import REQUEST_DELIMITTER
 from stoobly_agent.app.proxy.record.upload_request_service import upload_staged_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.orm.request import Request as OrmRequest
+from stoobly_agent.lib.utils.decode import decode
 
 class RequestsController:
     _instance = None
@@ -39,42 +40,40 @@ class RequestsController:
             return
 
         raw_requests = body_params.get('requests') 
-        payloads_delimitter = body_params.get('payloads_delimitter')
+        payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER
 
-        toks = raw_requests.split(payloads_delimitter)
-        if len(toks) != 2:
+        toks = raw_requests.split(payloads_delimitter) 
+
+        if len(toks) % 2 != 0:
             return context.bad_request('Invalid requests format')
+        
+        created_requests = []
 
-        try:
-            joined_request = JoinedRequestAdapter(raw_requests, payloads_delimitter).adapt()
-        except Exception as e:
-            return context.bad_request('Could not parse requests')
+        for i in range(0, len(toks), 2):
+            raw_request = payloads_delimitter.join([toks[i], toks[i + 1]])
+            create_params = build_params(raw_request, payloads_delimitter)
 
-        request_adapter = RawHttpRequestAdapter(joined_request.request_string.get())
-        response_adapter = RawHttpResponseAdapter(joined_request.response_string.get())
+            if not create_params:
+                # Rollback
+                return context.bad_request('Could not parse requests')
 
-        mitmproxy_request = PythonRequestAdapterFactory(request_adapter.to_request()).mitmproxy_request(request_adapter.protocol)
-        mitmproxy_response = PythonResponseAdapterFactory(response_adapter.to_response()).mitmproxy_response()
+            request_model = self.__request_model(context)
+            request, status = request_model.create(**{
+                **create_params,
+                'scenario_id': body_params.get('scenario_id'),
+            })
 
-        class MitmproxyFlowMock():
-            def __init__(self, request, response):
-                self.request = request
-                self.response = response
+            if context.filter_response(request, status):
+                # Rollback
+                pass
 
-        mitmproxy_flow_mock = MitmproxyFlowMock(mitmproxy_request, mitmproxy_response)
-
-        request_model = self.__request_model(context)
-        request, status = request_model.create(**{
-            'flow': mitmproxy_flow_mock,
-            'joined_request': joined_request,
-            'scenario_id': body_params.get('scenario_id'),
-        })
-
-        if context.filter_response(request, status):
-            return
+            created_requests.append(request['list'][0])
 
         context.render(
-            json = request,
+            json = {
+                'list': created_requests,
+                'total': len(created_requests),
+            },
             status = 200
         )
 
@@ -210,18 +209,19 @@ class RequestsController:
 
     # PUT /requests/send
     def send(self, context: SimpleHTTPRequestHandler):
-        headers = []
+        body_params = context.params
 
+        headers = []
         try:
-            headers = json.load(context.params.get('headers'))
+            headers = json.load(decode(body_params.get('headers')))
         except Exception as e:
             pass
 
-        url = urlparse(context.params.get('url'))
+        url = urlparse(decode(body_params.get('url')))
         request_response = {
-            'body': context.params.get('body'),
+            'body': decode(body_params.get('body')),
             'headers': headers,
-            'method': context.params.get('method'),
+            'method': decode(body_params.get('method')),
             'path': url.path,
             'password': url.password,
             'port': url.port,
@@ -243,12 +243,14 @@ class RequestsController:
 
         if not request:
             return context.not_found()
+
         if format == 'gor':
             filename = f"REQUEST-{int(datetime.now().timestamp())}.gor"
             text = JoinedRequestStringAdapter(request).adapt()
 
             context.render(
-                plain = b"\n".join([filename.encode(), text]),
+                download = text,
+                filename = filename,
                 status = 200
             )
         else:

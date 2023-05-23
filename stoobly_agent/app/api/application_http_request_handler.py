@@ -95,7 +95,6 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
             header = 'Access-Control-Allow-Headers'
             allowed_headers = _headers.get(header) or ', '.join([
-                'Content-Disposition',
                 'Content-Type',
                 headers.ACCESS_TOKEN.title(),
                 headers.CLIENT.title(),
@@ -111,6 +110,13 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
             header = 'Access-Control-Max-Age'
             self.send_header(header, _headers.get(header) or '7200')
+
+        if self.command == 'GET':
+            header = 'Access-Control-Expose-Headers'
+            exposed_headers = ', '.join([
+                'Content-Disposition',
+            ])
+            self.send_header(header, exposed_headers)
 
     def preprocess(self):
         self.uri = urlparse(self.path)

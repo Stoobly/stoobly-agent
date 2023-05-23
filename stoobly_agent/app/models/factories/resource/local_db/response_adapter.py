@@ -91,10 +91,16 @@ class LocalDBResponseAdapter(LocalDBAdapter):
     content = python_response.content
     encoding = json.detect_encoding(content)
 
+    text = ''
+    try:
+      text = content.decode(encoding)
+    except Exception as e:
+      text = content.decode('ISO-8859-1')
+
     return {
       'id': response.id,
       'mime_type': python_response.headers.get('content-type'),
-      'text': content.decode(encoding),
+      'text': text,
     }
 
   def __request_not_found(self):
