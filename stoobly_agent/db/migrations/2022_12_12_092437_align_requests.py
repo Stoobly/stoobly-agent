@@ -6,8 +6,9 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
-from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
+from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.utils.decode import decode
 
 class AlignRequests(Migration):
 
@@ -38,7 +39,7 @@ class AlignRequests(Migration):
             response = request.response
             if response:
                 response_control = ResponseStringControl()
-                response_control.parse(response.control.decode())
+                response_control.parse(decode(response.control))
 
                 request.latency = response_control.latency
 

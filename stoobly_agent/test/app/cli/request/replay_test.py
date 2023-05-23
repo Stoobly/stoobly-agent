@@ -10,6 +10,7 @@ from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpR
 from stoobly_agent.cli import record, request, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.utils.decode import decode
 
 @pytest.fixture(scope='module')
 def runner():
@@ -37,7 +38,7 @@ class TestReplay():
             assert replay_result.exit_code == 0
 
             response = RawHttpResponseAdapter(recorded_response_raw).to_response()
-            assert replay_result.stdout.rstrip() == response.content.decode()
+            assert replay_result.stdout.rstrip() == decode(response.content)
 
         def test_it_does_not_override_response_raw(self, recorded_request: Request, recorded_response_raw: bytes):
             new_response = Request.find(recorded_request.id).response.raw

@@ -5,6 +5,7 @@ from mitmproxy.http import Headers, Response as MitmproxyResponse
 from time import time
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import DEFAULT_HTTP_VERSION
+from stoobly_agent.lib.utils.decode import decode
 
 class MitmproxyResponseAdapter():
 
@@ -26,14 +27,11 @@ class MitmproxyResponseAdapter():
   @property
   def status_code(self) -> int:
     status_code = self.__response.status_code
+    
+    if isinstance(status_code, int):
+      return status_code
 
-    if isinstance(status_code, str):
-      return int(status_code)
-
-    if isinstance(status_code, bytes):
-      return int(status_code.decode())
-
-    return status_code
+    return decode(status_code)
 
   @property
   def headers(self):
@@ -63,5 +61,5 @@ class MitmproxyResponseAdapter():
   def __decode_dict(self, d):
     new_d = {}
     for k, v in d.items():
-      new_d[k.decode() if isinstance(k, bytes) else k] = v.decode() if isinstance(k, bytes) else v
+      new_d[decode(k)] = decode(v)
     return new_d

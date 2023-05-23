@@ -5,6 +5,7 @@ from orator.orm import belongs_to, has_many, has_one
 
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 from stoobly_agent.lib.api.keys.request_key import RequestKey
+from stoobly_agent.lib.utils.decode import decode
 
 from .base import Base
 from .response import Response
@@ -51,7 +52,7 @@ class Request(Base):
     return Scenario
 
   def key(self):
-    return RequestKey.encode(LOCAL_PROJECT_ID, self.id).decode()
+    return decode(RequestKey.encode(LOCAL_PROJECT_ID, self.id))
 
   # Override
   def to_dict(self):

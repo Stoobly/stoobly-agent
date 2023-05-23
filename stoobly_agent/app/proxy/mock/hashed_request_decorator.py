@@ -1,8 +1,10 @@
 import hashlib
 import pdb
 
-from stoobly_agent.lib.logger import bcolors, Logger
 from typing import Union
+
+from stoobly_agent.lib.logger import bcolors, Logger
+from stoobly_agent.lib.utils.decode import decode
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 from .request_hasher import RequestHasher
@@ -105,15 +107,7 @@ class HashedRequestDecorator:
         return hashlib.md5(text).hexdigest()
 
     def __serialize_param(self, key, val):
-        if isinstance(key, bytes):
-            key = key.decode('utf-8')
-
-        if isinstance(val, bytes):
-            val = val.decode('utf-8')
-        else:
-            val = str(val)
-            
-        return f"{key}.{val}".encode('utf-8')
+        return f"{decode(key)}.{decode(val)}".encode('utf-8')
 
     def __serialize_params(self, params, ignored_params = {}):
         serialized_params = []

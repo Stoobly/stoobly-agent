@@ -1,13 +1,22 @@
 import pdb
 
+from typing import Union
+
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest, REQUEST_DELIMITTER
 from stoobly_agent.app.proxy.record.request_string import CLRF as RequestStringCLRF, RequestString
 from stoobly_agent.app.proxy.record.response_string import CLRF as ResponseStringCLRF, ResponseString
 
 class JoinedRequestAdapter():
 
-  def __init__(self, joined_request_string: bytes, payloads_delimitter = None):
+  def __init__(self, joined_request_string: Union[bytes, str], payloads_delimitter: Union[bytes, str] = None):
     payloads_delimitter = REQUEST_DELIMITTER if not payloads_delimitter else payloads_delimitter
+
+    if isinstance(joined_request_string, str):
+      joined_request_string = joined_request_string.encode()
+
+    if isinstance(payloads_delimitter, str):
+      payloads_delimitter = payloads_delimitter.encode()
+      
     self.__split_joined_request_string = joined_request_string.split(payloads_delimitter)
 
   def build_request_string(self):

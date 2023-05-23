@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from openapi_core import Spec
 from stoobly_agent.app.proxy.replay.body_parser_service import JSON, MULTIPART_FORM, WWW_FORM_URLENCODED, decode_response, encode_response
+from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 
 from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
 
@@ -23,7 +24,7 @@ class EndpointModel():
     spec = Spec.from_file_path(file_path)
     return spec
 
-  def extract_endpoints(self, spec: Spec) -> List[RequestShowResponse]:
+  def extract_endpoints(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []
 
     # for item in spec.items():
@@ -75,7 +76,8 @@ class EndpointModel():
           # print(f"method: {http_method}, url: {url}, path_name: {path_name}\noperation: {operation}\n")
 
           parsed_url = urlparse(url)
-          endpoint = RequestShowResponse()
+          # endpoint = RequestShowResponse()
+          endpoint = EndpointShowResponse()
           endpoint['method'] = http_method.upper()
           endpoint['host'] = parsed_url.netloc
 

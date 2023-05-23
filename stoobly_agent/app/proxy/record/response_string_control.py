@@ -1,5 +1,7 @@
 from typing import Union
 
+from stoobly_agent.lib.utils.decode import decode
+
 class ResponseStringControl():
   RESPONSE_TYPE = 2
 
@@ -41,10 +43,7 @@ class ResponseStringControl():
     self.__timestamp = t
 
   def parse(self, s: str):
-    if isinstance(s, bytes):
-      s = s.decode()
-
-    toks = s.split(' ')
+    toks = decode(s).split(' ')
     self.__id = toks[1]
     self.__timestamp = int(toks[2])
 

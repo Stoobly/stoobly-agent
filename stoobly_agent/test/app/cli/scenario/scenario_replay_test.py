@@ -10,9 +10,10 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.cli.types.output import ReplayOutput
-from stoobly_agent.cli import record, request, scenario
+from stoobly_agent.cli import record, scenario
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.lib.utils.decode import decode
 
 @pytest.fixture(scope='module')
 def runner():
@@ -54,7 +55,7 @@ class TestReplay():
             assert not not replay_output.get('content')
 
             response = RawHttpResponseAdapter(recorded_response_raw).to_response()
-            assert replay_output['content']  == response.content.decode()
+            assert replay_output['content']  == decode(response.content)
 
 
         def test_it_does_not_override_response_raw(self, recorded_request: Request, recorded_response_raw: bytes):

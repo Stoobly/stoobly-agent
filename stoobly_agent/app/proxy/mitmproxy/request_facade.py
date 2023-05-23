@@ -12,6 +12,7 @@ from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
+from stoobly_agent.lib.utils.decode import decode
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
@@ -70,10 +71,7 @@ class MitmproxyRequestFacade(Request):
     def body(self):
         content = self.request.raw_content or ''
 
-        if isinstance(content, bytes):
-            content = content.decode(json.detect_encoding(content))
-
-        return content
+        return decode(content)
 
     @property
     def parsed_body(self):

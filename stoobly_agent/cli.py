@@ -19,6 +19,7 @@ from .app.cli import ca_cert, config, feature, intercept, MainGroup, request, sc
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
+from .lib.utils.decode import decode
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote
@@ -136,14 +137,14 @@ def mock(**kwargs):
 
   if response.status_code == custom_response_codes.NOT_FOUND:
     content = response.content
-    print(f"Error: {content.decode(json.detect_encoding(content))}")
+    print(f"Error: {decode(content)}")
     sys.exit(1)
 
   if kwargs['format'] == RAW_FORMAT:
     print_raw_response(response)
   else:
     content = response.content
-    print(content.decode(json.detect_encoding(content)))
+    print(decode(content))
 
 @main.command(
   help="Record request"

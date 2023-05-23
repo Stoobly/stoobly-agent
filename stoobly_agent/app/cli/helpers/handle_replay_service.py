@@ -8,8 +8,9 @@ from typing import List, TypedDict, Union
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import ReplayOutput
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
-from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.logger import bcolors
 from stoobly_agent.lib.utils import jmespath
+from stoobly_agent.lib.utils.decode import decode
 
 BODY_FORMAT = 'body'
 DEFAULT_FORMAT = 'default'
@@ -126,17 +127,11 @@ def __json_format_handler(context: ReplayContext):
 
 def __content(res: requests.Response):
   content = res.content
-  return __decode(content)
-
-def __decode(content: bytes):
-  try:
-    return content.decode(json.detect_encoding(content))
-  except UnicodeDecodeError:
-    return content.decode('ISO-8859-1')
+  return decode(content)
 
 def __print(outputs: List[Union[bytes, str]]):
   for output in outputs:
-    o = __decode(output) if isinstance(output, bytes) else output
+    o = decode(output)
 
     if isinstance(o, bytes):
       sys.stdout.buffer.write(o)

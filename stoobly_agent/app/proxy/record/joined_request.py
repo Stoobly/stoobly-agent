@@ -5,7 +5,7 @@ from .request_string import RequestString
 from .response_string import ResponseString
 
 ENCODING = 'utf-8'
-REQUEST_DELIMITTER = '🐵🙈🙉'.encode(ENCODING)
+REQUEST_DELIMITTER = '\n🐵🙈🙉\n'.encode(ENCODING)
 
 class JoinedRequest:
     __request_string = None

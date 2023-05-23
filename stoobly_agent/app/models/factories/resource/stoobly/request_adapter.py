@@ -13,7 +13,7 @@ class StooblyRequestAdapter():
   def __init__(self, __api: RequestsResource):
     self.__api = __api
 
-  def create(self, **params: RequestCreateParams) -> Tuple[RequestShowResponse, int]:
+  def create(self, **params: RequestCreateParams):
     body_params = { **params }
     joined_request = body_params['joined_request']
 

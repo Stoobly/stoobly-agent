@@ -14,6 +14,9 @@ from stoobly_agent.lib.orm.trace_alias import TraceAlias
 from stoobly_agent.lib.orm.trace_request import TraceRequest
 from stoobly_agent.lib.utils import jmespath
 
+from stoobly_agent.app.models.adapters.orm.joined_request_string_adapter import JoinedRequestStringAdapter
+from stoobly_agent.app.models.helpers.create_request_params_service import build_params
+
 @click.group(
   epilog="Run 'stoobly-agent dev-tools COMMAND --help' for more information on a command.",
   help="Access developer tools"
