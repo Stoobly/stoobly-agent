@@ -23,7 +23,7 @@ class RawHttpRequestAdapter():
     data_lines = req_lines[ind:] if ind < len(req_lines) else None
     self.body = CRLF.join(data_lines)
 
-  def to_request(self):
+  def to_request(self) -> requests.Request:
     req = requests.Request(
       method=self.method,
       url=self.url,

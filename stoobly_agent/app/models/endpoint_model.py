@@ -6,6 +6,7 @@ import urllib.parse
 from urllib.parse import urlparse
 
 from openapi_core import Spec
+from stoobly_agent.app.proxy.replay.body_parser_service import JSON, MULTIPART_FORM, WWW_FORM_URLENCODED, decode_response, encode_response
 
 from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
 
@@ -29,6 +30,19 @@ class EndpointModel():
     #   print(item)
     #
     # print()
+
+    components = spec.get("components")
+    if not components:
+      # return
+      exit(0)
+
+    schemas = components.get("schemas", {})
+    for schema_name, schema in schemas.items():
+      schema.getkey("readOnly")
+      schema.getkey("writeOnly")
+
+    # ---
+
     paths = spec.getkey('paths')
 
     servers = spec / "servers"
@@ -94,7 +108,6 @@ class EndpointModel():
               # if not parameter['required']:
               #   continue
 
-             
               query_param_val:  QueryParamValue = {
                 'value': parameter.get('example'),
                 'required': parameter['required']
@@ -122,33 +135,43 @@ class EndpointModel():
           # TODO: is url needed here? no
           # if not endpoint.get('url'):
           #   endpoint['url'] = self.__build_url(host=endpoint['host'], scheme='', port=endpoint['port'], path=endpoint['path'], query=endpoint.get('query'))
-          endpoints.append(endpoint)
 
-          # TODO: how to get reference?
           request_body = operation.get("requestBody")
-          if not request_body:
-            continue
+          # if not request_body:
+          #   continue
 
-          required_request_body = request_body.getkey("required")
-          if not required_request_body:
-            continue
+          required_request_body = request_body.get("required")
+          # if not required_request_body:
+          #   continue
 
-          content = request_body / "content"
+          content = request_body.get("content")
           for mimetype, media_type in content.items():
-            schema = content.get("schema")
-            schema.type.value
-            schema.format
-            schema.required
+            # if mimetype in [JSON, MULTIPART_FORM, WWW_FORM_URLENCODED]: 
+            #   body = decode_response(content='', content_type=mimetype)
 
-      components = spec.get("components")
-      if not components:
-        # return
-        exit(0)
+            schema = media_type['schema']
+            # schema.type.value
+            # schema.format
+            # schema.required
 
-      schemas = components.get("schemas", {})
-      for schema_name, schema in schemas.items():
-        schema.getkey("readOnly")
-        schema.getkey("writeOnly")
+            # If Spec Component reference, look it up in components
+            if '$ref' in schema:
+              # '#/components/schemas/NewPet'
+              reference = schema['$ref']
+              if not reference.startswith('#'):
+                print('external references are not supported yet')
+              if not reference.startswith('#/components/schemas'):
+                print('non component references are not supported yet')
+              else:
+                ref_split = reference.split('#/components/schemas/')
+                component_name = ref_split[-1]
+                body_spec = schemas.content()[component_name]
+                body_spec['content_type'] = mimetype
+                body_spec['required_body'] = required_request_body
+                # pdb.set_trace()
+                endpoint['body']: str = encode_response(content=body_spec, content_type=JSON)
+
+          endpoints.append(endpoint)
     
     return endpoints
 
