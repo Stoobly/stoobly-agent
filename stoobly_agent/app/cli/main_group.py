@@ -42,7 +42,7 @@ class MainGroup(click.Group):
     else:
       command_groups.append({
         'name': 'Local Resource Commands',
-        'commands': ['request', 'scenario', 'snapshot'],
+        'commands': ['endpoint', 'request', 'scenario', 'snapshot'],
       })
 
     self.__print(formatter, command_groups)

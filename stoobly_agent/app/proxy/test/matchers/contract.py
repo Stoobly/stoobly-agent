@@ -10,7 +10,7 @@ from .context import MatchContext, build_match_context
 from .errors import length_match_error, param_name_exists_error, param_name_missing_error, type_match_error, valid_type_error
 
 class Options(TypedDict):
-    strict: bool
+    strict: bool # Expect actual to not have fields not specified in endpoint spec
 
 def matches(test_context: TestContext, facade: RequestComponentNamesFacade, actual, **options: Options):
     context = build_match_context(test_context, facade)
@@ -30,6 +30,14 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
     index = parent_context.request_component_names_query_index
     component_names = parent_context.children
 
+    # Check all properties required by contract exist
+    for component_name in component_names:
+        key = component_name['name']
+        if not parent_context.contract_param_name_exists(key, actual):
+            context = MatchContext(parent_context.to_dict())
+            context.visit_dict(key)
+            return param_name_missing_error(context.path_key)
+
     for key, actual_value in actual.items():
         context = MatchContext(parent_context.to_dict())
         context.visit_dict(key)
@@ -37,7 +45,7 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
         path_key = context.path_key
         query = context.query
 
-        if query not in index:
+        if not context.param_name_exists(query, index):
             if not options.get('strict'):
                 continue
             else:
@@ -59,14 +67,6 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
             matches, log = list_matches(context, actual_value, **options)
             if not matches:
                 return matches, log
-
-    # Check all properties required by contract exist
-    for component_name in component_names:
-        key = component_name['name']
-        if not key in actual:
-            context = MatchContext(parent_context.to_dict())
-            context.visit_dict(key)
-            return param_name_missing_error(context.path_key)
 
     return True, ''
 

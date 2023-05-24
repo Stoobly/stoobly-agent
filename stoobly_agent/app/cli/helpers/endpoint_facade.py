@@ -1,32 +1,27 @@
-from base64 import b64encode
 import copy
-import json
 import pdb
-from typing import List, Union
 from urllib.parse import parse_qs, urlencode
 from urllib.parse import urlparse
 
-import requests
-
-
-from stoobly_agent.app.cli.helpers.replay_facade import ReplayFacade
-from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.endpoint_model import EndpointModel
 from stoobly_agent.app.models.factories.resource.request import RequestResourceFactory
+from stoobly_agent.app.models.types import EndpointCreateParams, OPENAPI_FORMAT
 from stoobly_agent.app.models.types.request import RequestFindParams
-from stoobly_agent.app.proxy.replay.body_parser_service import JSON, decode_response, encode_response
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
+from stoobly_agent.app.settings import Settings
 
-# class EndpointFacade(ReplayFacade):
 class EndpointFacade():
-  def __init__(self, settings: Settings):
-    self.settings = settings
+  def __init__(self, __settings: Settings):
+    self.__settings = __settings
     self.__endpoint_model = EndpointModel()
-    self.local_db_request_adapter = RequestResourceFactory(self.settings.remote).local_db()
-    # super().__init__(settings)
+    self.local_db_request_adapter = RequestResourceFactory(self.__settings.remote).local_db()
+  
+  def create(self, **kwargs: EndpointCreateParams):
+    if kwargs.get('format') == OPENAPI_FORMAT:
+      self.__create_from_openapi(kwargs.get('endpoints'))
 
-  def main_foo(self, file_path: str):
+  # def __create_from_openapi(self, endpoints: str):
+  def __create_from_openapi(self, file_path: str):
     open_api_spec = self.__endpoint_model.validate_and_parse(file_path=file_path)
     endpoints = self.__endpoint_model.adapt_openapi_endpoints(open_api_spec)
 
@@ -125,5 +120,4 @@ class EndpointFacade():
       #   # self.local_db_request_adapter.update(request_id=request.id, **update_params)
     
     return
-
-
+ 
