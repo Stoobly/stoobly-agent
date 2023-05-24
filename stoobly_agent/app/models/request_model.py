@@ -36,7 +36,7 @@ class RequestModel(Model):
     try:
       # TODO: fix adapter
       local_adapter = RequestResourceFactory(self.settings.remote).local_db()
-      return local_adapter.find_similar(params)
+      return local_adapter.find_similar_requests(params)
 
       # return self.adapter.find_similar(params)
     except requests.exceptions.RequestException as e:

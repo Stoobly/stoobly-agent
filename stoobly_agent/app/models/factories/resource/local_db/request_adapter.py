@@ -221,21 +221,13 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return self.success(file_path)
 
-  def find_similar(self, params: RequestFindParams):
+  def find_similar_requests(self, params: RequestFindParams):
     pattern = f"%{params['pattern']}"
     candidates = self.__request_orm.where('host', params['host'])
     candidates = candidates.where('port', params['port'])
     candidates = candidates.where('method', params['method'])
     # candidates = candidates.where_raw('path LIKE %?', [pattern])
     candidates = candidates.where('path', 'like', pattern)
-
-    # candidates = candidates.select(
-    #   :body_params_hash, :body_text_hash, :endpoint_id, :headers_hash,
-    #   :id, :method, :path, :status, :position, :project_id, :query_params_hash,
-    #   :response_hash, :scenario_id, :response_headers_hash
-    # )
-
-    # pdb.set_trace()
 
     return candidates.get()
 

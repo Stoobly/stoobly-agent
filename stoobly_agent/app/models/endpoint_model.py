@@ -1,15 +1,20 @@
 from functools import reduce
+import urllib
 import pdb
-from typing import Dict, List, TypedDict, Union
+from typing import List, TypedDict
 import urllib
 import urllib.parse
 from urllib.parse import urlparse
 
 from openapi_core import Spec
-from stoobly_agent.app.proxy.replay.body_parser_service import JSON, MULTIPART_FORM, WWW_FORM_URLENCODED, decode_response, encode_response
-from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 
-from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
+from stoobly_agent.lib.api.interfaces.endpoints import (
+  Alias,
+  BodyParamName,
+  EndpointShowResponse,
+  RequestComponentName,
+)
+from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
 class QueryParamValue(TypedDict):
   value: str
@@ -24,13 +29,8 @@ class EndpointModel():
     spec = Spec.from_file_path(file_path)
     return spec
 
-  def extract_endpoints(self, spec: Spec) -> List[EndpointShowResponse]:
+  def adapt_openapi_endpoints(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []
-
-    # for item in spec.items():
-    #   print(item)
-    #
-    # print()
 
     components = spec.get("components")
     if not components:
@@ -47,6 +47,10 @@ class EndpointModel():
     paths = spec.getkey('paths')
 
     servers = spec / "servers"
+    if not servers:
+      default_server = {'url': '/'}
+      servers = [default_server]
+
     for _, server in enumerate(servers):
       url = server["url"]
       # variables = server / "variables"
@@ -72,12 +76,9 @@ class EndpointModel():
         for http_method in operations:
           if http_method not in path:
             continue
-          operation = path[http_method]
-          # print(f"method: {http_method}, url: {url}, path_name: {path_name}\noperation: {operation}\n")
 
           parsed_url = urlparse(url)
-          # endpoint = RequestShowResponse()
-          endpoint = EndpointShowResponse()
+          endpoint: EndpointShowResponse = {}
           endpoint['method'] = http_method.upper()
           endpoint['host'] = parsed_url.netloc
 
@@ -90,38 +91,66 @@ class EndpointModel():
               sanitized_part = '%' 
             pattern_path.append(sanitized_part)
           pattern_path_str = '/'.join(pattern_path)
-          endpoint['path'] = pattern_path_str
-
-          endpoint['port'] = parsed_url.port 
-          if endpoint['port'] is None:
+          endpoint['match_pattern'] = pattern_path_str
+          endpoint['path'] = joined_path
+          
+          endpoint['port'] = str(parsed_url.port)
+          if endpoint['port'] is None or endpoint['port'] == 'None':
             if parsed_url.scheme == 'https':
               endpoint['port'] = '443'
             if parsed_url.scheme == 'http':
               endpoint['port'] = '80'
 
+          operation = path[http_method]
           parameters = operation.get("parameters", {})
           query_params = {}
-          # query_params = Dict[str, Union[QueryParamValue, None]]
-          # query_params = Dict[str, QueryParamValue]
           for parameter in parameters:
-            # print(f"req params: {parameters}\n")
-
             if parameter['in'] == 'query':
-              # if not parameter['required']:
-              #   continue
+              query_param: RequestComponentName = {}
+              query_param['name'] = parameter['name']
+              query_param_example = parameter.get('example')
+              if query_param_example:
+                query_param['values'].append(query_param_example)
+              if parameter['required'] == True:
+                query_param['is_required'] = True
+              else:
+                query_param['is_required'] = False
 
-              query_param_val:  QueryParamValue = {
-                'value': parameter.get('example'),
-                'required': parameter['required']
-              }
-              query_params[parameter['name']] = query_param_val
+              if not endpoint.get('query_param_names'):
+                endpoint['query_param_names'] = []
+              query_param['is_deterministic'] = True
+              endpoint['query_param_names'].append(query_param)
+
             elif parameter['in'] == 'header':
-              endpoint['headers'] += parameter['name'] 
+              header: RequestComponentName = {}
+              header['name'] = parameter['name']
+              header_example = parameter.get('example')
+              if header_example:
+                header['values'].append(header_example)
+              if parameter['required'] == True:
+                header['is_required'] = True
+              else:
+                header['is_required'] = False
 
-          if query_params:
-            simple_dict = self.__to_simple_dict(query_params)
-            endpoint['query'] = urllib.parse.urlencode(simple_dict)
-            endpoint['query_params'] = query_params
+              if not endpoint.get('header_names'):
+                endpoint['header_names'] = []
+              header['is_deterministic'] = True
+              endpoint['header_names'].append(header)
+
+            elif parameter['in'] == 'path':
+              alias: Alias = {}
+              alias['name'] = '{' + parameter['name'] + '}'
+              # if not alias['id']:
+              #   alias['id'] = 1
+
+              if not endpoint.get('aliases'):
+                endpoint['aliases'] = []
+
+              endpoint['aliases'].append(alias)
+
+          # if query_params:
+          #   simple_dict = self.__to_simple_dict(query_params)
+          #   endpoint['query'] = urllib.parse.urlencode(simple_dict)
 
           # TODO: nested servers
           # servers = operation.get("servers", [])
@@ -138,7 +167,7 @@ class EndpointModel():
           # if not endpoint.get('url'):
           #   endpoint['url'] = self.__build_url(host=endpoint['host'], scheme='', port=endpoint['port'], path=endpoint['path'], query=endpoint.get('query'))
 
-          request_body = operation.get("requestBody")
+          request_body = operation.get("requestBody", {})
           # if not request_body:
           #   continue
 
@@ -146,7 +175,7 @@ class EndpointModel():
           # if not required_request_body:
           #   continue
 
-          content = request_body.get("content")
+          content = request_body.get("content", {})
           for mimetype, media_type in content.items():
             # if mimetype in [JSON, MULTIPART_FORM, WWW_FORM_URLENCODED]: 
             #   body = decode_response(content='', content_type=mimetype)
@@ -167,11 +196,35 @@ class EndpointModel():
               else:
                 ref_split = reference.split('#/components/schemas/')
                 component_name = ref_split[-1]
+
+                # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
                 body_spec = schemas.content()[component_name]
-                body_spec['content_type'] = mimetype
-                body_spec['required_body'] = required_request_body
-                # pdb.set_trace()
-                endpoint['body']: str = encode_response(content=body_spec, content_type=JSON)
+                # body_spec['content_type'] = mimetype
+                # body_spec['required_body'] = required_request_body
+
+                body_params: List[BodyParamName] = []
+                required_body_params = body_spec.get('required', [])
+                for body_param_name, body_param_props in body_spec['properties'].items():
+                  body_param: BodyParamName = {}
+                  body_param['name'] = body_param_name
+                  if body_param_name in required_body_params:
+                    body_param['is_required'] = True
+                  else:
+                    body_param['is_required'] = False
+
+                  for prop_key, prop_val in body_param_props.items():
+                    if prop_key == 'type':
+                      open_api_type = prop_val
+                      python_type = self.__convert_open_api_type(open_api_type)
+                      ruby_type = convert(python_type)
+                      body_param['inferred_type'] = ruby_type
+
+                  body_param['is_deterministic'] = True
+                  body_params.append(body_param)
+
+                if not endpoint.get('body_param_names'):
+                  endpoint['body_param_names'] = []
+                endpoint['body_param_names'] = body_params
 
           endpoints.append(endpoint)
     
@@ -191,7 +244,6 @@ class EndpointModel():
     for key, val in complex_dict.items():
       simple_dict[key] = val['value']
     
-    # pdb.set_trace()
     return simple_dict
 
 
@@ -211,3 +263,15 @@ class EndpointModel():
       s = f"{s}?{_query}"
 
     return s
+
+  # https://swagger.io/docs/specification/data-models/data-types/
+  def __convert_open_api_type(self, open_api_type: str) -> str:
+    type_map = {}
+    type_map['string'] = str(str)
+    type_map['number'] = str(float)
+    type_map['integer'] = str(int) 
+    type_map['boolean'] = str(bool) 
+    type_map['array'] = str(list)
+    type_map['object'] = str(dict)
+
+    return type_map[open_api_type]

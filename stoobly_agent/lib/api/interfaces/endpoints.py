@@ -1,4 +1,4 @@
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
 from .pagination_query_params import PaginationQueryParams
 
@@ -25,6 +25,11 @@ class ResponseParamName(RequestComponentName):
   query: str
 
 class EndpointShowResponse(TypedDict):
+  method: str
+  host: str
+  port: str
+  path: str
+  match_pattern: Optional[str]
   aliases: List[Alias]
   body_param_names: List[BodyParamName]
   header_names: List[RequestComponentName]
@@ -33,3 +38,4 @@ class EndpointShowResponse(TypedDict):
   response_param_names: List[ResponseParamName]
 
 ARRAY_TYPE = 'Array'
+
