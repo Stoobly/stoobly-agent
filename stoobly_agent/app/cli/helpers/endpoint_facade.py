@@ -25,7 +25,7 @@ class EndpointFacade():
     open_api_spec = self.__endpoint_model.validate_and_parse(file_path=file_path)
     endpoints = self.__endpoint_model.adapt_openapi_endpoints(open_api_spec)
 
-    # pdb.set_trace()
+    pdb.set_trace()
     for endpoint in endpoints:
       host = endpoint['host']
       if host == '':

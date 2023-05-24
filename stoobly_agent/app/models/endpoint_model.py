@@ -1,5 +1,4 @@
 from functools import reduce
-import urllib
 import pdb
 from typing import List, TypedDict
 import urllib
@@ -16,10 +15,6 @@ from stoobly_agent.lib.api.interfaces.endpoints import (
 )
 from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
-class QueryParamValue(TypedDict):
-  value: str
-  required: bool
-
 
 class EndpointModel():
   def __init__(self):
@@ -31,19 +26,8 @@ class EndpointModel():
 
   def adapt_openapi_endpoints(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []
-
     components = spec.get("components")
-    if not components:
-      # return
-      exit(0)
-
     schemas = components.get("schemas", {})
-    for schema_name, schema in schemas.items():
-      schema.getkey("readOnly")
-      schema.getkey("writeOnly")
-
-    # ---
-
     paths = spec.getkey('paths')
 
     servers = spec / "servers"
@@ -53,7 +37,6 @@ class EndpointModel():
 
     for _, server in enumerate(servers):
       url = server["url"]
-      # variables = server / "variables"
       variables = server.get("variables", {})
 
       for variable_name, variable in variables.items():
@@ -61,8 +44,6 @@ class EndpointModel():
         variable["enum"]
 
       for path_name, path in paths.items():
-        # print(f"path_name: {path_name}\npath: {path}\n")
-
         operations = [
             "get",
             "put",
@@ -101,9 +82,13 @@ class EndpointModel():
             if parsed_url.scheme == 'http':
               endpoint['port'] = '80'
 
-          operation = path[http_method]
-          parameters = operation.get("parameters", {})
           query_params = {}
+          alias_counter = 0
+          header_param_counter = 0
+          query_param_counter = 0
+          operation = path[http_method]
+
+          parameters = operation.get("parameters", {})
           for parameter in parameters:
             if parameter['in'] == 'query':
               query_param: RequestComponentName = {}
@@ -119,6 +104,9 @@ class EndpointModel():
               if not endpoint.get('query_param_names'):
                 endpoint['query_param_names'] = []
               query_param['is_deterministic'] = True
+              query_param_counter += 1
+              query_param['id'] = query_param_counter
+
               endpoint['query_param_names'].append(query_param)
 
             elif parameter['in'] == 'header':
@@ -135,18 +123,27 @@ class EndpointModel():
               if not endpoint.get('header_names'):
                 endpoint['header_names'] = []
               header['is_deterministic'] = True
+              header_param_counter += 1
+              header['id'] = header_param_counter
+
               endpoint['header_names'].append(header)
 
             elif parameter['in'] == 'path':
-              alias: Alias = {}
-              alias['name'] = '{' + parameter['name'] + '}'
-              # if not alias['id']:
-              #   alias['id'] = 1
-
               if not endpoint.get('aliases'):
                 endpoint['aliases'] = []
 
-              endpoint['aliases'].append(alias)
+              found_alias = None
+              for alias in endpoint['aliases']:
+                if parameter['name'] == alias['name']:
+                  found_alias = alias
+
+              if not found_alias:
+                alias: Alias = {}
+                alias_counter += 1
+                alias['id'] = alias_counter
+                alias['name'] = '{' + parameter['name'] + '}'
+
+                endpoint['aliases'].append(alias)
 
           # if query_params:
           #   simple_dict = self.__to_simple_dict(query_params)
@@ -175,6 +172,7 @@ class EndpointModel():
           # if not required_request_body:
           #   continue
 
+          body_param_counter = 0
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
             # if mimetype in [JSON, MULTIPART_FORM, WWW_FORM_URLENCODED]: 
@@ -205,7 +203,7 @@ class EndpointModel():
                 body_params: List[BodyParamName] = []
                 required_body_params = body_spec.get('required', [])
                 for body_param_name, body_param_props in body_spec['properties'].items():
-                  body_param: BodyParamName = {}
+                  body_param: BodyParamName = { 'body_param_name_id': None }
                   body_param['name'] = body_param_name
                   if body_param_name in required_body_params:
                     body_param['is_required'] = True
@@ -220,11 +218,16 @@ class EndpointModel():
                       body_param['inferred_type'] = ruby_type
 
                   body_param['is_deterministic'] = True
+                  body_param_counter += 1
+                  body_param['id'] = body_param_counter
                   body_params.append(body_param)
 
                 if not endpoint.get('body_param_names'):
                   endpoint['body_param_names'] = []
+
                 endpoint['body_param_names'] = body_params
+            else:
+              print('non reference')
 
           endpoints.append(endpoint)
     
@@ -275,3 +278,4 @@ class EndpointModel():
     type_map['object'] = str(dict)
 
     return type_map[open_api_type]
+

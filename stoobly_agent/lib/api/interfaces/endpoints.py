@@ -1,4 +1,4 @@
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, Union
 
 from .pagination_query_params import PaginationQueryParams
 
@@ -6,6 +6,7 @@ class EndpointsIndexQueryParams(PaginationQueryParams):
   project_id: str
 
 class RequestComponentName(TypedDict):
+  id: int 
   alias_id: int
   is_deterministic: bool
   is_required: bool
@@ -19,6 +20,7 @@ class Alias(TypedDict):
 class BodyParamName(RequestComponentName):
   inferred_type: str
   query: str
+  body_param_name_id: Union[int, None]
 
 class ResponseParamName(RequestComponentName):
   inferred_type: str
