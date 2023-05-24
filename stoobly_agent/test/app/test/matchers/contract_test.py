@@ -4,6 +4,7 @@ import pytest
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.matchers.context import MatchContext
 from stoobly_agent.app.proxy.test.matchers.contract import dict_matches, list_matches
+from stoobly_agent.config.constants.lifecycle_hooks import ON_CONTRACT_PARAM_NAME_EXISTS
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
 @pytest.fixture
@@ -41,20 +42,25 @@ class TestListMatchesList():
       [1], strict=True
     )
 
+    assert not matches
     assert log == "Key '[0]' type did not match: got <class 'int'>, expected valid types Hash", log
 
   def test_not_matches_list_element_type(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+    lifecycle_hooks = {}
+    lifecycle_hooks[ON_CONTRACT_PARAM_NAME_EXISTS] = lambda context, k, actual: True # Ignore this error
+
     match_context = MatchContext({
-      'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      'lifecycle_hooks': lifecycle_hooks, 'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade 
     })
 
     matches, log = list_matches(
       match_context, [{ "id": "934" }], strict=True
     )
 
+    assert not matches
     assert log == "Key '[0].id' type did not match: got <class 'str'>, expected valid types Integer", log
 
-  def test_not_matches_list_element_missing_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+  def test_not_matches_list_element_missing_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):  
     match_context = MatchContext({
       'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
     })
@@ -63,17 +69,21 @@ class TestListMatchesList():
       match_context, [{ "id": 934 }], strict=True
     )
 
+    assert not matches
     assert log == "Missing key: expected [0].requests_count to exist", log
 
   def test_not_matches_list_element_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
+    lifecycle_hooks = {}
+    lifecycle_hooks[ON_CONTRACT_PARAM_NAME_EXISTS] = lambda context, k, actual: True # Ignore this error
     match_context = MatchContext({
-      'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
+      'lifecycle_hooks': lifecycle_hooks, 'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
     })
 
     matches, log = list_matches(
       match_context, [{ "random_property": 934 }], strict=True
     )
 
+    assert not matches
     assert log == "Extra key: expected [0].random_property to not exist", log
 
   def test_not_matches_list_length(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -85,6 +95,7 @@ class TestListMatchesList():
       match_context, [], strict=True
     )
 
+    assert not matches
     assert log == "Key '[*]' length did not match: got 0", log
 
   def test_not_matches_list(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
@@ -95,5 +106,6 @@ class TestListMatchesList():
     matches, log = list_matches(
       match_context, {}, strict=True
     )
-
+    
+    assert not matches
     assert log == "Key '[*]' type did not match: got <class 'dict'>, expected <class 'list'>", log
