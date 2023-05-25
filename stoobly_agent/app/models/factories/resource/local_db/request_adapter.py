@@ -124,7 +124,6 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
   def update(self, request_id: int,  **params: RequestShowResponse):
     request = self.__request(request_id)
-    pdb.set_trace()
 
     if not request:
       return self.__request_not_found()
