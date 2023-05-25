@@ -14,6 +14,8 @@ from stoobly_agent.lib.api.interfaces.endpoints import (
 )
 from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
+from .schema_builder import SchemaBuilder
+
 class OpenApiEndpointAdapter():
   def __init__(self):
     return
@@ -296,120 +298,4 @@ class OpenApiEndpointAdapter():
 
     return type_map[open_api_type]
 
-class SchemaBuilder:
-  ###
-  #
-  # @param endpoint_id [Integer]
-  # @param param_name_class [QueryParamName, BodyParamName, ResponseParamName]
-  # @param param_column_name [String] e.g. query_param_name, body_param_name, response_param_name
-  #
-  def __init__(self, endpoint_id, param_name_class, param_column_name: str):
-    self.endpoint_id = endpoint_id
-    self.param_name_class = param_name_class
-    self.param_column_name: str = param_column_name
 
-    self.param_names = []
-    self.param_names_created = []
-
-  def __infer_type(self, val) -> str:
-    return val.__class__.__name__
-  
-  def build(self, params):
-    return self.__traverse('', params, None)
-
-  ###
-  #
-  # @param name [String] name of current param
-  # @param value [Object] value of current param
-  # @param param [QueryParamName, BodyParamName, ResponseParamName] parent param record
-  #
-  def __traverse(self, name: str, value, param: RequestComponentName):
-
-    # if type(value) is list:
-    #   self.__traverse_array(name, value, param)
-    # elif type(value) is dict:
-    #   self.__traverse_hash(name, value, param)
-
-    if value['inferred_type'] == 'Array':
-      return self.__traverse_array(name, value, param)
-    if value['inferred_type'] == 'Hash':
-      return self.__traverse_hash(name, value, param)
-
-  def __traverse_array(self, name: str, value, parent_param: RequestComponentName):
-    columns = {
-      # 'name':  f"{name.capitalize()}Element",
-      # 'query': f"{parent_param.get('query')}[*]" if parent_param else '[*]'
-      'query': value['name']
-    }
-    # columns[self.param_column_name] = parent_param
-
-    # Iterate
-    # types = {}
-    # for e in value:
-    #   _type = self.__infer_type(e)
-    #
-    #   if types.get(_type) is None:
-    #     columns['inferred_type'] = convert(_type)
-    #     types[_type] = self.__find_or_create_by(columns, value)
-    #
-    #   self.__traverse('', e, types[_type])
-
-    new_parent = {**value, **columns}
-    child = copy.deepcopy(new_parent)
-    child['id'] = new_parent['id'] + 1
-    child['name'] = f"{value['name']}Element"
-    child['query'] = f"{value['name']}[*]"
-    child['inferred_type'] = new_parent['items_type']
-    child[self.param_column_name + '_id'] = new_parent['id']
-
-    new_params = [new_parent, child]
-
-    return new_params 
-
-  def __traverse_hash(self, name, value, parent_param: RequestComponentName):
-    # Iterate
-    for k, v in value.items():
-      columns = {
-        # 'endpoint_id': self.endpoint_id,
-        'inferred_type': convert(self.__infer_type(v)),
-        'is_required': v is not None,
-        'name': k,
-        'query': f"{parent_param.get('query')}.{k}" if parent_param else k, 
-      }
-      # columns[self.param_column_name] = parent_param
-      param = self.__find_or_create_by(columns, value)
-
-      # self.__traverse(k, v, param)
-    return
-
-  def __find_or_create_by(self, columns, params):
-    param = self.__find_by(columns, params) 
-    if param is None:
-      self.__create(columns, params)
-
-    return
-
-  def __find_by(self, columns, params) -> Union[RequestComponentName, None]:
-    # columns: [('name', 'Element'), ('query', '[*]'), ('inferred_type', None)]
-    found_count = len(columns)
-    for field_key, field_val in columns.items():
-
-      # params: [{'name': 'tags', 'is_required': False, 'is_deterministic': True, 'id': 1}, {'name': 'limit', 'is_required': False, 'is_deterministic': True, 'id': 2}]
-      for param in params:
-        if field_key == param.get(field_key) and param[field_key] == field_val:
-          found_count -= 1
-          if found_count == 0:
-            return columns
-          break
-
-    return None
-
-  def __create(self, columns, params):
-    # create
-    param: RequestComponentName = columns
-    param[self.param_column_name + '_id'] = None
-    params.append(param)
-
-    self.param_names_created.append(param)
-    self.param_names.append(param)
-    return
