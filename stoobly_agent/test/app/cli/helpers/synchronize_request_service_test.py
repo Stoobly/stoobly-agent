@@ -28,12 +28,12 @@ class TestSynchronizeRequestService():
 
     def test_array_of_object_two_property(self, response_param_names_facade: RequestComponentNamesFacade):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
-      self.__decorate_with_values(response_param_names_facade, '[*].category', ['test'])
+      self.__decorate_with_values(response_param_names_facade, '[*].category', [1])
 
       response = [{}]
       synchronize_component(response_param_names_facade, response)[0]
 
-      assert self.__equals(response, [{'category': 'test', 'id': 934}]), print(response)
+      assert self.__equals(response, [{'category': 1, 'id': 934}]), print(response)
 
     def test_array_of_objects_one_property(self, response_param_names_facade: RequestComponentNamesFacade):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
