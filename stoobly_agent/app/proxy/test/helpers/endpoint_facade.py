@@ -49,6 +49,10 @@ class EndpointFacade():
 
     return self.__cached_endpoint_show_response
 
+  def with_show_response(self, res: EndpointShowResponse):
+    self.__cached_endpoint_show_response = res
+    return self
+
   @property
   def aliases(self):
     endpoint_show_response: EndpointShowResponse = self.get()

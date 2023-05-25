@@ -4,7 +4,7 @@ from typing import Iterable, List, TypedDict, Union
 
 from stoobly_agent.app.proxy.test.context_abc import TestContextABC as TestContext
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
-from stoobly_agent.config.constants.lifecycle_hooks import ON_CONTRACT_PARAM_NAME_EXISTS, ON_FUZZY_MATCHES, ON_LENGTH_MATCHES, ON_PARAM_NAME_EXISTS, ON_TYPE_EXISTS, ON_VALUE_MATCHES
+from stoobly_agent.config.constants.lifecycle_hooks import ON_LENGTH_MATCH_ERROR, ON_PARAM_NAME_EXISTS_ERROR, ON_PARAM_NAME_MISSING_ERROR, ON_TYPE_MATCH_ERROR, ON_VALID_TYPE_ERROR, ON_VALUE_MATCH_ERROR
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName, ResponseParamName
 from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
@@ -25,11 +25,20 @@ class IMatchContext(TypedDict):
 class MatchContext():
 
     def __init__(self, context: IMatchContext):
+        self.keys = context.get('keys') or [] # List of visited keys
         self.path_key = context['path_key']
         self.query = context['query']
 
         self.__lifecycle_hooks = context.get('lifecycle_hooks') # Optional
         self.__request_component_names_facade = context['request_component_names_facade']
+
+    @property
+    def current_key(self):
+        length = len(self.keys)
+
+        if length == 0:
+            return
+        return self.keys[length - 1]
 
     @property
     def request_component_names_query_index(self):
@@ -60,6 +69,7 @@ class MatchContext():
     def to_dict(self) -> IMatchContext:
         return {
             'lifecycle_hooks': self.__lifecycle_hooks,
+            'keys': self.keys.copy(),
             'path_key': self.path_key,
             'query': self.query,
             'request_component_names_facade': self.__request_component_names_facade,
@@ -69,10 +79,12 @@ class MatchContext():
         return __class__(self.to_dict())
 
     def visit_list(self, key):
+        self.keys.append(key)
         self.path_key = f"{self.path_key}[{key}]"
         self.query = f"{self.query}[*]"
 
     def visit_dict(self, key):
+        self.keys.append(key)
         self.path_key = '.'.join([self.path_key, key]) if len(self.path_key) > 0 else key
         self.query = '.'.join([self.query, key]) if len(self.query) > 0 else key
 
@@ -102,32 +114,11 @@ class MatchContext():
 
     ### Matchers
 
-    def contract_param_name_exists(self, key, actual):
-        '''
-        Does contract key exist in the actual response?
-        '''
-        handle_param_name_exists = self.__lifecyle_hook(ON_CONTRACT_PARAM_NAME_EXISTS)
-
-        if handle_param_name_exists:
-            return handle_param_name_exists(self.clone(), key, actual)
-        else:
-            return key in actual
-
     def length_matches(self, v1, v2):
-        handle_length_matches = self.__lifecyle_hook(ON_LENGTH_MATCHES)
-
-        if handle_length_matches:
-            return handle_length_matches(self.clone(), v1, v2)
-        else:
-            return len(v1) == len(v2)
+        return len(v1) == len(v2)
 
     def param_name_exists(self, key, actual):
-        handle_param_name_exists = self.__lifecyle_hook(ON_PARAM_NAME_EXISTS)
-
-        if handle_param_name_exists:
-            return handle_param_name_exists(self.clone(), key, actual)
-        else:
-            return key in actual
+        return key in actual
 
     def value_contract_matches(self, v1, contracts: Union[RequestComponentName, List[RequestComponentName]]):
         if not contracts:
@@ -147,28 +138,13 @@ class MatchContext():
         return False
 
     def value_fuzzy_matches(self, v1, v2):
-        handle_fuzzy_matches = self.__lifecyle_hook(ON_FUZZY_MATCHES)
-
-        if handle_fuzzy_matches:
-            return handle_fuzzy_matches(self.clone(), v1, v2)
-        else:
-            return type(v1) == type(v2)
+        return type(v1) == type(v2)
 
     def value_matches(self, v1, v2):
-        handle_value_matches = self.__lifecyle_hook(ON_VALUE_MATCHES)
-
-        if handle_value_matches:
-            return handle_value_matches(self.clone(), v1, v2)
-        else:
-            return v1 == v2
+        return v1 == v2
 
     def value_type_exists(self, value, valid_types: list):
-        handle_type_exists = self.__lifecyle_hook(ON_TYPE_EXISTS)
-
-        if handle_type_exists:
-            return handle_type_exists(self.clone(), value, valid_types)
-        else:
-            return type(value) in valid_types
+        return type(value) in valid_types
 
     def value_type_matches(self, t1, t2):
         if type(t1) == type(t2):
@@ -192,7 +168,41 @@ class MatchContext():
             return True
         return hasattr(l, 'sort') and isinstance(l, Iterable)
 
-    def __lifecyle_hook(self, name):
+    ### Errors
+
+    def handle_length_match_error(self, actual):
+        handler = self.__lifecycle_hook(ON_LENGTH_MATCH_ERROR)
+
+        if handler:
+            return handler(self.clone(), actual)
+
+    def handle_param_name_exists_error(self, actual):
+        handler = self.__lifecycle_hook(ON_PARAM_NAME_EXISTS_ERROR)
+
+        if handler:
+            return handler(self.clone(), actual)
+
+    def handle_param_name_missing_error(self, actual):
+        handler = self.__lifecycle_hook(ON_PARAM_NAME_MISSING_ERROR)
+
+        if handler:
+            return handler(self.clone(), actual)
+
+    def handle_type_match_error(self, actual):
+        handler = self.__lifecycle_hook(ON_TYPE_MATCH_ERROR)
+
+        if handler:
+            return handler(self.clone(), actual)
+
+    def handle_valid_type_error(self, actual):
+        handler = self.__lifecycle_hook(ON_VALID_TYPE_ERROR)
+
+        if handler:
+            return handler(self.clone(), actual)
+    
+    ### Private
+
+    def __lifecycle_hook(self, name):
         if not self.__lifecycle_hooks:
             return
 

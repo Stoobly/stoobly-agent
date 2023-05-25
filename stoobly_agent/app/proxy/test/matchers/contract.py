@@ -25,39 +25,49 @@ def matches(test_context: TestContext, facade: RequestComponentNamesFacade, actu
 
 def dict_matches(parent_context: MatchContext, actual: dict, **options: Options) -> Tuple[bool, str]:
     if not parent_context.value_is_dict(actual):
-        return type_match_error(parent_context.path_key, dict, type(actual))
+        if not parent_context.handle_type_match_error(actual):
+            return type_match_error(parent_context.path_key, dict, type(actual))
 
-    index = parent_context.request_component_names_query_index
     component_names = parent_context.children
 
     # Check all properties required by contract exist
     for component_name in component_names:
         key = component_name['name']
-        if not parent_context.contract_param_name_exists(key, actual):
+        if not parent_context.param_name_exists(key, actual):
             context = MatchContext(parent_context.to_dict())
             context.visit_dict(key)
-            return param_name_missing_error(context.path_key)
 
-    for key, actual_value in actual.items():
+            if not context.handle_param_name_missing_error(actual):
+                return param_name_exists_error(context.path_key)
+
+    index = parent_context.request_component_names_query_index
+
+    for key, actual_value in actual.copy().items():
         context = MatchContext(parent_context.to_dict())
         context.visit_dict(key)
 
         path_key = context.path_key
         query = context.query
 
+        # Check if the key exists in the contract
         if not context.param_name_exists(query, index):
-            if not options.get('strict'):
-                continue
-            else:
-                return param_name_exists_error(path_key)
+            if not context.handle_param_name_exists_error(actual):
+                if not options.get('strict'):
+                    continue
+                else:
+                    return param_name_exists_error(path_key)
         
-        contracts = index[query]
+        contracts = index.get(query)
+        if not contracts:
+            continue
+
         if not context.value_contract_matches(actual_value, contracts):
-            if context.ignored(actual_value, actual_value): # Might look weird, but expected_value == actual_value is fine here
-                continue
-            
-            valid_types = __build_valid_types(contracts)
-            return valid_type_error(path_key, actual_value, valid_types)
+            if not context.handle_type_match_error(actual):
+                if context.ignored(actual_value, actual_value): # Might look weird, but expected_value == actual_value is fine here
+                    continue
+                
+                valid_types = __build_valid_types(contracts)
+                return valid_type_error(path_key, actual_value, valid_types)
 
         if context.value_is_dict(actual_value):
             matches, log = dict_matches(context, actual_value, **options)
@@ -80,27 +90,30 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
 def list_matches(parent_context: MatchContext, actual: list, **options: Options) -> Tuple[bool, str]:
     parent_path_key = f"{parent_context.path_key}[*]"
     if not parent_context.value_is_list(actual):
-        return type_match_error(parent_path_key, list, type(actual))
+        if not parent_context.handle_type_match_error(actual):
+            return type_match_error(parent_path_key, list, type(actual))
 
     index = parent_context.request_component_names_query_index
     contracts: List[RequestComponentName] = index.get(parent_path_key) or []
 
     # If required, make sure not empty 
     if parent_context.required and len(actual) == 0 and len(contracts) > 0:
-        return length_match_error(parent_path_key, None, actual) 
+        if not parent_context.handle_length_match_error(actual):
+            return length_match_error(parent_path_key, None, actual) 
 
     valid_types = __build_valid_types(contracts)
 
-    for i, value in enumerate(actual):
+    for i, value in enumerate(actual.copy()):
         context = MatchContext(parent_context.to_dict())
         context.visit_list(i)
         path_key = context.path_key
 
         if not context.value_contract_matches(value, contracts):
-            if not context.selected() or not context.required():
-                continue
-
-            return valid_type_error(path_key, value, valid_types)
+            if not context.handle_valid_type_error(actual):
+                if not context.selected() or not context.required():
+                    continue
+                
+                return valid_type_error(path_key, value, valid_types)
 
         if context.value_is_dict(value):
             matches, log = dict_matches(context, value, **options)
