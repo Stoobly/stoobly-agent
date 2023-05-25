@@ -42,7 +42,7 @@ setup(
         "jmespath>=1.0.0",
         "mergedeep>=1.3.0,<1.3.4",
         "mitmproxy>=8.0.0,<=8.1.0",
-        "openapi-core>=0.17.0"
+        "openapi-core>=0.17.0",
         "orator>=0.9.9",
         "pyyaml>=5.4,<=5.4.1",
         "requests>=2.25.0,<=2.25.1",
