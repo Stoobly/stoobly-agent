@@ -38,11 +38,12 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
             context.visit_dict(key)
 
             if not context.handle_param_name_missing_error(actual):
-                return param_name_exists_error(context.path_key)
+                return param_name_missing_error(context.path_key)
 
     index = parent_context.request_component_names_query_index
 
-    for key, actual_value in actual.copy().items():
+    for key in actual.copy(): # Create a copy, actual might change during loop
+        actual_value = actual[key]
         context = MatchContext(parent_context.to_dict())
         context.visit_dict(key)
 
@@ -103,7 +104,8 @@ def list_matches(parent_context: MatchContext, actual: list, **options: Options)
 
     valid_types = __build_valid_types(contracts)
 
-    for i, value in enumerate(actual.copy()):
+    for i in range(len(actual)):
+        value = actual[i]
         context = MatchContext(parent_context.to_dict())
         context.visit_list(i)
         path_key = context.path_key

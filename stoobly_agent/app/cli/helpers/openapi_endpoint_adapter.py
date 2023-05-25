@@ -20,7 +20,7 @@ class OpenApiEndpointAdapter():
 
   def adapt_from_file(self, file_path) -> Spec:
     spec = Spec.from_file_path(file_path)
-    self.adapt(spec)
+    return self.adapt(spec)
 
   def adapt(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []

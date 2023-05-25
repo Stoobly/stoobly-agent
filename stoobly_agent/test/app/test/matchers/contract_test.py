@@ -3,8 +3,8 @@ import pytest
 
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.matchers.context import MatchContext
-from stoobly_agent.app.proxy.test.matchers.contract import dict_matches, list_matches
-from stoobly_agent.config.constants.lifecycle_hooks import ON_CONTRACT_PARAM_NAME_EXISTS
+from stoobly_agent.app.proxy.test.matchers.contract import list_matches
+from stoobly_agent.config.constants.lifecycle_hooks import ON_PARAM_NAME_MISSING_ERROR
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
 @pytest.fixture
@@ -47,7 +47,7 @@ class TestListMatchesList():
 
   def test_not_matches_list_element_type(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     lifecycle_hooks = {}
-    lifecycle_hooks[ON_CONTRACT_PARAM_NAME_EXISTS] = lambda context, k, actual: True # Ignore this error
+    lifecycle_hooks[ON_PARAM_NAME_MISSING_ERROR] = lambda context, actual: True # Ignore this error
 
     match_context = MatchContext({
       'lifecycle_hooks': lifecycle_hooks, 'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade 
@@ -74,7 +74,7 @@ class TestListMatchesList():
 
   def test_not_matches_list_element_properties(self, endpoints_list_response_param_names_facade: RequestComponentNamesFacade):
     lifecycle_hooks = {}
-    lifecycle_hooks[ON_CONTRACT_PARAM_NAME_EXISTS] = lambda context, k, actual: True # Ignore this error
+    lifecycle_hooks[ON_PARAM_NAME_MISSING_ERROR] = lambda context, actual: True # Ignore this error
     match_context = MatchContext({
       'lifecycle_hooks': lifecycle_hooks, 'path_key': '', 'query': '', 'request_component_names_facade': endpoints_list_response_param_names_facade
     })
