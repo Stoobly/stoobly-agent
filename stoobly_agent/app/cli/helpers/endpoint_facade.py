@@ -19,7 +19,7 @@ class EndpointFacade():
 
   def __create_from_openapi(self, file_path: str):
     endpoint_adapter = OpenApiEndpointAdapter()
-    endpoints = endpoint_adapter.adapt_openapi_endpoints(file_path)
+    endpoints = endpoint_adapter.adapt_from_file(file_path)
 
     for endpoint in endpoints:
       host = endpoint['host']
