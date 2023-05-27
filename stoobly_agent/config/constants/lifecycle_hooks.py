@@ -12,3 +12,6 @@ ON_PARAM_NAME_MISSING_ERROR = 'handle_param_name_missing_error'
 ON_TYPE_MATCH_ERROR = 'handle_type_match_error'
 ON_VALID_TYPE_ERROR = 'handle_valid_type_error'
 ON_VALUE_MATCH_ERROR = 'handle_value_match_error'
+
+BEFORE_REQUEST_COMPONENT_CREATE = 'handle_before_request_component_create'
+BEFORE_REQUEST_COMPONENT_DELETE = 'handle_before_request_component_delete'
