@@ -5,7 +5,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, 
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.matchers.contract import matches as contract_matches
-from stoobly_agent.app.settings.constants import request_component, RequestComponent
+from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants.lifecycle_hooks import ON_LENGTH_MATCH_ERROR, ON_PARAM_NAME_EXISTS_ERROR, ON_PARAM_NAME_MISSING_ERROR, ON_TYPE_MATCH_ERROR, ON_VALID_TYPE_ERROR
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.request import Request

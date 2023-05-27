@@ -2,7 +2,7 @@ from typing import Literal, Optional, TypedDict
 
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
 
-class EndpointCreateOptions(TypedDict):
+class EndpointCreateCliOptions(TypedDict):
   format: Optional[Literal[f"{OPENAPI_FORMAT}"]]
   lifecycle_hooks_script_path: Optional[str]
   path: str

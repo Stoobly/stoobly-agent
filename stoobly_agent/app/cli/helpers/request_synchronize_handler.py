@@ -3,12 +3,12 @@ import copy
 from typing import TypedDict, Union
 
 from stoobly_agent.app.proxy.test.matchers.context import MatchContext
-from stoobly_agent.app.settings.constants import request_component, RequestComponent
+from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_REQUEST_COMPONENT_CREATE, BEFORE_REQUEST_COMPONENT_DELETE
 
 class SynchronizeEvent():
 
-  def __init__(self, component_type: RequestComponent, previous_state: Union[dict, list], key, value):
+  def __init__(self, component_type: request_component.RequestComponent, previous_state: Union[dict, list], key, value):
     self.__component_type = component_type
     self.__key = key
     self.__previous_state = previous_state
@@ -36,12 +36,12 @@ class SynchronizeEvent():
 
 class SynchronizeCreateEvent():
 
-  def __init__(self, component_type: RequestComponent, previous_state: Union[dict, list], key, value):
+  def __init__(self, component_type: request_component.RequestComponent, previous_state: Union[dict, list], key, value):
     super().__init__(component_type, previous_state, key, value)
 
 class SynchronizeDeleteEvent():
 
-  def __init__(self, component_type: RequestComponent, previous_state: Union[dict, list], key):
+  def __init__(self, component_type: request_component.RequestComponent, previous_state: Union[dict, list], key):
     super().__init__(component_type, previous_state, key, None)
 
 class EventLog():
@@ -54,7 +54,7 @@ class EventLog():
 
 class RequestSynchronizeHandler():
 
-  def __init__(self, component_type: RequestComponent, lifecycle_hooks = {}):
+  def __init__(self, component_type: request_component.RequestComponent, lifecycle_hooks = {}):
     self.__component_type = component_type
     self.__event_log = EventLog()
     self.__lifecycle_hooks = lifecycle_hooks
