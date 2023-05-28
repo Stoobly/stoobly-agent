@@ -26,6 +26,7 @@ class OpenApiEndpointAdapter():
 
   def adapt(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []
+    endpoint_counter = 0
     components = spec.get("components")
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
@@ -58,8 +59,11 @@ class OpenApiEndpointAdapter():
           if http_method not in path:
             continue
 
+          endpoint_counter += 1
+
           parsed_url = urlparse(url)
           endpoint: EndpointShowResponse = {}
+          endpoint['id'] = endpoint_counter
           endpoint['method'] = http_method.upper()
           endpoint['host'] = parsed_url.netloc
 
@@ -227,7 +231,7 @@ class OpenApiEndpointAdapter():
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
-            builder = SchemaBuilder(-1, 'query_param_name')
+            builder = SchemaBuilder(endpoint['id'], 'query_param_name')
             built_params = builder.build(literal_query_params)
 
             built_params_list = list(built_params)
@@ -242,7 +246,7 @@ class OpenApiEndpointAdapter():
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            builder = SchemaBuilder(-1, 'body_param_name')
+            builder = SchemaBuilder(endpoint['id'], 'body_param_name')
             built_params = builder.build(literal_body_params)
 
             built_params_list  = list(built_params)
