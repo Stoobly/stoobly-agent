@@ -21,7 +21,7 @@ class EndpointFacade():
       lifecycle_hooks = {}
 
       try:
-          lifecycle_hooks = run_path(kwargs['lifecycle_hooks_script_path'])
+        lifecycle_hooks = run_path(kwargs['lifecycle_hooks_script_path'])
       except Exception as e:
         pass
 

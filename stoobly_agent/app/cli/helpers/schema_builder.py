@@ -9,7 +9,6 @@ class SchemaBuilder:
   ###
   #
   # @param endpoint_id [Integer]
-  # @param param_name_class [QueryParamName, BodyParamName, ResponseParamName]
   # @param param_column_name [String] e.g. query_param_name, body_param_name, response_param_name
   #
   def __init__(self, endpoint_id, param_column_name: str):
@@ -28,16 +27,10 @@ class SchemaBuilder:
   # @param param [QueryParamName, BodyParamName, ResponseParamName] parent param record
   #
   def __traverse(self, name: str, value, param: RequestComponentName):
-
     if type(value) is list:
       self.__traverse_array(name, value, param)
     elif type(value) is dict:
       self.__traverse_hash(name, value, param)
-
-    # if value['inferred_type'] == 'Array':
-    #   return self.__traverse_array(name, value, param)
-    # if value['inferred_type'] == 'Hash':
-    #   return self.__traverse_hash(name, value, param)
 
   def __traverse_array(self, name: str, value, parent_param: RequestComponentName):
     columns = {
@@ -65,6 +58,7 @@ class SchemaBuilder:
         'endpoint_id': self.endpoint_id,
         'inferred_type': convert(self.__infer_type(v)),
         'is_required': v is not None,
+        'is_deterministic': True,
         'name': k,
         'query': f"{parent_param.get('query')}.{k}" if parent_param else k, 
       }

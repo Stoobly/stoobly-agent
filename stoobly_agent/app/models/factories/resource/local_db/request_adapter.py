@@ -225,11 +225,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     candidates = self.__request_orm.where('host', params['host'])
     candidates = candidates.where('port', params['port'])
     candidates = candidates.where('method', params['method'])
-    # candidates = candidates.where_raw('path LIKE %?', [pattern])
     candidates = candidates.where('path', 'like', pattern)
 
     return candidates.get()
-
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):
