@@ -28,9 +28,9 @@ class TestConfigScenarioSet():
     def created_scenario(self, runner: CliRunner):
       scenario_create_result = runner.invoke(scenario, ['create', 'test'])
       assert scenario_create_result.exit_code == 0
-      scenario = Scenario.last()
-      scenario.update(overwritable=True)
-      return scenario
+      _scenario = Scenario.last()
+      _scenario.update(overwritable=True)
+      return _scenario
 
     @pytest.fixture(scope='class')
     def recorded_request(self, runner: CliRunner, created_scenario: Scenario):
