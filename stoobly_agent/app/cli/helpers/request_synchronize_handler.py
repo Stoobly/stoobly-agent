@@ -34,12 +34,12 @@ class SynchronizeEvent():
   def is_query_param(self):
     return self.__component_type == request_component.QUERY_PARAM
 
-class SynchronizeCreateEvent():
+class SynchronizeCreateEvent(SynchronizeEvent):
 
   def __init__(self, component_type: request_component.RequestComponent, previous_state: Union[dict, list], key, value):
     super().__init__(component_type, previous_state, key, value)
 
-class SynchronizeDeleteEvent():
+class SynchronizeDeleteEvent(SynchronizeEvent):
 
   def __init__(self, component_type: request_component.RequestComponent, previous_state: Union[dict, list], key):
     super().__init__(component_type, previous_state, key, None)
