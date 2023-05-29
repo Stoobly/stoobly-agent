@@ -27,6 +27,7 @@ class ResponseParamName(RequestComponentName):
   query: str
 
 class EndpointShowResponse(TypedDict):
+  id: int
   method: str
   host: str
   port: str

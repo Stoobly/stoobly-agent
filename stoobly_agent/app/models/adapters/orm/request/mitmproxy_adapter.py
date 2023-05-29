@@ -10,5 +10,9 @@ class MitmproxyRequestAdapter():
     self.__request = request
 
   def adapt(self):
-    python_request = RawHttpRequestAdapter(self.__request.raw)
-    return PythonRequestMitmproxyRequestAdapter(python_request).adapt()
+    raw_http_request_adapter = RawHttpRequestAdapter(self.__request.raw)
+    python_request = raw_http_request_adapter.to_request()
+    protocol = raw_http_request_adapter.protocol
+    http_version = protocol.split('/')[1]
+
+    return PythonRequestMitmproxyRequestAdapter(http_version, python_request).adapt()

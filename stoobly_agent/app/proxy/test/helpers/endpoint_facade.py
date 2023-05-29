@@ -33,7 +33,8 @@ class EndpointFacade():
 
     try:
       res = resource.show(
-        endpoint_id, aliases=True, 
+        endpoint_id,
+        aliases=True, 
         header_names=True,
         query_param_names=True,
         body_param_names=True,
@@ -56,7 +57,7 @@ class EndpointFacade():
   @property
   def aliases(self):
     endpoint_show_response: EndpointShowResponse = self.get()
-    return endpoint_show_response['aliases']
+    return endpoint_show_response.get('aliases', [])
 
   @property
   def header_names(self) -> RequestComponentNamesFacade:

@@ -1,18 +1,15 @@
-import copy
-import pdb
-
 from functools import reduce
-from openapi_core import Spec
-from typing import List, TypedDict, Union
+import pdb
+from typing import List
 from urllib.parse import urlparse
+
+from openapi_core import Spec
 
 from stoobly_agent.lib.api.interfaces.endpoints import (
   Alias,
-  BodyParamName,
   EndpointShowResponse,
   RequestComponentName,
 )
-from stoobly_agent.lib.utils.python_to_ruby_type import convert
 
 from .schema_builder import SchemaBuilder
 

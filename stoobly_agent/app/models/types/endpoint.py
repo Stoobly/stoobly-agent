@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict
 
-OPENAPI_FORMAT = 'openapi'
+OPENAPI_FORMAT = 'open-api'
 
 class EndpointCreateParams(TypedDict):
   format: Literal[f"{OPENAPI_FORMAT}"]

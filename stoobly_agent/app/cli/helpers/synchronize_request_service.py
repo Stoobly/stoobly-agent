@@ -1,7 +1,11 @@
+import pdb
+from typing import Dict, List, Union
 from urllib.parse import parse_qs
 
 from stoobly_agent.app.models.adapters.orm import OrmRequestAdapterFactory, OrmResponseAdapterFactory
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, encode_response
+from stoobly_agent.app.proxy.test.context import TestContext
+from stoobly_agent.app.proxy.test.context_abc import TestContextABC
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.test.matchers.contract import matches as contract_matches
@@ -24,10 +28,16 @@ def synchronize_request(request: Request, endpoint: EndpointShowResponse, lifecy
   # Body
   headers = mitmproxy_request.headers
   body_params = decode_response(mitmproxy_request.content, headers.get('content-type'))
-  body_param_names_facade = facade.body_param_names
-  handler = RequestSynchronizeHandler(request_component.BODY_PARAM, lifecycle_hooks)
-  synchronize_component(body_params, body_param_names_facade, handler)
-  mitmproxy_request.content = encode_response(body_params)
+  # pdb.set_trace()
+  if body_params:
+    body_param_names_facade = facade.body_param_names
+    handler = RequestSynchronizeHandler(request_component.BODY_PARAM, lifecycle_hooks)
+    synchronize_component(body_params, body_param_names_facade, handler)
+    encoded_response = encode_response(body_params, headers.get('content-type'))
+    if type(encoded_response) is str:
+      mitmproxy_request.text = encoded_response
+    elif type(encoded_response) is bytes:
+      mitmproxy_request.content = encoded_response
 
   # Response
   python_response = OrmResponseAdapterFactory(request.response).python_response()
@@ -43,27 +53,28 @@ def synchronize_component(component, facade: RequestComponentNamesFacade, handle
   lifecycle_hooks = __lifecycle_hooks(handler)
   context = __context(lifecycle_hooks)
 
-  return contract_matches(context, facade, component)
+  # pdb.set_trace()
+
+  return contract_matches(context, facade, component, strict=True)
 
 def validate_component(facade: RequestComponentNamesFacade, component):
   context = __context({})
 
   return contract_matches(context, facade, component)
 
-def __context(lifecycle_hooks):
-  class TestContextMock():
+class TestContextMock(TestContext):
+  def __init__(self, lifecycle_hooks: dict):
+    self.__lifecycle_hooks = lifecycle_hooks
 
-    def __init__(self, lifecycle_hooks: dict):
-      self.__lifecycle_hooks = lifecycle_hooks
+  @property
+  def lifecycle_hooks(self):
+    return self.__lifecycle_hooks
 
-    @property
-    def lifecycle_hooks(self):
-      return self.__lifecycle_hooks
+  @lifecycle_hooks.setter
+  def lifecycle_hooks(self, v):
+    self.__lifecycle_hooks = v
 
-    @lifecycle_hooks.setter
-    def lifecycle_hooks(self, v):
-      self.__lifecycle_hooks = v
-
+def __context(lifecycle_hooks) -> TestContextMock:
   return TestContextMock(lifecycle_hooks)
 
 def __lifecycle_hooks(handler: RequestSynchronizeHandler):
@@ -80,3 +91,4 @@ def __lifecycle_hooks(handler: RequestSynchronizeHandler):
 def __synchronize_response(endpoint: EndpointShowResponse):
   # For each request / scenario, replay and overwrite
   pass
+
