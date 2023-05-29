@@ -28,12 +28,13 @@ def synchronize_request(request: Request, endpoint: EndpointShowResponse, lifecy
   # Body
   headers = mitmproxy_request.headers
   body_params = decode_response(mitmproxy_request.content, headers.get('content-type'))
-  # pdb.set_trace()
+
   if body_params:
     body_param_names_facade = facade.body_param_names
     handler = RequestSynchronizeHandler(request_component.BODY_PARAM, lifecycle_hooks)
     synchronize_component(body_params, body_param_names_facade, handler)
     encoded_response = encode_response(body_params, headers.get('content-type'))
+
     if type(encoded_response) is str:
       mitmproxy_request.text = encoded_response
     elif type(encoded_response) is bytes:
@@ -52,8 +53,6 @@ def synchronize_request(request: Request, endpoint: EndpointShowResponse, lifecy
 def synchronize_component(component, facade: RequestComponentNamesFacade, handler: RequestSynchronizeHandler):
   lifecycle_hooks = __lifecycle_hooks(handler)
   context = __context(lifecycle_hooks)
-
-  # pdb.set_trace()
 
   return contract_matches(context, facade, component, strict=True)
 

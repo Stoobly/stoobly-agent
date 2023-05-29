@@ -13,10 +13,6 @@ from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
 def mock_data_directory_path():
   return Path(__file__).parent.parent.parent.parent / 'mock_data'
 
-@pytest.fixture(scope='class')
-def petstore_file_path(mock_data_directory_path):
-  path = mock_data_directory_path / "petstore.yaml"
-  return path 
 
 @pytest.fixture(scope='class')
 def petstore_expanded_file_path(mock_data_directory_path):
