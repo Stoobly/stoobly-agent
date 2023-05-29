@@ -1,5 +1,5 @@
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import TypedDict
+from typing import List, TypedDict
 
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 
@@ -11,6 +11,10 @@ class RequestCreateParams(TypedDict):
 
 class RequestDestroyParams(TypedDict):
   force: bool
+
+class RequestDestroyAllParams(TypedDict):
+  ids: List[int] 
+  scenario_id: int
 
 class RequestFindParams(TypedDict):
   host: str
@@ -24,4 +28,3 @@ class RequestShowParams(TypedDict):
   project_id: str
   query_params: bool
   response: bool
-

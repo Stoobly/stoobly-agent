@@ -4,7 +4,6 @@ import time
 import yaml
 
 from shutil import copyfile
-from typing import TypedDict
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -112,6 +111,10 @@ class Settings:
             **{ 'remote': self.__remote_settings.to_dict() },
             **{ 'ui': self.__ui_settings.to_dict() },
         }
+
+    def read(self):
+        with open(self.__settings_file_path, 'r') as fp:
+            return yaml.safe_load(fp)
 
     def validate(self):
         try:

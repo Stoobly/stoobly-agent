@@ -6,6 +6,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode, mock_policy, record_policy, replay_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
+from .helpers.handle_config_update_service import handle_policy_update
+
 settings = Settings.instance()
 
 mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
@@ -19,7 +21,7 @@ def __get_policy_options(active_mode):
     if active_mode == mode.MOCK:
         return [mock_policy.ALL, mock_policy.FOUND]
     elif active_mode == mode.RECORD:
-        return [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND]
+        return [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND,record_policy.OVERWRITE]
     elif active_mode == mode.REPLAY:
         return [replay_policy.ALL]
     elif active_mode == mode.TEST:
@@ -98,6 +100,8 @@ def configure(**kwargs):
 
         print(f"Updating {_mode} policy to {kwargs['policy']}")
     
+    handle_policy_update(settings)
+
     settings.commit()
 
 @intercept.command(

@@ -14,6 +14,7 @@ from stoobly_agent.lib.logger import Logger
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
+from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
@@ -46,6 +47,10 @@ def handle_response_record(context: RecordContext):
 
         if res.status_code == custom_response_codes.NOT_FOUND:
             __record_request(context, request_model)
+    elif active_record_policy == record_policy.OVERWRITE:
+        overwrite_scenario(intercept_settings.scenario_key)
+
+        __record_request(context, request_model)
     else:
         if active_record_policy != record_policy.NONE:
             return bad_request(

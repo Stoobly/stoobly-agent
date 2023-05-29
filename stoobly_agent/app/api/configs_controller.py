@@ -2,6 +2,7 @@ import pdb
 
 from mergedeep import merge
 
+from stoobly_agent.app.cli.helpers.handle_config_update_service import context as handle_context, handle_project_update, handle_policy_update, handle_scenario_update
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants import mode, replay_policy
@@ -38,7 +39,7 @@ class ConfigsController:
             )
         elif active_mode == mode.RECORD:
             context.render(
-                json = [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND],
+                json = [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND, record_policy.OVERWRITE],
                 status = 200
             )
         elif active_mode == mode.REPLAY:
@@ -66,7 +67,7 @@ class ConfigsController:
         project_id = ProjectKey(project_key).id if project_key else None
                 
         scenario_key = intercept_settings.scenario_key
-        scenario_id =  ScenarioKey(scenario_key).id if scenario_key else None
+        scenario_id = ScenarioKey(scenario_key).id if scenario_key else None
 
         # Check to make sure the scenario still exists
         if self.is_remote_enabled(context) and scenario_id:
@@ -97,18 +98,16 @@ class ConfigsController:
     def update(self, context):
         settings = Settings.instance()
 
-        project_key = settings.proxy.intercept.project_key
-
         merged_settings = merge(settings.to_dict(), context.params)
         settings.from_dict(merged_settings)
 
-        # If the active project changed, stop intercepting 
-        if project_key != settings.proxy.intercept.project_key:
-            if settings.proxy.intercept.active:
-                settings.proxy.intercept.active = False
-                merged_settings = settings.to_dict()
+        _handle_context = handle_context()
 
-        settings.write(merged_settings)
+        handle_project_update(settings, _handle_context)
+        handle_policy_update(settings, _handle_context)
+        handle_scenario_update(settings, _handle_context)
+
+        settings.write(settings.to_dict())
 
         context.render(
             json = merged_settings,

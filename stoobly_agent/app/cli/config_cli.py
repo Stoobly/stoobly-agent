@@ -15,6 +15,7 @@ from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
 from .helpers import  ProjectFacade, ScenarioFacade
+from .helpers.handle_config_update_service import handle_project_update, handle_scenario_update
 from .helpers.print_service import print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
@@ -100,7 +101,11 @@ def set(**kwargs):
         return print("Please provide a scenario that belongs to the current project.\n")
 
     data_rule = settings.proxy.data.data_rules(project_key.id)
+
     data_rule.scenario_key = kwargs['scenario_key']
+
+    handle_scenario_update(settings)
+
     settings.commit()
 
     print("Scenario updated!")
@@ -409,7 +414,6 @@ if is_remote:
 
         print("Project updated!")
 
-
 if is_remote:
     config.add_command(api_key)
 
@@ -436,20 +440,11 @@ def __project_key(settings):
     return ProjectKey(project_key)
 
 def __set_project_key(project_key: str):
-    settings = Settings.instance()
     validate_project_key(project_key)
-    _project_key = ProjectKey(project_key)
 
-    data_rule = settings.proxy.data.data_rules(_project_key.id)
-    scenario_key = data_rule.scenario_key
-
-    if scenario_key:
-        validate_scenario_key(scenario_key)
-        scenario_key = ScenarioKey(scenario_key)
-
-        if project_key.id != scenario_key.project_id:
-            data_rule.scenario_key = None
-            print("Current scenario does not belong to current project, unsetting current scenario.\n")
-
+    settings = Settings.instance()
     settings.proxy.intercept.project_key = project_key 
+
+    handle_project_update(settings)
+
     settings.commit()

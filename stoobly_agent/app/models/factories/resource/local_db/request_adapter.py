@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
-from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestFindParams, RequestShowParams
+from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestFindParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
@@ -207,6 +207,33 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       request.update({'is_deleted': True})
 
     return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
+
+  def destroy_all(self, **params: RequestDestroyAllParams) -> Tuple[RequestsIndexQueryParams, int]:
+    ids = params.get('ids')
+    scenario_id = params.get('scenario_id')
+
+    if not isinstance(ids, list) and not scenario_id:
+      return self.bad_request('Missing ids')
+    
+    requests_query_builder = self.__request_orm
+
+    if isinstance(ids, list):
+      requests_query_builder = requests_query_builder.where_in('id', ids)
+
+    if scenario_id:
+      requests_query_builder = requests_query_builder.where_for(scenario_id=scenario_id)
+
+    requests = requests_query_builder.get()
+
+    res = self.success({
+      'list': list(map(lambda request: ORMToStooblyRequestTransformer(request, {}).transform(), requests)),
+      'total': requests.count(),
+    })
+
+    for request in requests:
+      request.delete()
+
+    return res
 
   def snapshot(self, request_id: str, **params):
     request = self.__request(request_id)
