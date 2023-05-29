@@ -10,7 +10,7 @@ from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from .base import Base
 
 class Scenario(Base):
-  __fillable__ = ['name','description', 'is_deleted', 'position', 'priority', 'starred', 'uuid']
+  __fillable__ = ['name','description', 'is_deleted', 'overwritable', 'position', 'priority', 'starred', 'uuid']
   
   @has_many
   def requests(self):

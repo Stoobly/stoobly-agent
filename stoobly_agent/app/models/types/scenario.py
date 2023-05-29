@@ -6,4 +6,4 @@ class ScenarioCreateParams(TypedDict):
   priority: int
   
 class ScenarioDestroyParams(TypedDict):
-    force: bool
+  force: bool

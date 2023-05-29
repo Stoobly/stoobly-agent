@@ -7,6 +7,7 @@ class ScenarioShowResponse(TypedDict):
   description: str
   key: str
   name: str
+  overwritable: bool
   updated_at: str
 
 class ScenariosIndexQueryParams(PaginationQueryParams):
