@@ -66,13 +66,20 @@ class TestSynchronizeRequestService():
       assert success == True
 
     def __decorate_with_values(self, facade: RequestComponentNamesFacade, query: str, value):
-      # pdb.set_trace()
       facade.query_index[query]['values'] = value
 
     def __equals(self, a, b):
       return json.dumps(a) == json.dumps(b)
 
   class TestWhenRemoving():
+    @pytest.fixture(scope='function')
+    def body_param_names_facade(self):
+      body_param_names = copy.deepcopy(endpoint_show_response['body_param_names'])
+      aliases = copy.deepcopy(endpoint_show_response['aliases'])
+
+      facade = RequestComponentNamesFacade(body_param_names).with_aliases(aliases)
+      return facade
+
     @pytest.fixture(scope='function')
     def response_param_names_facade(self):
       response_param_names = copy.deepcopy(endpoint_show_response['response_param_names'])
@@ -92,6 +99,18 @@ class TestSynchronizeRequestService():
       assert self.__equals(response, expected_response), print(response) 
       assert success == True
 
+    def test_dict_of_objects(self, body_param_names_facade: RequestComponentNamesFacade):
+      self.__decorate_with_values(body_param_names_facade, 'name', ['abc'])
+      response = {'name': 'abc', 'to-remove': 1}
+      expected_response = {'name': 'abc'}
+      handler = RequestSynchronizeHandler(request_component.BODY_PARAM)
+
+      result = synchronize_component(response, body_param_names_facade, handler)
+      success = result[0]
+
+      assert self.__equals(response, expected_response), print(response)
+      assert success == True
+
     def test_array_of_object_one_property(self, response_param_names_facade: RequestComponentNamesFacade):
       response = [{'to-remove': 1}]
       expected_response = [{}]
@@ -105,4 +124,7 @@ class TestSynchronizeRequestService():
 
     def __equals(self, a, b):
       return json.dumps(a) == json.dumps(b)
+
+    def __decorate_with_values(self, facade: RequestComponentNamesFacade, query: str, value):
+      facade.query_index[query]['values'] = value
 
