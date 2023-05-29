@@ -7,20 +7,22 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.config.constants import custom_headers, mode, record_policy, request_origin
-from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.constants import firewall_action, request_component
+from stoobly_agent.config.constants import custom_headers, mode, record_policy, request_origin
 from stoobly_agent.cli import config, intercept, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.utils.decode import decode
 
-@pytest.fixture()
+@pytest.fixture(scope='module')
 def runner():
   return CliRunner()
 
 class TestRecording():
-  @pytest.fixture(autouse=True)
+  @pytest.fixture(scope='class', autouse=True)
   def settings(self):
     return reset()
 
@@ -129,6 +131,10 @@ class TestRecording():
         assert json.loads(body).get(body_param) == body_param_value
 
   class TestFirewall():
+    @pytest.fixture(scope='function', autouse=True)
+    def settings(self):
+      return reset()
+
     class TestWhenCli():
 
       def test_it_does_not_exclude(self, runner: CliRunner):
@@ -245,6 +251,9 @@ class TestRecording():
       assert Request.count() == 2
 
   class TestFoundPolicy():
+    @pytest.fixture(scope='function', autouse=True)
+    def settings(self):
+      return reset()
 
     def test_it_does_not_record_any_requests(self, runner: CliRunner):
       intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])
@@ -278,3 +287,40 @@ class TestRecording():
       assert record_result.exit_code == 0
 
       assert Request.count() == 2
+
+  class TestOverwritePolicy():
+
+    @pytest.fixture(scope='class', autouse=True)
+    def created_scenario(self, runner: CliRunner):
+      scenario_create_result = runner.invoke(scenario, ['create', 'test'])
+      assert scenario_create_result.exit_code == 0
+
+      return Scenario.last()
+
+    @pytest.fixture(scope='class', autouse=True)
+    def recorded_request(self, runner: CliRunner, created_scenario: Scenario):
+        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        return Request.last()
+
+    def test_it_sets_scenario_overwritable(self, runner: CliRunner, created_scenario: Scenario):
+      _created_scenario = Scenario.find(created_scenario.id)
+      assert _created_scenario.requests_count == 1
+
+      config_results = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.OVERWRITE])
+      assert config_results.exit_code == 0
+
+      set_results = runner.invoke(config, ['scenario', 'set', created_scenario.key()])
+      assert set_results.exit_code == 0
+
+      _created_scenario = Scenario.find(created_scenario.id)
+      assert _created_scenario.requests_count == 1
+      assert _created_scenario.overwritable
+
+      # Only on first request record do overwrite the scenario
+      record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+
+      _created_scenario = Scenario.find(created_scenario.id)
+      assert _created_scenario.requests_count == 1
+      assert _created_scenario.overwritable == False
