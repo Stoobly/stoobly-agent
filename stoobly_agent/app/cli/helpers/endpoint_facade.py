@@ -1,5 +1,4 @@
 import pdb
-
 from runpy import run_path
 
 from stoobly_agent.app.models.factories.resource.request import RequestResourceFactory
@@ -9,12 +8,13 @@ from stoobly_agent.app.settings import Settings
 
 from ..types.endpoint import EndpointCreateCliOptions
 from .openapi_endpoint_adapter import OpenApiEndpointAdapter
-from .synchronize_request_service import synchronize_request
+from .synchronize_request_service import SynchronizeRequestService
 
 class EndpointFacade():
   def __init__(self, __settings: Settings):
     self.__settings = __settings
     self.local_db_request_adapter = RequestResourceFactory(self.__settings.remote).local_db()
+    self.synchronize_request_service = SynchronizeRequestService(local_db_request_adapter=self.local_db_request_adapter)
   
   def create(self, **kwargs: EndpointCreateCliOptions):
     if kwargs.get('format') == OPENAPI_FORMAT:
@@ -46,4 +46,5 @@ class EndpointFacade():
       # pdb.set_trace()
 
       for request in similar_requests:
-        synchronize_request(request, endpoint, lifecycle_hooks)
+        self.synchronize_request_service.synchronize_request(request, endpoint, lifecycle_hooks)
+
