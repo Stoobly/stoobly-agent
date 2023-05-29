@@ -91,4 +91,4 @@ class TestImport():
         def test_it_deletes(self, created_request: Request, request_body):
             _created_request = Request.find(created_request.id)
             python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
-            assert python_request.content == json.dumps(request_body).encode()
+            assert python_request.data == json.dumps(request_body).encode()
