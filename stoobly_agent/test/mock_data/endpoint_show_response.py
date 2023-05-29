@@ -38,6 +38,32 @@ endpoint_show_response = {
       "query_param_name_id": None,
       "updated_at": "2022-05-31T07:48:32.700Z",
     },
+    {
+      "created_at": "2022-05-31T07:48:32.700Z",
+      "id": 2,
+      "inferred_type": "String",
+      "is_deterministic": True,
+      "is_required": False,
+      "name": "sort",
+      "query": "sort",
+      "requests_count": 1,
+      "query_param_name_id": None,
+      "updated_at": "2022-05-31T07:48:32.700Z",
+    },
+  ],
+  "body_param_names": [
+    {
+      "created_at": "2022-05-31T07:48:32.700Z",
+      "id": 1,
+      "inferred_type": "String",
+      "is_deterministic": True,
+      "is_required": True,
+      "name": "name",
+      "query": "name",
+      "requests_count": 1,
+      "body_param_name_id": None,
+      "updated_at": "2022-05-31T07:48:32.700Z",
+    },
   ],
   "response_param_names": [
     {
