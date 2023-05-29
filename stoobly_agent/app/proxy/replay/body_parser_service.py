@@ -35,6 +35,8 @@ def encode_response(content, content_type: Union[bytes, None, str]) -> Union[byt
     if not content_type:
         raise ValueError('Missing content_type value')
 
+    # pdb.set_trace()
+
     _content_type = normalize_header(content_type)
 
     encoded_response = content

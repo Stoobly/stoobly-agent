@@ -43,5 +43,7 @@ class EndpointFacade():
       params = RequestFindParams(host=host, port=port, method=method, pattern=pattern)
       similar_requests = self.local_db_request_adapter.find_similar_requests(params)
 
+      # pdb.set_trace()
+
       for request in similar_requests:
         synchronize_request(request, endpoint, lifecycle_hooks)

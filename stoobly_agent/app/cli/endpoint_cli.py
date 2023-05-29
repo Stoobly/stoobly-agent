@@ -29,8 +29,7 @@ def endpoint(ctx):
 def _import(**kwargs: EndpointCreateCliOptions):
   facade = EndpointFacade(settings)
 
-  with open(kwargs['path'], 'r') as fp: 
-    facade.create(**{
-      **kwargs,
-      'endpoints': fp.read(),
-    })
+  facade.create(**{
+    **kwargs,
+  })
+

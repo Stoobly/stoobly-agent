@@ -25,6 +25,20 @@ endpoint_show_response = {
       "response_param_names_count": 3
     }
   ],
+  "query_param_names": [
+    {
+      "created_at": "2022-05-31T07:48:32.700Z",
+      "id": 1,
+      "inferred_type": "Integer",
+      "is_deterministic": True,
+      "is_required": False,
+      "name": "limit",
+      "query": "limit",
+      "requests_count": 1,
+      "query_param_name_id": None,
+      "updated_at": "2022-05-31T07:48:32.700Z",
+    },
+  ],
   "response_param_names": [
     {
       "created_at": "2022-05-31T07:48:32.700Z",
