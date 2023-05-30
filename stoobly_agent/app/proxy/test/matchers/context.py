@@ -50,6 +50,9 @@ class MatchContext():
 
     @property
     def children(self) -> List[RequestComponentName]:
+        if self.query == '':
+            return self.__request_component_names_facade.edges_index.get(None) or []
+
         component_names = self.request_component_names_query_index.get(self.query)
         if not component_names:
             return []
