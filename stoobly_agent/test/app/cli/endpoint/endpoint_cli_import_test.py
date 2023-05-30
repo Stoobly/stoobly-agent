@@ -37,23 +37,63 @@ class TestImport():
         return reset()
 
     @pytest.fixture(scope='class')
-    def request_body(self):
+    def request_body_one(self):
         return {
             'name': 'pet1',
             'tag': 'best',
-            'delete': 1,
         }
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_request(self, settings: Settings, request_body):
+    def created_request_one(self, settings: Settings, request_body_one):
         body = json.dumps({
-            **request_body,
+            **request_body_one,
             'delete': 1,
         })
 
         req = requests.Request(
             method='POST',
-            url='http://localhost:3000/pets',
+            url='https://petstore.swagger.io/v2/pets',
+            headers={
+                'content-type': 'application/json'
+            },
+            data=body
+        )
+        
+        res_headers = {
+            'content-type': 'application/json'
+        }
+        res = requests.Response()
+        res.headers = res_headers
+        res.raw =  HTTPResponse(
+            body=BytesIO(body.encode()),
+            decode_content=False,
+            headers=res_headers,
+            preload_content=False
+        ) 
+        res.status_code = 200
+
+        params = build_params_from_python(req, res)
+
+        model = RequestModel(settings)
+        status = model.create(**params)[1]
+        assert status == 200
+        return Request.last()
+
+    @pytest.fixture(scope='class')
+    def request_body_two(self):
+        return {
+            'name': 'pet1',
+        }
+
+    @pytest.fixture(scope='class', autouse=True)
+    def created_request_two(self, settings: Settings, request_body_two):
+        body = json.dumps({
+            **request_body_two,
+        })
+
+        req = requests.Request(
+            method='POST',
+            url='https://petstore.swagger.io/v2/pets',
             headers={
                 'content-type': 'application/json'
             },
@@ -88,7 +128,15 @@ class TestImport():
             assert record_result.exit_code == 0
             return record_result
 
-        def test_it_deletes(self, created_request: Request, request_body):
-            _created_request = Request.find(created_request.id)
+        def test_it_deletes(self, created_request_one: Request, request_body_one):
+            _created_request = Request.find(created_request_one.id)
             python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
-            assert python_request.data == json.dumps(request_body).encode()
+            assert python_request.data == json.dumps(request_body_one).encode()
+
+        def test_it_adds(self, created_request_two: Request, request_body_two):
+            _created_request = Request.find(created_request_two.id)
+            python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
+            assert python_request.data == json.dumps({
+                **request_body_two,
+                #'tag': None, // Won't set since values is not set
+            }).encode()
