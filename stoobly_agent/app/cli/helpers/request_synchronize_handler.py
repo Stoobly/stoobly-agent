@@ -1,4 +1,5 @@
 import copy
+import pdb
 
 from typing import TypedDict, Union
 
@@ -68,6 +69,10 @@ class RequestSynchronizeHandler():
 
   def handle_param_name_missing(self, context: MatchContext, value: dict):
     request_component_name = context.request_component_name
+
+    # Component deleted already
+    if not request_component_name:
+      return True
 
     potential_values = request_component_name.get('values') or [None]
 

@@ -16,7 +16,15 @@ class TestSynchronizeRequestService():
     return SynchronizeRequestService(local_db_request_adapter=None)
 
   @pytest.fixture(scope='class')
-  def request_synchronize_handler(self) -> RequestSynchronizeHandler:
+  def query_synchronize_handler(self) -> RequestSynchronizeHandler:
+    return RequestSynchronizeHandler(request_component.QUERY_PARAM, {})
+
+  @pytest.fixture(scope='class')
+  def body_synchronize_handler(self) -> RequestSynchronizeHandler:
+    return RequestSynchronizeHandler(request_component.BODY_PARAM, {})
+
+  @pytest.fixture(scope='class')
+  def response_synchronize_handler(self) -> RequestSynchronizeHandler:
     return RequestSynchronizeHandler(request_component.RESPONSE_PARAM, {})
   
   @pytest.fixture(scope='function')
@@ -43,12 +51,25 @@ class TestSynchronizeRequestService():
     facade = RequestComponentNamesFacade(response_param_names).with_aliases(aliases)
     return facade
 
+
   class TestWhenAdding():
-    def test_array_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler: RequestSynchronizeHandler):
+    def test_dict_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, body_param_names_facade: RequestComponentNamesFacade, body_synchronize_handler: RequestSynchronizeHandler):
+      self.__decorate_with_values(body_param_names_facade, 'name', ['abc'])
+      body_params = {}
+      expected_body_params = {'name': 'abc'}
+
+      result = synchronize_request_service.synchronize_component(body_params, body_param_names_facade, body_synchronize_handler)
+
+      assert self.__equals(body_params, expected_body_params), print(body_params)
+
+      success = result[0]
+      assert success == True
+
+    def test_array_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
       response = [{}]
 
-      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
 
       expected_response = [{'id': 934}]
       assert self.__equals(response, expected_response), print(response)
@@ -56,12 +77,12 @@ class TestSynchronizeRequestService():
       success = result[0]
       assert success == True
 
-    def test_array_of_object_two_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler: RequestSynchronizeHandler):
+    def test_array_of_object_two_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
       self.__decorate_with_values(response_param_names_facade, '[*].category', [1])
 
       response = [{}]
-      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
 
       expected_response = [{'category': 1, 'id': 934}]
       assert self.__equals(response, expected_response), print(response)
@@ -69,11 +90,11 @@ class TestSynchronizeRequestService():
       success = result[0]
       assert success == True
 
-    def test_array_of_objects_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler: RequestSynchronizeHandler):
+    def test_array_of_objects_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
 
       response = [{}, {}]
-      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
 
       expected_response = [{'id': 934}, {'id': 934}]
       assert self.__equals(response, expected_response), print(response)
@@ -87,32 +108,32 @@ class TestSynchronizeRequestService():
     def __equals(self, a, b):
       return json.dumps(a) == json.dumps(b)
 
+
   class TestWhenRemoving():
-    def test_dict_of_object(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler):
+    def test_dict_of_object(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler):
       response = {'to-remove': 1}
       expected_response = {}
 
-      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
       success = result[0]
 
       assert self.__equals(response, expected_response), print(response) 
       assert success == True
 
-    def test_dict_of_objects(self, synchronize_request_service: SynchronizeRequestService, body_param_names_facade: RequestComponentNamesFacade):
+    def test_dict_of_objects(self, synchronize_request_service: SynchronizeRequestService, body_param_names_facade: RequestComponentNamesFacade, body_synchronize_handler: RequestSynchronizeHandler):
       self.__decorate_with_values(body_param_names_facade, 'name', ['abc'])
       response = {'name': 'abc', 'to-remove': 1}
       expected_response = {'name': 'abc'}
-      handler = RequestSynchronizeHandler(request_component.BODY_PARAM)
 
-      result = synchronize_request_service.synchronize_component(response, body_param_names_facade, handler)
+      result = synchronize_request_service.synchronize_component(response, body_param_names_facade, body_synchronize_handler)
       success = result[0]
 
       assert self.__equals(response, expected_response), print(response)
       assert success == True
     
-    def test_array_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler: RequestSynchronizeHandler):
+    def test_array_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       response = [{'to-remove': 1}]
-      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      result = synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
 
       expected_response = [{}]
       assert self.__equals(response, expected_response), print(response) 
@@ -120,9 +141,9 @@ class TestSynchronizeRequestService():
       success = result[0]
       assert success == True
 
-    def test_object_two_properties(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, request_synchronize_handler: RequestSynchronizeHandler):
+    def test_object_two_properties(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       response = [{'id': 1, 'remove': 1, 'remove2': 1}]
-      synchronize_request_service.synchronize_component(response, response_param_names_facade, request_synchronize_handler)
+      synchronize_request_service.synchronize_component(response, response_param_names_facade, response_synchronize_handler)
 
       assert self.__equals(response, [{'id': 1}]), print(response) 
 
