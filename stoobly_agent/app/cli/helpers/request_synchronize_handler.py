@@ -69,7 +69,7 @@ class RequestSynchronizeHandler():
   def handle_param_name_missing(self, context: MatchContext, value: dict):
     request_component_name = context.request_component_name
 
-    potential_values = request_component_name.get('values') or []
+    potential_values = request_component_name.get('values') or [None]
 
     if len(potential_values) > 0:
       key = context.current_key
