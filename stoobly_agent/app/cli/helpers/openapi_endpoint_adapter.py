@@ -253,14 +253,14 @@ class OpenApiEndpointAdapter():
     for param in built_params_list:
       if param['name'] in required_component_params:
         param['is_required'] = True
+
+        inferred_type = param['inferred_type']
+        default_python_type = convert_reverse(inferred_type)
+        if not param.get('values'):
+          param['values'] = []
+        param['values'].append(default_python_type)
       else:
         param['is_required'] = False
-
-      if not param.get('values'):
-        param['values'] = []
-      inferred_type = param['inferred_type']
-      default_python_type = convert_reverse(inferred_type)
-      param['values'].append(default_python_type)
 
     endpoint[component_name + 's'] = built_params_list
     del endpoint[literal_component_name]
