@@ -10,6 +10,7 @@ from stoobly_agent.lib.api.interfaces.endpoints import (
   EndpointShowResponse,
   RequestComponentName,
 )
+from stoobly_agent.lib.utils.python_to_ruby_type import convert_reverse
 
 from .schema_builder import SchemaBuilder
 
@@ -228,37 +229,41 @@ class OpenApiEndpointAdapter():
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
-            builder = SchemaBuilder(endpoint['id'], 'query_param_name')
-            built_params = builder.build(literal_query_params)
-
-            built_params_list = list(built_params)
-            for param in built_params_list:
-              if param in required_query_params:
-                param['is_required'] = True
-              else:
-                param['is_required'] = False
-            endpoint['query_param_names'] = built_params_list
-
-            del endpoint['literal_query_params']
+            self.__convert_literal_component_param(endpoint, required_query_params, literal_query_params, 'query_param_name', 'literal_query_params')
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            builder = SchemaBuilder(endpoint['id'], 'body_param_name')
-            built_params = builder.build(literal_body_params)
-
-            built_params_list  = list(built_params)
-            for param in built_params_list:
-              if param['name'] in required_body_params:
-                param['is_required'] = True
-              else:
-                param['is_required'] = False
-            endpoint['body_param_names'] = built_params_list
-
-            del endpoint['literal_body_params']
+            self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
 
           endpoints.append(endpoint)
     
     return endpoints
+
+  def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
+      required_component_params: List[str], literal_component_params: dict,
+      component_name: str, literal_component_name: str) -> None:
+
+    if not literal_component_params:
+      return
+
+    builder = SchemaBuilder(endpoint['id'], component_name)
+    built_params = builder.build(literal_component_params)
+
+    built_params_list = list(built_params)
+    for param in built_params_list:
+      if param['name'] in required_component_params:
+        param['is_required'] = True
+      else:
+        param['is_required'] = False
+
+      if not param.get('values'):
+        param['values'] = []
+      inferred_type = param['inferred_type']
+      default_python_type = convert_reverse(inferred_type)
+      param['values'].append(default_python_type)
+
+    endpoint[component_name + 's'] = built_params_list
+    del endpoint[literal_component_name]
 
   # urllib.parse.urljoin() doesn't work for some of our edge cases
   # and results in missing path components so use the custom __urljoin

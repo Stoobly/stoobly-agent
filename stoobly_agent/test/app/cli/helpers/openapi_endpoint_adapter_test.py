@@ -13,6 +13,10 @@ from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
 def mock_data_directory_path():
   return Path(__file__).parent.parent.parent.parent / 'mock_data'
 
+@pytest.fixture(scope='class')
+def petstore_file_path(mock_data_directory_path):
+  path = mock_data_directory_path / "petstore.yaml"
+  return path
 
 @pytest.fixture(scope='class')
 def petstore_expanded_file_path(mock_data_directory_path):
@@ -37,7 +41,9 @@ def expected_get_pets_endpoint() -> Dict:
         'is_required': False,
         'name': 'tags',
         'query': 'tags',
-        'query_param_name_id': None},
+        'query_param_name_id': None,
+        'values': [[]]
+      },
       {
         'endpoint_id': 1,
         'id': 2,
@@ -45,7 +51,8 @@ def expected_get_pets_endpoint() -> Dict:
         'is_required': False,
         'name': 'TagsElement',
         'query': 'tags[*]',
-        'query_param_name_id': 1
+        'query_param_name_id': 1,
+        'values': [''],
       },
       {
         'endpoint_id': 1,
@@ -55,7 +62,8 @@ def expected_get_pets_endpoint() -> Dict:
         'is_required': False,
         'name': 'limit',
         'query': 'limit',
-        'query_param_name_id': None
+        'query_param_name_id': None,
+        'values': [0],
       }
     ]
   }
@@ -78,7 +86,8 @@ def expected_post_pets_endpoint() -> Dict:
         'is_deterministic': True,
         'is_required': True,
         'name': 'name',
-        'query': 'name'
+        'query': 'name',
+        'values': [''],
       },
       {
         'body_param_name_id': None,
@@ -88,7 +97,8 @@ def expected_post_pets_endpoint() -> Dict:
         'is_deterministic': True,
         'is_required': False,
         'name': 'tag',
-        'query': 'tag'
+        'query': 'tag',
+        'values': [''],
       },
     ],
   }
@@ -123,7 +133,7 @@ def open_api_endpoint_adapter():
   return adapter
 
 class TestOpenApiEndpointAdapter():
-  def test_create(self, open_api_endpoint_adapter, petstore_expanded_file_path, expected_get_pets_endpoint, expected_post_pets_endpoint, expected_get_pets_id_endpoint, expected_delete_pets_id_endpoint):
+  def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_expanded_file_path, expected_get_pets_endpoint, expected_post_pets_endpoint, expected_get_pets_id_endpoint, expected_delete_pets_id_endpoint):
     adapter = open_api_endpoint_adapter
     file_path = petstore_expanded_file_path
 
@@ -135,7 +145,6 @@ class TestOpenApiEndpointAdapter():
     post_gets_endpoint = endpoints[1]
     get_pets_id_endpoint = endpoints[2]
     delete_pets_id_endpoint = endpoints[3]
-    # pdb.set_trace()
 
     assert get_pets_endpoint == expected_get_pets_endpoint
     assert post_gets_endpoint == expected_post_pets_endpoint
