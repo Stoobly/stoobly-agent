@@ -138,6 +138,5 @@ class TestImport():
             python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
             assert python_request.data == json.dumps({
                 **request_body_two,
-                'tag': '',
             }).encode()
 

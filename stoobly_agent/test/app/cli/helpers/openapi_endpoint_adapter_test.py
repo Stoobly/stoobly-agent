@@ -42,7 +42,6 @@ def expected_get_pets_endpoint() -> Dict:
         'name': 'tags',
         'query': 'tags',
         'query_param_name_id': None,
-        'values': [[]]
       },
       {
         'endpoint_id': 1,
@@ -52,7 +51,6 @@ def expected_get_pets_endpoint() -> Dict:
         'name': 'TagsElement',
         'query': 'tags[*]',
         'query_param_name_id': 1,
-        'values': [''],
       },
       {
         'endpoint_id': 1,
@@ -63,7 +61,6 @@ def expected_get_pets_endpoint() -> Dict:
         'name': 'limit',
         'query': 'limit',
         'query_param_name_id': None,
-        'values': [0],
       }
     ]
   }
@@ -98,7 +95,6 @@ def expected_post_pets_endpoint() -> Dict:
         'is_required': False,
         'name': 'tag',
         'query': 'tag',
-        'values': [''],
       },
     ],
   }

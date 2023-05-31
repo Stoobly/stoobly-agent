@@ -65,6 +65,17 @@ class TestSynchronizeRequestService():
       success = result[0]
       assert success == True
 
+    def test_dict_does_not_add_extra_optional_params(self, synchronize_request_service: SynchronizeRequestService, query_param_names_facade: RequestComponentNamesFacade, query_synchronize_handler: RequestSynchronizeHandler):
+      query_params = {'limit': 3, 'sort': 'color'}
+      expected_query_params = {'limit': 3, 'sort': 'color'}
+
+      result = synchronize_request_service.synchronize_component(query_params, query_param_names_facade, query_synchronize_handler)
+
+      assert self.__equals(query_params, expected_query_params), print(query_params)
+
+      success = result[0]
+      assert success == True
+
     def test_array_of_object_one_property(self, synchronize_request_service: SynchronizeRequestService, response_param_names_facade: RequestComponentNamesFacade, response_synchronize_handler: RequestSynchronizeHandler):
       self.__decorate_with_values(response_param_names_facade, '[*].id', [934])
       response = [{}]

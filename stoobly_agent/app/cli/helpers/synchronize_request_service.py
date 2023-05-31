@@ -1,5 +1,8 @@
+import copy
 from dataclasses import dataclass
 import pdb
+from urllib.parse import urlencode
+from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.orm import (
   OrmRequestAdapterFactory,
@@ -43,7 +46,16 @@ class SynchronizeRequestService():
     # Query Params
     query_param_names_facade = facade.query_param_names
     handler = RequestSynchronizeHandler(request_component.QUERY_PARAM, lifecycle_hooks)
-    self.synchronize_component(mitmproxy_request.query, query_param_names_facade, handler)
+    query_params = mitmproxy_request.query
+    result = self.synchronize_component(query_params, query_param_names_facade, handler)
+    success = result[0]
+    if success:
+      self.__remove_bad_params(query_params)
+      updated_url = self.__encode_query_params(request.url, request.path, query_params)
+      params: RequestShowResponse = {}
+      params['url'] = updated_url
+
+      self.local_db_request_adapter.update(request.id, **params)
 
     # Body
     headers = mitmproxy_request.headers
@@ -111,3 +123,25 @@ class SynchronizeRequestService():
   def __synchronize_response(self, endpoint: EndpointShowResponse):
     # For each request / scenario, replay and overwrite
     pass
+
+  def __encode_query_params(self, original_url: str, path: str, query_params) -> str:
+    query_tuples = []
+    for key in query_params:
+      for value in query_params.get_all(key):
+        if not isinstance(value, list):
+          query_tuples.append((key, value))
+        else:
+          for v in value:
+            query_tuples.append((key, v))
+
+    parsed_url = urlparse(original_url)
+    url = parsed_url._replace(path=path, query=urlencode(query_tuples))
+    return url.geturl()
+
+  def __remove_bad_params(self, query_params) -> None:
+    query_params_clone = copy.deepcopy(query_params)
+    for key in query_params_clone:
+      for value in query_params_clone.get_all(key):
+        if value == 'None':
+          del query_params[key]
+
