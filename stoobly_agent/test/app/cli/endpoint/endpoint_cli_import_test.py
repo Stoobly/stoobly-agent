@@ -4,19 +4,17 @@ import pytest
 import requests
 
 from click.testing import CliRunner
-from io import BytesIO
-from urllib3 import HTTPResponse
 from pathlib import Path
 
 from stoobly_agent.test.test_helper import reset
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
-from stoobly_agent.app.models.helpers.create_request_params_service import build_params_from_python
-from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.cli import endpoint
 from stoobly_agent.lib.orm.request import Request
+
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
 
 @pytest.fixture(scope='module')
 def runner():
@@ -45,38 +43,26 @@ class TestImport():
 
     @pytest.fixture(scope='class', autouse=True)
     def created_request_one(self, settings: Settings, request_body_one):
-        body = json.dumps({
+        body = {
             **request_body_one,
             'delete': 1,
-        })
+        }
 
-        req = requests.Request(
+        status = RequestBuilder(
             method='POST',
-            url='https://petstore.swagger.io/v2/pets',
-            headers={
+            request_body=body,
+            request_headers={
                 'content-type': 'application/json'
             },
-            data=body
-        )
-        
-        res_headers = {
-            'content-type': 'application/json'
-        }
-        res = requests.Response()
-        res.headers = res_headers
-        res.raw =  HTTPResponse(
-            body=BytesIO(body.encode()),
-            decode_content=False,
-            headers=res_headers,
-            preload_content=False
-        ) 
-        res.status_code = 200
-
-        params = build_params_from_python(req, res)
-
-        model = RequestModel(settings)
-        status = model.create(**params)[1]
+            response_body=body,
+            response_headers={
+                'content-type': 'application/json'
+            },
+            status_code=200,
+            url='https://petstore.swagger.io/v2/pets',
+        ).with_settings(settings).build()[1]
         assert status == 200
+
         return Request.last()
 
     @pytest.fixture(scope='class')
@@ -87,37 +73,25 @@ class TestImport():
 
     @pytest.fixture(scope='class', autouse=True)
     def created_request_two(self, settings: Settings, request_body_two):
-        body = json.dumps({
+        body = {
             **request_body_two,
-        })
+        }
 
-        req = requests.Request(
+        status = RequestBuilder(
             method='POST',
-            url='https://petstore.swagger.io/v2/pets',
-            headers={
+            request_body=body,
+            request_headers={
                 'content-type': 'application/json'
             },
-            data=body
-        )
-        
-        res_headers = {
-            'content-type': 'application/json'
-        }
-        res = requests.Response()
-        res.headers = res_headers
-        res.raw =  HTTPResponse(
-            body=BytesIO(body.encode()),
-            decode_content=False,
-            headers=res_headers,
-            preload_content=False
-        ) 
-        res.status_code = 200
-
-        params = build_params_from_python(req, res)
-
-        model = RequestModel(settings)
-        status = model.create(**params)[1]
+            response_body=body,
+            response_headers={
+                'content-type': 'application/json'
+            },
+            status_code=200,
+            url='https://petstore.swagger.io/v2/pets',
+        ).with_settings(settings).build()[1]
         assert status == 200
+
         return Request.last()
 
     class TestWhenImportingPestoreExpanded():
