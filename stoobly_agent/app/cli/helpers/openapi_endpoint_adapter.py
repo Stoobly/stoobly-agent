@@ -173,6 +173,9 @@ class OpenApiEndpointAdapter():
 
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
+          required_body_params = []
+          param_properties = {}
+          literal_body_params = {}
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
@@ -195,24 +198,22 @@ class OpenApiEndpointAdapter():
 
                 # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
                 body_spec = schemas.content()[component_name]
-
                 required_body_params = body_spec.get('required', [])
-
-                if not endpoint.get('literal_body_params'):
-                  endpoint['literal_body_params'] = {}
 
                 # {'name': {'type': 'string'}, 'tag': {'type': 'string'}}
                 param_properties = body_spec['properties']
-                literal_body_params = {}
-
-                for property_name, property_type_dict in param_properties.items():
-                  literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
-                  literal_body_params[property_name] = literal_val
-
-                endpoint['literal_body_params'] = literal_body_params
-
             else:
-              print('non reference')
+              required_body_params = schema.get('required', [])
+              param_properties = schema['properties']
+
+            if not endpoint.get('literal_body_params'):
+              endpoint['literal_body_params'] = {}
+
+            for property_name, property_type_dict in param_properties.items():
+              literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
+              literal_body_params[property_name] = literal_val
+
+            endpoint['literal_body_params'] = literal_body_params
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
