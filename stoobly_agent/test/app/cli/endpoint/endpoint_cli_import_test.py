@@ -42,7 +42,7 @@ class TestImport():
         }
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_request_one(self, settings: Settings, request_body_one):
+    def created_request_extra_body_param(self, settings: Settings, request_body_one):
         body = {
             **request_body_one,
             'delete': 1,
@@ -72,9 +72,9 @@ class TestImport():
         }
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_request_two(self, settings: Settings, request_body_two):
+    def created_request_missing_body_param(self, settings: Settings):
         body = {
-            **request_body_two,
+          'tag': 'best',
         }
 
         status = RequestBuilder(
@@ -102,15 +102,17 @@ class TestImport():
             assert record_result.exit_code == 0
             return record_result
 
-        def test_it_deletes(self, created_request_one: Request, request_body_one):
-            _created_request = Request.find(created_request_one.id)
+        def test_it_deletes(self, created_request_extra_body_param: Request, request_body_one):
+            _created_request = Request.find(created_request_extra_body_param.id)
             python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
             assert python_request.data == json.dumps(request_body_one).encode()
 
-        def test_it_adds(self, created_request_two: Request, request_body_two):
-            _created_request = Request.find(created_request_two.id)
+        def test_it_adds(self, created_request_missing_body_param: Request):
+            _created_request = Request.find(created_request_missing_body_param.id)
             python_request = RawHttpRequestAdapter(_created_request.raw).to_request()
+
             assert python_request.data == json.dumps({
-                **request_body_two,
+                'tag': 'best',
+                'name': '',
             }).encode()
 

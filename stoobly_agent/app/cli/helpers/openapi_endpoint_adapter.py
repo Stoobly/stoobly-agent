@@ -1,6 +1,9 @@
+import copy
 from functools import reduce
+import itertools
 import pdb
-from typing import List
+import re
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from openapi_core import Spec
@@ -29,18 +32,11 @@ class OpenApiEndpointAdapter():
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
 
-    servers = spec / "servers"
-    if not servers:
-      default_server = {'url': '/'}
-      servers = [default_server]
+    servers_spec = spec / "servers"
+    servers = self.__evaluate_servers(servers_spec)
 
     for _, server in enumerate(servers):
       url = server["url"]
-      variables = server.get("variables", {})
-
-      for variable_name, variable in variables.items():
-        variable["default"]
-        variable["enum"]
 
       for path_name, path in paths.items():
         operations = [
@@ -174,15 +170,6 @@ class OpenApiEndpointAdapter():
                 endpoint['aliases'].append(alias)
 
           # TODO: nested servers
-          # servers = operation.get("servers", [])
-          # for _, server in enumerate(servers):
-          #   server["url"]
-          #   server["description"]
-          #
-          #   variables = server.get("variables", {})
-          #   for variable_name, variable in variables.items():
-          #     variable["default"]
-          #     variable.getkey("enum")
 
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
@@ -321,4 +308,57 @@ class OpenApiEndpointAdapter():
     type_map['object'] = dict()
 
     return type_map[open_api_type]
+
+  def __num_variables(self, url: str) -> int:
+    num = url.count('{')
+    return num
+
+  def __evaluate_servers(self, servers: Spec) -> List[dict]:
+    result = []
+
+    if not servers:
+      default_server = {'url': '/'}
+      return [default_server]
+
+    for server in servers:
+      original_url = server["url"]
+
+      variables = server.get("variables", {})
+      if not variables:
+        result.append({'url': original_url})
+        continue
+
+      split_url = re.split('{|}', original_url)
+      existent_vars = {}
+      for part in split_url:
+        if part in variables.keys():
+          existent_vars[part] = variables[part]
+
+      var_to_possible_vals = {}
+      all_possible_vals = []
+
+      for variable_name, variable in existent_vars.items():
+        enum_list = variable.get('enum')
+        if enum_list:
+          var_to_possible_vals[variable_name] = enum_list
+        else:
+          default_value = variable['default']
+          var_to_possible_vals[variable_name] = [default_value]
+
+      all_possible_vals = list(var_to_possible_vals.values())
+      product = list(itertools.product(*all_possible_vals))
+
+      for permutation in product:
+        split_url_copy = copy.deepcopy(split_url)
+
+        for i, part in enumerate(split_url_copy):
+          for j, var in enumerate(var_to_possible_vals.keys()):
+            if var == part:
+              split_url_copy[i] = permutation[j]
+              break
+
+        evaluated_url = ''.join(split_url_copy)
+        result.append({'url': evaluated_url})
+    
+    return result
 
