@@ -186,22 +186,8 @@ class OpenApiEndpointAdapter():
 
             # If Spec Component reference, look it up in components
             if '$ref' in schema:
-              # '#/components/schemas/NewPet'
               reference = schema['$ref']
-              if not reference.startswith('#'):
-                print('external references are not supported yet')
-              if not reference.startswith('#/components/schemas'):
-                print('non component references are not supported yet')
-              else:
-                ref_split = reference.split('#/components/schemas/')
-                component_name = ref_split[-1]
-
-                # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-                body_spec = schemas.content()[component_name]
-                required_body_params = body_spec.get('required', [])
-
-                # {'name': {'type': 'string'}, 'tag': {'type': 'string'}}
-                param_properties = body_spec['properties']
+              param_properties = self.__dereference(schemas, reference, required_body_params)
             else:
               required_body_params = schema.get('required', [])
               param_properties = schema['properties']
@@ -209,9 +195,7 @@ class OpenApiEndpointAdapter():
             if not endpoint.get('literal_body_params'):
               endpoint['literal_body_params'] = {}
 
-            for property_name, property_type_dict in param_properties.items():
-              literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
-              literal_body_params[property_name] = literal_val
+            self.__extract_param_properties(schemas, None, required_body_params, param_properties, literal_body_params)
 
             endpoint['literal_body_params'] = literal_body_params
 
@@ -226,6 +210,34 @@ class OpenApiEndpointAdapter():
           endpoints.append(endpoint)
     
     return endpoints
+
+  def __extract_param_properties(self, schemas, reference, required_body_params, param_properties, literal_body_params):
+    for property_name, property_type_dict in param_properties.items():
+
+      if '$ref' in property_type_dict.keys():
+        reference = property_type_dict['$ref']
+        param_properties = self.__dereference(schemas, reference, required_body_params)
+        self.__extract_param_properties(schemas, reference, required_body_params, param_properties, literal_body_params)
+      else:
+        literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
+        literal_body_params[property_name] = literal_val
+
+  def __dereference(self, schemas: Spec, reference: str, required_body_params: List):
+    # '#/components/schemas/NewPet'
+    if not reference.startswith('#'):
+      print('external references are not supported yet')
+    if not reference.startswith('#/components/schemas'):
+      print('non component references are not supported yet')
+    else:
+      ref_split = reference.split('#/components/schemas/')
+      component_name = ref_split[-1]
+
+      # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+      body_spec = schemas.content()[component_name]
+      required_body_params += body_spec.get('required', [])
+      param_properties = body_spec['properties']
+
+      return param_properties 
 
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: dict,
