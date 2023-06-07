@@ -27,6 +27,11 @@ class TestOpenApiEndpointAdapter():
     return path
 
   @pytest.fixture(scope='class')
+  def petstore_references_file_path(self, mock_data_directory_path):
+    path = mock_data_directory_path / "petstore-references.yaml"
+    return path
+
+  @pytest.fixture(scope='class')
   def uspto_file_path(self, mock_data_directory_path):
     path = mock_data_directory_path / "uspto.yaml"
     return path
@@ -270,6 +275,121 @@ class TestOpenApiEndpointAdapter():
       assert get_root_http_endpoint == expected_get_root_http
       assert get_dataset_version_fields_https == expected_get_dataset_version_fields_https
       assert get_dataset_version_fields_http == expected_get_dataset_version_fields_http
-
       assert post_dataset_version_records_https == expected_post_dataset_version_records_https
       assert post_dataset_version_records_http == expected_post_dataset_version_records_http
+
+
+  class TestWhenAdaptingPetstoreReferences():
+
+    @pytest.fixture(scope='class')
+    def expected_get_v1_pets_ref(self) -> Dict:
+      return {
+        'id': 1,
+        'method': 'POST',
+        'host': 'petstore.swagger.io',
+        'port': '80',
+        'match_pattern': '/v1/pets',
+        'path': '/v1/pets',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tag',
+            'query': 'tag'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'color',
+            'query': 'color',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 4,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'age',
+            'query': 'age',
+            'values': [0]
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 5,
+            'inferred_type': 'Boolean',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'adopted',
+            'query': 'adopted',
+            'values': [False]
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 6,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'shelter',
+            'query': 'shelter'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 7,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'id',
+            'query': 'id',
+            'values': [0]
+          }
+        ],
+      }
+
+    @pytest.fixture(scope='class')
+    def expected_get_v2_pets_ref(self, expected_get_v1_pets_ref) -> Dict:
+      v2_endpoint = copy.deepcopy(expected_get_v1_pets_ref)
+      v2_endpoint['id'] = 2
+      v2_endpoint['path'] = '/v2/pets'
+      v2_endpoint['match_pattern'] = '/v2/pets'
+      for param in v2_endpoint['body_param_names']:
+        param['endpoint_id'] = 2
+      return v2_endpoint
+
+    def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_references_file_path, expected_get_v1_pets_ref, expected_get_v2_pets_ref):
+      adapter = open_api_endpoint_adapter
+      file_path = petstore_references_file_path
+
+      endpoints = adapter.adapt_from_file(file_path)
+
+      assert len(endpoints) == 2
+
+      get_v1_pets_ref = endpoints[0]
+      get_v2_pets_ref = endpoints[1]
+
+      assert get_v1_pets_ref == expected_get_v1_pets_ref
+      assert get_v2_pets_ref == expected_get_v2_pets_ref
+
