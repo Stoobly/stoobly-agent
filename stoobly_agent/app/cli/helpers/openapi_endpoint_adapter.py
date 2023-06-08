@@ -3,7 +3,7 @@ from functools import reduce
 import itertools
 import pdb
 import re
-from typing import Dict, List
+from typing import Dict, List, Union
 from urllib.parse import urlparse
 
 from openapi_core import Spec
@@ -96,7 +96,7 @@ class OpenApiEndpointAdapter():
               # if query_param_example:
               #   query_param['values'].append(query_param_example)
 
-              if parameter['required'] == True:
+              if parameter.get('required') == True:
                 required_query_params.append(parameter['name'])
 
               if not endpoint.get('query_param_names'):
@@ -176,13 +176,11 @@ class OpenApiEndpointAdapter():
           required_body_params = []
           param_properties = {}
           literal_body_params = {}
+          request_body_array = False
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
             schema = media_type['schema']
-            # schema.type.value
-            # schema.format
-            # schema.required
 
             # If Spec Component reference, look it up in components
             if '$ref' in schema:
@@ -190,7 +188,16 @@ class OpenApiEndpointAdapter():
               param_properties = self.__dereference(components, reference, required_body_params, literal_body_params)
             else:
               required_body_params = schema.get('required', [])
-              param_properties = schema['properties']
+
+              schema_type = schema.get('type')
+              if schema_type:
+                if schema_type == 'object':
+                  param_properties = schema['properties']
+                elif schema_type == 'array':
+                  request_body_array = True
+                  param_properties = {'items': schema['items']}
+              else:
+                param_properties = {}
 
             if not endpoint.get('literal_body_params'):
               endpoint['literal_body_params'] = {}
@@ -198,6 +205,7 @@ class OpenApiEndpointAdapter():
             self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
 
             endpoint['literal_body_params'] = literal_body_params
+            break
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
@@ -205,7 +213,10 @@ class OpenApiEndpointAdapter():
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
+            if not request_body_array:
+              self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
+            else:
+              self.__convert_literal_component_param(endpoint, required_body_params, [literal_body_params], 'body_param_name', 'literal_body_params')
 
           endpoints.append(endpoint)
     
@@ -267,7 +278,7 @@ class OpenApiEndpointAdapter():
       return param_properties 
 
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
-      required_component_params: List[str], literal_component_params: dict,
+      required_component_params: List[str], literal_component_params: Union[dict, list],
       component_name: str, literal_component_name: str) -> None:
 
     if not literal_component_params:
