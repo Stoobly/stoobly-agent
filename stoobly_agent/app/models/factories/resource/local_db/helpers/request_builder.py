@@ -109,5 +109,6 @@ class RequestBuilder():
 
   def __serialize_body(self, body: Union[bytes, str], content_type: str):
     if not isinstance(body, bytes) or not isinstance(body, str): 
-      body = encode_response(body or '', content_type)
+      body = encode_response(body, content_type)
     return body if isinstance(body, bytes) else body.encode()
+

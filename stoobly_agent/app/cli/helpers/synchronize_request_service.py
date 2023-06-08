@@ -1,6 +1,7 @@
 import copy
 from dataclasses import dataclass
 import pdb
+from typing import List
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 
@@ -60,7 +61,9 @@ class SynchronizeRequestService():
     # Body
     headers = mitmproxy_request.headers
     body_params = decode_response(mitmproxy_request.content, headers.get('content-type'))
-    if body_params:
+    endpoint_body_params = endpoint.get('body_param_names')
+
+    if body_params or endpoint_body_params:
       body_param_names_facade = facade.body_param_names
       handler = RequestSynchronizeHandler(request_component.BODY_PARAM, lifecycle_hooks)
       result = self.synchronize_component(body_params, body_param_names_facade, handler)
@@ -144,4 +147,17 @@ class SynchronizeRequestService():
       for value in query_params_clone.get_all(key):
         if value == 'None':
           del query_params[key]
+
+  def __find_required_params(self, endpoint: EndpointShowResponse, param_name: str) -> List:
+    result = []
+
+    params = endpoint.get(param_name)
+    if not params:
+      return result
+
+    for param in params:
+      if param['is_required'] == True:
+        result.append(param)
+
+    return result
 

@@ -1,6 +1,9 @@
+import copy
 from functools import reduce
+import itertools
 import pdb
-from typing import List
+import re
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from openapi_core import Spec
@@ -29,18 +32,11 @@ class OpenApiEndpointAdapter():
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
 
-    servers = spec / "servers"
-    if not servers:
-      default_server = {'url': '/'}
-      servers = [default_server]
+    servers_spec = spec / "servers"
+    servers = self.__evaluate_servers(servers_spec)
 
     for _, server in enumerate(servers):
       url = server["url"]
-      variables = server.get("variables", {})
-
-      for variable_name, variable in variables.items():
-        variable["default"]
-        variable["enum"]
 
       for path_name, path in paths.items():
         operations = [
@@ -174,18 +170,12 @@ class OpenApiEndpointAdapter():
                 endpoint['aliases'].append(alias)
 
           # TODO: nested servers
-          # servers = operation.get("servers", [])
-          # for _, server in enumerate(servers):
-          #   server["url"]
-          #   server["description"]
-          #
-          #   variables = server.get("variables", {})
-          #   for variable_name, variable in variables.items():
-          #     variable["default"]
-          #     variable.getkey("enum")
 
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
+          required_body_params = []
+          param_properties = {}
+          literal_body_params = {}
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
@@ -196,36 +186,18 @@ class OpenApiEndpointAdapter():
 
             # If Spec Component reference, look it up in components
             if '$ref' in schema:
-              # '#/components/schemas/NewPet'
               reference = schema['$ref']
-              if not reference.startswith('#'):
-                print('external references are not supported yet')
-              if not reference.startswith('#/components/schemas'):
-                print('non component references are not supported yet')
-              else:
-                ref_split = reference.split('#/components/schemas/')
-                component_name = ref_split[-1]
-
-                # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-                body_spec = schemas.content()[component_name]
-
-                required_body_params = body_spec.get('required', [])
-
-                if not endpoint.get('literal_body_params'):
-                  endpoint['literal_body_params'] = {}
-
-                # {'name': {'type': 'string'}, 'tag': {'type': 'string'}}
-                param_properties = body_spec['properties']
-                literal_body_params = {}
-
-                for property_name, property_type_dict in param_properties.items():
-                  literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
-                  literal_body_params[property_name] = literal_val
-
-                endpoint['literal_body_params'] = literal_body_params
-
+              param_properties = self.__dereference(components, reference, required_body_params, literal_body_params)
             else:
-              print('non reference')
+              required_body_params = schema.get('required', [])
+              param_properties = schema['properties']
+
+            if not endpoint.get('literal_body_params'):
+              endpoint['literal_body_params'] = {}
+
+            self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
+
+            endpoint['literal_body_params'] = literal_body_params
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
@@ -238,6 +210,61 @@ class OpenApiEndpointAdapter():
           endpoints.append(endpoint)
     
     return endpoints
+
+  def __extract_param_properties(self, components, reference, required_body_params, param_properties, literal_body_params):
+    if not param_properties:
+      return
+
+    for property_name, property_type_dict in param_properties.items():
+      if '$ref' in property_type_dict.keys():
+        reference = property_type_dict['$ref']
+        param_properties = self.__dereference(components, reference, required_body_params, literal_body_params)
+        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params)
+
+      elif property_type_dict.get('properties'): 
+        required_body_params += property_type_dict.get('required', [])
+        self.__extract_param_properties(components, None, required_body_params, property_type_dict.get('properties'), literal_body_params)
+      else:
+        literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
+        literal_body_params[property_name] = literal_val
+
+  def __dereference(self, components: Spec, reference: str, required_body_params: List, literal_body_params):
+    # '#/components/schemas/NewPet'
+    if not reference.startswith('#'):
+      print('external references are not supported yet')
+    if not reference.startswith('#/components'):
+      print('non component references are not supported yet')
+    else:
+      ref_split = reference.split('#/components/')
+      component_data = ref_split[1].split('/')
+      component_type = component_data[0]
+      component_name = component_data[1]
+      component = components.get(component_type, {})
+
+      # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+      body_spec = component.content()[component_name]
+      required_body_params += body_spec.get('required', [])
+
+      param_properties = body_spec.get('properties')
+      all_of = body_spec.get('allOf')
+      any_of = body_spec.get('anyOf')
+      one_of = body_spec.get('oneOf')
+
+      if param_properties:
+        self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
+
+      elif all_of:
+        for part in all_of:
+          nested_reference = part.get('$ref')
+          if nested_reference:
+            self.__extract_param_properties(components, nested_reference, required_body_params, {'tmp': part}, literal_body_params)
+          else:
+            self.__extract_param_properties(components, None, required_body_params, {'tmp': part}, literal_body_params)
+
+      # TODO
+      # elif any_of or one_of:
+
+      return param_properties 
 
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: dict,
@@ -321,4 +348,57 @@ class OpenApiEndpointAdapter():
     type_map['object'] = dict()
 
     return type_map[open_api_type]
+
+  def __num_variables(self, url: str) -> int:
+    num = url.count('{')
+    return num
+
+  def __evaluate_servers(self, servers: Spec) -> List[dict]:
+    result = []
+
+    if not servers:
+      default_server = {'url': '/'}
+      return [default_server]
+
+    for server in servers:
+      original_url = server["url"]
+
+      variables = server.get("variables", {})
+      if not variables:
+        result.append({'url': original_url})
+        continue
+
+      split_url = re.split('{|}', original_url)
+      existent_vars = {}
+      for part in split_url:
+        if part in variables.keys():
+          existent_vars[part] = variables[part]
+
+      var_to_possible_vals = {}
+      all_possible_vals = []
+
+      for variable_name, variable in existent_vars.items():
+        enum_list = variable.get('enum')
+        if enum_list:
+          var_to_possible_vals[variable_name] = enum_list
+        else:
+          default_value = variable['default']
+          var_to_possible_vals[variable_name] = [default_value]
+
+      all_possible_vals = list(var_to_possible_vals.values())
+      product = list(itertools.product(*all_possible_vals))
+
+      for permutation in product:
+        split_url_copy = copy.deepcopy(split_url)
+
+        for i, part in enumerate(split_url_copy):
+          for j, var in enumerate(var_to_possible_vals.keys()):
+            if var == part:
+              split_url_copy[i] = permutation[j]
+              break
+
+        evaluated_url = ''.join(split_url_copy)
+        result.append({'url': evaluated_url})
+    
+    return result
 
