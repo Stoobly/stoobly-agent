@@ -54,7 +54,11 @@ jobs:
         run: |
           # make build-image image="stoobly/agent"
           docker buildx ls
-          docker buildx build --platform linux/amd64,linux/arm64 --tag ${GITHUB_SHA},alpha -t "stoobly/agent" .
+          docker buildx build \
+            --platform "linux/amd64,linux/arm64" \
+            --tag "stoobly/agent:${GITHUB_SHA}" \
+            --tag "stoobly/agent:alpha" \
+            --tag "stoobly/agent" .
           # docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
           # docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
           # docker tag stoobly/agent stoobly/agent:alpha
