@@ -29,27 +29,35 @@ jobs:
           # Semantic version range syntax or exact version of a Python version
           python-version: '3.10'
 
-      - name: Push to Pypi
-        run: |
-          python -m pip install twine wheel
-          twine --help
-
-          make clean
-          python3 setup.py sdist bdist_wheel
-          twine upload --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}" dist/*
+      # - name: Push to Pypi
+      #   run: |
+      #     python -m pip install twine wheel
+      #     twine --help
+      #
+      #     make clean
+      #     python3 setup.py sdist bdist_wheel
+      #     twine upload --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}" dist/*
 
       - name: Add Release's git Tag to env vars
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v2
+      #   with:
+      #     platforms: linux/amd64,linux/arm64
+
       - name: Build Docker image
         run: |
-          make build-image image="stoobly/agent"
-          docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
-          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
-          docker tag stoobly/agent stoobly/agent:alpha
+          # make build-image image="stoobly/agent"
+          docker buildx ls
+          # docker buildx build --platform linux/arm64 -t <image_name>
+          # docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
+          # docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
+          # docker tag stoobly/agent stoobly/agent:alpha
 
-      - name: Push Docker image
-        run: |
-          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
-          docker images
-          docker push --all-tags stoobly/agent
+
+      # - name: Push Docker image
+      #   run: |
+      #     docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
+      #     docker images
+      #     docker push --all-tags stoobly/agent
