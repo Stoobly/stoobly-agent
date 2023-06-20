@@ -54,10 +54,11 @@ jobs:
         run: |
           # make build-image image="stoobly/agent"
           docker buildx ls
-          # docker buildx build --platform linux/arm64 -t <image_name>
-          # docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
-          # docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
-          # docker tag stoobly/agent stoobly/agent:alpha
+          docker buildx build --platform linux/amd64,linux/arm64 -t "stoobly/agent"
+          docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
+          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
+          docker tag stoobly/agent stoobly/agent:alpha
+          docker images
 
 
       # - name: Push Docker image
