@@ -5,11 +5,16 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
     inputs:
-      publish_pypi:
-        description: 'To publish to PyPI or not'
+      skip_publish_pypi:
+        description: 'To skip publishing to PyPI or not'
         required: false
         type: boolean
-        default: true
+        default: false
+      skip_publish_docker_hub:
+        description: 'To skip publishing to Docker Hub or not'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
@@ -37,7 +42,7 @@ jobs:
           python-version: '3.10'
 
       - name: Push to Pypi
-        if: ${{ inputs.publish_pypi }}
+        if: ${{ !inputs.skip_publish_pypi }}
         run: |
           python -m pip install twine wheel
           twine --help
@@ -51,10 +56,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        if: ${{ !inputs.skip_publish_docker_hub }}
         with:
           platforms: linux/amd64,linux/arm64
 
       - name: Build Docker image and push
+        if: ${{ !inputs.skip_publish_docker_hub }}
         run: |
           # Debug
           # docker buildx ls
