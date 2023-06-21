@@ -4,11 +4,12 @@ on:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
-    publish_pypi:
-      description: 'To publish to PyPI or not'
-      required: false
-      type: boolean
-      default: true
+    inputs:
+      publish_pypi:
+        description: 'To publish to PyPI or not'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   publish:
