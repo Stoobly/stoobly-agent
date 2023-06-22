@@ -248,6 +248,15 @@ class OpenApiEndpointAdapter():
 
         self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=False)
 
+      elif property_type_dict.get('type') == 'array':
+        reference = None
+        param_properties = {'tmp': property_type_dict['items']}
+
+        if property_name not in literal_body_params:
+          literal_body_params[property_name] = []
+
+        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=True)
+
       else:
         literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
 
@@ -259,7 +268,11 @@ class OpenApiEndpointAdapter():
           if flatten:
             literal_body_params[property_name] = literal_val
           else:
-            literal_body_params[most_recent_param][property_name] = literal_val
+            if type(literal_body_params[most_recent_param]) is dict:
+              literal_body_params[most_recent_param][property_name] = literal_val
+
+            elif type(literal_body_params[most_recent_param]) is list:
+              literal_body_params[most_recent_param].append(literal_val)
         else:
           literal_body_params[property_name] = literal_val
 
