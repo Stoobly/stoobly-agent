@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       skip_publish_pypi:
-        description: 'To skip publishing to PyPI or not'
+        description: 'Skip publishing to PyPI'
         required: false
         type: boolean
         default: false
       skip_publish_docker_hub:
-        description: 'To skip publishing to Docker Hub or not'
+        description: 'Skip publishing to Docker Hub'
         required: false
         type: boolean
         default: false
