@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
 )
 
 
+@pytest.mark.openapi
 class TestOpenApiEndpointAdapter():
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):
@@ -338,46 +339,163 @@ class TestOpenApiEndpointAdapter():
             'body_param_name_id': None,
             'endpoint_id': 1,
             'id': 5,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'adoption',
+            'query': 'adoption',
+          },
+          {
+            'body_param_name_id': 5,
+            'endpoint_id': 1,
+            'id': 6,
             'inferred_type': 'Boolean',
             'is_deterministic': True,
             'is_required': True,
             'name': 'adopted',
-            'query': 'adopted',
-            'values': [False]
+            'query': 'adoption.adopted',
+            'values': [False],
           },
           {
-            'body_param_name_id': None,
+            'body_param_name_id': 5,
             'endpoint_id': 1,
-            'id': 6,
+            'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
             'is_required': False,
             'name': 'shelter',
-            'query': 'shelter'
+            'query': 'adoption.shelter',
           },
           {
             'body_param_name_id': None,
             'endpoint_id': 1,
-            'id': 7,
+            'id': 8,
             'inferred_type': 'Integer',
             'is_deterministic': True,
             'is_required': True,
             'name': 'id',
             'query': 'id',
-            'values': [0]
-          }
+            'values': [0],
+          },
         ],
       }
 
     @pytest.fixture(scope='class')
-    def expected_get_v2_pets_ref(self, expected_get_v1_pets_ref) -> Dict:
-      v2_endpoint = copy.deepcopy(expected_get_v1_pets_ref)
-      v2_endpoint['id'] = 2
-      v2_endpoint['path'] = '/v2/pets'
-      v2_endpoint['match_pattern'] = '/v2/pets'
-      for param in v2_endpoint['body_param_names']:
-        param['endpoint_id'] = 2
-      return v2_endpoint
+    def expected_get_v2_pets_ref(self) -> Dict:
+      return {
+        'host': 'petstore.swagger.io',
+        'id': 2,
+        'match_pattern': '/v2/pets',
+        'method': 'POST',
+        'path': '/v2/pets',
+        'port': '80',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 1,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'base',
+            'query': 'base'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 2,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'base.name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 2,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tag',
+            'query': 'base.tag'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 4,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'extra',
+            'query': 'extra'
+          },
+          {
+            'body_param_name_id': 4,
+            'endpoint_id': 2,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'color',
+            'query': 'extra.color',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': 4,
+            'endpoint_id': 2,
+            'id': 6,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'age',
+            'query': 'extra.age',
+            'values': [0]
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 7,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'adoption',
+            'query': 'adoption'
+          },
+          {
+            'body_param_name_id': 7,
+            'endpoint_id': 2,
+            'id': 8,
+            'inferred_type': 'Boolean',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'adopted',
+            'query': 'adoption.adopted',
+            'values': [False]
+          },
+          {
+            'body_param_name_id': 7,
+            'endpoint_id': 2,
+            'id': 9,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'shelter',
+            'query': 'adoption.shelter'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 10,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'id',
+            'query': 'id',
+            'values': [0]}
+          ],
+        }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_references_file_path, expected_get_v1_pets_ref, expected_get_v2_pets_ref):
       adapter = open_api_endpoint_adapter

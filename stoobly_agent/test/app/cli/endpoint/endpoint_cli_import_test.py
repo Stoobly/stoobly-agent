@@ -29,6 +29,7 @@ def petstore_expanded_file_path(mock_data_directory_path) -> str:
   path = mock_data_directory_path / "petstore-expanded.yaml"
   return str(path)
 
+@pytest.mark.openapi
 class TestImport():
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):

@@ -10,6 +10,8 @@ from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_response
 
+
+@pytest.mark.openapi
 class TestSynchronizeRequestService():
   @pytest.fixture(scope='class')
   def synchronize_request_service(self) -> SynchronizeRequestService:

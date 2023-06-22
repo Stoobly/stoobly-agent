@@ -39,6 +39,8 @@ class EndpointShowResponse(TypedDict):
   path_segment_names: List[RequestComponentName]
   query_param_names: List[RequestComponentName]
   response_param_names: List[ResponseParamName]
+  literal_query_params: Optional[dict]
+  literal_body_params: Optional[dict]
 
 ARRAY_TYPE = 'Array'
 
