@@ -7,3 +7,5 @@ class EndpointCreateCliOptions(TypedDict):
   lifecycle_hooks_script_path: Optional[str]
   path: str
   project_key: Optional[str]
+  scenario_key: Optional[str]
+
