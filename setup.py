@@ -52,6 +52,7 @@ setup(
     ],
     license='MIT',
     name=COMMAND,
+    readme='README.md',
     packages=find_packages(include=[
         'stoobly_agent', 'stoobly_agent.*',
     ]),
