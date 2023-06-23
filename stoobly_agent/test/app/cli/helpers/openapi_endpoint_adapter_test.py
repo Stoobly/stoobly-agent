@@ -38,6 +38,11 @@ class TestOpenApiEndpointAdapter():
     return path
 
   @pytest.fixture(scope='class')
+  def petstore_swagger_io_file_path(self, mock_data_directory_path):
+    path = mock_data_directory_path / "petstore-swagger-io.yaml"
+    return path
+
+  @pytest.fixture(scope='class')
   def open_api_endpoint_adapter(self):
     adapter = OpenApiEndpointAdapter()
     return adapter
@@ -510,4 +515,154 @@ class TestOpenApiEndpointAdapter():
 
       assert get_v1_pets_ref == expected_get_v1_pets_ref
       assert get_v2_pets_ref == expected_get_v2_pets_ref
+
+  class TestWhenAdaptingPetstoreSwaggerIo():
+
+    @pytest.fixture(scope='class')
+    def expected_put_v3_pets_ref(self) -> Dict:
+      return {
+        'host': '',
+        'id': 1,
+        'match_pattern': '/v3/pet',
+        'method': 'PUT',
+        'path': '/v3/pet',
+        'port': 'None',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'id'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 3,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'category',
+            'query': 'category'
+          },
+          {
+            'body_param_name_id': 3,
+            'endpoint_id': 1,
+            'id': 4,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'category.id'
+          },
+          {
+            'body_param_name_id': 3,
+            'endpoint_id': 1,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'category.name',
+            'values': [''],
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 6,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'photoUrls',
+            'query': 'photoUrls',
+            'values': [[]],
+          },
+          {
+            'body_param_name_id': 6,
+            'endpoint_id': 1,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_required': False,
+            'name': 'PhotourlsElement',
+            'query': 'photoUrls[*]'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 8,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tags',
+            'query': 'tags'
+          },
+          {
+            'body_param_name_id': 8,
+            'endpoint_id': 1,
+            'id': 9,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'TagsElement',
+            'query': 'tags[*]'
+          },
+          {
+            'body_param_name_id': 9,
+            'endpoint_id': 1,
+            'id': 10,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'tags[*].id'
+          },
+          {
+            'body_param_name_id': 9,
+            'endpoint_id': 1,
+            'id': 11,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'tags[*].name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 12,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'status',
+            'query': 'status'
+          },
+        ],
+      }
+
+
+    def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_swagger_io_file_path, expected_put_v3_pets_ref):
+      adapter = open_api_endpoint_adapter
+      file_path = petstore_swagger_io_file_path
+
+      endpoints = adapter.adapt_from_file(file_path)
+
+      assert len(endpoints) == 19
+
+      put_v3_pets_ref = endpoints[0]
+
+      assert put_v3_pets_ref == expected_put_v3_pets_ref
 

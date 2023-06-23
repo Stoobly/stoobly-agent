@@ -225,6 +225,12 @@ class OpenApiEndpointAdapter():
   def __get_most_recent_param(self, literal_params: dict):
     return list(literal_params)[-1] if literal_params else None
 
+  def __get_second_most_recent_param(self, literal_params: dict):
+    if not literal_params or len(literal_params) < 2:
+      return None
+
+    return list(literal_params)[-2]
+
   def __extract_param_properties(self, components, reference, required_body_params, param_properties, literal_body_params, nested_parameters: bool = False):
     if not param_properties:
       return
@@ -262,11 +268,18 @@ class OpenApiEndpointAdapter():
 
         if nested_parameters:
           most_recent_param = self.__get_most_recent_param(literal_body_params)
+          second_most_recent_param = self.__get_second_most_recent_param(literal_body_params)
           if most_recent_param == 'tmp':
             flatten = True
 
+
           if flatten:
-            literal_body_params[property_name] = literal_val
+            if second_most_recent_param and type(literal_body_params[second_most_recent_param]) is list:
+              if not literal_body_params[second_most_recent_param]:
+                literal_body_params[second_most_recent_param].append({})
+              literal_body_params[second_most_recent_param][0][property_name] = literal_val
+            else:
+              literal_body_params[property_name] = literal_val
           else:
             if type(literal_body_params[most_recent_param]) is dict:
               literal_body_params[most_recent_param][property_name] = literal_val
