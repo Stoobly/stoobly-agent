@@ -195,7 +195,7 @@ class OpenApiEndpointAdapter():
                   param_properties = schema['properties']
                 elif schema_type == 'array':
                   request_body_array = True
-                  param_properties = {'items': schema['items']}
+                  param_properties = {'tmp': schema['items']}
               else:
                 param_properties = {}
 
@@ -272,7 +272,6 @@ class OpenApiEndpointAdapter():
           if most_recent_param == 'tmp':
             flatten = True
 
-
           if flatten:
             if second_most_recent_param and type(literal_body_params[second_most_recent_param]) is list:
               if not literal_body_params[second_most_recent_param]:
@@ -312,7 +311,6 @@ class OpenApiEndpointAdapter():
       all_of = body_spec.get('allOf')
       any_of = body_spec.get('anyOf')
       one_of = body_spec.get('oneOf')
-
 
       if param_properties:
         self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params, nested_parameters=nested_parameters)

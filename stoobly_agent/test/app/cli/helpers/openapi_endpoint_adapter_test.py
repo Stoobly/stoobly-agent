@@ -653,8 +653,109 @@ class TestOpenApiEndpointAdapter():
         ],
       }
 
+    @pytest.fixture(scope='class')
+    def expected_post_v3_user_createwithlist(self) -> Dict:
+      return {
+        'host': '',
+        'id': 14,
+        'match_pattern': '/v3/user/createWithList',
+        'method': 'POST',
+        'path': '/v3/user/createWithList',
+        'port': 'None',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 14,
+            'id': 1,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'Element',
+            'query': '[*]'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 2,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': '[*].id'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'username',
+            'query': '[*].username'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 4,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'firstName',
+            'query': '[*].firstName'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'lastName',
+            'query': '[*].lastName'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 6,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'email',
+            'query': '[*].email'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'password',
+            'query': '[*].password'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 8,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'phone',
+            'query': '[*].phone'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 9,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'userStatus',
+            'query': '[*].userStatus'
+          }
+        ],
+      }
 
-    def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_swagger_io_file_path, expected_put_v3_pets_ref):
+    def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_swagger_io_file_path, expected_put_v3_pets_ref, expected_post_v3_user_createwithlist):
       adapter = open_api_endpoint_adapter
       file_path = petstore_swagger_io_file_path
 
@@ -663,6 +764,8 @@ class TestOpenApiEndpointAdapter():
       assert len(endpoints) == 19
 
       put_v3_pets_ref = endpoints[0]
+      post_v3_user_createwithlist = endpoints[13]
 
       assert put_v3_pets_ref == expected_put_v3_pets_ref
+      assert post_v3_user_createwithlist == expected_post_v3_user_createwithlist
 
