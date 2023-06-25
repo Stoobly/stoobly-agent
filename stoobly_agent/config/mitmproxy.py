@@ -62,10 +62,9 @@ class MitmproxyConfig():
           if key == k:
             return val.current()
 
-  def set(self, option: str):
+  def set(self, option: tuple):
     if self.__master:
-      Logger.instance().debug(f"Setting proxy option {option}")
-      self.__master.options.set(option)
+      self.__master.options.set(*option)
 
   @property
   def options_json_path(self):

@@ -175,7 +175,7 @@ class Settings:
 
             self.__load_lock = True
 
-            Logger.instance().info(f"{self.LOG_ID}.reload_settings")
+            Logger.instance().debug(f"{self.LOG_ID}.reload_settings")
             self.__load_settings()
 
             publish_change(statuses.SETTINGS_MODIFIED, self.__settings, sync=True)

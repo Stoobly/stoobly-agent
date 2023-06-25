@@ -56,27 +56,34 @@ def __get_intercept_handler_path():
     return script
 
 def __with_static_options(config: MitmproxyConfig, cli_options):
-    config.set('block_global=false')
-    config.set('flow_detail=1')
-    config.set(f"scripts={__get_intercept_handler_path()}")
-    config.set('upstream_cert=false')
+    options = (
+        'block_global=false',
+        'flow_detail=1',
+        f"scripts={__get_intercept_handler_path()}",
+        'upstream_cert=false'
+    )
+
+    config.set(options)
 
 def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
     __commit_options(cli_options)
     __filter_options(cli_options)
 
-    def set_option(key, val):
+    options = []
+    def append_option(key, val):
         if isinstance(val, bool):
-            config.set(f"{key}={str(val).lower()}")
+            options.append(f"{key}={str(val).lower()}")
         else:
-            config.set(f"{key}={val}")
+            options.append(f"{key}={val}")
 
     for key, val in cli_options.items():
         if isinstance(val, tuple):
             for v in val:
-                set_option(key, v)
+                append_option(key, v)
         else:
-            set_option(key, val)
+            append_option(key, val)
+
+    config.set(tuple(options))
 
 def __commit_options(options: dict):
     settings = Settings.instance()
