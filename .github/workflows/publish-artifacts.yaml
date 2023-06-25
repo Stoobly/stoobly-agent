@@ -3,6 +3,18 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      skip_publish_pypi:
+        description: 'Skip publishing to PyPI'
+        required: false
+        type: boolean
+        default: false
+      skip_publish_docker_hub:
+        description: 'Skip publishing to Docker Hub'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   publish:
@@ -30,6 +42,7 @@ jobs:
           python-version: '3.10'
 
       - name: Push to Pypi
+        if: ${{ !inputs.skip_publish_pypi }}
         run: |
           python -m pip install twine wheel
           twine --help
@@ -41,15 +54,26 @@ jobs:
       - name: Add Release's git Tag to env vars
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
-      - name: Build Docker image
-        run: |
-          make build-image image="stoobly/agent"
-          docker tag stoobly/agent stoobly/agent:${{ env.RELEASE_VERSION }}
-          docker tag stoobly/agent stoobly/agent:${GITHUB_SHA}
-          docker tag stoobly/agent stoobly/agent:alpha
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        if: ${{ !inputs.skip_publish_docker_hub }}
+        with:
+          platforms: linux/amd64,linux/arm64
 
-      - name: Push Docker image
+      - name: Build Docker image and push
+        if: ${{ !inputs.skip_publish_docker_hub }}
         run: |
-          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" --password "${{ secrets.DOCKER_HUB_TOKEN }}"
-          docker images
-          docker push --all-tags stoobly/agent
+          # Debug
+          # docker buildx ls
+
+          docker login --username "${{ secrets.DOCKER_HUB_USERNAME }}" \
+            --password "${{ secrets.DOCKER_HUB_TOKEN }}"
+
+          docker buildx build \
+            --push \
+            --platform "linux/amd64,linux/arm64" \
+            --tag "stoobly/agent:${{ env.RELEASE_VERSION }}" \
+            --tag "stoobly/agent:${GITHUB_SHA}" \
+            --tag "stoobly/agent:alpha" \
+            --tag "stoobly/agent" .
+

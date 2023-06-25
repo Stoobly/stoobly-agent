@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
 )
 
 
+@pytest.mark.openapi
 class TestOpenApiEndpointAdapter():
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):
@@ -34,6 +35,11 @@ class TestOpenApiEndpointAdapter():
   @pytest.fixture(scope='class')
   def uspto_file_path(self, mock_data_directory_path):
     path = mock_data_directory_path / "uspto.yaml"
+    return path
+
+  @pytest.fixture(scope='class')
+  def petstore_swagger_io_file_path(self, mock_data_directory_path):
+    path = mock_data_directory_path / "petstore-swagger-io.yaml"
     return path
 
   @pytest.fixture(scope='class')
@@ -338,46 +344,163 @@ class TestOpenApiEndpointAdapter():
             'body_param_name_id': None,
             'endpoint_id': 1,
             'id': 5,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'adoption',
+            'query': 'adoption',
+          },
+          {
+            'body_param_name_id': 5,
+            'endpoint_id': 1,
+            'id': 6,
             'inferred_type': 'Boolean',
             'is_deterministic': True,
             'is_required': True,
             'name': 'adopted',
-            'query': 'adopted',
-            'values': [False]
+            'query': 'adoption.adopted',
+            'values': [False],
           },
           {
-            'body_param_name_id': None,
+            'body_param_name_id': 5,
             'endpoint_id': 1,
-            'id': 6,
+            'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
             'is_required': False,
             'name': 'shelter',
-            'query': 'shelter'
+            'query': 'adoption.shelter',
           },
           {
             'body_param_name_id': None,
             'endpoint_id': 1,
-            'id': 7,
+            'id': 8,
             'inferred_type': 'Integer',
             'is_deterministic': True,
             'is_required': True,
             'name': 'id',
             'query': 'id',
-            'values': [0]
-          }
+            'values': [0],
+          },
         ],
       }
 
     @pytest.fixture(scope='class')
-    def expected_get_v2_pets_ref(self, expected_get_v1_pets_ref) -> Dict:
-      v2_endpoint = copy.deepcopy(expected_get_v1_pets_ref)
-      v2_endpoint['id'] = 2
-      v2_endpoint['path'] = '/v2/pets'
-      v2_endpoint['match_pattern'] = '/v2/pets'
-      for param in v2_endpoint['body_param_names']:
-        param['endpoint_id'] = 2
-      return v2_endpoint
+    def expected_get_v2_pets_ref(self) -> Dict:
+      return {
+        'host': 'petstore.swagger.io',
+        'id': 2,
+        'match_pattern': '/v2/pets',
+        'method': 'POST',
+        'path': '/v2/pets',
+        'port': '80',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 1,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'base',
+            'query': 'base'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 2,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'base.name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 2,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tag',
+            'query': 'base.tag'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 4,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'extra',
+            'query': 'extra'
+          },
+          {
+            'body_param_name_id': 4,
+            'endpoint_id': 2,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'color',
+            'query': 'extra.color',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': 4,
+            'endpoint_id': 2,
+            'id': 6,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'age',
+            'query': 'extra.age',
+            'values': [0]
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 7,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'adoption',
+            'query': 'adoption'
+          },
+          {
+            'body_param_name_id': 7,
+            'endpoint_id': 2,
+            'id': 8,
+            'inferred_type': 'Boolean',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'adopted',
+            'query': 'adoption.adopted',
+            'values': [False]
+          },
+          {
+            'body_param_name_id': 7,
+            'endpoint_id': 2,
+            'id': 9,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'shelter',
+            'query': 'adoption.shelter'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 2,
+            'id': 10,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'id',
+            'query': 'id',
+            'values': [0]}
+          ],
+        }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_references_file_path, expected_get_v1_pets_ref, expected_get_v2_pets_ref):
       adapter = open_api_endpoint_adapter
@@ -392,4 +515,257 @@ class TestOpenApiEndpointAdapter():
 
       assert get_v1_pets_ref == expected_get_v1_pets_ref
       assert get_v2_pets_ref == expected_get_v2_pets_ref
+
+  class TestWhenAdaptingPetstoreSwaggerIo():
+
+    @pytest.fixture(scope='class')
+    def expected_put_v3_pets_ref(self) -> Dict:
+      return {
+        'host': '',
+        'id': 1,
+        'match_pattern': '/v3/pet',
+        'method': 'PUT',
+        'path': '/v3/pet',
+        'port': 'None',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'id'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 3,
+            'inferred_type': 'Hash',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'category',
+            'query': 'category'
+          },
+          {
+            'body_param_name_id': 3,
+            'endpoint_id': 1,
+            'id': 4,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'category.id'
+          },
+          {
+            'body_param_name_id': 3,
+            'endpoint_id': 1,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'category.name',
+            'values': [''],
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 6,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'photoUrls',
+            'query': 'photoUrls',
+            'values': [[]],
+          },
+          {
+            'body_param_name_id': 6,
+            'endpoint_id': 1,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_required': False,
+            'name': 'PhotourlsElement',
+            'query': 'photoUrls[*]'
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 8,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tags',
+            'query': 'tags'
+          },
+          {
+            'body_param_name_id': 8,
+            'endpoint_id': 1,
+            'id': 9,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'TagsElement',
+            'query': 'tags[*]'
+          },
+          {
+            'body_param_name_id': 9,
+            'endpoint_id': 1,
+            'id': 10,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'tags[*].id'
+          },
+          {
+            'body_param_name_id': 9,
+            'endpoint_id': 1,
+            'id': 11,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': 'tags[*].name',
+            'values': ['']
+          },
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 1,
+            'id': 12,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'status',
+            'query': 'status'
+          },
+        ],
+      }
+
+    @pytest.fixture(scope='class')
+    def expected_post_v3_user_createwithlist(self) -> Dict:
+      return {
+        'host': '',
+        'id': 14,
+        'match_pattern': '/v3/user/createWithList',
+        'method': 'POST',
+        'path': '/v3/user/createWithList',
+        'port': 'None',
+        'body_param_names': [
+          {
+            'body_param_name_id': None,
+            'endpoint_id': 14,
+            'id': 1,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'Element',
+            'query': '[*]'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 2,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': '[*].id'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'username',
+            'query': '[*].username'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 4,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'firstName',
+            'query': '[*].firstName'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'lastName',
+            'query': '[*].lastName'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 6,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'email',
+            'query': '[*].email'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'password',
+            'query': '[*].password'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 8,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'phone',
+            'query': '[*].phone'
+          },
+          {
+            'body_param_name_id': 1,
+            'endpoint_id': 14,
+            'id': 9,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'userStatus',
+            'query': '[*].userStatus'
+          }
+        ],
+      }
+
+    def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_swagger_io_file_path, expected_put_v3_pets_ref, expected_post_v3_user_createwithlist):
+      adapter = open_api_endpoint_adapter
+      file_path = petstore_swagger_io_file_path
+
+      endpoints = adapter.adapt_from_file(file_path)
+
+      assert len(endpoints) == 19
+
+      put_v3_pets_ref = endpoints[0]
+      post_v3_user_createwithlist = endpoints[13]
+
+      assert put_v3_pets_ref == expected_put_v3_pets_ref
+      assert post_v3_user_createwithlist == expected_post_v3_user_createwithlist
 

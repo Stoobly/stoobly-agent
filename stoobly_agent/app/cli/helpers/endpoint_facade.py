@@ -1,5 +1,7 @@
 import pdb
 from runpy import run_path
+from pprint import pprint
+from stoobly_agent.app.cli.helpers.scenario_facade import ScenarioFacade
 
 from stoobly_agent.app.models.factories.resource.request import RequestResourceFactory
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
@@ -25,11 +27,18 @@ class EndpointFacade():
       except Exception as e:
         pass
 
-      self.__create_from_openapi(kwargs.get('path'), lifecycle_hooks)
+      self.__create_from_openapi(kwargs.get('path'), kwargs.get('scenario_key'), lifecycle_hooks)
 
-  def __create_from_openapi(self, file_path: str, lifecycle_hooks = {}):
+  def __create_from_openapi(self, file_path: str, scenario_key: str, lifecycle_hooks = {}):
     endpoint_adapter = OpenApiEndpointAdapter()
     endpoints = endpoint_adapter.adapt_from_file(file_path)
+
+    scenario_id = 0
+    if scenario_key:
+      scenario = ScenarioFacade(self.__settings)
+      scenario_response, status = scenario.show(scenario_key)
+      if status == 200 and scenario_response:
+        scenario_id = scenario_response['id']
 
     for endpoint in endpoints:
       host = endpoint['host']
@@ -40,10 +49,8 @@ class EndpointFacade():
       method = endpoint['method']
       pattern = endpoint['match_pattern']
 
-      params = RequestFindParams(host=host, port=port, method=method, pattern=pattern)
+      params = RequestFindParams(host=host, port=port, method=method, pattern=pattern, scenario_id=scenario_id)
       similar_requests = self.local_db_request_adapter.find_similar_requests(params)
-
-      # pdb.set_trace()
 
       for request in similar_requests:
         self.synchronize_request_service.synchronize_request(request, endpoint, lifecycle_hooks)

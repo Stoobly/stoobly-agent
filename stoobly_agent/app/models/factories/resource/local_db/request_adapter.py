@@ -253,6 +253,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     candidates = candidates.where('port', params['port'])
     candidates = candidates.where('method', params['method'])
     candidates = candidates.where('path', 'like', pattern)
+    if params.get('scenario_id'):
+      candidates = candidates.where('scenario_id', params['scenario_id'])
 
     return candidates.get()
 

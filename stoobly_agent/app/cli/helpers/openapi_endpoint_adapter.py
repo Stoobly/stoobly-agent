@@ -3,7 +3,7 @@ from functools import reduce
 import itertools
 import pdb
 import re
-from typing import Dict, List
+from typing import Dict, List, Union
 from urllib.parse import urlparse
 
 from openapi_core import Spec
@@ -96,7 +96,7 @@ class OpenApiEndpointAdapter():
               # if query_param_example:
               #   query_param['values'].append(query_param_example)
 
-              if parameter['required'] == True:
+              if parameter.get('required') == True:
                 required_query_params.append(parameter['name'])
 
               if not endpoint.get('query_param_names'):
@@ -176,21 +176,28 @@ class OpenApiEndpointAdapter():
           required_body_params = []
           param_properties = {}
           literal_body_params = {}
+          request_body_array = False
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
             schema = media_type['schema']
-            # schema.type.value
-            # schema.format
-            # schema.required
 
             # If Spec Component reference, look it up in components
             if '$ref' in schema:
               reference = schema['$ref']
-              param_properties = self.__dereference(components, reference, required_body_params, literal_body_params)
+              self.__dereference(components, reference, required_body_params, literal_body_params)
             else:
               required_body_params = schema.get('required', [])
-              param_properties = schema['properties']
+
+              schema_type = schema.get('type')
+              if schema_type:
+                if schema_type == 'object':
+                  param_properties = schema['properties']
+                elif schema_type == 'array':
+                  request_body_array = True
+                  param_properties = {'tmp': schema['items']}
+              else:
+                param_properties = {}
 
             if not endpoint.get('literal_body_params'):
               endpoint['literal_body_params'] = {}
@@ -198,6 +205,7 @@ class OpenApiEndpointAdapter():
             self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
 
             endpoint['literal_body_params'] = literal_body_params
+            break
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
@@ -205,30 +213,84 @@ class OpenApiEndpointAdapter():
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
+            if not request_body_array:
+              self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
+            else:
+              self.__convert_literal_component_param(endpoint, required_body_params, [literal_body_params], 'body_param_name', 'literal_body_params')
 
           endpoints.append(endpoint)
     
     return endpoints
 
-  def __extract_param_properties(self, components, reference, required_body_params, param_properties, literal_body_params):
+  def __get_most_recent_param(self, literal_params: dict):
+    return list(literal_params)[-1] if literal_params else None
+
+  def __get_second_most_recent_param(self, literal_params: dict):
+    if not literal_params or len(literal_params) < 2:
+      return None
+
+    return list(literal_params)[-2]
+
+  def __extract_param_properties(self, components, reference, required_body_params, param_properties, literal_body_params, nested_parameters: bool = False):
     if not param_properties:
       return
 
+    flatten: bool = False
+
     for property_name, property_type_dict in param_properties.items():
       if '$ref' in property_type_dict.keys():
+        if property_name not in literal_body_params:
+          literal_body_params[property_name] = {}
+
         reference = property_type_dict['$ref']
-        param_properties = self.__dereference(components, reference, required_body_params, literal_body_params)
-        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params)
+        self.__dereference(components, reference, required_body_params, literal_body_params, nested_parameters=True)
 
       elif property_type_dict.get('properties'): 
+        reference = None
         required_body_params += property_type_dict.get('required', [])
-        self.__extract_param_properties(components, None, required_body_params, property_type_dict.get('properties'), literal_body_params)
+        param_properties = {}
+        if not nested_parameters:
+          param_properties = property_type_dict.get('properties')
+
+        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=False)
+
+      elif property_type_dict.get('type') == 'array':
+        reference = None
+        param_properties = {'tmp': property_type_dict['items']}
+
+        if property_name not in literal_body_params:
+          literal_body_params[property_name] = []
+
+        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=True)
+
       else:
         literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
-        literal_body_params[property_name] = literal_val
 
-  def __dereference(self, components: Spec, reference: str, required_body_params: List, literal_body_params):
+        if nested_parameters:
+          most_recent_param = self.__get_most_recent_param(literal_body_params)
+          second_most_recent_param = self.__get_second_most_recent_param(literal_body_params)
+          if most_recent_param == 'tmp':
+            flatten = True
+
+          if flatten:
+            if second_most_recent_param and type(literal_body_params[second_most_recent_param]) is list:
+              if not literal_body_params[second_most_recent_param]:
+                literal_body_params[second_most_recent_param].append({})
+              literal_body_params[second_most_recent_param][0][property_name] = literal_val
+            else:
+              literal_body_params[property_name] = literal_val
+          else:
+            if type(literal_body_params[most_recent_param]) is dict:
+              literal_body_params[most_recent_param][property_name] = literal_val
+
+            elif type(literal_body_params[most_recent_param]) is list:
+              literal_body_params[most_recent_param].append(literal_val)
+        else:
+          literal_body_params[property_name] = literal_val
+
+    literal_body_params.pop('tmp', None)
+
+  def __dereference(self, components: Spec, reference: str, required_body_params: List, literal_body_params, nested_parameters: bool = False):
     # '#/components/schemas/NewPet'
     if not reference.startswith('#'):
       print('external references are not supported yet')
@@ -251,7 +313,7 @@ class OpenApiEndpointAdapter():
       one_of = body_spec.get('oneOf')
 
       if param_properties:
-        self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
+        self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params, nested_parameters=nested_parameters)
 
       elif all_of:
         for part in all_of:
@@ -267,7 +329,7 @@ class OpenApiEndpointAdapter():
       return param_properties 
 
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
-      required_component_params: List[str], literal_component_params: dict,
+      required_component_params: List[str], literal_component_params: Union[dict, list],
       component_name: str, literal_component_name: str) -> None:
 
     if not literal_component_params:
