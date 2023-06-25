@@ -65,11 +65,18 @@ def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
     __commit_options(cli_options)
     __filter_options(cli_options)
 
-    for key, val in cli_options.items():
+    def set_option(key, val):
         if isinstance(val, bool):
             config.set(f"{key}={str(val).lower()}")
         else:
             config.set(f"{key}={val}")
+
+    for key, val in cli_options.items():
+        if isinstance(val, tuple):
+            for v in val:
+                set_option(key, v)
+        else:
+            set_option(key, val)
 
 def __commit_options(options: dict):
     settings = Settings.instance()
