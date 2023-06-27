@@ -15,6 +15,10 @@ from stoobly_agent.lib.orm.utils.response_parse_handler import Response as Respo
 CRLF = b'\r\n'
 DEFAULT_HTTP_VERSION = b'HTTP/1.1'
 
+HEADER_COOKIE = 'set-cookie'
+HEADER_COOKIE_SEPARATOR = '; '
+HEADER_SEPARATOR = ', '
+
 class RawHttpResponseAdapter():
 
   def __init__(self, req_text):
@@ -29,8 +33,17 @@ class RawHttpResponseAdapter():
         colon_ind = req_lines[ind].find(b':')
         header_key = req_lines[ind][:colon_ind]
         header_value = req_lines[ind][colon_ind + 1:]
-        self.headers[decode(header_key)] = decode(header_value).strip()
+
+        decoded_key = decode(header_key)
+        decoded_value = decode(header_value).strip()
+        if decoded_key in self.headers:
+          separator = HEADER_COOKIE_SEPARATOR if decoded_key.lower() == HEADER_COOKIE else HEADER_SEPARATOR
+          self.headers[decoded_key] = separator.join(self.headers[decoded_key], decoded_value)
+        else:
+          self.headers[decoded_key] = decoded_value
+
         ind += 1
+
     ind += 1
 
     data_lines = req_lines[ind:] if ind < len(req_lines) else None
