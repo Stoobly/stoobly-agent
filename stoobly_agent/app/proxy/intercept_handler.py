@@ -2,7 +2,7 @@ import os
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.http import Request as MitmproxyRequest
+from mitmproxy.http import Headers, Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
@@ -24,6 +24,9 @@ LOG_ID = 'InterceptHandler'
 
 def request(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
+
+    __patch_cookie(request)
+
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
     active_mode = intercept_settings.mode
@@ -49,6 +52,9 @@ def request(flow: MitmproxyHTTPFlow):
 
 def response(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
+    response: MitmproxyResponse = flow.response
+
+    __patch_set_cookie(response)
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
     intercept_settings.for_response()
@@ -77,3 +83,20 @@ def __disable_web_cache(request: MitmproxyRequest) -> None:
 
     if 'IF-MODIFIED-SINCE' in request.headers:
         del request.headers['IF-MODIFIED-SINCE']
+
+# Fix issue where multi-value cookies become comma separated
+def __patch_cookie(request: MitmproxyRequest):
+    header_name = 'cookie'
+
+    if len(request.headers.get_all(header_name)) > 1:
+        __combine_header(request.headers, header_name, '; ')
+
+def __patch_set_cookie(response: MitmproxyResponse):
+    header_name = 'set-cookie'
+
+    if len(response.headers.get_all(header_name)) > 1:
+        __combine_header(response.headers, header_name, '; ')
+        
+def __combine_header(headers: Headers, header_name: str, delimitter: str):
+    values = headers.get_all(header_name)
+    headers[header_name] = delimitter.join(values)
