@@ -52,9 +52,6 @@ def request(flow: MitmproxyHTTPFlow):
 
 def response(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
-    response: MitmproxyResponse = flow.response
-
-    __patch_set_cookie(response)
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
     intercept_settings.for_response()
@@ -90,12 +87,6 @@ def __patch_cookie(request: MitmproxyRequest):
 
     if len(request.headers.get_all(header_name)) > 1:
         __combine_header(request.headers, header_name, '; ')
-
-def __patch_set_cookie(response: MitmproxyResponse):
-    header_name = 'set-cookie'
-
-    if len(response.headers.get_all(header_name)) > 1:
-        __combine_header(response.headers, header_name, '; ')
         
 def __combine_header(headers: Headers, header_name: str, delimitter: str):
     values = headers.get_all(header_name)

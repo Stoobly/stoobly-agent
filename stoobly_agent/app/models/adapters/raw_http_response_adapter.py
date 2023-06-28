@@ -15,8 +15,6 @@ from stoobly_agent.lib.orm.utils.response_parse_handler import Response as Respo
 CRLF = b'\r\n'
 DEFAULT_HTTP_VERSION = b'HTTP/1.1'
 
-HEADER_COOKIE = 'set-cookie'
-HEADER_COOKIE_SEPARATOR = '; '
 HEADER_SEPARATOR = ', '
 
 class RawHttpResponseAdapter():
@@ -37,8 +35,7 @@ class RawHttpResponseAdapter():
         decoded_key = decode(header_key)
         decoded_value = decode(header_value).strip()
         if decoded_key in self.headers:
-          separator = HEADER_COOKIE_SEPARATOR if decoded_key.lower() == HEADER_COOKIE else HEADER_SEPARATOR
-          self.headers[decoded_key] = separator.join(self.headers[decoded_key], decoded_value)
+          self.headers[decoded_key] = HEADER_SEPARATOR.join(self.headers[decoded_key], decoded_value)
         else:
           self.headers[decoded_key] = decoded_value
 
