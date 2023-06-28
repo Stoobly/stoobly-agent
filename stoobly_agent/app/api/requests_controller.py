@@ -271,6 +271,9 @@ class RequestsController:
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, **replay_options):
         res = replay(replay_context, { **replay_options, 'mode': mode.REPLAY })
 
+        if 'Access-Control-Allow-Origin' in res.headers:
+            del res.headers['Access-Control-Allow-Origin']
+
         context.render(
             data = res.raw.data if hasattr(res, 'raw') else res.content,
             headers = res.headers,

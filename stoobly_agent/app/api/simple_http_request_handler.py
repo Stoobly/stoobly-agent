@@ -75,8 +75,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         })
         headers['Content-Length'] = str(len(body))
 
-        self.enable_cors(headers)
-        self.render_headers(headers)
+        rendered_headers = self.enable_cors(headers)
+        self.render_headers(headers, rendered_headers)
         self.end_headers()
 
         # Send body
@@ -137,9 +137,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         return new_headers
 
 
-    def render_headers(self, headers):
+    def render_headers(self, headers, ignored_headers = []):
         if headers:
             for key, val in headers.items():
+                if key in ignored_headers:
+                    continue
+
                 self.send_header(key, val)
 
     def required_params(self, params: dict, required_params: list):

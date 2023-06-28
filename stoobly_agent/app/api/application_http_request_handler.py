@@ -86,12 +86,16 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     # Override
     def enable_cors(self, _headers = {}):
+        rendered_headers = []
+
         header = 'Access-Control-Allow-Origin'
         self.send_header(header, _headers.get(header) or '*')
+        rendered_headers.append(header)
 
         if self.command == 'OPTIONS':
             header = 'Access-Control-Allow-Methods'
             self.send_header(header, _headers.get(header) or 'GET, OPTIONS, POST, PATCH, PUT, DELETE')
+            rendered_headers.append(header)
 
             header = 'Access-Control-Allow-Headers'
             allowed_headers = _headers.get(header) or ', '.join([
@@ -107,9 +111,11 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
                 headers.UID.title(),
             ])
             self.send_header(header, allowed_headers)
+            rendered_headers.append(header)
 
             header = 'Access-Control-Max-Age'
             self.send_header(header, _headers.get(header) or '7200')
+            rendered_headers.append(header)
 
         if self.command == 'GET':
             header = 'Access-Control-Expose-Headers'
@@ -117,6 +123,9 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
                 'Content-Disposition',
             ])
             self.send_header(header, exposed_headers)
+            rendered_headers.append(header)
+
+        return rendered_headers
 
     def preprocess(self):
         self.uri = urlparse(self.path)
