@@ -23,15 +23,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download stoobly-dashboard from Artifactory
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: Download stoobly-dashboard from GCP bucket
         env:
           STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.26.10.tar.gz"
         run: |
+          echo "Checking if file exists..."
+          gcloud storage ls gs://stoobly-dashboard/${{ env.STOOBLY_DASHBOARD_FILE }}
+
           mkdir stoobly_agent/public/
           cd stoobly_agent/public/
 
-          curl -H "X-JFrog-Art-Api:${{ secrets.ARTIFACTORY_API_KEY }}" \
-               -O "https://stoobly.jfrog.io/artifactory/stoobly-dashboard-generic-local/${{ env.STOOBLY_DASHBOARD_FILE }}"
+          gcloud storage cp gs://stoobly-dashboard/${{ env.STOOBLY_DASHBOARD_FILE }} .
+
           echo "Extracting tar file..."
           tar xvf ${{ env.STOOBLY_DASHBOARD_FILE }}
 
