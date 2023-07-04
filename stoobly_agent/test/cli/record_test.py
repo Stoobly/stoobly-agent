@@ -227,7 +227,7 @@ class TestRecording():
       assert record_result.exit_code == 0
 
       _request = Request.last()
-      assert _request.scenario_id == int(scenario_key.id)
+      assert _request.scenario.uuid == scenario_key.id
 
   class TestNotFoundPolicy():
 
