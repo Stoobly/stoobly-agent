@@ -17,7 +17,7 @@ class Scenario(Base):
     return Request
 
   def key(self):
-    return ScenarioKey.encode(LOCAL_PROJECT_ID, self.id).decode()
+    return ScenarioKey.encode(LOCAL_PROJECT_ID, self.uuid)
 
   # Override
   def to_dict(self):
