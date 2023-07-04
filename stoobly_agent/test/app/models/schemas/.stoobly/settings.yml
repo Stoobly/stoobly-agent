@@ -9,7 +9,7 @@ proxy:
       mock_policy: found
       record_policy: all
       replay_policy: all
-      scenario_key: eyJwIjogMCwgImkiOiA1fQ==
+      scenario_key: null
       test_policy: found
       test_strategy: diff
     '67':

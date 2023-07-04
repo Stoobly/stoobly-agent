@@ -45,7 +45,7 @@ class TestCreate():
     output = scenario_result.stdout
     _scenario_key = output.strip()
 
-    _scenario = Scenario.find(ScenarioKey(_scenario_key).id)
+    _scenario = Scenario.find_by(uuid=ScenarioKey(_scenario_key).id)
 
     assert _scenario.key() == scenario_key
     assert _scenario.name == scenario_name
@@ -58,7 +58,7 @@ class TestCreate():
     output = scenario_result.stdout
     _scenario_key = output.strip()
 
-    _scenario = Scenario.find(ScenarioKey(_scenario_key).id)
+    _scenario = Scenario.find_by(uuid=ScenarioKey(_scenario_key).id)
 
     assert _scenario.key() == scenario_key
     assert _scenario.name == scenario_name

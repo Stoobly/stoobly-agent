@@ -24,7 +24,9 @@ def print_projects(projects, **kwargs):
 def print_requests(requests, **kwargs):
     tabulate_print(
       requests, 
-      filter=['components' , 'created_at', 'endpoint', 'endpoint_id', 'id', 'position', 'project_id', 'scenario_id', 'scheme', 'starred', 'updated_at', 'url'],
+      filter=[
+        'body_params_hash', 'body_text_hash', 'components' , 'created_at', 'endpoint', 'endpoint_id', 'http_version', 'is_deleted', 'position', 'project_id', 'pushed_at', 'query_params_hash', 'scenario_id', 'scheme', 'starred', 'uuid', 'updated_at', 'url'
+      ],
       headers=not kwargs.get('without_headers'),
       select=kwargs.get('select') or []
     )
@@ -32,7 +34,7 @@ def print_requests(requests, **kwargs):
 def print_scenarios(scenarios, **kwargs):
     tabulate_print(
         scenarios, 
-        filter=['created_at', 'priority', 'project_id', 'starred', 'updated_at'],
+        filter=['created_at', 'is_deleted', 'priority', 'project_id', 'starred', 'uuid', 'updated_at'],
         headers=not kwargs.get('without_headers'),
         select=kwargs.get('select') or []
     )

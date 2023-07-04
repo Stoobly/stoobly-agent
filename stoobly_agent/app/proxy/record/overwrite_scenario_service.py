@@ -31,7 +31,7 @@ def overwrite_scenario(scenario_key: str):
     return 
 
   requests_model = RequestModel(settings)
-  res, status = requests_model.destroy_all(scenario_id=scenario_key.id)
+  res, status = requests_model.destroy_all(scenario_id=scenario['id'])
 
   if status != 200:
     return

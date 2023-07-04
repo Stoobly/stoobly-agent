@@ -1,13 +1,17 @@
-from .resource_key import ResourceKey
+import uuid
+
+from .uuid_key import UuidKey
 
 from stoobly_agent.app.settings import Settings
 
 class InvalidRequestKey(Exception):
   pass
 
-class RequestKey(ResourceKey):
+class RequestKey(UuidKey):
   def __init__(self, key: str):
     super().__init__(key)
+
+    self.__raw = key
 
     if not self.id:
       raise InvalidRequestKey('Missing id')
@@ -19,15 +23,20 @@ class RequestKey(ResourceKey):
     
   @property
   def id(self) -> str:
-    return self.get('i')
+    u = uuid.UUID(self.get('i'))
+    return str(u)
     
   @property
   def project_id(self) -> str:
     return self.get('p')
 
+  @property
+  def raw(self):
+    return self.__raw
+
   @staticmethod
   def encode(project_id: str, request_id: str):
-    return ResourceKey.encode({
+    return UuidKey.encode({
       'p': project_id,
-      'i': request_id,
+      'i': request_id.replace('-', ''),
     })

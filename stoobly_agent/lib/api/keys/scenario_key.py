@@ -1,12 +1,16 @@
-from .resource_key import ResourceKey
+import uuid
+
+from .uuid_key import UuidKey
 
 class InvalidScenarioKey(Exception):
   pass
 
-class ScenarioKey(ResourceKey):
+class ScenarioKey(UuidKey):
 
   def __init__(self, key: str):
     super().__init__(key)
+
+    self.__raw = key
 
     if not self.id:
       raise InvalidScenarioKey('Missing id')
@@ -20,11 +24,16 @@ class ScenarioKey(ResourceKey):
 
   @property
   def id(self) -> str:
-    return self.get('i')
+    u = uuid.UUID(self.get('i'))
+    return str(u)
+
+  @property
+  def raw(self):
+    return self.__raw
 
   @staticmethod
   def encode(project_id: str, request_id: str):
-    return ResourceKey.encode({
+    return UuidKey.encode({
       'p': project_id,
-      'i': request_id,
+      'i': request_id.replace('-', ''),
     })

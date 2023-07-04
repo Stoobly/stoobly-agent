@@ -28,7 +28,7 @@ class TestList():
     output = request_result.stdout
     request_key = RequestKey(output.strip())
 
-    _request = Request.find(request_key.id)
+    _request = Request.find_by(uuid=request_key.id)
 
     assert _request.url == DETERMINISTIC_GET_REQUEST_URL
 

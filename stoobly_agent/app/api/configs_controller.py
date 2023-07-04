@@ -2,14 +2,14 @@ import pdb
 
 from mergedeep import merge
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.handle_config_update_service import context as handle_context, handle_project_update, handle_policy_update, handle_scenario_update
-from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.config.constants import mode, replay_policy
-from stoobly_agent.config.constants import mock_policy, record_policy
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
-from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
 
 class ConfigsController:
     _instance = None
@@ -67,17 +67,20 @@ class ConfigsController:
         project_id = ProjectKey(project_key).id if project_key else None
                 
         scenario_key = intercept_settings.scenario_key
-        scenario_id = ScenarioKey(scenario_key).id if scenario_key else None
+        scenario_id = None
 
         # Check to make sure the scenario still exists
-        if self.is_remote_enabled(context) and scenario_id:
-            resource = ScenariosResource(settings.remote.api_url, settings.remote.api_key)
-            res = resource.show(scenario_id)
+        scenario_uuid = ScenarioKey(scenario_key).id if scenario_key else None
 
-            if not res.ok and res.status_code == 404:
-                scenario_id = None
+        if scenario_uuid:
+            model = self.__scenario_model(settings)
+            scenario, status = model.show(scenario_uuid)
+
+            if status == 404:
                 intercept_settings.scenario_key = None
                 settings.commit()
+            elif status == 200:
+                scenario_id = scenario['id']
 
         modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY] if not context.params.get('agent') else [mode.RECORD, mode.MOCK, mode.REPLAY]
 
@@ -114,5 +117,7 @@ class ConfigsController:
             status = 200
         )
 
-    def is_remote_enabled(self, context):
-        return context.headers.get('access-token')
+    def __scenario_model(self, context: SimpleHTTPRequestHandler):
+        scenario_model = ScenarioModel(Settings.instance())
+        scenario_model.as_remote() if context.headers.get('access-token') else scenario_model.as_local()
+        return scenario_model
