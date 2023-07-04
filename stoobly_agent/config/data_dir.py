@@ -8,6 +8,7 @@ class DataDir:
     DATA_DIR_NAME = '.stoobly'
     DB_FILE_NAME = 'stoobly_agent.sqlite3'
     DB_VERSION_NAME = 'VERSION'
+    create_test_path = True
 
     _instance = None
 
@@ -15,11 +16,18 @@ class DataDir:
         if DataDir._instance:
             raise RuntimeError('Call instance() instead')
         else:
-            self.__data_dir_path = os.path.join(os.getcwd(), self.DATA_DIR_NAME)
+            cwd = os.getcwd()
+            self.__data_dir_path = os.path.join(cwd, self.DATA_DIR_NAME)
 
-            # If the current working directory does not contain a .stoobly folder, default to home directory
+            # If the current working directory does not contain a .stoobly folder,
+            # then search in the parent directories until the home directory.
             if not os.path.exists(self.__data_dir_path):
-                self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
+                data_dir = self.find_data_dir(cwd)
+
+                if not data_dir:
+                    self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
+                else:
+                    self.__data_dir_path = data_dir
 
             if not os.path.exists(self.__data_dir_path):
                 os.makedirs(self.__data_dir_path, exist_ok=True)
@@ -31,13 +39,19 @@ class DataDir:
 
         return cls._instance
 
+    @classmethod
+    def reset(cls) -> None:
+      cls._instance = None
+      cls.create_test_path = True
+
     @property
     def path(self):
-        if os.environ.get(ENV) == 'test':
+        if os.environ.get(ENV) == 'test' and self.create_test_path:
             test_path = os.path.join(self.__data_dir_path, 'tmp', self.DATA_DIR_NAME)
-            
+
             if not os.path.exists(test_path):
                 os.makedirs(test_path, exist_ok=True)
+
             return test_path
 
         return self.__data_dir_path
@@ -119,11 +133,23 @@ class DataDir:
         if os.path.exists(self.path):
            shutil.rmtree(self.path) 
 
-    def create(self, directoy_path = None):
-        if not directoy_path:
-            directoy_path = os.getcwd()
+    def create(self, directory_path = None):
+        if not directory_path:
+            directory_path = os.getcwd()
 
-        self.__data_dir_path = os.path.join(directoy_path, self.DATA_DIR_NAME)
+        self.__data_dir_path = os.path.join(directory_path, self.DATA_DIR_NAME)
 
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
+
+    def find_data_dir(self, start_path: str) -> str:
+        while start_path != os.path.expanduser("~"):
+            data_dir_path = os.path.join(start_path, self.DATA_DIR_NAME)
+
+            if os.path.exists(data_dir_path):
+                return data_dir_path
+
+            start_path = os.path.dirname(start_path)
+
+        return ""
+
