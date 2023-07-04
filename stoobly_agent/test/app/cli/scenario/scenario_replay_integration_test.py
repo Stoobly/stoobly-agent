@@ -147,4 +147,4 @@ class TestReplayIntegration():
                 create_spy.assert_called_once()
 
             def test_create_called_with_destination_scenario_id(self, create_kwargs, destination_scenario: Scenario):
-                assert int(create_kwargs['scenario_id']) == destination_scenario.id
+                assert create_kwargs['scenario_id'] == destination_scenario.uuid
