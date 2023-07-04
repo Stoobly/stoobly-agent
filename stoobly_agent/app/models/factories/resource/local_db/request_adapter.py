@@ -13,6 +13,7 @@ from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
+from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.orm.transformers.orm_to_stoobly_request_transformer import ORMToStooblyRequestTransformer
 from stoobly_agent.lib.orm.types.request_columns import RequestColumns
 from stoobly_agent.lib.orm.transformers import ORMToRequestTransformer, ORMToRequestsResponseTransformer
@@ -28,9 +29,10 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   __request_orm = None
   __response_orm = None
 
-  def __init__(self, request_orm: Request.__class__ = Request, response_orm: Response.__class__ = Response):
+  def __init__(self, request_orm: Request.__class__ = Request, response_orm: Response.__class__ = Response, scenario_orm = Scenario.__class__):
     self.__request_orm: Request = request_orm
     self.__response_orm: Response = response_orm
+    self.__scenario_orm: Scenario = scenario_orm
 
   def create(self, **params: RequestCreateParams) -> Tuple[RequestShowResponse, int]:
     flow: MitmproxyHTTPFlow = params['flow']
@@ -88,6 +90,14 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return ORMToRequestsResponseTransformer(response_record).transform()
 
+  def __scenario_id(self, scenario_id):
+    if not self.validate_uuid(scenario_id):
+      return scenario_id
+    else:
+      scenario = Scenario.find_by(uuid=scenario_id)
+      if scenario:
+        return scenario.id
+
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     scenario_id = query_params.get('scenario_id')
     page = int(query_params.get('page') or 0)
@@ -105,7 +115,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if unassigned:
       requests = requests.where('scenario_id', None)
     elif scenario_id: 
-      requests = requests.where('scenario_id', int(scenario_id))
+      requests = requests.where('scenario_id', self.__scenario_id(scenario_id))
       sort_order = query_params.get('sort_order') or 'asc' 
 
     if starred:
