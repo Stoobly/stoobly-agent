@@ -52,7 +52,7 @@ class Request(Base):
     return Scenario
 
   def key(self):
-    return decode(RequestKey.encode(LOCAL_PROJECT_ID, self.id))
+    return decode(RequestKey.encode(LOCAL_PROJECT_ID, self.uuid))
 
   # Override
   def to_dict(self):
@@ -95,6 +95,16 @@ def handle_created(request):
 def handle_saving(request):
   if hasattr(request, 'is_deleted') and request.is_deleted:
     request.scenario_id = None
+
+  if hasattr(request, 'scenario_id') and request.scenario_id:
+    try:
+      # If set as uuid, convert to id
+      uuid.UUID(request.scenario_id) 
+
+      scenario = Scenario.find_by(uuid=request.scenario_id)
+      request.scenario_id = scenario.id
+    except Exception:
+      pass
 
 def handle_saved(request):
   request_before = request.get_original()
