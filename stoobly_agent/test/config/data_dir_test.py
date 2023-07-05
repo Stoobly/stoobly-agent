@@ -1,14 +1,18 @@
 import os
-import pdb
 import shutil
 
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.test.test_helper import reset
 
 
 class TestDataDir():
   original_cwd = os.getcwd()
 
   def test_in_home(self):
+    # A previous test can put us in a test folder
+    os.chdir(self.original_cwd)
+    reset()
+
     home_dir = os.path.expanduser("~")
     data_dir_path = os.path.join(home_dir, DataDir.DATA_DIR_NAME, 'tmp', DataDir.DATA_DIR_NAME)
 
@@ -17,7 +21,7 @@ class TestDataDir():
 
       assert result == data_dir_path
     finally:
-      DataDir.reset()
+      reset()
 
   def test_in_cwd(self):
     temp_dir = DataDir.instance().tmp_dir_path
@@ -27,7 +31,7 @@ class TestDataDir():
 
     # Go into nested folder
     os.chdir(nested_temp_dir)
-    DataDir.reset()
+    reset()
     DataDir.instance().create_test_path = False
 
     try:
@@ -39,7 +43,7 @@ class TestDataDir():
     finally:
       shutil.rmtree(temp_dir)
       os.chdir(self.original_cwd)
-      DataDir.reset()
+      reset()
 
   def test_in_parent_nested(self):
     # Create a temporary directory structure for testing
@@ -56,8 +60,8 @@ class TestDataDir():
     os.makedirs(data_dir_path)
 
     # Go into dir3
-    DataDir.reset()
     os.chdir(nested_dir3)
+    reset()
     DataDir.instance().create_test_path = False
 
     try:
@@ -70,5 +74,5 @@ class TestDataDir():
     finally:
       shutil.rmtree(temp_dir)
       os.chdir(self.original_cwd)
-      DataDir.reset()
+      reset()
 

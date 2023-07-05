@@ -1,5 +1,4 @@
 import os
-import pdb
 import shutil
 
 from stoobly_agent.config.constants.env_vars import ENV
@@ -38,11 +37,6 @@ class DataDir:
             cls._instance = cls()
 
         return cls._instance
-
-    @classmethod
-    def reset(cls) -> None:
-      cls._instance = None
-      cls.create_test_path = True
 
     @property
     def path(self):
@@ -131,7 +125,7 @@ class DataDir:
 
     def remove(self):
         if os.path.exists(self.path):
-           shutil.rmtree(self.path) 
+            shutil.rmtree(self.path) 
 
     def create(self, directory_path = None):
         if not directory_path:

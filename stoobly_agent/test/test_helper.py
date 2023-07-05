@@ -16,6 +16,8 @@ NON_DETERMINISTIC_GET_REQUEST_URL = 'https://www.google.com'
 def reset():
   os.environ[ENV] = TEST
 
+  DataDir._instance = None
+  DataDir.instance().create_test_path = True
   DataDir.instance().remove() # Clean data dir for testing
 
   ORM.instance().initialize_db()
