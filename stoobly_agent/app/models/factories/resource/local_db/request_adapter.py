@@ -29,7 +29,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   __request_orm = None
   __response_orm = None
 
-  def __init__(self, request_orm: Request.__class__ = Request, response_orm: Response.__class__ = Response, scenario_orm = Scenario.__class__):
+  def __init__(self, request_orm: Request.__class__ = Request, response_orm: Response.__class__ = Response, scenario_orm: Scenario.__class__ = Scenario):
     self.__request_orm: Request = request_orm
     self.__response_orm: Response = response_orm
     self.__scenario_orm: Scenario = scenario_orm
