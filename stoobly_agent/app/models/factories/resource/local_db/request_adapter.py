@@ -35,11 +35,14 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     self.__scenario_orm: Scenario = scenario_orm
 
   def create(self, **params: RequestCreateParams) -> Tuple[RequestShowResponse, int]:
+    self.__adapt_scenario_id(params)
+
     flow: MitmproxyHTTPFlow = params['flow']
     joined_request: JoinedRequest = params['joined_request']
+    scenario_id = params.get('scenario_id')
 
     with ORM.instance().db.transaction():
-      request_columns = build_request_columns(flow, joined_request, scenario_id=params.get('scenario_id'))
+      request_columns = build_request_columns(flow, joined_request, scenario_id=scenario_id)
       request_record = self.__request_orm.create(**request_columns)
 
       response_columns = {
@@ -90,15 +93,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return ORMToRequestsResponseTransformer(response_record).transform()
 
-  def __scenario_id(self, scenario_id):
-    if not self.validate_uuid(scenario_id):
-      return scenario_id
-    else:
-      scenario = Scenario.find_by(uuid=scenario_id)
-      if scenario:
-        return scenario.id
-
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
+    self.__adapt_scenario_id(query_params)
+
     scenario_id = query_params.get('scenario_id')
     page = int(query_params.get('page') or 0)
     query = query_params.get('q')
@@ -115,7 +112,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if unassigned:
       requests = requests.where('scenario_id', None)
     elif scenario_id: 
-      requests = requests.where('scenario_id', self.__scenario_id(scenario_id))
+      requests = requests.where('scenario_id', scenario_id)
       sort_order = query_params.get('sort_order') or 'asc' 
 
     if starred:
@@ -268,15 +265,30 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return candidates.get()
 
+  def __filter_request_response_columns(self, request_columns: RequestCreateParams):
+    if request_columns.get('project_id'):
+      del request_columns['project_id']
+
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):
       return self.__request_orm.find_by(uuid=request_id)
     else:
       return self.__request_orm.find(request_id)
 
-  def __filter_request_response_columns(self, request_columns: RequestCreateParams):
-    if request_columns.get('project_id'):
-      del request_columns['project_id']
+  def __request_not_found(self):
+    return self.not_found('Request not found')
+
+  def __adapt_scenario_id(self, params: dict):
+    if not params.get('scenario_id'):
+      return
+
+    scenario_id = params['scenario_id']  
+    if not self.validate_uuid(scenario_id):
+      return
+
+    scenario = self.__scenario_orm.find_by(uuid=scenario_id)
+    if scenario:
+      params['scenario_id'] = scenario.id
 
   def __search(self, base_model: Request, query: str) -> Request:
     uri = urlparse(query)
@@ -286,7 +298,3 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     else:
       pattern = f"%{query}%"
       return base_model.where('path', 'like', pattern).or_where('host', 'like', pattern)
-
-  def __request_not_found(self):
-    return self.not_found('Request not found')
-
