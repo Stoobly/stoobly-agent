@@ -73,7 +73,7 @@ class ConfigsController:
         scenario_uuid = ScenarioKey(scenario_key).id if scenario_key else None
 
         if scenario_uuid:
-            model = self.__scenario_model(settings)
+            model = self.__scenario_model(context, settings)
             scenario, status = model.show(scenario_uuid)
 
             if status == 404:
@@ -117,7 +117,7 @@ class ConfigsController:
             status = 200
         )
 
-    def __scenario_model(self, context: SimpleHTTPRequestHandler):
-        scenario_model = ScenarioModel(Settings.instance())
+    def __scenario_model(self, context: SimpleHTTPRequestHandler, settings: Settings = None):
+        scenario_model = ScenarioModel(settings or Settings.instance())
         scenario_model.as_remote() if context.headers.get('access-token') else scenario_model.as_local()
         return scenario_model
