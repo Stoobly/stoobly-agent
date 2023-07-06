@@ -7,7 +7,6 @@ class DataDir:
     DATA_DIR_NAME = '.stoobly'
     DB_FILE_NAME = 'stoobly_agent.sqlite3'
     DB_VERSION_NAME = 'VERSION'
-    create_test_path = True
 
     _instance = None
 
@@ -40,7 +39,7 @@ class DataDir:
 
     @property
     def path(self):
-        if os.environ.get(ENV) == 'test' and self.create_test_path:
+        if os.environ.get(ENV) == 'test':
             test_path = os.path.join(self.__data_dir_path, 'tmp', self.DATA_DIR_NAME)
 
             if not os.path.exists(test_path):

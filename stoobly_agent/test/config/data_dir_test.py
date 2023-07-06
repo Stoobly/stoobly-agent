@@ -1,38 +1,47 @@
 import os
 import shutil
 
+import pytest
+
+from stoobly_agent.config.constants.env_vars import ENV
+from stoobly_agent.config.constants.mode import NONE
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.test_helper import reset
 
 
 class TestDataDir():
-  original_cwd = os.getcwd()
+  @pytest.fixture(autouse=True, scope='class')
+  def settings(self):
+    return reset()
 
-  def test_in_home(self):
+  @pytest.fixture(scope='class')
+  def original_cwd(self) -> str:
+    return os.getcwd()
+
+  @pytest.fixture(scope='class')
+  def home_dir(self) -> str:
+    return os.path.expanduser("~")
+
+  def test_in_home(self, original_cwd: str, home_dir: str):
     # A previous test can put us in a test folder
-    os.chdir(self.original_cwd)
-    reset()
+    os.chdir(original_cwd)
+    data_dir_path = os.path.join(home_dir, DataDir.DATA_DIR_NAME)
+    os.environ[ENV] = NONE
 
-    home_dir = os.path.expanduser("~")
-    data_dir_path = os.path.join(home_dir, DataDir.DATA_DIR_NAME, 'tmp', DataDir.DATA_DIR_NAME)
+    result = DataDir.instance().path
 
-    try:
-      result = DataDir.instance().path
+    assert result == data_dir_path
 
-      assert result == data_dir_path
-    finally:
-      reset()
-
-  def test_in_cwd(self):
-    temp_dir = DataDir.instance().tmp_dir_path
-    nested_temp_dir = os.path.join(temp_dir, DataDir.DATA_DIR_NAME, 'tmp' )
+  def test_in_cwd(self, original_cwd: str):
+    os.environ[ENV] = NONE
+    DataDir._instance = None
+    temp_dir = os.path.join(original_cwd, 'tmp')
+    nested_temp_dir = os.path.join(temp_dir, 'tmp-nested')
     data_dir_path = os.path.join(nested_temp_dir, DataDir.DATA_DIR_NAME)
-    os.makedirs(data_dir_path, exist_ok=True)
+    os.makedirs(data_dir_path)
 
     # Go into nested folder
     os.chdir(nested_temp_dir)
-    reset()
-    DataDir.instance().create_test_path = False
 
     try:
       result = DataDir.instance().path
@@ -42,12 +51,13 @@ class TestDataDir():
 
     finally:
       shutil.rmtree(temp_dir)
-      os.chdir(self.original_cwd)
-      reset()
+      os.chdir(original_cwd)
 
-  def test_in_parent_nested(self):
+  def test_in_parent_nested(self, original_cwd: str):
+    os.environ[ENV] = NONE
+    DataDir._instance = None
     # Create a temporary directory structure for testing
-    temp_dir = DataDir.instance().tmp_dir_path
+    temp_dir = os.path.join(original_cwd, 'tmp')
 
     # Create nested folders
     nested_dir1 = os.path.join(temp_dir, "nested1")
@@ -61,8 +71,6 @@ class TestDataDir():
 
     # Go into dir3
     os.chdir(nested_dir3)
-    reset()
-    DataDir.instance().create_test_path = False
 
     try:
       # Test when .stoobly folder exists in the nested structure
@@ -73,6 +81,5 @@ class TestDataDir():
 
     finally:
       shutil.rmtree(temp_dir)
-      os.chdir(self.original_cwd)
-      reset()
+      os.chdir(original_cwd)
 
