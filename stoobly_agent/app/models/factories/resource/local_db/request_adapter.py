@@ -69,6 +69,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     return self.success(ORMToStooblyRequestTransformer(request, options).transform())
 
   def response(self, **query_params: RequestColumns) -> requests.Response:
+    self.__adapt_scenario_id(query_params)
+
     request = None
 
     if not query_params.get('request_id'):
@@ -86,7 +88,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if not request:
       return CustomNotFoundResponseBuilder().build()
 
-    response_record = request.response 
+    response_record = request.response
 
     if not response_record:
       return CustomNotFoundResponseBuilder().build()
@@ -111,9 +113,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     if unassigned:
       requests = requests.where('scenario_id', None)
-    elif scenario_id: 
+    elif scenario_id:
       requests = requests.where('scenario_id', scenario_id)
-      sort_order = query_params.get('sort_order') or 'asc' 
+      sort_order = query_params.get('sort_order') or 'asc'
 
     if starred:
       requests = requests.where('starred', starred)
@@ -144,7 +146,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       if not create_params:
         return self.bad_request('Could not parse request')
 
-      if request.update( 
+      if request.update(
         **build_request_columns(create_params['flow'], create_params['joined_request'], **params),
       ):
         response = request.response
@@ -170,7 +172,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
       if transformer.dirty:
         python_request = transformer.transform()
-        adapter_factory = PythonRequestAdapterFactory(python_request) 
+        adapter_factory = PythonRequestAdapterFactory(python_request)
 
         builder = ORMRequestBuilder()
         columns = builder.columns_from_mitmproxy_request(adapter_factory.mitmproxy_request())
@@ -216,12 +218,14 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
 
   def destroy_all(self, **params: RequestDestroyAllParams) -> Tuple[RequestsIndexQueryParams, int]:
+    self.__adapt_scenario_id(params)
+
     ids = params.get('ids')
     scenario_id = params.get('scenario_id')
 
     if not isinstance(ids, list) and not scenario_id:
       return self.bad_request('Missing ids')
-    
+
     requests_query_builder = self.__request_orm
 
     if isinstance(ids, list):
@@ -246,7 +250,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     request = self.__request(request_id)
 
     if not request:
-      return self.__request_not_found()   
+      return self.__request_not_found()
 
     file_path = snapshot_request(request, params.get('action'))
     if not file_path:
@@ -282,7 +286,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if not params.get('scenario_id'):
       return
 
-    scenario_id = params['scenario_id']  
+    scenario_id = params['scenario_id']
     if not self.validate_uuid(scenario_id):
       return
 
