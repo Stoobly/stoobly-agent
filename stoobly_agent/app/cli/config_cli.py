@@ -11,6 +11,7 @@ from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import mode
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
@@ -33,8 +34,20 @@ def config(ctx):
 @config.command(
     help="Display config contents"
 )
+@click.option('--dir', is_flag=True, help='To only show the path of the data directory being used.')
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):
+    if kwargs['dir']:
+        data = {
+            "data_directory": DataDir.instance().path
+        }
+
+        output = json.dumps(data, indent=2, sort_keys=True)
+
+        print(output)
+
+        return
+
     settings = Settings.instance()
 
     output = json.dumps(settings.to_dict(), indent=2, sort_keys=True)
