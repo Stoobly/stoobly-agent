@@ -1,6 +1,8 @@
 import pdb
 import random
 
+from time import time
+
 class Cache:
     _instance = None
 
@@ -11,6 +13,7 @@ class Cache:
             self.data = {}
             self.dataVersions = {}
             self.startVersion = random.randint(1, 1000000)
+            self.timeouts = {}
             self.version = self.startVersion
 
     @classmethod
@@ -26,6 +29,12 @@ class Cache:
         self.version += 1
 
     def read(self, key):
+        if key in self.timeouts:
+            timeout = self.timeouts[key]
+            if round(time() * 1000) > timeout:
+                self.delete(key)
+                return None
+
         data = self.data.get(key)
 
         if data == None:
@@ -47,11 +56,18 @@ class Cache:
 
         return data
 
-    def write(self, key, val):
+    # timeout: milliseconds
+    def write(self, key, val, timeout = None):
+        if timeout and timeout <= 0:
+            return
+
         self.data[key] = val
 
         if key not in self.dataVersions:
             self.dataVersions[key] = self.startVersion
+
+        if timeout:
+            self.timeouts[key] = round(time() * 1000) + timeout
 
         self.dataVersions[key] += 1
         self.version += 1
@@ -59,4 +75,5 @@ class Cache:
     def delete(self, key):
         del self.data[key]
         del self.dataVersions[key]
+        del self.timeouts[key]
         self.version += 1

@@ -21,6 +21,7 @@ from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsI
 
 from .helpers.create_request_columns_service import build_request_columns, build_response_columns
 from .helpers.snapshot_service import snapshot_request
+from .helpers.tiebreak_scenario_request import access_request, generate_session_id, tiebreak_scenario_request
 from .local_db_adapter import LocalDBAdapter
 from .orm_request_builder import ORMRequestBuilder
 from .response_adapter import LocalDBResponseAdapter
@@ -79,9 +80,24 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       self.__filter_request_response_columns(request_columns)
 
       # Find most recent matching record
-      request = self.__request_orm.where_for(**request_columns).get().last()
+      requests = self.__request_orm.where_for(**request_columns).get()
+
+      if 'scenario_id' in query_params:
+        # TODO: Would need an additional ID to distinguish different scenario sessions
+        session_id = generate_session_id(request_columns) 
+
+        if len(requests) > 1:
+          request = tiebreak_scenario_request(session_id, requests)
+        else:
+          request = requests.last()
+
+        if request:
+          access_request(session_id, request.id)
+      else:
+        request = requests.last()
     else:
       request = self.__request_orm.find(query_params.get('request_id'))
+      
       if request and request.is_deleted:
         request = None
 
