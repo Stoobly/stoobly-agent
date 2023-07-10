@@ -10,6 +10,9 @@ from stoobly_agent.lib.utils.decode import decode
 from .base import Base
 from .response import Response
 
+class InvalidScenario(Exception):
+  pass
+
 class Request(Base):
   __fillable__ = [
     'body_params_hash', 
@@ -88,6 +91,11 @@ class Request(Base):
 def handle_creating(request):
   if not hasattr(request, 'uuid') or not request.uuid:
     request.uuid = str(uuid.uuid4())
+  else:
+    try:
+      uuid.UUID(request.uuid)
+    except Exception:
+      request.uuid = str(uuid.uuid4())
 
 def handle_created(request):
   pass
@@ -102,9 +110,18 @@ def handle_saving(request):
       uuid.UUID(request.scenario_id) 
 
       scenario = Scenario.find_by(uuid=request.scenario_id)
-      request.scenario_id = scenario.id
+
+      if scenario:
+        request.scenario_id = scenario.id
+      else:
+        raise InvalidScenario()
     except Exception:
-      pass
+      scenario = Scenario.find_by(id=request.scenario_id)
+
+      if scenario:
+        request.scenario_id = request.scenario_id
+      else:
+        raise InvalidScenario()
 
 def handle_saved(request):
   request_before = request.get_original()
@@ -117,8 +134,9 @@ def handle_saved(request):
   else:
     if request_before.get('scenario_id') != request.scenario_id:
       scenario = Scenario.find(request_before.get('scenario_id'))
-      scenario.requests_count -= 1
-      scenario.save()
+      if scenario:
+        scenario.requests_count -= 1
+        scenario.save()
 
       scenario = request.scenario
       if scenario:
