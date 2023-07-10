@@ -5,6 +5,11 @@ from typing import List
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.orm.request import Request
 
+def access_request(session_id: str, request_id: int, timeout = None):
+  cache = Cache.instance()
+  _last_request_id_key = __last_request_id_key(session_id)
+  cache.write(_last_request_id_key, request_id, timeout)
+
 def generate_session_id(query: dict):
   toks = []
 
@@ -35,11 +40,6 @@ def tiebreak_scenario_request(session_id: str, requests: List[Request]):
       return request
 
   return requests[0]
-
-def access_request(session_id: str, request_id: int, timeout = None):
-  cache = Cache.instance()
-  _last_request_id_key = __last_request_id_key(session_id)
-  cache.write(_last_request_id_key, request_id, timeout)
 
 def __last_request_id_key(_key = None):
   _key = _key or generate_session_id()

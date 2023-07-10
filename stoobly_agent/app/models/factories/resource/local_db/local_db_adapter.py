@@ -18,7 +18,5 @@ class LocalDBAdapter():
     try:
       uuid.UUID(id)
       return True
-    except AttributeError:
-      return False
-    except ValueError:
+    except Exception:
       return False
