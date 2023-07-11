@@ -1,9 +1,8 @@
-import click
 import json
-import pdb
 import time
-
 from typing import List
+
+import click
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
@@ -15,8 +14,11 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
-from .helpers import  ProjectFacade, ScenarioFacade
-from .helpers.handle_config_update_service import handle_project_update, handle_scenario_update
+from .helpers import ProjectFacade, ScenarioFacade
+from .helpers.handle_config_update_service import (
+    handle_project_update,
+    handle_scenario_update,
+)
 from .helpers.print_service import print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
@@ -38,12 +40,7 @@ def config(ctx):
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):
     if kwargs['dir']:
-        data = {
-            "data_directory": DataDir.instance().path
-        }
-
-        output = json.dumps(data, indent=2, sort_keys=True)
-
+        output = DataDir.instance().path
         print(output)
 
         return
