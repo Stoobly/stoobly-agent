@@ -1,9 +1,8 @@
-import click
 import json
-import pdb
 import time
-
 from typing import List
+
+import click
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
@@ -11,11 +10,15 @@ from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import mode
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
-from .helpers import  ProjectFacade, ScenarioFacade
-from .helpers.handle_config_update_service import handle_project_update, handle_scenario_update
+from .helpers import ProjectFacade, ScenarioFacade
+from .helpers.handle_config_update_service import (
+    handle_project_update,
+    handle_scenario_update,
+)
 from .helpers.print_service import print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
@@ -33,8 +36,15 @@ def config(ctx):
 @config.command(
     help="Display config contents"
 )
+@click.option('--dir', is_flag=True, help='To only show the path of the data directory being used.')
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
 def dump(**kwargs):
+    if kwargs['dir']:
+        output = DataDir.instance().path
+        print(output)
+
+        return
+
     settings = Settings.instance()
 
     output = json.dumps(settings.to_dict(), indent=2, sort_keys=True)
