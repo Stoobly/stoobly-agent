@@ -1,11 +1,19 @@
 import pdb
 import pytest
 
+from typing import List
+from urllib.parse import urlparse
+
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
+from stoobly_agent.app.models.factories.resource.local_db.helpers.tiebreak_scenario_request import (
+  access_request, generate_session_id, tiebreak_scenario_request
+)
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import (
   LocalDBRequestAdapter,
 )
 from stoobly_agent.app.models.types.request import RequestFindParams
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import reset
 
@@ -116,3 +124,84 @@ class TestLocalDBRequestAdapter():
     assert len(similar_requests) == 1
     assert similar_requests[0].id == create_get_pets.id
 
+  class TestWhenResponse():
+    class TestTiebreakScenarioRequest():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      @pytest.fixture(scope='class')
+      def request_method(self):
+        return 'POST'
+
+      @pytest.fixture(scope='class')
+      def request_url(self):
+        return 'https://petstore.swagger.io/v2/pets'
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self):
+        return Scenario.create(name='test')
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_one(
+        self, settings: Settings, 
+        request_method: str, request_url: str, created_scenario: Scenario,
+      ):
+        status = RequestBuilder(
+          method=request_method,
+          request_body='',
+          request_headers={},
+          response_body='',
+          status_code=201,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+
+        request = Request.last()
+        request.update(scenario_id=created_scenario.id)
+
+        return request
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_two(
+        self, settings: Settings, 
+        request_method: str, request_url: str, created_scenario: Scenario
+      ):
+        status = RequestBuilder(
+          method=request_method,
+          request_body='',
+          request_headers={},
+          response_body='2',
+          status_code=202,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+
+        request = Request.last()
+        request.update(scenario_id=created_scenario.id)
+        return request
+
+      @pytest.fixture(scope='class')
+      def requests(self, created_request_one: Request, created_request_two: Request):
+        return [created_request_one, created_request_two]
+
+      def test_it_returns_request_one(self, request_url: str, created_scenario: Scenario, local_db_request_adapter: LocalDBRequestAdapter):
+        uri = urlparse(request_url)
+        response = local_db_request_adapter.response(
+          host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
+        )
+        assert response.status_code == 201
+
+      def test_it_returns_request_two(self, request_url: str, created_scenario: Scenario, local_db_request_adapter: LocalDBRequestAdapter):
+        uri = urlparse(request_url)
+        response = local_db_request_adapter.response(
+          host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
+        )
+        assert response.status_code == 202
+
+      def test_it_returns_request_one_again(self, request_url: str, created_scenario: Scenario, local_db_request_adapter: LocalDBRequestAdapter):
+        uri = urlparse(request_url)
+        response = local_db_request_adapter.response(
+          host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
+        )
+        assert response.status_code == 201

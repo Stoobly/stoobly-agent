@@ -22,7 +22,7 @@ def build_request_columns(flow: MitmproxyHTTPFlow, joined_request: JoinedRequest
     'raw': joined_request.request_string.get(),
     'scenario_id': params['scenario_id'] if params.get('scenario_id') else None,
     'status': flow.response.status_code,
-    'uuid': joined_request.request_string.request_id,
+    'uuid': joined_request.request_string.request_id.strip(),
   }
 
   return request_columns

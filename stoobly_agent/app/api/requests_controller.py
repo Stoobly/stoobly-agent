@@ -46,7 +46,9 @@ class RequestsController:
 
         if len(toks) % 2 != 0:
             return context.bad_request('Invalid requests format')
-        
+
+        scenario_id = body_params.get('scenario_id')
+        scenario_id = int(body_params.get('scenario_id')) if scenario_id else None
         created_requests = []
 
         for i in range(0, len(toks), 2):
@@ -60,7 +62,7 @@ class RequestsController:
             request_model = self.__request_model(context)
             request, status = request_model.create(**{
                 **create_params,
-                'scenario_id': body_params.get('scenario_id'),
+                'scenario_id': scenario_id,
             })
 
             if context.filter_response(request, status):

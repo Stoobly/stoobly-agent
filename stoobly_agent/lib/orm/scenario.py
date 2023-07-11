@@ -28,6 +28,11 @@ class Scenario(Base):
 def handle_creating(scenario):
   if not hasattr(scenario, 'uuid') or not scenario.uuid:
     scenario.uuid = str(uuid.uuid4())
+  else:
+    try:
+      uuid.UUID(scenario.uuid)
+    except Exception as e:
+      scenario.uuid = str(uuid.uuid4())
 
 def handle_deleting(scenario):
   requests = scenario.requests
