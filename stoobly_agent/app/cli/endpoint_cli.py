@@ -16,7 +16,7 @@ is_remote = settings.cli.features.remote
 )
 @click.pass_context
 def endpoint(ctx):
-    pass
+  pass
 
 @endpoint.command(
   'import',
@@ -30,7 +30,12 @@ def endpoint(ctx):
 def _import(**kwargs: EndpointCreateCliOptions):
   facade = EndpointFacade(settings)
 
-  facade.create(**{
-    **kwargs,
-  })
+  try:
+    facade.create(**{
+      **kwargs,
+    })
+    print("Success!")
+  except Exception as e:
+    print("Failed to import API specification, error:\n")
+    print(e)
 
