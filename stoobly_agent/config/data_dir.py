@@ -136,7 +136,14 @@ class DataDir:
             os.mkdir(self.__data_dir_path)
 
     def find_data_dir(self, start_path: str) -> str:
-        while start_path != os.path.expanduser("~"):
+        # Note: these paths won't work for Windows
+        root_dir = os.path.abspath(os.sep)
+        home_dir = os.path.expanduser("~")
+
+        while start_path != home_dir:
+            if start_path == root_dir:
+                start_path = home_dir
+
             data_dir_path = os.path.join(start_path, self.DATA_DIR_NAME)
 
             if os.path.exists(data_dir_path):
