@@ -53,6 +53,11 @@ class ScenarioFacade(ReplayFacade):
       **self.__common_replay_options(scenario_key),
     })
 
+  def delete(self, scenario_key: str):
+    key = ScenarioKey(scenario_key)
+
+    return self.__model.destroy(key.id)
+
   def __common_replay_options(self, scenario_key: str):
     return {
       'project_key': ProjectKey.encode(ScenarioKey(scenario_key).project_id),

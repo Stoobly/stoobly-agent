@@ -179,6 +179,34 @@ def show(**kwargs):
 
     print_scenarios([scenario_response], **print_options)
 
+@scenario.command(
+  help="Delete a scenario"
+)
+@click.argument('scenario_key')
+def delete(**kwargs):
+  validate_scenario_key(kwargs['scenario_key'])
+
+  scenario = ScenarioFacade(settings.instance())
+  res, status = scenario.show(kwargs['scenario_key'])
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  is_deleted = res.get('is_deleted')
+  if not res:
+    print(f"Error: Could not find scenario", file=sys.stderr)
+    sys.exit(1)
+
+  res = scenario.delete(kwargs['scenario_key'])
+  if not res:
+    print('Error: Could not delete scenario', file=sys.stderr)
+    sys.exit(1)
+
+  if not is_deleted:
+    print('Scenario moved to trash!')
+  else:
+    print('Scenario deleted!')
+
 if not is_remote:
     @scenario.command(
         help="Snapshot a scenario"
