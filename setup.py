@@ -44,7 +44,7 @@ setup(
         "mitmproxy>=8.0.0,<=8.1.0",
         "openapi-core>=0.17.0",
         "orator>=0.9.9",
-        "pyyaml>=6.0.0,<=6.1.0",
+        "pyyaml>=5.4,<=5.4.1",
         "requests>=2.25.0,<=2.25.1",
         "tabulate>=0.8.8",
         "watchdog>=2.1.0,<=2.1.3",
