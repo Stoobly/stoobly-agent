@@ -131,6 +131,7 @@ def replay(**kwargs):
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create scenario in.')(f), is_remote)
 @click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--search', help='Query to filter scenarios by')
 @click.option('--size', default=10)
 @click.option('--sort-by', default='created_at', help='created_at|name')
 @click.option('--sort-order', default='desc', help='asc | desc')
@@ -143,6 +144,10 @@ def list(**kwargs):
     project_key = resolve_project_key_and_validate(kwargs, settings)
     if 'project_key' in kwargs:
         del kwargs['project_key']
+
+    if kwargs.get('search'):
+        kwargs['q'] = kwargs['search']
+        del kwargs['search']
 
     scenario = ScenarioFacade(settings)
 
