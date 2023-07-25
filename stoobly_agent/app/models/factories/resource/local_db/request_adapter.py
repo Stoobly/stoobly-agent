@@ -3,7 +3,6 @@ import requests
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from typing import Tuple
-from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
@@ -20,6 +19,7 @@ from stoobly_agent.lib.orm.transformers import ORMToRequestTransformer, ORMToReq
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
 
 from .helpers.create_request_columns_service import build_request_columns, build_response_columns
+from .helpers.search import search_request
 from .helpers.snapshot_service import snapshot_request
 from .helpers.tiebreak_scenario_request import access_request, generate_session_id, tiebreak_scenario_request
 from .local_db_adapter import LocalDBAdapter
@@ -137,7 +137,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       requests = requests.where('starred', starred)
 
     if query:
-      requests = self.__search(requests, query)
+      requests = search_request(requests, query)
 
     total = requests.count()
     requests = requests.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
@@ -309,12 +309,3 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     scenario = self.__scenario_orm.find_by(uuid=scenario_id)
     if scenario:
       params['scenario_id'] = scenario.id
-
-  def __search(self, base_model: Request, query: str) -> Request:
-    uri = urlparse(query)
-
-    if uri.hostname:
-      return base_model.where('host', uri.hostname).where('path', uri.path)
-    else:
-      pattern = f"%{query}%"
-      return base_model.where('path', 'like', pattern).or_where('host', 'like', pattern)
