@@ -7,6 +7,7 @@ from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, Scenario
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
 
+from .helpers.search import search_scenario
 from .helpers.snapshot_service import snapshot_scenario
 from .local_db_adapter import LocalDBAdapter
 
@@ -51,7 +52,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
       scenarios = scenarios.where('priority', 0)
 
     if query:
-      scenarios = self.__search(scenarios, query)
+      scenarios = search_scenario(scenarios, query)
 
     total = scenarios.count()
     scenarios = scenarios.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
@@ -102,9 +103,6 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
       return self.__scenario_orm.find_by(uuid=scenario_id)
     else:
       return self.__scenario_orm.find(scenario_id)
-
-  def __search(self, base_model: Scenario, query: str):
-    return base_model.where('name', 'like', f"%{query}%")
 
   def __to_show_response(self, scenario: Scenario) -> ScenarioShowResponse:
     res = scenario.to_dict()

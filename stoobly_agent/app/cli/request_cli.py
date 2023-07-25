@@ -68,6 +68,7 @@ def delete(**kwargs):
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--scenario-key')
+@click.option('--search', help='Query to filter requests by')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')
@@ -85,6 +86,10 @@ def list(**kwargs):
 
   if kwargs.get('scenario_key'):
     validate_scenario_key(kwargs['scenario_key'])
+
+  if kwargs.get('search'):
+    kwargs['q'] = kwargs['search']
+    del kwargs['search']
 
   request = RequestFacade(settings)
   requests_response, status = request.index(project_key, kwargs)
