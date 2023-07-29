@@ -8,6 +8,7 @@ from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERM
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.cli import record, request, scenario, snapshot
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
@@ -165,62 +166,141 @@ class TestApply():
 
     class TestWhenMergingScenario():
 
-      @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
-        create_result = runner.invoke(scenario, ['create', 'test'])
-        assert create_result.exit_code == 0
-        return Scenario.last()
+      class TestWhenAdditionalRequestExists():
+        '''
+        1. Create scenario
+        2. Add 2 requests to it
+        3. Snapshot
+        4. Add 1 request to it
+        5. Apply
+        6. Expect scenario to have first 2 requests
+        '''
 
-      @pytest.fixture(scope='class', autouse=True)
-      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
-        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
-        assert record_result.exit_code == 0
+        @pytest.fixture(scope='class')
+        def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
 
-        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
-        assert record_result.exit_code == 0
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
 
-        return created_scenario.requests
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
 
-      @pytest.fixture(scope='class', autouse=True)
-      def put_event(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
-        assert snapshot_result.exit_code == 0
+          return created_scenario.requests
 
-        log = Log()
-        events = log.events
-        return events[len(events) - 1]
+        @pytest.fixture(scope='class', autouse=True)
+        def put_event(self, runner: CliRunner, created_scenario: Scenario):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
 
-      # This request was created after the snapshot
-      # Later when we apply changes, we expect this request to not exist
-      @pytest.fixture(scope='class', autouse=True)
-      def new_scenario_request(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
-        assert created_scenario.uuid == put_event.resource_uuid
-        assert created_scenario.requests.count() == 2
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
 
-        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
-        assert record_result.exit_code == 0
+        # This request was created after the snapshot
+        # Later when we apply changes, we expect this request to not exist
+        @pytest.fixture(scope='class', autouse=True)
+        def new_scenario_request(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
+          assert created_scenario.uuid == put_event.resource_uuid
+          assert created_scenario.requests.count() == 2
 
-        return created_scenario.requests.last()
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
 
-      @pytest.fixture(scope='class')
-      def apply_result(self, runner: CliRunner, created_scenario: Scenario):
-        created_scenario = Scenario.find(created_scenario.id)
-        assert created_scenario.requests_count == 3
-        apply_result = runner.invoke(snapshot, ['apply'])
+          return created_scenario.requests.last()
 
-        return apply_result
+        @pytest.fixture(scope='class')
+        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 3
+          apply_result = runner.invoke(snapshot, ['apply'])
 
-      def test_it_merges_scenario(self, created_scenario: Scenario, apply_result):
-        assert apply_result.exit_code == 0
+          return apply_result
 
-        created_scenario = Scenario.find(created_scenario.id)
-        assert created_scenario.requests_count == 2
+        def test_it_merges_scenario(self, created_scenario: Scenario, apply_result):
+          assert apply_result.exit_code == 0
 
-      def test_it_maintains_requests(self, created_scenario: Scenario, created_scenario_requests: List[Request]):
-        created_scenario = Scenario.find(created_scenario.id)
-        assert len(created_scenario.requests) == 2
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 2
 
-        requests = created_scenario.requests
+        def test_it_maintains_requests(self, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          created_scenario = Scenario.find(created_scenario.id)
+          assert len(created_scenario.requests) == 2
 
-        assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
-        assert_orm_request_equivalent(requests[1], created_scenario_requests[1])
+          requests = created_scenario.requests
+
+          assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
+          assert_orm_request_equivalent(requests[1], created_scenario_requests[1])
+
+      class TestWhenRequestsDeleted():
+        '''
+        1. Create scenario
+        2. Add 2 requests to it
+        3. Snapshot
+        4. Delete last request added
+        5. Snapshot
+        6. Re-create last request
+        7. Apply
+        8. Expect scenario to have 1 request
+        '''
+
+        @pytest.fixture(scope='class')
+        def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario.requests
+
+        @pytest.fixture(scope='class', autouse=True)
+        def delete_event(self, runner: CliRunner, created_scenario: Scenario):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          last_request = created_scenario.requests.last()
+          last_request.delete()
+
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          # Re-create the request
+          Request.create(**last_request.attributes_to_dict())
+
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
+
+        @pytest.fixture(scope='class')
+        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+          created_scenario = Scenario.find(created_scenario.id)
+          apply_result = runner.invoke(snapshot, ['apply'])
+
+          return apply_result
+
+        def test_it_merges_scenario(self, created_scenario: Scenario, apply_result):
+          assert apply_result.exit_code == 0
+
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 1
+
+        def test_it_maintains_requests(self, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          created_scenario = Scenario.find(created_scenario.id)
+          requests = created_scenario.requests
+
+          assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
+
+        def test_it_removes_request_snapshot(self, delete_event: LogEvent):
+          scenario_snapshot = ScenarioSnapshot(delete_event.resource_uuid)
+          assert len(scenario_snapshot.requests) == 1

@@ -51,6 +51,7 @@ def snapshot_scenario(scenario: Scenario, action: Action):
   snapshot.backup_requests()
 
   if action == PUT_ACTION:
+    snapshot.remove_requests()
     snapshot.write_requests(scenario)
   elif action == DELETE_ACTION:
     snapshot.remove_requests()

@@ -91,6 +91,7 @@ class ScenarioSnapshot(Snapshot):
     requests_file_path = self.requests_path
 
     if os.path.exists(requests_file_path):
+      # A request only every belongs to one scenario
       self.iter_request_snapshots(self.__handle_remove_requests)
 
       os.remove(requests_file_path)
