@@ -14,9 +14,18 @@ from .create_request_params_service import build_params
 class Apply():
 
   def __init__(self):
+    self.__force = False
     self.__logger = None
     self.__request_model = None
     self.__scenario_model = None
+
+  @property
+  def force(self):
+    return self.__force
+
+  @force.setter
+  def force(self, v):
+    self.__force = v
 
   @property
   def request_model(self):
@@ -60,6 +69,16 @@ class Apply():
     last_event = unprocessed_events[events_count - 1]
     log.version = last_event.uuid # Update log to last processed event uuid
 
+  def request(self, uuid: str):
+    res = self.__apply_put_request(uuid)[0]
+
+    return res == 200
+
+  def scenario(self, uuid: str):
+    res = self.__apply_put_scenario(uuid)[0]
+
+    return res == 200
+
   def single(self, uuid: str):
     log = Log()
 
@@ -94,7 +113,7 @@ class Apply():
     }
 
   def __apply_delete_request(self, uuid: str):
-    res, status = self.request_model.destroy(uuid, force=True)
+    res, status = self.request_model.destroy(uuid, force=self.__force)
 
     if status == 200:
       self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} request {uuid}") 
@@ -113,7 +132,7 @@ class Apply():
     return self.__put_request(uuid, raw_request)
 
   def __apply_delete_scenario(self, uuid: str):
-    res, status = self.scenario_model.destroy(uuid, force=True)
+    res, status = self.scenario_model.destroy(uuid, force=self.__force)
 
     if self.__logger and status == 200:
       self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} scenario {uuid}")
@@ -125,6 +144,9 @@ class Apply():
   def __apply_put_scenario(self, uuid: str):
     snapshot = ScenarioSnapshot(uuid)
     metadata = snapshot.metadata
+
+    if not metadata:
+      return f"Scenario snapshot {uuid} does not exist", 400
 
     res, status = self.scenario_model.show(uuid)
     if status == 404:
@@ -212,9 +234,10 @@ class Apply():
       }
       res, status = self.request_model.update(uuid, **params)
 
-      if self.__logger and status == 200:
-        self.__logger(f"{bcolors.OKBLUE}Updated{bcolors.ENDC} {res['url']}")
-      else: 
-        self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
+      if self.__logger:
+        if status == 200:
+          self.__logger(f"{bcolors.OKBLUE}Updated{bcolors.ENDC} {res['url']}")
+        else: 
+          self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
     return res, status

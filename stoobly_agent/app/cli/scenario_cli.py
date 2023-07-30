@@ -8,6 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
@@ -221,6 +222,23 @@ if not is_remote:
 
         scenario = ScenarioFacade(Settings.instance())
         res = scenario.snapshot(scenario_key, kwargs)
+
+    @scenario.command(
+        help="Reset a scenario to its snapshot state"
+    )
+    @click.option('--force', default=False, help="Toggles whether resources are hard deleted.")
+    @click.argument('scenario_key')
+    def reset(**kwargs):
+        scenario_key = kwargs['scenario_key']
+        _scenario_key = validate_scenario_key(scenario_key)
+
+        apply_service = Apply().with_logger(print)
+        resetted = apply_service.scenario(_scenario_key.id)
+
+        if not resetted:
+            print('Successfully reset the scenario!')
+        else:
+            print('Could not reset the scenario.')
 
 if is_remote:
     @scenario.command(

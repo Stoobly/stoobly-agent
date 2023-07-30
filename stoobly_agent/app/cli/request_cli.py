@@ -8,6 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, DEF
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
@@ -180,6 +181,23 @@ if not is_remote:
 
     request = RequestFacade(Settings.instance())
     res = request.snapshot(request_key, kwargs)
+
+  @request.command(
+      help="Reset a request to its snapshot state"
+  )
+  @click.option('--force', default=False, help="Toggles whether request are hard deleted.")
+  @click.argument('request_key')
+  def reset(**kwargs):
+    request_key = kwargs['request_key']
+    _request_key = validate_request_key(request_key)
+
+    apply_service = Apply().with_logger(print)
+    resetted = apply_service.request(_request_key.id)
+
+    if not resetted:
+      print('Successfully reset the request!')
+    else:
+      print('Could not reset the request.')
 
 if is_remote:
   @request.command(
