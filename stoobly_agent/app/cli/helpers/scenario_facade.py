@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
