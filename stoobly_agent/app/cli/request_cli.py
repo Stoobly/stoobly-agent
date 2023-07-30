@@ -185,13 +185,13 @@ if not is_remote:
   @request.command(
       help="Reset a request to its snapshot state"
   )
-  @click.option('--force', default=False, help="Toggles whether request are hard deleted.")
+  @click.option('--force', default=False, is_flag=True, help="Toggles whether request are hard deleted.")
   @click.argument('request_key')
   def reset(**kwargs):
     request_key = kwargs['request_key']
     _request_key = validate_request_key(request_key)
 
-    apply_service = Apply().with_logger(print)
+    apply_service = Apply(force=kwargs['force']).with_logger(print)
     resetted = apply_service.request(_request_key.id)
 
     if not resetted:

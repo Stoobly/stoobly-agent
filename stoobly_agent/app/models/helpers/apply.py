@@ -13,8 +13,8 @@ from .create_request_params_service import build_params
 
 class Apply():
 
-  def __init__(self):
-    self.__force = False
+  def __init__(self, **options):
+    self.__force = options.get('force') or False
     self.__logger = None
     self.__request_model = None
     self.__scenario_model = None

@@ -40,7 +40,7 @@ class TestApply():
         return events[len(events) - 1]
 
       def test_it_deletes(self, runner: CliRunner, recorded_request: Request, delete_event: LogEvent):
-        apply_result = runner.invoke(snapshot, ['apply', delete_event.uuid])
+        apply_result = runner.invoke(snapshot, ['apply', '--force', delete_event.uuid])
         assert apply_result.exit_code == 0
 
         _request = Request.find(recorded_request.id)
@@ -99,7 +99,7 @@ class TestApply():
         return events[len(events) - 1]
 
       def test_it_deletes(self, runner: CliRunner, created_scenario: Scenario, delete_event: LogEvent):
-        snapshot_result = runner.invoke(snapshot, ['apply', delete_event.uuid])
+        snapshot_result = runner.invoke(snapshot, ['apply', '--force', delete_event.uuid])
         assert snapshot_result.exit_code == 0
 
         scenario = Scenario.find(created_scenario.id)

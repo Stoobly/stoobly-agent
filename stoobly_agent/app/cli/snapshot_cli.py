@@ -17,7 +17,7 @@ def snapshot(ctx):
 @click.option('--force', default=False, help="Toggles whether resources are hard deleted.")
 @click.argument('uuid', required=False)
 def apply(**kwargs):
-  apply = Apply().with_logger(print)
+  apply = Apply(force=kwargs['force']).with_logger(print)
 
   if kwargs.get('uuid'):
     apply.single(kwargs['uuid'])

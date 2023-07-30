@@ -226,13 +226,13 @@ if not is_remote:
     @scenario.command(
         help="Reset a scenario to its snapshot state"
     )
-    @click.option('--force', default=False, help="Toggles whether resources are hard deleted.")
+    @click.option('--force', default=False, is_flag=True, help="Toggles whether resources are hard deleted.")
     @click.argument('scenario_key')
     def reset(**kwargs):
         scenario_key = kwargs['scenario_key']
         _scenario_key = validate_scenario_key(scenario_key)
 
-        apply_service = Apply().with_logger(print)
+        apply_service = Apply(force=kwargs['force']).with_logger(print)
         resetted = apply_service.scenario(_scenario_key.id)
 
         if not resetted:
