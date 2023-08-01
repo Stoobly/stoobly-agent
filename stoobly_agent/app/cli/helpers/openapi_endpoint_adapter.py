@@ -2,6 +2,7 @@ import copy
 from functools import reduce
 import itertools
 import pdb
+from pprint import pprint
 import re
 from typing import Dict, List, Union
 from urllib.parse import urlparse
@@ -77,8 +78,10 @@ class OpenApiEndpointAdapter():
           if endpoint['port'] is None or endpoint['port'] == 'None':
             if parsed_url.scheme == 'https':
               endpoint['port'] = '443'
-            if parsed_url.scheme == 'http':
+            elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
+            else:
+              endpoint['port'] = ''
 
           alias_counter = 0
           header_param_counter = 0
@@ -111,9 +114,9 @@ class OpenApiEndpointAdapter():
                 default_value = schema['items'].get('default')
                 item_default = None
                 if default_value:
-                  item_default = default_value
+                  item_default = {'value': default_value}
                 else:
-                  item_default = self.__open_api_to_default_python_type(item_type)
+                  item_default = {'value': self.__open_api_to_default_python_type(item_type)}
 
                 param_value = [item_default]
 
@@ -126,7 +129,7 @@ class OpenApiEndpointAdapter():
                   param_value = self.__open_api_to_default_python_type(open_api_type)
 
               literal_query_param = {
-                parameter['name']: param_value
+                parameter['name']: {'value': param_value}
               }
 
               if not endpoint.get('literal_query_params'):
@@ -199,12 +202,18 @@ class OpenApiEndpointAdapter():
               else:
                 param_properties = {}
 
+            for property_key, property_value in param_properties.items():
+              if property_key in required_body_params:
+                param_properties[property_key]['required'] = True
+
             if not endpoint.get('literal_body_params'):
               endpoint['literal_body_params'] = {}
 
             self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
 
             endpoint['literal_body_params'] = literal_body_params
+
+            # Only support first media type
             break
 
           literal_query_params = endpoint.get('literal_query_params')
@@ -240,7 +249,7 @@ class OpenApiEndpointAdapter():
     for property_name, property_type_dict in param_properties.items():
       if '$ref' in property_type_dict.keys():
         if property_name not in literal_body_params:
-          literal_body_params[property_name] = {}
+          literal_body_params[property_name] = {'value': {}} 
 
         reference = property_type_dict['$ref']
         self.__dereference(components, reference, required_body_params, literal_body_params, nested_parameters=True)
@@ -252,6 +261,11 @@ class OpenApiEndpointAdapter():
         if not nested_parameters:
           param_properties = property_type_dict.get('properties')
 
+        for property_key, property_value in param_properties.items():
+          if property_key in required_body_params:
+            property_value['required'] = True
+            required_body_params.remove(property_key)
+
         self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=False)
 
       elif property_type_dict.get('type') == 'array':
@@ -259,12 +273,15 @@ class OpenApiEndpointAdapter():
         param_properties = {'tmp': property_type_dict['items']}
 
         if property_name not in literal_body_params:
-          literal_body_params[property_name] = []
+          literal_body_params[property_name] = {'value': []} 
+          if property_type_dict.get('required') == True:
+            literal_body_params[property_name]['required'] = True
 
         self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=True)
 
       else:
-        literal_val = self.__open_api_to_default_python_type(property_type_dict['type'])
+        literal_val_type = self.__open_api_to_default_python_type(property_type_dict['type'])
+        literal_val = {'value': literal_val_type, 'required': property_type_dict.get('required', False)}
 
         if nested_parameters:
           most_recent_param = self.__get_most_recent_param(literal_body_params)
@@ -273,18 +290,18 @@ class OpenApiEndpointAdapter():
             flatten = True
 
           if flatten:
-            if second_most_recent_param and type(literal_body_params[second_most_recent_param]) is list:
-              if not literal_body_params[second_most_recent_param]:
-                literal_body_params[second_most_recent_param].append({})
-              literal_body_params[second_most_recent_param][0][property_name] = literal_val
+            if second_most_recent_param and type(literal_body_params[second_most_recent_param]['value']) is list:
+              literal_body_params[second_most_recent_param]['value'].append({ property_name: literal_val })
             else:
               literal_body_params[property_name] = literal_val
           else:
-            if type(literal_body_params[most_recent_param]) is dict:
-              literal_body_params[most_recent_param][property_name] = literal_val
+            if type(literal_body_params[most_recent_param]['value']) is dict:
+              if not literal_body_params[most_recent_param].get('value'):
+                literal_body_params[most_recent_param]['value'] = {}
+              literal_body_params[most_recent_param]['value'][property_name] = literal_val
 
-            elif type(literal_body_params[most_recent_param]) is list:
-              literal_body_params[most_recent_param].append(literal_val)
+            elif type(literal_body_params[most_recent_param]['value']) is list:
+              literal_body_params[most_recent_param]['value'].append(literal_val)
         else:
           literal_body_params[property_name] = literal_val
 
@@ -303,7 +320,7 @@ class OpenApiEndpointAdapter():
       component_name = component_data[1]
       component = components.get(component_type, {})
 
-      # {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+      # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
       body_spec = component.content()[component_name]
       required_body_params += body_spec.get('required', [])
 
@@ -313,10 +330,16 @@ class OpenApiEndpointAdapter():
       one_of = body_spec.get('oneOf')
 
       if param_properties:
+        for param_prop_key, param_prop_val in param_properties.items():
+          if param_prop_key in required_body_params:
+            param_prop_val['required'] = True
+            required_body_params.remove(param_prop_key)
+
         self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params, nested_parameters=nested_parameters)
 
       elif all_of:
         for part in all_of:
+          required_body_params = part.get('required', [])
           nested_reference = part.get('$ref')
           if nested_reference:
             self.__extract_param_properties(components, nested_reference, required_body_params, {'tmp': part}, literal_body_params)
@@ -340,11 +363,10 @@ class OpenApiEndpointAdapter():
 
     built_params_list = list(built_params)
     for param in built_params_list:
-      if param['name'] in required_component_params:
-        param['is_required'] = True
-
+      if param.get('is_required', False) == True:
         inferred_type = param['inferred_type']
         default_python_type = convert_reverse(inferred_type)
+
         if not param.get('values'):
           param['values'] = []
         param['values'].append(default_python_type)
@@ -367,7 +389,7 @@ class OpenApiEndpointAdapter():
     simple_dict = {}
     for key, val in complex_dict.items():
       simple_dict[key] = val['value']
-    
+
     return simple_dict
 
 

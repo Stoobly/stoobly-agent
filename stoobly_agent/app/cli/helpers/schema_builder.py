@@ -42,22 +42,31 @@ class SchemaBuilder:
 
     # Iterate
     types = {}
+
     for e in value:
-      _type = self.__infer_type(e)
+      # Example of e = {'id': {'value': 0, 'required': False}}
+      type_value = None
+      if e.get('value') is not None:
+        type_value = e.get('value')
+      else:
+        type_value = e
+
+      _type = self.__infer_type(type_value)
 
       if types.get(_type) is None:
         columns['inferred_type'] = convert(_type)
         types[_type] = self.__find_or_create_by(columns)
     
-      self.__traverse('', e, types[_type])
+      self.__traverse('', type_value, types[_type])
 
   def __traverse_hash(self, name, value, parent_param: RequestComponentName):
     # Iterate
     for k, v in value.items():
       columns = {
         'endpoint_id': self.endpoint_id,
-        'inferred_type': convert(self.__infer_type(v)),
-        'is_required': v is not None,
+        'inferred_type': convert(self.__infer_type(v['value'])),
+        'is_required': v.get('required') is True,
+
         'is_deterministic': True,
         'name': k,
         'query': f"{parent_param.get('query')}.{k}" if parent_param else k, 
@@ -65,7 +74,7 @@ class SchemaBuilder:
       columns[self.param_column_name + '_id'] = parent_param['id'] if parent_param else None
       param = self.__find_or_create_by(columns)
 
-      self.__traverse(k, v, param)
+      self.__traverse(k, v['value'], param)
 
   def __find_or_create_by(self, columns):
     param = self.__find_by(columns) 

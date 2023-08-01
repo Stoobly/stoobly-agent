@@ -42,10 +42,13 @@ class EndpointFacade():
 
     for endpoint in endpoints:
       host = endpoint['host']
-      if host == '':
+      if not host:
         host = '%'
 
       port = endpoint['port']
+      if not port:
+        port = '%'
+
       method = endpoint['method']
       pattern = endpoint['match_pattern']
 
