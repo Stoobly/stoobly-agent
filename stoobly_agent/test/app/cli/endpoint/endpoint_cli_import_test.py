@@ -1,7 +1,6 @@
 import json
 import pdb
 import pytest
-import requests
 
 from click.testing import CliRunner
 from pathlib import Path

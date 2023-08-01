@@ -23,7 +23,7 @@ class TestDataDir():
     return os.path.expanduser("~")
 
   def test_in_home(self, original_cwd: str, home_dir: str):
-    # A previous test can put us in a test folder
+    # A previous test can put us in 'stoobly_agent/test/app/models/schemas/.stoobly'
     os.chdir(original_cwd)
     data_dir_path = os.path.join(home_dir, DataDir.DATA_DIR_NAME)
     os.environ[ENV] = NONE

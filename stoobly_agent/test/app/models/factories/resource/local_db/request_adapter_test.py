@@ -67,6 +67,24 @@ class TestLocalDBRequestAdapter():
     record.delete()
 
   @pytest.fixture(scope='function')
+  def create_put_v3_pet(self):
+    record = self.__request_orm.create(
+      method='PUT',
+      scheme='http',
+      host="swagger.io",
+      port="80",
+      path='/v3/pet',
+      headers_hash='c079b917a5091fbcdea198bc96c87796',
+      body_text_hash='',
+      query_params_hash='',
+      body_params_hash='',
+      control='1 gocrqlad4ru 1690266880243000000',
+      raw='PUT http://swagger.io/v3/pet HTTP/1.1 Content-Length: 0',
+    )
+    yield record
+    record.delete()
+
+  @pytest.fixture(scope='function')
   def create_scenario(self):
     record = self.__scenario_orm.create(
       name="Pets scenario",
@@ -75,7 +93,7 @@ class TestLocalDBRequestAdapter():
     record.delete()
 
   @pytest.mark.openapi
-  def test_find_similar_requests(self, local_db_request_adapter: LocalDBRequestAdapter, create_get_pets, create_get_pet):
+  def test_find_similar_requests_get_v2_pets(self, local_db_request_adapter: LocalDBRequestAdapter, create_get_pets, create_get_pet):
     params: RequestFindParams = {
       'method': 'GET',
       'host' : "petstore.swagger.io",
@@ -89,6 +107,25 @@ class TestLocalDBRequestAdapter():
     for request in similar_requests:
       assert request.host == params['host']
       assert request.port == int(params['port'])
+      assert request.method == params['method']
+      assert request.path == params['pattern']
+
+  @pytest.mark.openapi
+  def test_find_similar_requests_put_v3_pet(self, local_db_request_adapter: LocalDBRequestAdapter, create_put_v3_pet):
+    params: RequestFindParams = {
+      'host': '%',
+      'port': '%',
+      'method': 'PUT',
+      'pattern': '/v3/pet',
+      'scenario_id': 0
+    }
+
+    similar_requests = local_db_request_adapter.find_similar_requests(params)
+
+    assert len(similar_requests) == 1
+    for request in similar_requests:
+      assert request.host
+      assert request.port
       assert request.method == params['method']
       assert request.path == params['pattern']
 
