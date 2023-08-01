@@ -526,7 +526,7 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/v3/pet',
         'method': 'PUT',
         'path': '/v3/pet',
-        'port': 'None',
+        'port': '',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -575,10 +575,9 @@ class TestOpenApiEndpointAdapter():
             'id': 5,
             'inferred_type': 'String',
             'is_deterministic': True,
-            'is_required': True,
+            'is_required': False,
             'name': 'name',
             'query': 'category.name',
-            'values': [''],
           },
           {
             'body_param_name_id': None,
@@ -635,10 +634,9 @@ class TestOpenApiEndpointAdapter():
             'id': 11,
             'inferred_type': 'String',
             'is_deterministic': True,
-            'is_required': True,
+            'is_required': False,
             'name': 'name',
             'query': 'tags[*].name',
-            'values': ['']
           },
           {
             'body_param_name_id': None,
@@ -661,7 +659,7 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/v3/user/createWithList',
         'method': 'POST',
         'path': '/v3/user/createWithList',
-        'port': 'None',
+        'port': '',
         'body_param_names': [
           {
             'body_param_name_id': None,

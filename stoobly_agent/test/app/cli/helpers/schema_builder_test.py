@@ -1,13 +1,13 @@
-import pdb
 import pytest
 
 from stoobly_agent.app.cli.helpers.schema_builder import SchemaBuilder
 
+@pytest.mark.openapi
 class TestSchemaBuilder():
 
   def test_it_builds_single_level_dict(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'id': 1, 'name': 'test' })
+    param_names = builder.build({ 'id': {'value':1}, 'name': {'value':'test'} })
 
     param_names_index = self.__index(param_names)
     expected_queries = ['id.Integer', 'name.String']
@@ -17,7 +17,7 @@ class TestSchemaBuilder():
 
   def test_it_builds_two_level_dict(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'list': [{ 'id': 1, 'name': 'test' }], 'total': 1 })
+    param_names = builder.build({ 'list': {'value': [{'value':{ 'id': {'value':1}, 'name': {'value':'test'} }}] }, 'total': {'value':1} })
 
     param_names_index = self.__index(param_names)
     expected_queries = [
@@ -29,7 +29,7 @@ class TestSchemaBuilder():
 
   def test_it_builds_single_level_array(self):
     builder = SchemaBuilder(-1, 'body_param_name')
-    param_names = builder.build([1, 'a'])
+    param_names = builder.build([{'value':1}, {'value':'a'}])
 
     param_names_index = self.__index(param_names)
     expected_queries = [
@@ -41,7 +41,7 @@ class TestSchemaBuilder():
 
   def test_it_builds_item_and_single_level_array(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'tags': [''], 'limit': 0 })
+    param_names = builder.build({ 'tags': {'value':[{'value':''}]}, 'limit': {'value':0} })
 
     param_names_index = self.__index(param_names)
     expected_queries = [

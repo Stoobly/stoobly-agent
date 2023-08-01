@@ -1,3 +1,5 @@
+import traceback
+
 import click
 
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
@@ -36,6 +38,6 @@ def _import(**kwargs: EndpointCreateCliOptions):
     })
     print("Success!")
   except Exception as e:
-    print("Failed to import API specification, error:\n")
-    print(e)
+    print("Failed to import API specification, stack trace:\n")
+    print(traceback.format_exc())
 

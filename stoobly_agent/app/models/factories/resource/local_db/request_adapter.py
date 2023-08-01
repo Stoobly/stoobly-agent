@@ -1,4 +1,3 @@
-import pdb
 import requests
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
@@ -276,8 +275,18 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
   def find_similar_requests(self, params: RequestFindParams):
     pattern = f"%{params['pattern']}"
-    candidates = self.__request_orm.where('host', params['host'])
-    candidates = candidates.where('port', params['port'])
+    candidates = None
+
+    if params['host'] == '%':
+      candidates = self.__request_orm.where('host', 'like', params['host'])
+    else:
+      candidates = self.__request_orm.where('host', params['host'])
+
+    if params['port'] == '%':
+      candidates = candidates.where('port', 'like', params['port'])
+    else:
+      candidates = candidates.where('port', params['port'])
+
     candidates = candidates.where('method', params['method'])
     candidates = candidates.where('path', 'like', pattern)
     if params.get('scenario_id'):
