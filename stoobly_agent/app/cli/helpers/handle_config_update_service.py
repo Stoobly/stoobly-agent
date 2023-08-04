@@ -19,6 +19,44 @@ def context() -> Context:
     'current_proxy_settings': __current_proxy_settings()
   }
 
+def handle_intercept_active_update(new_settings: Settings, context: Context = None):
+  data_rule = __data_rule(new_settings.proxy)
+  is_active = new_settings.proxy.intercept.active
+  old_proxy_settings = __current_proxy_settings(context)
+  was_active = old_proxy_settings.intercept.active
+  _mode = context['mode'] if context and context.get('mode') else new_settings.proxy.intercept.mode
+
+  if not was_active and is_active:
+    if _mode == intercept_mode.RECORD:
+      new_policy = data_rule.record_policy
+      scenario_key = data_rule.scenario_key
+      _scenario_key = __parse_scenario_key(scenario_key)
+
+      if _scenario_key:
+        scenario_model = ScenarioModel(new_settings)
+
+        if new_policy == record_policy.OVERWRITE:
+          # If policy is overwrite when recording, whenever intercept is enabled,
+          # set active scenario to be overwritable
+          scenario_model.update(_scenario_key.id, **{ 'overwritable': True })[1]
+        else:
+          scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
+  elif was_active and not is_active:
+    if _mode == intercept_mode.RECORD:
+      old_proxy_settings = __current_proxy_settings(context)
+      old_policy = __data_rule(old_proxy_settings).record_policy
+
+      if old_policy == record_policy.OVERWRITE:
+        scenario_key = data_rule.scenario_key
+        _scenario_key = __parse_scenario_key(scenario_key)
+
+        if _scenario_key:
+          scenario_model = ScenarioModel(new_settings)
+
+          # If policy is overwrite when recording, whenever intercept is disabled,
+          # set active scenario to not be overwritable
+          scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
+
 def handle_scenario_update(new_settings: Settings, context = None):
   new_scenario_key = __scenario_key(new_settings.proxy)
   if not new_scenario_key:
@@ -27,9 +65,10 @@ def handle_scenario_update(new_settings: Settings, context = None):
   old_proxy_settings = __current_proxy_settings(context)
   old_scenario_key = __scenario_key(old_proxy_settings)
 
-  data_rule = __data_rule(new_settings.proxy)
-  if data_rule.record_policy == record_policy.OVERWRITE:
-    if old_scenario_key != new_scenario_key:
+  if old_scenario_key != new_scenario_key:
+    data_rule = __data_rule(new_settings.proxy)
+
+    if data_rule.record_policy == record_policy.OVERWRITE:
       scenario_model = ScenarioModel(new_settings)
 
       _old_scenario_key = __parse_scenario_key(old_scenario_key)
@@ -75,13 +114,13 @@ def handle_policy_update(new_settings: Settings, context: Context = None):
     new_policy = data_rule.record_policy
     old_policy = old_data_rule.record_policy
 
-    if new_policy != old_policy and new_policy == record_policy.OVERWRITE:
+    if new_policy != old_policy and old_policy == record_policy.OVERWRITE:
       scenario_key = data_rule.scenario_key
       _scenario_key = __parse_scenario_key(scenario_key)
 
       if _scenario_key:
         scenario_model = ScenarioModel(new_settings)
-        scenario_model.update(_scenario_key.id, **{ 'overwritable': True })[1]
+        scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
 
 def __current_proxy_settings(context: Context = None):
   if context and context.get('current_proxy_settings'):

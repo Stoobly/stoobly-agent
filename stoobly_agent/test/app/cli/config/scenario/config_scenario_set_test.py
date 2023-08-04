@@ -45,7 +45,8 @@ class TestConfigScenarioSet():
 
       return Scenario.last() 
 
-    def test_it_sets_scenario_overwritable(self, runner: CliRunner, settings: Settings, created_scenario: Scenario, new_scenario: Scenario):
+    @pytest.fixture(scope='class', autouse=True)
+    def change_scenario_results(self, runner: CliRunner, settings: Settings, created_scenario: Scenario, new_scenario: Scenario):
       project_key = settings.proxy.intercept.project_key
       _project_key = ProjectKey(project_key)
 
@@ -57,8 +58,10 @@ class TestConfigScenarioSet():
       set_results = runner.invoke(config, ['scenario', 'set', new_scenario.key()])
       assert set_results.exit_code == 0
 
-      _created_scenario = Scenario.find(created_scenario.id)
-      assert not _created_scenario.overwritable
-
+    def test_it_sets_new_scenario_overwritable(self, new_scenario: Scenario):
       _new_scenario = Scenario.find(new_scenario.id)
       assert _new_scenario.overwritable
+
+    def test_it_sets_old_scenario_not_overwritable(self, created_scenario: Scenario):
+      _created_scenario = Scenario.find(created_scenario.id)
+      assert not _created_scenario.overwritable
