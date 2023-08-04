@@ -3,7 +3,9 @@ import pdb
 from mergedeep import merge
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
-from stoobly_agent.app.cli.helpers.handle_config_update_service import context as handle_context, handle_project_update, handle_policy_update, handle_scenario_update
+from stoobly_agent.app.cli.helpers.handle_config_update_service import (
+    context as handle_context, handle_intercept_active_update, handle_policy_update, handle_project_update, handle_scenario_update
+) 
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
@@ -106,8 +108,9 @@ class ConfigsController:
 
         _handle_context = handle_context()
 
-        handle_project_update(settings, _handle_context)
+        handle_intercept_active_update(settings, _handle_context)
         handle_policy_update(settings, _handle_context)
+        handle_project_update(settings, _handle_context)
         handle_scenario_update(settings, _handle_context)
 
         settings.write(settings.to_dict())

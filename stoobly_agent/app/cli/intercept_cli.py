@@ -6,7 +6,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode, mock_policy, record_policy, replay_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from .helpers.handle_config_update_service import handle_policy_update
+from .helpers.handle_config_update_service import handle_intercept_active_update, handle_policy_update
 
 settings = Settings.instance()
 
@@ -43,6 +43,8 @@ def intercept(ctx):
 def enable(**kwargs):
     settings.proxy.intercept.active = True
 
+    handle_intercept_active_update(settings)
+
     settings.commit()
 
     print("Intercept enabled!")
@@ -54,6 +56,8 @@ def disable(**kwargs):
     settings = Settings.instance()
 
     settings.proxy.intercept.active = False
+
+    handle_intercept_active_update(settings)
 
     settings.commit()
 
@@ -72,9 +76,14 @@ def configure(**kwargs):
         sys.exit(1)
 
     if kwargs['mode']:
-        settings.proxy.intercept.mode = kwargs['mode']
+        if settings.proxy.intercept.mode != kwargs['mode']:
+            if settings.proxy.intercept.active:
+                settings.proxy.intercept.active = False
+                handle_intercept_active_update(settings)
 
-        print(f"Updating intercept mode to {kwargs['mode']}")
+            settings.proxy.intercept.mode = kwargs['mode']
+
+            print(f"Updating intercept mode to {kwargs['mode']}")
 
     _mode = kwargs['mode'] or settings.proxy.intercept.mode 
 
@@ -98,9 +107,9 @@ def configure(**kwargs):
         elif active_mode == mode.TEST:
             data_rule.test_policy = kwargs['policy']
 
+        handle_policy_update(settings)
+
         print(f"Updating {_mode} policy to {kwargs['policy']}")
-    
-    handle_policy_update(settings)
 
     settings.commit()
 
