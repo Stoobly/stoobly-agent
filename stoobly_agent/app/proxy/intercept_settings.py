@@ -11,7 +11,7 @@ from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RedactRule
-from stoobly_agent.config.constants import custom_headers, mode, request_origin, test_filter
+from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.logger import Logger
 
@@ -65,6 +65,9 @@ class InterceptSettings:
   def lifecycle_hooks_script_path(self):
     if self.__headers and custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH in self.__headers:
       return self.__headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH]
+
+    if os.environ.get(env_vars.AGENT_LIFECYCLE_HOOKS_PATH):
+      return os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] 
 
   @property
   def lifecycle_hooks(self):
