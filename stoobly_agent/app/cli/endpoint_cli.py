@@ -26,7 +26,7 @@ def endpoint(ctx):
 )
 @click.option('--format', required=True, type=click.Choice([OPENAPI_FORMAT]), help='File format')
 @click.option('--scenario-key', help='Which scenario to import to. If none then all requests will be imported to.')
-@click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create endpoint in.')(f), is_remote)
 @click.argument('path')
 def _import(**kwargs: EndpointCreateCliOptions):

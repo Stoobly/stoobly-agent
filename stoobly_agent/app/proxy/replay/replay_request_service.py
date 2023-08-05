@@ -21,7 +21,7 @@ class ReplayRequestOptions(TypedDict):
   alias_resolve_strategy: alias_resolve_strategy.AliasResolveStrategy
   group_by: str
   host: str
-  lifecycle_hooks_script_path: str
+  lifecycle_hooks_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   before_replay: Union[Callable[[ReplayContext], None], None]
   after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
@@ -54,8 +54,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   if options.get('alias_resolve_strategy'):
     headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
 
-  if options.get('lifecycle_hooks_script_path'):
-    __handle_lifecycle_hooks_script_path(options['lifecycle_hooks_script_path'], headers) 
+  if options.get('lifecycle_hooks_path'):
+    __handle_lifecycle_hooks_path(options['lifecycle_hooks_path'], headers) 
 
   if options.get('mode'):
     __handle_mode_option(options['mode'], request, headers)
@@ -137,14 +137,14 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   return res
 
-def __handle_lifecycle_hooks_script_path(script_path, headers):
+def __handle_lifecycle_hooks_path(script_path, headers):
   if not script_path:
     return
 
   if not os.path.isabs(script_path):
     script_path = os.path.join(os.path.abspath('.'), script_path)
 
-  headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH] = script_path
+  headers[custom_headers.LIFECYCLE_HOOKS_PATH] = script_path
 
 def __handle_mode_option(_mode, request: Request, headers):
   headers[custom_headers.PROXY_MODE] = _mode

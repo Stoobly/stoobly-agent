@@ -2,8 +2,9 @@ import os
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.http import Headers, Request as MitmproxyRequest, Response as MitmproxyResponse
+from mitmproxy.http import Headers, Request as MitmproxyRequest
 
+from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.proxy.handle_record_service import handle_response_record
@@ -14,7 +15,7 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import lifecycle_hooks, mode
 from stoobly_agent.lib.logger import Logger
 
 # Disable proxy settings in urllib
@@ -28,6 +29,8 @@ def request(flow: MitmproxyHTTPFlow):
     __patch_cookie(request)
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
+
+    __intercept_hook(lifecycle_hooks.BEFORE_REQUEST, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
     Logger.instance().debug(f"{LOG_ID}:ProxyMode: {active_mode}")
@@ -55,6 +58,8 @@ def response(flow: MitmproxyHTTPFlow):
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
     intercept_settings.for_response()
+
+    __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
 
@@ -91,3 +96,9 @@ def __patch_cookie(request: MitmproxyRequest):
 def __combine_header(headers: Headers, header_name: str, delimitter: str):
     values = headers.get_all(header_name)
     headers[header_name] = delimitter.join(values)
+
+def __intercept_hook(hook: str, flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
+    lifecycle_hooks_module = intercept_settings.lifecycle_hooks
+
+    if hook in lifecycle_hooks_module:
+        lifecycle_hooks_module[hook](InterceptContext(flow, intercept_settings))

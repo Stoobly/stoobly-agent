@@ -74,8 +74,8 @@ class TestContext(TestContextABC):
     return self.__intercept_settings.lifecycle_hooks
 
   @property
-  def lifecycle_hooks_script_path(self):
-    return self.__intercept_settings.lifecycle_hooks_script_path
+  def lifecycle_hooks_path(self):
+    return self.__intercept_settings.lifecycle_hooks_path
 
   @property
   def end_time(self):

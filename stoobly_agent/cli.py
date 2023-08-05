@@ -87,6 +87,7 @@ def init(**kwargs):
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('--modify-headers', multiple=True, help='''
   Header modify pattern of the form "[/flow-filter]/header-name/[@]header-value", where the separator can be any character. The @ allows to provide a file path that is used to read the header value string.
   An empty header-value removes existing header-name headers. May be passed multiple times.
@@ -106,6 +107,9 @@ def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
     os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
+
+    if kwargs.get('lifecycle_hooks_path'):
+      os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
 
     # Observe config for changes
     Settings.instance().watch()

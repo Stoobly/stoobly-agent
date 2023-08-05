@@ -113,6 +113,9 @@ def __filter_options(options):
     if 'headless' in options:
         del options['headless']
 
+    if 'lifecycle_hooks_path' in options:
+        del options['lifecycle_hooks_path']
+
     if 'ui_host' in options:
         del options['ui_host']
 

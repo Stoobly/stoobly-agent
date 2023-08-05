@@ -4,7 +4,7 @@ def matches(context: TestContext):
     lifecycle_hooks = context.lifecycle_hooks 
 
     if not 'handle_test' in lifecycle_hooks:
-        return False, f"Expected function 'handle_test' to be defined in {context.lifecycle_hooks_script_path}"
+        return False, f"Expected function 'handle_test' to be defined in {context.lifecycle_hooks_path}"
 
     try:
         status, log = lifecycle_hooks['handle_test'](context)

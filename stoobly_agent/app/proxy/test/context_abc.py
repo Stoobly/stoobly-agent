@@ -35,7 +35,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def lifecycle_hooks_script_path(self):
+  def lifecycle_hooks_path(self):
     pass
 
   @property

@@ -116,7 +116,7 @@ def list(**kwargs):
 @click.option('--format', type=click.Choice([BODY_FORMAT, JSON_FORMAT]), help='Format replay response.')
 @click.option('--host', help='Rewrite request host.')
 @ConditionalDecorator(lambda f: click.option('--group-by', help='Repeat for each alias name.')(f), is_remote)
-@click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
   '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
   help='''
@@ -215,7 +215,7 @@ if is_remote:
   @click.option('--format', type=click.Choice([BODY_FORMAT, JSON_FORMAT]), help='Format replay response.')
   @click.option('--group-by', help='Repeat for each alias name.')
   @click.option('--host', help='Rewrite request host.')
-  @click.option('--lifecycle-hooks-script-path', help='Path to lifecycle hooks script.')
+  @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
   @click.option(
       '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
       help='''
