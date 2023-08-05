@@ -5,10 +5,11 @@ from requests import Response
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
-class ReplayContext():
+from ..context import InterceptContext
+
+class ReplayContext(InterceptContext):
   def __init__(self, flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings):
-    self.__flow = flow
-    self.__intercept_settings = intercept_settings
+    super().__init__(flow, intercept_settings)
 
     self.__start_time = time.time()
     self.__end_time = None
@@ -17,14 +18,6 @@ class ReplayContext():
   @property
   def end_time(self):
     return self.__end_time
-
-  @property
-  def flow(self):
-    return self.__flow
-
-  @property
-  def intercept_settings(self):
-    return self.__intercept_settings
 
   @property
   def response(self):
