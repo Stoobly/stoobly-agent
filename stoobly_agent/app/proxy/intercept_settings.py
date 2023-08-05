@@ -62,9 +62,9 @@ class InterceptSettings:
     return custom_headers.PROXY_MODE in self.__headers
 
   @property
-  def lifecycle_hooks_script_path(self):
-    if self.__headers and custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH in self.__headers:
-      return self.__headers[custom_headers.LIFECYCLE_HOOKS_SCRIPT_PATH]
+  def lifecycle_hooks_path(self):
+    if self.__headers and custom_headers.LIFECYCLE_HOOKS_PATH in self.__headers:
+      return self.__headers[custom_headers.LIFECYCLE_HOOKS_PATH]
 
     if os.environ.get(env_vars.AGENT_LIFECYCLE_HOOKS_PATH):
       return os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] 
@@ -236,7 +236,7 @@ class InterceptSettings:
     ))
 
   def __initialize_lifecycle_hooks(self):
-    script_path = self.lifecycle_hooks_script_path
+    script_path = self.lifecycle_hooks_path
 
     if not script_path:
         return

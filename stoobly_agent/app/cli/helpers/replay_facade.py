@@ -14,7 +14,7 @@ class ReplayCliOptions(TypedDict):
   assign: List[str]
   group_by: str
   host: str
-  lifecycle_hooks_script_path: str
+  lifecycle_hooks_path: str
   on_response: Callable
   project_key: str
   record: bool
@@ -54,7 +54,7 @@ class ReplayFacade():
       'before_replay': cli_options.get('before_replay'),
       'group_by': cli_options.get('group_by'),
       'host': cli_options.get('host'),
-      'lifecycle_hooks_script_path': cli_options.get('lifecycle_hooks_script_path'),
+      'lifecycle_hooks_path': cli_options.get('lifecycle_hooks_path'),
       'overwrite': cli_options.get('overwrite'),
       'request_origin': request_origin.CLI,
       'save': cli_options.get('save'),
