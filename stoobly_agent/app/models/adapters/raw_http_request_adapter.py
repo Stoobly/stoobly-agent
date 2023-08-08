@@ -28,7 +28,7 @@ class RawHttpRequestAdapter():
 
         if decoded_key in self.headers:
           separator = HEADER_COOKIE_SEPARATOR if decoded_key.lower() == HEADER_COOKIE else HEADER_SEPARATOR
-          self.headers[decoded_key] = separator.join(self.headers[decoded_key], decoded_value)
+          self.headers[decoded_key] = separator.join([self.headers[decoded_key], decoded_value])
         else:
           self.headers[decoded_key] = decoded_value
 

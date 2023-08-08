@@ -35,7 +35,7 @@ class RawHttpResponseAdapter():
         decoded_key = decode(header_key)
         decoded_value = decode(header_value).strip()
         if decoded_key in self.headers:
-          self.headers[decoded_key] = HEADER_SEPARATOR.join(self.headers[decoded_key], decoded_value)
+          self.headers[decoded_key] = HEADER_SEPARATOR.join([self.headers[decoded_key], decoded_value])
         else:
           self.headers[decoded_key] = decoded_value
 
