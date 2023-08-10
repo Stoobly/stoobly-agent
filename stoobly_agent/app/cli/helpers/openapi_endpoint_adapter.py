@@ -1,13 +1,13 @@
 import copy
 from functools import reduce
 import itertools
-import pdb
 from pprint import pprint
 import re
 from typing import Dict, List, Union
 from urllib.parse import urlparse
 
 from openapi_core import Spec
+import yaml
 
 from stoobly_agent.lib.api.interfaces.endpoints import (
   Alias,
@@ -23,7 +23,14 @@ class OpenApiEndpointAdapter():
     return
 
   def adapt_from_file(self, file_path) -> List[EndpointShowResponse]:
-    spec = Spec.from_file_path(file_path)
+    spec = {}
+
+    with open(file_path, "r") as stream:
+      file_data: Dict = yaml.safe_load(stream)
+      if 'info' not in file_data:
+        self.__add_info(file_data)
+      spec = Spec.from_dict(file_data)
+
     return self.adapt(spec)
 
   def adapt(self, spec: Spec) -> List[EndpointShowResponse]:
@@ -230,6 +237,15 @@ class OpenApiEndpointAdapter():
           endpoints.append(endpoint)
     
     return endpoints
+
+  def __add_info(self, file_data: Dict):
+    if 'info' in file_data:
+      return
+
+    file_data['info'] = {
+      'version': '0.0.1',
+      'title': ''
+    }
 
   def __get_most_recent_param(self, literal_params: dict):
     return list(literal_params)[-1] if literal_params else None
