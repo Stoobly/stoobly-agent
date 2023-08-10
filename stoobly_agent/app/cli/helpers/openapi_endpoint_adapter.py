@@ -33,7 +33,7 @@ class OpenApiEndpointAdapter():
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
 
-    servers_spec = spec / "servers"
+    servers_spec = spec.get("servers")
     servers = self.__evaluate_servers(servers_spec)
 
     for _, server in enumerate(servers):
