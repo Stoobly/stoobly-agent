@@ -440,7 +440,7 @@ class OpenApiEndpointAdapter():
   def __evaluate_servers(self, servers: Spec) -> List[dict]:
     result = []
 
-    if not servers:
+    if not servers.exists():
       default_server = {'url': '/'}
       return [default_server]
 
