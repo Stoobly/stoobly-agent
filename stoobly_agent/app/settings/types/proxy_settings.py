@@ -15,6 +15,11 @@ class ParameterRule(TypedDict):
   type: str
   value: str
 
+class UrlRule(TypedDict):
+  host: str
+  modes: List[Mode]
+  port: str
+
 class DataRules(TypedDict):
   mock_policy: MockPolicy
   record_policy: RecordPolicy
@@ -30,6 +35,7 @@ class RewriteRule(TypedDict):
   methods: List[Method]
   pattern: str
   parameter_rules: List[ParameterRule]
+  url_rule: List[UrlRule]
 
 class FirewallRule(TypedDict):
   action: List[FirewallAction]
