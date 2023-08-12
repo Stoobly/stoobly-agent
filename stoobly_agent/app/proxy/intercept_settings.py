@@ -210,21 +210,18 @@ class InterceptSettings:
 
     # Filter only parameters matching active intercept mode
     for rewrite_rule in self.__rewrite_rules:
+      # If url rule applies, then update .url_rules with url_rule
+      url_rules = self.__select_url_rules(rewrite_rule)
+
+      # If parameters rules apply, then update .parameter_rules with applicable parameter_rules
       parameter_rules = self.__select_parameter_rules(rewrite_rule, mode)
 
-      # If no parameters rules were found, then this filter rule is not applied
-      if len(parameter_rules) == 0:
-        continue
-
-      # Build a new RewriteRule object contain only parameter rules matching intercept mode
-      rewrite_rule = RewriteRule({
-        'methods': rewrite_rule.methods,
-        'pattern': rewrite_rule.pattern,
-        'parameters_rules': [], # Has to be dict form, manually set it
-      })
-      rewrite_rule.parameter_rules = parameter_rules
-
-      rules.append(rewrite_rule)
+      if len(url_rules) > 0 or len(parameter_rules) > 0:
+        # Build a new RewriteRule object contain only parameter rules matching intercept mode
+        rewrite_rule = RewriteRule(rewrite_rule.to_dict())
+        rewrite_rule.url_rules = url_rules
+        rewrite_rule.parameter_rules = parameter_rules
+        rules.append(rewrite_rule)
 
     return rules
 
@@ -233,6 +230,13 @@ class InterceptSettings:
     return list(filter(
       lambda parameter: mode in parameter.modes and parameter.name, 
       rewrite_rule.parameter_rules or []
+    ))
+
+  def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
+    mode = mode or self.mode
+    return list(filter(
+      lambda url: mode in url.modes,
+      rewrite_rule.url_rules or []
     ))
 
   def __initialize_lifecycle_hooks(self):
