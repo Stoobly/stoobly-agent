@@ -7,7 +7,7 @@ from time import time
 
 from stoobly_agent.app.settings.constants import intercept_mode, request_component
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
-from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
+from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 
 @pytest.fixture
 def mitmproxy_get_request():
@@ -45,7 +45,7 @@ def mitmproxy_post_request():
     now + 1,
   )
 
-class TestRewrite():
+class TestRewriteParams():
 
   def test_rewrites_header(self, mitmproxy_get_request: MitmproxyRequest):
     parameter_rule = {
@@ -61,7 +61,7 @@ class TestRewrite():
     })
 
     facade = MitmproxyRequestFacade(mitmproxy_get_request)
-    facade.with_rewrite_rules([rewrite_rule])
+    facade.with_parameter_rules([rewrite_rule])
     facade.rewrite()
 
     headers = facade.headers
@@ -81,7 +81,7 @@ class TestRewrite():
     })
 
     facade = MitmproxyRequestFacade(mitmproxy_get_request)
-    facade.with_rewrite_rules([rewrite_rule])
+    facade.with_parameter_rules([rewrite_rule])
     facade.rewrite()
 
     query_params = facade.query
@@ -101,10 +101,72 @@ class TestRewrite():
     })
 
     facade = MitmproxyRequestFacade(mitmproxy_post_request)
-    facade.with_rewrite_rules([rewrite_rule])
+    facade.with_parameter_rules([rewrite_rule])
     facade.rewrite()
 
     body = facade.body
     body_params = json.loads(body)
     assert body_params['age'] == '' 
 
+class TestRewriteUrl():
+
+  def test_rewrites_host(self, mitmproxy_get_request: MitmproxyRequest):
+    host = 'test'
+    url_rule = {
+      'modes': [intercept_mode.RECORD],
+      'host': host,
+    }
+    rewrite_rule = RewriteRule({
+      'methods': ['GET'],
+      'pattern': '.*?/requests',
+      'url_rules': [url_rule]
+    })
+
+    facade = MitmproxyRequestFacade(mitmproxy_get_request)
+    facade.with_url_rules([rewrite_rule])
+    facade.rewrite()
+
+    assert facade.host == host
+
+  def test_rewrites_port(self, mitmproxy_get_request: MitmproxyRequest):
+    port = '443'
+    url_rule = {
+      'modes': [intercept_mode.RECORD],
+      'port': port,
+    }
+    rewrite_rule = RewriteRule({
+      'methods': ['GET'],
+      'pattern': '.*?/requests',
+      'url_rules': [url_rule]
+    })
+
+    facade = MitmproxyRequestFacade(mitmproxy_get_request)
+    facade.with_url_rules([rewrite_rule])
+    facade.rewrite()
+
+    assert facade.port == port
+
+  class TestWhenMultipleRules():
+
+    def test_rewrites_host(self, mitmproxy_get_request: MitmproxyRequest):
+      host1 = 'test1'
+      url_rule1 = {
+        'modes': [intercept_mode.RECORD],
+        'host': host1,
+      }
+      host2 = 'test2'
+      url_rule2 = {
+        'modes': [intercept_mode.RECORD],
+        'host': host2,
+      }
+      rewrite_rule = RewriteRule({
+        'methods': ['GET'],
+        'pattern': '.*?/requests',
+        'url_rules': [url_rule1, url_rule2]
+      })
+
+      facade = MitmproxyRequestFacade(mitmproxy_get_request)
+      facade.with_url_rules([rewrite_rule])
+      facade.rewrite()
+
+      assert facade.host == host2
