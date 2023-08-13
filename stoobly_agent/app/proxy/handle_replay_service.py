@@ -28,10 +28,11 @@ def __replay_request(replay_context: ReplayContext):
     """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
     rewrite_rules = intercept_settings.rewrite_rules
+
     if len(rewrite_rules) > 0:
         request: MitmproxyRequest = replay_context.flow.request
         request_facade = MitmproxyRequestFacade(request)
-        request_facade.with_rewrite_rules(rewrite_rules).rewrite()
+        request_facade.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
 
     __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
 
