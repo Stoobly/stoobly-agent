@@ -10,7 +10,7 @@ from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RewriteRule
+from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.logger import Logger
