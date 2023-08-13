@@ -155,7 +155,8 @@ def handle_deleting(request):
     replayed_response.delete()
 
 def handle_deleted(request):
-  scenario = request.scenario
+  # request.scenario returns a cached version of the scenario
+  scenario = Scenario.find(request.scenario_id)
 
   if scenario:
     scenario.requests_count -= 1
