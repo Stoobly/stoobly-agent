@@ -8,7 +8,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
-from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
+from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule
 from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
@@ -146,6 +146,7 @@ def rewrite(ctx):
 @rewrite.command(
     help="Set rewrite rule."
 )
+@click.option('--host', help='Request URL host.')
 @click.option(
     '--method', 
     multiple=True, 
@@ -159,17 +160,30 @@ def rewrite(ctx):
     required=True,
     type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
 )
-@click.option('--name', required=True, help='Name of the request component.')
+@click.option('--name', help='Name of the request component.')
 @click.option('--pattern', required=True, help='URLs pattern.')
+@click.option('--port', help='Request URL port.')
 @click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
-    required=True,
     type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
     help='Request component type.'
 )
-@click.option('--value', required=True, help='Rewrite value.')
+@click.option('--value', help='Rewrite value.')
 def set(**kwargs):
+    if kwargs['name'] or kwargs['value'] or kwargs['type']:
+        if kwargs['name'] == None:
+            print("Error: missing option '--name'", file=sys.stderr)
+            sys.exit(1)
+
+        if kwargs['value'] == None:
+            print("Error: missing option '--value'", file=sys.stderr)
+            sys.exit(1)
+        
+        if kwargs['type'] == None:
+            print("Error: missing option '--type'", file=sys.stderr)
+            sys.exit(1)
+
     settings = Settings.instance()
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
     project_key = ProjectKey(project_key_str)
@@ -183,27 +197,50 @@ def set(**kwargs):
     filtered_rewrite_rules: List[RewriteRule] = list(filter(rewrite_rule_filter, rewrite_rules))
 
     if len(filtered_rewrite_rules) == 0:
+        parameter_rules = list(filter(lambda r: r != None, [__select_parameter_rule(kwargs)]))
+        url_rules = list(filter(lambda r: r != None , [__select_url_rule(kwargs)]))
         rewrite_rule = RewriteRule({
             'methods': methods,
             'pattern': kwargs['pattern'],
-            'parameter_rules': [__select_parameter_rule(kwargs)]
+            'parameter_rules': parameter_rules,
+            'url_rules': url_rules,
         })
         rewrite_rules.append(rewrite_rule)
         settings.proxy.rewrite.set_rewrite_rules(project_key.id, rewrite_rules)
     else:
         parameter_rule_filter = lambda rule: rule.name == kwargs['name'] and rule.type == kwargs['type'] and rule.modes == modes
+        url_rule_filter = lambda rule: rule.host == kwargs['host'] and rule.modes == modes
+
         for rewrite_rule in filtered_rewrite_rules:
-            parameter_rules = rewrite_rule.parameter_rules
-            filtered_parameter_rules: List[ParameterRule] = list(filter(parameter_rule_filter, parameter_rules))
+            # Parameter rules
             parameter_rule_dict = __select_parameter_rule(kwargs)
 
-            if len(filtered_parameter_rules) == 0:
-                parameter_rule = ParameterRule(parameter_rule_dict)
-                parameter_rules.append(parameter_rule)
-                rewrite_rule.parameter_rules = parameter_rules
-            else:
-                for parameter_rule in filtered_parameter_rules:
-                    parameter_rule.update(parameter_rule_dict)
+            if parameter_rule_dict:
+                parameter_rules = rewrite_rule.parameter_rules
+                filtered_parameter_rules: List[ParameterRule] = list(filter(parameter_rule_filter, parameter_rules))
+
+                if len(filtered_parameter_rules) == 0:
+                    parameter_rule = ParameterRule(parameter_rule_dict)
+                    parameter_rules.append(parameter_rule)
+                    rewrite_rule.parameter_rules = parameter_rules
+                else:
+                    for parameter_rule in filtered_parameter_rules:
+                        parameter_rule.update(parameter_rule_dict)
+
+            # URL rules
+            url_rule_dict = __select_url_rule(kwargs)
+            
+            if url_rule_dict:
+                url_rules = rewrite_rule.url_rules
+                filtered_url_rules: List[UrlRule] = list(filter(url_rule_filter, url_rules))
+
+                if len(filtered_url_rules) == 0:
+                    url_rule = UrlRule(url_rule_dict)
+                    url_rules.append(url_rule)
+                    rewrite_rule.url_rules = url_rules
+                else:
+                    for url_rule in filtered_url_rules:
+                        url_rule.update(url_rule_dict)
 
     settings.commit()
 
@@ -437,11 +474,24 @@ config.add_command(rewrite)
 config.add_command(scenario)
 
 def __select_parameter_rule(kwargs):
+    if kwargs['name'] == None or kwargs['value'] == None or kwargs['type'] == None:
+        return
+
     return {
         'modes': list(kwargs['mode']),
         'name': kwargs['name'],
         'value': kwargs['value'],
         'type': kwargs['type'],
+    }
+
+def __select_url_rule(kwargs):
+    if kwargs['host'] == None or kwargs['port'] == None:
+        return
+
+    return {
+        'host': kwargs['host'],
+        'modes': list(kwargs['mode']),
+        'port': kwargs['port'],
     }
 
 def __project_key(settings):
