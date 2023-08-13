@@ -1,6 +1,6 @@
 import pdb
 
-from typing import Callable, Dict, List, TypedDict, Union
+from typing import Dict, List, Union
 
 from stoobly_agent.app.proxy.replay.alias_context import AliasContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver

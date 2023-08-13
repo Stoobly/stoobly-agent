@@ -11,7 +11,6 @@ class MitmproxyResponseFacade(Response):
         self.content = response.raw_content
 
         self.rewrite_rules = []
-        self.rewrite_rules = []
 
     @property
     def code(self):
@@ -42,22 +41,12 @@ class MitmproxyResponseFacade(Response):
         self.response.headers['content-length'] = str(len(self.content))
 
     
-    def with_redact_rules(self, rules: RewriteRule):
-        if type(rules) == list:
-            self.rewrite_rules = rules
-
-        return self
-
     def with_rewrite_rules(self, rules: RewriteRule):
         if type(rules) == list:
             self.rewrite_rules = rules
 
         return self
 
-    # TODO
-    def redact(self):
-        pass
-    
     # TODO
     def rewrite(self):
         pass

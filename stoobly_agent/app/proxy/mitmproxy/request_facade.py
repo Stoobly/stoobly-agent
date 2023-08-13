@@ -8,7 +8,7 @@ from typing import Callable, List
 from urllib.parse import urlparse
 
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.app.settings.rewrite_rule import RewriteRule, ParameterRule
+from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
@@ -29,8 +29,8 @@ class MitmproxyRequestFacade(Request):
         self.request = request
         self.uri = urlparse(self.request.url)
 
-        self.__redact_rules: List[ParameterRule] = []
-        self.__rewrite_rules: List[ParameterRule] = []
+        self.__url_rules: List[UrlRule] = []
+        self.__parameter_rules: List[ParameterRule] = []
 
         self.__body = MitmproxyRequestBodyFacade(request)
 
@@ -99,41 +99,42 @@ class MitmproxyRequestFacade(Request):
         return self.request.port
 
     @property
-    def redact_rules(self) -> List[ParameterRule]:
-        return self.__redact_rules
+    def url_rules(self) -> List[ParameterRule]:
+        return self.__url_rules
     
     @property
-    def rewrite_rules(self) -> List[ParameterRule]:
-        return self.__rewrite_rules
+    def parameter_rules(self) -> List[ParameterRule]:
+        return self.__parameter_rules
 
-    def with_rewrite_rules(self, rules: List[RewriteRule]):
+    def with_parameter_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
-            self.__rewrite_rules = self.select_parameter_rules(rules)
+            self.__parameter_rules = self.select_parameter_rules(rules)
         return self 
 
-    def with_redact_rules(self, rules: List[RewriteRule]):
+    def with_url_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
-            self.__redact_rules = self.select_parameter_rules(rules)
+            self.__url_rules = self.select_url_rules(rules)
         return self
 
-    def redact(self):
-        redacts = self.__redact_rules
-        if len(redacts) != 0:
-            self.__redact_headers(redacts)
-            self.__redact_query(redacts)
-            self.__redact_content(redacts)
-
     def rewrite(self):
-        rewrites = self.__rewrite_rules
+        rewrites = self.__parameter_rules
 
         if len(rewrites) != 0:
             self.__rewrite_headers(rewrites)
             self.__rewrite_query(rewrites)
             self.__rewrite_content(rewrites)
 
+        rewrites = self.__url_rules
+
+        if len(rewrites):
+            self.__rewrite_url(rewrites)
+
+    # Find all the rules that match request url and method
+    def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
+        return list(filter(self.__is_rewrite_rule_selected, rules or []))
+
     def select_parameter_rules(self, rules: List[RewriteRule]) -> List[ParameterRule]:
-        # Find all the rules that match request url and method
-        _rules = list(filter(self.__is_parameter_rule_selected, rules or []))
+        _rules = self.select_rewrite_rules(rules)
         
         if len(_rules) == 0:
             return []
@@ -142,7 +143,17 @@ class MitmproxyRequestFacade(Request):
 
         return [item for sublist in parameter_rules for item in sublist] # flatten list
 
-    def __is_parameter_rule_selected(self, rewrite_rule: RewriteRule):
+    def select_url_rules(self, rules: List[RewriteRule]) -> List[UrlRule]:
+        _rules = self.select_rewrite_rules(rules)
+
+        if len(_rules) == 0:
+            return []
+
+        url_rules = list(map(lambda rule: rule.url_rules, _rules))
+
+        return [item for sublist in url_rules for item in sublist] # flatten list
+
+    def __is_rewrite_rule_selected(self, rewrite_rule: RewriteRule):
         pattern = rewrite_rule.pattern
 
         try:
@@ -168,6 +179,14 @@ class MitmproxyRequestFacade(Request):
         Logger.instance().info(f"{bcolors.OKCYAN}Rewriting {rewrite.type.lower()}{bcolors.ENDC} {rewrite.name} => {rewrite.value}")
         return rewrite.value
 
+    def __rewrite_url(self, rewrites: List[UrlRule]):
+        for rewrite in rewrites:
+            if rewrite.host:
+                self.request.host = rewrite.host
+            
+            if rewrite.port:
+                self.request.port = rewrite.port
+
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
 
@@ -176,19 +195,6 @@ class MitmproxyRequestFacade(Request):
 
     def __rewrite_content(self, rewrites: List[ParameterRule]):
         self.__apply_content(rewrites, self.__rewrite_handler)
-
-    def __redact_handler(self, rewrite: ParameterRule) -> str:
-        Logger.instance().debug(f"{bcolors.OKCYAN}Redacting{bcolors.ENDC} {rewrite.name}")
-        return '[REDACTED]'
-
-    def __redact_headers(self, redacts: List[ParameterRule]):
-        self.__apply_headers(redacts, self.__redact_handler)
-
-    def __redact_query(self, redacts: List[ParameterRule]):
-        self.__apply_queries(redacts, self.__redact_handler)
-
-    def __redact_content(self, redacts: List[ParameterRule]):
-        self.__apply_content(redacts, self.__redact_handler)
 
     def __apply_headers(self, rewrites: List[ParameterRule], handler: Callable):
         rewrites = list(filter(lambda rewrite: rewrite.type == request_component.HEADER, rewrites))

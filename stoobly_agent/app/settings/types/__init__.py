@@ -23,11 +23,6 @@ class IgnoreRule(TypedDict):
     method: str
     pattern: str
 
-class RedactRule(TypedDict):
-    redacts: List[Redact]
-    method: str
-    pattern: str
-
 class RewriteRule(TypedDict):
     rewrites: List[Rewrite]
     method: str
@@ -97,4 +92,4 @@ Component = {
     'QueryParam': 'Query Param',
 }
 IProjectModeSettings = Union[IProjectMockSettings, IProjectRecordSettings, IProjectTestSettings]
-Rule = Union[IgnoreRule, RedactRule, RewriteRule]
+Rule = Union[IgnoreRule, RewriteRule]

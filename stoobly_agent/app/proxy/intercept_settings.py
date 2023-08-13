@@ -10,7 +10,7 @@ from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RedactRule
+from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.logger import Logger
@@ -154,11 +154,11 @@ class InterceptSettings:
     return self.__select_rewrite_rules(_mode)
 
   @property
-  def record_rewrite_rules(self) -> List[RedactRule]:
+  def record_rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules(mode.RECORD)
 
   @property
-  def mock_rewrite_rules(self) -> List[RedactRule]:
+  def mock_rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules(mode.MOCK)
 
   @property
@@ -210,21 +210,18 @@ class InterceptSettings:
 
     # Filter only parameters matching active intercept mode
     for rewrite_rule in self.__rewrite_rules:
+      # If url rule applies, then update .url_rules with url_rule
+      url_rules = self.__select_url_rules(rewrite_rule)
+
+      # If parameters rules apply, then update .parameter_rules with applicable parameter_rules
       parameter_rules = self.__select_parameter_rules(rewrite_rule, mode)
 
-      # If no parameters rules were found, then this filter rule is not applied
-      if len(parameter_rules) == 0:
-        continue
-
-      # Build a new RewriteRule object contain only parameter rules matching intercept mode
-      rewrite_rule = RewriteRule({
-        'methods': rewrite_rule.methods,
-        'pattern': rewrite_rule.pattern,
-        'parameters_rules': [], # Has to be dict form, manually set it
-      })
-      rewrite_rule.parameter_rules = parameter_rules
-
-      rules.append(rewrite_rule)
+      if len(url_rules) > 0 or len(parameter_rules) > 0:
+        # Build a new RewriteRule object contain only parameter rules matching intercept mode
+        rewrite_rule = RewriteRule(rewrite_rule.to_dict())
+        rewrite_rule.url_rules = url_rules
+        rewrite_rule.parameter_rules = parameter_rules
+        rules.append(rewrite_rule)
 
     return rules
 
@@ -233,6 +230,13 @@ class InterceptSettings:
     return list(filter(
       lambda parameter: mode in parameter.modes and parameter.name, 
       rewrite_rule.parameter_rules or []
+    ))
+
+  def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
+    mode = mode or self.mode
+    return list(filter(
+      lambda url: mode in url.modes,
+      rewrite_rule.url_rules or []
     ))
 
   def __initialize_lifecycle_hooks(self):

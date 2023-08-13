@@ -48,6 +48,12 @@ rewrite_rule:
   methods: list(include('method'))
   pattern: str()
   parameter_rules: list(include('parameter_rule'))
+  url_rules: list(include('url_rule'))
+  port: str()
+url_rule:
+  host: str()
+  modes: list(include('mode'), min=1, max=4)
+  port: str()
 firewall_rule:
   action: include('firewall_action')
   methods: list(include('method'))
