@@ -10,7 +10,7 @@ from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RedactRule
+from stoobly_agent.app.settings.types import IgnoreRule, MatchRule, RewriteRule
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.logger import Logger
@@ -154,11 +154,11 @@ class InterceptSettings:
     return self.__select_rewrite_rules(_mode)
 
   @property
-  def record_rewrite_rules(self) -> List[RedactRule]:
+  def record_rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules(mode.RECORD)
 
   @property
-  def mock_rewrite_rules(self) -> List[RedactRule]:
+  def mock_rewrite_rules(self) -> List[RewriteRule]:
     return self.__select_rewrite_rules(mode.MOCK)
 
   @property
