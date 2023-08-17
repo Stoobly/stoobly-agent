@@ -190,12 +190,12 @@ class OpenApiEndpointAdapter():
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
           required_body_params = []
-          param_properties = {}
           literal_body_params = {}
           request_body_array = False
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
+            param_properties = {}
             schema = media_type['schema']
 
             # If Spec Component reference, look it up in components
@@ -208,12 +208,10 @@ class OpenApiEndpointAdapter():
               schema_type = schema.get('type')
               if schema_type:
                 if schema_type == 'object':
-                  param_properties = schema['properties']
+                  param_properties = schema.get('properties', {})
                 elif schema_type == 'array':
                   request_body_array = True
                   param_properties = {'tmp': schema['items']}
-              else:
-                param_properties = {}
 
             for property_key, property_value in param_properties.items():
               if property_key in required_body_params:
