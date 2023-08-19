@@ -144,7 +144,7 @@ class TestRewriteUrl():
     facade.with_url_rules([rewrite_rule])
     facade.rewrite()
 
-    assert facade.port == port
+    assert facade.port == int(port)
 
   class TestWhenMultipleRules():
 

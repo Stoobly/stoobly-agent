@@ -26,7 +26,7 @@ def join_rewritten_request(flow: MitmproxyHTTPFlow, intercept_settings: Intercep
     response = MitmproxyResponseFacade(flow.response)
     rewrite_rules = intercept_settings.record_rewrite_rules
 
-    request.with_parameter_rules(rewrite_rules).rewrite()
+    request.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
     response.with_rewrite_rules(rewrite_rules).rewrite()
 
     return join_request(request, response, intercept_settings)

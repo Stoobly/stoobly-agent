@@ -41,7 +41,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         # Rewrite request with paramter rules for mock
         request: MitmproxyRequest = context.flow.request
         request_facade = MitmproxyRequestFacade(request)
-        request_facade.with_parameter_rules(rewrite_rules).rewrite()
+        request_facade.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
 
     __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
