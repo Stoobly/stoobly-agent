@@ -110,11 +110,11 @@ class TestRewriteParams():
 
 class TestRewriteUrl():
 
-  def test_rewrites_host(self, mitmproxy_get_request: MitmproxyRequest):
-    host = 'test'
+  def test_rewrites_hostname(self, mitmproxy_get_request: MitmproxyRequest):
+    hostname = 'test'
     url_rule = {
       'modes': [intercept_mode.RECORD],
-      'host': host,
+      'hostname': hostname,
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
@@ -124,12 +124,15 @@ class TestRewriteUrl():
 
     facade = MitmproxyRequestFacade(mitmproxy_get_request)
     facade.with_url_rules([rewrite_rule])
+
+    assert facade.host != hostname
+
     facade.rewrite()
 
-    assert facade.host == host
+    assert facade.host == hostname
 
   def test_rewrites_port(self, mitmproxy_get_request: MitmproxyRequest):
-    port = '443'
+    port = '8000'
     url_rule = {
       'modes': [intercept_mode.RECORD],
       'port': port,
@@ -142,22 +145,46 @@ class TestRewriteUrl():
 
     facade = MitmproxyRequestFacade(mitmproxy_get_request)
     facade.with_url_rules([rewrite_rule])
+
+    assert facade.port != int(port)
+
     facade.rewrite()
 
     assert facade.port == int(port)
 
+  def test_rewrites_scheme(self, mitmproxy_get_request: MitmproxyRequest):
+    scheme = 'http'
+    url_rule = {
+      'modes': [intercept_mode.RECORD],
+      'scheme': scheme,
+    }
+    rewrite_rule = RewriteRule({
+      'methods': ['GET'],
+      'pattern': '.*?/requests',
+      'url_rules': [url_rule]
+    })
+
+    facade = MitmproxyRequestFacade(mitmproxy_get_request)
+    facade.with_url_rules([rewrite_rule])
+
+    assert facade.scheme != scheme
+
+    facade.rewrite()
+
+    assert facade.scheme == scheme
+
   class TestWhenMultipleRules():
 
-    def test_rewrites_host(self, mitmproxy_get_request: MitmproxyRequest):
-      host1 = 'test1'
+    def test_rewrites_hostname(self, mitmproxy_get_request: MitmproxyRequest):
+      hostname1 = 'test1'
       url_rule1 = {
         'modes': [intercept_mode.RECORD],
-        'host': host1,
+        'hostname': hostname1,
       }
-      host2 = 'test2'
+      hostname2 = 'test2'
       url_rule2 = {
         'modes': [intercept_mode.RECORD],
-        'host': host2,
+        'hostname': hostname2,
       }
       rewrite_rule = RewriteRule({
         'methods': ['GET'],
@@ -169,4 +196,4 @@ class TestRewriteUrl():
       facade.with_url_rules([rewrite_rule])
       facade.rewrite()
 
-      assert facade.host == host2
+      assert facade.host == hostname2
