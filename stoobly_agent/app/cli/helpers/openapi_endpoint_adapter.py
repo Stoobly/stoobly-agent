@@ -27,8 +27,14 @@ class OpenApiEndpointAdapter():
 
     with open(file_path, "r") as stream:
       file_data: Dict = yaml.safe_load(stream)
+
       if 'info' not in file_data:
         self.__add_info(file_data)
+
+      missing_oauth2_scopes = self.__is_missing_oauth2_scopes(file_data)
+      if missing_oauth2_scopes:
+        self.__add_oauth2_default_scopes(file_data)
+
       spec = Spec.from_dict(file_data)
 
     return self.adapt(spec)
@@ -36,7 +42,7 @@ class OpenApiEndpointAdapter():
   def adapt(self, spec: Spec) -> List[EndpointShowResponse]:
     endpoints = []
     endpoint_counter = 0
-    components = spec.get("components")
+    components = spec.get("components", {})
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
 
@@ -184,12 +190,12 @@ class OpenApiEndpointAdapter():
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
           required_body_params = []
-          param_properties = {}
           literal_body_params = {}
           request_body_array = False
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
+            param_properties = {}
             schema = media_type['schema']
 
             # If Spec Component reference, look it up in components
@@ -202,12 +208,10 @@ class OpenApiEndpointAdapter():
               schema_type = schema.get('type')
               if schema_type:
                 if schema_type == 'object':
-                  param_properties = schema['properties']
+                  param_properties = schema.get('properties', {})
                 elif schema_type == 'array':
                   request_body_array = True
                   param_properties = {'tmp': schema['items']}
-              else:
-                param_properties = {}
 
             for property_key, property_value in param_properties.items():
               if property_key in required_body_params:
@@ -246,6 +250,57 @@ class OpenApiEndpointAdapter():
       'version': '0.0.1',
       'title': ''
     }
+
+  def __is_missing_oauth2_scopes(self, file_data: Dict):
+    is_missing = False
+    if 'components' in file_data:
+      components = file_data['components']
+
+      if 'securitySchemes' in components:
+        security_schemes = components['securitySchemes']
+
+        for scheme_name, scheme in security_schemes.items():
+          if scheme.get('type') == 'oauth2':
+            flows = scheme.get('flows')
+
+            if flows and flows.get('clientCredentials'):
+              scopes = flows.get('clientCredentials').get('scopes')
+
+              if scopes is None:
+                return True
+
+            break
+
+    return is_missing
+
+  def __add_oauth2_default_scopes(self, file_data: Dict):
+    if 'components' not in file_data:
+      return
+    components = file_data['components']
+
+    if 'securitySchemes' not in components:
+      return
+    security_schemes = components['securitySchemes']
+
+    oauth_security_scheme = {}
+    for scheme_name, scheme in security_schemes.items():
+      if scheme.get('type') == 'oauth2':
+        oauth_security_scheme = scheme
+        break
+
+    # If empty dict or None
+    if not oauth_security_scheme:
+      return
+
+    flows = oauth_security_scheme['flows']
+    if not flows:
+      return
+
+    client_credentials = flows['clientCredentials']
+    if not client_credentials:
+      return
+
+    client_credentials['scopes'] = {}
 
   def __get_most_recent_param(self, literal_params: dict):
     return list(literal_params)[-1] if literal_params else None
