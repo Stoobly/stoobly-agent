@@ -16,9 +16,10 @@ class ParameterRule(TypedDict):
   value: str
 
 class UrlRule(TypedDict):
-  host: str
+  hostname: str
   modes: List[Mode]
   port: str
+  scheme: str
 
 class DataRules(TypedDict):
   mock_policy: MockPolicy

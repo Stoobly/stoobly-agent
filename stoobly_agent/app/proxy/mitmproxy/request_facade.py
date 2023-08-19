@@ -106,6 +106,10 @@ class MitmproxyRequestFacade(Request):
     def parameter_rules(self) -> List[ParameterRule]:
         return self.__parameter_rules
 
+    @property
+    def scheme(self):
+        return self.request.scheme
+
     def with_parameter_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
             self.__parameter_rules = self.select_parameter_rules(rules)
@@ -181,11 +185,14 @@ class MitmproxyRequestFacade(Request):
 
     def __rewrite_url(self, rewrites: List[UrlRule]):
         for rewrite in rewrites:
-            if rewrite.host:
-                self.request.host = rewrite.host
+            if rewrite.hostname:
+                self.request.host = rewrite.hostname
             
             if rewrite.port:
                 self.request.port = int(rewrite.port)
+
+            if rewrite.scheme:
+                self.request.scheme = rewrite.scheme
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
