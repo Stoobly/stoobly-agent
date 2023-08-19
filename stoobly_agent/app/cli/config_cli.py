@@ -146,7 +146,7 @@ def rewrite(ctx):
 @rewrite.command(
     help="Set rewrite rule."
 )
-@click.option('--host', help='Request URL host.')
+@click.option('--hostname', help='Request URL hostname.')
 @click.option(
     '--method', 
     multiple=True, 
@@ -169,6 +169,7 @@ def rewrite(ctx):
     type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
     help='Request component type.'
 )
+@click.option('--scheme', help='Request URL scheme.')
 @click.option('--value', help='Rewrite value.')
 def set(**kwargs):
     if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -209,7 +210,7 @@ def set(**kwargs):
         settings.proxy.rewrite.set_rewrite_rules(project_key.id, rewrite_rules)
     else:
         parameter_rule_filter = lambda rule: rule.name == kwargs['name'] and rule.type == kwargs['type'] and rule.modes == modes
-        url_rule_filter = lambda rule: rule.host == kwargs['host'] and rule.modes == modes
+        url_rule_filter = lambda rule: rule.modes == modes
 
         for rewrite_rule in filtered_rewrite_rules:
             # Parameter rules
@@ -485,13 +486,14 @@ def __select_parameter_rule(kwargs):
     }
 
 def __select_url_rule(kwargs):
-    if kwargs['host'] == None or kwargs['port'] == None:
+    if kwargs['hostname'] == None or kwargs['port'] == None:
         return
 
     return {
-        'host': kwargs['host'],
+        'hostname': kwargs['hostname'],
         'modes': list(kwargs['mode']),
         'port': kwargs['port'],
+        'scheme': kwargs['scheme'],
     }
 
 def __project_key(settings):

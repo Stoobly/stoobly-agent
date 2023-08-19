@@ -103,8 +103,12 @@ class TestRewrite():
   class TestUrl():
 
     @pytest.fixture(scope='class')
-    def host(self):
-      return 'localhost'
+    def scheme(self):
+      return 'https'
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+      return 'localhostname'
 
     @pytest.fixture(scope='class')
     def port(self):
@@ -123,10 +127,10 @@ class TestRewrite():
       return '.*?'
 
     @pytest.fixture(autouse=True, scope='class')
-    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, pattern, host, port):
+    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, pattern, scheme, hostname, port):
       rewrite_result = runner.invoke(config, [
           'rewrite', 'set', 
-          '--method', method, '--mode', _mode, '--pattern', pattern, '--host', host, '--port', port
+          '--method', method, '--mode', _mode, '--pattern', pattern, '--hostname', hostname, '--port', port, '--scheme', scheme,
         ]
       )
       settings.load()
@@ -164,8 +168,11 @@ class TestRewrite():
     def test_modes(self, url_rule: UrlRule, _mode):
       assert url_rule.modes == [_mode]
 
-    def test_header_name(self, url_rule: UrlRule, host):
-      assert url_rule.host == host
+    def test_url_hostname(self, url_rule: UrlRule, hostname):
+      assert url_rule.hostname == hostname
 
-    def test_header_value(self, url_rule: UrlRule, port):
+    def test_url_port(self, url_rule: UrlRule, port):
       assert url_rule.port == port
+
+    def test_url_scheme(self, url_rule: UrlRule, scheme):
+      assert url_rule.scheme == scheme
