@@ -23,17 +23,16 @@ LOG_ID = 'HandleRecord'
 
 def handle_response_record(context: RecordContext):
     flow = context.flow
-    intercept_settings = context.intercept_settings
-    request: MitmproxyRequest = flow.request
-
     disable_transfer_encoding(flow.response)
 
+    __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
+
+    intercept_settings = context.intercept_settings
+    request: MitmproxyRequest = flow.request
     request_model = RequestModel(intercept_settings.settings)
 
     active_record_policy = get_active_mode_policy(request, intercept_settings)
     Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
-
-    __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
     if active_record_policy == record_policy.ALL:
         __record_request(context, request_model)

@@ -12,6 +12,8 @@ from .utils.allowed_request_service import get_active_mode_policy
 LOG_ID = 'HandleReplay'
 
 def handle_request_replay(replay_context: ReplayContext):
+  __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
+
   request: MitmproxyRequest = replay_context.flow.request
   intercept_settings: InterceptSettings = replay_context.intercept_settings
 
@@ -33,8 +35,6 @@ def __replay_request(replay_context: ReplayContext):
         request: MitmproxyRequest = replay_context.flow.request
         request_facade = MitmproxyRequestFacade(request)
         request_facade.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
-
-    __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
 
 def __replay_hook(hook: str, replay_context: ReplayContext):
     intercept_settings: InterceptSettings = replay_context.intercept_settings

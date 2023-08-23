@@ -32,9 +32,13 @@ class MockOptions(TypedDict):
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, **options: MockOptions):
+    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
+
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
     request_model = RequestModel(intercept_settings.settings)
+
+    policy = get_active_mode_policy(request, intercept_settings)
 
     rewrite_rules = intercept_settings.mock_rewrite_rules
     if len(rewrite_rules) > 0:
@@ -42,8 +46,6 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         request: MitmproxyRequest = context.flow.request
         request_facade = MitmproxyRequestFacade(request)
         request_facade.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
-
-    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
     # If ignore rules are set, then ignore specified request parameters
     ignore_rules = intercept_settings.ignore_rules
@@ -57,7 +59,6 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     
     eval_request = inject_eval_request(request_model, intercept_settings)
-    policy = get_active_mode_policy(request, intercept_settings)
  
     if policy == mock_policy.NONE:
         if handle_failure:
