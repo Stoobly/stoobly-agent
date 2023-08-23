@@ -30,6 +30,9 @@ def request(flow: MitmproxyHTTPFlow):
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
 
+    if not intercept_settings.active:
+        return
+
     __intercept_hook(lifecycle_hooks.BEFORE_REQUEST, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
@@ -58,6 +61,9 @@ def response(flow: MitmproxyHTTPFlow):
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
     intercept_settings.for_response()
+
+    if not intercept_settings.active:
+        return
 
     __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
 

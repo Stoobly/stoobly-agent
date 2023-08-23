@@ -13,7 +13,7 @@ def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: Interc
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
 
-    if intercept_settings.active and allowed_request(request, intercept_settings):
+    if allowed_request(request, intercept_settings):
         return intercept_settings.policy
     else:
         # If the request path does not match accepted paths, do not mock
@@ -27,7 +27,7 @@ def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSett
 
     # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
     include_rules = intercept_settings.include_rules
-    if not __request_included(request, include_rules) :
+    if not __request_included(request, include_rules):
         return False
 
     # If there are no exclude or include patterns, request is allowed

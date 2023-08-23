@@ -55,8 +55,8 @@ def handle_response_record(context: RecordContext):
         if active_record_policy != record_policy.NONE:
             return bad_request(
                 flow,
-                "Valid env RECORD_POLICY: %s, %s, %s, Got: %s" %
-                [record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND, active_record_policy]
+                "Valid env RECORD_POLICY: %s, Got: %s" %
+                ([record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND], active_record_policy)
             )
 
 def __record_handler(context: RecordContext, request_model: RequestModel):
