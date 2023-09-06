@@ -43,7 +43,7 @@ setup(
         "mergedeep>=1.3.0,<1.3.4",
         "mitmproxy>=8.0.0,<=8.1.0",
         "openapi-core>=0.17.0",
-        "stoobly_orator>=0.9.10",
+        "stoobly_orator>=0.9.12",
         "pyyaml>=6.0.1",
         "requests>=2.31.0",
         "tabulate>=0.8.8",

@@ -1,7 +1,7 @@
 import pdb
 import uuid
 
-from orator.migrations import Migration
+from stoobly_orator.migrations import Migration
 
 from stoobly_agent.app.proxy.record.request_string_control import RequestStringControl
 from stoobly_agent.lib.orm.request import Request

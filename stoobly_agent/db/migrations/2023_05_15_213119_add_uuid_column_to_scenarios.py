@@ -1,6 +1,6 @@
 import uuid
 
-from orator.migrations import Migration
+from stoobly_orator.migrations import Migration
 
 from stoobly_agent.lib.orm.scenario import Scenario
 

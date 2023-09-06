@@ -1,7 +1,7 @@
 import pdb
 import requests
 
-from orator.migrations import Migration
+from stoobly_orator.migrations import Migration
 from urllib.parse import urlparse
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter

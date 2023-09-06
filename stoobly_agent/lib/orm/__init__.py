@@ -1,7 +1,7 @@
 import os
 import pdb
 
-from orator import DatabaseManager, Model
+from stoobly_orator import DatabaseManager, Model
 
 from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.data_dir import DataDir

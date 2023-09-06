@@ -1,7 +1,7 @@
 import pdb
 import requests
 
-from orator.orm import belongs_to
+from stoobly_orator.orm import belongs_to
 
 from stoobly_agent.app.proxy.mitmproxy.response_facade import MitmproxyResponseFacade
 from stoobly_agent.app.proxy.record.response_string import ResponseString

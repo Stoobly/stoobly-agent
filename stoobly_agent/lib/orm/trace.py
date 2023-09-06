@@ -1,4 +1,4 @@
-from orator.orm import has_many
+from stoobly_orator.orm import has_many
 
 from .base import Base
 from .trace_alias import TraceAlias

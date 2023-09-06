@@ -1,7 +1,7 @@
 import os
 import pdb
 
-from orator.migrations import Migrator, DatabaseMigrationRepository
+from stoobly_orator.migrations import Migrator, DatabaseMigrationRepository
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir

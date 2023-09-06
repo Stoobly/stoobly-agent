@@ -1,7 +1,7 @@
 import pdb
 import uuid
 
-from orator.orm import belongs_to, has_many, has_one 
+from stoobly_orator.orm import belongs_to, has_many, has_one 
 
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 from stoobly_agent.lib.api.keys.request_key import RequestKey

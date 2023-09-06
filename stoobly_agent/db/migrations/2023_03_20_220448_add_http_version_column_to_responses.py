@@ -1,4 +1,4 @@
-from orator.migrations import Migration
+from stoobly_orator.migrations import Migration
 
 from stoobly_agent.lib.orm.response import Response
 

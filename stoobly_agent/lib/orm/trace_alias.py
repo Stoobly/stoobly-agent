@@ -1,6 +1,6 @@
 import json
 
-from orator.orm import accessor, belongs_to
+from stoobly_orator.orm import accessor, belongs_to
 
 from .base import Base
 

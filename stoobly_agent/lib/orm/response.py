@@ -1,4 +1,4 @@
-from orator.orm import belongs_to
+from stoobly_orator.orm import belongs_to
 
 from stoobly_agent.app.models.schemas.request import Request
 
