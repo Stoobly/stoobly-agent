@@ -23,7 +23,7 @@ class ScenarioSnapshot(Snapshot):
   @property
   def metadata(self):
     if not os.path.exists(self.metadata_path):
-      return
+      return {}
 
     with open(self.metadata_path, 'rb') as fp:
       try:
@@ -77,7 +77,10 @@ class ScenarioSnapshot(Snapshot):
       with open(requests_file_path, 'r') as fp:
         self.__requests_backup = {}
 
-        for uuid in fp.read().split(REQUEST_DELIMITTER):
+        uuids = fp.read().split(REQUEST_DELIMITTER)
+        uuids = list(filter(lambda uuid: len(uuid) == 36, uuids))
+
+        for uuid in uuids:
           request_snapshot = RequestSnapshot(uuid)
           handler(request_snapshot)
 
@@ -95,6 +98,9 @@ class ScenarioSnapshot(Snapshot):
       self.iter_request_snapshots(self.__handle_remove_requests)
 
       os.remove(requests_file_path)
+
+  def find_resource(self):
+    return Scenario.find_by(uuid=self.uuid)
 
   def write_metadata(self, scenario: Scenario):
     with open(self.metadata_path, 'w') as fp:
