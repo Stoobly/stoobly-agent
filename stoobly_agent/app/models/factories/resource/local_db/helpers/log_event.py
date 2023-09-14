@@ -1,9 +1,14 @@
+import pdb
 import uuid
+import time
 
 from typing import Callable, Literal, TypedDict
 
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
+
+from .request_snapshot import RequestSnapshot
+from .scenario_snapshot import ScenarioSnapshot
 
 REQUEST_RESOURCE = 'request'
 SCENARIO_RESOURCE = 'scenario'
@@ -30,6 +35,7 @@ class LogEvent():
     self.resource = toks[1]
     self.resource_uuid = toks[2]
     self.action = toks[3]
+    self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
 
   @classmethod
   def from_resource(cls, resource: Resource, action: Action):
@@ -54,20 +60,41 @@ class LogEvent():
     else:
       resource_name = resource.__class__.__name__
 
-    return f"{str(uuid.uuid1())} {resource_name} {resource.uuid} {action}"
+    return f"{str(uuid.uuid1())} {resource_name} {resource.uuid} {action} {int(time.time() * 1000)}"
 
   @property
   def key(self):
     return f"{self.resource_uuid}.{self.resource}"
 
   def apply(self, **kwargs: EventHandlers):
-    if self.resource == REQUEST_RESOURCE:
+    if self.is_request():
       if self.action == DELETE_ACTION:
         kwargs['handle_request_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
         kwargs['handle_request_put'](self.resource_uuid)
-    elif self.resource == SCENARIO_RESOURCE:
+    elif self.is_scenario():
       if self.action == DELETE_ACTION:
         kwargs['handle_scenario_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
         kwargs['handle_scenario_put'](self.resource_uuid)
+
+  def is_request(self):
+    return self.resource == REQUEST_RESOURCE
+
+  def is_scenario(self):
+    return self.resource == SCENARIO_RESOURCE
+
+  def snapshot(self):
+    if self.is_request():
+      return RequestSnapshot(self.resource_uuid)
+    elif self.is_scenario():
+      return ScenarioSnapshot(self.resource_uuid)
+
+  def to_dict(self):
+    return {
+      'action': self.action,
+      'created_at': self.created_at,
+      'resource': self.resource,
+      'resource_uuid': self.resource_uuid,
+      'uuid': self.uuid,
+    }
