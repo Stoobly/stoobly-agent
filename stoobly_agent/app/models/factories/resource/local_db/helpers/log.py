@@ -1,4 +1,5 @@
 import os
+import pdb
 
 from typing import List
 
@@ -48,6 +49,11 @@ class Log():
     return list(map(lambda raw_event: LogEvent(raw_event), self.raw_events))
 
   @property
+  def target_events(self):
+    events = self.events
+    return self.__target(events)
+
+  @property
   def raw_events(self):
     contents = self.read()
     if not contents:
@@ -80,21 +86,8 @@ class Log():
       unprocessed_events.append(event)
       j -= 1
 
-    events_set = {}
-
-    # More recent events take precedence over earlier ones, keep only the most recent event 
-    for event in unprocessed_events:
-      event_key = event.key
-
-      if event_key in events_set:
-        continue
-      
-      events_set[event_key] = event
-
-    unprocessed_events = list(events_set.values())
     unprocessed_events.reverse()
-
-    return unprocessed_events
+    return self.__target(unprocessed_events)
 
   @property
   def version(self):
@@ -115,3 +108,25 @@ class Log():
 
     with open(version_file_path, 'w') as fp:
       fp.write(v)
+
+  def __target(self, events: List[LogEvent]):
+    events_count = {}
+
+    # More recent events take precedence over earlier ones, keep only the most recent event 
+    for event in events:
+      event_key = event.key
+
+      if event_key not in events_count:
+        events_count[event_key] = 0
+
+      events_count[event_key] += 1
+
+    target_events = []
+    for event in events: 
+      event_key = event.key
+      events_count[event_key] -= 1
+
+      if events_count[event_key] == 0:
+        target_events.append(event)
+
+    return target_events

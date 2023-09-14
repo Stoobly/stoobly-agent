@@ -39,6 +39,14 @@ def print_scenarios(scenarios, **kwargs):
         select=kwargs.get('select') or []
     )
 
+def print_snapshots(snapshots, **kwargs):
+    tabulate_print(
+        snapshots,
+        filter=['resource_uuid'],
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select') or []
+    )
+
 def print_tests(requests, **kwargs):
     tabulate_print(
       requests, 
