@@ -49,3 +49,8 @@ stoobly_agent/public/*
 *.tar.gz
 **/.stoobly/tmp
 
+# GCP
+application_default_credentials.json
+gha-creds-*.json
+credentials.db
+

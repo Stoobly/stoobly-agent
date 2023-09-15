@@ -44,3 +44,8 @@ tags
 # act
 .secrets
 
+# GCP
+application_default_credentials.json
+gha-creds-*.json
+credentials.db
+
