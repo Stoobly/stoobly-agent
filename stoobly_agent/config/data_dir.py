@@ -139,16 +139,22 @@ class DataDir:
         # Note: these paths won't work for Windows
         root_dir = os.path.abspath(os.sep)
         home_dir = os.path.expanduser("~")
+        root_reached = False
 
         while start_path != home_dir:
-            if start_path == root_dir:
-                start_path = home_dir
-
             data_dir_path = os.path.join(start_path, self.DATA_DIR_NAME)
 
             if os.path.exists(data_dir_path):
                 return data_dir_path
 
+            if root_reached:
+              break
+
+            if start_path == root_dir:
+                root_reached = True
+                start_path = home_dir
+
+            # Move up one directory
             start_path = os.path.dirname(start_path)
 
         return ""
