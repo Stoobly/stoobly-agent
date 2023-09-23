@@ -23,7 +23,7 @@ test_dependencies = [
 ]
 
 setup(
-    author='Michael Yen',
+    author='Matt Le',
     author_email='michael@stoobly.com',
     description='Client agent for Stoobly',
     entry_points={
