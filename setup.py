@@ -25,7 +25,7 @@ test_dependencies = [
 setup(
     author='Matt Le',
     author_email='michael@stoobly.com',
-    description='Client agent for Stoobly',
+    description='Record, mock, and test HTTP(s) requests. CLI agent for Stoobly',
     entry_points={
         'console_scripts': [
             'stoobly-agent=stoobly_agent.cli:main'
