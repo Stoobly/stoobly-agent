@@ -21,6 +21,21 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Python Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
 # vim
 [._]*.s[a-v][a-z]
 [._]*.sw[a-p]
@@ -48,4 +63,9 @@ tags
 stoobly_agent/public/*
 *.tar.gz
 **/.stoobly/tmp
+
+# GCP
+application_default_credentials.json
+gha-creds-*.json
+credentials.db
 
