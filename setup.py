@@ -40,6 +40,7 @@ setup(
         "distro>=1.6.0,<1.7.0",
         "httptools>=0.4.0",
         "jmespath>=1.0.0",
+        "markupsafe<2.1.1", # Otherwise causes ImportError: cannot import name 'url_quote' from 'werkzeug.urls'
         "mergedeep>=1.3.0,<1.3.4",
         "mitmproxy>=8.0.0,<=8.1.0",
         "openapi-core>=0.17.0",
