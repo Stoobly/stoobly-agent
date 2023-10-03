@@ -1,5 +1,5 @@
 test:
-	pytest stoobly_agent/test/
+	poetry run pytest stoobly_agent/test/
 
 clean:
 	rm -rf dist
