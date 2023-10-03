@@ -61,10 +61,8 @@ jobs:
       - name: Test with pytest
         run: |
           python --version
-          python -m pip install "cython<3.0.0" && \
-            python -m pip install wheel && \
-            python -m pip install --no-build-isolation pyyaml==5.4.1 && \
-            python -m pip install .[test]
+          python -m pip install poetry && \
+          python -m poetry install --with test
 
-          pytest stoobly_agent/test/
+          make test
 
