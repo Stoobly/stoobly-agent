@@ -55,12 +55,10 @@ jobs:
       - name: Push to Pypi
         if: ${{ !inputs.skip_publish_pypi }}
         run: |
-          python -m pip install twine wheel
-          twine --help
-
+          python -m pip install poetry
           make clean
-          python3 setup.py sdist bdist_wheel
-          twine upload --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}" dist/*
+          poetry build
+          poetry publish --username "${{ secrets.PYPI_USERNAME }}" --password "${{ secrets.PYPI_PASSWORD }}"
 
       - name: Add release version to env vars
         run: |
