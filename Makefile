@@ -1,26 +1,22 @@
-# https://stackoverflow.com/a/27132934
-# Determine this makefile's path.
-# Be sure to place this BEFORE `include` directives, if any.
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
-
-build-image:
-	docker build -t ${image} .
-
-push-image:
-	docker push ${image}
-
-deploy\:docker:
-	@$(MAKE) -f $(THIS_FILE) build-image
-	@$(MAKE) -f $(THIS_FILE) push-image
-
-deploy\:pip:
-	python3 setup.py sdist bdist_wheel
-	twine upload dist/*
-
-test:
-	pytest stoobly_agent/test/
+TEST_CONTAINER_NAME = stoobly.test
+TEST_DIR = /root/stoobly-agent
 
 clean:
 	rm -rf dist
 	rm -rf build
 	rm -rf stoobly.egg-info
+
+test:
+	poetry install --only test
+	poetry run pytest stoobly_agent/test/
+
+test/build:
+	docker rm -f ${TEST_CONTAINER_NAME}
+	docker run -itd --name ${TEST_CONTAINER_NAME} python:$(version) /bin/bash
+	docker cp $$(pwd) stoobly.test:${TEST_DIR}
+
+test/python: test/build
+	docker exec -it ${TEST_CONTAINER_NAME} sh -c "cd ${TEST_DIR} && pip3 install poetry && poetry install && make test"
+
+test/run: test/build
+	docker exec -it ${TEST_CONTAINER_NAME} sh -c "cd ${TEST_DIR} && pip install . && stoobly-agent run"
