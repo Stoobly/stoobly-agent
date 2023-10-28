@@ -1,165 +1,173 @@
 import pdb
 import pytest
 
-from typing import List
 from urllib.parse import urlparse
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
-from stoobly_agent.app.models.factories.resource.local_db.helpers.tiebreak_scenario_request import (
-  access_request, generate_session_id, tiebreak_scenario_request
-)
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import (
   LocalDBRequestAdapter,
 )
 from stoobly_agent.app.models.types.request import RequestFindParams
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import reset
 
 class TestLocalDBRequestAdapter():
-  @pytest.fixture(autouse=True)
+  @pytest.fixture(autouse=True, scope='class')
   def settings(self):
     return reset()
 
-  @pytest.fixture(scope='function')
+  @pytest.fixture(scope='class')
   def local_db_request_adapter(self):
-    self.__request_orm = Request
-    self.__scenario_orm = Scenario
-    adapter = LocalDBRequestAdapter(request_orm=self.__request_orm)
+    adapter = LocalDBRequestAdapter(request_orm=Request, response_orm=Response)
     return adapter
 
-  @pytest.fixture(scope='function')
-  def create_get_pets(self):
-    record = self.__request_orm.create(
-      method='GET',
-      scheme='https',
-      host="petstore.swagger.io",
-      port="443",
-      path='/v2/pets',
-      headers_hash='c079b917a5091fbcdea198bc96c87796',
-      body_text_hash='',
-      query_params_hash='90f45a51e497a899f995f5c913b805ba',
-      body_params_hash='',
-      control='1 oxsmp817uge 1684883577229000000',
-      raw='GET https://petstore.swagger.io/v2/pets?limit=1 HTTP/1.1 Content-Length: 0',
-      query='limit=1'
-    )
-    yield record
-    record.delete()
+  class SimilarRequests():
+    @pytest.fixture(scope='function')
+    def get_v2_pets(self):
+      record = Request.create(
+        method='GET',
+        scheme='https',
+        host="petstore.swagger.io",
+        port="443",
+        path='/v2/pets',
+        headers_hash='c079b917a5091fbcdea198bc96c87796',
+        body_text_hash='',
+        query_params_hash='90f45a51e497a899f995f5c913b805ba',
+        body_params_hash='',
+        control='1 oxsmp817uge 1684883577229000000',
+        raw='GET https://petstore.swagger.io/v2/pets?limit=1 HTTP/1.1 Content-Length: 0',
+        query='limit=1'
+      )
+      yield record
+      record.delete()
 
-  @pytest.fixture(scope='function')
-  def create_get_pet(self):
-    record = self.__request_orm.create(
-      method='GET',
-      scheme='https',
-      host="petstore.swagger.io",
-      port="443",
-      path='/v2/pet/1',
-      headers_hash='c079b917a5091fbcdea198bc96c87796',
-      body_text_hash='',
-      query_params_hash='',
-      body_params_hash='',
-      control='1 l9jiwridgk 1684883778859000000',
-      raw='GET https://petstore.swagger.io/v2/pets/1 HTTP/1.1 Content-Length: 0',
-    )
-    yield record
-    record.delete()
+    @pytest.fixture(scope='function')
+    def get_v2_pet_1(self):
+      record = Request.create(
+        method='GET',
+        scheme='https',
+        host="petstore.swagger.io",
+        port="443",
+        path='/v2/pet/1',
+        headers_hash='c079b917a5091fbcdea198bc96c87796',
+        body_text_hash='',
+        query_params_hash='',
+        body_params_hash='',
+        control='1 l9jiwridgk 1684883778859000000',
+        raw='GET https://petstore.swagger.io/v2/pets/1 HTTP/1.1 Content-Length: 0',
+      )
+      yield record
+      record.delete()
 
-  @pytest.fixture(scope='function')
-  def create_put_v3_pet(self):
-    record = self.__request_orm.create(
-      method='PUT',
-      scheme='http',
-      host="swagger.io",
-      port="80",
-      path='/v3/pet',
-      headers_hash='c079b917a5091fbcdea198bc96c87796',
-      body_text_hash='',
-      query_params_hash='',
-      body_params_hash='',
-      control='1 gocrqlad4ru 1690266880243000000',
-      raw='PUT http://swagger.io/v3/pet HTTP/1.1 Content-Length: 0',
-    )
-    yield record
-    record.delete()
+    @pytest.fixture(scope='function')
+    def create_put_v3_pet(self):
+      record = Request.create(
+        method='PUT',
+        scheme='http',
+        host="swagger.io",
+        port="80",
+        path='/v3/pet',
+        headers_hash='c079b917a5091fbcdea198bc96c87796',
+        body_text_hash='',
+        query_params_hash='',
+        body_params_hash='',
+        control='1 gocrqlad4ru 1690266880243000000',
+        raw='PUT http://swagger.io/v3/pet HTTP/1.1 Content-Length: 0',
+      )
+      yield record
+      record.delete()
 
-  @pytest.fixture(scope='function')
-  def create_scenario(self):
-    record = self.__scenario_orm.create(
-      name="Pets scenario",
-    )
-    yield record
-    record.delete()
+    @pytest.fixture(scope='function')
+    def created_scenario(self):
+      record = Scenario.create(name="Pets scenario")
+      yield record
+      record.delete()
 
-  @pytest.mark.openapi
-  def test_find_similar_requests_get_v2_pets(self, local_db_request_adapter: LocalDBRequestAdapter, create_get_pets, create_get_pet):
-    params: RequestFindParams = {
-      'method': 'GET',
-      'host' : "petstore.swagger.io",
-      'port': "443",
-      'pattern': '/v2/pets'
-    }
+    @pytest.mark.openapi
+    def test_finds_get_v2_pets(self, local_db_request_adapter: LocalDBRequestAdapter, get_v2_pets: Request, get_v2_pet_1: Request):
+      assert get_v2_pets
+      assert get_v2_pet_1
 
-    similar_requests = local_db_request_adapter.find_similar_requests(params)
+      params: RequestFindParams = {
+        'method': 'GET',
+        'host' : "petstore.swagger.io",
+        'port': "443",
+        'pattern': '/v2/pets'
+      }
 
-    assert len(similar_requests) == 1
-    for request in similar_requests:
+      similar_requests = local_db_request_adapter.find_similar_requests(params)
+
+      assert len(similar_requests) == 1
+
+      request = similar_requests[0]
       assert request.host == params['host']
       assert request.port == int(params['port'])
       assert request.method == params['method']
       assert request.path == params['pattern']
 
-  @pytest.mark.openapi
-  def test_find_similar_requests_put_v3_pet(self, local_db_request_adapter: LocalDBRequestAdapter, create_put_v3_pet):
-    params: RequestFindParams = {
-      'host': '%',
-      'port': '%',
-      'method': 'PUT',
-      'pattern': '/v3/pet',
-      'scenario_id': 0
-    }
+    @pytest.mark.openapi
+    def test_finds_put_v3_pet(self, local_db_request_adapter: LocalDBRequestAdapter, create_put_v3_pet: Request):
+      params: RequestFindParams = {
+        'host': '%',
+        'port': '%',
+        'method': 'PUT',
+        'pattern': '/v3/pet',
+        'scenario_id': 0
+      }
 
-    similar_requests = local_db_request_adapter.find_similar_requests(params)
+      similar_requests = local_db_request_adapter.find_similar_requests(params)
 
-    assert len(similar_requests) == 1
-    for request in similar_requests:
-      assert request.host
-      assert request.port
+      assert len(similar_requests) == 1
+
+      request = similar_requests[0]
+      assert request.id == create_put_v3_pet.id
       assert request.method == params['method']
       assert request.path == params['pattern']
 
-  @pytest.mark.openapi
-  def test_find_similar_requests_given_scenario_with_no_requests(self, local_db_request_adapter: LocalDBRequestAdapter, create_get_pets, create_get_pet, create_scenario):
-    params: RequestFindParams = {
-      'method': 'GET',
-      'host' : "petstore.swagger.io",
-      'port': "443",
-      'pattern': '/v2/pets',
-      'scenario_id': create_scenario.id,
-    }
+    class Scenario():
+      @pytest.mark.openapi
+      def test_finds_no_requests(
+        self, local_db_request_adapter: LocalDBRequestAdapter, get_v2_pets: Request, get_v2_pet_1: Request, created_scenario: Scenario
+      ):
+        assert get_v2_pets
+        assert get_v2_pet_1
 
-    similar_requests = local_db_request_adapter.find_similar_requests(params)
+        params: RequestFindParams = {
+          'method': 'GET',
+          'host' : "petstore.swagger.io",
+          'port': "443",
+          'pattern': '/v2/pets',
+          'scenario_id': created_scenario.id,
+        }
 
-    assert len(similar_requests) == 0
+        similar_requests = local_db_request_adapter.find_similar_requests(params)
 
-  @pytest.mark.openapi
-  def test_find_similar_requests_given_scenario_with_requests(self, local_db_request_adapter: LocalDBRequestAdapter, create_get_pets, create_get_pet, create_scenario):
+        assert len(similar_requests) == 0
 
-    self.__request_orm.where('id', create_get_pets.id).update(scenario_id=create_scenario.id)
+      @pytest.mark.openapi
+      def test_finds_requests(
+        self, local_db_request_adapter: LocalDBRequestAdapter, get_v2_pets: Request, get_v2_pet_1: Request, created_scenario: Scenario
+      ):
+        assert get_v2_pets
+        assert get_v2_pet_1
 
-    params: RequestFindParams = {
-      'method': 'GET',
-      'host' : "petstore.swagger.io",
-      'port': "443",
-      'pattern': '/v2/pets',
-      'scenario_id': create_scenario.id,
-    }
+        Request.where('id', get_v2_pets.id).update(scenario_id=created_scenario.id)
 
-    similar_requests = local_db_request_adapter.find_similar_requests(params)
+        params: RequestFindParams = {
+          'method': 'GET',
+          'host' : "petstore.swagger.io",
+          'port': "443",
+          'pattern': '/v2/pets',
+          'scenario_id': created_scenario.id,
+        }
 
-    assert len(similar_requests) == 1
-    assert similar_requests[0].id == create_get_pets.id
+        similar_requests = local_db_request_adapter.find_similar_requests(params)
+
+        assert len(similar_requests) == 1
+        assert similar_requests[0].id == get_v2_pets.id
 
   class TestWhenResponse():
     class TestTiebreakScenarioRequest():
