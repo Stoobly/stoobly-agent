@@ -47,6 +47,10 @@ class ORMToRequestsResponseTransformer():
   def with_body(self, body: str):
     self.__body = body
     self.__dirty = True
+
+    headers = self.__headers or {}
+    self.with_headers({ **headers, 'content-length': str(len(body)) })
+
     return self
 
   def with_headers(self, headers: list):
