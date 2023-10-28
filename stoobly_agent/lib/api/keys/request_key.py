@@ -23,7 +23,10 @@ class RequestKey(UuidKey):
     
   @property
   def id(self) -> str:
-    u = uuid.UUID(self.get('i'))
+    try:
+      u = uuid.UUID(self.get('i'))
+    except TypeError:
+      return ''
     return str(u)
     
   @property
