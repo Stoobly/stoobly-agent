@@ -88,8 +88,7 @@ def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
 def __commit_options(options: dict):
     settings = Settings.instance()
 
-    # Set intercept to not active on start
-    settings.proxy.intercept.active = False
+    settings.proxy.intercept.active = not not options.get('intercept')
 
     if options.get('proxy_host') and options.get('proxy_port'):
         settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
@@ -110,8 +109,17 @@ def __filter_options(options):
     if 'api_url' in options:
         del options['api_url']
 
+    if 'certs' in options and not options['certs']:
+        del options['certs']
+
+    if 'cert_passphrase' in options and not options['cert_passphrase']:
+        del options['cert_passphrase']
+
     if 'headless' in options:
         del options['headless']
+
+    if 'intercept' in options:
+        del options['intercept']
 
     if 'lifecycle_hooks_path' in options:
         del options['lifecycle_hooks_path']
@@ -126,9 +134,3 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
-
-    if 'certs' in options and not options['certs']:
-        del options['certs']
-
-    if 'cert_passphrase' in options and not options['cert_passphrase']:
-        del options['cert_passphrase']

@@ -84,6 +84,7 @@ def init(**kwargs):
 ''')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
+@click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
