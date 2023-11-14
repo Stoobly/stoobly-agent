@@ -51,7 +51,7 @@ class Log():
   @property
   def target_events(self):
     events = self.events
-    return self.__target(events)
+    return self.prune(events)
 
   @property
   def raw_events(self):
@@ -61,12 +61,14 @@ class Log():
     return contents.strip().split(self.DELIMITTER)
 
   @property
-  def unprocessed_events(self):
-    version = self.version
+  def unprocessed_events(self) -> List[LogEvent]:
+    version = self.version.strip()
 
     events = self.raw_events
-    events_count = len(events)
+    if not version:
+      return self.prune(list(map(lambda e: LogEvent(e), events)))
 
+    events_count = len(events)
     if events_count == 0:
       return []
 
@@ -87,7 +89,7 @@ class Log():
       j -= 1
 
     unprocessed_events.reverse()
-    return self.__target(unprocessed_events)
+    return self.prune(unprocessed_events)
 
   @property
   def version(self):
@@ -109,7 +111,7 @@ class Log():
     with open(version_file_path, 'w') as fp:
       fp.write(v)
 
-  def __target(self, events: List[LogEvent]):
+  def prune(self, events: List[LogEvent]):
     events_count = {}
 
     # More recent events take precedence over earlier ones, keep only the most recent event 

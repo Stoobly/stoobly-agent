@@ -49,7 +49,7 @@ class ORMToRequestsResponseTransformer():
     self.__dirty = True
 
     headers = self.__headers or {}
-    self.with_headers({ **headers, 'content-length': str(len(body)) })
+    self.with_headers({ **headers, 'Content-Length': str(len(body)) })
 
     return self
 
