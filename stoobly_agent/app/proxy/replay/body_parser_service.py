@@ -21,7 +21,7 @@ def decode_response(content: Union[bytes, str], content_type: Union[None, str]) 
     _content_type = normalize_header(content_type)
 
     decoded_response = content
-    if _content_type == JSON:
+    if is_json(_content_type):
         content = decode(content)
         decoded_response = parse_json(content)
     elif _content_type == WWW_FORM_URLENCODED:
@@ -39,7 +39,7 @@ def encode_response(content, content_type: Union[bytes, None, str]) -> Union[byt
     _content_type = normalize_header(content_type)
 
     encoded_response = content
-    if _content_type == JSON:
+    if is_json(_content_type):
         encoded_response = serialize_json(content)
     elif _content_type == WWW_FORM_URLENCODED:
         encoded_response = serialize_www_form_urlencoded(content)
@@ -103,3 +103,7 @@ def normalize_header(header):
 
 def is_traversable(content):
     return isinstance(content, list) or isinstance(content, dict) or isinstance(content, MultiDict)
+
+def is_json(content_type):
+   _content_type = content_type.lower()
+   return _content_type == JSON or _content_type.startswith('application/x-amz-json') 
