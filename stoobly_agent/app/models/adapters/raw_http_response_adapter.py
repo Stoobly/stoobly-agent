@@ -51,6 +51,9 @@ class RawHttpResponseAdapter():
     response.status_code = self.status
     response.headers = self.headers
 
+    # Enforce proper Content-Length header
+    response.headers['Content-Length'] = str(len(self.body))
+
     response.raw = HTTPResponse(
       body=BytesIO(self.body),
       decode_content=False,
