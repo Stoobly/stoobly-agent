@@ -60,24 +60,38 @@ class Apply():
     if events_count == 0:
       return
 
+    last_processed_event = None
+
     for event in unprocessed_events:
       if self.__logger:
         self.__logger(f"Processing event {event.uuid}")
 
-      event.apply(**self.__handlers())
+      results = event.apply(**self.__handlers())
+      if results:
+        status = results[1]
+        if status == 0 or status >= 500:
+          break
 
-    last_event = unprocessed_events[events_count - 1]
-    log.version = last_event.uuid # Update log to last processed event uuid
+      last_processed_event = event
+
+    if last_processed_event:
+      log.version = last_processed_event.uuid # Update log to last processed event uuid
 
   def request(self, uuid: str):
-    res = self.__apply_put_request(uuid)[0]
+    result = self.__apply_put_request(uuid)
+    if not result:
+      return False
 
-    return res == 200
+    status = result[1]
+    return status == 200
 
   def scenario(self, uuid: str):
-    res = self.__apply_put_scenario(uuid)[0]
+    result = self.__apply_put_scenario(uuid)
+    if not result:
+      return False
 
-    return res == 200
+    status = result[1]
+    return status == 200
 
   def single(self, uuid: str):
     log = Log()
@@ -124,10 +138,12 @@ class Apply():
 
   def __apply_put_request(self, uuid: str):
     snapshot = RequestSnapshot(uuid)
-    if not snapshot:
-      return 
 
     raw_request = snapshot.request
+    if not raw_request:
+      error = f"Snapshot for request {uuid} not found" 
+      self.__logger(f"{bcolors.FAIL}400{bcolors.ENDC} {error}")
+      return error, 400
 
     return self.__put_request(uuid, raw_request)
 
@@ -146,7 +162,9 @@ class Apply():
     metadata = snapshot.metadata
 
     if not metadata:
-      return f"Scenario snapshot {uuid} does not exist", 400
+      error = f"Snapshot for scenario {uuid} not found"
+      self.__logger(f"{bcolors.FAIL}400{bcolors.ENDC} {error}")
+      return error, 400
 
     res, status = self.scenario_model.show(uuid)
     if status == 404:

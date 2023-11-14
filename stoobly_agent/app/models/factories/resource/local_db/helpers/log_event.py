@@ -69,14 +69,14 @@ class LogEvent():
   def apply(self, **kwargs: EventHandlers):
     if self.is_request():
       if self.action == DELETE_ACTION:
-        kwargs['handle_request_delete'](self.resource_uuid)
+        return kwargs['handle_request_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
-        kwargs['handle_request_put'](self.resource_uuid)
+        return kwargs['handle_request_put'](self.resource_uuid)
     elif self.is_scenario():
       if self.action == DELETE_ACTION:
-        kwargs['handle_scenario_delete'](self.resource_uuid)
+        return kwargs['handle_scenario_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
-        kwargs['handle_scenario_put'](self.resource_uuid)
+        return kwargs['handle_scenario_put'](self.resource_uuid)
 
   def is_request(self):
     return self.resource == REQUEST_RESOURCE
