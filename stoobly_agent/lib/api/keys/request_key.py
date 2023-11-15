@@ -1,4 +1,3 @@
-import uuid
 
 from .uuid_key import UuidKey
 
@@ -19,15 +18,7 @@ class RequestKey(UuidKey):
     if not self.project_id:
       settings = Settings.instance()
       if settings.cli.features.remote:
-        raise InvalidRequestKey('Missing request_id')
-    
-  @property
-  def id(self) -> str:
-    try:
-      u = uuid.UUID(self.get('i'))
-    except TypeError:
-      return ''
-    return str(u)
+        raise InvalidRequestKey('Missing request_id') 
     
   @property
   def project_id(self) -> str:

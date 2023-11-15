@@ -75,7 +75,16 @@ class Apply():
       last_processed_event = event
 
     if last_processed_event:
-      log.version = last_processed_event.uuid # Update log to last processed event uuid
+      last_unprocessed_event = unprocessed_events[events_count - 1]
+
+      if last_processed_event.uuid == last_unprocessed_event.uuid:
+        # All unproccessed events have been processed, we are up to date
+        log.version = log.next_version()
+      else:
+        # Some failure occurred, update log to last processed event uuid
+        log.version = log.next_version(last_processed_event.uuid)
+
+    log.lock()
 
   def request(self, uuid: str):
     result = self.__apply_put_request(uuid)

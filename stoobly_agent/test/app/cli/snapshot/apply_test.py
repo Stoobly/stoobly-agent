@@ -4,14 +4,13 @@ import pytest
 from click.testing import CliRunner
 from typing import List
 
-from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
-
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.cli import record, request, scenario, snapshot
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 @pytest.fixture(scope='module')
 def runner():
@@ -304,3 +303,56 @@ class TestApply():
         def test_it_removes_request_snapshot(self, delete_event: LogEvent):
           scenario_snapshot = ScenarioSnapshot(delete_event.resource_uuid)
           assert len(scenario_snapshot.requests) == 1
+
+      class TestWhenMergingRequests():
+        '''
+        1. Create 2 requests with event id A and B respectively
+        2. Snapshot
+        3. Apply snapshots so that log VERSION is [A, B]
+        4. Remove A from VERSION, expect VERSION is [B]
+        5. Apply snapshots
+        6. Expect log VERSION is again [A, B]
+        '''
+
+        @pytest.fixture(scope='class')
+        def recorded_request_one(self, runner: CliRunner):
+          record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+          return Request.last()
+
+        @pytest.fixture(scope='class')
+        def recorded_request_two(self, runner: CliRunner):
+          record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+          return Request.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def snapshot_one_result(self, runner: CliRunner, recorded_request_one: Request):
+          snapshot_result = runner.invoke(request, ['snapshot', recorded_request_one.key()])
+          assert snapshot_result.exit_code == 0
+          return snapshot_result
+
+        @pytest.fixture(scope='class', autouse=True)
+        def snapshot_two_result(self, runner: CliRunner, recorded_request_two: Request):
+          snapshot_result = runner.invoke(request, ['snapshot', recorded_request_two.key()])
+          assert snapshot_result.exit_code == 0
+          return snapshot_result
+
+        @pytest.fixture()
+        def apply_result(self, runner: CliRunner):
+          apply_result = runner.invoke(snapshot, ['apply'])
+          assert apply_result.exit_code == 0
+          return apply_result
+
+        def test_it_applies_older_snapshot(self, runner: CliRunner, apply_result):
+          log = Log()
+          expected_version = log.version
+
+          events = log.events
+          log.version = events[1].uuid
+          assert log.version != expected_version
+
+          apply_result = runner.invoke(snapshot, ['apply'])
+          assert apply_result.exit_code == 0
+
+          assert log.version == expected_version

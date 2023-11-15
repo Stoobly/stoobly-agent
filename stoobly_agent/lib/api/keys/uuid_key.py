@@ -1,3 +1,5 @@
+import uuid
+
 from .resource_key import ResourceKey
 
 DELIMITTER = '.'
@@ -13,6 +15,14 @@ class UuidKey(ResourceKey):
       toks.append(f"{key}{d[key]}")
 
     return DELIMITTER.join(toks)
+
+  @property
+  def id(self) -> str:
+    try:
+      u = uuid.UUID(self.get('i'))
+    except TypeError:
+      return ''
+    return str(u)
 
   def __decode(self, key: str):
     toks = key.split(DELIMITTER)
