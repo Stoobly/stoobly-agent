@@ -23,11 +23,6 @@ class ScenarioKey(UuidKey):
     return self.get('p')
 
   @property
-  def id(self) -> str:
-    u = uuid.UUID(self.get('i'))
-    return str(u)
-
-  @property
   def raw(self):
     return self.__raw
 
