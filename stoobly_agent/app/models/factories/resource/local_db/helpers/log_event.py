@@ -39,18 +39,22 @@ class LogEvent():
 
   @classmethod
   def from_resource(cls, resource: Resource, action: Action):
-    return cls(cls.serialize(resource, action))
+    return cls(cls.serialize_resource(resource, action))
+
+  @staticmethod
+  def serialize(resource_name: Resource, resource_uuid: str, action: Action):
+    return f"{str(uuid.uuid1())} {resource_name} {resource_uuid} {action} {int(time.time() * 1000)}"
 
   @classmethod
   def serialize_delete(cls, resource: Resource):
-    return cls.serialize(resource, DELETE_ACTION)
+    return cls.serialize_resource(resource, DELETE_ACTION)
 
   @classmethod
   def serialize_put(cls, resource: Resource):
-    return cls.serialize(resource, PUT_ACTION)
+    return cls.serialize_resource(resource, PUT_ACTION)
 
-  @staticmethod
-  def serialize(resource: Resource, action: Action):
+  @classmethod
+  def serialize_resource(cls, resource: Resource, action: Action):
     resource_name = ''
 
     if isinstance(resource, Request):
@@ -60,7 +64,7 @@ class LogEvent():
     else:
       resource_name = resource.__class__.__name__
 
-    return f"{str(uuid.uuid1())} {resource_name} {resource.uuid} {action} {int(time.time() * 1000)}"
+    return cls.serialize(resource_name, resource.uuid, action)
 
   @property
   def key(self):
