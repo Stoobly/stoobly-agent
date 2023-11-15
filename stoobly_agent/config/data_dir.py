@@ -89,6 +89,21 @@ class DataDir:
         return snapshots_dir_path
 
     @property
+    def snapshots_history_dir_path(self):
+        snapshots_history_dir_path = os.path.join(self.snapshots_dir_path, 'history')
+
+        if not os.path.exists(snapshots_history_dir_path):
+            os.mkdir(snapshots_history_dir_path)
+
+        return snapshots_history_dir_path
+
+    @property
+    def snapshots_log_file_path(self):
+        snapshots_log_file_path = os.path.join(self.snapshots_dir_path, 'log')
+
+        return snapshots_log_file_path
+
+    @property
     def snapshots_requests_dir_path(self):
         base_path = self.snapshots_dir_path
         requests_dir_path = os.path.join(base_path, 'requests')
