@@ -78,13 +78,7 @@ class ResponseString:
         headers = self.response.headers
 
         for name, val in headers.items():
-            header_name =  self.__to_header_case(name)
-
-            # Enforce correct Content-Length header
-            #if header_name == 'Content-Length':
-            #    val = str(len(self.response.body))
-
-            line = "{}: {}".format(header_name, val)
+            line = "{}: {}".format(self.__to_header_case(name), val)
             self.lines.append(line.encode(self.ENCODING))
 
     def __body(self):
