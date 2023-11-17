@@ -9,7 +9,6 @@ from stoobly_agent.config.data_dir import DataDir
 from .log_event import LogEvent, Resource
 
 EVENT_DELIMITTER = "\n"
-TAG_DELIMITTER = '-'
 
 class Log():
 
@@ -105,8 +104,8 @@ class Log():
     with open(version_file_path, 'w') as fp:
       fp.write(v)
 
-  def append(self, event: str, tag = ''):
-    file_path = self.__history_file_path(tag)
+  def append(self, event: str, bucket_interval: int = 300):
+    file_path = self.__history_file_path(bucket_interval)
 
     with open(file_path, 'a') as fp:
       fp.write(event + EVENT_DELIMITTER)
@@ -139,7 +138,7 @@ class Log():
 
     return self.generate_version(uuids)
 
-  def prune(self, events: List[LogEvent]):
+  def prune(self, events: List[LogEvent]) -> List[LogEvent]:
     events_count = {}
 
     # More recent events take precedence over earlier ones, keep only the most recent event 
@@ -202,20 +201,6 @@ class Log():
     _events = events or self.events
     return list(map(lambda e: e.uuid, _events))
 
-  def __history_file_path(self, tag: str):
-    file_name = f"{int(time.time() * 1000)}"
-
-    if tag:
-      file_name = f"{file_name}{TAG_DELIMITTER}{tag}"
-
-      for f in os.listdir(self.history_dir_path):
-        tag = f.split(TAG_DELIMITTER)
-
-        if len(tag) == 1:
-          continue
-
-        if tag == tag[1]:
-          file_name = f
-          break
-
+  def __history_file_path(self, bucket_interval: int):
+    file_name = f"{int(time.time() / bucket_interval) * bucket_interval}"
     return os.path.join(self.history_dir_path, file_name)
