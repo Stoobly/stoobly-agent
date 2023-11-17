@@ -1,3 +1,4 @@
 from .joined_request_adapter import JoinedRequestAdapter
 from .raw_http_request_adapter import RawHttpRequestAdapter
 from .raw_http_response_adapter import RawHttpResponseAdapter
+from .raw_joined import RawJoinedRequestAdapterFactory

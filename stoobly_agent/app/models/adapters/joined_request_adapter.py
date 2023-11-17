@@ -18,13 +18,31 @@ class JoinedRequestAdapter():
       payloads_delimitter = payloads_delimitter.encode()
       
     self.__split_joined_request_string = joined_request_string.split(payloads_delimitter)
+    self.__raw_request_string = None
+    self.__raw_response_string = None
+
+  @property
+  def raw_request_string(self):
+    return self.__raw_request_string
+
+  @raw_request_string.setter
+  def raw_request_string(self, v):
+    self.__raw_request_string = v
+
+  @property
+  def raw_response_string(self):
+    return self.__raw_response_string
+
+  @raw_response_string.setter
+  def raw_response_string(self, v):
+    self.__raw_response_string = v
 
   def build_request_string(self):
     request_string = RequestString(None)
 
     delimitter = RequestStringCLRF.encode()
     request_string_toks = self.__split_joined_request_string[0].split(delimitter)
-    request_string.set(delimitter.join(request_string_toks[1:]))
+    request_string.set(self.raw_request_string or delimitter.join(request_string_toks[1:]))
     request_string.control = request_string_toks[0]
 
     return request_string
@@ -34,7 +52,7 @@ class JoinedRequestAdapter():
 
     delimitter = ResponseStringCLRF
     response_string_toks = self.__split_joined_request_string[1].split(delimitter)
-    response_string.set(delimitter.join(response_string_toks[1:]))
+    response_string.set(self.raw_response_string or delimitter.join(response_string_toks[1:]))
     response_string.control = response_string_toks[0]
 
     return response_string

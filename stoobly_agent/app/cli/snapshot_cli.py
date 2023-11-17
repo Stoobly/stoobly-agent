@@ -7,13 +7,15 @@ import requests
 
 from urllib.parse import urlparse
 
-from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
-from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_joined import RawJoinedRequestAdapterFactory
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 
 from .helpers.print_service import print_snapshots
+from .helpers.verify_raw_request_service import verify_raw_request
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -54,25 +56,56 @@ def _list(**kwargs):
   log = Log()
 
   events = None
-
   if kwargs.get('pending'):
     events = log.unprocessed_events
   else:
     events = log.target_events
 
+  __print_events(events, **kwargs)
+
+@snapshot.command(
+  help="Update snapshot",
+)
+@click.option('--verify', is_flag=True, default=False)
+@click.argument('uuid')
+def update(**kwargs):
+  log = Log()
+
+  events = []
+  for event in log.target_events:
+    if event.uuid != kwargs['uuid']:
+      continue
+
+    if kwargs['verify']:
+      if event.is_request(): 
+        snapshot: RequestSnapshot = event.snapshot()
+        __verify_request(snapshot)
+      elif event.is_scenario():
+        snapshot: ScenarioSnapshot = event.snapshot()
+        snapshot.iter_request_snapshots(__verify_request)
+
+    new_event = event.duplicate()
+    log.append(str(new_event))
+    events.append(new_event)
+
+  if events:
+    __print_events(events)
+
+def __print_events(events, **kwargs):
   formatted_events = []
   if kwargs.get('resource') == SCENARIO_RESOURCE:
     for event in events:
       if event.resource != SCENARIO_RESOURCE:
         continue
- 
-      if not __scenario_matches(event, kwargs.get('search')):
+
+      snapshot = event.snapshot()
+      if not __scenario_matches(snapshot, kwargs.get('search')):
         continue
 
-      path = os.path.relpath(event.snapshot().metadata_path)
+      path = os.path.relpath(snapshot.metadata_path)
 
       formatted_events.append({
-        **__transform_scenario(event),
+        **__transform_scenario(snapshot),
         'snapshot': path,
         **__transform_event(event),
       })
@@ -80,13 +113,14 @@ def _list(**kwargs):
     for event in events:
       if event.resource != REQUEST_RESOURCE:
         continue
-
-      request = __to_request(event)
+      
+      snapshot = event.snapshot()
+      request = __to_request(snapshot)
 
       if not __request_matches(request, kwargs.get('search')):
         continue
 
-      path = os.path.relpath(event.snapshot().path)
+      path = os.path.relpath(snapshot.path)
 
       formatted_events.append({
         **__transform_request(request),
@@ -96,6 +130,16 @@ def _list(**kwargs):
 
   if len(formatted_events):
     print_snapshots(formatted_events, **kwargs)
+
+def __verify_request(snapshot: RequestSnapshot):
+  raw_request = snapshot.request
+  if not raw_request:
+    return
+
+  verified_raw_request = verify_raw_request(raw_request)
+
+  if raw_request != verified_raw_request:
+    snapshot.write_raw(verified_raw_request)
 
 def __transform_event(event: LogEvent):
   event_dict = {}
@@ -108,15 +152,12 @@ def __transform_event(event: LogEvent):
 
   return event_dict
 
-def __to_request(event: LogEvent):
-  snapshot = event.snapshot()
+def __to_request(snapshot: RequestSnapshot):
   raw_request = snapshot.request
   if not raw_request:
     return None
 
-  adapter = JoinedRequestAdapter(raw_request)
-  request_string = adapter.build_request_string().get()
-  return RawHttpRequestAdapter(request_string).to_request()
+  return RawJoinedRequestAdapterFactory(raw_request).python_request()
 
 def __request_matches(request: requests.Request, search: str):
   if not search:
@@ -141,16 +182,14 @@ def __transform_request(request: requests.Request):
 
   return event_dict
 
-def __scenario_matches(event: LogEvent, search: str):
+def __scenario_matches(snapshot: ScenarioSnapshot, search: str):
   if not search:
     return True
 
-  snapshot = event.snapshot()
   metadata = snapshot.metadata
   return re.match(search, metadata.get('name') or '')
 
-def __transform_scenario(event: LogEvent):
-  snapshot = event.snapshot()
+def __transform_scenario(snapshot: ScenarioSnapshot):
   event_dict = {}
 
   metadata = snapshot.metadata
