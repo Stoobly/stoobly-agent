@@ -56,6 +56,9 @@ class RequestSnapshot(Snapshot):
       fp.write(self.__backup)
 
   def write(self, request):
+    text = JoinedRequestStringAdapter(request).adapt()
+    self.write_raw(text)
+
+  def write_raw(self, text):
     with open(self.path, 'wb') as fp:
-      text = JoinedRequestStringAdapter(request).adapt()
       fp.write(text)
