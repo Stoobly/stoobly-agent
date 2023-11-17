@@ -10,6 +10,8 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from .request_snapshot import RequestSnapshot
 from .scenario_snapshot import ScenarioSnapshot
 
+COLUMN_DELIMITTER = ' '
+
 REQUEST_RESOURCE = 'request'
 SCENARIO_RESOURCE = 'scenario'
 
@@ -26,10 +28,8 @@ class EventHandlers(TypedDict):
   handle_scenario_put: Callable[[str], None]
 
 class LogEvent():
-  DELIMITTER = ' '
-
   def __init__(self, event: str):
-    toks = event.strip().split(self.DELIMITTER)
+    toks = event.strip().split(COLUMN_DELIMITTER)
 
     self.uuid = toks[0]
     self.resource = toks[1]
@@ -70,6 +70,9 @@ class LogEvent():
   def key(self):
     return f"{self.resource_uuid}.{self.resource}"
 
+  def __str__(self):
+    return COLUMN_DELIMITTER.join([self.uuid, self.resource, self.resource_uuid, self.action, str(self.created_at)])
+
   def apply(self, **kwargs: EventHandlers):
     if self.is_request():
       if self.action == DELETE_ACTION:
@@ -81,6 +84,13 @@ class LogEvent():
         return kwargs['handle_scenario_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
         return kwargs['handle_scenario_put'](self.resource_uuid)
+
+  def duplicate(self):
+    event_str = str(self) 
+    toks = event_str.split(COLUMN_DELIMITTER)
+    toks[0] = str(uuid.uuid1())
+    toks[4] = str(int(time.time() * 1000))
+    return LogEvent(COLUMN_DELIMITTER.join(toks))
 
   def is_request(self):
     return self.resource == REQUEST_RESOURCE
