@@ -38,7 +38,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 )
 @click.pass_context
 def main(ctx):
-    pass
+  ctx.terminal_width = 256
 
 # Attach subcommands to main
 main.add_command(ca_cert)
