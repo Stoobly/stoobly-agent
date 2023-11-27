@@ -6,6 +6,7 @@ import re
 import requests
 
 from urllib.parse import urlparse
+from typing import List
 
 from stoobly_agent.app.models.adapters.raw_joined import RawJoinedRequestAdapterFactory
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
@@ -51,6 +52,7 @@ def apply(**kwargs):
 )
 @click.option('--search', help='Regex pattern to filter snapshots by.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def _list(**kwargs):
   log = Log()
@@ -91,10 +93,16 @@ def update(**kwargs):
   if events:
     __print_events(events)
 
-def __print_events(events, **kwargs):
+def __print_events(events: List[LogEvent], **kwargs):
+  count = 0
   formatted_events = []
+  size = 10 if kwargs.get('size') == None else kwargs['size']
+
   if kwargs.get('resource') == SCENARIO_RESOURCE:
     for event in events:
+      if count == size:
+        break
+
       if event.resource != SCENARIO_RESOURCE:
         continue
 
@@ -107,26 +115,36 @@ def __print_events(events, **kwargs):
       formatted_events.append({
         **__transform_scenario(snapshot),
         'snapshot': path,
-        **__transform_event(event),
+        **__transform_event(event)
       })
+
+      count += 1
   else:
+    joined_events = []
     for event in events:
       if event.resource != REQUEST_RESOURCE:
-        continue
-      
-      snapshot = event.snapshot()
-      request = __to_request(snapshot)
+        snapshot: ScenarioSnapshot = event.snapshot()
+        snapshot.iter_request_snapshots(lambda snapshot: joined_events.append((event, snapshot))) 
+      else:
+        joined_events.append((event, event.snapshot()))
 
+    for joined_event in joined_events:
+      if count == size:
+        break
+
+      event, snapshot = joined_event
+      request = __to_request(snapshot)
       if not __request_matches(request, kwargs.get('search')):
         continue
 
       path = os.path.relpath(snapshot.path)
-
       formatted_events.append({
         **__transform_request(request),
         'snapshot': path,
-        **__transform_event(event),
+        **__transform_event(event)
       })
+
+      count += 1
 
   if len(formatted_events):
     print_snapshots(formatted_events, **kwargs)
