@@ -1,5 +1,7 @@
 import pdb
 
+from typing import TypedDict
+
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -8,7 +10,14 @@ from .log_event import Action, DELETE_ACTION, PUT_ACTION
 from .request_snapshot import RequestSnapshot
 from .scenario_snapshot import ScenarioSnapshot
 
-def snapshot_request(request: Request, action: Action):
+class SnapshotOptions(TypedDict):
+  action: Action
+
+class RequestSnapshotOptions(SnapshotOptions):
+  decode: bool
+
+def snapshot_request(request: Request, **options: RequestSnapshotOptions):
+  action: Action = options.get('action')
   if not __validate_action(action):
     return
 
@@ -17,7 +26,7 @@ def snapshot_request(request: Request, action: Action):
   snapshot.backup()
 
   if action == PUT_ACTION:
-    snapshot.write(request)
+    snapshot.write(request, **options)
   elif action == DELETE_ACTION:
     snapshot.remove()
 
@@ -33,7 +42,8 @@ def snapshot_request(request: Request, action: Action):
 
   return snapshot.path
 
-def snapshot_scenario(scenario: Scenario, action: Action):
+def snapshot_scenario(scenario: Scenario, **options):
+  action: Action = options.get('action')
   if not __validate_action(action):
     return
 

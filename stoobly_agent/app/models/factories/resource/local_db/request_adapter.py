@@ -268,7 +268,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if not request:
       return self.__request_not_found()
 
-    file_path = snapshot_request(request, params.get('action'))
+    file_path = snapshot_request(request, **params)
     if not file_path:
       return self.internal_error()
 
