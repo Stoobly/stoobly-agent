@@ -213,6 +213,7 @@ if not is_remote:
         help="Snapshot a scenario"
     )
     @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
+    @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response bodies.")
     @click.argument('scenario_key')
     def snapshot(**kwargs):
         scenario_key = kwargs['scenario_key']

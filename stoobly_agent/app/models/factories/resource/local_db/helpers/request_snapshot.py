@@ -4,6 +4,7 @@ from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.lib.orm.request import Request
 
 from .snapshot import Snapshot
+from .snapshot_types import RequestSnapshotOptions
 
 class RequestSnapshot(Snapshot):
 
@@ -55,7 +56,7 @@ class RequestSnapshot(Snapshot):
     with open(self.path, 'wb') as fp:
       fp.write(self.__backup)
 
-  def write(self, request: Request, **options):
+  def write(self, request: Request, **options: RequestSnapshotOptions):
     adapter = JoinedRequestStringAdapter(request)
 
     if options.get('decode'):
