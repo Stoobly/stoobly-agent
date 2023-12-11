@@ -19,7 +19,7 @@ HEADER_SEPARATOR = ', '
 
 class RawHttpResponseAdapter():
 
-  def __init__(self, req_text):
+  def __init__(self, req_text: bytes):
     self.__req_text = req_text
     req_lines = self.__req_text.split(CRLF)
 

@@ -172,6 +172,7 @@ if not is_remote:
     help="Snapshot a request"
   )
   @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
+  @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response body.")
   @click.argument('request_key')
   def snapshot(**kwargs):
     request_key = kwargs['request_key']

@@ -92,7 +92,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     if not scenario:
       return self.__scenario_not_found()
 
-    file_path = snapshot_scenario(scenario, params.get('action'))
+    file_path = snapshot_scenario(scenario, **params)
     if not file_path:
       return self.internal_error()
 

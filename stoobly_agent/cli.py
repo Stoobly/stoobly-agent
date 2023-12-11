@@ -178,8 +178,11 @@ def record(**kwargs):
   if kwargs['format'] == RAW_FORMAT:
     print_raw_response(response)
   else:
-    content = response.content
-    print(content.decode(json.detect_encoding(content)))
+    try:
+      content = response.raw.data
+      print(content.decode(json.detect_encoding(content)))
+    except UnicodeDecodeError:
+      print('Warning: Binary output can mess up your terminal.')
 
 def __build_request_from_curl(**kwargs):
   headers = {}
