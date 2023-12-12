@@ -15,7 +15,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapsh
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 
-from .helpers.print_service import print_snapshots
+from .helpers.print_service import FORMATS, print_snapshots, select_print_options
 from .helpers.verify_raw_request_service import verify_raw_request
 
 @click.group(
@@ -43,6 +43,7 @@ def apply(**kwargs):
   help="List snapshots",
   name="list"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--pending', default=False, is_flag=True, help='Lists not yet processed snapshots.')
 @click.option(
   '--resource',
@@ -50,9 +51,10 @@ def apply(**kwargs):
   type=click.Choice([REQUEST_RESOURCE, SCENARIO_RESOURCE]),
   help=f"Defaults to {REQUEST_RESOURCE}."
 )
+@click.option('--scenario', help='Scenario name regex pattern to filter snapshots by')
 @click.option('--search', help='Regex pattern to filter snapshots by.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
-@click.option('--size', default=10)
+@click.option('--size', default=10, help='Number of rows to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def _list(**kwargs):
   log = Log()
@@ -106,8 +108,11 @@ def __print_events(events: List[LogEvent], **kwargs):
       if event.resource != SCENARIO_RESOURCE:
         continue
 
+      if not __scenario_matches(event, kwargs.get('scenario')):
+        continue
+
       snapshot = event.snapshot()
-      if not __scenario_matches(snapshot, kwargs.get('search')):
+      if not __description_matches(snapshot, kwargs.get('search')):
         continue
 
       path = os.path.relpath(snapshot.metadata_path)
@@ -134,20 +139,32 @@ def __print_events(events: List[LogEvent], **kwargs):
 
       event, snapshot = joined_event
       request = __to_request(snapshot)
+
+      if not __scenario_matches(event, kwargs.get('scenario')):
+        continue
+
       if not __request_matches(request, kwargs.get('search')):
         continue
 
       path = os.path.relpath(snapshot.path)
+      scenario = ''
+
+      if event.resource == SCENARIO_RESOURCE:
+        snapshot: ScenarioSnapshot = event.snapshot()
+        scenario = snapshot.metadata.get('name')
+
       formatted_events.append({
         **__transform_request(request),
         'snapshot': path,
-        **__transform_event(event)
+        **__transform_event(event),
+        'scenario': scenario
       })
 
       count += 1
 
   if len(formatted_events):
-    print_snapshots(formatted_events, **kwargs)
+    print_options = select_print_options(kwargs)
+    print_snapshots(formatted_events, **print_options)
 
 def __verify_request(snapshot: RequestSnapshot):
   raw_request = snapshot.request
@@ -200,10 +217,21 @@ def __transform_request(request: requests.Request):
 
   return event_dict
 
-def __scenario_matches(snapshot: ScenarioSnapshot, search: str):
+def __description_matches(snapshot: ScenarioSnapshot, search: str):
   if not search:
     return True
 
+  metadata = snapshot.metadata
+  return re.match(search, metadata.get('description') or '')
+
+def __scenario_matches(event: LogEvent, search: str):
+  if not search:
+    return True
+
+  if event.resource != SCENARIO_RESOURCE:
+    return False
+
+  snapshot = event.snapshot()
   metadata = snapshot.metadata
   return re.match(search, metadata.get('name') or '')
 
