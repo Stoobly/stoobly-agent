@@ -7,7 +7,7 @@ from typing import Callable
 from stoobly_agent.lib.orm.scenario import Scenario
 
 from .snapshot import Snapshot
-from .request_snapshot import RequestSnapshot
+from .request_snapshot import RequestSnapshot, RequestSnapshotOptions
 
 REQUEST_DELIMITTER = "\n"
 
@@ -110,7 +110,7 @@ class ScenarioSnapshot(Snapshot):
       })
       fp.write(text)
 
-  def write_requests(self, scenario: Scenario):
+  def write_requests(self, scenario: Scenario, **options: RequestSnapshotOptions):
     with open(self.requests_path, 'w') as fp:
       uuids = []
       requests = scenario.requests
@@ -119,7 +119,7 @@ class ScenarioSnapshot(Snapshot):
         uuid = request.uuid
 
         request_snapshot = RequestSnapshot(uuid)
-        request_snapshot.write(request)
+        request_snapshot.write(request, **options)
 
         uuids.append(uuid)
       

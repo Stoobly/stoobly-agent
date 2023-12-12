@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from stoobly_agent.config.data_dir import DataDir
 
 class Snapshot():

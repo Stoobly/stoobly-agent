@@ -5,10 +5,11 @@ from stoobly_agent.lib.orm.scenario import Scenario
 
 from .log import Log
 from .log_event import Action, DELETE_ACTION, PUT_ACTION
-from .request_snapshot import RequestSnapshot
+from .request_snapshot import RequestSnapshot, RequestSnapshotOptions
 from .scenario_snapshot import ScenarioSnapshot
 
-def snapshot_request(request: Request, action: Action):
+def snapshot_request(request: Request, **options: RequestSnapshotOptions):
+  action: Action = options.get('action')
   if not __validate_action(action):
     return
 
@@ -17,7 +18,7 @@ def snapshot_request(request: Request, action: Action):
   snapshot.backup()
 
   if action == PUT_ACTION:
-    snapshot.write(request)
+    snapshot.write(request, **options)
   elif action == DELETE_ACTION:
     snapshot.remove()
 
@@ -33,7 +34,8 @@ def snapshot_request(request: Request, action: Action):
 
   return snapshot.path
 
-def snapshot_scenario(scenario: Scenario, action: Action):
+def snapshot_scenario(scenario: Scenario, **options):
+  action: Action = options.get('action')
   if not __validate_action(action):
     return
 
@@ -50,7 +52,7 @@ def snapshot_scenario(scenario: Scenario, action: Action):
 
   if action == PUT_ACTION:
     snapshot.remove_requests()
-    snapshot.write_requests(scenario)
+    snapshot.write_requests(scenario, **options)
   elif action == DELETE_ACTION:
     snapshot.remove_requests()
 

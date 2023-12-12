@@ -9,17 +9,9 @@ from stoobly_agent.lib.orm.scenario import Scenario
 
 from .request_snapshot import RequestSnapshot
 from .scenario_snapshot import ScenarioSnapshot
+from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
 
 COLUMN_DELIMITTER = ' '
-
-REQUEST_RESOURCE = 'request'
-SCENARIO_RESOURCE = 'scenario'
-
-DELETE_ACTION = 'DELETE'
-PUT_ACTION = 'PUT'
-
-Action = Literal[f"{DELETE_ACTION}", f"{PUT_ACTION}"]
-Resource = Literal[f"{REQUEST_RESOURCE}", f"{SCENARIO_RESOURCE}"]
 
 class EventHandlers(TypedDict):
   handle_request_delete: Callable[[str], None]
