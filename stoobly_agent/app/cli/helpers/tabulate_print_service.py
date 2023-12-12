@@ -1,12 +1,13 @@
 import pdb
 
 from tabulate import tabulate
-from typing import List, TypedDict
+from typing import Callable, List, TypedDict, Union
 
 class TabulatePrintOptions(TypedDict):
   filter: list
   format: str
   headers: bool
+  print_handler: Union[Callable, None]
   select: list
 
 def tabulate_print(records: List[dict], **kwargs: TabulatePrintOptions):

@@ -5,7 +5,7 @@ import sys
 from stoobly_agent.app.settings import Settings
 
 from .helpers import ProjectFacade
-from .helpers.print_service import print_projects, select_print_options
+from .helpers.print_service import FORMATS, print_projects, select_print_options
 from .helpers.validations import *
 
 @click.group(
@@ -39,6 +39,7 @@ def create(**kwargs):
 @project.command(
     help="Show all projects"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--page', default=0)
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--size', default=10)

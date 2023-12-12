@@ -5,7 +5,7 @@ import sys
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete 
-from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
+from stoobly_agent.app.cli.helpers.print_service import FORMATS, print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.helpers.apply import Apply
@@ -129,6 +129,7 @@ def replay(**kwargs):
 @scenario.command(
     help="Show all scenarios"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create scenario in.')(f), is_remote)
 @click.option('--select', multiple=True, help='Select column(s) to display.')

@@ -6,7 +6,6 @@ import sys
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, DEFAULT_FORMAT, JSON_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
-from stoobly_agent.app.cli.helpers.print_service import select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
@@ -18,7 +17,7 @@ from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .helpers.print_service import print_requests
+from .helpers.print_service import FORMATS, print_requests, select_print_options
 from .helpers.request_facade import RequestFacade
 from .helpers.validations import *
 
@@ -66,6 +65,7 @@ def delete(**kwargs):
 @request.command(
   help="Show recorded requests"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--scenario-key')
