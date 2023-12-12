@@ -20,6 +20,7 @@ def project(ctx):
     help="Create a project"
 )
 @click.option('--description', help='Project description.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--organization-key', required=True, help='Project to create project in.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
@@ -89,6 +90,7 @@ def list(**kwargs):
 @project.command(
     help="Describe project"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('project_key', required=False)

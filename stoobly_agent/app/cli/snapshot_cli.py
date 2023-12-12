@@ -57,6 +57,8 @@ def apply(**kwargs):
 @click.option('--size', default=10, help='Number of rows to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def _list(**kwargs):
+  print_options = select_print_options(kwargs)
+
   log = Log()
 
   events = None
@@ -65,14 +67,23 @@ def _list(**kwargs):
   else:
     events = log.target_events
 
-  __print_events(events, **kwargs)
+  if events:
+    formatted_events = __format_events(events, **kwargs)
+
+    if len(formatted_events):
+      print_snapshots(formatted_events, **print_options)
 
 @snapshot.command(
   help="Update snapshot",
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--verify', is_flag=True, default=False)
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('uuid')
 def update(**kwargs):
+  print_options = select_print_options(kwargs)
+
   log = Log()
 
   events = []
@@ -93,9 +104,12 @@ def update(**kwargs):
     events.append(new_event)
 
   if events:
-    __print_events(events)
+    formatted_events = __format_events(events, **kwargs)
 
-def __print_events(events: List[LogEvent], **kwargs):
+    if len(formatted_events):
+      print_snapshots(formatted_events, **print_options)
+
+def __format_events(events: List[LogEvent], **kwargs):
   count = 0
   formatted_events = []
   size = 10 if kwargs.get('size') == None else kwargs['size']
@@ -162,9 +176,7 @@ def __print_events(events: List[LogEvent], **kwargs):
 
       count += 1
 
-  if len(formatted_events):
-    print_options = select_print_options(kwargs)
-    print_snapshots(formatted_events, **print_options)
+  return formatted_events
 
 def __verify_request(snapshot: RequestSnapshot):
   raw_request = snapshot.request

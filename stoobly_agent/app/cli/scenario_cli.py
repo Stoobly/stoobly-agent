@@ -33,6 +33,7 @@ def scenario(ctx):
     help="Create a scenario"
 )
 @click.option('--description', default='', help='Scenario description.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create scenario in.')(f), is_remote)
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
@@ -165,6 +166,7 @@ def list(**kwargs):
 @scenario.command(
     help="Describe scenario"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('key', required=False)

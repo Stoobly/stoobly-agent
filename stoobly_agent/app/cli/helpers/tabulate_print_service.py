@@ -1,14 +1,9 @@
 import pdb
 
 from tabulate import tabulate
-from typing import Callable, List, TypedDict, Union
+from typing import List
 
-class TabulatePrintOptions(TypedDict):
-  filter: list
-  format: str
-  headers: bool
-  print_handler: Union[Callable, None]
-  select: list
+from ..types.print_options import TabulatePrintOptions
 
 def tabulate_print(records: List[dict], **kwargs: TabulatePrintOptions):
   show_header = kwargs.get('headers')

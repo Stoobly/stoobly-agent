@@ -1,13 +1,12 @@
-import sys
-
 from .json_print import json_print
 from .tabulate_print_service import tabulate_print
+from ..types.print_options import TabulatePrintOptions
 
 JSON_FORMAT = 'json'
 SIMPLE_FORMAT = 'simple'
 FORMATS = [JSON_FORMAT, SIMPLE_FORMAT]
 
-def select_print_options(kwargs):
+def select_print_options(kwargs: TabulatePrintOptions):
     print_options = {
         'format': kwargs['format'],
         'select': kwargs['select'],
@@ -20,7 +19,7 @@ def select_print_options(kwargs):
 
     return print_options
 
-def print_projects(projects, **kwargs):
+def print_projects(projects, **kwargs: TabulatePrintOptions):
     filter = ['created_at', 'is_deleted', 'organization_id', 'project_id', 'starred', 'updated_at']
     format = kwargs.get('format')
 
@@ -37,7 +36,24 @@ def print_projects(projects, **kwargs):
             select=kwargs.get('select') or []
         )
 
-def print_requests(requests, **kwargs):
+def print_reports(reports, **kwargs: TabulatePrintOptions):
+    filter = ['created_at', 'priority', 'user_id', 'starred', 'updated_at']
+    format = kwargs.get('format')
+
+    if format == JSON_FORMAT:
+        json_print(reports, **{
+            'filter': filter,
+            **kwargs
+        })
+    else:
+        tabulate_print(
+            reports, 
+            filter=filter,
+            headers=not kwargs.get('without_headers'),
+            select=kwargs.get('select') or []
+        )
+
+def print_requests(requests, **kwargs: TabulatePrintOptions):
     filter = [
         'body_params_hash', 'body_text_hash', 'components' , 'created_at', 'endpoint', 'endpoint_id', 'http_version', 'is_deleted', 'position', 'project_id', 'pushed_at', 'query_params_hash', 'scenario_id', 'scheme', 'starred', 'uuid', 'updated_at', 'url'
     ]
@@ -56,7 +72,7 @@ def print_requests(requests, **kwargs):
             select=kwargs.get('select') or []
         )
 
-def print_scenarios(scenarios, **kwargs):
+def print_scenarios(scenarios, **kwargs: TabulatePrintOptions):
     filter = ['created_at', 'is_deleted', 'priority', 'project_id', 'starred', 'uuid', 'updated_at']
     format = kwargs.get('format')
 
@@ -73,7 +89,7 @@ def print_scenarios(scenarios, **kwargs):
             select=kwargs.get('select') or []
         )
 
-def print_snapshots(snapshots, **kwargs):
+def print_snapshots(snapshots, **kwargs: TabulatePrintOptions):
     filter = ['resource_uuid']
     format = kwargs.get('format')
 
@@ -90,7 +106,7 @@ def print_snapshots(snapshots, **kwargs):
             select=kwargs.get('select') or []
         )
 
-def print_tests(tests, **kwargs):
+def print_tests(tests, **kwargs: TabulatePrintOptions):
     filter = ['created_at', 'id', 'log', 'position', 'project_id', 'report_id', 'scenario_id', 'starred', 'updated_at']
     format = kwargs.get('format')
 
@@ -105,4 +121,21 @@ def print_tests(tests, **kwargs):
             filter=filter,
             headers=not kwargs.get('without_headers'),
             select=kwargs.get('select') or []
+        )
+
+def print_traces(traces, **kwargs: TabulatePrintOptions):
+    filter = kwargs.get('filter') or []
+    format = kwargs.get('format')
+
+    if format == JSON_FORMAT:
+        json_print(traces, **{
+            'filter': filter,
+            **kwargs
+        })
+    else:
+        tabulate_print(
+        traces, 
+        filter=filter,
+        headers=not kwargs.get('without_headers'),
+        select=kwargs.get('select') or []
         )

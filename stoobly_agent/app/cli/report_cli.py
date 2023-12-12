@@ -3,8 +3,8 @@ import sys
 
 from stoobly_agent.app.settings import Settings
 
+from .helpers.print_service import FORMATS, print_reports, select_print_options
 from .helpers.report_facade import ReportFacade
-from .helpers.tabulate_print_service import tabulate_print
 from .helpers.validations import *
 
 @click.group(
@@ -19,12 +19,13 @@ def report(ctx):
     help="Create a report"
 )
 @click.option('--description', help='Report description.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--project-key', help='Project to create report in.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=True, help='Disable printing column headers.')
 @click.argument('name')
 def create(**kwargs):
-    print_options = __select_print_options(kwargs)
+    print_options = select_print_options(kwargs)
     
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
@@ -39,11 +40,12 @@ def create(**kwargs):
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
-    __print([res], **print_options)
+    print_reports([res], **print_options)
 
 @report.command(
     help="Show created reports"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--page', default=0)
 @click.option('--project-key', help='Project to create scenario in.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
@@ -52,7 +54,7 @@ def create(**kwargs):
 @click.option('--size', default=10)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def list(**kwargs):
-    print_options = __select_print_options(kwargs)
+    print_options = select_print_options(kwargs)
 
     settings = Settings.instance()
     project_key = resolve_project_key_and_validate(kwargs, settings)
@@ -68,24 +70,4 @@ def list(**kwargs):
     if len(reports_response['list']) == 0:
         print('No reports found.', file=sys.stderr)
     else:
-        __print(reports_response['list'], **print_options)
-        
-
-def __print(reports, **kwargs):
-    tabulate_print(
-        reports, 
-        filter=['created_at', 'priority', 'user_id', 'starred', 'updated_at'],
-        headers=not kwargs.get('without_headers'),
-        select=kwargs.get('select') or []
-    )
-
-def __select_print_options(kwargs):
-    print_options = {
-        'select': kwargs['select'],
-        'without_headers': kwargs['without_headers']
-    }
-
-    del kwargs['without_headers']
-    del kwargs['select']
-
-    return print_options
+        print_reports(reports_response['list'], **print_options)

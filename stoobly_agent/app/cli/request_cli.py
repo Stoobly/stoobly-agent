@@ -69,7 +69,7 @@ def delete(**kwargs):
 @click.option('--page', default=0)
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--scenario-key')
-@click.option('--search', help='Query to filter requests by')
+@click.option('--search', help='Query to filter requests by.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--sort-by', default='created_at', help='created_at|path')
 @click.option('--sort-order', default='desc', help='asc | desc')

@@ -6,8 +6,7 @@ from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 from stoobly_agent.lib.orm.trace_request import TraceRequest
 
-from .helpers.print_service import select_print_options
-from .helpers.tabulate_print_service import tabulate_print
+from .helpers.print_service import FORMATS, print_traces, select_print_options
 from .helpers.validations import *
 
 @click.group(
@@ -28,6 +27,7 @@ def create(**kwargs):
 @trace.command(
     help="Show all traces"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--size', default=10)
 @click.option('--sort-by', default='created_at', help='created_at|name')
@@ -48,7 +48,7 @@ def list(**kwargs):
     trace_aliases = TraceAlias.where_for(trace_id=id)
     trace_json['trace_aliases_count'] = trace_aliases.count()
 
-  __print(traces_json, **print_options)
+  print_traces(traces_json, **print_options)
 
 @click.group(
   epilog="Run 'stoobly-agent trace alias COMMAND --help' for more information on a command.",
@@ -61,6 +61,7 @@ def alias(ctx):
 @alias.command(
     help="Show all aliases for a trace"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--name', help='Filter by name.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--size', default=10)
@@ -81,7 +82,7 @@ def list(**kwargs):
   trace_aliases = TraceAlias.where_for(**columns)
   trace_aliases = trace_aliases.limit(kwargs['size']).order_by(kwargs['sort_by'], kwargs['sort_order'])
 
-  __print(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
+  print_traces(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
 
 @alias.command(
   help="Create an alias for a trace"
@@ -97,14 +98,6 @@ def create(**kwargs):
 
   trace_alias = TraceAlias.create(trace_id=kwargs['trace_id'], name=kwargs['name'], value=value)
   print(trace_alias.id)
-
-def __print(traces, **kwargs):
-  tabulate_print(
-      traces, 
-      filter=kwargs.get('filter') or [],
-      headers=not kwargs.get('without_headers'),
-      select=kwargs.get('select') or []
-  )
 
 trace.add_command(alias)
 
@@ -127,13 +120,5 @@ def update(**kwargs):
     trace_alias.update(value=value)
   
   print(trace_alias.id)
-
-def __print(traces, **kwargs):
-  tabulate_print(
-      traces, 
-      filter=kwargs.get('filter') or [],
-      headers=not kwargs.get('without_headers'),
-      select=kwargs.get('select') or []
-  )
 
 trace.add_command(alias)

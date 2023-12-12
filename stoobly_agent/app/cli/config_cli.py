@@ -19,7 +19,7 @@ from .helpers.handle_config_update_service import (
     handle_project_update,
     handle_scenario_update,
 )
-from .helpers.print_service import print_projects, print_scenarios, select_print_options
+from .helpers.print_service import FORMATS, print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
 settings = Settings.instance()
@@ -72,6 +72,7 @@ def scenario(ctx):
 @scenario.command(
     help="Describe scenario"
 )
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def show(**kwargs):
@@ -429,6 +430,7 @@ if is_remote:
     @project.command(
         help="Describe project."
     )
+    @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
     @click.option('--select', multiple=True, help='Select column(s) to display.')
     @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
     def show(**kwargs):

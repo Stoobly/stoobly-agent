@@ -1,14 +1,11 @@
 import json
 import pdb
 
-from typing import Callable, List, TypedDict, Union
+from typing import List
 
-class JsonPrintOptions(TypedDict):
-  filter: list
-  print_handler: Union[Callable, None]
-  select: list
+from ..types.print_options import PrintOptions
 
-def json_print(records: List[dict], **kwargs: JsonPrintOptions):
+def json_print(records: List[dict], **kwargs: PrintOptions):
   filter = kwargs.get('filter') or []
   print_handler = kwargs.get('print_handler') or print
   select = kwargs.get('select') or []
