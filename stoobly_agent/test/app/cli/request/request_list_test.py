@@ -1,3 +1,4 @@
+import json
 import pdb
 import pytest
 
@@ -5,6 +6,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT
 from stoobly_agent.cli import record, request
 from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.orm.request import Request
@@ -62,6 +64,17 @@ class TestList():
     output = request_result.stdout
     host = output.strip().split("\n")[0]
     assert host == 'www.facebook.com'
+
+  def test_it_formats_json(self, runner: CliRunner):
+    self.__record_request(runner, DETERMINISTIC_GET_REQUEST_URL)
+
+    request_result = runner.invoke(request, ['list', '--format', JSON_FORMAT])
+    assert request_result.exit_code == 0
+
+    output = request_result.stdout
+    requests = json.loads(output)
+
+    assert requests[0].get('status') == '200'
 
   def __record_request(self, runner: CliRunner, url: str):
     record_result = runner.invoke(record, [url])
