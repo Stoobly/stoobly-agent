@@ -1,13 +1,9 @@
 import pdb
 
 from tabulate import tabulate
-from typing import List, TypedDict
+from typing import List
 
-class TabulatePrintOptions(TypedDict):
-  filter: list
-  format: str
-  headers: bool
-  select: list
+from ..types.print_options import TabulatePrintOptions
 
 def tabulate_print(records: List[dict], **kwargs: TabulatePrintOptions):
   show_header = kwargs.get('headers')
