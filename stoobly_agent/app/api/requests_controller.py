@@ -155,10 +155,13 @@ class RequestsController:
             'id': 1
         })
 
-        request_id = context.params.get('id')
+        request_params = context.params.get('request')
+        if request_params.get('scenario_id') == -1:
+            request_params['scenario_id'] = None
 
+        request_id = context.params.get('id')
         request_model = self.__request_model(context)
-        request, status = request_model.update(request_id, **context.params.get('request'))
+        request, status = request_model.update(request_id, **request_params)
 
         if context.filter_response(request, status):
             return
