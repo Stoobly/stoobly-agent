@@ -43,7 +43,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     scenario_id = params.get('scenario_id')
 
     with ORM.instance().db.transaction():
-      request_columns = build_request_columns(flow, joined_request, scenario_id=scenario_id)
+      request_columns = build_request_columns(flow, joined_request, is_deleted=False, scenario_id=scenario_id)
       request_record = self.__request_orm.create(**request_columns)
 
       response_columns = {

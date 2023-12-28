@@ -17,15 +17,13 @@ def build_request_columns(flow: MitmproxyHTTPFlow, joined_request: JoinedRequest
     **request_columns,
     **response_columns,
     'control': joined_request.request_string.control,
-    'is_deleted': params.get('is_deleted') or False,
     'latency': joined_request.response_string.latency,
     'raw': joined_request.request_string.get(),
-    'scenario_id': params['scenario_id'] if params.get('scenario_id') else None,
     'status': flow.response.status_code,
     'uuid': joined_request.request_string.request_id.strip(),
   }
 
-  return request_columns
+  return { **request_columns, **params }
 
 def build_response_columns(flow: MitmproxyHTTPFlow, joined_request: JoinedRequest):
   response_columns: ResponseColumns = {
