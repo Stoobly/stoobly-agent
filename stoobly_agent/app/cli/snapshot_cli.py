@@ -4,6 +4,7 @@ import pdb
 import os
 import re
 import requests
+import sys
 
 from urllib.parse import urlparse
 from typing import List
@@ -86,28 +87,31 @@ def update(**kwargs):
 
   log = Log()
 
-  events = []
-  for event in log.target_events:
-    if event.uuid != kwargs['uuid']:
-      continue
+  event = None
+  for _event in log.events:
+    if _event.uuid == kwargs['uuid']:
+      event = _event
+      break
 
-    if kwargs['verify']:
-      if event.is_request(): 
-        snapshot: RequestSnapshot = event.snapshot()
-        __verify_request(snapshot)
-      elif event.is_scenario():
-        snapshot: ScenarioSnapshot = event.snapshot()
-        snapshot.iter_request_snapshots(__verify_request)
+  if not event:
+    print(f"Error: {kwargs['uuid']} not found", file=sys.stderr)
+    sys.exit(1)
 
-    new_event = event.duplicate()
-    log.append(str(new_event))
-    events.append(new_event)
+  if kwargs['verify']:
+    if event.is_request(): 
+      snapshot: RequestSnapshot = event.snapshot()
+      __verify_request(snapshot)
+    elif event.is_scenario():
+      snapshot: ScenarioSnapshot = event.snapshot()
+      snapshot.iter_request_snapshots(__verify_request)
 
-  if events:
-    formatted_events = __format_events(events, **kwargs)
+  new_event = event.duplicate()
+  log.append(str(new_event))
 
-    if len(formatted_events):
-      print_snapshots(formatted_events, **print_options)
+  formatted_events = __format_events([new_event], **kwargs)
+
+  if len(formatted_events):
+    print_snapshots(formatted_events, **print_options)
 
 def __format_events(events: List[LogEvent], **kwargs):
   count = 0
