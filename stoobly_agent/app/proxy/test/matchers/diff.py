@@ -19,7 +19,10 @@ def matches(test_context: TestContext, facade: RequestComponentNamesFacade, expe
     elif context.value_is_list(actual):
         return list_matches(context, expected, actual)
     else:
-        return value_matches(context, expected, actual)
+        matches, log = value_matches(context, expected, actual)
+        if not matches:
+            return matches, 'Match error: responses do not match'
+        return matches, log
 
 def value_matches(parent_context: MatchContext, expected, actual):
     if not parent_context.value_matches(expected, actual):
