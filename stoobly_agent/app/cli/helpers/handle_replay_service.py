@@ -12,6 +12,8 @@ from stoobly_agent.lib.logger import bcolors
 from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.decode import decode
 
+from .test_replay_context import TestReplayContext
+
 BODY_FORMAT = 'body'
 DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'
@@ -44,7 +46,7 @@ def handle_after_replay(context: ReplayContext, session: ReplaySession):
     session['total'] = 0
 
   if not session.get('buffer'):
-    __print(format_request(context))
+    print_with_decoding(format_request(context))
   else:
     session['contexts'].append(context)
 
@@ -71,7 +73,7 @@ def print_request_query(context: ReplayContext, query: str):
       f"{bcolors.FAIL}Could not query request, expected responsed to be of type {dict} or {list}, got {decoded_response.__class__} {bcolors.ENDC}",
       file=sys.stderr
     )
-    print(format_request(context), file=sys.stderr)
+    print("\n".join(format_request(context)), file=sys.stderr)
   else:
     print(jmespath.search(query, decoded_response))
 
@@ -92,13 +94,21 @@ def print_session(session: ReplaySession):
     else:
       print(json.dumps(outputs[0]))
   else:
-    __print(outputs)
+    print_with_decoding(outputs)
+
+def print_with_decoding(outputs: List[Union[bytes, str]], delimitter = "\n"):
+  for output in outputs:
+    o = decode(output)
+
+    if isinstance(o, bytes):
+      sys.stdout.buffer.write(o + delimitter.encode())
+    else:
+      print(o, end=delimitter)
 
 def __default_format_handler(context: ReplayContext, additional=''):
+  output = [context.response_content]
+
   response = context.response
-
-  output = [response.content]
-
   seconds = context.end_time - context.start_time
   ms = round(seconds * 1000)
   output.append(f"Completed {response.status_code} in {ms}ms{additional}")
@@ -106,9 +116,7 @@ def __default_format_handler(context: ReplayContext, additional=''):
   return output
 
 def __body_format_handler(context: ReplayContext):
-  response = context.response
-  content = response.content
-  return [content]
+  return [context.response_content]
 
 def __json_format_handler(context: ReplayContext):
   request = context.request
@@ -123,17 +131,8 @@ def __json_format_handler(context: ReplayContext):
   ms = round(seconds * 1000)
   output: ReplayOutput = {'content': content, 'headers': headers, 'latency': ms, 'method': method, 'url': url}
 
-  return [output]
+  return output
 
 def __content(res: requests.Response):
   content = res.content
   return decode(content)
-
-def __print(outputs: List[Union[bytes, str]]):
-  for output in outputs:
-    o = decode(output)
-
-    if isinstance(o, bytes):
-      sys.stdout.buffer.write(o)
-    else:
-      print(o)

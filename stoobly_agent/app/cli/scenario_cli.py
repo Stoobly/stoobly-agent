@@ -272,7 +272,8 @@ if is_remote:
             Log levels can be "debug", "info", "warning", or "error"
         '''
     )
-    @click.option('--report-key', help='Save to report.')
+    @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+    @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
     @click.option('--scheme', help='Rewrite request scheme.')
     @click.option(
         '--strategy', 
@@ -318,21 +319,21 @@ if is_remote:
             context, session,
         )
         kwargs['after_replay'] = lambda context: __handle_on_test_response(
-            context, session_context, kwargs['format']
+            context, session_context, kwargs
         )
 
         scenario = ScenarioFacade(settings)
         scenario.test(kwargs['key'], kwargs)
 
-        handle_test_session_complete(session_context, kwargs['format'])
+        handle_test_session_complete(session_context, format=kwargs['format'])
 
         exit_on_failure(session_context, format=kwargs['format'])
 
-def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext, format = None):
-    handle_test_complete(replay_context, session_context, format)
+def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext, kwargs):
+    handle_test_complete(replay_context, session_context, format=kwargs['format'])
 
     if not session_context['aggregate_failures']:
-        exit_on_failure(session_context, complete=False, format=format)
+        exit_on_failure(session_context, complete=False, format=kwargs['format'])
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved

@@ -25,6 +25,7 @@ class ReplayCliOptions(TypedDict):
 class TestCliOptions(ReplayCliOptions):
   filter: test_filter.TestFilter
   report_key: str
+  save: bool
   strategy: test_strategy.TestStrategy
 
 class ReplayFacade():
@@ -88,8 +89,11 @@ class ReplayFacade():
         data_rule = self.data_rules()
         strategy = data_rule.test_strategy
 
+    save = cli_options.get('save')
+
     return {
       'test_filter': filter or test_filter.ALL,
+      'test_save_results': save,
       'test_strategy': strategy or test_strategy.DIFF,
       **self.common_cli_options(cli_options)
     }

@@ -129,7 +129,7 @@ def list(**kwargs):
   )(f), not is_remote
 )
 @click.option('--record', is_flag=True, default=False, help='Replay request and record.')
-@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), not is_remote)
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
 @ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)
@@ -223,7 +223,9 @@ if is_remote:
           Log levels can be "debug", "info", "warning", or "error"
       '''
   )
-  @click.option('--report-key', help='Save to report.')
+  @click.option('--remote-project-key', help='Use project for endpoint definitions.')
+  @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+  @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
   @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
   @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
   @click.option('--trace-id', help='Use existing trace.')
@@ -236,6 +238,10 @@ if is_remote:
     request_key = validate_request_key(kwargs['request_key'])
 
     if kwargs.get('report_key'):
+      if not kwargs.get('save'):
+        print("Error: Missing --save option", file=sys.stderr)
+        sys.exit(1)
+
       validate_report_key(kwargs['report_key'])
 
     if len(kwargs['validate']):
@@ -261,14 +267,15 @@ if is_remote:
     kwargs['before_replay'] = lambda context: handle_before_replay(
       context, session
     )
+
     kwargs['after_replay'] = lambda context: handle_test_complete(
-      context, session_context, kwargs['format']
+      context, session_context, format=kwargs['format']
     )
 
     request = RequestFacade(settings)
     __replay(request.test, kwargs)
 
-    handle_test_session_complete(session_context)
+    handle_test_session_complete(session_context, format=kwargs['format'])
 
     exit_on_failure(session_context, format=kwargs['format'])
 
