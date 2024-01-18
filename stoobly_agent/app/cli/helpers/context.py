@@ -25,6 +25,10 @@ class ReplayContext():
   def end_time(self):
     return self.__end_time
 
+  @end_time.setter
+  def end_time(self, v):
+    self.__end_time = v 
+
   @property
   def request(self):
     return self.__request
@@ -34,12 +38,20 @@ class ReplayContext():
     return self.__response
 
   @property
+  def response_content(self):
+    return self.__response.content
+
+  @property
   def sequence(self):
     return self.__sequence
 
   @property
   def start_time(self):
     return self.__start_time
+
+  @start_time.setter
+  def start_time(self, v):
+    self.__start_time = v
 
   def clone(self):
     return ReplayContext(self.__request.clone())
