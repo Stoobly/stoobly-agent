@@ -175,15 +175,15 @@ def rewrite(ctx):
 def set(**kwargs):
     if kwargs['name'] or kwargs['value'] or kwargs['type']:
         if kwargs['name'] == None:
-            print("Error: missing option '--name'", file=sys.stderr)
+            print("Error: Missing option '--name'", file=sys.stderr)
             sys.exit(1)
 
         if kwargs['value'] == None:
-            print("Error: missing option '--value'", file=sys.stderr)
+            print("Error: Missing option '--value'", file=sys.stderr)
             sys.exit(1)
         
         if kwargs['type'] == None:
-            print("Error: missing option '--type'", file=sys.stderr)
+            print("Error: Missing option '--type'", file=sys.stderr)
             sys.exit(1)
 
     settings = Settings.instance()
