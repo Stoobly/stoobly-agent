@@ -4,6 +4,7 @@ import pdb
 import urllib.parse
 
 from mitmproxy.coretypes.multidict import MultiDict
+from mitmproxy.net import encoding
 from typing import Dict, Union
 
 from stoobly_agent.lib.utils.decode import decode
@@ -13,6 +14,12 @@ from .multipart import decode as multipart_decode, encode as multipart_encode
 JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
 WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
+
+def compress(body: Union[bytes, str], content_encoding: Union[None, str]) -> Union[bytes, str]:
+    if content_encoding:
+      return encoding.encode(body, content_encoding)
+    else:
+      return body
 
 def decode_response(content: Union[bytes, str], content_type: Union[None, str]) -> Union[dict, list, MultiDict]:
     if not content_type:
@@ -30,6 +37,12 @@ def decode_response(content: Union[bytes, str], content_type: Union[None, str]) 
         decoded_response = parse_multipart_form_data(content, content_type)
 
     return decoded_response
+
+def decompress(body: Union[bytes, str], content_encoding: Union[None, str]) -> Union[bytes, str]:
+    if content_encoding:
+      return encoding.decode(body, content_encoding)
+    else:
+      return body
 
 def encode_response(content, content_type: Union[bytes, None, str]) -> Union[bytes, str]:
     if not content_type:
