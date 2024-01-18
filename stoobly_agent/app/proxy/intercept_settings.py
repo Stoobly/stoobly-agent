@@ -23,13 +23,8 @@ class InterceptSettings:
     self.__headers: MitmproxyRequest.headers = request.headers if request else None
     self.__for_response = False
 
-    project_id = None
-
-    try: 
-      project_key = ProjectKey(self.project_key)
-      project_id = project_key.id
-    except InvalidProjectKey:
-      pass
+    parsed_project_key = self.parsed_project_key
+    project_id = parsed_project_key.id if parsed_project_key else None
 
     # If no valid project key is provided, use default settings,
     # Otherwise, set settings for the project
@@ -100,6 +95,39 @@ class InterceptSettings:
 
     return self.__settings.proxy.intercept.project_key
 
+  @property
+  def parsed_project_key(self):
+    try: 
+      return ProjectKey(self.project_key)
+    except InvalidProjectKey:
+      pass
+
+  @property
+  def remote_project_key(self):
+    remote_project_key = None
+
+    if self.__headers and custom_headers.REMOTE_PROJECT_KEY in self.__headers:
+        remote_project_key = self.__headers[custom_headers.REMOTE_PROJECT_KEY]
+
+    remote_project_key = self.__settings.remote.project_key
+
+    if not remote_project_key:
+      return
+
+    # When not local project, don't return set remote project_key
+    project_key = self.parsed_project_key
+    if project_key and not project_key.is_local:
+      return 
+
+    return remote_project_key
+
+  @property
+  def parsed_remote_project_key(self):
+    try: 
+      return ProjectKey(self.remote_project_key)
+    except InvalidProjectKey:
+      pass
+    
   @property
   def scenario_key(self):
     if self.__headers and custom_headers.SCENARIO_KEY in self.__headers:
@@ -187,6 +215,13 @@ class InterceptSettings:
       return self.__headers[custom_headers.TEST_FILTER]
 
     return test_filter.ALL
+
+  @property
+  def test_save_results(self):
+    if self.__headers and custom_headers.TEST_SAVE_RESULTS in self.__headers:
+      return not not int(self.__headers[custom_headers.TEST_SAVE_RESULTS])
+
+    return False
   
   @property
   def test_strategy(self):
