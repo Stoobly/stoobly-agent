@@ -3,7 +3,10 @@ from typing import List, Optional, TypedDict, Union
 from .pagination_query_params import PaginationQueryParams
 
 class EndpointsIndexQueryParams(PaginationQueryParams):
+  ignored_components: str
+  method: str
   project_id: str
+  q: str
 
 class RequestComponentName(TypedDict):
   id: int 
@@ -30,6 +33,7 @@ class EndpointShowResponse(TypedDict):
   id: int
   method: str
   host: str
+  ignored_components: Optional[list]
   port: str
   path: str
   match_pattern: Optional[str]
