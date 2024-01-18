@@ -8,6 +8,7 @@ import sys
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
@@ -130,6 +131,7 @@ def run(**kwargs):
   help="Mock request"
 )
 @click.option('-d', '--data', default='', help='HTTP POST data')
+@click.option('--remote-project-key', help='Use remote project for endpoint definitions.')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
@@ -137,6 +139,12 @@ def run(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
+  if kwargs.get('remote_project_key'):
+    validate_project_key(kwargs['remote_project_key'])
+
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
   request = __build_request_from_curl(**kwargs)
 
   context = ReplayContext.from_python_request(request)
@@ -167,6 +175,9 @@ def mock(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
   request = __build_request_from_curl(**kwargs)
 
   context = ReplayContext.from_python_request(request)
