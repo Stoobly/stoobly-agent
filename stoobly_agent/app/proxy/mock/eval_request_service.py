@@ -17,6 +17,7 @@ from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.match_rule import MatchRule
 
 from .hashed_request_decorator import HashedRequestDecorator
+from .search_endpoint import inject_search_endpoint
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 
 class EvalRequestOptions(TypedDict):
@@ -50,8 +51,19 @@ def eval_request(
     ignored_components_list: List[Union[list, str, None]],
     **options: EvalRequestOptions
 ) -> Response:
-    query_params_builder = ParamBuilder()
+    query_params_builder = ParamBuilder({})
     query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
+
+    # Tease out API returning ignored components on not found
+    if request_model.is_local and not options.get('retry'):
+        remote_project_key = intercept_settings.parsed_remote_project_key
+
+        if remote_project_key:
+            search_endpoint = inject_search_endpoint(intercept_settings)
+            remote_project_id = remote_project_key.id
+            endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url)
+
+            query_params_builder.with_param('endpoint_promise', endpoint_promise)
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params_builder.with_params(__build_request_params(request, ignored_components))
