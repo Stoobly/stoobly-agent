@@ -28,7 +28,7 @@ class ORMToRequestsResponseTransformer():
       adapter.body = self.__body 
 
     if self.__headers:
-      adapter.headers = self.__headers
+      adapter.headers = { **adapter.headers, **self.__headers }
 
     if self.__status:
       adapter.status = self.__status
@@ -48,13 +48,13 @@ class ORMToRequestsResponseTransformer():
     self.__body = body
     self.__dirty = True
 
-    headers = self.__headers or {}
-    self.with_headers({ **headers, 'Content-Length': str(len(body)) })
+    self.with_headers({ 'Content-Length': str(len(body)) })
 
     return self
 
-  def with_headers(self, headers: list):
-    self.__headers = headers
+  def with_headers(self, headers: dict):
+    _headers = self.__headers or {}
+    self.__headers = { **_headers, **headers } 
     self.__dirty = True
     return self
 
