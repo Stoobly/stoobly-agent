@@ -10,8 +10,8 @@ from stoobly_agent.lib.logger import Logger, bcolors
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
-from ..intercept_settings import InterceptSettings
-from .join_request_service import join_rewritten_request
+from ...intercept_settings import InterceptSettings
+from ...record.join_request_service import join_rewritten_request
 
 class UploadTestData(TypedDict):
   expected_response: str
@@ -39,7 +39,7 @@ def upload_test(
   api: TestsResource,
   intercept_settings: InterceptSettings, 
   flow: MitmproxyHTTPFlow, 
-  **kwargs
+  **kwargs: UploadTestData
 ) -> Response:
     joined_request = join_rewritten_request(flow, intercept_settings)
 
