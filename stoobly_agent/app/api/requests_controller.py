@@ -39,10 +39,10 @@ class RequestsController:
         if not context.required_params(body_params, ['requests']):
             return
 
-        raw_requests = body_params.get('requests') 
+        raw_requests = body_params.get('requests')
         payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER
 
-        toks = raw_requests.split(payloads_delimitter) 
+        toks = raw_requests.split(payloads_delimitter)
 
         if len(toks) % 2 != 0:
             return context.bad_request('Invalid requests format')
@@ -103,7 +103,7 @@ class RequestsController:
 
         if context.filter_response(request, status):
             return
-        
+
         context.render(
             json = request,
             status = 200
@@ -128,13 +128,13 @@ class RequestsController:
         request_model = RequestModel(Settings.instance())
         request_model.as_remote()
         res = upload_staged_request(
-            request, 
-            request_model, 
+            request,
+            request_model,
             body_params.get('project_key'),
             body_params.get('scenario_key')
         )
 
-        if not res: 
+        if not res:
             return context.internal_error()
 
         request.update(pushed_at = datetime.now())
@@ -143,6 +143,12 @@ class RequestsController:
 
         if context.filter_response(request, status):
             return
+
+        # This can error out if res is not properly formatted
+        # The request has a local ID (the ID of the request that was pushed)
+        # and a remote ID (the ID of the request that was created)
+        if res.status == 200 and len(res['list']):
+            request['remote_id'] = res['list'][0]['id']
 
         context.render(
             json = request,
@@ -262,8 +268,8 @@ class RequestsController:
             return context.bad_request('Invalid format')
 
     def __request_model(self, context: SimpleHTTPRequestHandler):
-        request_model = RequestModel(Settings.instance())
-        request_model.as_remote() if context.headers.get('access-token') else request_model.as_local()
+        access_token = context.headers.get('access-token')
+        request_model = RequestModel(Settings.instance(), access_token=access_token)
         return request_model
 
     def __replay(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext):
@@ -271,7 +277,7 @@ class RequestsController:
         if bool(context.params.get('save')):
             options['save'] = True
 
-        self.__send(context, replay_context, **options) 
+        self.__send(context, replay_context, **options)
 
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, **replay_options):
         res = replay(replay_context, { **replay_options, 'mode': mode.REPLAY })

@@ -8,15 +8,15 @@ from .model import Model
 
 class BodyModel(Model):
 
-  def __init__(self, settings: Settings):
-    super().__init__(settings)
+  def __init__(self, settings: Settings, **options):
+    super().__init__(settings, **options)
 
   def as_local(self):
     self.adapter = BodyResourceFactory(self.settings.remote).local_db()
+    self.is_local = False
 
   def as_remote(self):
-    # 'Not yet supported.'
-    pass 
+    self.is_local = False
 
   def update(self, request_id: int, text: str):
     try:

@@ -11,14 +11,16 @@ from .types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllP
 
 class RequestModel(Model):
 
-  def __init__(self, settings: Settings):
-    super().__init__(settings)
+  def __init__(self, settings: Settings, **options):
+    super().__init__(settings, **options)
 
   def as_local(self):
-      self.adapter = RequestResourceFactory(self.settings.remote).local_db()
+    self.adapter = RequestResourceFactory(self.settings.remote).local_db()
+    self.is_local = True
 
   def as_remote(self):
-      self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
+    self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
+    self.is_local = False
 
   def create(self, **body_params: RequestCreateParams):
     try:

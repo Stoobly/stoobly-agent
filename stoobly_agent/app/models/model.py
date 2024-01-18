@@ -6,18 +6,26 @@ from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID, ProjectKey
 from stoobly_agent.lib.logger import Logger
 
 class Model():
-  def __init__(self, settings: Settings):
+  def __init__(self, settings: Settings, **options):
+    self.adapter = None
+    self.is_local = False
     self.settings = settings
 
     if not settings.cli.features.remote:
       self.as_local()
     else:
-      project_key = ProjectKey(settings.proxy.intercept.project_key)
-
-      if int(project_key.id) == LOCAL_PROJECT_ID:
-        self.as_local()
+      if 'access_token' in options:
+        if options.get('access_token'):
+          self.as_remote()
+        else:
+          self.as_local() 
       else:
-        self.as_remote()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+
+        if int(project_key.id) == LOCAL_PROJECT_ID:
+          self.as_local()
+        else:
+          self.as_remote()
 
   # Override
   def as_local(self):

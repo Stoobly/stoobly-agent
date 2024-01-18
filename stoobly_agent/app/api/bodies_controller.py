@@ -75,6 +75,6 @@ class BodiesController:
         )
 
     def __body_model(self, context: SimpleHTTPRequestHandler) -> BodyModel:
-        body_model = BodyModel(Settings.instance())
-        body_model.as_remote() if context.headers.get('access-token') else body_model.as_local()
+        access_token = context.headers.get('access-token')
+        body_model = BodyModel(Settings.instance(), access_token=access_token)
         return body_model

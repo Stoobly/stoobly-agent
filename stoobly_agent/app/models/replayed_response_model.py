@@ -9,15 +9,15 @@ from .types import ReplayeResponseCreateParams
 
 class ReplayedResponseModel(Model):
 
-  def __init__(self, settings: Settings):
-    super().__init__(settings)
+  def __init__(self, settings: Settings, **options):
+    super().__init__(settings, **options)
 
   def as_local(self):
     self.adapter = ReplayedResponseResourceFactory(self.settings.remote).local_db()
+    self.is_local = True
 
   def as_remote(self):
-    # raise('Not yet supported.')
-    pass
+    self.is_local = False
 
   def create(self, **body_params: ReplayeResponseCreateParams):
     try:

@@ -146,6 +146,6 @@ class ScenariosController:
             return context.bad_request('Invalid format')
 
     def __scenario_model(self, context: SimpleHTTPRequestHandler):
-        scenario_model = ScenarioModel(Settings.instance())
-        scenario_model.as_remote() if context.headers.get('access-token') else scenario_model.as_local()
+        access_token = context.headers.get('access-token')
+        scenario_model = ScenarioModel(Settings.instance(), access_token=access_token)
         return scenario_model
