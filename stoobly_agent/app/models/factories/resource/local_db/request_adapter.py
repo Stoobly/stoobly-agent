@@ -118,7 +118,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       return CustomNotFoundResponseBuilder().build()
 
     headers = {}
-    headers[custom_headers.MOCK_REQUEST_ID] = request.id
+    headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
 
     return (
       ORMToRequestsResponseTransformer(response_record)

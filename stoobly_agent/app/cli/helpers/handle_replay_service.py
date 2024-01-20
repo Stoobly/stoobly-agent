@@ -131,7 +131,7 @@ def __json_format_handler(context: ReplayContext):
   ms = round(seconds * 1000)
   output: ReplayOutput = {'content': content, 'headers': headers, 'latency': ms, 'method': method, 'url': url}
 
-  return output
+  return [output]
 
 def __content(res: requests.Response):
   content = res.content
