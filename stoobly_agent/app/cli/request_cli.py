@@ -200,84 +200,83 @@ if not is_remote:
     else:
       print('Could not reset the request.')
 
-if is_remote:
-  @request.command(
-    help="Test a request"
+@request.command(
+  help="Test a request"
+)
+@click.option(
+    '--alias-resolve-strategy', 
+    default=alias_resolve_strategy.NONE, 
+    type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+    help='Strategy for resolving dynamic values for aliases.'
+)
+@click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
+@click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+@click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
+@click.option('--format', type=click.Choice([BODY_FORMAT, JSON_FORMAT]), help='Format replay response.')
+@click.option('--group-by', help='Repeat for each alias name.')
+@click.option('--host', help='Rewrite request host.')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+    '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
+    help='''
+        Log levels can be "debug", "info", "warning", or "error"
+    '''
+)
+@click.option('--remote-project-key', help='Use project for endpoint definitions.')
+@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
+@click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
+@click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
+@click.option('--trace-id', help='Use existing trace.')
+@click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
+@click.argument('request_key')
+def test(**kwargs):
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
+  settings = Settings.instance()
+  request_key = validate_request_key(kwargs['request_key'])
+
+  if kwargs.get('report_key'):
+    if not kwargs.get('save'):
+      print("Error: Missing --save option", file=sys.stderr)
+      sys.exit(1)
+
+    validate_report_key(kwargs['report_key'])
+
+  if len(kwargs['validate']):
+    validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
+
+  __assign_default_alias_resolve_strategy(kwargs)
+
+  session: ReplaySession = {
+    'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
+    'contexts': [],
+    'format': kwargs['format'],
+    'total': 0,
+  }
+
+  session_context: SessionContext = { 
+      'aggregate_failures': kwargs['aggregate_failures'], 
+      'passed': 0, 
+      'project_id': request_key.project_id, 
+      'test_facade': TestFacade(settings), 
+      'total': 0 
+  }
+
+  kwargs['before_replay'] = lambda context: handle_before_replay(
+    context, session
   )
-  @click.option(
-      '--alias-resolve-strategy', 
-      default=alias_resolve_strategy.NONE, 
-      type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
-      help='Strategy for resolving dynamic values for aliases.'
+
+  kwargs['after_replay'] = lambda context: handle_test_complete(
+    context, session_context, format=kwargs['format']
   )
-  @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
-  @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
-  @click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
-  @click.option('--format', type=click.Choice([BODY_FORMAT, JSON_FORMAT]), help='Format replay response.')
-  @click.option('--group-by', help='Repeat for each alias name.')
-  @click.option('--host', help='Rewrite request host.')
-  @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
-  @click.option(
-      '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
-      help='''
-          Log levels can be "debug", "info", "warning", or "error"
-      '''
-  )
-  @click.option('--remote-project-key', help='Use project for endpoint definitions.')
-  @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
-  @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
-  @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
-  @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
-  @click.option('--trace-id', help='Use existing trace.')
-  @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
-  @click.argument('request_key')
-  def test(**kwargs):
-    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-    settings = Settings.instance()
-    request_key = validate_request_key(kwargs['request_key'])
+  request = RequestFacade(settings)
+  __replay(request.test, kwargs)
 
-    if kwargs.get('report_key'):
-      if not kwargs.get('save'):
-        print("Error: Missing --save option", file=sys.stderr)
-        sys.exit(1)
+  handle_test_session_complete(session_context, format=kwargs['format'])
 
-      validate_report_key(kwargs['report_key'])
-
-    if len(kwargs['validate']):
-      validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
-
-    __assign_default_alias_resolve_strategy(kwargs)
-
-    session: ReplaySession = {
-      'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
-      'contexts': [],
-      'format': kwargs['format'],
-      'total': 0,
-    }
-
-    session_context: SessionContext = { 
-        'aggregate_failures': kwargs['aggregate_failures'], 
-        'passed': 0, 
-        'project_id': request_key.project_id, 
-        'test_facade': TestFacade(settings), 
-        'total': 0 
-    }
-
-    kwargs['before_replay'] = lambda context: handle_before_replay(
-      context, session
-    )
-
-    kwargs['after_replay'] = lambda context: handle_test_complete(
-      context, session_context, format=kwargs['format']
-    )
-
-    request = RequestFacade(settings)
-    __replay(request.test, kwargs)
-
-    handle_test_session_complete(session_context, format=kwargs['format'])
-
-    exit_on_failure(session_context, format=kwargs['format'])
+  exit_on_failure(session_context, format=kwargs['format'])
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",

@@ -105,13 +105,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
-      if endpoint_promise:
-        ignored_components = self.__ignored_components(endpoint_promise)
-
-        if ignored_components:
-          return IgnoreComponentsResponseBuilder().build(ignored_components)
-
-      return CustomNotFoundResponseBuilder().build()
+      return self.__handle_request_not_found(self, endpoint_promise) 
 
     response_record = request.response
     if not response_record:
@@ -125,6 +119,15 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         .with_headers(headers)
         .transform()
     )
+
+  def __handle_request_not_found(self, endpoint_promise):
+    if endpoint_promise:
+      ignored_components = self.__ignored_components(endpoint_promise)
+
+      if ignored_components:
+        return IgnoreComponentsResponseBuilder().build(ignored_components)
+
+    return CustomNotFoundResponseBuilder().build()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     self.__adapt_scenario_id(query_params)

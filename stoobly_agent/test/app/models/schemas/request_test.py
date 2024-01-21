@@ -32,4 +32,3 @@ class TestRequest():
 
   def test_headers(self, stoobly_request: Request):
     assert stoobly_request.headers['content-length'] == '0'
-

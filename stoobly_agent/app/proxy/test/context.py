@@ -179,7 +179,12 @@ class TestContext(TestContextABC):
       return _decoded_expected_response_content
 
     aliased_response_param_names = self.response_param_names.aliased
-    aliases = self.endpoint.aliases or []
+
+    _endpoint = self.endpoint
+    if not _endpoint:
+      aliases = []
+    else:
+      aliases = self.endpoint.aliases or []
 
     if len(aliased_response_param_names) == 0 or len(aliases) == 0:
       return _decoded_expected_response_content

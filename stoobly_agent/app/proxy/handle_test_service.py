@@ -83,11 +83,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
                 **upload_test_data
             )
 
-            headers = { 'Content-Type': 'text/plain' }
-            headers[custom_headers.CONTENT_TYPE] = custom_headers.CONTENT_TYPE_TEST_RESULTS
-            flow.response.headers = headers
-            flow.response.set_content(builder.serialize())
-            flow.response.status_code = 200
+            __override_response(flow, builder.serialize())
         else:
             upload_test = inject_upload_test(None, intercept_settings)
 
@@ -112,6 +108,13 @@ def __handle_mock_failure(test_context: TestContext) -> None:
 
     if intercept_settings.request_origin == request_origin.CLI:
         return build_response(False, 'No test found')
+
+def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
+    headers = { 'Content-Type': 'text/plain' }
+    headers[custom_headers.CONTENT_TYPE] = custom_headers.CONTENT_TYPE_TEST_RESULTS
+    flow.response.headers = headers
+    flow.response.set_content(content)
+    flow.response.status_code = 200
 
 def __test_hook(hook: str, context: TestContext):
     intercept_settings = context.intercept_settings
