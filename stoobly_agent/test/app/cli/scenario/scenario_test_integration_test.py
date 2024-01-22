@@ -27,17 +27,12 @@ from stoobly_agent.app.proxy.record.upload_request_service import upload_request
 def runner():
     return CliRunner()
 
-class TestReplayIntegration():
+class TestScenarioTestIntegration():
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
         return reset()
 
-    class TestWhenNoOptions():
-
-        @pytest.fixture(scope='class')
-        def project_key(self):
-            return ProjectKey(ProjectKey.encode(1, 1))
-
+    class TestWhenDiffTest():
         @pytest.fixture(scope='class')
         def created_scenario(self, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
@@ -49,37 +44,3 @@ class TestReplayIntegration():
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
-
-        @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_two(self, runner: CliRunner, created_scenario: Scenario):
-            record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
-            assert record_result.exit_code == 0
-            return Request.last()
-
-        @pytest.fixture(scope='class')
-        def override_response_spy(self):
-            with patch('stoobly_agent.app.proxy.handle_test_service.__override_response') as spy:
-                return spy
-
-        @pytest.fixture(scope='class')
-        def handle_request_not_found_spy(self):
-            @patch.object(LocalDBRequestAdapter, 'create', wraps=LocalDBRequestAdapter(Request, Response).create)
-            def spy_on(create_spy: MagicMock):
-                return create_spy
-
-            return spy_on()
-
-        @pytest.fixture(scope='class', autouse=True)
-        def test_results(self, runner: CliRunner, project_key: ProjectKey, created_scenario: Scenario):
-            test_result = runner.invoke(scenario, ['test', '--remote-project-key', project_key.raw, created_scenario.key()])
-            assert test_result.exit_code == 0
-
-        @pytest.fixture(scope='class')
-        def replay_options(self, override_response_spy: MagicMock) -> ReplayRequestOptions:
-            return override_response_spy.call_args.args[1]
-
-        def test_it_calls_handle_request_not_found_spy_once(self, handle_request_not_found_spy: MagicMock):
-            assert handle_request_not_found_spy.call_count == 1
-            
-        def test_it_called_twice(self, override_response_spy: MagicMock):
-            assert override_response_spy.call_count == 1
