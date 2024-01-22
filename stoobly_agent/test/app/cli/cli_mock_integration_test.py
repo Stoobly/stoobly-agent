@@ -1,24 +1,21 @@
-import json
 import os
 import pdb
-from re import I
 import pytest
 
 from click.testing import CliRunner
 from mock import patch
 from unittest.mock import MagicMock
 
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 # Enable remote feature
 from stoobly_agent.config.constants import env_vars
 os.environ[env_vars.FEATURE_REMOTE] = '1'
 
-from stoobly_agent.cli import mock, record, request, scenario
+from stoobly_agent.cli import mock, record
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
-from stoobly_agent.lib.orm.scenario import Scenario
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
