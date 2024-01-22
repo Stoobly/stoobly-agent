@@ -222,7 +222,7 @@ if not is_remote:
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@click.option('--remote-project-key', help='Use project for endpoint definitions.')
+@click.option('--remote-project-key', help='Use remote project for endpoint definitions.')
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
