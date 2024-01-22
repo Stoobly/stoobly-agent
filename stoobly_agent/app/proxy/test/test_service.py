@@ -48,7 +48,7 @@ def test(context: TestContext):
     return context.passed, context.log
 
 def __validate_test_strategy(context: TestContext):
-    valid_strategies = [test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    valid_strategies = [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
     active_test_strategy = context.strategy
 
     if active_test_strategy not in valid_strategies:

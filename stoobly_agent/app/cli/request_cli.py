@@ -226,7 +226,7 @@ if not is_remote:
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
-@click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
+@click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
 @click.option('--trace-id', help='Use existing trace.')
 @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
 @click.argument('request_key')

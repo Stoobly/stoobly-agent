@@ -278,7 +278,7 @@ if not is_remote:
 @click.option(
     '--strategy', 
     default=test_strategy.DIFF, 
-    type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), 
+    type=click.Choice([test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), 
     help='How to test responses.'
 )
 @click.option('--trace-id', help='Use existing trace.')
