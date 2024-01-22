@@ -104,22 +104,15 @@ class InterceptSettings:
 
   @property
   def remote_project_key(self):
-    remote_project_key = None
-
-    if self.__headers and custom_headers.REMOTE_PROJECT_KEY in self.__headers:
-        remote_project_key = self.__headers[custom_headers.REMOTE_PROJECT_KEY]
-
-    remote_project_key = self.__settings.remote.project_key
-
-    if not remote_project_key:
-      return
-
     # When not local project, don't return set remote project_key
     project_key = self.parsed_project_key
     if project_key and not project_key.is_local:
       return 
 
-    return remote_project_key
+    if self.__headers and custom_headers.REMOTE_PROJECT_KEY in self.__headers:
+      return self.__headers[custom_headers.REMOTE_PROJECT_KEY]
+
+    return self.__settings.remote.project_key
 
   @property
   def parsed_remote_project_key(self):

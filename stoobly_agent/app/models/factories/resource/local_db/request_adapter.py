@@ -105,7 +105,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
-      return self.__handle_request_not_found(self, endpoint_promise) 
+      return self.__handle_request_not_found(endpoint_promise) 
 
     response_record = request.response
     if not response_record:

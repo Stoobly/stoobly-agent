@@ -52,6 +52,7 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
         flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
 
 def __handle_mock_success(test_context: TestContext) -> None:
+    flow: MitmproxyHTTPFlow = test_context.flow
     settings = Settings.instance()
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
@@ -62,7 +63,6 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     request_id = test_context.mock_request_id
     if request_id:
-        flow: MitmproxyHTTPFlow = test_context.flow
         intercept_settings = test_context.intercept_settings
 
         expected = test_context.cached_expected_response_content
