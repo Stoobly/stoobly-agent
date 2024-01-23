@@ -271,7 +271,7 @@ if not is_remote:
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@click.option('--remote-project-key', help='Use remote project for endpoint definitions.')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
 @click.option('--scheme', help='Rewrite request scheme.')
@@ -290,6 +290,9 @@ def test(**kwargs):
 
     settings = Settings.instance()
     scenario_key = validate_scenario_key(kwargs['key'])
+
+    if kwargs.get('remote_project_key'):
+        validate_project_key(kwargs['remote_project_key'])
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])

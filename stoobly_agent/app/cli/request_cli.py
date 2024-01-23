@@ -22,7 +22,7 @@ from .helpers.request_facade import RequestFacade
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote
+is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
 
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
@@ -222,7 +222,7 @@ if not is_remote:
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@click.option('--remote-project-key', help='Use remote project for endpoint definitions.')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
@@ -235,6 +235,9 @@ def test(**kwargs):
 
   settings = Settings.instance()
   request_key = validate_request_key(kwargs['request_key'])
+
+  if kwargs.get('remote_project_key'):
+    validate_project_key(kwargs['remote_project_key'])
 
   if kwargs.get('report_key'):
     if not kwargs.get('save'):

@@ -23,7 +23,7 @@ from .lib.orm.migrate_service import migrate as migrate_database
 from .lib.utils.decode import decode
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote
+is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
 
 # Makes sure database is up to date
 migrate_database(VERSION)
@@ -131,7 +131,7 @@ def run(**kwargs):
   help="Mock request"
 )
 @click.option('-d', '--data', default='', help='HTTP POST data')
-@click.option('--remote-project-key', help='Use remote project for endpoint definitions.')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)

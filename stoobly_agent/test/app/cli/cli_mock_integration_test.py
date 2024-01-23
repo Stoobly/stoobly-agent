@@ -1,3 +1,4 @@
+import importlib
 import os
 import pdb
 import pytest
@@ -10,9 +11,7 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 # Enable remote feature
 from stoobly_agent.config.constants import env_vars
-os.environ[env_vars.FEATURE_REMOTE] = '1'
-
-from stoobly_agent.cli import mock, record
+from stoobly_agent import cli
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -23,6 +22,13 @@ from stoobly_agent.app.models.factories.resource.local_db.request_adapter import
 @pytest.fixture(scope='module')
 def runner():
     return CliRunner()
+
+@pytest.fixture(scope='module')
+def mock():
+    os.environ[env_vars.FEATURE_REMOTE] = '1'
+    importlib.reload(cli)
+    del [env_vars.FEATURE_REMOTE]
+    return cli.mock
 
 class TestCliMockIntegration():
     @pytest.fixture(scope='class', autouse=True)
@@ -36,12 +42,12 @@ class TestCliMockIntegration():
 
         @pytest.fixture(scope='class', autouse=True)
         def recorded_request_one(self, runner: CliRunner):
-            record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+            record_result = runner.invoke(cli.record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def search_endpoint(self, runner: CliRunner, project_key: ProjectKey):
+        def search_endpoint(self, runner: CliRunner, mock, project_key: ProjectKey):
             with patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint') as spy:
                 mock_result = runner.invoke(mock, ['--remote-project-key', project_key.raw, DETERMINISTIC_GET_REQUEST_URL])
                 assert mock_result.exit_code == 0
@@ -62,7 +68,7 @@ class TestCliMockIntegration():
             return ProjectKey(ProjectKey.encode(1, 1))
 
         @pytest.fixture(scope='class')
-        def spies(self, runner: CliRunner, project_key: ProjectKey):
+        def spies(self, runner: CliRunner, mock, project_key: ProjectKey):
             @patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint')
             @patch.object(
                 LocalDBRequestAdapter,
