@@ -1,15 +1,16 @@
+import click
 import json
 import time
-from typing import List
+import os
 
-import click
+from typing import List
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule
-from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
@@ -23,7 +24,7 @@ from .helpers.print_service import FORMATS, print_projects, print_scenarios, sel
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote
+is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
 
 @click.group(
     epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
