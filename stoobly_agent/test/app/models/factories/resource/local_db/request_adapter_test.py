@@ -7,7 +7,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builde
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import (
   LocalDBRequestAdapter,
 )
-from stoobly_agent.app.models.types.request import RequestFindParams
+from stoobly_agent.app.models.types.request import RequestIndexSimilarParams
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.settings import Settings
@@ -91,14 +91,14 @@ class TestLocalDBRequestAdapter():
       assert get_v2_pets
       assert get_v2_pet_1
 
-      params: RequestFindParams = {
+      params: RequestIndexSimilarParams = {
         'method': 'GET',
         'host' : "petstore.swagger.io",
         'port': "443",
         'pattern': '/v2/pets'
       }
 
-      similar_requests = local_db_request_adapter.find_similar_requests(params)
+      similar_requests = local_db_request_adapter.index_similar(params)
 
       assert len(similar_requests) == 1
 
@@ -110,7 +110,7 @@ class TestLocalDBRequestAdapter():
 
     @pytest.mark.openapi
     def test_finds_put_v3_pet(self, local_db_request_adapter: LocalDBRequestAdapter, create_put_v3_pet: Request):
-      params: RequestFindParams = {
+      params: RequestIndexSimilarParams = {
         'host': '%',
         'port': '%',
         'method': 'PUT',
@@ -118,7 +118,7 @@ class TestLocalDBRequestAdapter():
         'scenario_id': 0
       }
 
-      similar_requests = local_db_request_adapter.find_similar_requests(params)
+      similar_requests = local_db_request_adapter.index_similar(params)
 
       assert len(similar_requests) == 1
 
@@ -135,7 +135,7 @@ class TestLocalDBRequestAdapter():
         assert get_v2_pets
         assert get_v2_pet_1
 
-        params: RequestFindParams = {
+        params: RequestIndexSimilarParams = {
           'method': 'GET',
           'host' : "petstore.swagger.io",
           'port': "443",
@@ -143,7 +143,7 @@ class TestLocalDBRequestAdapter():
           'scenario_id': created_scenario.id,
         }
 
-        similar_requests = local_db_request_adapter.find_similar_requests(params)
+        similar_requests = local_db_request_adapter.index_similar(params)
 
         assert len(similar_requests) == 0
 
@@ -156,7 +156,7 @@ class TestLocalDBRequestAdapter():
 
         Request.where('id', get_v2_pets.id).update(scenario_id=created_scenario.id)
 
-        params: RequestFindParams = {
+        params: RequestIndexSimilarParams = {
           'method': 'GET',
           'host' : "petstore.swagger.io",
           'port': "443",
@@ -164,7 +164,7 @@ class TestLocalDBRequestAdapter():
           'scenario_id': created_scenario.id,
         }
 
-        similar_requests = local_db_request_adapter.find_similar_requests(params)
+        similar_requests = local_db_request_adapter.index_similar(params)
 
         assert len(similar_requests) == 1
         assert similar_requests[0].id == get_v2_pets.id

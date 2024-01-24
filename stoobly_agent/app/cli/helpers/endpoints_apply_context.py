@@ -44,7 +44,7 @@ class EndpointsApplyContext:
 
     return self
 
-  def with_request_handler(self, handler: Callable[[Request], None]):
+  def with_request_handler(self, handler: Callable[[Request, EndpointShowResponse], None]):
     self.request_handlers.append(handler)
     return self
 

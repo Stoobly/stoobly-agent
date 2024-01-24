@@ -6,7 +6,7 @@ from typing import Tuple
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
-from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestFindParams, RequestShowParams
+from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestIndexSimilarParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.mock.ignored_components_response_builder import IgnoreComponentsResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
@@ -292,7 +292,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return self.success(file_path)
 
-  def find_similar_requests(self, params: RequestFindParams):
+  def index_similar(self, params: RequestIndexSimilarParams):
     pattern = f"%{params['pattern']}"
     candidates = None
 

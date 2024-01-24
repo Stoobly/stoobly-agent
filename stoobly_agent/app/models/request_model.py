@@ -7,7 +7,7 @@ from stoobly_agent.app.settings import Settings
 
 from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestFindParams, RequestShowParams
+from .types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestIndexSimilarParams, RequestShowParams
 
 class RequestModel(Model):
 
@@ -34,13 +34,10 @@ class RequestModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def find_similar(self, params: RequestFindParams):
+  def index_similar(self, params: RequestIndexSimilarParams):
     try:
-      # TODO: fix adapter
       local_adapter = RequestResourceFactory(self.settings.remote).local_db()
-      return local_adapter.find_similar_requests(params)
-
-      # return self.adapter.find_similar(params)
+      return local_adapter.similar(params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
