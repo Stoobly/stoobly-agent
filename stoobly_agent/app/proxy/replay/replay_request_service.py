@@ -39,6 +39,7 @@ class ReplayRequestOptions(TypedDict):
 
 def replay_with_trace(context: ReplayContext, trace_context: TraceContext, options: ReplayRequestOptions):
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
+  trace_context.with_remote_project(options.get('remote_project_key'))
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
