@@ -61,7 +61,7 @@ def eval_request(
         if remote_project_key:
             search_endpoint = inject_search_endpoint(intercept_settings)
             remote_project_id = remote_project_key.id
-            endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url)
+            endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
 
             query_params_builder.with_param('endpoint_promise', endpoint_promise)
 
