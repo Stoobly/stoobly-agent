@@ -11,8 +11,9 @@ from stoobly_agent.config.constants import env_vars
 from stoobly_agent.test.test_helper import reset
 from stoobly_agent.lib.api.keys import ProjectKey
 
-@pytest.fixture(scope='class', autouse=True)
+@pytest.fixture(scope='module')
 def config():
+  importlib.reload(env_vars) # Fix strange bug where FEATURE_REMOTE does not exist
   os.environ[env_vars.FEATURE_REMOTE] = '1'
   importlib.reload(config_cli)
   del os.environ[env_vars.FEATURE_REMOTE]
