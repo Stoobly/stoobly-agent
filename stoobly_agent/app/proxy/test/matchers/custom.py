@@ -1,7 +1,10 @@
 from stoobly_agent.app.proxy.test.context_abc import TestContextABC as TestContext
 
 def matches(context: TestContext):
-    lifecycle_hooks = context.lifecycle_hooks 
+    lifecycle_hooks = context.lifecycle_hooks
+
+    if not context.lifecycle_hooks_path:
+        return False, 'Missing lifecycle hooks path' 
 
     if not 'handle_test' in lifecycle_hooks:
         return False, f"Expected function 'handle_test' to be defined in {context.lifecycle_hooks_path}"

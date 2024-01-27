@@ -10,7 +10,7 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
 class ConfigsController:
@@ -84,8 +84,7 @@ class ConfigsController:
             elif status == 200:
                 scenario_id = scenario['id']
 
-        remote_project_key = settings.remote.project_key
-        remote_project_id = ProjectKey(remote_project_key).id if remote_project_key else None
+        remote_project_id = self.__remote_project_id(settings)
 
         modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY] if not context.params.get('agent') else [mode.RECORD, mode.MOCK, mode.REPLAY]
 
@@ -123,6 +122,14 @@ class ConfigsController:
             json = merged_settings,
             status = 200
         )
+
+    def __remote_project_id(settings: Settings):
+        remote_project_key = settings.remote.project_key
+
+        try:
+            return ProjectKey(remote_project_key).id if remote_project_key else None
+        except InvalidProjectKey:
+            pass
 
     def __scenario_model(self, settings: Settings = None):
         scenario_model = ScenarioModel(settings or Settings.instance())
