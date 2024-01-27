@@ -20,8 +20,8 @@ from .helpers.scenario_facade import ScenarioFacade
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = local(settings)
-is_local = remote(settings)
+is_remote = remote(settings)
+is_local = local(settings)
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",
