@@ -17,12 +17,14 @@ from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
+from .helpers.feature_flags import local, remote
 from .helpers.print_service import FORMATS, print_requests, select_print_options
 from .helpers.request_facade import RequestFacade
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
+is_remote = remote(settings)
+is_local = local(settings) 
 
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
@@ -222,7 +224,7 @@ if not is_remote:
         Log levels can be "debug", "info", "warning", or "error"
     '''
 )
-@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')

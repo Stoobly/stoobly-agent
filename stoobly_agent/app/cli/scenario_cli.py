@@ -15,11 +15,13 @@ from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, tes
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
+from .helpers.feature_flags import local, remote
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
+is_remote = local(settings)
+is_local = remote(settings)
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",

@@ -11,10 +11,12 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.endpoint_facade import EndpointFacade
 from .helpers.endpoints_apply_context import EndpointsApplyContext
+from .helpers.feature_flags import local, remote
 from .helpers.validations import validate_project_key, validate_scenario_key
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
+is_remote = remote(settings)
+is_local = local(settings)
 
 @click.group(
   epilog="Run 'stoobly-agent feature COMMAND --help' for more information on a command.",
@@ -29,7 +31,7 @@ def endpoint(ctx):
 )
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create endpoint to.')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Which remote project to apply endpoints from.')(f), is_remote) 
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Which remote project to apply endpoints from.')(f), is_remote and is_local) 
 @click.option('--scenario-key', help='Which scenario to import to. If none then all requests will be imported to.')
 @click.option('--source-format', required=True, type=click.Choice([OPENAPI_FORMAT]), help='Spec file format.')
 @click.option('--source-path', help='Path to spec file.')

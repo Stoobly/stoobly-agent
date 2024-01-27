@@ -70,6 +70,7 @@ def __test_request_contract(context: TestContext):
     headers = context.request_headers
     normalized_headers = {k.lower(): v for k, v in headers.items()} # Headers are case insensitive
     header_names_facade = endpoint.header_names
+ 
     matches, log = contract_matches(context, header_names_facade, normalized_headers)
     if not matches:
         return matches, f"{log} in headers"

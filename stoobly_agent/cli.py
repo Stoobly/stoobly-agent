@@ -17,13 +17,15 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, snapshot, trace
+from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
 from .lib.utils.decode import decode
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
+is_remote = remote(settings)
+is_local = local(settings)
 
 # Makes sure database is up to date
 migrate_database(VERSION)
@@ -131,7 +133,7 @@ def run(**kwargs):
   help="Mock request"
 )
 @click.option('-d', '--data', default='', help='HTTP POST data')
-@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
