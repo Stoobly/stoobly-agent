@@ -7,18 +7,20 @@ from stoobly_agent.app.settings import Settings
 
 from .factories.resource.request import RequestResourceFactory
 from .model import Model
-from .types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestFindParams, RequestShowParams
+from .types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestIndexSimilarParams, RequestShowParams
 
 class RequestModel(Model):
 
-  def __init__(self, settings: Settings):
-    super().__init__(settings)
+  def __init__(self, settings: Settings, **options):
+    super().__init__(settings, **options)
 
   def as_local(self):
-      self.adapter = RequestResourceFactory(self.settings.remote).local_db()
+    self.adapter = RequestResourceFactory(self.settings.remote).local_db()
+    self.is_local = True
 
   def as_remote(self):
-      self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
+    self.adapter = RequestResourceFactory(self.settings.remote).stoobly()
+    self.is_local = False
 
   def create(self, **body_params: RequestCreateParams):
     try:
@@ -32,13 +34,10 @@ class RequestModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def find_similar(self, params: RequestFindParams):
+  def index_similar(self, params: RequestIndexSimilarParams):
     try:
-      # TODO: fix adapter
       local_adapter = RequestResourceFactory(self.settings.remote).local_db()
-      return local_adapter.find_similar_requests(params)
-
-      # return self.adapter.find_similar(params)
+      return local_adapter.similar(params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 

@@ -11,6 +11,7 @@ class RemoteSettings:
 
     self.__api_key = self.api_key_before_change
     self.__api_url = self.api_url_before_change
+    self.__project_key = self.project_key_before_change
 
   @property
   def api_key_before_change(self):
@@ -48,6 +49,24 @@ class RemoteSettings:
 
     return self.__api_url
 
+  @property
+  def project_key_before_change(self):
+    return self.__remote_settings.get('project_key')
+
+  @property
+  def project_key(self):
+    if self.__project_key != self.project_key_before_change:
+      return self.__project_key
+
+    if os.environ.get(env_vars.AGENT_REMOTE_PROJECT_KEY):
+      return os.environ[env_vars.AGENT_REMOTE_PROJECT_KEY]
+      
+    return self.__project_key
+
+  @project_key.setter
+  def project_key(self, v):
+    self.__project_key = v
+
   @api_url.setter
   def api_url(self, v):
     self.__api_url = v
@@ -56,4 +75,5 @@ class RemoteSettings:
     return {
       'api_key': self.__api_key,
       'api_url': self.__api_url,
+      'project_key': self.__project_key,
     }

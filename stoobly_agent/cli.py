@@ -8,6 +8,7 @@ import sys
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
@@ -16,13 +17,15 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
 from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, snapshot, trace
+from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
 from .lib.utils.decode import decode
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote
+is_remote = remote(settings)
+is_local = local(settings)
 
 # Makes sure database is up to date
 migrate_database(VERSION)
@@ -130,6 +133,7 @@ def run(**kwargs):
   help="Mock request"
 )
 @click.option('-d', '--data', default='', help='HTTP POST data')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
@@ -137,6 +141,12 @@ def run(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
+  if kwargs.get('remote_project_key'):
+    validate_project_key(kwargs['remote_project_key'])
+
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
   request = __build_request_from_curl(**kwargs)
 
   context = ReplayContext.from_python_request(request)
@@ -167,6 +177,9 @@ def mock(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
   request = __build_request_from_curl(**kwargs)
 
   context = ReplayContext.from_python_request(request)

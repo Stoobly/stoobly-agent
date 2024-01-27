@@ -10,7 +10,7 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
 class ConfigsController:
@@ -75,7 +75,7 @@ class ConfigsController:
         scenario_uuid = ScenarioKey(scenario_key).id if scenario_key else None
 
         if scenario_uuid:
-            model = self.__scenario_model(context, settings)
+            model = self.__scenario_model(settings)
             scenario, status = model.show(scenario_uuid)
 
             if status == 404:
@@ -83,6 +83,8 @@ class ConfigsController:
                 settings.commit()
             elif status == 200:
                 scenario_id = scenario['id']
+
+        remote_project_id = self.__remote_project_id(settings)
 
         modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY] if not context.params.get('agent') else [mode.RECORD, mode.MOCK, mode.REPLAY]
 
@@ -94,6 +96,7 @@ class ConfigsController:
                 'project_id': int(project_id) if project_id != None else None,
                 'proxy_url': proxy.url,
                 'remote_enabled': settings.cli.features.remote,
+                'remote_project_id': remote_project_id,
                 'scenario_id': int(scenario_id) if scenario_id != None else None,
             },
             status = 200
@@ -120,7 +123,14 @@ class ConfigsController:
             status = 200
         )
 
-    def __scenario_model(self, context: SimpleHTTPRequestHandler, settings: Settings = None):
+    def __remote_project_id(settings: Settings):
+        remote_project_key = settings.remote.project_key
+
+        try:
+            return ProjectKey(remote_project_key).id if remote_project_key else None
+        except InvalidProjectKey:
+            pass
+
+    def __scenario_model(self, settings: Settings = None):
         scenario_model = ScenarioModel(settings or Settings.instance())
-        scenario_model.as_remote() if context.headers.get('access-token') else scenario_model.as_local()
         return scenario_model

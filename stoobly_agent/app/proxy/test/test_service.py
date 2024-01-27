@@ -48,7 +48,7 @@ def test(context: TestContext):
     return context.passed, context.log
 
 def __validate_test_strategy(context: TestContext):
-    valid_strategies = [test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    valid_strategies = [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
     active_test_strategy = context.strategy
 
     if active_test_strategy not in valid_strategies:
@@ -70,6 +70,7 @@ def __test_request_contract(context: TestContext):
     headers = context.request_headers
     normalized_headers = {k.lower(): v for k, v in headers.items()} # Headers are case insensitive
     header_names_facade = endpoint.header_names
+ 
     matches, log = contract_matches(context, header_names_facade, normalized_headers)
     if not matches:
         return matches, f"{log} in headers"

@@ -85,6 +85,11 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
+  def mock_context(self):
+    pass
+
+  @property
+  @abc.abstractmethod
   def mock_request_id(self) -> Union[str, None]:
     pass
 
@@ -101,6 +106,11 @@ class TestContextABC(abc.ABC):
   @passed.setter
   @abc.abstractmethod
   def passed(self, v):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def replay_context(self):
     pass
 
   @property
@@ -141,6 +151,11 @@ class TestContextABC(abc.ABC):
   @property
   @abc.abstractmethod
   def start_time(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def save(self):
     pass
 
   @property

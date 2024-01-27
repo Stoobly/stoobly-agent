@@ -72,8 +72,8 @@ class ResponsesController:
         return self.__render_response(context, response)
 
     def __response_model(self, context: SimpleHTTPRequestHandler):
-        response_model = ResponseModel(Settings.instance())
-        response_model.as_remote() if context.headers.get('access-token') else response_model.as_local()
+        access_token = context.headers.get('access-token')
+        response_model = ResponseModel(Settings.instance(), access_token=access_token)
         return response_model
 
     def __render_response(self, context: SimpleHTTPRequestHandler, response: requests.Response):

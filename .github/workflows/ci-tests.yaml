@@ -1,4 +1,4 @@
-name: Integration tests
+name: CI Tests
 on:
   push:
     branches:
@@ -19,8 +19,8 @@ on:
       - '.github/**/*.yml'
 
 jobs:
-  lint-python:
-    name: Lint Python code
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,8 +42,8 @@ jobs:
           ruff --format=github --target-version=py37 .
         continue-on-error: true
 
-  test:
-    name: Run tests
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:

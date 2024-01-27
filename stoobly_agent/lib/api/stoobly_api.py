@@ -4,6 +4,7 @@ import os
 import pdb
 
 from stoobly_agent.config.constants import custom_headers, env_vars
+from stoobly_agent.lib.api.keys import InvalidReportKey, InvalidScenarioKey, ProjectKey, ReportKey, ScenarioKey
 
 from .api import Api
 
@@ -16,58 +17,6 @@ class StooblyApi(Api):
     def __init__(self, service_url: str, api_key: str):
         self.service_url = service_url
         self.api_key = api_key
-
-    @staticmethod
-    def decode_key(key):
-        try:
-            key = base64.b64decode(key)
-        except:
-            return {}
-
-        # TODO: add specific error catching
-        try:
-            return json.loads(key)
-        except:
-            return {}
-
-    @staticmethod
-    def decode_report_key(key):
-        try:
-            key = base64.b64decode(key)
-        except:
-            return {}
-
-        # TODO: add specific error catching
-        try:
-            return json.loads(key)
-        except:
-            return {}
-
-    @staticmethod
-    def decode_project_key(key):
-        # TODO: add specific error catching
-        try:
-            key = base64.b64decode(key)
-        except:
-            return {}
-
-        # TODO: add specific error catching
-        try:
-            return json.loads(key)
-        except:
-            return {}
-
-    @staticmethod
-    def decode_scenario_key(key):
-        try:
-            key = base64.b64decode(key)
-        except:
-            return {}
-
-        try:
-            return json.loads(key)
-        except:
-            return {}
 
     @property
     def default_headers(self):
@@ -83,30 +32,29 @@ class StooblyApi(Api):
     # Request
 
     def from_project_key(self, project_key, handler):
-        project_data = self.decode_project_key(project_key)
-        return handler(project_data.get('i'))
+        key = ProjectKey(project_key)
+        return handler(key.id)
 
     def from_scenario_key(self, scenario_key, handler):
-        scenario_data = self.decode_scenario_key(scenario_key)
-        return handler(scenario_data.get('p'), {
-            'scenario_id': scenario_data['i']
+        key = ScenarioKey(scenario_key)
+        return handler(key.project_id, {
+            'scenario_id': key.id,
         })
 
     def with_report_key(self, report_key, params):
-        if not report_key:
-            return
-
-        report_data = self.decode_report_key(report_key)
-        params['report_id'] = report_data.get('i')
+        try:
+            key = ReportKey(report_key)
+            params['report_id'] = key.id
+        except InvalidReportKey:
+            pass
 
         return self
 
     def with_scenario_key(self, scenario_key, params):
-        if scenario_key and len(scenario_key) != 0:
-            scenario_data = self.decode_scenario_key(scenario_key)
-
-            if 'id' in scenario_data:
-                scenario_id = scenario_data['i']
-                params['scenario_id'] = scenario_id
+        try:
+            key = ScenarioKey(scenario_key)
+            params['scenario_id'] = key.id
+        except InvalidScenarioKey:
+            pass
 
         return self

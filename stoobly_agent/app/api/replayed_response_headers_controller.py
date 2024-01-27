@@ -49,6 +49,6 @@ class ReplayedResponseHeadersController:
         )
 
     def __replayed_response_model(self, context: SimpleHTTPRequestHandler):
-        replayed_response_model = ReplayedResponseModel(Settings.instance())
-        replayed_response_model.as_remote() if context.headers.get('access-token') else replayed_response_model.as_local()
+        access_token = context.headers.get('access-token')
+        replayed_response_model = ReplayedResponseModel(Settings.instance(), access_token=access_token)
         return replayed_response_model

@@ -7,6 +7,7 @@ from .pagination_query_params import PaginationQueryParams
 class TestShowResponse(TypedDict):
   expected_latency: int
   id: int
+  log: str
   passed: bool
   project_id: str
   strategy: Union[test_strategy.DIFF, test_strategy.CUSTOM, test_strategy.FUZZY] 

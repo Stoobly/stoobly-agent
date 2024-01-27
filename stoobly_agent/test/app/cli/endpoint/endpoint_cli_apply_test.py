@@ -29,7 +29,7 @@ def petstore_expanded_file_path(mock_data_directory_path) -> str:
   return str(path)
 
 @pytest.mark.openapi
-class TestImport():
+class TestApply():
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
         return reset()
@@ -94,11 +94,11 @@ class TestImport():
 
         return Request.last()
 
-    class TestWhenImportingPestoreExpanded():
+    class TestWhenApplyingPestoreExpanded():
 
         @pytest.fixture(scope='class', autouse=True)
         def import_result(self, runner: CliRunner, petstore_expanded_file_path: str):
-            record_result = runner.invoke(endpoint, ['import', '--format', OPENAPI_FORMAT, petstore_expanded_file_path])
+            record_result = runner.invoke(endpoint, ['apply', '--source-format', OPENAPI_FORMAT, '--source-path', petstore_expanded_file_path])
             assert record_result.exit_code == 0
             return record_result
 

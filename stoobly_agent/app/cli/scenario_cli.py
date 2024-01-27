@@ -15,11 +15,13 @@ from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, tes
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
+from .helpers.feature_flags import local, remote
 from .helpers.scenario_facade import ScenarioFacade
 from .helpers.validations import *
 
 settings = Settings.instance()
-is_remote = settings.cli.features.remote
+is_remote = remote(settings)
+is_local = local(settings)
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",
@@ -244,95 +246,99 @@ if not is_remote:
         else:
             print('Could not reset the scenario.')
 
-if is_remote:
-    @scenario.command(
-        help="Replay and test a scenario"
+@scenario.command(
+    help="Replay and test a scenario"
+)
+@click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
+@click.option(
+    '--alias-resolve-strategy', 
+    default=alias_resolve_strategy.NONE, 
+    type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
+    help='Strategy for resolving dynamic values for aliases.'
+)
+@click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
+@click.option(
+    '--filter', 
+    default=test_filter.ALL, 
+    type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), 
+    help='For iterable responses, selectively test properties.'
+)
+@click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
+@click.option('--group-by', help='Repeat for each alias name.')
+@click.option('--host', help='Rewrite request host.')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+    '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
+    help='''
+        Log levels can be "debug", "info", "warning", or "error"
+    '''
+)
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
+@click.option('--scheme', help='Rewrite request scheme.')
+@click.option(
+    '--strategy', 
+    default=test_strategy.DIFF, 
+    type=click.Choice([test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), 
+    help='How to test responses.'
+)
+@click.option('--trace-id', help='Use existing trace.')
+@click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
+@click.argument('key')
+def test(**kwargs):
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+    logger.Logger.reload()
+
+    settings = Settings.instance()
+    scenario_key = validate_scenario_key(kwargs['key'])
+
+    if kwargs.get('remote_project_key'):
+        validate_project_key(kwargs['remote_project_key'])
+
+    if kwargs.get('report_key'):
+        validate_report_key(kwargs['report_key'])
+
+    if len(kwargs['validate']):
+        validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
+
+    __assign_default_alias_resolve_strategy(kwargs)
+
+    session: ReplaySession = {
+        'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
+        'contexts': [],
+        'format': kwargs['format'],
+        'scenario_id': scenario_key.id,
+        'total': 0,
+    }
+
+    session_context: SessionContext = { 
+        'aggregate_failures': kwargs['aggregate_failures'], 
+        'passed': 0, 
+        'project_id': scenario_key.project_id, 
+        'test_facade': TestFacade(settings), 
+        'total': 0 
+    }
+
+    kwargs['before_replay'] = lambda context: handle_before_replay(
+        context, session,
     )
-    @click.option('--aggregate-failures', default=False, is_flag=True, help='Toggles whether to continue execution on failure.')
-    @click.option(
-        '--alias-resolve-strategy', 
-        default=alias_resolve_strategy.NONE, 
-        type=click.Choice([alias_resolve_strategy.NONE, alias_resolve_strategy.FIFO, alias_resolve_strategy.LIFO]), 
-        help='Strategy for resolving dynamic values for aliases.'
+    kwargs['after_replay'] = lambda context: __handle_on_test_response(
+        context, session_context, kwargs
     )
-    @click.option('--assign', multiple=True, help='Assign alias values. Format: <NAME>=<VALUE>')
-    @click.option(
-        '--filter', 
-        default=test_filter.ALL, 
-        type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), 
-        help='For iterable responses, selectively test properties.'
-    )
-    @click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
-    @click.option('--group-by', help='Repeat for each alias name.')
-    @click.option('--host', help='Rewrite request host.')
-    @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
-    @click.option(
-        '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
-        help='''
-            Log levels can be "debug", "info", "warning", or "error"
-        '''
-    )
-    @click.option('--report-key', help='Save to report.')
-    @click.option('--scheme', help='Rewrite request scheme.')
-    @click.option(
-        '--strategy', 
-        default=test_strategy.DIFF, 
-        type=click.Choice([test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), 
-        help='How to test responses.'
-    )
-    @click.option('--trace-id', help='Use existing trace.')
-    @click.option('--validate', multiple=True, help='Validate one or more aliases. Format: <NAME>=?<TYPE>')
-    @click.argument('key')
-    def test(**kwargs):
-        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
-        logger.Logger.reload()
 
-        settings = Settings.instance()
-        scenario_key = validate_scenario_key(kwargs['key'])
+    scenario = ScenarioFacade(settings)
+    scenario.test(kwargs['key'], kwargs)
 
-        if kwargs.get('report_key'):
-            validate_report_key(kwargs['report_key'])
+    handle_test_session_complete(session_context, format=kwargs['format'])
 
-        if len(kwargs['validate']):
-            validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
+    exit_on_failure(session_context, format=kwargs['format'])
 
-        __assign_default_alias_resolve_strategy(kwargs)
-
-        session: ReplaySession = {
-            'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
-            'contexts': [],
-            'format': kwargs['format'],
-            'scenario_id': scenario_key.id,
-            'total': 0,
-        }
-
-        session_context: SessionContext = { 
-            'aggregate_failures': kwargs['aggregate_failures'], 
-            'passed': 0, 
-            'project_id': scenario_key.project_id, 
-            'test_facade': TestFacade(settings), 
-            'total': 0 
-        }
-
-        kwargs['before_replay'] = lambda context: handle_before_replay(
-            context, session,
-        )
-        kwargs['after_replay'] = lambda context: __handle_on_test_response(
-            context, session_context, kwargs['format']
-        )
-
-        scenario = ScenarioFacade(settings)
-        scenario.test(kwargs['key'], kwargs)
-
-        handle_test_session_complete(session_context, kwargs['format'])
-
-        exit_on_failure(session_context, format=kwargs['format'])
-
-def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext, format = None):
-    handle_test_complete(replay_context, session_context, format)
+def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext, kwargs):
+    handle_test_complete(replay_context, session_context, format=kwargs['format'])
 
     if not session_context['aggregate_failures']:
-        exit_on_failure(session_context, complete=False, format=format)
+        exit_on_failure(session_context, complete=False, format=kwargs['format'])
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved

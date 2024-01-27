@@ -6,9 +6,11 @@ from typing import Tuple
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
-from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestFindParams, RequestShowParams
+from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyParams, RequestDestroyAllParams, RequestIndexSimilarParams, RequestShowParams
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
+from stoobly_agent.app.proxy.mock.ignored_components_response_builder import IgnoreComponentsResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -72,6 +74,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   def response(self, **query_params: RequestColumns) -> requests.Response:
     self.__adapt_scenario_id(query_params)
 
+    endpoint_promise = query_params.get('endpoint_promise')
     request = None
 
     if not query_params.get('request_id'):
@@ -102,14 +105,29 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
-      return CustomNotFoundResponseBuilder().build()
+      return self.__handle_request_not_found(endpoint_promise) 
 
     response_record = request.response
-
     if not response_record:
       return CustomNotFoundResponseBuilder().build()
 
-    return ORMToRequestsResponseTransformer(response_record).transform()
+    headers = {}
+    headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+
+    return (
+      ORMToRequestsResponseTransformer(response_record)
+        .with_headers(headers)
+        .transform()
+    )
+
+  def __handle_request_not_found(self, endpoint_promise):
+    if endpoint_promise:
+      ignored_components = self.__ignored_components(endpoint_promise)
+
+      if ignored_components:
+        return IgnoreComponentsResponseBuilder().build(ignored_components)
+
+    return CustomNotFoundResponseBuilder().build()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     self.__adapt_scenario_id(query_params)
@@ -274,7 +292,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return self.success(file_path)
 
-  def find_similar_requests(self, params: RequestFindParams):
+  def index_similar(self, params: RequestIndexSimilarParams):
     pattern = f"%{params['pattern']}"
     candidates = None
 
@@ -296,8 +314,17 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     return candidates.get()
 
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
+    if request_columns.get('endpoint_promise'):
+      del request_columns['endpoint_promise']
+
+    if request_columns.get('infer'):
+      del request_columns['infer']
+
     if request_columns.get('project_id'):
       del request_columns['project_id']
+
+    if request_columns.get('retry'):
+      del request_columns['retry']
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):
@@ -319,3 +346,13 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     scenario = self.__scenario_orm.find_by(uuid=scenario_id)
     if scenario:
       params['scenario_id'] = scenario.id
+
+  def __ignored_components(self, endpoint_promise):
+    endpoint = endpoint_promise()
+
+    if endpoint:
+      ignored_components = endpoint.get('ignored_components')
+
+      if ignored_components:
+        return ignored_components
+    return []

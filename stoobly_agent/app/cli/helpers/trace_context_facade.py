@@ -5,7 +5,6 @@ from typing import List
 from stoobly_agent.app.cli.helpers.trace_aliases import parse_aliases
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import alias_resolve_strategy
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.orm.trace import Trace
 

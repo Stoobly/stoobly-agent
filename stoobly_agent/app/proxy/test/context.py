@@ -29,6 +29,7 @@ class TestContext(TestContextABC):
     self.__flow = mock_context.flow
     self.__intercept_settings = mock_context.intercept_settings
     self.__mock_context = mock_context
+    self.__replay_context = replay_context
 
     mock_response = self.__mock_context.response
     self.__expected_response = RequestsResponseAdapter(mock_response).adapt()
@@ -55,7 +56,7 @@ class TestContext(TestContextABC):
   @property
   def cached_expected_response_content(self) -> Union[bytes, None, str]:
     if not self.__cached_rewritten_expected_response_content:
-      return None
+      return self.rewritten_expected_response_content
 
     return encode_response(self.__cached_rewritten_expected_response_content, self.__expected_response.content_type) 
 
@@ -114,6 +115,10 @@ class TestContext(TestContextABC):
     self.__log = v
 
   @property
+  def mock_context(self) -> MockContext:
+    return self.__mock_context
+
+  @property
   def mock_request_id(self) -> Union[str, None]:
     return self.expected_response.headers.get(custom_headers.MOCK_REQUEST_ID)
 
@@ -128,6 +133,10 @@ class TestContext(TestContextABC):
   @passed.setter
   def passed(self, v):
     self.__passed = v
+
+  @property
+  def replay_context(self) -> ReplayContext:
+    return self.__replay_context
 
   @property
   def request(self) -> Request:
@@ -170,7 +179,12 @@ class TestContext(TestContextABC):
       return _decoded_expected_response_content
 
     aliased_response_param_names = self.response_param_names.aliased
-    aliases = self.endpoint.aliases or []
+
+    _endpoint = self.endpoint
+    if not _endpoint:
+      aliases = []
+    else:
+      aliases = self.endpoint.aliases or []
 
     if len(aliased_response_param_names) == 0 or len(aliases) == 0:
       return _decoded_expected_response_content
@@ -194,6 +208,10 @@ class TestContext(TestContextABC):
   @property
   def start_time(self):
     return self.request.timestamp_start
+
+  @property
+  def save(self):
+    return self.intercept_settings.test_save_results
 
   @property
   def strategy(self):

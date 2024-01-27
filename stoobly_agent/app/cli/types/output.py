@@ -1,6 +1,4 @@
 from typing import List, TypedDict
-from xmlrpc.client import boolean
-
 
 DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'

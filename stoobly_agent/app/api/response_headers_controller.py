@@ -90,6 +90,6 @@ class ResponseHeadersController:
         )
 
     def __response_header_model(self, context: SimpleHTTPRequestHandler):
-        response_header_model = ResponseHeaderModel(Settings.instance())
-        response_header_model.as_remote() if context.headers.get('access-token') else response_header_model.as_local()
+        access_token = context.headers.get('access-token')
+        response_header_model = ResponseHeaderModel(Settings.instance(), access_token=access_token)
         return response_header_model

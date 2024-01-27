@@ -27,16 +27,19 @@ class ReplayRequestOptions(TypedDict):
   after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
   proxies: dict
+  remote_project_key: str
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   scenario_key: Union[str, None] 
   scheme: str
   test_filter: test_filter.TestFilter
+  test_save_results: bool
   test_strategy: Union[test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
   trace_context: TraceContext
 
 def replay_with_trace(context: ReplayContext, trace_context: TraceContext, options: ReplayRequestOptions):
   trace_context.alias_resolve_strategy = options.get('alias_resolve_strategy')
+  trace_context.with_remote_project(options.get('remote_project_key'))
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
 def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
@@ -80,6 +83,12 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   if options.get('test_strategy'):
     headers[custom_headers.TEST_STRATEGY] = options['test_strategy']
+
+  if options.get('remote_project_key'):
+    headers[custom_headers.REMOTE_PROJECT_KEY] = options['remote_project_key']
+
+  if options.get('test_save_results'):
+    headers[custom_headers.TEST_SAVE_RESULTS] = '1'
 
   if 'before_replay' in options and callable(options['before_replay']):
     options['before_replay'](context)

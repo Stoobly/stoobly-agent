@@ -14,8 +14,10 @@ from stoobly_agent.lib.logger import Logger
 from .handle_mock_service import handle_request_mock_generic
 from .handle_replay_service import handle_request_replay
 from .mock.context import MockContext
-from .record.upload_test_service import inject_upload_test
+from .test.helpers.test_results_builder import TestResultsBuilder
+from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
+from .test.helpers.diff_service import diff
 from .test.test_service import test
 
 LOG_ID = 'HandleTest'
@@ -50,8 +52,7 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
         flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
 
 def __handle_mock_success(test_context: TestContext) -> None:
-    intercept_settings = test_context.intercept_settings
-
+    flow: MitmproxyHTTPFlow = test_context.flow
     settings = Settings.instance()
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
@@ -60,25 +61,41 @@ def __handle_mock_success(test_context: TestContext) -> None:
     # Run test
     passed, log = test(test_context)
 
-    flow = test_context.flow
     request_id = test_context.mock_request_id
     if request_id:
-        upload_test = inject_upload_test(None, intercept_settings)
+        intercept_settings = test_context.intercept_settings
 
-        # Commit test to API
-        res = upload_test(
-            flow,
-            expected_response=test_context.cached_expected_response_content,
-            log=log,
-            passed=passed,
-            request_id=request_id,
-            status=flow.response.status_code,
-            strategy=intercept_settings.test_strategy
-        )
+        expected = test_context.cached_expected_response_content
+        upload_test_data = {
+            'expected_response': expected,
+            'log': log,
+            'passed': passed,
+            'request_id': request_id,
+            'status': flow.response.status_code,
+            'strategy': test_context.strategy
+        }
 
-        # If the origin was from a CLI, send test ID in response header
-        if intercept_settings.request_origin == request_origin.CLI and res.ok:
-            __decorate_test_id(flow, res.json())
+        if not test_context.save:
+            received = test_context.decoded_response_content
+
+            builder = TestResultsBuilder(
+                **{ 'received_response': received },
+                **upload_test_data
+            )
+
+            __override_response(flow, builder.serialize())
+        else:
+            upload_test = inject_upload_test(None, intercept_settings)
+
+            # Commit test to API
+            res = upload_test(
+                flow,
+                **upload_test_data
+            )
+
+            # If the origin was from a CLI, send test ID in response header
+            if intercept_settings.request_origin == request_origin.CLI and res.ok:
+                __decorate_test_id(flow, res.json())
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
     
@@ -91,6 +108,13 @@ def __handle_mock_failure(test_context: TestContext) -> None:
 
     if intercept_settings.request_origin == request_origin.CLI:
         return build_response(False, 'No test found')
+
+def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
+    headers = { 'Content-Type': 'text/plain' }
+    headers[custom_headers.CONTENT_TYPE] = custom_headers.CONTENT_TYPE_TEST_RESULTS
+    flow.response.headers = headers
+    flow.response.set_content(content)
+    flow.response.status_code = 200
 
 def __test_hook(hook: str, context: TestContext):
     intercept_settings = context.intercept_settings

@@ -16,7 +16,7 @@ class RequestDestroyAllParams(TypedDict):
   ids: List[int] 
   scenario_id: int
 
-class RequestFindParams(TypedDict):
+class RequestIndexSimilarParams(TypedDict):
   host: str
   port: str
   method: str

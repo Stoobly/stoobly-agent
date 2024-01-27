@@ -110,6 +110,6 @@ class QueryParamsController:
         )
 
     def __query_param_model(self, context: SimpleHTTPRequestHandler):
-        query_param_model = QueryParamModel(Settings.instance())
-        query_param_model.as_remote() if context.headers.get('access-token') else query_param_model.as_local()
+        access_token = context.headers.get('access-token')
+        query_param_model = QueryParamModel(Settings.instance(), access_token=access_token)
         return query_param_model
