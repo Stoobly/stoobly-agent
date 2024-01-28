@@ -3,7 +3,7 @@
 [![Release Version](https://img.shields.io/github/v/release/Stoobly/stoobly-agent)](https://github.com/Stoobly/stoobly-agent/releases/latest)
 ![PyPI](https://img.shields.io/pypi/v/stoobly-agent?color=green)
 
-[![Integration tests](https://github.com/Stoobly/stoobly-agent/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/ci-tests.yaml)
+[![CI](https://github.com/Stoobly/stoobly-agent/actions/workflows/ci-tests.yaml/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/tests.yaml)
 [![CodeQL](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql)
 
 
