@@ -12,8 +12,6 @@ from stoobly_agent.lib.logger import bcolors
 from stoobly_agent.lib.utils import jmespath
 from stoobly_agent.lib.utils.decode import decode
 
-from .test_replay_context import TestReplayContext
-
 BODY_FORMAT = 'body'
 DEFAULT_FORMAT = 'default'
 JSON_FORMAT = 'json'

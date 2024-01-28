@@ -1,11 +1,7 @@
-import os
-import traceback
-
 import click
 
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import env_vars
 from stoobly_agent.lib.logger import bcolors
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 

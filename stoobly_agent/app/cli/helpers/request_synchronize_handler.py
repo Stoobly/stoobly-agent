@@ -1,7 +1,7 @@
 import copy
 import pdb
 
-from typing import TypedDict, Union
+from typing import Union
 
 from stoobly_agent.app.proxy.test.matchers.context import MatchContext
 from stoobly_agent.app.settings.constants import request_component

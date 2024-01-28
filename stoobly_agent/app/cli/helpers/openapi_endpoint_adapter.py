@@ -1,13 +1,13 @@
 import copy
-from functools import reduce
 import itertools
-from pprint import pprint
 import re
+import yaml
+
+from functools import reduce
+from openapi_core import Spec
+from pprint import pprint
 from typing import Dict, List, Union
 from urllib.parse import urlparse
-
-from openapi_core import Spec
-import yaml
 
 from stoobly_agent.lib.api.interfaces.endpoints import (
   Alias,
