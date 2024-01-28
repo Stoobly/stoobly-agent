@@ -123,7 +123,7 @@ class ConfigsController:
             status = 200
         )
 
-    def __remote_project_id(settings: Settings):
+    def __remote_project_id(self, settings: Settings):
         remote_project_key = settings.remote.project_key
 
         try:
