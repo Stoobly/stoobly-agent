@@ -34,11 +34,11 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
     for component_name in component_names:
         key = component_name['name']
         if not parent_context.param_name_exists(key, actual):
-            if context.ignored():
-                continue
-
             context = MatchContext(parent_context.to_dict())
             context.visit_dict(key)
+
+            if context.ignored():
+                continue
 
             if not context.handle_param_name_missing_error(actual):
                 return param_name_missing_error(context.path_key)
