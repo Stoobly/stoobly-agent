@@ -37,6 +37,9 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
             context = MatchContext(parent_context.to_dict())
             context.visit_dict(key)
 
+            if context.ignored():
+                continue
+
             if not context.handle_param_name_missing_error(actual):
                 return param_name_missing_error(context.path_key)
 
@@ -64,7 +67,7 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
 
         if not context.value_contract_matches(actual_value, contracts):
             if not context.handle_type_match_error(actual):
-                if context.ignored(actual_value, actual_value): # Might look weird, but expected_value == actual_value is fine here
+                if context.ignored():
                     continue
                 
                 valid_types = __build_valid_types(contracts)

@@ -94,7 +94,7 @@ class MatchContext():
     def selected(self):
         return self.__request_component_names_facade.is_selected(self.query)
 
-    def ignored(self, expected_value, actual_value):
+    def ignored(self, expected_value = None, actual_value = None):
         return not self.selected() or (not self.required() and self.__required_matches(expected_value, actual_value))
 
     def deterministic(self) -> bool:
