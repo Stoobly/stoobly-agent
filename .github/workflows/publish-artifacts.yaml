@@ -33,7 +33,7 @@ jobs:
 
       - name: Download stoobly-dashboard from GCP bucket
         env:
-          STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.32.3.tar.gz"
+          STOOBLY_DASHBOARD_FILE: "dashboard.agent-alpha-0.33.0.tar.gz"
         run: |
           echo "Checking if file exists..."
           gcloud storage ls gs://stoobly-dashboard/${{ env.STOOBLY_DASHBOARD_FILE }}
