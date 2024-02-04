@@ -1,19 +1,17 @@
-import difflib
 import json
 import pdb
 
 from typing import Union
+from diff_match_patch import diff_match_patch
 
 green = '\x1b[38;5;16;48;5;2m'
-green = '\x1b[42m'
 red = '\x1b[38;5;16;48;5;1m'
 endgreen = '\x1b[0m'
-endgreen = '\033[0m'
 endred = '\x1b[0m'
 
 error = 'Error: Cannot print diff for binary output'
 
-def diff(a: Union[bytes, str], b: Union[str, bytes]) -> str:
+def diff(a: Union[bytes, str], b: Union[str, bytes], timeout = 30) -> str:
 
   if not __string_like(a):
     a = json.dumps(a, indent=2)
@@ -32,18 +30,25 @@ def diff(a: Union[bytes, str], b: Union[str, bytes]) -> str:
       return error
 
   output = []
-  matcher = difflib.SequenceMatcher(None, a, b)
+  dmp = diff_match_patch()
+  for delta in dmp.diff_lineMode(a, b, timeout):
+    opcode = delta[0]
+    text = delta[1]
 
-  for opcode, a0, a1, b0, b1 in matcher.get_opcodes():
-    if opcode == 'equal':
-      output.append(a[a0:a1])
-    elif opcode == 'insert':
-      output.append(f'{green}{b[b0:b1]}{endgreen}')
-    elif opcode == 'delete':
-      output.append(f'{red}{a[a0:a1]}{endred}')
-    elif opcode == 'replace':
-      output.append(f'{green}{b[b0:b1]}{endgreen}')
-      output.append(f'{red}{a[a0:a1]}{endred}')
+    if opcode == 0:
+      output.append(text)
+    elif opcode == 1:
+      length = len(text)
+      if text[length - 1] == "\n":
+        output.append(f'{green}{text[0:length - 1]} {endgreen}\n')
+      else:
+        output.append(f'{green}{text}{endgreen}')
+    elif opcode == -1:
+      length = len(text)
+      if text[length - 1] == "\n":
+        output.append(f'{red}{text[0:length - 1]} {endred}\n')
+      else:
+        output.append(f'{red}{text}{endred}')
 
   return ''.join(output)
 

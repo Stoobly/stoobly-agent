@@ -4,6 +4,7 @@ import requests
 from io import BytesIO
 from mitmproxy.http import Request as MitmproxyRequest
 from urllib3 import HTTPResponse
+from urllib3.exceptions import InsecureRequestWarning
 
 from stoobly_agent.app.proxy.mitmproxy.flow_mock import MitmproxyFlowMock
 from stoobly_agent.app.models.adapters.mitmproxy import MitmproxyRequestAdapterFactory, MitmproxyResponseAdapterFactory
@@ -23,10 +24,16 @@ def simulate_intercept(request: requests.Request, **config):
 
     res = None 
 
+    if not config.get('verify'):
+      # Suppress only the single warning from urllib3 needed.
+      requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
     try:
       res = session.send(prepared_request, **{'timeout': 300, **config})
     except requests.exceptions.ConnectTimeout:
       res = __response(b'Gateway Timeout', 504)
+    except requests.exceptions.SSLError as e:
+      res = __response(str(e).encode(), 502)
     except requests.exceptions.ConnectionError:
       res = __response(b'Bad Gateway', 502)
     except Exception:
