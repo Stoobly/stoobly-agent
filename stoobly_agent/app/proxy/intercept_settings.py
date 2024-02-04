@@ -215,6 +215,13 @@ class InterceptSettings:
       return not not int(self.__headers[custom_headers.TEST_SAVE_RESULTS])
 
     return False
+
+  @property
+  def test_skip(self):
+    if self.__headers and custom_headers.TEST_SKIP in self.__headers:
+      return True
+    
+    return False
   
   @property
   def test_strategy(self):

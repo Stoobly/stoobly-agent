@@ -54,8 +54,6 @@ def upload_test(
 
       api.with_report_key(report_key, kwargs)
 
-    res: Response = None
-
     scenario_key = intercept_settings.scenario_key
     if scenario_key:
       return api.from_scenario_key(
