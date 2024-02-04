@@ -1,6 +1,7 @@
 import requests
 
 from http.cookies import SimpleCookie
+from urllib3.exceptions import InsecureRequestWarning
 
 from stoobly_agent.config.constants import headers
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
@@ -51,6 +52,7 @@ class ProxyController:
             _cookies =  self.__get_cookies(context)
             _body = self.__get_body(context)
             _params = context.params
+            _verify = not MitmproxyConfig.instance().get('ssl_insecure')
 
             Logger.instance().debug('Request Headers')
             Logger.instance().debug(_headers)
@@ -61,24 +63,49 @@ class ProxyController:
             Logger.instance().debug('Query Params')
             Logger.instance().debug(_params)
 
-            res = method(
-                url,
-                allow_redirects = True,
-                cookies = _cookies,
-                data = _body,
-                headers = _headers,
-                params = _params,
-                stream = True,
-                verify = not MitmproxyConfig.instance().get('ssl_insecure')
-            )
+            body = None
+            headers = {}
+            status = 0
+
+            if not _verify:
+                # Suppress only the single warning from urllib3 needed.
+                requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
+            try:
+                res = method(
+                    url,
+                    allow_redirects = True,
+                    cookies = _cookies,
+                    data = _body,
+                    headers = _headers,
+                    params = _params,
+                    stream = True,
+                    verify = _verify
+                )
+                
+                body = res.raw.data
+                headers = res.headers
+                status = res.status_code
+            except requests.exceptions.ConnectTimeout:
+                body = b'Gateway Timeout'
+                status = 504
+            except requests.exceptions.SSLError as e:
+                body = str(e).encode()
+                status = 502
+            except requests.exceptions.ConnectionError:
+                body = b'Bad Gateway'
+                status = 502
+            except Exception:
+                body = b'Unknown Error'
+                status = 0
 
             Logger.instance().debug('Response Headers')
             Logger.instance().debug(res.headers)
 
             context.render(
-                headers = res.headers,
-                data = res.raw.data,
-                status = res.status_code,
+                headers = headers,
+                data = body,
+                status = status,
             )
 
     def __get_headers(self, context):
