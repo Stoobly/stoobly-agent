@@ -23,6 +23,7 @@ class SessionContext(TypedDict):
   passed: int
   output: TestOutput
   project_id: int
+  skipped: int
   test_facade: TestFacade
   total: int
 
@@ -54,6 +55,9 @@ def handle_test_complete(
 
   test = context.test_show_response(session_context['test_facade'])
 
+  if test['skipped']:
+    session_context['skipped'] += 1
+
   passed = bool(test.get('passed')) if isinstance(test, dict) else False
   session_context['passed'] += (1 if passed else 0)
   session_context['total'] += 1
@@ -65,7 +69,7 @@ def exit_on_failure(session_context: SessionContext, **options: ExitOnFailureOpt
   if complete == None:
     complete = True
 
-  if session_context['passed'] != session_context['total']:
+  if session_context['passed'] + session_context['skipped'] != session_context['total']:
     if not complete:
       handle_test_session_complete(session_context, format=options.get('format'))
 
@@ -112,7 +116,10 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
     print_with_decoding(format_request(context))
 
     if not res['passed']:
-      passed_message = f"{bcolors.FAIL}failed{bcolors.ENDC}"
+      if res['skipped']:
+        passed_message = f"{bcolors.WARNING}skipped{bcolors.ENDC}"
+      else:
+        passed_message = f"{bcolors.FAIL}failed{bcolors.ENDC}"
     else:
       passed_message = f"{bcolors.OKGREEN}passed{bcolors.ENDC}"
 
@@ -121,7 +128,7 @@ def __default_test_complete_formatter(context: ReplayContext, session_context: S
     if res['log']:
       print(res['log'])
 
-    if not res['passed']:
+    if not res['passed'] and not res['skipped']:
       project_id = session_context['project_id']
       test_facade = session_context['test_facade']
       expected_response = __get_test_expected_response_with_context(context, project_id, test_facade)
@@ -138,21 +145,32 @@ def __default_session_complete_formatter(session_context: SessionContext):
   if 'output' in session_context:
     print(session_context['output'])
 
-  passed = session_context['passed']
   total = session_context['total']
 
   if total > 1:
+    passed = session_context['passed']
+    skipped = session_context['skipped']
+
+    passed_message = f"{passed} / {total} {bcolors.OKGREEN}passed{bcolors.ENDC}"
+
+    skipped_message = ''
+    if skipped:
+      skipped_message = f" {skipped} {bcolors.WARNING}skipped{bcolors.ENDC}"
+
     if passed == total:
-      print(f"\n{passed} / {total} {bcolors.OKGREEN}passed{bcolors.ENDC}")
+      print(f"\n{passed_message}{skipped_message}")
     else:
-      print(f"\n{passed} / {total} {bcolors.OKGREEN}passed{bcolors.ENDC} {total - passed} {bcolors.FAIL}failed{bcolors.ENDC}")
+      failed_message = f"{total - passed - skipped} {bcolors.FAIL}failed{bcolors.ENDC}"
+      print(f"\n{passed_message} {failed_message}{skipped_message}")
 
 def __json_session_complete_formatter(session_context: SessionContext):
   if 'output' not in session_context:
     return
 
   session_context['output']['passed'] = session_context['passed']
+  session_context['output']['skipped'] = session_context['skipped']
   session_context['output']['total'] = session_context['total']
+
   print(json.dumps(session_context['output']))
 
 def __get_test_expected_response_with_context(context: ReplayContext, project_id: str, test_facade: TestFacade) -> Union[requests.Response, str]:
