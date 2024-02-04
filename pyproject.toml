@@ -16,6 +16,7 @@ version = "0.33.1"
 python = "^3.8"
 
 click = ">=7.0.0,<8.0.0"
+diff-match-patch = "^20230430"
 distro = ">=1.6.0,<1.7.0"
 httptools = ">=0.4.0"
 jmespath = ">=1.0.0"
