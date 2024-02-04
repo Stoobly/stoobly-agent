@@ -56,7 +56,7 @@ class TestContext(TestContextABC):
   @property
   def cached_expected_response_content(self) -> Union[bytes, None, str]:
     if not self.__cached_rewritten_expected_response_content:
-      return self.rewritten_expected_response_content
+      return encode_response(self.rewritten_expected_response_content, self.__expected_response.content_type)
 
     return encode_response(self.__cached_rewritten_expected_response_content, self.__expected_response.content_type) 
 
