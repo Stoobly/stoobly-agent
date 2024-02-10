@@ -17,7 +17,6 @@ from .mock.context import MockContext
 from .test.helpers.test_results_builder import TestResultsBuilder
 from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
-from .test.helpers.diff_service import diff
 from .test.test_service import test
 
 LOG_ID = 'HandleTest'
@@ -54,23 +53,29 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
 def __handle_mock_success(test_context: TestContext) -> None:
     flow: MitmproxyHTTPFlow = test_context.flow
     settings = Settings.instance()
+
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
     __test_hook(lifecycle_hooks.BEFORE_TEST, test_context)
 
-    # Run test
-    passed, log = test(test_context)
+    intercept_settings = test_context.intercept_settings
+    if intercept_settings.test_skip:
+        passed, log = (False, '')
+        skipped = True
+    else: 
+        # Run test
+        passed, log = test(test_context)
+        skipped = False
 
     request_id = test_context.mock_request_id
     if request_id:
-        intercept_settings = test_context.intercept_settings
-
         expected = test_context.cached_expected_response_content
         upload_test_data = {
             'expected_response': expected,
             'log': log,
             'passed': passed,
             'request_id': request_id,
+            'skipped': skipped,
             'status': flow.response.status_code,
             'strategy': test_context.strategy
         }

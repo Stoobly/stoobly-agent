@@ -213,7 +213,11 @@ class MatchContext():
 
     def __param_name_matches(self, query, param_names: List[ResponseParamName]) -> bool:
         for param_name in param_names:
-            if param_name['query'] == query:
+            # Not all components will have a query property,
+            # If query property does not exist, then use name property
+            _query = param_name['query'] if 'query' in param_name else param_name['name']
+
+            if _query == query:
                 return True
 
         return False

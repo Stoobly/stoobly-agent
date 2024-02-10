@@ -131,7 +131,7 @@ def list(**kwargs):
   )(f), not is_remote
 )
 @click.option('--record', is_flag=True, default=False, help='Replay request and record.')
-@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Save results.')(f), is_remote)
 @click.option('--scenario-key', help='Record to scenario.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
 @ConditionalDecorator(lambda f: click.option('--trace-id', help='Use existing trace.')(f), is_remote)
@@ -264,6 +264,7 @@ def test(**kwargs):
       'aggregate_failures': kwargs['aggregate_failures'], 
       'passed': 0, 
       'project_id': request_key.project_id, 
+      'skipped': 0,
       'test_facade': TestFacade(settings), 
       'total': 0 
   }

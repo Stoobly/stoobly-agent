@@ -5,6 +5,7 @@ from typing import Union
 
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
 
@@ -70,7 +71,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def intercept_settings(self):
+  def intercept_settings(self) -> InterceptSettings:
     pass
 
   @property

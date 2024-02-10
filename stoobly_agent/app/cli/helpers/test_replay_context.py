@@ -73,13 +73,14 @@ class TestReplayContext(ReplayContext):
         'log': self.__build_log(builder),
         'passed': builder.passed,
         'project_id': project_id,
+        'skipped': builder.skipped,
         'strategy': builder.strategy,
       }
 
   def __build_log(self, builder: TestResultsBuilder):
     log = [builder.log]
 
-    if not builder.passed:
+    if not builder.passed and not builder.skipped:
       log.append("\n" + diff(builder.expected_response, builder.received_response))
 
     return "\n".join(log)

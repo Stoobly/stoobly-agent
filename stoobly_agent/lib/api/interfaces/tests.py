@@ -10,6 +10,7 @@ class TestShowResponse(TypedDict):
   log: str
   passed: bool
   project_id: str
+  skipped: bool
   strategy: Union[test_strategy.DIFF, test_strategy.CUSTOM, test_strategy.FUZZY] 
 
 class TestsIndexQueryParams(PaginationQueryParams):

@@ -274,8 +274,8 @@ if not is_remote:
     '''
 )
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
-@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Replay request and save to history.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--report-key', help='Save results to report.')(f), is_remote)
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Save results.')(f), is_remote)
 @click.option('--scheme', help='Rewrite request scheme.')
 @click.option(
     '--strategy', 
@@ -298,6 +298,7 @@ def test(**kwargs):
 
     if kwargs.get('report_key'):
         validate_report_key(kwargs['report_key'])
+        kwargs['save'] = True # If report_key is set, then intention is to save results to the report
 
     if len(kwargs['validate']):
         validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
@@ -315,7 +316,8 @@ def test(**kwargs):
     session_context: SessionContext = { 
         'aggregate_failures': kwargs['aggregate_failures'], 
         'passed': 0, 
-        'project_id': scenario_key.project_id, 
+        'project_id': scenario_key.project_id,
+        'skipped': 0, 
         'test_facade': TestFacade(settings), 
         'total': 0 
     }

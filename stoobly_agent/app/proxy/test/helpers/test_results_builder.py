@@ -19,6 +19,7 @@ class TestResultsBuilder():
     self.__passed = test_data.get('passed')
     self.__request_id = test_data.get('request_id')
     self.__received_response = test_data.get('received_response')
+    self.__skipped = test_data.get('skipped')
     self.__status = test_data.get('status')
     self.__strategy = test_data.get('strategy')
 
@@ -41,6 +42,10 @@ class TestResultsBuilder():
   @property
   def received_response(self):
     return self.__received_response
+
+  @property
+  def skipped(self):
+    return self.__skipped
 
   @property
   def status(self):
@@ -83,6 +88,7 @@ class TestResultsBuilder():
       'log': self.__log,
       'passed': self.__passed,
       'request_id': self.__request_id,
+      'skipped': self.__skipped,
       'status': self.__status,
       'strategy': self.__strategy, 
     }
@@ -119,6 +125,7 @@ class TestResultsBuilder():
     self.__log = test_data.get('log')
     self.__passed = test_data.get('passed')
     self.__request_id = test_data.get('request_id')
+    self.__skipped = test_data.get('skipped')
     self.__status = test_data.get('status')
     self.__strategy = test_data.get('strategy')
 
