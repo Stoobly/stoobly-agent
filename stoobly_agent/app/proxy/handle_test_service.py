@@ -69,7 +69,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     request_id = test_context.mock_request_id
     if request_id:
-        expected = test_context.cached_expected_response_content
+        expected = test_context.cached_rewritten_expected_response_content
         upload_test_data = {
             'expected_response': expected,
             'log': log,
