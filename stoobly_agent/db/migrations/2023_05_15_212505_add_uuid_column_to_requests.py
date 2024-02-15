@@ -13,7 +13,7 @@ class AddUuidColumnToRequests(Migration):
         Run the migrations.
         """
         with self.schema.table('requests') as table:
-            table.string('uuid', 36).default('').index()
+            table.string('uuid', 36).default('').index().unique()
 
         for request in Request.all():
             control = RequestStringControl(request.control)

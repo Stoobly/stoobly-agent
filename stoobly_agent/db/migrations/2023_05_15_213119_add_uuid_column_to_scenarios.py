@@ -11,7 +11,7 @@ class AddUuidColumnToScenarios(Migration):
         Run the migrations.
         """
         with self.schema.table('scenarios') as table:
-            table.string('uuid', 36).index().default('')
+            table.string('uuid', 36).default('').index().unique()
 
         for scenario in Scenario.all():
             scenario.update(uuid=str(uuid.uuid4()))
