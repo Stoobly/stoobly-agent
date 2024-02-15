@@ -43,9 +43,11 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     flow: MitmproxyHTTPFlow = params['flow']
     joined_request: JoinedRequest = params['joined_request']
     scenario_id = params.get('scenario_id')
+    uuid = params.get('uuid')
+
+    request_columns = build_request_columns(flow, joined_request, is_deleted=False, scenario_id=scenario_id, uuid=uuid)
 
     with ORM.instance().db.transaction():
-      request_columns = build_request_columns(flow, joined_request, is_deleted=False, scenario_id=scenario_id)
       request_record = self.__request_orm.create(**request_columns)
 
       response_columns = {
@@ -53,10 +55,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         **build_response_columns(flow, joined_request),
       }
 
-      response_record = self.__response_orm.create(**response_columns)
-      if not response_record:
-        request_record.delete()
-        return self.internal_error('Could not create requeset response')
+      self.__response_orm.create(**response_columns)
 
       return self.success({
         'list': [ORMToStooblyRequestTransformer(request_record, {}).transform()],

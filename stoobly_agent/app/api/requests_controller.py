@@ -1,5 +1,6 @@
 import json
 import pdb
+import uuid
 
 from datetime import datetime
 from urllib.parse import urlparse
@@ -63,6 +64,7 @@ class RequestsController:
             request, status = request_model.create(**{
                 **create_params,
                 'scenario_id': scenario_id,
+                'uuid': str(uuid.uuid4()),
             })
 
             if context.filter_response(request, status):
