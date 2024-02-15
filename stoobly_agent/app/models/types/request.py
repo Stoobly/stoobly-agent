@@ -8,7 +8,7 @@ class RequestCreateParams(TypedDict):
   project_id: str
   joined_request: JoinedRequest
   scenario_id: str
-  uuid: bool
+  uuid: str
 
 class RequestDestroyParams(TypedDict):
   force: bool

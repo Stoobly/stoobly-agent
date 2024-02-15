@@ -43,11 +43,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     flow: MitmproxyHTTPFlow = params['flow']
     joined_request: JoinedRequest = params['joined_request']
     scenario_id = params.get('scenario_id')
+    uuid = params.get('uuid')
 
-    request_columns = build_request_columns(
-      flow, joined_request, 
-      is_deleted=False, scenario_id=scenario_id, uuid_promise=not not params.get('uuid_promise')
-    )
+    request_columns = build_request_columns(flow, joined_request, is_deleted=False, scenario_id=scenario_id, uuid=uuid)
 
     with ORM.instance().db.transaction():
       request_record = self.__request_orm.create(**request_columns)

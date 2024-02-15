@@ -245,7 +245,6 @@ class Apply():
       params = {
         **build_params(raw_request),
         **base_params,
-        'uuid_promise': True,
       }
 
       res, status = self.request_model.create(**params)
