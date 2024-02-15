@@ -21,7 +21,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def cached_expected_response_content(self) -> Union[bytes, None, str]:
+  def cached_rewritten_expected_response_content(self) -> FuzzyContent:
     pass
 
   @property

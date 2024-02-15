@@ -54,11 +54,11 @@ class TestContext(TestContextABC):
     return self 
 
   @property
-  def cached_expected_response_content(self) -> Union[bytes, None, str]:
+  def cached_rewritten_expected_response_content(self) -> FuzzyContent:
     if not self.__cached_rewritten_expected_response_content:
-      return encode_response(self.rewritten_expected_response_content, self.__expected_response.content_type)
+      return self.rewritten_expected_response_content
 
-    return encode_response(self.__cached_rewritten_expected_response_content, self.__expected_response.content_type) 
+    return self.__cached_rewritten_expected_response_content
 
   @property
   def endpoint(self) -> EndpointFacade:
