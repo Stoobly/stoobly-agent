@@ -20,8 +20,11 @@ def build_request_columns(flow: MitmproxyHTTPFlow, joined_request: JoinedRequest
     'latency': joined_request.response_string.latency,
     'raw': joined_request.request_string.get(),
     'status': flow.response.status_code,
-    'uuid': joined_request.request_string.request_id.strip(),
   }
+
+  if params.get('uuid_promise'): 
+    params['uuid'] = joined_request.request_string.request_id.strip()
+    del params['uuid_promise']
 
   return { **request_columns, **params }
 
