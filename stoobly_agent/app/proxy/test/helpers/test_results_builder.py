@@ -93,11 +93,13 @@ class TestResultsBuilder():
       'strategy': self.__strategy, 
     }
 
+    received, received_format = self.__serialize_response(self.__received_response)
+    expected, expected_format = self.__serialize_response(self.__expected_response)
     return REQUEST_DELIMITTER.join([
-      TEXT_DATA if isinstance(self.__received_response, bytes) else JSON_DATA,
-      self.__serialize_response(self.__received_response),
-      TEXT_DATA if isinstance(self.__expected_response, bytes) else JSON_DATA,
-      self.__serialize_response(self.__expected_response),
+      received_format,
+      received,
+      expected_format,
+      expected,
       json.dumps(metadata).encode()
     ])
 
@@ -130,6 +132,10 @@ class TestResultsBuilder():
     self.__strategy = test_data.get('strategy')
 
   def __serialize_response(self, data):
-    if not data:
-      return b''
-    return data if isinstance(data, bytes) else json.dumps(data).encode()
+    if data == None:
+      return b'', TEXT_DATA
+
+    if isinstance(data, bytes):
+      return data, TEXT_DATA 
+      
+    return json.dumps(data).encode(), JSON_DATA
