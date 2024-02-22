@@ -61,6 +61,14 @@ class TestContext(TestContextABC):
     return self.__cached_rewritten_expected_response_content
 
   @property
+  def decoded_response_content(self) -> FuzzyContent:
+    return self.__response.decode_content()
+
+  @property
+  def decoded_expected_response_content(self) -> FuzzyContent:
+    return self.__expected_response.decode_content()
+
+  @property
   def endpoint(self) -> EndpointFacade:
     resource = self.__endpoints_resource
     endpoint_id = self.mock_request_endpoint_id
@@ -71,28 +79,20 @@ class TestContext(TestContextABC):
     return EndpointFacade(resource, endpoint_id)
 
   @property
-  def lifecycle_hooks(self):
-    return self.__intercept_settings.lifecycle_hooks
-
-  @property
-  def lifecycle_hooks_path(self):
-    return self.__intercept_settings.lifecycle_hooks_path
-
-  @property
   def end_time(self):
     return self.__flow.response.timestamp_end
 
   @property
-  def expected_response(self) -> TestContextResponse:
+  def expected_latency(self):
+    return self.__mock_context.response.headers.get(custom_headers.RESPONSE_LATENCY)
+
+  @property
+  def expected_response(self):
     return self.__expected_response
 
   @property
-  def decoded_response_content(self) -> FuzzyContent:
-    return self.__response.decode_content()
-
-  @property
-  def decoded_expected_response_content(self) -> FuzzyContent:
-    return self.__expected_response.decode_content()
+  def expected_status_code(self):
+    return self.__expected_response.status_code
 
   @property
   def filter(self):
@@ -105,6 +105,14 @@ class TestContext(TestContextABC):
   @property
   def intercept_settings(self):
     return self.__intercept_settings
+
+  @property
+  def lifecycle_hooks(self):
+    return self.__intercept_settings.lifecycle_hooks
+
+  @property
+  def lifecycle_hooks_path(self):
+    return self.__intercept_settings.lifecycle_hooks_path
 
   @property
   def log(self):
@@ -141,6 +149,10 @@ class TestContext(TestContextABC):
   @property
   def request(self) -> Request:
     return self.__flow.request
+
+  @property
+  def request_key(self) -> str:
+    return self.__replay_context.key
 
   @property
   def request_headers(self):

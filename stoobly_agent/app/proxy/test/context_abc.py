@@ -26,17 +26,17 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
+  def decoded_response_content(self) -> FuzzyContent:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def decoded_expected_response_content(self) -> FuzzyContent:
+    pass
+
+  @property
+  @abc.abstractmethod
   def endpoint(self) -> EndpointFacade:
-    pass
-
-  @property
-  @abc.abstractmethod
-  def lifecycle_hooks(self):
-    pass
-
-  @property
-  @abc.abstractmethod
-  def lifecycle_hooks_path(self):
     pass
 
   @property
@@ -46,17 +46,17 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
+  def expected_latency(self) -> int:
+    pass
+
+  @property
+  @abc.abstractmethod
   def expected_response(self) -> TestContextResponse:
     pass
 
   @property
   @abc.abstractmethod
-  def decoded_response_content(self) -> FuzzyContent:
-    pass
-
-  @property
-  @abc.abstractmethod
-  def decoded_expected_response_content(self) -> FuzzyContent:
+  def expected_status_code(self) -> int:
     pass
 
   @property
@@ -72,6 +72,16 @@ class TestContextABC(abc.ABC):
   @property
   @abc.abstractmethod
   def intercept_settings(self) -> InterceptSettings:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def lifecycle_hooks(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def lifecycle_hooks_path(self):
     pass
 
   @property
@@ -117,6 +127,11 @@ class TestContextABC(abc.ABC):
   @property
   @abc.abstractmethod
   def request(self) -> Request:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def request_key(self) -> str:
     pass
 
   @property
