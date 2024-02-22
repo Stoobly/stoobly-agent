@@ -33,6 +33,10 @@ class Request():
     return self.request.get('http_version')
 
   @property
+  def key(self):
+    return self.request.get('key')
+
+  @property
   def scheme(self):
     return self.__url.scheme
 
