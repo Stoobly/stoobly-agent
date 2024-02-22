@@ -1,6 +1,7 @@
+import os
+import pdb
 import requests
 import time
-import pdb
 
 from mitmproxy.http import Request as MitmproxyRequest
 from typing import Callable, TypedDict
@@ -8,7 +9,7 @@ from typing import Callable, TypedDict
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy
+from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -114,7 +115,9 @@ def handle_request_mock(context: MockContext):
 def __handle_mock_success(context: MockContext) -> None:
     response = context.response
     start_time = context.start_time
-    __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
+
+    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
+        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __handle_mock_failure(context: MockContext):
     req = context.flow.request
