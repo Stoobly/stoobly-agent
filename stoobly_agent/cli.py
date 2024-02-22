@@ -72,6 +72,7 @@ if settings.cli.features.remote:
 )
 def init(**kwargs):
     DataDir.instance().create()
+    settings.reset_and_load()
 
 @main.command(
     help="Run proxy and/or UI",

@@ -38,12 +38,11 @@ class Settings:
         if Settings.__instance:
             raise RuntimeError('Call instance() instead')
 
-        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or DataDir.instance().settings_file_path
-        self.__schema_file_path = SourceDir.instance().schema_file_path
+        self.__detect_paths()
 
         # If the config does not exist, use template
         if not os.path.exists(self.__settings_file_path):
-            self.reset()
+            self.__create_default_file()
 
         self.__load_settings()
 
@@ -143,7 +142,8 @@ class Settings:
         self.__load_settings()
 
     def reset(self):
-        copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
+        self.__detect_paths()
+        self.__create_default_file()
 
     def reset_and_load(self):
         self.reset()
@@ -156,6 +156,13 @@ class Settings:
             fp.close()
 
     ### Helpers
+
+    def __create_default_file(self):
+        copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
+
+    def __detect_paths(self):
+        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or DataDir.instance().settings_file_path
+        self.__schema_file_path = SourceDir.instance().schema_file_path
 
     def __load_settings(self):
         with open(self.__settings_file_path, 'r') as stream:
