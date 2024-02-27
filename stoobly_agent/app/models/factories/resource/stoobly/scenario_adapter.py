@@ -32,3 +32,7 @@ class StooblyScenarioAdapter():
     res.raise_for_status()  
     return res.json(), res.status_code
 
+  def update(self, scenario_id: str, **params):
+    res = self.__api.update(scenario_id, **params)
+    res.raise_for_status()  
+    return res.json(), res.status_code
