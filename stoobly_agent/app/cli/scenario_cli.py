@@ -171,7 +171,7 @@ def list(**kwargs):
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
-@click.argument('key', required=False)
+@click.argument('key')
 def show(**kwargs):
     print_options = select_print_options(kwargs)
 

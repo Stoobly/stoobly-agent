@@ -1,8 +1,9 @@
 import click
 import pdb
+import sys
 
 from stoobly_agent import VERSION
-from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate, rollback as database_rollback
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
@@ -43,4 +44,9 @@ def rollback():
 @click.argument('query')
 def query(**kwargs):
   decoded_response = decode_response(kwargs['content'], kwargs['content_type'])
+  
+  if not is_traversable(decoded_response):
+    print(f"{decoded_response} is not traversible", file=sys.stderr)
+    sys.exit(1)
+
   print(jmespath.search(kwargs['query'], decoded_response))
