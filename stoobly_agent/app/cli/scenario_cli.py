@@ -11,7 +11,7 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_output_level, test_strategy
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -71,8 +71,8 @@ def create(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
-    help='''
-        Log levels can be "debug", "info", "warning", or "error"
+    help=f'''
+        Configure which logs to print. Defaults to {logger.WARNING}.
     '''
 )
 @ConditionalDecorator(
@@ -171,7 +171,7 @@ def list(**kwargs):
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
-@click.argument('key', required=False)
+@click.argument('key')
 def show(**kwargs):
     print_options = select_print_options(kwargs)
 
@@ -269,9 +269,15 @@ if not is_remote:
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
-    help='''
-        Log levels can be "debug", "info", "warning", or "error"
+    help=f'''
+        Configure which logs to print. Defaults to {logger.WARNING}.
     '''
+)
+@click.option(
+  '--output-level', default=test_output_level.PASSED, type=click.Choice([test_output_level.FAILED, test_output_level.SKIPPED, test_output_level.PASSED]),
+  help=f'''
+    Configure which tests to print. Defaults to {test_output_level.PASSED}.
+  '''
 )
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save results to report.')(f), is_remote)
@@ -337,7 +343,7 @@ def test(**kwargs):
     exit_on_failure(session_context, format=kwargs['format'])
 
 def __handle_on_test_response(replay_context: ReplayContext, session_context: SessionContext, kwargs):
-    handle_test_complete(replay_context, session_context, format=kwargs['format'])
+    handle_test_complete(replay_context, session_context, format=kwargs['format'], output_level=kwargs['output_level'])
 
     if not session_context['aggregate_failures']:
         exit_on_failure(session_context, complete=False, format=kwargs['format'])

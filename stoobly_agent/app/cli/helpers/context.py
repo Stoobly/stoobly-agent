@@ -29,6 +29,16 @@ class ReplayContext():
   def end_time(self, v):
     self.__end_time = v 
 
+  # ms
+  @property
+  def latency(self):
+    seconds = self.end_time - self.start_time
+    return round(seconds * 1000)
+
+  @property
+  def key(self):
+    return self.__request.key
+
   @property
   def request(self):
     return self.__request

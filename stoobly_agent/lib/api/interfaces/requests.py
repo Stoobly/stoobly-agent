@@ -39,6 +39,7 @@ class RequestShowResponse(TypedDict):
   http_version: float
   id: str
   is_deleted: bool
+  key: str
   latency: int
   method: str
   path: str

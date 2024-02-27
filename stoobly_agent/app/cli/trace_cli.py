@@ -1,6 +1,7 @@
-import json
 import click
+import json
 import pdb
+import sys
 
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
@@ -85,7 +86,7 @@ def list(**kwargs):
   print_traces(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
 
 @alias.command(
-  help="Create an alias for a trace"
+  help="Create a trace alias"
 )
 @click.option('--name', required=True)
 @click.option('--value', required=True)
@@ -99,10 +100,22 @@ def create(**kwargs):
   trace_alias = TraceAlias.create(trace_id=kwargs['trace_id'], name=kwargs['name'], value=value)
   print(trace_alias.id)
 
-trace.add_command(alias)
+@alias.command(
+  help="Show a trace alias"
+)
+@click.option('--name', required=True)
+@click.argument('trace_id')
+def show(**kwargs):
+  trace_alias = TraceAlias.find_by(trace_id=kwargs['trace_id'], name=kwargs['name'])
+
+  if not trace_alias:
+    print('Not found', file=sys.stderr)
+    sys.exit(1)
+  else:
+    sys.stdout.write(trace_alias.value)
 
 @alias.command(
-  help="Create an alias for a trace"
+  help="Update a trace alias"
 )
 @click.option('--name', required=True)
 @click.option('--value', required=True)

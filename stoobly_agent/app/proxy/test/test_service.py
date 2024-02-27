@@ -42,7 +42,7 @@ def test(context: TestContext):
         log_lines.append(f"\n=== Response Test ===")
         log_lines.append(log)
 
-    context.log = "\n".join(log_lines)
+    context.log = "\n".join(log_lines).lstrip()
     context.passed = status_code_matches and contract_matches and response_matches 
 
     return context.passed, context.log

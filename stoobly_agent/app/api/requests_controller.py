@@ -149,8 +149,11 @@ class RequestsController:
         # This can error out if res is not properly formatted
         # The request has a local ID (the ID of the request that was pushed)
         # and a remote ID (the ID of the request that was created)
-        if res.status == 200 and len(res['list']):
-            request['remote_id'] = res['list'][0]['id']
+        try:
+            if len(res['list']):
+                request['remote_id'] = res['list'][0]['id']
+        except Exception:
+            pass
 
         context.render(
             json = request,

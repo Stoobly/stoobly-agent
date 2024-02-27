@@ -4,7 +4,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.interfaces import RequestShowResponse, RequestsIndexQueryParams
+from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
 from ...cli.helpers.context import ReplayContext
@@ -34,6 +34,10 @@ def replay(
       request_model, scenario_key, { 'page': page, 'size': PAGE_SIZE, 'sort_order': 'asc' }
     )
 
+    if status != 200:
+      # TODO: log error
+      return
+
     if not requests_index:
       return
 
@@ -50,6 +54,10 @@ def replay(
       request_response, status = __get_request(request_model, scenario_key, request_id)
       if not request_response:
         continue
+
+      if status != 200:
+        # TODO: log error
+        return
       
       context = ReplayContext(Request(request_response)).with_sequence(count)
       replay_with_trace(context, trace_context, options)

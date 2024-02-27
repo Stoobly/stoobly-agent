@@ -11,7 +11,7 @@ from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_strategy
+from stoobly_agent.config.constants import alias_resolve_strategy, env_vars, test_filter, test_output_level, test_strategy
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils import jmespath
@@ -121,8 +121,8 @@ def list(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
   '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
-  help='''
-    Log levels can be "debug", "info", "warning", or "error"
+  help=f'''
+    Configure which logs to print. Defaults to {logger.WARNING}.
   '''
 )
 @ConditionalDecorator(
@@ -219,10 +219,16 @@ if not is_remote:
 @click.option('--host', help='Rewrite request host.')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
-    '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
-    help='''
-        Log levels can be "debug", "info", "warning", or "error"
-    '''
+  '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
+  help=f'''
+    Configure which logs to print. Defaults to {logger.WARNING}.
+  '''
+)
+@click.option(
+  '--output-level', default=test_output_level.PASSED, type=click.Choice([test_output_level.FAILED, test_output_level.SKIPPED, test_output_level.PASSED]),
+  help=f'''
+    Configure which tests to print. Defaults to {test_output_level.PASSED}.
+  '''
 )
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
@@ -274,7 +280,7 @@ def test(**kwargs):
   )
 
   kwargs['after_replay'] = lambda context: handle_test_complete(
-    context, session_context, format=kwargs['format']
+    context, session_context, format=kwargs['format'], output_level=kwargs['output_level']
   )
 
   request = RequestFacade(settings)
@@ -337,4 +343,3 @@ def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
     if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
-

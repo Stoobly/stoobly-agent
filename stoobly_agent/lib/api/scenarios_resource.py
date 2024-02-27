@@ -27,3 +27,10 @@ class ScenariosResource(StooblyApi):
     Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
 
     return self.get(url, headers=self.default_headers, params=query_params)
+
+  def update(self, scenario_id: int, **params):
+    url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}/{scenario_id}"
+
+    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}")
+
+    return self.put(url, headers=self.default_headers, json=params)

@@ -80,11 +80,16 @@ def __handle_mock_success(test_context: TestContext) -> None:
             'strategy': test_context.strategy
         }
 
-        if not test_context.save:
+        is_cli = intercept_settings.request_origin == request_origin.CLI
+        if is_cli and not test_context.save:
             received = test_context.decoded_response_content
 
             builder = TestResultsBuilder(
-                **{ 'received_response': received },
+                **{ 
+                    'expected_latency': test_context.expected_latency,
+                    'expected_status_code': test_context.expected_status_code,
+                    'received_response': received
+                },
                 **upload_test_data
             )
 
@@ -99,7 +104,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
             )
 
             # If the origin was from a CLI, send test ID in response header
-            if intercept_settings.request_origin == request_origin.CLI and res.ok:
+            if is_cli and res.ok:
                 __decorate_test_id(flow, res.json())
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)

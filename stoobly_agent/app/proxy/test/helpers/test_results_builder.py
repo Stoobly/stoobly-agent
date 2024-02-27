@@ -14,7 +14,9 @@ class DownloadTestData(UploadTestData):
 class TestResultsBuilder():
 
   def __init__(self, **test_data: DownloadTestData):
+    self.__expected_latency = test_data.get('expected_latency')
     self.__expected_response = test_data.get('expected_response')
+    self.__expected_status_code = test_data.get('expected_status_code')
     self.__log = test_data.get('log')
     self.__passed = test_data.get('passed')
     self.__request_id = test_data.get('request_id')
@@ -24,8 +26,16 @@ class TestResultsBuilder():
     self.__strategy = test_data.get('strategy')
 
   @property
+  def expected_latency(self):
+    return self.__expected_latency
+
+  @property
   def expected_response(self):
     return self.__expected_response
+
+  @property
+  def expected_status_code(self):
+    return self.__expected_status_code
 
   @property
   def log(self):
@@ -55,8 +65,16 @@ class TestResultsBuilder():
   def strategy(self):
     return self.__strategy
 
+  def with_expected_latency(self, latency: int):
+    self.__expected_latency = latency
+    return self
+
   def with_expected_response(self, response: bytes):
     self.__expected_response = response
+    return self
+
+  def with_expected_status_code(self, status_code: int):
+    self.__expected_status_code = status_code
     return self
 
   def with_log(self, log):
@@ -85,6 +103,8 @@ class TestResultsBuilder():
 
   def serialize(self) -> bytes:
     metadata = {
+      'expected_latency': self.__expected_latency, 
+      'expected_status_code': self.__expected_status_code, 
       'log': self.__log,
       'passed': self.__passed,
       'request_id': self.__request_id,
@@ -123,7 +143,9 @@ class TestResultsBuilder():
       test_data = json.loads(toks[toks_length - 1].decode())
     except:
       pass
-
+    
+    self.__expected_latency = test_data.get('expected_latency')
+    self.__expected_status_code = test_data.get('expected_status_code')
     self.__log = test_data.get('log')
     self.__passed = test_data.get('passed')
     self.__request_id = test_data.get('request_id')

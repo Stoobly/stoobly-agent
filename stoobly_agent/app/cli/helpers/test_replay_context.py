@@ -1,4 +1,5 @@
 import pdb
+import requests
 
 from typing import Union
 
@@ -10,6 +11,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+from stoobly_agent.lib.utils.decode import decode
 
 class TestReplayContext(ReplayContext):
 
@@ -47,15 +49,53 @@ class TestReplayContext(ReplayContext):
       return self.response.content
 
   @property
+  def response_status_code(self):
+    if self.has_test_results:
+      return self.__test_results_builder.status
+    else:
+      return self.response.status_code
+
+  @property
   def test_results_builder(self):
     return self.__test_results_builder
+
+  def diff_response(self, response: TestShowResponse, test_facade: TestFacade):
+    if response['passed'] or response['skipped']:
+      return (self.response_content, self.response_status_code, self.latency)
+
+    expected_response_content, expected_status_code = self.expected_response_content(test_facade)
+
+    if not self.has_test_results:
+      return (
+        diff(expected_response_content, self.response_content),
+        diff(expected_status_code, self.response_status_code),
+        diff(response['expected_latency'], self.latency)
+      )
+    else:
+      builder = self.test_results_builder
+      return (
+        diff(expected_response_content, builder.received_response),
+        diff(expected_status_code, self.response_status_code),
+        diff(response['expected_latency'], self.latency)
+      )
+
+  def expected_response_content(self, test_facade: TestFacade):
+    if not self.has_test_results: 
+      expected_response = self.__get_test_expected_response_with_context(test_facade)
+      if isinstance(expected_response, requests.Response):
+        content = expected_response.content
+        return decode(content), expected_response.status_code
+      else:
+        return '', 0
+    else:
+      builder = self.test_results_builder
+      return builder.expected_response, builder.expected_status_code
 
   def test_show_response(self, test_facade = None) -> TestShowResponse:
     if not self.has_test_results: 
       return self.__get_test_response_with_context(test_facade)
     else:
       builder = self.test_results_builder
-      headers = self.response.headers
 
       # The following is inferred from settings (assumes nothing has changed)
       settings = Settings.instance()
@@ -68,26 +108,25 @@ class TestReplayContext(ReplayContext):
         pass
 
       return {
-        'expected_latency': headers.get(custom_headers.RESPONSE_LATENCY),
+        'expected_latency': builder.expected_latency,
         'id': None,
-        'log': self.__build_log(builder),
+        'log': builder.log,
         'passed': builder.passed,
         'project_id': project_id,
         'skipped': builder.skipped,
         'strategy': builder.strategy,
       }
-
-  def __build_log(self, builder: TestResultsBuilder):
-    log = [builder.log]
-
-    if not builder.passed and not builder.skipped:
-      log.append("\n" + diff(builder.expected_response, builder.received_response))
-
-    return "\n".join(log)
-
+    
   def __get_test_response_with_context(self, test_facade: TestFacade) -> Union[TestShowResponse, str]:
     try:
       res = test_facade.show_with_context(super(), self.project_id)
+      return res
+    except AssertionError as e:
+      return f"API Error: {e}"
+
+  def __get_test_expected_response_with_context(self, test_facade: TestFacade):
+    try:
+      res = test_facade.expected_response_with_context(super(), self.project_id)
       return res
     except AssertionError as e:
       return f"API Error: {e}"
