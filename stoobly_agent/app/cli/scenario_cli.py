@@ -109,6 +109,7 @@ def replay(**kwargs):
         validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
+    __assign_default_origin(kwargs)
 
     session: ReplaySession = {
         'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
@@ -310,6 +311,7 @@ def test(**kwargs):
         validate_aliases(kwargs['validate'], assign=kwargs['assign'], format=kwargs['format'], trace_id=kwargs['trace_id'])
 
     __assign_default_alias_resolve_strategy(kwargs)
+    __assign_default_origin(kwargs)
 
     session: ReplaySession = {
         'buffer': kwargs['format'] and kwargs['format'] != DEFAULT_FORMAT,
@@ -352,3 +354,10 @@ def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
     if 'assign' in kwargs and len(kwargs['assign']) > 0 and kwargs['alias_resolve_strategy'] == alias_resolve_strategy.NONE:
         kwargs['alias_resolve_strategy'] = alias_resolve_strategy.FIFO
+
+def __assign_default_origin(kwargs):
+    if not kwargs.get('host'):
+        kwargs['host'] = os.environ.get(env_vars.AGENT_REPLAY_HOST)
+
+    if not kwargs.get('scheme'):
+        kwargs['scheme'] = os.environ.get(env_vars.AGENT_REPLAY_SCHEME)
