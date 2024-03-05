@@ -130,7 +130,7 @@ def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
         handle_invalid_alias(parsed_validation, aliases_map[name], kwargs.get('format'))
 
 def filter_response(res, status: int):
-    if status < 400:
+    if status != 0 and status < 400:
         return False
 
     print(f"Error: {res}", file=sys.stderr)
