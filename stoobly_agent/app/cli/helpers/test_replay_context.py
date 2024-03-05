@@ -5,6 +5,7 @@ from typing import Union
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.proxy.test.helpers.test_results_builder import TestResultsBuilder
 from stoobly_agent.app.proxy.test.helpers.diff_service import diff
 from stoobly_agent.app.settings import Settings
@@ -81,10 +82,13 @@ class TestReplayContext(ReplayContext):
 
   def expected_response_content(self, test_facade: TestFacade):
     if not self.has_test_results: 
-      expected_response = self.__get_test_expected_response_with_context(test_facade)
-      if isinstance(expected_response, requests.Response):
-        content = expected_response.content
-        return decode(content), expected_response.status_code
+      response = self.__get_test_expected_response_with_context(test_facade)
+
+      if isinstance(response, requests.Response):
+        content = decode(response.content)
+        content_type = response.headers.get('content-type')
+
+        return decode_response(content, content_type), response.status_code
       else:
         return '', 0
     else:
