@@ -3,6 +3,8 @@ import logging.config
 import os
 import pdb
 
+from typing import Literal
+
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 
 class bcolors:
@@ -20,6 +22,7 @@ DEBUG = 'debug'
 INFO = 'info'
 WARNING = 'warning'
 ERROR = 'error'
+LogLevel = Literal[DEBUG, ERROR, INFO, WARNING]
 
 class Logger:
     _instance = None
