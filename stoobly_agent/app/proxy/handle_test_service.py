@@ -2,6 +2,7 @@ import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
+from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
@@ -71,7 +72,6 @@ def __handle_mock_success(test_context: TestContext) -> None:
     if request_id:
         expected = test_context.cached_rewritten_expected_response_content
         upload_test_data = {
-            'expected_response': expected,
             'log': log,
             'passed': passed,
             'request_id': request_id,
@@ -82,6 +82,8 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
         is_cli = intercept_settings.request_origin == request_origin.CLI
         if is_cli and not test_context.save:
+            # No serialization is needed since TestResultsBuilder will serialize
+            upload_test_data['expected_response'] = expected
             received = test_context.decoded_response_content
 
             builder = TestResultsBuilder(
@@ -95,6 +97,8 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
             __override_response(flow, builder.serialize())
         else:
+            # Re-serialize expected response since it was rewritten
+            upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
             upload_test = inject_upload_test(None, intercept_settings)
 
             # Commit test to API
