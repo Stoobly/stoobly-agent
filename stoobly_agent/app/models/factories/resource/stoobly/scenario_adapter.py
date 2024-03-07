@@ -12,13 +12,7 @@ class StooblyScenarioAdapter():
     self.__api = __api
 
   def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
-    body_params = { **params }
-    joined_scenario = body_params['joined_scenario']
-
-    del body_params['flow']
-    del body_params['joined_scenario']
-
-    res = self.__api.create(**{ 'importer': 'gor', 'scenarios': joined_scenario.build(), **body_params })
+    res = self.__api.create(**params)
     res.raise_for_status()  
     return res.json(), res.status_code
 
