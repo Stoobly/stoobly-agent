@@ -21,7 +21,10 @@ class AliasResolver():
     self.__strategy = v
 
   def assign_alias(self, trace_alias: TraceAlias, value):
-    if not trace_alias.assigned_to:
+    if not trace_alias:
+      return
+      
+    if trace_alias.assigned_to == None:
       trace_alias.assigned_to = value
       trace_alias.save()
 
@@ -36,15 +39,16 @@ class AliasResolver():
       'name': alias_name,
       'value': self.__serialize(value),
       'trace_id': self.__trace.id,
-      'trace_request_id': trace_request.id if trace_request else None
     }
 
     trace_alias = TraceAlias.find_by(**columns)
     if trace_alias:
       return trace_alias
 
-    columns['value'] = value
-    trace_alias = TraceAlias.create(**columns)
+    trace_alias = TraceAlias.create(**{
+      **columns,
+      'trace_request_id': trace_request.id if trace_request else None
+    })
 
     if trace_alias:
       Logger.instance().info(f"{bcolors.OKGREEN}CREATE alias {trace_alias.name}: {value}{bcolors.ENDC}")

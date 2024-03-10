@@ -81,6 +81,26 @@ def __handle_mock_success(test_context: TestContext) -> None:
         }
 
         is_cli = intercept_settings.request_origin == request_origin.CLI
+        if not is_cli or test_context.save:
+            # Re-serialize expected response since it was rewritten
+            upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
+            upload_test = inject_upload_test(None, intercept_settings)
+
+            # Commit test to API
+            res = upload_test(
+                flow,
+                **upload_test_data
+            )
+
+            if is_cli:
+                # If the origin was from a CLI, send test ID in response header
+                if res.ok:
+                    __decorate_test_id(flow, res.json())
+                else:
+                    # If we failed to upload test results, provide a local response
+                    Logger.instance().warn(f"{LOG_ID}:TestStatus: Failed to upload results")
+                    test_context.save = False
+
         if is_cli and not test_context.save:
             # No serialization is needed since TestResultsBuilder will serialize
             upload_test_data['expected_response'] = expected
@@ -96,20 +116,6 @@ def __handle_mock_success(test_context: TestContext) -> None:
             )
 
             __override_response(flow, builder.serialize())
-        else:
-            # Re-serialize expected response since it was rewritten
-            upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
-            upload_test = inject_upload_test(None, intercept_settings)
-
-            # Commit test to API
-            res = upload_test(
-                flow,
-                **upload_test_data
-            )
-
-            # If the origin was from a CLI, send test ID in response header
-            if is_cli and res.ok:
-                __decorate_test_id(flow, res.json())
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
     

@@ -14,7 +14,7 @@ from stoobly_agent.config.constants import alias_resolve_strategy, custom_header
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
 from stoobly_agent.lib.api.keys import ProjectKey
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 from stoobly_agent.lib.orm.trace_request import TraceRequest
@@ -74,7 +74,7 @@ class TraceContext:
       Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
 
       if self.alias_resolve_strategy != alias_resolve_strategy.NONE:
-        self.__rewrite_request(request, endpoint)
+        self.rewrite_request(request, endpoint)
 
     trace_request = TraceRequest.create(trace_id=self.__trace.id)
 
@@ -95,7 +95,7 @@ class TraceContext:
   def create_trace_alias(self, alias_name, value, trace_request = None):
     return self.__alias_resolver.create_alias(alias_name, value, trace_request)
 
-  def __rewrite_request(self, request: Request, endpoint: EndpointShowResponse):
+  def rewrite_request(self, request: Request, endpoint: EndpointShowResponse):
     if not endpoint:
       return
 
@@ -132,18 +132,23 @@ class TraceContext:
 
     request.path = '/' + '/'.join(path_segment_strings)
 
+  def __rewrite_handler(self, component_type: str, alias_name: str, name: str, value):
+    Logger.instance().info(f"{bcolors.OKCYAN}REWRITE {component_type} alias {alias_name}{bcolors.ENDC} {name} => {value}")
+
   def __rewrite_headers(
     self, request: Request, header_names: List[RequestComponentName], id_to_alias: AliasMap
   ):
     headers = request.headers
-    self.__rewrite_components(headers, header_names, id_to_alias)
+    rewrite_handler = lambda alias_name, name, value: self.__rewrite_handler('header', alias_name, name, value)
+    self.__rewrite_components(headers, header_names, id_to_alias, rewrite_handler)
     request.headers = headers
 
   def __rewrite_query_params(
     self, request: Request, query_param_names: List[RequestComponentName], id_to_alias: AliasMap
   ):
     query_params = request.query_params
-    self.__rewrite_components(query_params, query_param_names, id_to_alias)
+    rewrite_handler = lambda alias_name, name, value: self.__rewrite_handler('query param', alias_name, name, value)
+    self.__rewrite_components(query_params, query_param_names, id_to_alias, rewrite_handler)
     request.query_params = query_params
 
   def __rewrite_body_params(
@@ -157,51 +162,53 @@ class TraceContext:
         body_param_names, 
         id_to_alias, 
         self.__alias_resolver,
-        handle_after_replace=lambda name, value, trace_alias: self.__alias_resolver.assign_alias(trace_alias, value)
+        handle_after_replace=self.__rewrite_body_params_handler
       )
 
       request.body_params = body_params
 
-  def __rewrite_components(self, components, component_names, id_to_alias: AliasMap):
+  def __rewrite_body_params_handler(self, name, value, trace_alias: TraceAlias):
+    self.__rewrite_handler('body param', trace_alias.name, name, value)
+    return self.__alias_resolver.assign_alias(trace_alias, value)
+
+  # Query params and headers
+  def __rewrite_components(self, components, component_names, id_to_alias: AliasMap, rewrite_handler):
+    delimitter = ',' # Comma is reserved for both query params and headers
+
     visited = {}
     for component_name in component_names:
       _alias: Alias = id_to_alias.get(component_name['alias_id'])
       if not _alias:
         continue
-
+      
+      # Query params and headers can have multiple values, process just once
       name = component_name['name']
       if name in visited:
         continue
       else:
         visited[name] = True
 
-      new_values = [] # Find new values
+      if name not in components:
+        continue
 
       current_values = components.get_all(name)
-      if len(current_values) == 0:
-        trace_alias = self.__alias_resolver.resolve_alias(_alias['name'], None)
+      joined_value = delimitter.join(current_values)
+      trace_alias = self.__resolve_and_assign_alias(_alias['name'], joined_value)
 
-        if not trace_alias:
-          continue
+      if not trace_alias:
+        continue
 
-        new_values.append(trace_alias.value)
-      else:
-        # Remove all values for the key, name
-        components.pop(name)
-
-        for current_value in current_values:
-          new_values.append(current_value)
-          trace_alias = self.__alias_resolver.resolve_alias(_alias['name'], current_value)
-
-          if not trace_alias:
-            continue
-          
-          new_values.pop()
-          new_values.append(trace_alias.value)
+      # Remove all values for the key, name
+      components.pop(name)
 
       # Update with new values
+      alias_value = str(trace_alias.value)
+      new_values = alias_value.split(delimitter)
       for new_value in new_values:
         components.add(name, new_value)
+
+        if rewrite_handler:
+          rewrite_handler(_alias['name'], name, new_value)
 
   def __create_trace_aliases(self, trace_request: TraceRequest, response: Response, endpoint: EndpointShowResponse):
     '''

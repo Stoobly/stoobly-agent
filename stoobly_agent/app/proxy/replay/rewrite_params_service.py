@@ -54,8 +54,9 @@ def rewrite_params(
     handle_replace = options.get('handle_replace')
     handle_replace = handle_replace if handle_replace else __handle_replace
 
+    query = param_name['query'] if 'query' in param_name else param_name['name']
     jmespath.search(
-      param_name['query'], params, { 
+      query, params, { 
         'handle_replace': lambda name, value, i: handle_replace(_alias['name'], value, alias_context),
         'handle_after_replace': lambda name, value, i: handle_after_replace(name, value, alias_context.resolved_aliases[i])
       }

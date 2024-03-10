@@ -47,7 +47,10 @@ class TestReplayContext(ReplayContext):
     if self.has_test_results:
       return self.__test_results_builder.received_response
     else:
-      return self.response.content
+      content = self.response.content
+      content_type = self.response.headers.get('content-type')
+
+      return decode_response(content, content_type)
 
   @property
   def response_status_code(self):

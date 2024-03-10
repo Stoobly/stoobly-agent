@@ -163,7 +163,7 @@ class Request():
     component_names: List[RequestComponentName] = self.request[component_name_str] or []
 
     indexes = {}
-
+    new_component_names = []
     for component_name in component_names:
       name = component_name['name']
       if name in v:
@@ -176,9 +176,15 @@ class Request():
             indexes[name] += 1
 
           index = indexes[name]
+
+          if len(value) <= index:
+            continue
+
           component_name['value'] = value[index]
         else:
           component_name['value'] = value
+
+      new_component_names.append(component_name)
 
     # If a component was set that doesn't exist in the request template, add it
     for key in v:
@@ -189,12 +195,14 @@ class Request():
 
       if isinstance(value, list):
         for val in value:
-          component_names.append({
+          new_component_names.append({
             'name': key,
             'value': val,
           })
       else:
-        component_names.append({
+        new_component_names.append({
           'name': key,
           'value': value,
         })
+
+    self.request[component_name_str] = new_component_names

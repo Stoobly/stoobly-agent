@@ -49,7 +49,7 @@ def list(**kwargs):
     trace_aliases = TraceAlias.where_for(trace_id=id)
     trace_json['trace_aliases_count'] = trace_aliases.count()
 
-  print_traces(traces_json, **print_options)
+  print_traces(traces_json, **{ **print_options, 'filter': ['updated_at']})
 
 @click.group(
   epilog="Run 'stoobly-agent trace alias COMMAND --help' for more information on a command.",
@@ -83,7 +83,7 @@ def list(**kwargs):
   trace_aliases = TraceAlias.where_for(**columns)
   trace_aliases = trace_aliases.limit(kwargs['size']).order_by(kwargs['sort_by'], kwargs['sort_order'])
 
-  print_traces(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id']})
+  print_traces(json.loads(trace_aliases.get().to_json()), **{ **print_options, 'filter': ['trace_id', 'updated_at']})
 
 @alias.command(
   help="Create a trace alias"
