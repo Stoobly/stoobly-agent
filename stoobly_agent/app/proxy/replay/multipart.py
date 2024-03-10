@@ -7,6 +7,7 @@ from urllib.parse import quote
 from mitmproxy.net.http import headers
 
 CRLF = b'\r\n'
+CRLF2 = b'\n'
 
 def encode(head, l):
 
@@ -81,13 +82,16 @@ def decode(hdrs, content):
                 # Continue parsing until we see just a line with CRLF
                 ar = parts[2:]
                 for i, ele in enumerate(ar):
-                    if ele == CRLF:
+                    if ele == CRLF or ele == CRLF2:
                         value = b"".join(parts[3 + i:])
 
                         # Remove CRLF preceding the next boundary
                         length = len(value)
                         if value[length - 2:] == CRLF:
                             value = value[0:length - 2]
+
+                        if value[length - 1:] == CRLF2:
+                            value = value[0:length - 1]
 
                         r.append((key, value))
                         break

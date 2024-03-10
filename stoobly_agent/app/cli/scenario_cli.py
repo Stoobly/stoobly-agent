@@ -107,7 +107,7 @@ def show(**kwargs):
 def delete(**kwargs):
     delete_handler(kwargs)
 
-if not is_remote:
+if is_local:
     @scenario.command(
         help="Snapshot a scenario"
     )

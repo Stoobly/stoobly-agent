@@ -28,7 +28,7 @@ def endpoint(ctx):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to create endpoint to.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Which remote project to apply endpoints from.')(f), is_remote and is_local) 
-@click.option('--scenario-key', help='Which scenario to import to. If none then all requests will be imported to.')
+@click.option('--scenario-key', help='Which scenario requests to apply the endpoint to. If none, then the endpoint will be applied to all requests.')
 @click.option('--source-format', required=True, type=click.Choice([OPENAPI_FORMAT]), help='Spec file format.')
 @click.option('--source-path', help='Path to spec file.')
 def apply(**kwargs):
