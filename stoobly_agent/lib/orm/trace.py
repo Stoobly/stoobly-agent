@@ -15,6 +15,21 @@ class Trace(Base):
   def trace_requests(self):
     return TraceRequest
 
+  def clone(self):
+    trace = self.create()
+    if not trace:
+      return
+
+    for alias in self.trace_aliases:
+      TraceAlias.create(
+        name=alias.name,
+        trace_id=trace.id,
+        value=alias.value,
+        value_inferred_type=alias.value_inferred_type,
+      )
+
+    return trace
+
 def handle_deleting(trace):
   trace_aliaces = trace.trace_aliases
 

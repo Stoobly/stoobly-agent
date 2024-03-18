@@ -26,6 +26,23 @@ def create(**kwargs):
     print(trace.id)
 
 @trace.command(
+  help="Clone a trace alias"
+)
+@click.argument('trace_id')
+def clone(**kwargs):
+  trace = Trace.find_by(id=kwargs['trace_id'])
+  if not trace:
+    print(f"Could not find trace {trace.id}", file=sys.stderr)
+    sys.exit(1)
+
+  cloned_trace = trace.clone()
+  if not cloned_trace:
+    print(f"Could not clone trace {trace.id}", file=sys.stderr)
+    sys.exit(1)
+
+  print(cloned_trace.id)
+
+@trace.command(
     help="Show all traces"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
