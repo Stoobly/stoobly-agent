@@ -46,6 +46,7 @@ class RequestShowResponse(TypedDict):
   port: str
   query: str
   query_params: Union[list, None]
+  scheme: str
   scenario: str
   scenario_id: int
   starred: bool
