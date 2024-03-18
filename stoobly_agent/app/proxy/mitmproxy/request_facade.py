@@ -83,8 +83,15 @@ class MitmproxyRequestFacade(Request):
 
     @property
     def query_string(self):
-        from urllib.parse import urlencode
-        return urlencode(self.query)
+        from urllib.parse import quote
+
+        params = []
+        for k in self.query.keys():
+            for v in self.query.get_all(k):
+                params.append(f"{quote(k)}={quote(v)}")
+        
+        return '&'.join(params)
+
 
     @property
     def content_type(self):

@@ -90,6 +90,8 @@ class ORMToStooblyRequestTransformer():
 
     parsed_url = parse_url(python_request.url.encode())
 
+    stoobly_request['scheme'] = parsed_url.schema.decode()
+
     if parsed_url.query == None:
       if 'query_params' in self.__options:
         stoobly_request['query_params'] = [] 
