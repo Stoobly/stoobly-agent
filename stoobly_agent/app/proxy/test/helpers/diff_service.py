@@ -39,16 +39,32 @@ def diff(a: Union[bytes, str], b: Union[str, bytes], timeout = 30) -> str:
       output.append(text)
     elif opcode == 1:
       length = len(text)
-      if text[length - 1] == "\n":
-        output.append(f'{green}{text[0:length - 1]} {endgreen}\n')
-      else:
-        output.append(f'{green}{text}{endgreen}')
+
+      i = 0
+      j = 0
+      while i < length:
+        if text[i] == "\n":
+          output.append(f"{green}{text[j:i]}{endgreen}\n")
+          j = i + 1
+
+        i += 1
+
+      if i != j:
+        output.append(f"{green}{text[j:i]}{endgreen}")
     elif opcode == -1:
       length = len(text)
-      if text[length - 1] == "\n":
-        output.append(f'{red}{text[0:length - 1]} {endred}\n')
-      else:
-        output.append(f'{red}{text}{endred}')
+
+      i = 0
+      j = 0
+      while i < length:
+        if text[i] == "\n":
+          output.append(f"{red}{text[j:i]}{endred}\n")
+          j = i + 1
+
+        i += 1
+
+      if i != j:
+        output.append(f"{red}{text[j:i]}{endred}")
 
   return ''.join(output)
 
