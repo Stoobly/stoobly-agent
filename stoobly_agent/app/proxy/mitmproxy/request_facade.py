@@ -199,7 +199,7 @@ class MitmproxyRequestFacade(Request):
                 self.request.port = int(rewrite.port)
 
             if rewrite.scheme:
-                self.request.scheme = rewrite.scheme
+                self.request.scheme = rewrite.scheme.lower()
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)
