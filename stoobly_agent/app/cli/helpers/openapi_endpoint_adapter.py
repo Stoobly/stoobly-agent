@@ -78,14 +78,27 @@ class OpenApiEndpointAdapter():
           joined_path = self.__urljoin(parsed_url.path, path_name)
           split_parts = joined_path.split('/')
           pattern_path = []
+          segment_names = []
           for part in split_parts:
             sanitized_part = part
+            segment_name = part
             if part.startswith('{') and part.endswith('}'):
               sanitized_part = '%' 
+              segment_name = f":{part[1:-1]}"
             pattern_path.append(sanitized_part)
+            segment_names.append(segment_name)
           pattern_path_str = '/'.join(pattern_path)
           endpoint['match_pattern'] = pattern_path_str
           endpoint['path'] = joined_path
+
+          endpoint['path_segment_names'] = []
+          for segment_name in segment_names:
+            if segment_name == "":
+              continue
+            path_component_name: RequestComponentName = {}
+            path_component_name['name'] = segment_name
+            path_component_name['type'] = "Alias" if segment_name.startswith(':') else "Static"
+            endpoint['path_segment_names'].append(path_component_name)
           
           endpoint['port'] = str(parsed_url.port)
           if endpoint['port'] is None or endpoint['port'] == 'None':
