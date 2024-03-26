@@ -73,7 +73,7 @@ class OpenApiEndpointAdapter():
           endpoint: EndpointShowResponse = {}
           endpoint['id'] = endpoint_counter
           endpoint['method'] = http_method.upper()
-          endpoint['host'] = parsed_url.netloc
+          endpoint['host'] = 'localhost' if url == '/' else parsed_url.netloc
 
           joined_path = self.__urljoin(parsed_url.path, path_name)
           split_parts = joined_path.split('/')
@@ -107,7 +107,7 @@ class OpenApiEndpointAdapter():
             elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
             else:
-              endpoint['port'] = ''
+              endpoint['port'] = '443'
 
           alias_counter = 0
           header_param_counter = 0
@@ -533,7 +533,7 @@ class OpenApiEndpointAdapter():
       endpoint[component_name + 's'] = built_params_list
     else:
       endpoint[component_name + 's'].extend(built_params_list)
-      
+
     del endpoint[literal_component_name]
 
   # urllib.parse.urljoin() doesn't work for some of our edge cases
