@@ -257,6 +257,7 @@ class OpenApiEndpointAdapter():
           for response_code, response_definition in responses.items():
             # Construct response param name components
             literal_response_params = {}
+            response_body_array = False
             response_content = response_definition.get('content', {})
             for mimetype, media_type in response_content.items():
               param_properties = {}

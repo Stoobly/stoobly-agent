@@ -7,6 +7,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.endpoint_facade import EndpointFacade
 from .helpers.endpoints_apply_context import EndpointsApplyContext
+from .helpers.endpoints_import_context import EndpointsImportContext
 from .helpers.feature_flags import local, remote
 from .helpers.validations import validate_project_key, validate_scenario_key
 
@@ -54,3 +55,25 @@ def apply(**kwargs):
 
   facade = EndpointFacade(settings)
   facade.apply(context)
+
+@endpoint.command(
+  "import",
+  help="Import endpoints"
+)
+@click.option('--source-format', required=True, type=click.Choice([OPENAPI_FORMAT]), help="Spec file format.")
+@click.option('--source-path', help='Path to spec file.')
+def import_endpoint(**kwargs):
+  context = EndpointsImportContext()
+
+  project_key = settings.proxy.intercept.project_key
+  if project_key:
+    project_key = validate_project_key(project_key)
+    context.with_project(project_key.id)
+  
+  context.with_source(kwargs.get('source_path'), kwargs.get('source_format'))
+
+  endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Importing Endpoint: {endpoint['method']} {endpoint['path']}{bcolors.ENDC}")
+  context.with_endpoint_handler(endpoint_handler)
+  
+  facade = EndpointFacade(settings)
+  facade.import_endpoints(context)
