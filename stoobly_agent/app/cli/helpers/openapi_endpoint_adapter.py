@@ -251,6 +251,66 @@ class OpenApiEndpointAdapter():
             else:
               self.__convert_literal_component_param(endpoint, required_body_params, [literal_body_params], 'body_param_name', 'literal_body_params')
 
+          # Responses -> construct lists of response header and response param name resources
+          responses = operation.get('responses', {})
+          
+          for response_code, response_definition in responses.items():
+            # Construct response param name components
+            literal_response_params = {}
+            response_content = response_definition.get('content', {})
+            for mimetype, media_type in response_content.items():
+              param_properties = {}
+              schema = media_type['schema']
+              
+              if '$ref' in schema:
+                reference = schema['$ref']
+                self.__dereference(components, reference, [], literal_response_params)
+              else:
+                schema_type = schema.get('type')
+                if schema_type:
+                  if schema_type == 'object':
+                    param_properties = schema.get('properties', {})
+                  elif schema_type == 'array':
+                    response_body_array = True
+                    param_properties = {'tmp': schema['items']}
+                
+              if not endpoint.get('literal_response_params'):
+                endpoint['literal_response_params'] = {}
+                
+              self.__extract_param_properties(components, None, [], param_properties, literal_response_params)
+
+              endpoint['literal_response_params'] = literal_response_params
+
+              # Only support first media type
+              break
+            
+            literal_response_params = endpoint.get('literal_response_params')
+            if literal_response_params:
+              if not response_body_array:
+                self.__convert_literal_component_param(endpoint, [], literal_response_params, 'response_param_name', 'literal_response_params')
+              else:
+                self.__convert_literal_component_param(endpoint, [], [literal_response_params], 'response_param_name', 'literal_response_params')
+
+            # Construct response header name components
+            response_headers = response_definition.get('headers', {})
+            for header_name, header_definition in response_headers.items():
+              response_header_name: RequestComponentName = {}
+              response_header_name['name'] = header_name
+              
+              if '$ref' in header_definition:
+                reference = header_definition['$ref']
+                self.__dereference(components, reference, [], response_header_name)
+              else:
+                header_example = header_definition.get('example')
+                if header_example:
+                  response_header_name['values'].append(header_example)
+                response_header_name['is_required'] = header_definition.get('is_required', False)
+                response_header_name['is_deterministic'] = True
+                
+              if not endpoint.get('response_header_names'):
+                endpoint['response_header_names'] = []
+              endpoint['response_header_names'].append(response_header_name)	
+              	
           endpoints.append(endpoint)
     
     return endpoints
@@ -404,6 +464,18 @@ class OpenApiEndpointAdapter():
       component_name = component_data[1]
       component = components.get(component_type, {})
 
+      # If component_type is 'headers'
+      # Example: '#components/headers/X-RateLimit-Limit'
+      if component_type == "headers":
+        # In this case, literal_body_params represents a header rather than request or response body params
+        literal_body_params['name'] = component_name
+        header_example = component.get('example')
+        if header_example:
+          literal_body_params['values'].append(header_example)
+        literal_body_params['is_required'] = component.get('is_required', False)
+        literal_body_params['is_deterministic'] = True
+        return literal_body_params
+
       # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
       body_spec = component.content()[component_name]
       required_body_params += body_spec.get('required', [])
@@ -457,7 +529,11 @@ class OpenApiEndpointAdapter():
       else:
         param['is_required'] = False
 
-    endpoint[component_name + 's'] = built_params_list
+    if not endpoint.get(component_name + 's'):
+      endpoint[component_name + 's'] = built_params_list
+    else:
+      endpoint[component_name + 's'].extend(built_params_list)
+      
     del endpoint[literal_component_name]
 
   # urllib.parse.urljoin() doesn't work for some of our edge cases
