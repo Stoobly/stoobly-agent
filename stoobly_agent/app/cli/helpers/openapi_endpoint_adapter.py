@@ -73,7 +73,7 @@ class OpenApiEndpointAdapter():
           endpoint: EndpointShowResponse = {}
           endpoint['id'] = endpoint_counter
           endpoint['method'] = http_method.upper()
-          endpoint['host'] = 'localhost' if url == '/' else parsed_url.netloc
+          endpoint['host'] = 'localhost' if parsed_url.netloc == '' else parsed_url.netloc
 
           joined_path = self.__urljoin(parsed_url.path, path_name)
           split_parts = joined_path.split('/')
@@ -257,6 +257,7 @@ class OpenApiEndpointAdapter():
           for response_code, response_definition in responses.items():
             # Construct response param name components
             literal_response_params = {}
+            required_response_params = []
             response_body_array = False
             response_content = response_definition.get('content', {})
             for mimetype, media_type in response_content.items():
@@ -265,7 +266,7 @@ class OpenApiEndpointAdapter():
               
               if '$ref' in schema:
                 reference = schema['$ref']
-                self.__dereference(components, reference, [], literal_response_params)
+                self.__dereference(components, reference, required_response_params, literal_response_params)
               else:
                 schema_type = schema.get('type')
                 if schema_type:
@@ -274,13 +275,15 @@ class OpenApiEndpointAdapter():
                   elif schema_type == 'array':
                     response_body_array = True
                     param_properties = {'tmp': schema['items']}
+              
+              for property_key, property_value in param_properties.items():
+                if property_key in required_response_params:
+                  param_properties[property_key]['required'] = True
                 
-              if not endpoint.get('literal_response_params'):
-                endpoint['literal_response_params'] = {}
-                
-              self.__extract_param_properties(components, None, [], param_properties, literal_response_params)
+              self.__extract_param_properties(components, None, required_response_params, param_properties, literal_response_params)
 
-              endpoint['literal_response_params'] = literal_response_params
+              if literal_response_params:
+                endpoint['literal_response_params'] = literal_response_params
 
               # Only support first media type
               break
@@ -288,9 +291,9 @@ class OpenApiEndpointAdapter():
             literal_response_params = endpoint.get('literal_response_params')
             if literal_response_params:
               if not response_body_array:
-                self.__convert_literal_component_param(endpoint, [], literal_response_params, 'response_param_name', 'literal_response_params')
+                self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
               else:
-                self.__convert_literal_component_param(endpoint, [], [literal_response_params], 'response_param_name', 'literal_response_params')
+                self.__convert_literal_component_param(endpoint, required_response_params, [literal_response_params], 'response_param_name', 'literal_response_params')
 
             # Construct response header name components
             response_headers = response_definition.get('headers', {})
@@ -507,7 +510,7 @@ class OpenApiEndpointAdapter():
       # elif any_of or one_of:
 
       return param_properties 
-
+  
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: Union[dict, list],
       component_name: str, literal_component_name: str) -> None:
