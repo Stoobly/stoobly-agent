@@ -62,29 +62,69 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
           'name': 'x-next',
         },
       ],
-      'response_param_names': [
+        "response_param_names": [
         {
-          'endpoint_id': 1,
-          'id': 1,
-          'inferred_type': 'Integer',
-          'is_deterministic': True,
-          'is_required': True,
-          'name': 'code',
-          'query': 'code',
-          'response_param_name_id': None,
-          'values': [0],
+          "endpoint_id": 1,
+          "inferred_type": "Integer",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "id",
+          "query": "id",
+          "response_param_name_id": None,
+          "id": 1,
+          "values": [
+            0
+          ]
         },
         {
-          'endpoint_id': 1,
-          'id': 2,
-          'inferred_type': 'String',
-          'is_deterministic': True,
-          'is_required': True,
-          'name': 'message',
-          'query': 'message',
-          'response_param_name_id': None,
-          'values': [''],
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "name",
+          "query": "name",
+          "response_param_name_id": None,
+          "id": 2,
+          "values": [
+            ""
+          ]
         },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": False,
+          "is_deterministic": True,
+          "name": "tag",
+          "query": "tag",
+          "response_param_name_id": None,
+          "id": 3
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "Integer",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "code",
+          "query": "code",
+          "response_param_name_id": None,
+          "id": 1,
+          "values": [
+            0
+          ]
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "message",
+          "query": "message",
+          "response_param_name_id": None,
+          "id": 2,
+          "values": [
+            ""
+          ]
+        }
       ],
     }
 
