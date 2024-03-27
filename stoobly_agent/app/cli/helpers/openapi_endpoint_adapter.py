@@ -257,8 +257,8 @@ class OpenApiEndpointAdapter():
           for response_code, response_definition in responses.items():
             # Construct response param name components
             literal_response_params = {}
-            required_response_params = []
             response_body_array = False
+            required_response_params = []
             response_content = response_definition.get('content', {})
             for mimetype, media_type in response_content.items():
               param_properties = {}
@@ -484,7 +484,14 @@ class OpenApiEndpointAdapter():
       body_spec = component.content()[component_name]
       required_body_params += body_spec.get('required', [])
 
-      param_properties = body_spec.get('properties')
+      param_properties = {}
+      schema_type = body_spec.get('type')
+      if schema_type:
+        if schema_type == 'object':
+          param_properties = body_spec.get('properties', {})
+        elif schema_type == 'array':
+          param_properties = {'tmp': body_spec['items']}
+
       all_of = body_spec.get('allOf')
       any_of = body_spec.get('anyOf')
       one_of = body_spec.get('oneOf')
