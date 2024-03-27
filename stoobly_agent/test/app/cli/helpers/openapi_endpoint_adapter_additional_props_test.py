@@ -44,6 +44,40 @@ class TestOpenApiEndpointAdapterAdditionalProps():
           "body_param_name_id": None,
           "id": 1
         }
+      ],
+      'path_segment_names': [
+        {
+          'name': 'v1',
+          'type': 'Static'
+        },
+        {
+          'name': 'pets',
+          'type': 'Static'
+        }
+      ],
+      'response_param_names': [
+        {
+          'endpoint_id': 1,
+          'id': 1,
+          'inferred_type': 'Integer',
+          'is_deterministic': True,
+          'is_required': True,
+          'name': 'code',
+          'query': 'code',
+          'response_param_name_id': None,
+          'values': [0]
+        },
+        {
+          'endpoint_id': 1,
+          'id': 2,
+          'inferred_type': 'String',
+          'is_deterministic': True,
+          'is_required': True,
+          'name': 'message',
+          'query': 'message',
+          'response_param_name_id': None,
+          'values': ['']
+        }
       ]
     }
 
