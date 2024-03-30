@@ -1,13 +1,13 @@
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 OPENAPI_FORMAT = 'openapi'
 
 ENDPOINT_COMPONENT_NAMES = [
-    "header_name",
-    "body_param_name",
-    "query_param_name",
-    "response_header_name",
-    "response_param_name"
+  "header_name",
+  "body_param_name",
+  "query_param_name",
+  "response_header_name",
+  "response_param_name"
 ]
 
 class EndpointCreateParams(TypedDict):
