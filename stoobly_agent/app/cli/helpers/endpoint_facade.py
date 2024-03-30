@@ -12,7 +12,7 @@ from stoobly_agent.lib.api.response_header_names_resource import ResponseHeaderN
 from .endpoints_apply_context import EndpointsApplyContext
 from .endpoints_import_context import EndpointsImportContext
 from .endpoints_apply_service import apply_endpoints
-from .endpoints_import_service import import_all_endpoints
+from .endpoints_import_service import import_endpoints
 from .synchronize_request_service import SynchronizeRequestService
 
 class EndpointFacade():
@@ -43,4 +43,4 @@ class EndpointFacade():
     context.with_response_param_name_resource(ResponseParamNamesResource(api_url, api_key))
     context.with_response_header_name_resource(ResponseHeaderNamesResource(api_url, api_key))
 
-    import_all_endpoints(context)
+    import_endpoints(context)

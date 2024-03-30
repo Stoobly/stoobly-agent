@@ -74,6 +74,9 @@ def import_endpoint(**kwargs):
 
   endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Importing Endpoint: {endpoint['method']} {endpoint['path']}{bcolors.ENDC}")
   context.with_endpoint_handler(endpoint_handler)
+
+  error_handler = lambda endpoint: print(f"{bcolors.FAIL}Failed to Import Endpoint: {endpoint['method']} {endpoint['path']} - Aborting Operation{bcolors.ENDC}")
+  context.with_error_handler(error_handler)
   
   facade = EndpointFacade(settings)
   facade.import_endpoints(context)
