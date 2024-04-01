@@ -48,11 +48,11 @@ class TestOpenApiEndpointAdapterAdditionalProps():
       'path_segment_names': [
         {
           'name': 'v1',
-          'type': 'Static'
+          'type': 'static'
         },
         {
           'name': 'pets',
-          'type': 'Static'
+          'type': 'static'
         }
       ],
       'response_param_names': [

@@ -14,16 +14,11 @@ class EndpointsImportContext:
   def __init__(self):
     self.endpoints = []
     self.endpoint_handlers = []
-    self.error_handlers = []
     self.resources = {}
     self.project_id = None
 
   def with_endpoint_handler(self, handler: Callable[[EndpointShowResponse], None]):
     self.endpoint_handlers.append(handler)
-    return self
-  
-  def with_error_handler(self, handler: Callable[[EndpointShowResponse], None]):
-    self.error_handlers.append(handler)
     return self
   
   def with_project(self, project_id: int):

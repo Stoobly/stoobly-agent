@@ -92,11 +92,11 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'v2',
-            'type': 'Static'
+            'type': 'static'
           },
           {
             'name': 'pets',
-            'type': 'Static'
+            'type': 'static'
           }
         ],
         'response_param_names': [
@@ -201,11 +201,11 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
               'name': 'v2',
-              'type': 'Static',
+              'type': 'static',
           },
           {
               'name': 'pets',
-              'type': 'Static',
+              'type': 'static',
           },
         ],
         'response_param_names': [
@@ -279,15 +279,15 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
             {
                 'name': 'v2',
-                'type': 'Static',
+                'type': 'static',
             },
             {
                 'name': 'pets',
-                'type': 'Static',
+                'type': 'static',
             },
             {
                 'name': ':id',
-                'type': 'Alias',
+                'type': 'alias',
             },
         ],
         'response_param_names': [
@@ -361,15 +361,15 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'v2',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': 'pets',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': ':id',
-            'type': 'Alias',
+            'type': 'alias',
           },
         ],
         'response_param_names': [
@@ -431,7 +431,7 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'ds-api',
-            'type': 'Static',
+            'type': 'static',
           },
         ],
         'response_param_names': [
@@ -480,19 +480,19 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'ds-api',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': ':dataset',
-            'type': 'Alias',
+            'type': 'alias',
           },
           {
             'name': ':version',
-            'type': 'Alias',
+            'type': 'alias',
           },
           {
             'name': 'fields',
-            'type': 'Static',
+            'type': 'static',
           },
         ],
       }
@@ -550,19 +550,19 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'ds-api',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': ':dataset',
-            'type': 'Alias',
+            'type': 'alias',
           },
           {
             'name': ':version',
-            'type': 'Alias',
+            'type': 'alias',
           },
           {
             'name': 'records',
-            'type': 'Static',
+            'type': 'static',
           },
         ],
       }
@@ -701,11 +701,11 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'v1',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': 'pets',
-            'type': 'Static',
+            'type': 'static',
           },
         ],
         'response_param_names': [
@@ -852,11 +852,11 @@ class TestOpenApiEndpointAdapter():
           'path_segment_names': [
             {
               'name': 'v2',
-              'type': 'Static',
+              'type': 'static',
             },
             {
               'name': 'pets',
-              'type': 'Static',
+              'type': 'static',
             },
           ],
           'response_param_names': [
@@ -905,12 +905,12 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_put_v3_pets_ref(self) -> Dict:
       return {
-        'host': 'localhost',
+        'host': '-',
         'id': 1,
         'match_pattern': '/v3/pet',
         'method': 'PUT',
         'path': '/v3/pet',
-        'port': '443',
+        'port': '0',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -1036,11 +1036,11 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
               'name': 'v3',
-              'type': 'Static',
+              'type': 'static',
           },
           {
               'name': 'pet',
-              'type': 'Static',
+              'type': 'static',
           },
         ],
         'response_param_names': [
@@ -1170,12 +1170,12 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_post_v3_user_createwithlist(self) -> Dict:
       return {
-        'host': 'localhost',
+        'host': '-',
         'id': 14,
         'match_pattern': '/v3/user/createWithList',
         'method': 'POST',
         'path': '/v3/user/createWithList',
-        'port': '443',
+        'port': '0',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -1270,15 +1270,15 @@ class TestOpenApiEndpointAdapter():
         'path_segment_names': [
           {
             'name': 'v3',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': 'user',
-            'type': 'Static',
+            'type': 'static',
           },
           {
             'name': 'createWithList',
-            'type': 'Static',
+            'type': 'static',
           },
         ],
         'response_param_names': [

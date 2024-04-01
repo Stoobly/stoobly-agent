@@ -29,10 +29,10 @@ class TestOpenApiEndpointAdapterMissingServers():
     return {
       "id": 1,
       "method": "GET",
-      "host": "localhost",
+      "host": "-",
       "match_pattern": "/pets",
       "path": "/pets",
-      "port": "443",
+      "port": "0",
       "query_param_names": [
         {
           "endpoint_id": 1,
@@ -48,7 +48,7 @@ class TestOpenApiEndpointAdapterMissingServers():
       'path_segment_names': [
         {
           'name': 'pets',
-          'type': 'Static',
+          'type': 'static',
         },
       ],
       'response_header_names': [

@@ -73,7 +73,7 @@ class OpenApiEndpointAdapter():
           endpoint: EndpointShowResponse = {}
           endpoint['id'] = endpoint_counter
           endpoint['method'] = http_method.upper()
-          endpoint['host'] = 'localhost' if parsed_url.netloc == '' else parsed_url.netloc
+          endpoint['host'] = '-' if parsed_url.netloc == '' else parsed_url.netloc
 
           joined_path = self.__urljoin(parsed_url.path, path_name)
           split_parts = joined_path.split('/')
@@ -97,7 +97,7 @@ class OpenApiEndpointAdapter():
               continue
             path_component_name: RequestComponentName = {}
             path_component_name['name'] = segment_name
-            path_component_name['type'] = "Alias" if segment_name.startswith(':') else "Static"
+            path_component_name['type'] = "alias" if segment_name.startswith(':') else "static"
             endpoint['path_segment_names'].append(path_component_name)
           
           endpoint['port'] = str(parsed_url.port)
@@ -107,7 +107,7 @@ class OpenApiEndpointAdapter():
             elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
             else:
-              endpoint['port'] = '443'
+              endpoint['port'] = '0'
 
           alias_counter = 0
           header_param_counter = 0
@@ -253,68 +253,9 @@ class OpenApiEndpointAdapter():
 
           # Responses -> construct lists of response header and response param name resources
           responses = operation.get('responses', {})
-          
-          for response_code, response_definition in responses.items():
-            # Construct response param name components
-            literal_response_params = {}
-            response_body_array = False
-            required_response_params = []
-            response_content = response_definition.get('content', {})
-            for mimetype, media_type in response_content.items():
-              param_properties = {}
-              schema = media_type['schema']
-              
-              if '$ref' in schema:
-                reference = schema['$ref']
-                self.__dereference(components, reference, required_response_params, literal_response_params)
-              else:
-                schema_type = schema.get('type')
-                if schema_type:
-                  if schema_type == 'object':
-                    param_properties = schema.get('properties', {})
-                  elif schema_type == 'array':
-                    response_body_array = True
-                    param_properties = {'tmp': schema['items']}
-              
-              for property_key, property_value in param_properties.items():
-                if property_key in required_response_params:
-                  param_properties[property_key]['required'] = True
-                
-              self.__extract_param_properties(components, None, required_response_params, param_properties, literal_response_params)
+          if responses:
+            self.__parse_responses(endpoint, responses, components)
 
-              if literal_response_params:
-                endpoint['literal_response_params'] = literal_response_params
-
-              # Only support first media type
-              break
-            
-            literal_response_params = endpoint.get('literal_response_params')
-            if literal_response_params:
-              if not response_body_array:
-                self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
-              else:
-                self.__convert_literal_component_param(endpoint, required_response_params, [literal_response_params], 'response_param_name', 'literal_response_params')
-
-            # Construct response header name components
-            response_headers = response_definition.get('headers', {})
-            for header_name, header_definition in response_headers.items():
-              response_header_name: RequestComponentName = {}
-              response_header_name['name'] = header_name
-              
-              if '$ref' in header_definition:
-                reference = header_definition['$ref']
-                self.__dereference(components, reference, [], response_header_name)
-              else:
-                header_example = header_definition.get('example')
-                if header_example:
-                  response_header_name['values'].append(header_example)
-                response_header_name['is_required'] = header_definition.get('is_required', False)
-                response_header_name['is_deterministic'] = True
-                
-              if not endpoint.get('response_header_names'):
-                endpoint['response_header_names'] = []
-              endpoint['response_header_names'].append(response_header_name)	
-              	
           endpoints.append(endpoint)
     
     return endpoints
@@ -657,3 +598,64 @@ class OpenApiEndpointAdapter():
     
     return result
 
+  def __parse_responses(self, endpoint: EndpointShowResponse, responses: Spec, components: Spec):
+    for response_code, response_definition in responses.items():
+      # Construct response param name components
+      literal_response_params = {}
+      response_body_array = False
+      required_response_params = []
+      response_content = response_definition.get('content', {})
+      for mimetype, media_type in response_content.items():
+        param_properties = {}
+        schema = media_type['schema']
+        
+        if '$ref' in schema:
+          reference = schema['$ref']
+          self.__dereference(components, reference, required_response_params, literal_response_params)
+        else:
+          schema_type = schema.get('type')
+          if schema_type:
+            if schema_type == 'object':
+              param_properties = schema.get('properties', {})
+            elif schema_type == 'array':
+              response_body_array = True
+              param_properties = {'tmp': schema['items']}
+        
+        for property_key, property_value in param_properties.items():
+          if property_key in required_response_params:
+            param_properties[property_key]['required'] = True
+          
+        self.__extract_param_properties(components, None, required_response_params, param_properties, literal_response_params)
+
+        if literal_response_params:
+          endpoint['literal_response_params'] = literal_response_params
+
+        # Only support first media type
+        break
+      
+      literal_response_params = endpoint.get('literal_response_params')
+      if literal_response_params:
+        if not response_body_array:
+          self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
+        else:
+          self.__convert_literal_component_param(endpoint, required_response_params, [literal_response_params], 'response_param_name', 'literal_response_params')
+
+      # Construct response header name components
+      response_headers = response_definition.get('headers', {})
+      for header_name, header_definition in response_headers.items():
+        response_header_name: RequestComponentName = {}
+        response_header_name['name'] = header_name
+        
+        if '$ref' in header_definition:
+          reference = header_definition['$ref']
+          self.__dereference(components, reference, [], response_header_name)
+        else:
+          header_example = header_definition.get('example')
+          if header_example:
+            response_header_name['values'].append(header_example)
+          response_header_name['is_required'] = header_definition.get('is_required', False)
+          response_header_name['is_deterministic'] = True
+          
+        if not endpoint.get('response_header_names'):
+          endpoint['response_header_names'] = []
+        endpoint['response_header_names'].append(response_header_name)	  
