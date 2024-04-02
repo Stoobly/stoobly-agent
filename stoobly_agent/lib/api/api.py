@@ -69,3 +69,7 @@ class Api():
     def put(self, url, **kwargs):
       handler = lambda: requests.put(url, **kwargs)
       return self.without_proxy(handler)
+    
+    def delete(self, url, **kwargs):
+      handler = lambda: requests.delete(url, **kwargs)
+      return self.without_proxy(handler)

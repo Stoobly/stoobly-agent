@@ -29,10 +29,10 @@ class TestOpenApiEndpointAdapterMissingInfo():
     return {
       "id": 1,
       "method": "GET",
-      "host": "",
+      "host": "-",
       "match_pattern": "/pets",
       "path": "/pets",
-      "port": "",
+      "port": "0",
       "query_param_names": [
         {
           "endpoint_id": 1,
@@ -44,7 +44,84 @@ class TestOpenApiEndpointAdapterMissingInfo():
           "query_param_name_id": None,
           "id": 1
         }
-      ]
+      ],
+     'path_segment_names': [
+        {
+          'name': 'pets',
+          'type': 'static',
+        },
+      ],
+     'response_header_names': [
+        {
+          'is_deterministic': True,
+          'is_required': False,
+          'name': 'x-next',
+        },
+      ],
+      "response_param_names": [
+        {
+          "endpoint_id": 1,
+          "inferred_type": "Integer",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "id",
+          "query": "id",
+          "response_param_name_id": None,
+          "id": 1,
+          "values": [
+            0
+          ]
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "name",
+          "query": "name",
+          "response_param_name_id": None,
+          "id": 2,
+          "values": [
+            ""
+          ]
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": False,
+          "is_deterministic": True,
+          "name": "tag",
+          "query": "tag",
+          "response_param_name_id": None,
+          "id": 3
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "Integer",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "code",
+          "query": "code",
+          "response_param_name_id": None,
+          "id": 1,
+          "values": [
+            0
+          ]
+        },
+        {
+          "endpoint_id": 1,
+          "inferred_type": "String",
+          "is_required": True,
+          "is_deterministic": True,
+          "name": "message",
+          "query": "message",
+          "response_param_name_id": None,
+          "id": 2,
+          "values": [
+            ""
+          ]
+        }
+      ],
     }
 
   def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_file_path, expected_get_pets_endpoint):

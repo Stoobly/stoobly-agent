@@ -88,6 +88,81 @@ class TestOpenApiEndpointAdapter():
             'query': 'limit',
             'query_param_name_id': None,
           }
+        ],
+        'path_segment_names': [
+          {
+            'name': 'v2',
+            'type': 'static'
+          },
+          {
+            'name': 'pets',
+            'type': 'static'
+          }
+        ],
+        'response_param_names': [
+          {
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'Element',
+            'query': '[*]',
+            'response_param_name_id': None
+          },
+          {
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'name',
+            'query': '[*].name',
+            'response_param_name_id': 1,
+            'values': ['']
+          },
+          {
+            'endpoint_id': 1,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tag',
+            'query': '[*].tag',
+            'response_param_name_id': 1
+          },
+          {
+            'endpoint_id': 1,
+            'id': 4,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'id',
+            'query': '[*].id',
+            'response_param_name_id': 1,
+            'values': [0]
+          },
+          {
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'code',
+            'query': 'code',
+            'response_param_name_id': None,
+            'values': [0]
+          },
+          {
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'message',
+            'query': 'message',
+            'response_param_name_id': None,
+            'values': ['']
+          }
         ]
       }
 
@@ -123,6 +198,72 @@ class TestOpenApiEndpointAdapter():
             'query': 'tag',
           },
         ],
+        'path_segment_names': [
+          {
+              'name': 'v2',
+              'type': 'static',
+          },
+          {
+              'name': 'pets',
+              'type': 'static',
+          },
+        ],
+        'response_param_names': [
+          {
+              'endpoint_id': 2,
+              'id': 1,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'name',
+              'query': 'name',
+              'response_param_name_id': None,
+              'values': [''],
+          },
+          {
+              'endpoint_id': 2,
+              'id': 2,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'tag',
+              'query': 'tag',
+              'response_param_name_id': None,
+          },
+          {
+              'endpoint_id': 2,
+              'id': 3,
+              'inferred_type': 'Integer',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'id',
+              'query': 'id',
+              'response_param_name_id': None,
+              'values': [0],
+          },
+          {
+              'endpoint_id': 2,
+              'id': 1,
+              'inferred_type': 'Integer',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'code',
+              'query': 'code',
+              'response_param_name_id': None,
+              'values': [0],
+          },
+          {
+              'endpoint_id': 2,
+              'id': 2,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'message',
+              'query': 'message',
+              'response_param_name_id': None,
+              'values': [''],
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -135,6 +276,76 @@ class TestOpenApiEndpointAdapter():
         'path': '/v2/pets/{id}',
         'match_pattern': '/v2/pets/%',
         'aliases': [{'id': 1, 'name': '{id}'}],
+        'path_segment_names': [
+            {
+                'name': 'v2',
+                'type': 'static',
+            },
+            {
+                'name': 'pets',
+                'type': 'static',
+            },
+            {
+                'name': ':id',
+                'type': 'alias',
+            },
+        ],
+        'response_param_names': [
+            {
+                'endpoint_id': 3,
+                'id': 1,
+                'inferred_type': 'String',
+                'is_deterministic': True,
+                'is_required': True,
+                'name': 'name',
+                'query': 'name',
+                'response_param_name_id': None,
+                'values': [''],
+            },
+            {
+                'endpoint_id': 3,
+                'id': 2,
+                'inferred_type': 'String',
+                'is_deterministic': True,
+                'is_required': False,
+                'name': 'tag',
+                'query': 'tag',
+                'response_param_name_id': None,
+            },
+            {
+                'endpoint_id': 3,
+                'id': 3,
+                'inferred_type': 'Integer',
+                'is_deterministic': True,
+                'is_required': True,
+                'name': 'id',
+                'query': 'id',
+                'response_param_name_id': None,
+                'values': [0],
+            },
+            {
+                'endpoint_id': 3,
+                'id': 1,
+                'inferred_type': 'Integer',
+                'is_deterministic': True,
+                'is_required': True,
+                'name': 'code',
+                'query': 'code',
+                'response_param_name_id': None,
+                'values': [0],
+            },
+            {
+                'endpoint_id': 3,
+                'id': 2,
+                'inferred_type': 'String',
+                'is_deterministic': True,
+                'is_required': True,
+                'name': 'message',
+                'query': 'message',
+                'response_param_name_id': None,
+                'values': [''],
+            },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -147,6 +358,44 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/v2/pets/%',
         'port': '443',
         'aliases': [{'id': 1, 'name': '{id}'}],
+        'path_segment_names': [
+          {
+            'name': 'v2',
+            'type': 'static',
+          },
+          {
+            'name': 'pets',
+            'type': 'static',
+          },
+          {
+            'name': ':id',
+            'type': 'alias',
+          },
+        ],
+        'response_param_names': [
+          {
+            'endpoint_id': 4,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'code',
+            'query': 'code',
+            'response_param_name_id': None,
+            'values': [0],
+          },
+          {
+            'endpoint_id': 4,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'message',
+            'query': 'message',
+            'response_param_name_id': None,
+            'values': [''],
+          },
+        ],
       }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_expanded_file_path, expected_v2_get_pets_endpoint, expected_v2_post_pets_endpoint, expected_v2_get_pets_id_endpoint, expected_v2_delete_pets_id_endpoint):
@@ -179,6 +428,34 @@ class TestOpenApiEndpointAdapter():
         'port': '443',
         'path': '/ds-api/',
         'match_pattern': '/ds-api/',
+        'path_segment_names': [
+          {
+            'name': 'ds-api',
+            'type': 'static',
+          },
+        ],
+        'response_param_names': [
+          {
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'total',
+            'query': 'total',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'apis',
+            'query': 'apis',
+            'response_param_name_id': None,
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -186,6 +463,8 @@ class TestOpenApiEndpointAdapter():
       http_endpoint_version = copy.deepcopy(expected_get_root_https)
       http_endpoint_version['id'] = 4
       http_endpoint_version['port'] = '80'
+      for response_param_name in http_endpoint_version['response_param_names']:
+        response_param_name['endpoint_id'] = 4
       return http_endpoint_version
 
     @pytest.fixture(scope='class')
@@ -198,6 +477,24 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/ds-api/%/%/fields',
         'path': '/ds-api/{dataset}/{version}/fields',
         'aliases': [{'id': 1, 'name': '{dataset}'}, {'id': 2, 'name': '{version}'}],
+        'path_segment_names': [
+          {
+            'name': 'ds-api',
+            'type': 'static',
+          },
+          {
+            'name': ':dataset',
+            'type': 'alias',
+          },
+          {
+            'name': ':version',
+            'type': 'alias',
+          },
+          {
+            'name': 'fields',
+            'type': 'static',
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -249,6 +546,24 @@ class TestOpenApiEndpointAdapter():
             'name': 'rows',
             'query': 'rows',
           }
+        ],
+        'path_segment_names': [
+          {
+            'name': 'ds-api',
+            'type': 'static',
+          },
+          {
+            'name': ':dataset',
+            'type': 'alias',
+          },
+          {
+            'name': ':version',
+            'type': 'alias',
+          },
+          {
+            'name': 'records',
+            'type': 'static',
+          },
         ],
       }
 
@@ -383,6 +698,40 @@ class TestOpenApiEndpointAdapter():
             'values': [0],
           },
         ],
+        'path_segment_names': [
+          {
+            'name': 'v1',
+            'type': 'static',
+          },
+          {
+            'name': 'pets',
+            'type': 'static',
+          },
+        ],
+        'response_param_names': [
+          {
+            'endpoint_id': 1,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'code',
+            'query': 'code',
+            'response_param_name_id': None,
+            'values': [0],
+          },
+          {
+            'endpoint_id': 1,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': True,
+            'name': 'message',
+            'query': 'message',
+            'response_param_name_id': None,
+            'values': [''],
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -500,6 +849,41 @@ class TestOpenApiEndpointAdapter():
             'query': 'id',
             'values': [0]}
           ],
+          'path_segment_names': [
+            {
+              'name': 'v2',
+              'type': 'static',
+            },
+            {
+              'name': 'pets',
+              'type': 'static',
+            },
+          ],
+          'response_param_names': [
+            {
+              'endpoint_id': 2,
+              'id': 1,
+              'inferred_type': 'Integer',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'code',
+              'query': 'code',
+              'response_param_name_id': None,
+              'values': [0],
+            },
+            {
+              'endpoint_id': 2,
+              'id': 2,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'message',
+              'query': 'message',
+              'response_param_name_id': None,
+              'values': [''],
+            },
+          ],
+
         }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_references_file_path, expected_get_v1_pets_ref, expected_get_v2_pets_ref):
@@ -521,12 +905,12 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_put_v3_pets_ref(self) -> Dict:
       return {
-        'host': '',
+        'host': '-',
         'id': 1,
         'match_pattern': '/v3/pet',
         'method': 'PUT',
         'path': '/v3/pet',
-        'port': '',
+        'port': '0',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -649,17 +1033,149 @@ class TestOpenApiEndpointAdapter():
             'query': 'status'
           },
         ],
+        'path_segment_names': [
+          {
+              'name': 'v3',
+              'type': 'static',
+          },
+          {
+              'name': 'pet',
+              'type': 'static',
+          },
+        ],
+        'response_param_names': [
+          {
+              'endpoint_id': 1,
+              'id': 1,
+              'inferred_type': 'Integer',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'id',
+              'query': 'id',
+              'response_param_name_id': None,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 2,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'name',
+              'query': 'name',
+              'response_param_name_id': None,
+              'values': [''],
+          },
+          {
+              'endpoint_id': 1,
+              'id': 3,
+              'inferred_type': 'Hash',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'category',
+              'query': 'category',
+              'response_param_name_id': None,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 4,
+              'inferred_type': 'Integer',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'id',
+              'query': 'category.id',
+              'response_param_name_id': 3,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 5,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'name',
+              'query': 'category.name',
+              'response_param_name_id': 3,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 6,
+              'inferred_type': 'Array',
+              'is_deterministic': True,
+              'is_required': True,
+              'name': 'photoUrls',
+              'query': 'photoUrls',
+              'response_param_name_id': None,
+              'values': [[]],
+          },
+          {
+            'endpoint_id': 1,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_required': False,
+            'name': 'PhotourlsElement',
+            'query': 'photoUrls[*]',
+            'response_param_name_id': 6,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 8,
+            'inferred_type': 'Array',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'tags',
+            'query': 'tags',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 9,
+            'inferred_type': 'Hash',
+            'is_required': False,
+            'name': 'TagsElement',
+            'query': 'tags[*]',
+            'response_param_name_id': 8,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 10,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'tags[*].id',
+            'response_param_name_id': 9,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 11,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'name',
+            'query': 'tags[*].name',
+            'response_param_name_id': 9,
+          },
+          {
+            'endpoint_id': 1,
+            'id': 12,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'status',
+            'query': 'status',
+            'response_param_name_id': None,
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
     def expected_post_v3_user_createwithlist(self) -> Dict:
       return {
-        'host': '',
+        'host': '-',
         'id': 14,
         'match_pattern': '/v3/user/createWithList',
         'method': 'POST',
         'path': '/v3/user/createWithList',
-        'port': '',
+        'port': '0',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -751,6 +1267,103 @@ class TestOpenApiEndpointAdapter():
             'query': '[*].userStatus'
           }
         ],
+        'path_segment_names': [
+          {
+            'name': 'v3',
+            'type': 'static',
+          },
+          {
+            'name': 'user',
+            'type': 'static',
+          },
+          {
+            'name': 'createWithList',
+            'type': 'static',
+          },
+        ],
+        'response_param_names': [
+          {
+            'endpoint_id': 14,
+            'id': 1,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'id',
+            'query': 'id',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 2,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'username',
+            'query': 'username',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 3,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'firstName',
+            'query': 'firstName',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 4,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'lastName',
+            'query': 'lastName',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 5,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'email',
+            'query': 'email',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 6,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'password',
+            'query': 'password',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 7,
+            'inferred_type': 'String',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'phone',
+            'query': 'phone',
+            'response_param_name_id': None,
+          },
+          {
+            'endpoint_id': 14,
+            'id': 8,
+            'inferred_type': 'Integer',
+            'is_deterministic': True,
+            'is_required': False,
+            'name': 'userStatus',
+            'query': 'userStatus',
+            'response_param_name_id': None,
+          },
+        ],
+
       }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_swagger_io_file_path, expected_put_v3_pets_ref, expected_post_v3_user_createwithlist):
