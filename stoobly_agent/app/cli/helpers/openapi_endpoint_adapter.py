@@ -155,7 +155,10 @@ class OpenApiEndpointAdapter():
                   param_value = self.__open_api_to_default_python_type(open_api_type)
 
               literal_query_param = {
-                parameter['name']: {'value': param_value}
+                parameter['name']: {
+                  'value': param_value,
+                  'required': parameter.get('required', False),
+                }
               }
 
               if not endpoint.get('literal_query_params'):
