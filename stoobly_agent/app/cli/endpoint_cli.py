@@ -47,7 +47,7 @@ def apply(**kwargs):
   context.with_lifecycle_hooks_path(kwargs.get('lifecycle_hooks_path'))
   context.with_source(kwargs.get('source_path'), kwargs.get('source_format'))
 
-  endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Applying Endpoint: {endpoint['path']}{bcolors.ENDC}")
+  endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Applying Endpoint {endpoint['method']} {endpoint['path']}{bcolors.ENDC}")
   context.with_endpoint_handler(endpoint_handler)
 
   request_handler = lambda request, endpoint: print(request.url)
@@ -72,7 +72,7 @@ def import_endpoint(**kwargs):
   
   context.with_source(kwargs.get('source_path'), kwargs.get('source_format'))
 
-  endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Importing Endpoint: {endpoint['method']} {endpoint['path']}{bcolors.ENDC}")
+  endpoint_handler = lambda endpoint: print(f"{bcolors.OKBLUE}Importing Endpoint {endpoint['method']} {endpoint['path']}{bcolors.ENDC}")
   context.with_endpoint_handler(endpoint_handler)
   
   facade = EndpointFacade(settings)
