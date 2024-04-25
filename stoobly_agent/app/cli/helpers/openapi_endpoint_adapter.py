@@ -603,6 +603,10 @@ class OpenApiEndpointAdapter():
 
   def __parse_responses(self, endpoint: EndpointShowResponse, responses: Spec, components: Spec):
     for response_code, response_definition in responses.items():
+      # Only support status code 200 for now
+      if response_code != '200':
+        continue
+
       # Construct response param name components
       literal_response_params = {}
       response_body_array = False
