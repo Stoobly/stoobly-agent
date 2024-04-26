@@ -42,7 +42,7 @@ class InterceptSettings:
 
   @mode.setter
   def mode(self, v):
-    if v in [mode.MOCK, mode.NONE, mode.RECORD, mode.TEST]:
+    if v in [mode.MOCK, mode.NONE, mode.RECORD, mode.REPLAY, mode.TEST]:
       self.__mode = v
       self.__intercept_settings['mode'] = v
 

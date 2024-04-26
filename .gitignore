@@ -62,7 +62,6 @@ tags
 # Stoobly
 *.tar.gz
 **/.stoobly/tmp
-stoobly_agent/public
 
 # GCP
 application_default_credentials.json
