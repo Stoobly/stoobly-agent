@@ -24,7 +24,7 @@ def import_endpoints(context: EndpointsImportContext):
         try:
             res = import_endpoint(context.project_id, context.resources['endpoint'], endpoint)
         except requests.HTTPError as e:
-            error_handler(endpoint, e)
+            error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
             return
         
         if res.status_code == 409: # Endpoint already created
@@ -34,11 +34,12 @@ def import_endpoints(context: EndpointsImportContext):
         try:
             res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources)
         except requests.HTTPError as e:
-            error_handler(endpoint, e)
+            error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
+
             try:
                 cleanup_endpoint(context.project_id, endpoint_id, context.resources['endpoint'])
             except requests.HTTPError as e:
-                print(f"{bcolors.FAIL}Encountered {e.response.status_code} {e.response.reason}: {e.response.text} - Failed to delete endpoint: {endpoint['method']} {endpoint['path']}{bcolors.ENDC}", file=sys.stderr)
+                error_handler(e, f"Failed to delete endpoint: {endpoint['method']} {endpoint['path']}, id {endpoint_id}")
             return
 
 def import_endpoint(project_id: int, endpoint_resource: EndpointsResource, endpoint: EndpointShowResponse):
@@ -133,15 +134,19 @@ def import_component_names(project_id: int, endpoint_id: int, endpoint: Endpoint
             process_import(component_name, project_id, endpoint_id, resource, component)
 
 def cleanup_endpoint(project_id: int, endpoint_id: int, resource: EndpointsResource):
-    print(f"{bcolors.FAIL}Cleaning up partial import...{bcolors.ENDC}")
+    print(f"{bcolors.OKBLUE}Cleaning up partial import...{bcolors.ENDC}")
     res: requests.Response = resource.destroy(endpoint_id, **{
         'project_id': project_id
     })
 
     res.raise_for_status()
 
-def error_handler(endpoint: EndpointShowResponse, error: requests.HTTPError):
-    print(
-        f"{bcolors.FAIL}Encountered {error.response.status_code} {error.response.reason}: {error.response.text} - Failed to import endpoint: {endpoint['method']} {endpoint['path']} - Aborting operation{bcolors.ENDC}", 
-        file=sys.stderr
-    )
+def error_handler(error: requests.HTTPError, message = ''):
+    if message:
+        print(
+            f"{bcolors.FAIL}{message}{bcolors.ENDC}",
+            file=sys.stderr
+        )
+
+    print(error.response.text, file=sys.stderr)
+    print(f"Error {error.response.status_code} {error.response.reason}", file=sys.stderr)
