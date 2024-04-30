@@ -105,6 +105,8 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, help='Proxy service port.')
+@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, help='UI service port.')
@@ -115,6 +117,12 @@ def run(**kwargs):
 
     if kwargs.get('lifecycle_hooks_path'):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
+
+    if kwargs.get('public_directory_path'):
+      os.environ[env_vars.AGENT_PUBLIC_DIRECOTRY_PATH] = kwargs['public_directory_path']
+
+    if kwargs.get('response_fixtures_path'):
+      os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
 
     # Observe config for changes
     Settings.instance().watch()
@@ -137,7 +145,10 @@ def run(**kwargs):
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
@@ -165,7 +176,7 @@ def mock(**kwargs):
     print_raw_response(response)
   else:
     content = response.content
-    print(decode(content))
+    print(decode(content), end='')
 
 @main.command(
   help="Record request"
@@ -194,7 +205,7 @@ def record(**kwargs):
   else:
     try:
       content = response.raw.data
-      print(content.decode(json.detect_encoding(content)))
+      print(content.decode(json.detect_encoding(content)), end='')
     except UnicodeDecodeError:
       print('Warning: Binary output can mess up your terminal.')
 

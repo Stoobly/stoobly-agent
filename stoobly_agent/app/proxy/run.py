@@ -124,6 +124,12 @@ def __filter_options(options):
     if 'lifecycle_hooks_path' in options:
         del options['lifecycle_hooks_path']
 
+    if 'public_directory_path' in options:
+        del options['public_directory_path']
+
+    if 'response_fixtures_path' in options:
+        del options['response_fixtures_path']
+
     if 'ui_host' in options:
         del options['ui_host']
 
