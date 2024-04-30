@@ -98,32 +98,6 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
           "query": "tag",
           "response_param_name_id": None,
           "id": 3
-        },
-        {
-          "endpoint_id": 1,
-          "inferred_type": "Integer",
-          "is_required": True,
-          "is_deterministic": True,
-          "name": "code",
-          "query": "code",
-          "response_param_name_id": None,
-          "id": 1,
-          "values": [
-            0
-          ]
-        },
-        {
-          "endpoint_id": 1,
-          "inferred_type": "String",
-          "is_required": True,
-          "is_deterministic": True,
-          "name": "message",
-          "query": "message",
-          "response_param_name_id": None,
-          "id": 2,
-          "values": [
-            ""
-          ]
         }
       ],
     }
