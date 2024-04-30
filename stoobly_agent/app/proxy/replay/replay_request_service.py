@@ -27,9 +27,11 @@ class ReplayRequestOptions(TypedDict):
   after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
   proxies: dict
+  public_directory_path: str
   remote_project_key: str
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
+  response_fixtures_path: str
   scenario_key: Union[str, None] 
   scheme: str
   test_filter: test_filter.TestFilter
@@ -58,13 +60,16 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
 
   if options.get('lifecycle_hooks_path'):
-    __handle_lifecycle_hooks_path(options['lifecycle_hooks_path'], headers) 
+    __handle_path_header(custom_headers.LIFECYCLE_HOOKS_PATH, options['lifecycle_hooks_path'], headers) 
 
   if options.get('mode'):
     __handle_mode_option(options['mode'], request, headers)
 
   if options.get('project_key'):
     headers[custom_headers.PROJECT_KEY] = options['project_key']
+
+  if options.get('public_directory_path'):
+    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_directory_path'], headers)
 
   if options.get('report_key'):
     headers[custom_headers.REPORT_KEY] = options['report_key']
@@ -74,6 +79,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   if custom_headers.REQUEST_ORIGIN not in headers:
     headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
+
+  if options.get('response_fixtures_path'):
+    __handle_path_header(custom_headers.RESPONSE_FIXTURES_PATH, options['response_fixtures_path'], headers)
 
   if options.get('scenario_key'):
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
@@ -146,14 +154,14 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   return res
 
-def __handle_lifecycle_hooks_path(script_path, headers):
+def __handle_path_header(header_name: str, script_path: str, headers):
   if not script_path:
     return
 
   if not os.path.isabs(script_path):
     script_path = os.path.join(os.path.abspath('.'), script_path)
 
-  headers[custom_headers.LIFECYCLE_HOOKS_PATH] = script_path
+  headers[header_name] = script_path
 
 def __handle_mode_option(_mode, request: Request, headers):
   headers[custom_headers.PROXY_MODE] = _mode

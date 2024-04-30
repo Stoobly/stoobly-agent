@@ -1,5 +1,6 @@
 import os
 import pdb
+import yaml
 
 from runpy import run_path
 from typing import List, Union
@@ -36,6 +37,9 @@ class InterceptSettings:
 
     self.__lifecycle_hooks = None
     self.__initialize_lifecycle_hooks()
+
+    self.__response_fixtures = None
+    self.__initialize_response_fixtures()
 
   @property
   def settings(self):
@@ -103,6 +107,14 @@ class InterceptSettings:
       pass
 
   @property
+  def public_directory_path(self):
+    if self.__headers and custom_headers.PUBLIC_DIRECTORY_PATH in self.__headers:
+      return self.__headers[custom_headers.PUBLIC_DIRECTORY_PATH]
+
+    if os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
+      return os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] 
+
+  @property
   def remote_project_key(self):
     # When not local project, don't return set remote project_key
     project_key = self.parsed_project_key
@@ -113,6 +125,18 @@ class InterceptSettings:
       return self.__headers[custom_headers.REMOTE_PROJECT_KEY]
 
     return self.__settings.remote.project_key
+
+  @property
+  def response_fixtures_path(self):
+    if self.__headers and custom_headers.RESPONSE_FIXTURES_PATH in self.__headers:
+      return self.__headers[custom_headers.RESPONSE_FIXTURES_PATH]
+
+    if os.environ.get(env_vars.AGENT_RESPONSE_FIXTURES_PATH):
+      return os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] 
+
+  @property
+  def response_fixtures(self):
+    return self.__response_fixtures or {}
 
   @property
   def parsed_remote_project_key(self):
@@ -288,6 +312,21 @@ class InterceptSettings:
     except Exception as e:
         return Logger.instance().error(e)
 
+  def __initialize_response_fixtures(self):
+    fixtures_path = self.response_fixtures_path
+
+    if not fixtures_path:
+        return
+
+    if not os.path.exists(fixtures_path):
+        return Logger.instance().error(f"Response fixtures {fixtures_path} does not exist")
+
+    with open(fixtures_path, 'r') as stream:
+        try:
+            self.__response_fixtures = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            Logger.instance().error(exc)
+        
   def __policy(self, mode):
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
