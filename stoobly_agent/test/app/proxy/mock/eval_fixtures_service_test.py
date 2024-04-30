@@ -10,7 +10,7 @@ from stoobly_agent.test.test_helper import reset
 
 from stoobly_agent.app.models.adapters.orm.request.mitmproxy_adapter import MitmproxyRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
-from stoobly_agent.app.proxy.mock.eval_fixtures_servce import eval_fixtures
+from stoobly_agent.app.proxy.mock.eval_fixtures_service import eval_fixtures
 from stoobly_agent.app.proxy.mock.types import Fixtures
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
