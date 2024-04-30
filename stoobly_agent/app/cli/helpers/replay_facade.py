@@ -17,7 +17,9 @@ class ReplayCliOptions(TypedDict):
   lifecycle_hooks_path: str
   on_response: Callable
   project_key: str
+  public_directory_path: str
   record: bool
+  response_fixtures_path: str
   scenario_key: str
   scheme: str
   trace: Trace
@@ -57,7 +59,9 @@ class ReplayFacade():
       'host': cli_options.get('host'),
       'lifecycle_hooks_path': cli_options.get('lifecycle_hooks_path'),
       'overwrite': cli_options.get('overwrite'),
+      'public_directory_path': cli_options.get('public_directory_path'),
       'request_origin': request_origin.CLI,
+      'response_fixtures_path': cli_options.get('response_fixtures_path'),
       'save': cli_options.get('save'),
       'scheme': cli_options.get('scheme'),
       'trace_context': trace_context,

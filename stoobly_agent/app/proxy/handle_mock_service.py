@@ -14,6 +14,7 @@ from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.context import MockContext
+from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
@@ -65,14 +66,14 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         if handle_failure:
             res = handle_failure(context)
     elif policy == mock_policy.ALL:
-        res = eval_request_with_retry(eval_request, request, **options) 
+        res = eval_request_with_retry(context, eval_request, **options) 
 
         context.with_response(res)
 
         if handle_success:
             res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
-        res = eval_request_with_retry(eval_request, request, **options) 
+        res = eval_request_with_retry(context, eval_request, **options) 
 
         context.with_response(res)
 
@@ -93,7 +94,8 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
     return pass_on(context.flow, res)
 
-def eval_request_with_retry(eval_request, request, **options: MockOptions):
+def eval_request_with_retry(context: MockContext, eval_request, **options: MockOptions):
+    request = context.flow.request
     infer = bool(options.get('infer'))
     ignored_components = options['ignored_components'] if 'ignored_components' in options else []
 
@@ -102,6 +104,16 @@ def eval_request_with_retry(eval_request, request, **options: MockOptions):
     if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
         ignored_components.append(res.content)
         res = eval_request(request, ignored_components, infer=infer, retry=1)
+
+    if res.status_code == custom_response_codes.NOT_FOUND:
+        intercept_settings = context.intercept_settings
+        fixture = eval_fixtures(
+            request,
+            public_directory_path=intercept_settings.public_directory_path,
+            response_fixtures=intercept_settings.response_fixtures
+        )
+        if fixture:
+            res = fixture
 
     return res
 

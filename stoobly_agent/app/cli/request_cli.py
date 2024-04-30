@@ -134,8 +134,10 @@ if not is_remote:
     Configure which tests to print. Defaults to {test_output_level.PASSED}.
   '''
 )
+@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
 @click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')

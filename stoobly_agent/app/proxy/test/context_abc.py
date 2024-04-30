@@ -121,6 +121,11 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
+  def public_directory_path(self):
+    pass
+
+  @property
+  @abc.abstractmethod
   def replay_context(self):
     pass
 
@@ -142,6 +147,16 @@ class TestContextABC(abc.ABC):
   @property
   @abc.abstractmethod
   def response(self) -> TestContextResponse:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def response_fixtures(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def response_fixtures_path(self):
     pass
 
   @property

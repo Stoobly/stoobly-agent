@@ -15,8 +15,10 @@ class TestOptions(TypedDict):
   lifecycle_hooks_path: str
   log_level: logger.LogLevel
   output_level: test_output_level.TestOutputLevel
+  public_directory_path: str
   remote_project_key: str
   report_key: str
+  response_fixtures_path: str
   save: str
   scheme: str
   strategy: test_strategy.TestStrategy

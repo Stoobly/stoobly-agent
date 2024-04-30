@@ -143,6 +143,10 @@ class TestContext(TestContextABC):
     self.__passed = v
 
   @property
+  def public_directory_path(self):
+    return self.__intercept_settings.public_directory_path
+
+  @property
   def replay_context(self) -> ReplayContext:
     return self.__replay_context
 
@@ -161,6 +165,14 @@ class TestContext(TestContextABC):
   @property
   def response(self) -> TestContextResponse:
     return self.__response
+
+  @property
+  def response_fixtures(self):
+    return self.__intercept_settings.response_fixtures
+
+  @property
+  def response_fixtures_path(self):
+    return self.__intercept_settings.response_fixtures_path
 
   @property
   def response_param_names(self) -> RequestComponentNamesFacade:
