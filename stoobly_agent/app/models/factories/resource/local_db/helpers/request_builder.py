@@ -35,7 +35,7 @@ class RequestBuilder():
 
   @property
   def request_body(self):
-    return self.__properties.get('request_body')
+    return self.__properties.get('request_body') or b''
 
   @property
   def request_headers(self):
