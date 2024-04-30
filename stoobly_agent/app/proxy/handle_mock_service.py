@@ -14,7 +14,7 @@ from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.context import MockContext
-from .mock.eval_fixtures_servce import eval_fixtures
+from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
