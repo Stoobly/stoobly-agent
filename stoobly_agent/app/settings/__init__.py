@@ -69,6 +69,10 @@ class Settings:
         return self.__ui_settings
 
     @property
+    def path(self):
+        return self.__settings_file_path
+
+    @property
     def proxy(self):
         return self.__proxy_settings
 

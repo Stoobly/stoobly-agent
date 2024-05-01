@@ -61,6 +61,15 @@ def dump(**kwargs):
     else:
         print(output)
 
+@config.command(
+    help="Reset config to defaults"
+)
+def reset():
+    settings = Settings.instance()
+    settings.reset()
+
+    print(f"Reset {settings.path} to defaults.")
+
 ### Scenario
 
 @click.group(
