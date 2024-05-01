@@ -119,7 +119,7 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
 
     if kwargs.get('public_directory_path'):
-      os.environ[env_vars.AGENT_PUBLIC_DIRECOTRY_PATH] = kwargs['public_directory_path']
+      os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = kwargs['public_directory_path']
 
     if kwargs.get('response_fixtures_path'):
       os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
