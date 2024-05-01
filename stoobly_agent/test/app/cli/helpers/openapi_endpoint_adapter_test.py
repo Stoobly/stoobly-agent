@@ -141,28 +141,6 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 1,
             'values': [0]
           },
-          {
-            'endpoint_id': 1,
-            'id': 1,
-            'inferred_type': 'Integer',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'code',
-            'query': 'code',
-            'response_param_name_id': None,
-            'values': [0]
-          },
-          {
-            'endpoint_id': 1,
-            'id': 2,
-            'inferred_type': 'String',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'message',
-            'query': 'message',
-            'response_param_name_id': None,
-            'values': ['']
-          }
         ]
       }
 
@@ -241,28 +219,6 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': None,
               'values': [0],
           },
-          {
-              'endpoint_id': 2,
-              'id': 1,
-              'inferred_type': 'Integer',
-              'is_deterministic': True,
-              'is_required': True,
-              'name': 'code',
-              'query': 'code',
-              'response_param_name_id': None,
-              'values': [0],
-          },
-          {
-              'endpoint_id': 2,
-              'id': 2,
-              'inferred_type': 'String',
-              'is_deterministic': True,
-              'is_required': True,
-              'name': 'message',
-              'query': 'message',
-              'response_param_name_id': None,
-              'values': [''],
-          },
         ],
       }
 
@@ -323,28 +279,6 @@ class TestOpenApiEndpointAdapter():
                 'response_param_name_id': None,
                 'values': [0],
             },
-            {
-                'endpoint_id': 3,
-                'id': 1,
-                'inferred_type': 'Integer',
-                'is_deterministic': True,
-                'is_required': True,
-                'name': 'code',
-                'query': 'code',
-                'response_param_name_id': None,
-                'values': [0],
-            },
-            {
-                'endpoint_id': 3,
-                'id': 2,
-                'inferred_type': 'String',
-                'is_deterministic': True,
-                'is_required': True,
-                'name': 'message',
-                'query': 'message',
-                'response_param_name_id': None,
-                'values': [''],
-            },
         ],
       }
 
@@ -370,30 +304,6 @@ class TestOpenApiEndpointAdapter():
           {
             'name': ':id',
             'type': 'alias',
-          },
-        ],
-        'response_param_names': [
-          {
-            'endpoint_id': 4,
-            'id': 1,
-            'inferred_type': 'Integer',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'code',
-            'query': 'code',
-            'response_param_name_id': None,
-            'values': [0],
-          },
-          {
-            'endpoint_id': 4,
-            'id': 2,
-            'inferred_type': 'String',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'message',
-            'query': 'message',
-            'response_param_name_id': None,
-            'values': [''],
           },
         ],
       }
@@ -708,30 +618,6 @@ class TestOpenApiEndpointAdapter():
             'type': 'static',
           },
         ],
-        'response_param_names': [
-          {
-            'endpoint_id': 1,
-            'id': 1,
-            'inferred_type': 'Integer',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'code',
-            'query': 'code',
-            'response_param_name_id': None,
-            'values': [0],
-          },
-          {
-            'endpoint_id': 1,
-            'id': 2,
-            'inferred_type': 'String',
-            'is_deterministic': True,
-            'is_required': True,
-            'name': 'message',
-            'query': 'message',
-            'response_param_name_id': None,
-            'values': [''],
-          },
-        ],
       }
 
     @pytest.fixture(scope='class')
@@ -859,31 +745,6 @@ class TestOpenApiEndpointAdapter():
               'type': 'static',
             },
           ],
-          'response_param_names': [
-            {
-              'endpoint_id': 2,
-              'id': 1,
-              'inferred_type': 'Integer',
-              'is_deterministic': True,
-              'is_required': True,
-              'name': 'code',
-              'query': 'code',
-              'response_param_name_id': None,
-              'values': [0],
-            },
-            {
-              'endpoint_id': 2,
-              'id': 2,
-              'inferred_type': 'String',
-              'is_deterministic': True,
-              'is_required': True,
-              'name': 'message',
-              'query': 'message',
-              'response_param_name_id': None,
-              'values': [''],
-            },
-          ],
-
         }
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, petstore_references_file_path, expected_get_v1_pets_ref, expected_get_v2_pets_ref):
