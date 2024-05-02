@@ -148,9 +148,11 @@ class TestRewriteUrl():
 
     assert facade.port != int(port)
 
+    url_before = facade.url
     facade.rewrite()
 
     assert facade.port == int(port)
+    assert url_before != facade.url
 
   def test_rewrites_scheme(self, mitmproxy_get_request: MitmproxyRequest):
     scheme = 'http'
@@ -169,9 +171,34 @@ class TestRewriteUrl():
 
     assert facade.scheme != scheme
 
+    url_before = facade.url
     facade.rewrite()
 
     assert facade.scheme == scheme
+    assert url_before != facade.url
+
+  def test_rewrites_path(self, mitmproxy_get_request: MitmproxyRequest):
+    path = '/index.html'
+    url_rule = {
+      'modes': [intercept_mode.RECORD],
+      'path': path
+    }
+    rewrite_rule = RewriteRule({
+      'methods': ['GET'],
+      'pattern': '.*?/requests',
+      'url_rules': [url_rule]
+    })
+
+    facade = MitmproxyRequestFacade(mitmproxy_get_request)
+    facade.with_url_rules([rewrite_rule])
+
+    assert facade.path != path
+
+    url_before = facade.url
+    facade.rewrite()
+
+    assert facade.path == path
+    assert url_before != facade.url
 
   class TestWhenMultipleRules():
 
