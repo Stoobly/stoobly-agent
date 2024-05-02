@@ -53,7 +53,9 @@ rewrite_rule:
 url_rule:
   host: str()
   modes: list(include('mode'), min=1, max=4)
+  path: str()
   port: str()
+  scheme: str()
 firewall_rule:
   action: include('firewall_action')
   methods: list(include('method'))
