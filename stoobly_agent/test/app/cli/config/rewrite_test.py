@@ -123,14 +123,18 @@ class TestRewrite():
       return mode.RECORD
 
     @pytest.fixture(scope='class')
+    def path(self):
+      return '/index.html'
+
+    @pytest.fixture(scope='class')
     def pattern(self):
       return '.*?'
 
     @pytest.fixture(autouse=True, scope='class')
-    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, pattern, scheme, hostname, port):
+    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, path, pattern, scheme, hostname, port):
       rewrite_result = runner.invoke(config, [
           'rewrite', 'set', 
-          '--method', method, '--mode', _mode, '--pattern', pattern, '--hostname', hostname, '--port', port, '--scheme', scheme,
+          '--method', method, '--mode', _mode, '--pattern', pattern, '--hostname', hostname, '--path', path, '--port', port, '--scheme', scheme,
         ]
       )
       settings.load()
@@ -170,6 +174,9 @@ class TestRewrite():
 
     def test_url_hostname(self, url_rule: UrlRule, hostname):
       assert url_rule.hostname == hostname
+
+    def test_url_path(self, url_rule: UrlRule, path: str):
+      assert url_rule.path == path
 
     def test_url_port(self, url_rule: UrlRule, port):
       assert url_rule.port == port

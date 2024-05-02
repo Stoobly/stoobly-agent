@@ -16,6 +16,10 @@ class UrlRule:
     return self.__modes
 
   @property
+  def path(self):
+    return self.__path
+
+  @property
   def port(self):
     return self.__port
 
@@ -27,6 +31,7 @@ class UrlRule:
     self.__url_rule = url_rule
     self.__hostname = self.__url_rule.get('hostname')
     self.__modes = self.__url_rule.get('modes')
+    self.__path = self.__url_rule.get('path')
     self.__port = self.__url_rule.get('port')
     self.__scheme = self.__url_rule.get('scheme')
 
@@ -34,6 +39,7 @@ class UrlRule:
     return {
       'hostname': self.__hostname,
       'modes': self.__modes,
+      'path': self.__path,
       'port': self.__port,
       'scheme': self.__scheme,
     }

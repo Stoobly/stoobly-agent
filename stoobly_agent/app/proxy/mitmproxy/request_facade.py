@@ -26,12 +26,11 @@ class MitmproxyRequestFacade(Request):
     # @return [Hash]
     #
     def __init__(self, request: MitmproxyRequest):
-        self.request = request
-        self.uri = urlparse(self.request.url)
-
         self.__url_rules: List[UrlRule] = []
         self.__parameter_rules: List[ParameterRule] = []
 
+        self.request = request
+        self.uri = urlparse(self.request.url)
         self.__body = MitmproxyRequestBodyFacade(request)
 
     @property
@@ -92,7 +91,6 @@ class MitmproxyRequestFacade(Request):
         
         return '&'.join(params)
 
-
     @property
     def content_type(self):
         return self.headers.get('content-type')
@@ -139,6 +137,7 @@ class MitmproxyRequestFacade(Request):
 
         if len(rewrites):
             self.__rewrite_url(rewrites)
+            Logger.instance().debug(f"{bcolors.OKBLUE} Rewritten URL{bcolors.ENDC} {self.url}")
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
@@ -200,6 +199,18 @@ class MitmproxyRequestFacade(Request):
 
             if rewrite.scheme:
                 self.request.scheme = rewrite.scheme.lower()
+
+            if rewrite.path:
+                path = rewrite.path
+                if path[0] != '/':
+                    path = '/' + path
+
+                if self.uri.query:
+                    self.request.path = f"{path}?{self.uri.query}"
+                else:
+                    self.request.path = path
+
+        self.uri = urlparse(self.request.url)
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
         self.__apply_headers(rewrites, self.__rewrite_handler)

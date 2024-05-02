@@ -172,15 +172,20 @@ def rewrite(ctx):
     type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--name', help='Name of the request component.')
-@click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--port', help='Request URL port.')
+@click.option('--path', help='Request URL path to rewrite to.')
+@click.option('--pattern', required=True, help='URLs to rewrite.')
+@click.option('--port', help='Request URL port to rewrite to.')
 @click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
     type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
     help='Request component type.'
 )
-@click.option('--scheme', help='Request URL scheme.')
+@click.option(
+    '--scheme', 
+    type=click.Choice(['http', 'https']), 
+    help='Request URL scheme to rewrite to.'
+)
 @click.option('--value', help='Rewrite value.')
 def set(**kwargs):
     if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -498,12 +503,13 @@ def __select_parameter_rule(kwargs):
     }
 
 def __select_url_rule(kwargs):
-    if kwargs['hostname'] == None or kwargs['port'] == None:
+    if  kwargs['scheme'] == None and kwargs['hostname'] == None and kwargs['port'] == None and kwargs['path'] == None:
         return
 
     return {
         'hostname': kwargs['hostname'],
         'modes': list(kwargs['mode']),
+        'path': kwargs['path'],
         'port': kwargs['port'],
         'scheme': kwargs['scheme'],
     }

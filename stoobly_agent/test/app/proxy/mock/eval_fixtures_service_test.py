@@ -71,7 +71,10 @@ class TestEvalFixturesService():
     fixtures = {}
     fixtures[request_method] = {
       '/index.html': {
-        'path': index_file_path
+        'headers': {
+          'Content-Length': '1',
+        },
+        'path': index_file_path,
       }
     }
     return fixtures
@@ -86,6 +89,7 @@ class TestEvalFixturesService():
     res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
     assert res
     assert res.raw.read() == index_file_contents
+    assert res.headers['Content-Length'] == '1'
 
   def test_it_evaluates_public_directory(
     self, mitmproxy_request: MitmproxyRequest, public_directory: str, index_file_contents: str
