@@ -16,10 +16,13 @@ class Options():
   response_fixtures: Fixtures
 
 def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Response, None]:
-  response_fixtures = options.get('response_fixtures')
+  fixture_path = None
+  headers = {}
 
-  fixture_path = __eval_response_fixtures(request, response_fixtures)
-  if not fixture_path:
+  response_fixtures = options.get('response_fixtures')
+  fixture = __eval_response_fixtures(request, response_fixtures)
+
+  if not fixture:
     public_directory_path = options.get('public_directory_path')
 
     if public_directory_path and os.path.exists(public_directory_path):
@@ -27,6 +30,9 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
 
       if os.path.exists(static_file_path):
         fixture_path = static_file_path
+  else:
+    fixture_path = fixture.get('path')
+    headers = fixture.get('headers') or {}
 
   if not fixture_path:
     return
@@ -36,6 +42,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
 
     response.status_code = 200
     response.raw = BytesIO(fp.read()) 
+    response.headers = headers
 
     Logger.instance().debug(f"{bcolors.OKBLUE}Resolved fixture {fixture_path}{bcolors.ENDC}")
 
@@ -54,8 +61,9 @@ def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtu
   for path_pattern in routes:
     if not re.match(path_pattern, request.path):
       continue
-    
-    path = routes[path_pattern].get('path')
+      
+    fixture = routes[path_pattern]
+    path = fixture.get('path')
 
     if path and os.path.exists(path):
-      return path
+      return fixture
