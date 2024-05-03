@@ -79,7 +79,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
         if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
             if handle_failure:
-                res = handle_failure(context) or res
+                res = handle_failure(context)
         else:
             if handle_success:
                 res = handle_success(context) or res
@@ -131,7 +131,7 @@ def __handle_mock_success(context: MockContext) -> None:
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
-def __handle_mock_failure(context: MockContext):
+def __handle_mock_failure(context: MockContext) -> None:
     req = context.flow.request
     intercept_settings = context.intercept_settings
     upstream_url = intercept_settings.upstream_url
@@ -145,7 +145,7 @@ def __handle_mock_failure(context: MockContext):
 
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
 
-    return reverse_proxy(req, upstream_url, {})
+    reverse_proxy(req, upstream_url, {})
 
 ###
 #

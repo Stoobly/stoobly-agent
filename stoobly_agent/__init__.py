@@ -1,2 +1,2 @@
 COMMAND = 'stoobly-agent'
-VERSION = '0.34.4'
+VERSION = '0.34.5'
