@@ -9,7 +9,7 @@ from typing import Callable, TypedDict
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy
+from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -79,7 +79,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
         if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
             if handle_failure:
-                res = handle_failure(context)
+                res = handle_failure(context) or res
         else:
             if handle_success:
                 res = handle_success(context) or res
@@ -135,6 +135,13 @@ def __handle_mock_failure(context: MockContext):
     req = context.flow.request
     intercept_settings = context.intercept_settings
     upstream_url = intercept_settings.upstream_url
+
+    if req.headers.get(custom_headers.REQUEST_ORIGIN) == request_origin.PROXY:
+        # If this header is set, then it is likely that we are going to infinite loop
+        # Unless we stop sending the same request
+        return
+    else:
+        req.headers[custom_headers.REQUEST_ORIGIN] = request_origin.PROXY
 
     Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
 
