@@ -98,6 +98,7 @@ def init(**kwargs):
   An empty header-value removes existing header-name headers. May be passed multiple times.
 ''')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
+@click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
@@ -136,7 +137,8 @@ def run(**kwargs):
     if 'headless' in kwargs and not kwargs['headless']:
         run_api(**kwargs)
 
-    run_proxy(**kwargs)
+    if 'proxyless' in kwargs and not kwargs['proxyless']:
+        run_proxy(**kwargs)
 
 @main.command(
   help="Mock request"
