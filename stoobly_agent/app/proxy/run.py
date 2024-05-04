@@ -124,6 +124,9 @@ def __filter_options(options):
     if 'lifecycle_hooks_path' in options:
         del options['lifecycle_hooks_path']
 
+    if 'proxyless' in options:
+        del options['proxyless']
+
     if 'public_directory_path' in options:
         del options['public_directory_path']
 
