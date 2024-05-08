@@ -1,5 +1,6 @@
 import pdb
 import pytest
+import time
 
 from click.testing import CliRunner
 from typing import List
@@ -24,19 +25,34 @@ class TestApply():
     class TestWhenDeletingRequest():
 
       @pytest.fixture(scope='class')
+      def log(self):
+        return Log()
+
+      @pytest.fixture(scope='class')
       def recorded_request(self, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def delete_event(self, runner: CliRunner, recorded_request: Request):
+      def events(self, runner: CliRunner, recorded_request: Request, log: Log):
+        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        events = log.events
+        event: LogEvent = events[len(events) - 1]
+        log.version = event.uuid
+
+        time.sleep(1)
+
         snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
-        log = Log()
-        events = log.events
-        return events[len(events) - 1]
+        return log.events
+
+      @pytest.fixture(scope='class')
+      def delete_event(self, events: List[LogEvent]):
+        return events[1]
 
       def test_it_deletes(self, runner: CliRunner, recorded_request: Request, delete_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', '--force', delete_event.uuid])
@@ -83,19 +99,34 @@ class TestApply():
     class TestWhenDeletingScenario():
 
       @pytest.fixture(scope='class')
+      def log(self):
+        return Log()
+
+      @pytest.fixture(scope='class')
       def created_scenario(self, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def delete_event(self, runner: CliRunner, created_scenario: Scenario):
+      def events(self, runner: CliRunner, created_scenario: Scenario, log: Log):
+        snapshot_result = runner.invoke(scenario, ['snapshot',  created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        events = log.events
+        event: LogEvent = events[len(events) - 1]
+        log.version = event.uuid
+
+        time.sleep(1)
+
         snapshot_result = runner.invoke(scenario, ['snapshot', '--action', DELETE_ACTION, created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
-        log = Log()
-        events = log.events
-        return events[len(events) - 1]
+        return log.events
+
+      @pytest.fixture(scope='class')
+      def delete_event(self, events):
+        return events[1]
 
       def test_it_deletes(self, runner: CliRunner, created_scenario: Scenario, delete_event: LogEvent):
         snapshot_result = runner.invoke(snapshot, ['apply', '--force', delete_event.uuid])
