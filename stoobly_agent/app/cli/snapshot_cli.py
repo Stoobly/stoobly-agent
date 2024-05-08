@@ -75,6 +75,14 @@ def _list(**kwargs):
       print_snapshots(formatted_events, **print_options)
 
 @snapshot.command(
+  help="Prune deleted snapshots."
+)
+@click.option('--dry-run', is_flag=True, default=False)
+def prune(**kwargs):
+  log = Log()
+  log.prune(kwargs['dry_run'])
+
+@snapshot.command(
   help="Update snapshot",
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')

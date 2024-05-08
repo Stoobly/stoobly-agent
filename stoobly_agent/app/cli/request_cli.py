@@ -88,7 +88,7 @@ def list(**kwargs):
 def replay(**kwargs):
   replay_handler(kwargs)
 
-if not is_remote:
+if is_local:
   @request.command(
     help="Snapshot a request"
   )
