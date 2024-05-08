@@ -2,7 +2,7 @@ import pdb
 import uuid
 import time
 
-from typing import Callable, Literal, TypedDict
+from typing import Callable, TypedDict
 
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
