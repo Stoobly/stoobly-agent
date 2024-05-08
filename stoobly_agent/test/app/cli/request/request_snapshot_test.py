@@ -77,7 +77,7 @@ class TestRequestSnapshot():
         assert len(events) == 3
 
         unprocessed_events = log.unprocessed_events
-        assert len(unprocessed_events) == 1
+        assert len(unprocessed_events) == 0
 
     class TestWhenAppending():
 
@@ -118,7 +118,7 @@ class TestRequestSnapshot():
         assert len(events) == 3
 
         unprocessed_events = log.unprocessed_events
-        assert len(unprocessed_events) == 2
+        assert len(unprocessed_events) == 1
 
         event = unprocessed_events[0]
         assert event.resource_uuid == recorded_request_two.uuid

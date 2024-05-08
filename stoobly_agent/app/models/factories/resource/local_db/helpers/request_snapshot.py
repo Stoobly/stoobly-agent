@@ -20,6 +20,10 @@ class RequestSnapshot(Snapshot):
     return self.__backup
 
   @property
+  def exists(self):
+    return os.path.exists(self.path)
+
+  @property
   def request(self):
     request_file_path = self.path
 
