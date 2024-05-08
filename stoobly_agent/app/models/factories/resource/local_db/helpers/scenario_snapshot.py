@@ -21,6 +21,10 @@ class ScenarioSnapshot(Snapshot):
     self.__requests_backup = None
 
   @property
+  def exists(self):
+    return os.path.exists(self.requests_path) and os.path.exists(self.metadata_path)
+
+  @property
   def metadata(self):
     if not os.path.exists(self.metadata_path):
       return {}
@@ -83,6 +87,10 @@ class ScenarioSnapshot(Snapshot):
         for uuid in uuids:
           request_snapshot = RequestSnapshot(uuid)
           handler(request_snapshot)
+
+  def remove(self):
+    self.remove_metadata()
+    self.remove_requests()
 
   def remove_metadata(self):
     metadata_file_path = self.metadata_path
