@@ -155,15 +155,21 @@ class OpenApiEndpointAdapter():
                   param_value = self.__open_api_to_default_python_type(open_api_type)
 
               literal_query_param = {
-                parameter['name']: {
-                  'value': param_value,
-                  'required': parameter.get('required', False),
-                }
+                'name': parameter['name'],
+                'value': param_value,
+                'required': parameter.get('required', False),
+                'query': parameter['name'],
+                'id': 1,
+                'parent_id': 0
               }
 
+              # if not endpoint.get('literal_query_params'):
+              #   endpoint['literal_query_params'] = {}
+              # endpoint['literal_query_params'].update(literal_query_param)
+
               if not endpoint.get('literal_query_params'):
-                endpoint['literal_query_params'] = {}
-              endpoint['literal_query_params'].update(literal_query_param)
+                endpoint['literal_query_params'] = []
+              endpoint['literal_query_params'].append(literal_query_param)
 
             elif parameter['in'] == 'header':
               header: RequestComponentName = {}
@@ -206,38 +212,14 @@ class OpenApiEndpointAdapter():
           request_body = operation.get("requestBody", {})
           required_request_body = request_body.get("required")
           required_body_params = []
-          literal_body_params = {}
-          request_body_array = False
+          literal_body_params = []
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
-            param_properties = {}
             schema = media_type['schema']
-
-            # If Spec Component reference, look it up in components
-            if '$ref' in schema:
-              reference = schema['$ref']
-              self.__dereference(components, reference, required_body_params, literal_body_params)
-            else:
-              required_body_params = schema.get('required', [])
-
-              schema_type = schema.get('type')
-              if schema_type:
-                if schema_type == 'object':
-                  param_properties = schema.get('properties', {})
-                elif schema_type == 'array':
-                  request_body_array = True
-                  param_properties = {'tmp': schema['items']}
-
-            for property_key, property_value in param_properties.items():
-              if property_key in required_body_params:
-                param_properties[property_key]['required'] = True
-
-            if not endpoint.get('literal_body_params'):
-              endpoint['literal_body_params'] = {}
-
+            required_body_params = schema.get('required', [])
+            param_properties = {'tmp': schema}
             self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
-
             endpoint['literal_body_params'] = literal_body_params
 
             # Only support first media type
@@ -249,10 +231,7 @@ class OpenApiEndpointAdapter():
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            if not request_body_array:
-              self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
-            else:
-              self.__convert_literal_component_param(endpoint, required_body_params, [literal_body_params], 'body_param_name', 'literal_body_params')
+            self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
 
           # Responses -> construct lists of response header and response param name resources
           responses = operation.get('responses', {})
@@ -332,74 +311,99 @@ class OpenApiEndpointAdapter():
 
     return list(literal_params)[-2]
 
-  def __extract_param_properties(self, components, reference, required_body_params, param_properties, literal_body_params, nested_parameters: bool = False):
-    if not param_properties:
-      return
+  def __extract_param_properties(self, components, reference, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=0, parent=None, query_string=''):
+    # Name of the schema object (i.e. the name of the body_param_name or response_param_name component)
+    property_name = list(schema_object.keys())[0]
 
-    flatten: bool = False
+    # The actual OpenAPI schema object
+    property_schema = list(schema_object.values())[0] 
 
-    for property_name, property_type_dict in param_properties.items():
-      if '$ref' in property_type_dict.keys():
-        if property_name not in literal_body_params:
-          literal_body_params[property_name] = {'value': {}} 
+    if '$ref' in property_schema.keys():
+      property_schema = self.__dereference(components, property_schema.get('$ref'))
 
-        reference = property_type_dict['$ref']
-        self.__dereference(components, reference, required_body_params, literal_body_params, nested_parameters=True)
-
-      elif property_type_dict.get('properties'): 
-        reference = None
-        required_body_params += property_type_dict.get('required', [])
-        param_properties = {}
-        if not nested_parameters:
-          param_properties = property_type_dict.get('properties')
-
-        for property_key, property_value in param_properties.items():
-          if property_key in required_body_params:
-            property_value['required'] = True
-            required_body_params.remove(property_key)
-
-        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=False)
-
-      elif property_type_dict.get('type') == 'array':
-        reference = None
-        param_properties = {'tmp': property_type_dict['items']}
-
-        if property_name not in literal_body_params:
-          literal_body_params[property_name] = {'value': []} 
-          if property_type_dict.get('required') == True:
-            literal_body_params[property_name]['required'] = True
-
-        self.__extract_param_properties(components, reference, required_body_params, param_properties, literal_body_params, nested_parameters=True)
-
+    # Generates the entire query string for this particular property (ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
+    if property_name == 'tmp':
+      query = query_string 
+    else:
+      if property_name.endswith('Element'):
+        query = f"{query_string}[*]"
+      elif query_string == '':
+        query = property_name
       else:
-        literal_val_type = self.__open_api_to_default_python_type(property_type_dict['type'])
-        literal_val = {'value': literal_val_type, 'required': property_type_dict.get('required', False)}
+        query = f"{query_string}.{property_name}"
 
-        if nested_parameters:
-          most_recent_param = self.__get_most_recent_param(literal_body_params)
-          second_most_recent_param = self.__get_second_most_recent_param(literal_body_params)
-          if most_recent_param == 'tmp':
-            flatten = True
+    schema_type = property_schema.get('type')
 
-          if flatten:
-            if second_most_recent_param and type(literal_body_params[second_most_recent_param]['value']) is list:
-              literal_body_params[second_most_recent_param]['value'].append({ property_name: literal_val })
-            else:
-              literal_body_params[property_name] = literal_val
+    # A schema is not traversable if:
+    #   1. Its type is neither 'array' nor 'object'
+    #   2. Its type is 'array' with an empty 'items' schema
+    #   3. Its type is 'object' and the 'properties' property is either present, but the provided schema is empty, or not present at all
+    is_not_traversable = ((schema_type and schema_type != 'array' and schema_type != 'object') or 
+                          (schema_type == 'array' and not property_schema.get('items')) or
+                          (schema_type == 'object' and not property_schema.get('properties')))
+    
+    if is_not_traversable:
+      # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
+      if property_name != 'tmp':
+        literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
+        literal_val = {'name': property_name, 'value': literal_val_type, 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+        literal_component_params.append(literal_val)
+      return curr_id
+
+    if 'properties' in property_schema.keys():
+      # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
+      reference = None
+      required_component_params += property_schema.get('required', [])
+
+      # curr_id_tmp is the parent_id of all elements in param_properties
+      # Should be set to parent_id when property_name is 'tmp' to handle case where a schema uses the 'allOf' keyword since curr_id will change between every recursive call on each 'part' element in the allOf list
+      curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
+
+      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': property_schema.get('schema_required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+
+      if property_name != 'tmp':
+        literal_component_params.append(literal_val)
+
+      param_properties = property_schema.get('properties')
+      for property_key, property_value in param_properties.items():
+        if property_key in required_component_params:
+          if property_value.get('type') == 'object':
+            # Necessary to avoid overwriting the 'required' list of an object-type schema
+            property_value['schema_required'] = True
           else:
-            if type(literal_body_params[most_recent_param]['value']) is dict:
-              if not literal_body_params[most_recent_param].get('value'):
-                literal_body_params[most_recent_param]['value'] = {}
-              literal_body_params[most_recent_param]['value'][property_name] = literal_val
+            property_value['required'] = True
+          required_component_params.remove(property_key)
+        curr_id = self.__extract_param_properties(components, reference, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query)    
 
-            elif type(literal_body_params[most_recent_param]['value']) is list:
-              literal_body_params[most_recent_param]['value'].append(literal_val)
-        else:
-          literal_body_params[property_name] = literal_val
+    elif schema_type == 'array':
+      # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
+      if property_name == 'tmp':
+        schema_object = {"Element": property_schema['items']}
+        curr_id = self.__extract_param_properties(components, reference, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
+      else:
+        reference = None
+        schema_object = {f"{property_name.capitalize()}Element": property_schema['items']}
+        literal_val = {'name': property_name, 'value': [], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+        literal_component_params.append(literal_val)
+        curr_id = self.__extract_param_properties(components, reference, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
 
-    literal_body_params.pop('tmp', None)
+    elif 'allOf' in property_schema.keys():
+      # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
+      all_of = property_schema.get('allOf')
+      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': property_schema.get('self_required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+      if property_name != 'tmp':
+        literal_component_params.append(literal_val)
+      curr_id_tmp = curr_id
+      for part in all_of:
+        required_component_params = part.get('required', [])
+        nested_reference = part.get('$ref', None)
+        curr_id = self.__extract_param_properties(components, nested_reference, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query_string)
 
-  def __dereference(self, components: Spec, reference: str, required_body_params: List, literal_body_params, nested_parameters: bool = False):
+    return curr_id
+  
+
+  # Returns the schema object located at the given reference path
+  def __dereference(self, components: Spec, reference: str):
     # '#/components/schemas/NewPet'
     if not reference.startswith('#'):
       print('external references are not supported yet')
@@ -412,55 +416,13 @@ class OpenApiEndpointAdapter():
       component_name = component_data[1]
       component = components.get(component_type, {})
 
-      # If component_type is 'headers'
-      # Example: '#components/headers/X-RateLimit-Limit'
-      if component_type == "headers":
-        # In this case, literal_body_params represents a header rather than request or response body params
-        literal_body_params['name'] = component_name
-        header_example = component.get('example')
-        if header_example:
-          literal_body_params['values'].append(header_example)
-        literal_body_params['is_required'] = component.get('is_required', False)
-        literal_body_params['is_deterministic'] = True
-        return literal_body_params
-
       # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
       body_spec = component.content()[component_name]
-      required_body_params += body_spec.get('required', [])
-
-      param_properties = {}
-      schema_type = body_spec.get('type')
-      if schema_type:
-        if schema_type == 'object':
-          param_properties = body_spec.get('properties', {})
-        elif schema_type == 'array':
-          param_properties = {'tmp': body_spec['items']}
-
-      all_of = body_spec.get('allOf')
-      any_of = body_spec.get('anyOf')
-      one_of = body_spec.get('oneOf')
-
-      if param_properties:
-        for param_prop_key, param_prop_val in param_properties.items():
-          if param_prop_key in required_body_params:
-            param_prop_val['required'] = True
-            required_body_params.remove(param_prop_key)
-
-        self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params, nested_parameters=nested_parameters)
-
-      elif all_of:
-        for part in all_of:
-          required_body_params = part.get('required', [])
-          nested_reference = part.get('$ref')
-          if nested_reference:
-            self.__extract_param_properties(components, nested_reference, required_body_params, {'tmp': part}, literal_body_params)
-          else:
-            self.__extract_param_properties(components, None, required_body_params, {'tmp': part}, literal_body_params)
-
-      # TODO
-      # elif any_of or one_of:
-
-      return param_properties 
+        
+      if '$ref' in body_spec.keys():
+        body_spec = self.__dereference(components, body_spec.get('$ref'))
+      
+      return body_spec 
   
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: Union[dict, list],
@@ -608,44 +570,21 @@ class OpenApiEndpointAdapter():
         continue
 
       # Construct response param name components
-      literal_response_params = {}
-      response_body_array = False
+      literal_response_params = []
       required_response_params = []
       response_content = response_definition.get('content', {})
       for mimetype, media_type in response_content.items():
-        param_properties = {}
         schema = media_type['schema']
-        
-        if '$ref' in schema:
-          reference = schema['$ref']
-          self.__dereference(components, reference, required_response_params, literal_response_params)
-        else:
-          schema_type = schema.get('type')
-          if schema_type:
-            if schema_type == 'object':
-              param_properties = schema.get('properties', {})
-            elif schema_type == 'array':
-              response_body_array = True
-              param_properties = {'tmp': schema['items']}
-        
-        for property_key, property_value in param_properties.items():
-          if property_key in required_response_params:
-            param_properties[property_key]['required'] = True
-          
+        param_properties = {'tmp': schema}
         self.__extract_param_properties(components, None, required_response_params, param_properties, literal_response_params)
-
-        if literal_response_params:
-          endpoint['literal_response_params'] = literal_response_params
+        endpoint['literal_response_params'] = literal_response_params
 
         # Only support first media type
         break
       
       literal_response_params = endpoint.get('literal_response_params')
       if literal_response_params:
-        if not response_body_array:
-          self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
-        else:
-          self.__convert_literal_component_param(endpoint, required_response_params, [literal_response_params], 'response_param_name', 'literal_response_params')
+        self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
 
       # Construct response header name components
       response_headers = response_definition.get('headers', {})
@@ -654,14 +593,13 @@ class OpenApiEndpointAdapter():
         response_header_name['name'] = header_name
         
         if '$ref' in header_definition:
-          reference = header_definition['$ref']
-          self.__dereference(components, reference, [], response_header_name)
-        else:
-          header_example = header_definition.get('example')
-          if header_example:
-            response_header_name['values'].append(header_example)
-          response_header_name['is_required'] = header_definition.get('is_required', False)
-          response_header_name['is_deterministic'] = True
+          header_definition = self.__dereference(components, header_definition.get('$ref'))
+
+        header_example = header_definition.get('example')
+        if header_example:
+          response_header_name['value']= header_example
+        response_header_name['is_required'] = header_definition.get('is_required', False)
+        response_header_name['is_deterministic'] = True
           
         if not endpoint.get('response_header_names'):
           endpoint['response_header_names'] = []

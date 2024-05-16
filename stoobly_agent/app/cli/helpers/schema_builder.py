@@ -16,9 +16,27 @@ class SchemaBuilder:
     self.param_column_name: str = param_column_name
 
   def build(self, params):
-    self.param_names_created = {}
-    self.__traverse('', params, None)
-    return self.param_names_created.values()
+    params_list = []
+    for literal_param in params:
+      param: RequestComponentName = {
+        'endpoint_id': self.endpoint_id,
+        'name': literal_param['name'],
+        'query': literal_param['query'],
+        'is_required': literal_param['required'],
+        'inferred_type': convert(self.__infer_type(literal_param['value'])),
+        'is_deterministic': True,
+        'id': literal_param['id'],
+        f"{self.param_column_name}_id": literal_param['parent_id']
+      }
+      params_list.append(param)
+    return params_list
+
+
+
+  # def build(self, params):
+  #   self.param_names_created = {}
+  #   self.__traverse('', params, None)
+  #   return self.param_names_created.values()
 
   ###
   #
@@ -38,7 +56,8 @@ class SchemaBuilder:
       'name':  f"{name.capitalize()}Element",
       'query': f"{parent_param.get('query')}[*]" if parent_param else '[*]'
     }
-    columns[self.param_column_name + '_id'] = parent_param['id'] if parent_param else None
+    columns['id'] = parent_param['id']+1 if parent_param else 1
+    columns[self.param_column_name + '_id'] = parent_param['id'] if parent_param else 0
 
     # Iterate
     types = {}
@@ -71,7 +90,9 @@ class SchemaBuilder:
         'name': k,
         'query': f"{parent_param.get('query')}.{k}" if parent_param else k, 
       }
-      columns[self.param_column_name + '_id'] = parent_param['id'] if parent_param else None
+      columns['id'] = v.get('id')
+      columns[self.param_column_name + '_id'] = v.get('parent_id')
+      # columns[self.param_column_name + '_id'] = parent_param['id'] if parent_param else None
       param = self.__find_or_create_by(columns)
 
       self.__traverse(k, v['value'], param)
@@ -102,7 +123,7 @@ class SchemaBuilder:
 
   def __create(self, columns):
     param: RequestComponentName = columns.copy()
-    param['id'] = len(self.param_names_created.keys()) + 1
+    param['id'] = columns['id']
 
     self.param_names_created[param['id']] = param
 

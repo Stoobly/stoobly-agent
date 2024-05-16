@@ -32,7 +32,9 @@ def import_endpoints(context: EndpointsImportContext):
 
         endpoint_id = res.json()['id']
         try:
-            res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources)
+            body_param_parents: Dict[int, int] = {}
+            response_param_parents: Dict[int, int] = {}
+            res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources, body_param_parents, response_param_parents)
         except requests.HTTPError as e:
             error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
 
@@ -68,7 +70,12 @@ def import_header_name(project_id: int, endpoint_id: int, header_name_resource: 
 
     res.raise_for_status()
 
-def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_resource: BodyParamNamesResource, body_param_name: BodyParamName):
+def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_resource: BodyParamNamesResource, body_param_name: BodyParamName, parents: Dict[int, int]):
+    body_param_name_id = None
+    parent_id = body_param_name['body_param_name_id']
+    if parent_id > 0:
+        body_param_name_id = parents[parent_id]
+    
     res: requests.Response = body_param_name_resource.create(endpoint_id, {
         'name': body_param_name.get('name'),
         'is_deterministic': body_param_name.get('is_deterministic', True),
@@ -77,9 +84,13 @@ def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_re
         'query': body_param_name.get('query'),
         'endpoint_id': endpoint_id,
         'project_id': project_id,
+        'body_param_name_id': body_param_name_id
     })
 
     res.raise_for_status()
+
+    res_id = res.json()['id']
+    parents[body_param_name['id']] = res_id
 
 def import_query_param_name(project_id: int, endpoint_id: int, query_param_name_resource: QueryParamNamesResource, query_param_name: RequestComponentName):
     res: requests.Response = query_param_name_resource.create(endpoint_id, {
@@ -92,7 +103,12 @@ def import_query_param_name(project_id: int, endpoint_id: int, query_param_name_
 
     res.raise_for_status()
 
-def import_response_param_name(project_id: int, endpoint_id: int, response_param_name_resource: ResponseParamNamesResource, response_param_name: RequestComponentName):
+def import_response_param_name(project_id: int, endpoint_id: int, response_param_name_resource: ResponseParamNamesResource, response_param_name: RequestComponentName, parents: Dict[int, int]):
+    response_param_name_id = None
+    parent_id = response_param_name['response_param_name_id']
+    if parent_id > 0:
+        response_param_name_id = parents[parent_id]
+    
     res: requests.Response = response_param_name_resource.create(endpoint_id, {
         'name': response_param_name.get('name'),
         'is_deterministic': response_param_name.get('is_deterministic', True),
@@ -101,9 +117,14 @@ def import_response_param_name(project_id: int, endpoint_id: int, response_param
         'query': response_param_name.get('query'),
         'endpoint_id': endpoint_id,
         'project_id': project_id,
+        'response_param_name_id': response_param_name_id
     })
 
     res.raise_for_status()
+
+    res_id = res.json()['id']
+    parents[response_param_name['id']] = res_id
+
 
 def import_response_header_name(project_id: int, endpoint_id: int, response_header_name_resource: ResponseHeaderNamesResource, response_header_name: RequestComponentName):
     res: requests.Response = response_header_name_resource.create(endpoint_id, {
@@ -124,14 +145,19 @@ component_name_import_dispatch = {
     ENDPOINT_COMPONENT_NAMES[4]: import_response_param_name
 }
 
-def process_import(component_name: str, *args):
-    return component_name_import_dispatch[component_name](*args)
+def process_import(component_name: str, body_param_parents: Dict[int, int], response_param_parents: Dict[int, int], *args):
+    if component_name == ENDPOINT_COMPONENT_NAMES[1]:
+        return component_name_import_dispatch[component_name](*args, body_param_parents)
+    elif component_name == ENDPOINT_COMPONENT_NAMES[4]:
+        return component_name_import_dispatch[component_name](*args, response_param_parents)
+    else:
+        return component_name_import_dispatch[component_name](*args)
 
-def import_component_names(project_id: int, endpoint_id: int, endpoint: EndpointShowResponse, resources: Dict[str, EndpointsResource]):
+def import_component_names(project_id: int, endpoint_id: int, endpoint: EndpointShowResponse, resources: Dict[str, EndpointsResource], body_param_parents: Dict[int, int], response_param_parents: Dict[int, int]):
     for component_name in ENDPOINT_COMPONENT_NAMES:
         for component in endpoint.get(f'{component_name}s', {}):
             resource = resources[component_name]
-            process_import(component_name, project_id, endpoint_id, resource, component)
+            process_import(component_name, body_param_parents, response_param_parents, project_id, endpoint_id, resource, component)
 
 def cleanup_endpoint(project_id: int, endpoint_id: int, resource: EndpointsResource):
     print(f"{bcolors.OKBLUE}Cleaning up partial import...{bcolors.ENDC}")
