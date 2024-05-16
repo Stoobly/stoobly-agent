@@ -73,7 +73,7 @@ def import_header_name(project_id: int, endpoint_id: int, header_name_resource: 
 def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_resource: BodyParamNamesResource, body_param_name: BodyParamName, parents: Dict[int, int]):
     body_param_name_id = None
     parent_id = body_param_name['body_param_name_id']
-    if parent_id > 0:
+    if parent_id:
         body_param_name_id = parents[parent_id]
     
     res: requests.Response = body_param_name_resource.create(endpoint_id, {
@@ -106,7 +106,7 @@ def import_query_param_name(project_id: int, endpoint_id: int, query_param_name_
 def import_response_param_name(project_id: int, endpoint_id: int, response_param_name_resource: ResponseParamNamesResource, response_param_name: RequestComponentName, parents: Dict[int, int]):
     response_param_name_id = None
     parent_id = response_param_name['response_param_name_id']
-    if parent_id > 0:
+    if parent_id:
         response_param_name_id = parents[parent_id]
     
     res: requests.Response = response_param_name_resource.create(endpoint_id, {

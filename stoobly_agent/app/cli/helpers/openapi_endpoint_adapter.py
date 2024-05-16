@@ -311,7 +311,7 @@ class OpenApiEndpointAdapter():
 
     return list(literal_params)[-2]
 
-  def __extract_param_properties(self, components, reference, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=0, parent=None, query_string=''):
+  def __extract_param_properties(self, components, reference, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string=''):
     # Name of the schema object (i.e. the name of the body_param_name or response_param_name component)
     property_name = list(schema_object.keys())[0]
 
