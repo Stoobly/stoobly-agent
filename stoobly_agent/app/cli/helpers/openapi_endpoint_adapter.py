@@ -332,17 +332,10 @@ class OpenApiEndpointAdapter():
       else:
         query = f"{query_string}.{property_name}"
 
-    schema_type = property_schema.get('type')
-
-    # A schema is not traversable if:
-    #   1. Its type is neither 'array' nor 'object'
-    #   2. Its type is 'array' with an empty 'items' schema
-    #   3. Its type is 'object' and the 'properties' property is either present, but the provided schema is empty, or not present at all
-    is_not_traversable = ((schema_type and schema_type != 'array' and schema_type != 'object') or 
-                          (schema_type == 'array' and not property_schema.get('items')) or
-                          (schema_type == 'object' and not property_schema.get('properties')))
+    # A schema is traversable if it has one more non-empty nested schema objects
+    traversable = property_schema.get('properties') or property_schema.get('items') or property_schema.get('allOf')
     
-    if is_not_traversable:
+    if not traversable:
       # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
       if property_name != 'tmp':
         literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
@@ -375,7 +368,7 @@ class OpenApiEndpointAdapter():
           required_component_params.remove(property_key)
         curr_id = self.__extract_param_properties(components, reference, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query)    
 
-    elif schema_type == 'array':
+    elif property_schema.get('type') == 'array':
       # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
       if property_name == 'tmp':
         schema_object = {"Element": property_schema['items']}
@@ -397,7 +390,7 @@ class OpenApiEndpointAdapter():
       for part in all_of:
         required_component_params = part.get('required', [])
         nested_reference = part.get('$ref', None)
-        curr_id = self.__extract_param_properties(components, nested_reference, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query_string)
+        curr_id = self.__extract_param_properties(components, nested_reference, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
 
     return curr_id
   
