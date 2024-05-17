@@ -73,6 +73,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 2,
             'inferred_type': 'String',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'TagsElement',
             'query': 'tags[*]',
@@ -104,6 +105,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 1,
             'inferred_type': 'Hash',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'Element',
             'query': '[*]',
@@ -365,6 +367,56 @@ class TestOpenApiEndpointAdapter():
             'query': 'apis',
             'response_param_name_id': None,
           },
+          {
+              'endpoint_id': 1,
+              'id': 3,
+              'inferred_type': 'Hash',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'ApisElement',
+              'query': 'apis[*]',
+              'response_param_name_id': 2,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 4,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'apiKey',
+              'query': 'apis[*].apiKey',
+              'response_param_name_id': 3,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 5,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'apiVersionNumber',
+              'query': 'apis[*].apiVersionNumber',
+              'response_param_name_id': 3,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 6,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'apiUrl',
+              'query': 'apis[*].apiUrl',
+              'response_param_name_id': 3,
+          },
+          {
+              'endpoint_id': 1,
+              'id': 7,
+              'inferred_type': 'String',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'apiDocumentationUrl',
+              'query': 'apis[*].apiDocumentationUrl',
+              'response_param_name_id': 3,
+          },
         ],
       }
 
@@ -475,6 +527,18 @@ class TestOpenApiEndpointAdapter():
             'type': 'static',
           },
         ],
+     'response_param_names': [
+          {
+              'endpoint_id': 3,
+              'id': 1,
+              'inferred_type': 'Hash',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'Element',
+              'query': '[*]',
+              'response_param_name_id': None,
+          },
+        ],
       }
 
     @pytest.fixture(scope='class')
@@ -485,6 +549,7 @@ class TestOpenApiEndpointAdapter():
       http_endpoint_version['body_param_names'][0]['endpoint_id'] = 6
       http_endpoint_version['body_param_names'][1]['endpoint_id'] = 6
       http_endpoint_version['body_param_names'][2]['endpoint_id'] = 6
+      http_endpoint_version['response_param_names'][0]['endpoint_id'] = 6
       return http_endpoint_version
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, uspto_file_path, expected_get_root_https, expected_get_root_http, expected_get_dataset_version_fields_https, expected_get_dataset_version_fields_http, expected_post_dataset_version_records_https, expected_post_dataset_version_records_http):
@@ -694,14 +759,14 @@ class TestOpenApiEndpointAdapter():
             'values': [0]
           },
           {
-            'body_param_name_id': None,
+            'body_param_name_id': 4,
             'endpoint_id': 2,
             'id': 7,
             'inferred_type': 'Hash',
             'is_deterministic': True,
             'is_required': False,
             'name': 'adoption',
-            'query': 'adoption'
+            'query': 'extra.adoption'
           },
           {
             'body_param_name_id': 7,
@@ -711,7 +776,7 @@ class TestOpenApiEndpointAdapter():
             'is_deterministic': True,
             'is_required': True,
             'name': 'adopted',
-            'query': 'adoption.adopted',
+            'query': 'extra.adoption.adopted',
             'values': [False]
           },
           {
@@ -722,7 +787,7 @@ class TestOpenApiEndpointAdapter():
             'is_deterministic': True,
             'is_required': False,
             'name': 'shelter',
-            'query': 'adoption.shelter'
+            'query': 'extra.adoption.shelter'
           },
           {
             'body_param_name_id': None,
@@ -840,6 +905,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 7,
             'inferred_type': 'String',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'PhotourlsElement',
             'query': 'photoUrls[*]'
@@ -859,6 +925,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 9,
             'inferred_type': 'Hash',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'TagsElement',
             'query': 'tags[*]'
@@ -971,6 +1038,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 7,
             'inferred_type': 'String',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'PhotourlsElement',
             'query': 'photoUrls[*]',
@@ -990,6 +1058,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 1,
             'id': 9,
             'inferred_type': 'Hash',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'TagsElement',
             'query': 'tags[*]',
@@ -1043,6 +1112,7 @@ class TestOpenApiEndpointAdapter():
             'endpoint_id': 14,
             'id': 1,
             'inferred_type': 'Hash',
+            'is_deterministic': True,
             'is_required': False,
             'name': 'Element',
             'query': '[*]'

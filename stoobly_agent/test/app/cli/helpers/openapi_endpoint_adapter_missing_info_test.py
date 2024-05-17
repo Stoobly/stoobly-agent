@@ -61,39 +61,49 @@ class TestOpenApiEndpointAdapterMissingInfo():
       "response_param_names": [
         {
           "endpoint_id": 1,
-          "inferred_type": "Integer",
-          "is_required": True,
+          "name": "Element",
+          "query": "[*]",
+          "is_required": False,
+          "inferred_type": "Hash",
           "is_deterministic": True,
-          "name": "id",
-          "query": "id",
-          "response_param_name_id": None,
           "id": 1,
+          "response_param_name_id": None
+        },
+        {
+          "endpoint_id": 1,
+          "name": "id",
+          "query": "[*].id",
+          "is_required": True,
+          "inferred_type": "Integer",
+          "is_deterministic": True,
+          "id": 2,
+          "response_param_name_id": 1,
           "values": [
             0
           ]
         },
         {
           "endpoint_id": 1,
-          "inferred_type": "String",
-          "is_required": True,
-          "is_deterministic": True,
           "name": "name",
-          "query": "name",
-          "response_param_name_id": None,
-          "id": 2,
+          "query": "[*].name",
+          "is_required": True,
+          "inferred_type": "String",
+          "is_deterministic": True,
+          "id": 3,
+          "response_param_name_id": 1,
           "values": [
             ""
           ]
         },
         {
           "endpoint_id": 1,
-          "inferred_type": "String",
-          "is_required": False,
-          "is_deterministic": True,
           "name": "tag",
-          "query": "tag",
-          "response_param_name_id": None,
-          "id": 3
+          "query": "[*].tag",
+          "is_required": False,
+          "inferred_type": "String",
+          "is_deterministic": True,
+          "id": 4,
+          "response_param_name_id": 1
         }
       ],
     }

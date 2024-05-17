@@ -114,6 +114,7 @@ class OpenApiEndpointAdapter():
           operation = path[http_method]
           required_query_params = []
           required_body_params = []
+          literal_query_params = []
 
           parameters = operation.get("parameters", {})
           for parameter in parameters:
@@ -131,45 +132,10 @@ class OpenApiEndpointAdapter():
               if not endpoint.get('query_param_names'):
                 endpoint['query_param_names'] = []
 
-              schema = parameter['schema']
-              open_api_type = schema['type']
+              schema = parameter.get('schema', {})
+              self.__extract_param_properties(components, None, required_query_params, {parameter['name']: schema}, literal_query_params, curr_id=len(literal_query_params)+1)
 
-              param_value = None
-              if open_api_type == 'array':
-                item_type = schema['items']['type']
-                default_value = schema['items'].get('default')
-                item_default = None
-                if default_value:
-                  item_default = {'value': default_value}
-                else:
-                  item_default = {'value': self.__open_api_to_default_python_type(item_type)}
-
-                param_value = [item_default]
-
-              # TODO: can query params be something besides raw or array?
-              else:
-                default_value = schema.get('default')
-                if default_value:
-                  param_value = default_value
-                else:
-                  param_value = self.__open_api_to_default_python_type(open_api_type)
-
-              literal_query_param = {
-                'name': parameter['name'],
-                'value': param_value,
-                'required': parameter.get('required', False),
-                'query': parameter['name'],
-                'id': 1,
-                'parent_id': 0
-              }
-
-              # if not endpoint.get('literal_query_params'):
-              #   endpoint['literal_query_params'] = {}
-              # endpoint['literal_query_params'].update(literal_query_param)
-
-              if not endpoint.get('literal_query_params'):
-                endpoint['literal_query_params'] = []
-              endpoint['literal_query_params'].append(literal_query_param)
+              endpoint['literal_query_params'] = literal_query_params
 
             elif parameter['in'] == 'header':
               header: RequestComponentName = {}
@@ -216,11 +182,12 @@ class OpenApiEndpointAdapter():
 
           content = request_body.get("content", {})
           for mimetype, media_type in content.items():
-            schema = media_type['schema']
-            required_body_params = schema.get('required', [])
-            param_properties = {'tmp': schema}
-            self.__extract_param_properties(components, None, required_body_params, param_properties, literal_body_params)
-            endpoint['literal_body_params'] = literal_body_params
+            schema = media_type.get('schema')
+            if schema:
+              self.__extract_param_properties(components, None, required_body_params, {'tmp': schema}, literal_body_params)
+
+            if literal_body_params:
+              endpoint['literal_body_params'] = literal_body_params
 
             # Only support first media type
             break
@@ -386,7 +353,8 @@ class OpenApiEndpointAdapter():
       literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': property_schema.get('self_required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
       if property_name != 'tmp':
         literal_component_params.append(literal_val)
-      curr_id_tmp = curr_id
+
+      curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
       for part in all_of:
         required_component_params = part.get('required', [])
         nested_reference = part.get('$ref', None)
@@ -567,10 +535,12 @@ class OpenApiEndpointAdapter():
       required_response_params = []
       response_content = response_definition.get('content', {})
       for mimetype, media_type in response_content.items():
-        schema = media_type['schema']
-        param_properties = {'tmp': schema}
-        self.__extract_param_properties(components, None, required_response_params, param_properties, literal_response_params)
-        endpoint['literal_response_params'] = literal_response_params
+        schema = media_type.get('schema')
+        if schema:
+          self.__extract_param_properties(components, None, required_response_params, {'tmp': schema}, literal_response_params)
+        
+        if literal_response_params:
+          endpoint['literal_response_params'] = literal_response_params
 
         # Only support first media type
         break
