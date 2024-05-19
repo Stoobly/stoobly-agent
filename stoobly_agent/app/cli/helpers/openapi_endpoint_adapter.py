@@ -118,6 +118,9 @@ class OpenApiEndpointAdapter():
 
           parameters = operation.get("parameters", {})
           for parameter in parameters:
+            if '$ref' in parameter.keys():
+              parameter = self.__dereference(components, parameter['$ref'])
+
             if parameter['in'] == 'query':
               # query_param: RequestComponentName = {}
               # query_param['name'] = parameter['name']
@@ -133,7 +136,7 @@ class OpenApiEndpointAdapter():
                 endpoint['query_param_names'] = []
 
               schema = parameter.get('schema', {})
-              self.__extract_param_properties(components, None, required_query_params, {parameter['name']: schema}, literal_query_params, curr_id=len(literal_query_params)+1)
+              self.__extract_param_properties(components, required_query_params, {parameter['name']: schema}, literal_query_params, curr_id=len(literal_query_params)+1)
 
               endpoint['literal_query_params'] = literal_query_params
 
@@ -184,7 +187,7 @@ class OpenApiEndpointAdapter():
           for mimetype, media_type in content.items():
             schema = media_type.get('schema')
             if schema:
-              self.__extract_param_properties(components, None, required_body_params, {'tmp': schema}, literal_body_params)
+              self.__extract_param_properties(components, required_body_params, {'tmp': schema}, literal_body_params)
 
             if literal_body_params:
               endpoint['literal_body_params'] = literal_body_params
@@ -278,7 +281,7 @@ class OpenApiEndpointAdapter():
 
     return list(literal_params)[-2]
 
-  def __extract_param_properties(self, components, reference, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string=''):
+  def __extract_param_properties(self, components, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string=''):
     # Name of the schema object (i.e. the name of the body_param_name or response_param_name component)
     property_name = list(schema_object.keys())[0]
 
@@ -312,7 +315,6 @@ class OpenApiEndpointAdapter():
 
     if 'properties' in property_schema.keys():
       # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
-      reference = None
       required_component_params += property_schema.get('required', [])
 
       # curr_id_tmp is the parent_id of all elements in param_properties
@@ -333,19 +335,18 @@ class OpenApiEndpointAdapter():
           else:
             property_value['required'] = True
           required_component_params.remove(property_key)
-        curr_id = self.__extract_param_properties(components, reference, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query)    
+        curr_id = self.__extract_param_properties(components, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query)    
 
     elif property_schema.get('type') == 'array':
       # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
       if property_name == 'tmp':
         schema_object = {"Element": property_schema['items']}
-        curr_id = self.__extract_param_properties(components, reference, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
+        curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
       else:
-        reference = None
         schema_object = {f"{property_name.capitalize()}Element": property_schema['items']}
         literal_val = {'name': property_name, 'value': [], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
-        curr_id = self.__extract_param_properties(components, reference, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
+        curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
 
     elif 'allOf' in property_schema.keys():
       # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
@@ -357,8 +358,7 @@ class OpenApiEndpointAdapter():
       curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
       for part in all_of:
         required_component_params = part.get('required', [])
-        nested_reference = part.get('$ref', None)
-        curr_id = self.__extract_param_properties(components, nested_reference, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
+        curr_id = self.__extract_param_properties(components, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
 
     return curr_id
   
@@ -537,7 +537,7 @@ class OpenApiEndpointAdapter():
       for mimetype, media_type in response_content.items():
         schema = media_type.get('schema')
         if schema:
-          self.__extract_param_properties(components, None, required_response_params, {'tmp': schema}, literal_response_params)
+          self.__extract_param_properties(components, required_response_params, {'tmp': schema}, literal_response_params)
         
         if literal_response_params:
           endpoint['literal_response_params'] = literal_response_params

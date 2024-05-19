@@ -1,7 +1,7 @@
 import json
 import requests
 import sys
-from typing import Dict
+from typing import Dict, TypedDict, Optional
 
 from .endpoints_import_context import EndpointsImportContext
 from stoobly_agent.app.models.types import ENDPOINT_COMPONENT_NAMES
@@ -16,12 +16,19 @@ from stoobly_agent.lib.api.response_header_names_resource import ResponseHeaderN
 from stoobly_agent.lib.api.response_param_names_resource import ResponseParamNamesResource
 from stoobly_agent.lib.logger import bcolors
 
+class ComponentImportArgs(TypedDict):
+    project_id: int
+    endpoint_id: int
+    resource: EndpointsResource
+    component: RequestComponentName
+    parents: Optional[Dict]
+
 def import_endpoints(context: EndpointsImportContext):
     for endpoint in context.endpoints:
         for endpoint_handler in context.endpoint_handlers:
             endpoint_handler(endpoint)
 
-        try:
+        try:    
             res = import_endpoint(context.project_id, context.resources['endpoint'], endpoint)
         except requests.HTTPError as e:
             error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
@@ -32,9 +39,7 @@ def import_endpoints(context: EndpointsImportContext):
 
         endpoint_id = res.json()['id']
         try:
-            body_param_parents: Dict[int, int] = {}
-            response_param_parents: Dict[int, int] = {}
-            res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources, body_param_parents, response_param_parents)
+            res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources)
         except requests.HTTPError as e:
             error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
 
@@ -59,7 +64,12 @@ def import_endpoint(project_id: int, endpoint_resource: EndpointsResource, endpo
     
     res.raise_for_status()
 
-def import_header_name(project_id: int, endpoint_id: int, header_name_resource: HeaderNamesResource, header_name: RequestComponentName): 
+def import_header_name(args: ComponentImportArgs):
+    project_id = args['project_id']
+    endpoint_id = args['endpoint_id']
+    header_name_resource = args['resource']
+    header_name = args['component']
+
     res: requests.Response = header_name_resource.create(endpoint_id, {
         'name': header_name.get('name'),
         'is_deterministic': header_name.get('is_deterministic', True),
@@ -70,9 +80,15 @@ def import_header_name(project_id: int, endpoint_id: int, header_name_resource: 
 
     res.raise_for_status()
 
-def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_resource: BodyParamNamesResource, body_param_name: BodyParamName, parents: Dict[int, int]):
+def import_body_param_name(args: ComponentImportArgs):
+    project_id = args['project_id']
+    endpoint_id = args['endpoint_id']
+    body_param_name_resource = args['resource']
+    body_param_name = args['component']
+    parents = args['parents']
+
     body_param_name_id = None
-    parent_id = body_param_name['body_param_name_id']
+    parent_id = body_param_name.get('body_param_name_id')
     if parent_id:
         body_param_name_id = parents[parent_id]
     
@@ -92,7 +108,12 @@ def import_body_param_name(project_id: int, endpoint_id: int, body_param_name_re
     res_id = res.json()['id']
     parents[body_param_name['id']] = res_id
 
-def import_query_param_name(project_id: int, endpoint_id: int, query_param_name_resource: QueryParamNamesResource, query_param_name: RequestComponentName):
+def import_query_param_name(args: ComponentImportArgs):
+    project_id = args['project_id']
+    endpoint_id = args['endpoint_id']
+    query_param_name_resource = args['resource']
+    query_param_name = args['component']
+
     res: requests.Response = query_param_name_resource.create(endpoint_id, {
         'name': query_param_name.get('name'),
         'is_deterministic': query_param_name.get('is_deterministic', True),
@@ -103,9 +124,15 @@ def import_query_param_name(project_id: int, endpoint_id: int, query_param_name_
 
     res.raise_for_status()
 
-def import_response_param_name(project_id: int, endpoint_id: int, response_param_name_resource: ResponseParamNamesResource, response_param_name: RequestComponentName, parents: Dict[int, int]):
+def import_response_param_name(args: ComponentImportArgs):
+    project_id = args['project_id']
+    endpoint_id = args['endpoint_id']
+    response_param_name_resource = args['resource']
+    response_param_name = args['component']
+    parents = args['parents']
+
     response_param_name_id = None
-    parent_id = response_param_name['response_param_name_id']
+    parent_id = response_param_name.get('response_param_name_id')
     if parent_id:
         response_param_name_id = parents[parent_id]
     
@@ -126,7 +153,12 @@ def import_response_param_name(project_id: int, endpoint_id: int, response_param
     parents[response_param_name['id']] = res_id
 
 
-def import_response_header_name(project_id: int, endpoint_id: int, response_header_name_resource: ResponseHeaderNamesResource, response_header_name: RequestComponentName):
+def import_response_header_name(args: ComponentImportArgs):
+    project_id = args['project_id']
+    endpoint_id = args['endpoint_id']
+    response_header_name_resource = args['resource']
+    response_header_name = args['component']
+
     res: requests.Response = response_header_name_resource.create(endpoint_id, {
         'name': response_header_name.get('name'),
         'is_deterministic': response_header_name.get('is_deterministic', True),
@@ -145,19 +177,20 @@ component_name_import_dispatch = {
     ENDPOINT_COMPONENT_NAMES[4]: import_response_param_name
 }
 
-def process_import(component_name: str, body_param_parents: Dict[int, int], response_param_parents: Dict[int, int], *args):
-    if component_name == ENDPOINT_COMPONENT_NAMES[1]:
-        return component_name_import_dispatch[component_name](*args, body_param_parents)
-    elif component_name == ENDPOINT_COMPONENT_NAMES[4]:
-        return component_name_import_dispatch[component_name](*args, response_param_parents)
-    else:
-        return component_name_import_dispatch[component_name](*args)
-
-def import_component_names(project_id: int, endpoint_id: int, endpoint: EndpointShowResponse, resources: Dict[str, EndpointsResource], body_param_parents: Dict[int, int], response_param_parents: Dict[int, int]):
+def import_component_names(project_id: int, endpoint_id: int, endpoint: EndpointShowResponse, resources: Dict[str, EndpointsResource]):
     for component_name in ENDPOINT_COMPONENT_NAMES:
+        parents: Dict[int, int] = {}
         for component in endpoint.get(f'{component_name}s', {}):
             resource = resources[component_name]
-            process_import(component_name, body_param_parents, response_param_parents, project_id, endpoint_id, resource, component)
+            args = {
+                'project_id': project_id,
+                'endpoint_id': endpoint_id,
+                'resource': resource,
+                'component': component,
+                'parents': parents
+            }
+            component_name_import_dispatch[component_name](args)
+            
 
 def cleanup_endpoint(project_id: int, endpoint_id: int, resource: EndpointsResource):
     print(f"{bcolors.OKBLUE}Cleaning up partial import...{bcolors.ENDC}")
