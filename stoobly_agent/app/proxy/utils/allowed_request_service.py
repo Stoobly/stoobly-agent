@@ -47,6 +47,13 @@ def __request_excluded(request: MitmproxyRequest, exclude_rules: List[FirewallRu
 def __request_included(request: MitmproxyRequest, include_rules: List[FirewallRule]):
     method = request.method.upper()
     rules = list(filter(lambda rule: method in rule.methods, include_rules))
+
+    # If there are include rules, but none that match the request's method,
+    # then we know that none of the include rules will match the request
+    if len(include_rules) > 0 and len(rules) == 0:
+        Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
+        return False
+
     patterns = list(map(lambda rule: rule.pattern, rules))
     if not __include(request, patterns):
         Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
