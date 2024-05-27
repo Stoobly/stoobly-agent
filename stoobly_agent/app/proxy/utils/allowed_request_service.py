@@ -45,6 +45,9 @@ def __request_excluded(request: MitmproxyRequest, exclude_rules: List[FirewallRu
     return False
 
 def __request_included(request: MitmproxyRequest, include_rules: List[FirewallRule]):
+    if not include_rules:
+        return True
+
     method = request.method.upper()
     rules = list(filter(lambda rule: method in rule.methods, include_rules))
 
