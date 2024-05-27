@@ -75,7 +75,7 @@ class TestOpenApiEndpointAdapter():
             'inferred_type': 'String',
             'is_deterministic': True,
             'is_required': False,
-            'name': 'TagsElement',
+            'name': 'tagsElement',
             'query': 'tags[*]',
             'query_param_name_id': 1,
           },
@@ -373,7 +373,7 @@ class TestOpenApiEndpointAdapter():
               'inferred_type': 'Hash',
               'is_deterministic': True,
               'is_required': False,
-              'name': 'ApisElement',
+              'name': 'apisElement',
               'query': 'apis[*]',
               'response_param_name_id': 2,
           },
@@ -907,7 +907,7 @@ class TestOpenApiEndpointAdapter():
             'inferred_type': 'String',
             'is_deterministic': True,
             'is_required': False,
-            'name': 'PhotourlsElement',
+            'name': 'photoUrlsElement',
             'query': 'photoUrls[*]'
           },
           {
@@ -927,7 +927,7 @@ class TestOpenApiEndpointAdapter():
             'inferred_type': 'Hash',
             'is_deterministic': True,
             'is_required': False,
-            'name': 'TagsElement',
+            'name': 'tagsElement',
             'query': 'tags[*]'
           },
           {
@@ -1040,7 +1040,7 @@ class TestOpenApiEndpointAdapter():
             'inferred_type': 'String',
             'is_deterministic': True,
             'is_required': False,
-            'name': 'PhotourlsElement',
+            'name': 'photoUrlsElement',
             'query': 'photoUrls[*]',
             'response_param_name_id': 6,
           },
@@ -1060,7 +1060,7 @@ class TestOpenApiEndpointAdapter():
             'inferred_type': 'Hash',
             'is_deterministic': True,
             'is_required': False,
-            'name': 'TagsElement',
+            'name': 'tagsElement',
             'query': 'tags[*]',
             'response_param_name_id': 8,
           },

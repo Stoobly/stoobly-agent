@@ -343,7 +343,7 @@ class OpenApiEndpointAdapter():
         schema_object = {"Element": property_schema['items']}
         curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
       else:
-        schema_object = {f"{property_name.capitalize()}Element": property_schema['items']}
+        schema_object = {f"{property_name}Element": property_schema['items']}
         literal_val = {'name': property_name, 'value': [], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
         curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
