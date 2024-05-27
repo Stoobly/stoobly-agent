@@ -1,0 +1,78 @@
+version: '2.4'
+services:
+  # Proxy to enable mocking in e2e testing
+  {service}.{workflow}.mock:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      {service}.{workflow}.mock_configure:
+        condition: service_completed_successfully
+    environment:
+      - VIRTUAL_HOST=${SERVICE_HOSTNAME}
+      - VIRTUAL_PORT=${SERVICE_PORT}
+      - VIRTUAL_PROTO=${SERVICE_SCHEME}
+    extends:
+      file: ../docker-compose.base.yml
+      service: mock_base
+    networks:
+      - gateway
+      - mock
+    profiles:
+      - e2e
+  # Contains static source files for e2e testing
+  {service}.{workflow}.mock_assets:
+    build:
+      args:
+        ASSETS_PORT: ${MFE_DEV_PORT}
+        MFE_DEV_MODE: true
+    extends:
+      file: ${THREAT_DASHBOARD_MFE_COMPOSE}
+      service: aegis_source
+    hostname: assets
+    networks:
+      - mock
+    profiles:
+      - e2e
+    volumes:
+      - ./build/assets:/tmp/assets
+  {service}.{workflow}.mock_build:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_build_base
+    profiles:
+      - e2e
+  {service}.{workflow}.mock_configure:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      {service}.{workflow}.mock_build:
+        condition: service_completed_successfully
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_configure_base
+    profiles:
+      - e2e
+  #{service}.{workflow}.mock_enable:
+  #  build:
+  #    context: ./
+  #    dockerfile: ../Dockerfile.sidecar
+  #  depends_on:
+  #    {service}.{workflow}.mock:
+  #      condition: service_started
+  #  extends:
+  #    file: ../docker-compose.base.yml
+  #    service: proxy_base
+  #  entrypoint: ['bin/enable']
+  #  profiles:
+  #    - e2e
+networks:
+  gateway:
+    name: ${NETWORK} # important: name has to match, this is how we connect to upstream services
+    external: true # use pre-existing network instead of attempting to create one
+  mock:
+    name: mock

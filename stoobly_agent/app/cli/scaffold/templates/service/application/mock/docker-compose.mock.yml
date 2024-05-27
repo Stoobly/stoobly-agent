@@ -1,0 +1,73 @@
+version: '2.4'
+services:
+  aegis_beanstalkd:
+    extends:
+      file: ${THREAT_DASHBOARD_MFE_COMPOSE}
+      service: aegis_beanstalkd
+    networks:
+      - {service}
+    profiles:
+      - mock
+  aegis_rails_upstream:
+    extends:
+      file: ${THREAT_DASHBOARD_MFE_COMPOSE}
+      service: aegis_rails_upstream
+    networks:
+      - {service}
+    profiles:
+      - mock
+  aegis_redis:
+    extends:
+      file: ${THREAT_DASHBOARD_MFE_COMPOSE}
+      service: aegis_redis
+    networks:
+      - {service}
+    profiles:
+      - mock
+  # Serves as the proxy to upstream service, enables recording HTTP requests and mocking
+  mock:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      mock_configure:
+        condition: service_completed_successfully
+    environment:
+      - VIRTUAL_HOST=${SERVICE_HOSTNAME}
+      - VIRTUAL_PORT=${SERVICE_PORT}
+      - VIRTUAL_PROTO=${SERVICE_SCHEME}
+    extends:
+      file: ../docker-compose.base.yml
+      service: sidecar_base
+    networks:
+      - gateway
+      - {service}
+    profiles:
+      - mock
+  mock_build:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_build_base
+    profiles:
+      - mock
+  mock_configure:
+    build:
+      context: ./
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      mock_build:
+        condition: service_completed_successfully
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_configure_base
+    profiles:
+      - mock
+networks:
+  gateway:
+    name: ${NETWORK} # important: name has to match, this is how we connect to upstream services
+    external: true # use pre-existing network instead of attempting to create one
+  {service}:
+    name: {service}

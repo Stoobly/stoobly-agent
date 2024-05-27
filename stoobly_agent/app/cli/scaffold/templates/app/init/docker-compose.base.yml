@@ -1,0 +1,14 @@
+version: '2.4'
+services:
+  proxy_base:
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_base
+    profiles:
+      - proxy_base
+  proxy_configure_base:
+    entrypoint: ['bin/configure']
+    extends:
+      service: proxy_base
+    profiles:
+      - proxy_configure_base

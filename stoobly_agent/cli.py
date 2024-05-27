@@ -16,7 +16,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, snapshot, trace
+from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
@@ -50,6 +50,7 @@ main.add_command(endpoint)
 main.add_command(feature)
 main.add_command(intercept)
 main.add_command(request)
+main.add_command(scaffold)
 main.add_command(scenario)
 main.add_command(snapshot)
 main.add_command(trace)

@@ -1,0 +1,57 @@
+version: '2.4'
+services:
+  # Proxy to enable mocking in ci e2e testing
+  {service}.{workflow}.mock:
+    build:
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      {service}.{workflow}.mock_configure:
+        condition: service_completed_successfully
+    environment:
+      - VIRTUAL_HOST=${SERVICE_HOSTNAME}
+      - VIRTUAL_PORT=${SERVICE_PORT}
+      - VIRTUAL_PROTO=${SERVICE_SCHEME}
+    extends:
+      file: ../docker-compose.base.yml
+      service: mock_base
+    networks:
+      - gateway
+    profiles:
+      - {workflow}
+    volumes:
+      - ../e2e/build/assets:/home/stoobly/assets
+  {service}.{workflow}.mock_build:
+    build:
+      dockerfile: ../Dockerfile.sidecar
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_build_base
+    profiles:
+      - {workflow}
+  {service}.{workflow}.mock_configure:
+    build:
+      dockerfile: ../Dockerfile.sidecar
+    depends_on:
+      {service}.{workflow}.mock_build:
+        condition: service_completed_successfully
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_configure_base
+    profiles:
+      - {workflow}
+  #{service}.{workflow}.mock_enable:
+  #  build:
+  #    dockerfile: ../Dockerfile.sidecar
+  #  depends_on:
+  #    {service}.{workflow}.mock:
+  #      condition: service_healthy
+  #  extends:
+  #    file: ../docker-compose.base.yml
+  #    service: proxy_enable_base
+  #  entrypoint: ['bin/enable']
+  #  profiles:
+  #    - {workflow}
+networks:
+  gateway:
+    name: ${NETWORK} # important: name has to match, this is how we connect to upstream services
+    external: true # use pre-existing network instead of attempting to create one

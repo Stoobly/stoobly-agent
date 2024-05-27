@@ -1,0 +1,55 @@
+version: '2.4'
+services:
+  mock_base:
+    command: --proxy-mode reverse:${SERVICE_SCHEME}://${SERVICE_HOSTNAME} --proxy-port ${SERVICE_PORT} --certs ${SERVICE_HOSTNAME}-joined.pem --ssl-insecure --lifecycle-hooks-path lifecycle_hooks.py --headless --response-fixtures-path fixtures.yml --intercept
+    environment:
+      - ASSETS_HOSTNAME=assets
+      - ASSETS_PORT=8080
+    extends:
+      service: sidecar_base
+    hostname: ${SERVICE_HOSTNAME}
+  proxy_base:
+    #build:
+    #  args:
+    #    HOSTNAME: ${SERVICE_HOSTNAME}
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_base
+    profiles:
+      - proxy_base
+  sidecar_base:
+    build:
+      dockerfile: ./Dockerfile.sidecar
+    command: --proxy-mode reverse:${SERVICE_SCHEME}://${SERVICE_HOSTNAME} --proxy-port ${SERVICE_PORT} --certs ${SERVICE_HOSTNAME}-joined.pem --ssl-insecure --lifecycle-hooks-path lifecycle_hooks.py --headless
+    extends:
+      service: proxy_base
+    #healthcheck:
+    #  test: "curl http://0.0.0.0:4200"
+    #  timeout: 5s
+    #  interval: 30s
+    #  retries: 3
+    profiles:
+      - sidecar_base
+  # Builds mocks from snapshots
+  proxy_build_base:
+    entrypoint: ['bin/apply']
+    extends:
+      service: proxy_base
+    profiles:
+      - proxy_build_base
+  # Configures record and mock settings
+  proxy_configure_base:
+    entrypoint: ['bin/configure', '${SERVICE_SCHEME}://${SERVICE_HOSTNAME}']
+    environment:
+      - ASSETS_HOSTNAME=assets
+      - ASSETS_PORT=8080
+    extends:
+      service: proxy_base
+    profiles:
+      - proxy_configure_base
+  proxy_enable_base:
+    entrypoint: ['bin/enable']
+    extends:
+      service: proxy_base
+    profiles:
+      - proxy_enable_base

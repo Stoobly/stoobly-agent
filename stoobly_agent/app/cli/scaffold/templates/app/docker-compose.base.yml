@@ -1,0 +1,11 @@
+version: '2.4'
+services:
+  proxy_base:
+    build:
+      args:
+        USER_ID: ${USER_ID}
+      dockerfile: ./Dockerfile.proxy
+    profiles:
+      - stoobly_base
+    volumes:
+      - ${DATA_DIR}/.stoobly:/home/stoobly/.stoobly

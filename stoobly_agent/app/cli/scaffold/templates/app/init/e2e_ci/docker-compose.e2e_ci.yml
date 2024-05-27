@@ -1,0 +1,10 @@
+version: '2.4'
+services:
+  init.{workflow}.configure:
+    build:
+      dockerfile: ../Dockerfile.sidecar
+    extends:
+      file: ../docker-compose.base.yml
+      service: proxy_configure_base
+    profiles:
+      - {workflow}
