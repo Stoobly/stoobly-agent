@@ -41,7 +41,7 @@ class RequestsController:
             return
 
         raw_requests = body_params.get('requests')
-        payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER.decode()
+        payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER
         toks = raw_requests.split(payloads_delimitter)
 
         if len(toks) % 2 != 0:

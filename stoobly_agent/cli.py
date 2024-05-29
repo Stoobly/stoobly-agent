@@ -86,7 +86,16 @@ def init(**kwargs):
   Passphrase for decrypting the private key provided in the --cert option. Note that passing cert_passphrase on the command line makes your passphrase visible in your system's process list. Specify it in
   config.yaml to avoid this.
 ''')
+@click.option('--confdir', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Location of the default mitmproxy configuration files.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
+@click.option('--flow-detail', default='1', type=click.Choice(['1', '2', '3', '4']), help='''
+  The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
+  0: no output
+  1: shortened request URL with response status code
+  2: full request URL with response status code and HTTP headers
+  3: 2 + truncated response content, content of WebSocket and TCP messages (content_view_lines_cutoff: 512)
+  4: 3 + nothing is truncated
+''')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
@@ -218,7 +227,7 @@ def __build_request_from_curl(**kwargs):
 
     if len(toks) != 2:
       continue
-    
+
     headers[toks[0].strip()] = toks[1].strip()
 
   return requests.Request(
