@@ -76,7 +76,7 @@ def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
 
     params_array = []
     for ele in decoded_multipart:
-        params_array.append((decode(ele[0]), decode(ele[1])))
+        params_array.append((decode(ele[0]), ele[1]))
  
     return MultiDict(params_array)
 
