@@ -10,7 +10,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import bcolors, Logger
 
 from .constants import custom_response_codes
 from .mock.context import MockContext
@@ -130,6 +130,11 @@ def __handle_mock_success(context: MockContext) -> None:
 
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
+
+    request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
+    if request_key:
+        request = context.flow.request
+        Logger.instance().info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
 
 def __handle_mock_failure(context: MockContext) -> None:
     req = context.flow.request
