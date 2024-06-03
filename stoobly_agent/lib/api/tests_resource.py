@@ -6,6 +6,8 @@ from stoobly_agent.lib.api.interfaces.tests import TestCreateParams
 from ..logger import Logger
 from .stoobly_api import StooblyApi
 
+LOG_ID = 'TestsResource'
+
 class TestsResource(StooblyApi):
   TESTS_ENDPOINT = 'tests'
 
@@ -22,6 +24,6 @@ class TestsResource(StooblyApi):
   def show(self, test_id: int, **query_params) -> requests.Response:
     url = f"{self.service_url}/{self.TESTS_ENDPOINT}/{test_id}"
 
-    Logger.instance().debug(f"{self.LOG_ID}.request_response:{url}?{urllib.parse.urlencode(query_params)}")
+    Logger.instance(LOG_ID).debug(f"{url}?{urllib.parse.urlencode(query_params)}")
 
     return self.get(url, headers=self.default_headers, params=query_params)

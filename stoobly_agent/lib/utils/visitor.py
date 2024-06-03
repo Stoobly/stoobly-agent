@@ -8,6 +8,7 @@ from jmespath.compat import string_type
 from numbers import Number
 from stoobly_agent.lib.logger import Logger
 
+LOG_ID = 'JmesPath'
 
 def _equals(x, y):
     if _is_special_integer_case(x, y):
@@ -108,7 +109,7 @@ class Visitor(object):
 
     def increment_visits(self, node):
         self.visited_nodes.append(node)
-        Logger.instance().debug(f"{len(self.visited_nodes)} {node}")
+        Logger.instance(LOG_ID).debug(f"{len(self.visited_nodes)} {node}")
 
     def build_traverse_path(self, node):
         if len(self.nodes) > 0:
@@ -118,9 +119,9 @@ class Visitor(object):
 
         self.build_traverse_path_traverse(node)
 
-        Logger.instance().debug('Traverse Path')
+        Logger.instance(LOG_ID).debug('Traverse Path')
         for i, node in enumerate(self.nodes):
-            Logger.instance().debug(f"{i + 1} {node}")
+            Logger.instance(LOG_ID).debug(f"{i + 1} {node}")
 
     def build_traverse_path_traverse(self, node):
         if node['type'] == 'projection':
