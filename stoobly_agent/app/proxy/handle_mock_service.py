@@ -20,7 +20,7 @@ from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, pass_on
 
-LOG_ID = 'HandleMock'
+LOG_ID = 'Mock'
 
 class MockOptions(TypedDict):
     failure: Callable
@@ -124,17 +124,19 @@ def handle_request_mock(context: MockContext):
         success=lambda context: __handle_mock_success(context)
     )
 
-def __handle_mock_success(context: MockContext) -> None:
-    response = context.response
-    start_time = context.start_time
-
-    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
-        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
-
+def handle_response_mock(context: MockContext):
+    response = context.flow.response
     request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
+
     if request_key:
         request = context.flow.request
-        Logger.instance().info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+
+def __handle_mock_success(context: MockContext) -> None:
+    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
+        response = context.response
+        start_time = context.start_time
+        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __handle_mock_failure(context: MockContext) -> None:
     req = context.flow.request
@@ -148,7 +150,7 @@ def __handle_mock_failure(context: MockContext) -> None:
     else:
         req.headers[custom_headers.REQUEST_ORIGIN] = request_origin.PROXY
 
-    Logger.instance().debug(f"{LOG_ID}:ReverseProxy:UpstreamUrl: {upstream_url}")
+    Logger.instance(LOG_ID).debug(f"UpstreamUrl: {upstream_url}")
 
     reverse_proxy(req, upstream_url, {})
 
@@ -172,9 +174,9 @@ def __simulate_latency(expected_latency: str, start_time: float) -> float:
 
     wait_time = expected_latency - estimated_rtt_network_latency - api_latency
 
-    Logger.instance().debug(f"{LOG_ID}:Expected latency: {expected_latency}")
-    Logger.instance().debug(f"{LOG_ID}:API latency: {api_latency}")
-    Logger.instance().debug(f"{LOG_ID}:Wait time: {wait_time}")
+    Logger.instance(LOG_ID).debug(f"Expected latency: {expected_latency}")
+    Logger.instance(LOG_ID).debug(f"API latency: {api_latency}")
+    Logger.instance(LOG_ID).debug(f"Wait time: {wait_time}")
 
     if wait_time > 0:
         time.sleep(wait_time)

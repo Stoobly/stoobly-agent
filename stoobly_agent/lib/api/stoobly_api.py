@@ -9,7 +9,6 @@ from stoobly_agent.lib.api.keys import InvalidReportKey, InvalidScenarioKey, Pro
 from .api import Api
 
 class StooblyApi(Api):
-    LOG_ID = 'lib.api.stoobly_api'
     REPORTS_ENDPOINT = '/reports'
     REQUESTS_ENDPOINT = '/requests'
     TESTS_ENDPOINT = '/tests'

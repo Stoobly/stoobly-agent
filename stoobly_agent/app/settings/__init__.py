@@ -18,9 +18,9 @@ from .proxy_settings import ProxySettings
 from .remote_settings import RemoteSettings
 from .ui_settings import UISettings
 
-class Settings:
-    LOG_ID = 'app.settings'
+LOG_ID = 'Settings'
 
+class Settings:
     __instance = None
 
     __cli_settings = None
@@ -186,7 +186,7 @@ class Settings:
 
             self.__load_lock = True
 
-            Logger.instance().debug(f"{self.LOG_ID}.reload_settings")
+            Logger.instance(LOG_ID).debug('Reloading settings')
             self.__load_settings()
 
             publish_change(statuses.SETTINGS_MODIFIED, self.__settings, sync=True)

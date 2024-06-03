@@ -11,6 +11,8 @@ from stoobly_agent.lib.logger import bcolors, Logger
 
 from .types import Fixtures
 
+LOG_ID = 'Fixture'
+
 class Options():
   public_directory_path: str
   response_fixtures: Fixtures
@@ -44,7 +46,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
     response.raw = BytesIO(fp.read()) 
     response.headers = headers
 
-    Logger.instance().debug(f"{bcolors.OKBLUE}Resolved fixture {fixture_path}{bcolors.ENDC}")
+    Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Resolved{bcolors.ENDC} fixture {fixture_path}")
 
     return response
 

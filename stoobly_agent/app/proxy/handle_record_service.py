@@ -19,7 +19,7 @@ from .record.upload_request_service import inject_upload_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 
-LOG_ID = 'HandleRecord'
+LOG_ID = 'Record'
 
 def handle_response_record(context: RecordContext):
     flow = context.flow
@@ -32,7 +32,7 @@ def handle_response_record(context: RecordContext):
     request_model = RequestModel(intercept_settings.settings)
 
     active_record_policy = get_active_mode_policy(request, intercept_settings)
-    Logger.instance().debug(f"{LOG_ID}:RecordPolicy: {active_record_policy}")
+    Logger.instance(LOG_ID).debug(f"RecordPolicy: {active_record_policy}")
 
     if active_record_policy == record_policy.ALL:
         __record_request(context, request_model)

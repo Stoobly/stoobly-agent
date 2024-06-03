@@ -23,6 +23,8 @@ from .helpers.handle_config_update_service import (
 from .helpers.print_service import FORMATS, print_projects, print_scenarios, select_print_options
 from .helpers.validations import *
 
+LOG_ID = 'ConfigCLI'
+
 settings = Settings.instance()
 is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
 
@@ -261,7 +263,7 @@ def set(**kwargs):
 
     settings.commit()
 
-    Logger.instance().debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
+    Logger.instance(LOG_ID).debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
 
 ### Match
 
@@ -326,7 +328,7 @@ def set(**kwargs):
 
     settings.commit()
 
-    Logger.instance().debug(f"Match {kwargs['method']} {kwargs['pattern']} -> {kwargs['component']} set!")
+    Logger.instance(LOG_ID).debug(f"Match {kwargs['method']} {kwargs['pattern']} -> {kwargs['component']} set!")
 
 ### Firewall
 
@@ -392,7 +394,7 @@ def set(**kwargs):
 
     settings.commit()
 
-    Logger.instance().debug(f"Firewall {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
+    Logger.instance(LOG_ID).debug(f"Firewall {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
 
 ### Validate
 

@@ -31,13 +31,16 @@ class Logger:
         raise RuntimeError('Call instance() instead')
 
     @classmethod
-    def instance(cls):
+    def instance(cls, name = None):
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
 
         cls._instance.load()
 
-        return logging
+        if not name:
+            return logging
+        else:
+            return logging.getLogger(name)
 
     @classmethod
     def reload(cls):

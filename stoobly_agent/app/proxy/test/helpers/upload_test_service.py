@@ -13,6 +13,8 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from ...intercept_settings import InterceptSettings
 from ...record.join_request_service import join_rewritten_request
 
+LOG_ID = 'Test'
+
 class UploadTestData(TypedDict):
   expected_response: str
   log: str
@@ -31,7 +33,7 @@ def inject_upload_test(
     api = TestsResource(settings.remote.api_url, settings.remote.api_key)
 
   if not intercept_settings:
-    intercept_settings = InterceptSettings(Settings.instance())
+    intercept_settings = InterceptSettings(Settings.instance(LOG_ID))
 
   return lambda flow, **kwargs: upload_test(api, intercept_settings, flow, **kwargs)
 
@@ -43,14 +45,14 @@ def upload_test(
 ) -> Response:
     joined_request = join_rewritten_request(flow, intercept_settings)
 
-    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 
     raw_requests = joined_request.build()
 
     # If report key is set, upload test to report
     report_key = intercept_settings.report_key
     if report_key:
-      Logger.instance().debug(f"Using report {report_key}")
+      Logger.instance(LOG_ID).debug(f"Using report {report_key}")
 
       api.with_report_key(report_key, kwargs)
 
