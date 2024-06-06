@@ -8,6 +8,8 @@ from typing import List, Dict, TypedDict, Union
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils.python_to_ruby_type import type_map
 
+LOG_ID = 'RequestHasher'
+
 class IgnoredParam(TypedDict):
   inferred_type: str
   query: str
@@ -107,7 +109,7 @@ class RequestHasher():
     return self.type_map.get(str(val.__class__))
 
   def __serialize_param(self, query, key: str, val):
-    Logger.instance().debug(f"{bcolors.OKBLUE}Serializing{bcolors.ENDC} {query} => {val}")
+    Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Serializing{bcolors.ENDC} {query} -> {val}")
 
     if isinstance(val, bool):
       # Ruby boolean are lower case

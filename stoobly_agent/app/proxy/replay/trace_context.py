@@ -21,6 +21,7 @@ from stoobly_agent.lib.orm.trace_request import TraceRequest
 from stoobly_agent.lib.utils import jmespath
 
 AliasMap = Dict[str, RequestComponentName]
+LOG_ID = 'Trace'
 
 class TraceContext:
 
@@ -32,7 +33,7 @@ class TraceContext:
     self.__requests: List[Request] = []
     self.__remote_project_key: ProjectKey = None
 
-    Logger.instance().debug(f"Using trace {self.__trace.id}")
+    Logger.instance(LOG_ID).debug(f"Using trace {self.__trace.id}")
 
   @property
   def alias_resolve_strategy(self):
@@ -71,7 +72,7 @@ class TraceContext:
       )
 
     if endpoint:
-      Logger.instance().debug(f"\tMatched Endpoint: {endpoint}")
+      Logger.instance(LOG_ID).debug(f"\tMatched Endpoint: {endpoint}")
 
       if self.alias_resolve_strategy != alias_resolve_strategy.NONE:
         self.rewrite_request(request, endpoint)
@@ -133,7 +134,7 @@ class TraceContext:
     request.path = '/' + '/'.join(path_segment_strings)
 
   def __rewrite_handler(self, component_type: str, alias_name: str, name: str, value):
-    Logger.instance().info(f"{bcolors.OKCYAN}REWRITE {component_type} alias {alias_name}{bcolors.ENDC} {name} => {value}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {component_type} alias {alias_name} {name} => {value}")
 
   def __rewrite_headers(
     self, request: Request, header_names: List[RequestComponentName], id_to_alias: AliasMap
@@ -217,7 +218,7 @@ class TraceContext:
     '''
     content = decode_response(response.content, response.headers.get('content-type'))
     if not is_traversable(content):
-        return Logger.instance().debug('Skipping creating aliases, content is not traversable')
+        return Logger.instance(LOG_ID).debug('Skipping creating aliases, content is not traversable')
 
     id_to_alias = {}
     aliases = endpoint['aliases']
@@ -225,18 +226,18 @@ class TraceContext:
       id_to_alias[_alias['id']] = _alias
 
     response_param_names = endpoint['response_param_names']
-    Logger.instance().debug(f"\tBuilding Trace Aliases from: {response_param_names}")
+    Logger.instance(LOG_ID).debug(f"\tBuilding Trace Aliases from: {response_param_names}")
 
     for response_param_name in response_param_names:
       try:
         values = self.__query_resolves_response(response_param_name, content)
-        Logger.instance().debug(f"\tValues: {values}")
+        Logger.instance(LOG_ID).debug(f"\tValues: {values}")
       except Exception as e:
-        Logger.instance().error(e)
+        Logger.instance(LOG_ID).error(e)
         continue
 
       _alias: Alias = id_to_alias[response_param_name['alias_id']]
-      Logger.instance().debug(f"\tAlias: {_alias}")
+      Logger.instance(LOG_ID).debug(f"\tAlias: {_alias}")
 
       for value in values:  
         if _alias and value:
@@ -292,4 +293,4 @@ class TraceContext:
         'value': _alias.value,
       })
 
-    tabulate_print(data, print_handler=Logger.instance().debug)
+    tabulate_print(data, print_handler=Logger.instance(LOG_ID).debug)

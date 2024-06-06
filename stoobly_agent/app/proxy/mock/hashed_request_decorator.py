@@ -17,9 +17,9 @@ COMPONENT_TYPES = {
     'RESPONSE': 5
 }
 
-class HashedRequestDecorator:
+LOG_ID = 'HashedRequest'
 
-    LOG_ID = 'lib.hashed_request_decorator'
+class HashedRequestDecorator:
 
     def __init__(self, request: MitmproxyRequestFacade):
         self.request = request
@@ -53,8 +53,8 @@ class HashedRequestDecorator:
 
         ignored_headers = {} if with_ignored else self.ignored_headers
 
-        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing headers...{bcolors.ENDC}")
-        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_headers}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKCYAN}Hashing headers...{bcolors.ENDC}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_headers}")
         serialized_params = self.__serialize_params(headers, ignored_headers)
 
         return self.__hash_serialized_params(serialized_params)
@@ -68,8 +68,8 @@ class HashedRequestDecorator:
         params = self.__deflatten_multi_dict(query_params)
         ignored_params = {} if with_ignored else self.ignored_query_params
 
-        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing query params...{bcolors.ENDC}")
-        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKCYAN}Hashing query params...{bcolors.ENDC}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
         serialized_params = self.__serialize_params(params, ignored_params)
 
         return self.__hash_serialized_params(serialized_params)
@@ -81,8 +81,8 @@ class HashedRequestDecorator:
         params = self.request.parsed_body
         ignored_params = {} if with_ignored else self.ignored_body_params
 
-        Logger.instance().debug(f"{bcolors.OKCYAN}Hashing body params...{bcolors.ENDC}")
-        Logger.instance().debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKCYAN}Hashing body params...{bcolors.ENDC}")
+        Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Ignoring{bcolors.ENDC} {ignored_params}")
 
         return RequestHasher.instance().hash_params(params, ignored_params)
 
@@ -120,13 +120,13 @@ class HashedRequestDecorator:
                 for param in value:
                     param_hash = hashlib.md5(self.__serialize_param(key, param)).hexdigest()
 
-                    Logger.instance().debug(f"{self.LOG_ID}.serialized_query_params_hash:{key} -> {param} ({param_hash})")
+                    Logger.instance(LOG_ID).debug(f"Serializing {key} -> {param} ({param_hash})")
 
                     serialized_params.append(param_hash)
             else:
                 param_hash = hashlib.md5(self.__serialize_param(key, value)).hexdigest()
 
-                Logger.instance().debug(f"{self.LOG_ID}.serialized_query_params_hash:{key} -> {value} ({param_hash})")
+                Logger.instance(LOG_ID).debug(f"Serializing {key} -> {value} ({param_hash})")
 
                 serialized_params.append(param_hash)
 

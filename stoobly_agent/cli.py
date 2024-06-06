@@ -88,7 +88,7 @@ def init(**kwargs):
 ''')
 @click.option('--confdir', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Location of the default mitmproxy configuration files.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
-@click.option('--flow-detail', default='1', type=click.Choice(['1', '2', '3', '4']), help='''
+@click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
   0: no output
   1: shortened request URL with response status code

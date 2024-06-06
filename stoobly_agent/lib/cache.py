@@ -1,5 +1,6 @@
 import pdb
 import random
+import re
 
 from time import time
 
@@ -23,10 +24,19 @@ class Cache:
 
         return cls._instance
 
-    def clear(self):
-        self.data = {}
-        self.dataVersions = {}
-        self.version += 1
+    def clear(self, pattern: str = None):
+        if not pattern:
+            self.data = {}
+            self.dataVersions = {}
+            self.version += 1
+        else:
+            delete_list = []
+            for key in self.data.keys():
+                if re.match(pattern, key):
+                    delete_list.append(key)
+            
+            for key in delete_list:
+                self.delete(key)
 
     def read(self, key):
         if key in self.timeouts:
@@ -48,9 +58,10 @@ class Cache:
 
     def read_all(self):
         data = []
-
-        for key in self.data.keys():
+        
+        for key in list(self.data.keys()):
             datum = self.read(key)
+
             if datum:
                 data.append(datum)
 
@@ -73,7 +84,13 @@ class Cache:
         self.version += 1
 
     def delete(self, key):
-        del self.data[key]
-        del self.dataVersions[key]
-        del self.timeouts[key]
+        if key in self.data:
+            del self.data[key]
+
+        if key in self.dataVersions:
+            del self.dataVersions[key]
+
+        if key in self.timeouts:
+            del self.timeouts[key]
+
         self.version += 1
