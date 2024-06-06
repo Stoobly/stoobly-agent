@@ -4,7 +4,8 @@ import re
 import yaml
 
 from functools import reduce
-from openapi_core import Spec
+from jsonschema_path import SchemaPath
+from openapi_core import OpenAPI
 from pprint import pprint
 from typing import Dict, List, Union
 from urllib.parse import urlparse
@@ -35,11 +36,12 @@ class OpenApiEndpointAdapter():
       if missing_oauth2_scopes:
         self.__add_oauth2_default_scopes(file_data)
 
-      spec = Spec.from_dict(file_data)
+      openApi = OpenAPI.from_dict(file_data)
+      spec = openApi.spec
 
     return self.adapt(spec)
 
-  def adapt(self, spec: Spec) -> List[EndpointShowResponse]:
+  def adapt(self, spec: SchemaPath) -> List[EndpointShowResponse]:
     endpoints = []
     endpoint_counter = 0
     components = spec.get("components", {})
@@ -364,7 +366,7 @@ class OpenApiEndpointAdapter():
   
 
   # Returns the schema object located at the given reference path
-  def __dereference(self, components: Spec, reference: str):
+  def __dereference(self, components: SchemaPath, reference: str):
     # '#/components/schemas/NewPet'
     if not reference.startswith('#'):
       print('external references are not supported yet')
@@ -475,7 +477,7 @@ class OpenApiEndpointAdapter():
     num = url.count('{')
     return num
 
-  def __evaluate_servers(self, servers: Spec) -> List[dict]:
+  def __evaluate_servers(self, servers: SchemaPath) -> List[dict]:
     result = []
 
     if not servers:
@@ -524,7 +526,7 @@ class OpenApiEndpointAdapter():
     
     return result
 
-  def __parse_responses(self, endpoint: EndpointShowResponse, responses: Spec, components: Spec):
+  def __parse_responses(self, endpoint: EndpointShowResponse, responses: SchemaPath, components: SchemaPath):
     for response_code, response_definition in responses.items():
       # Only support status code 200 for now
       if response_code != '200':
