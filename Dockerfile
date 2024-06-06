@@ -1,4 +1,4 @@
-FROM python:3.8.11-slim
+FROM python:3.11.9-slim
 
 COPY . /tmp/stoobly-agent
 RUN cd /tmp/stoobly-agent && pip install . && rm -rf /tmp/stoobly-agent
