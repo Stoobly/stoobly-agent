@@ -9,6 +9,8 @@ from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.config.constants import mock_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 
+LOG_ID = 'Firewall'
+
 def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
@@ -39,7 +41,7 @@ def __request_excluded(request: MitmproxyRequest, exclude_rules: List[FirewallRu
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
-            Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} excluded by firewall rule{bcolors.ENDC}")
+            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Excluding{bcolors.ENDC} {request.method} {request.url}")
             return True
     
     return False
@@ -54,12 +56,12 @@ def __request_included(request: MitmproxyRequest, include_rules: List[FirewallRu
     # If there are include rules, but none that match the request's method,
     # then we know that none of the include rules will match the request
     if len(include_rules) > 0 and len(rules) == 0:
-        Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Not Including{bcolors.ENDC} {request.method} {request.url}")
         return False
 
     patterns = list(map(lambda rule: rule.pattern, rules))
     if not __include(request, patterns):
-        Logger.instance().info(f"{bcolors.OKBLUE}{request.method} {request.url} not included by firewall rule{bcolors.ENDC}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Not Including{bcolors.ENDC} {request.method} {request.url}")
         return False
 
     return True
@@ -80,7 +82,7 @@ def __include(request: MitmproxyRequest, patterns: List[str]) -> bool:
             if re.match(pattern, request.url):
                 return True
         except re.error as e:
-            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
+            Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")
             return False
 
     return False
@@ -94,7 +96,7 @@ def __exclude(request: MitmproxyRequest, patterns: List[str]) -> bool:
             if re.match(pattern, request.url):
                 return True
         except re.error as e:
-            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
+            Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")
             return True
 
     return False

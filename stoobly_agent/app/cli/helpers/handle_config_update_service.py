@@ -56,6 +56,11 @@ def handle_intercept_active_update(new_settings: Settings, context: Context = No
           # If policy is overwrite when recording, whenever intercept is disabled,
           # set active scenario to not be overwritable
           scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
+    elif _mode == intercept_mode.MOCK:
+      # When mock is stopped, clear request access counts
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.tiebreak_scenario_request import reset
+
+      reset()
 
 def handle_scenario_update(new_settings: Settings, context = None):
   new_scenario_key = __scenario_key(new_settings.proxy)

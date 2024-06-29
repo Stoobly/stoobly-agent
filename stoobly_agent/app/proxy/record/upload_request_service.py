@@ -23,7 +23,7 @@ AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
 }
 
-LOG_ID = 'UploadRequest'
+LOG_ID = 'Record'
 NAMESPACE_FOLDER = 'stoobly'
 
 def inject_upload_request(request_model: RequestModel, intercept_settings: InterceptSettings):
@@ -48,7 +48,7 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
 ):
-    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {flow.request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
     joined_request = join_rewritten_request(flow, intercept_settings)
 
@@ -68,17 +68,17 @@ def upload_request(
  
     if intercept_settings.settings.is_debug():
         file_path = __debug_request(flow.request, joined_request.build())
-        Logger.instance().debug(f"{LOG_ID}: Writing request to {file_path}")
+        Logger.instance(LOG_ID).debug(f"Writing request to {file_path}")
     elif not res:
         file_path = __debug_request(flow.request, joined_request.build())
-        Logger.instance().error(f"Error: Failed to upload, writing request to {file_path}")
+        Logger.instance(LOG_ID).error(f"Error: Failed to upload, writing request to {file_path}")
 
     return res
 
 def upload_staged_request(
     request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
 ):
-    Logger.instance().info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} {request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {request.url}")
 
     response = request.response
 

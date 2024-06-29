@@ -7,7 +7,10 @@ class TestSchemaBuilder():
 
   def test_it_builds_single_level_dict(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'id': {'value':1}, 'name': {'value':'test'} })
+    param_names = builder.build([
+      {'name': 'id', 'value': 0, 'query': 'id', 'required': False, 'id': 1, "parent_id": None},
+      {'name': 'name', 'value': '', 'query': 'name', 'required': False, 'id': 2, "parent_id": None}
+    ])
 
     param_names_index = self.__index(param_names)
     expected_queries = ['id.Integer', 'name.String']
@@ -17,11 +20,17 @@ class TestSchemaBuilder():
 
   def test_it_builds_two_level_dict(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'list': {'value': [{'value':{ 'id': {'value':1}, 'name': {'value':'test'} }}] }, 'total': {'value':1} })
+    param_names = builder.build([
+      {'name': 'list', 'value': [], 'query': 'list', 'required': False, 'id': 1, "parent_id": None},
+      {'name': 'ListElement', 'value': {}, 'query': 'list[*]', 'required': False, 'id': 2, "parent_id": 1},
+      {'name': 'id', 'value': 0, 'query': 'list[*].id', 'required': False, 'id': 3, "parent_id": 2},
+      {'name': 'name', 'value': '', 'query': 'list[*].name', 'required': False, 'id': 4, "parent_id": 2},
+      {'name': 'total', 'value': 0, 'query': 'total', 'required': False, 'id': 5, "parent_id": None}
+    ])
 
     param_names_index = self.__index(param_names)
     expected_queries = [
-      'list.Array', 'total.Integer', 'list[*].id.Integer', 'list[*].name.String'
+      'list.Array', 'list[*].Hash', 'list[*].id.Integer', 'list[*].name.String', 'total.Integer'
     ]
 
     for query in expected_queries:
@@ -29,11 +38,13 @@ class TestSchemaBuilder():
 
   def test_it_builds_single_level_array(self):
     builder = SchemaBuilder(-1, 'body_param_name')
-    param_names = builder.build([{'value':1}, {'value':'a'}])
+    param_names = builder.build([
+      {'name': 'Element', 'value': 0, 'query': '[*]', 'required': False, 'id': 1, "parent_id": None},
+    ])
 
     param_names_index = self.__index(param_names)
     expected_queries = [
-      '[*].Integer', '[*].String'
+      '[*].Integer'
     ]
 
     for query in expected_queries:
@@ -41,11 +52,15 @@ class TestSchemaBuilder():
 
   def test_it_builds_item_and_single_level_array(self):
     builder = SchemaBuilder(-1, 'query_param_name')
-    param_names = builder.build({ 'tags': {'value':[{'value':''}]}, 'limit': {'value':0} })
+    param_names = builder.build([
+      {'name': 'tags', 'value': [], 'query': 'tags', 'required': False, 'id': 1, "parent_id": None},
+      {'name': 'TagsElement', 'value': '', 'query': 'tags[*]', 'required': False, 'id': 2, "parent_id": 1},
+      {'name': 'limit', 'value': 0, 'query': 'limit', 'required': False, 'id': 3, "parent_id": None}
+    ])
 
     param_names_index = self.__index(param_names)
     expected_queries = [
-      'limit.Integer', 'tags.Array', 'tags[*].String' 
+      'tags.Array', 'tags[*].String', 'limit.Integer' 
     ]
 
     for query in expected_queries:
