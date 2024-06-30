@@ -11,24 +11,26 @@ from typing import List
 
 from stoobly_agent.app.models.adapters.raw_joined import RawJoinedRequestAdapterFactory
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, PUT_ACTION, REQUEST_RESOURCE, SCENARIO_RESOURCE
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
+from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.print_service import FORMATS, print_snapshots, select_print_options
 from .helpers.verify_raw_request_service import verify_raw_request
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
-    help="Manage snapshots"
+    help="Manage snapshots."
 )
 @click.pass_context
 def snapshot(ctx):
     pass
 
 @snapshot.command(
-  help="Apply snapshots",
+  help="Apply snapshots.",
 )
 @click.option('--force', default=False, help="Toggles whether resources are hard deleted.")
 @click.argument('uuid', required=False)
@@ -41,7 +43,19 @@ def apply(**kwargs):
     apply.all()
 
 @snapshot.command(
-  help="List snapshots",
+  help="Copy snapshots to a different data directory."
+)
+@click.option('--request-key', multiple=True, help='')
+@click.option('--scenario-key', multiple=True, help='')
+@click.argument('destination', required=True)
+def copy(**kwargs):
+  destination = kwargs['destination']
+
+  __copy_scenarios(kwargs['scenario_key'], destination)
+  __copy_requests(kwargs['request_key'], destination)
+
+@snapshot.command(
+  help="List snapshots.",
   name="list"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
@@ -83,7 +97,7 @@ def prune(**kwargs):
   log.prune(kwargs['dry_run'])
 
 @snapshot.command(
-  help="Update snapshot",
+  help="Update snapshot.",
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
@@ -267,3 +281,69 @@ def __transform_scenario(snapshot: ScenarioSnapshot):
   event_dict['description'] = metadata.get('description')
 
   return event_dict
+
+def __copy_requests(request_keys: list, destination: str):
+  log = Log()
+
+  data_dir = DataDir.instance(destination)
+  destination_log = Log(data_dir)
+
+  for request_key in request_keys:
+    found = False
+
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+
+      if event.resource != REQUEST_RESOURCE:
+        continue
+
+      key = RequestKey(request_key)
+      if event.resource_uuid != key.id:
+        continue
+
+      snapshot: RequestSnapshot = event.snapshot()
+      snapshot.copy(destination)
+      resource = snapshot.find_resource()
+
+      if not resource:
+        print(f"Could not find request {key.id}", file=sys.stderr)
+      else:
+        destination_log.put(resource)
+        found = True
+
+      if not found:
+        print(f"No snapshot found for {key}", file=sys.stderr)
+
+def __copy_scenarios(scenario_keys: list, destination: str):
+  log = Log()
+
+  data_dir =  DataDir.instance(destination)
+  destination_log = Log(data_dir)
+
+  for scenario_key in scenario_keys:
+    found = False
+
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+
+      if event.resource != SCENARIO_RESOURCE:
+        continue
+
+      key = ScenarioKey(scenario_key)
+      if event.resource_uuid != key.id:
+        continue
+
+      snapshot: ScenarioSnapshot = event.snapshot()
+      snapshot.copy(destination)
+      resource = snapshot.find_resource()
+
+      if not resource:
+        print(f"Could not find scenario {key.id}", file=sys.stderr)
+      else:
+        destination_log.put(resource)
+        found = True
+
+      if not found:
+        print(f"No snapshot found for {key}", file=sys.stderr)
