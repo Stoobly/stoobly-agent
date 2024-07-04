@@ -50,7 +50,6 @@ def apply(**kwargs):
 @click.argument('destination', required=True)
 def copy(**kwargs):
   destination = kwargs['destination']
-
   __copy_scenarios(kwargs['scenario_key'], destination)
   __copy_requests(kwargs['request_key'], destination)
 

@@ -43,6 +43,13 @@ class DataDir:
 
         return cls._instances[path]
 
+    @classmethod
+    def handle_chdir(cls):
+        if cls._instances and None in cls._instances:
+            del cls._instances[None]
+
+        return cls.instance()
+
     @property
     def path(self):
         if os.environ.get(ENV) == 'test':

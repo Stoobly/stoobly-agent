@@ -21,7 +21,9 @@ from .ui_settings import UISettings
 LOG_ID = 'Settings'
 
 class Settings:
-    __instance = None
+    _instances = None
+
+    __data_dir: DataDir = None
 
     __cli_settings = None
     __proxy_settings = None
@@ -34,10 +36,11 @@ class Settings:
     __load_lock = False
     __watching = False
 
-    def __init__(self):
-        if Settings.__instance:
+    def __init__(self, data_dir_path: str = None):
+        if Settings._instances.get(data_dir_path):
             raise RuntimeError('Call instance() instead')
-
+        
+        self.__data_dir = DataDir.instance(data_dir_path)
         self.__detect_paths()
 
         # If the config does not exist, use template
@@ -47,11 +50,23 @@ class Settings:
         self.__load_settings()
 
     @classmethod
-    def instance(cls):
-        if cls.__instance is None:
-            cls.__instance = cls()
+    def instance(cls, data_dir_path: str = None):
+        if not cls._instances:
+            cls._instances = {}
 
-        return cls.__instance
+        if not cls._instances.get(data_dir_path):
+            cls._instances[data_dir_path] = cls(data_dir_path)
+
+        return cls._instances[data_dir_path]
+
+    @classmethod
+    def handle_chdir(cls):
+        DataDir.handle_chdir()
+
+        if cls._instances and None in cls._instances:
+            del cls._instances[None]
+
+        return cls.instance()
 
     ### Statuses
 
@@ -165,7 +180,7 @@ class Settings:
         copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
 
     def __detect_paths(self):
-        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or DataDir.instance().settings_file_path
+        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or self.__data_dir.settings_file_path
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
     def __load_settings(self):
