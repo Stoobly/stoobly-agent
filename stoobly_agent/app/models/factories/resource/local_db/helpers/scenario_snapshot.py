@@ -90,7 +90,7 @@ class ScenarioSnapshot(Snapshot):
     requests_file_path = self.requests_path
 
     if os.path.exists(requests_file_path):
-      # A request only every belongs to one scenario
+      # A request only ever belongs to one scenario
       self.iter_request_snapshots(lambda snapshot: self.__handle_copy_requests(snapshot, dest_dir))
 
       self.copy_file(requests_file_path, dest_dir)
