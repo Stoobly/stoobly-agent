@@ -61,6 +61,9 @@ class Settings:
 
     @classmethod
     def handle_chdir(cls):
+    '''
+    Reloads data dir to be relative to new working directory
+    '''
         DataDir.handle_chdir()
 
         if cls._instances and None in cls._instances:
