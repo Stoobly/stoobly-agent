@@ -39,7 +39,7 @@ class Settings:
     def __init__(self, data_dir_path: str = None):
         if Settings._instances.get(data_dir_path):
             raise RuntimeError('Call instance() instead')
-        
+
         self.__data_dir = DataDir.instance(data_dir_path)
         self.__detect_paths()
 
@@ -61,9 +61,9 @@ class Settings:
 
     @classmethod
     def handle_chdir(cls):
-    '''
-    Reloads data dir to be relative to new working directory
-    '''
+        '''
+        Reloads data dir to be relative to new working directory
+        '''
         DataDir.handle_chdir()
 
         if cls._instances and None in cls._instances:
@@ -80,7 +80,7 @@ class Settings:
 
     @property
     def cli(self):
-        return self.__cli_settings 
+        return self.__cli_settings
 
     @property
     def ui(self):
@@ -125,8 +125,8 @@ class Settings:
         if not self.__settings:
             self.__load_settings()
 
-        return { 
-            **self.__settings, 
+        return {
+            **self.__settings,
             **{ 'cli': self.__cli_settings.to_dict() },
             **{ 'proxy': self.__proxy_settings.to_dict() },
             **{ 'remote': self.__remote_settings.to_dict() },
@@ -197,7 +197,7 @@ class Settings:
                 self.from_dict(settings)
             except yaml.YAMLError as exc:
                 Logger.instance().error(exc)
-        
+
     def __reload_settings(self, event):
         if not self.__load_lock:
             from stoobly_agent.app.proxy.utils.publish_change_service import publish_change
