@@ -3,15 +3,12 @@ import pytest
 import time
 
 from click.testing import CliRunner
-from typing import List
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.cli import record, request, scenario, snapshot
+from stoobly_agent.cli import record, request, snapshot
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.scenario import Scenario
-from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 @pytest.fixture(scope='module')
 def runner():
