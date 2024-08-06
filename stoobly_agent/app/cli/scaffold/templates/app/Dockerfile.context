@@ -1,0 +1,12 @@
+FROM stoobly/agent:0.34
+
+ARG USER_ID
+
+# Change user id of stoobly user to that of host's user id
+USER root
+RUN if [ -n "$USER_ID" ]; then usermod -u $USER_ID stoobly; fi
+RUN chown -R stoobly:stoobly /home/stoobly
+
+USER stoobly
+
+COPY ./build/ .

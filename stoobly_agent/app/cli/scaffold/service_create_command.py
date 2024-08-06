@@ -1,97 +1,63 @@
 import os
-import pathlib
+import pdb
 import shutil
 
-from .constants import SERVICE_APPLICATION_TYPE, SERVICE_EXTERNAL_TYPE, SERVICE_SIDECAR_TYPE, SERVICE_TEMPLATE_VARIABLE, WORKFLOW_TEMPLATE_VARIABLE
-from .config import Config
+from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
+from .docker.service.builder import ServiceBuilder
+from .docker.workflow.decorators_factory import get_workflow_decorators
+from .docker.workflow.mock_decorator import MockDecorator
+from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
 from .service_command import ServiceCommand
+from .workflow_create_command import WorkflowCreateCommand
 
 class ServiceCreateCommand(ServiceCommand):
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-    self.__force = not not kwargs.get('force')
-    self.__hostname = kwargs.get('hostname')
-    self.__port = kwargs.get('port')
-    self.__scheme = kwargs.get('scheme')
-    self.__service_name = kwargs['service_name']
-    self.__type = kwargs.get('type') or SERVICE_APPLICATION_TYPE
-
-    self.__templates_dir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'templates', 'service')
+    self.__workflows = kwargs['workflow'] or []
 
   @property
-  def application_template_path(self):
-    return os.path.join(self.__templates_dir, 'application')
+  def workflows(self):
+    return self.__workflows
 
+  def build(self):
+    service_builder = ServiceBuilder(self.service_config)
+    service_decorators = []
 
-  @property
-  def external_template_path(self):
-    return os.path.join(self.__templates_dir, 'external')
+    for service_decorator in service_decorators:
+      service_decorator(service_builder).decorate()
 
-  @property
-  def force(self):
-    return self.__force
+    service_builder.write()
 
-  @property
-  def hostname(self):
-    return self.__hostname
+    workflow_kwargs = {
+      'app_dir_path': self.app_dir_path,
+      'namespace': self.namespace, 
+      'service_name': self.service_name,
+    }
 
-  @property
-  def port(self):
-    return self.__port
+    if WORKFLOW_MOCK_TYPE in self.workflows:
+      self.__build_with_mock_workflow(service_builder, **workflow_kwargs)
 
-  @property
-  def scheme(self):
-    return self.__scheme
+    if WORKFLOW_RECORD_TYPE in self.workflows:
+      self.__build_with_record_workflow(service_builder, **workflow_kwargs)
 
-  @property
-  def sidecar_template_path(self):
-    return os.path.join(self.__templates_dir, 'sidecar')
+    self.service_config.write()
 
-  @property
-  def service_name(self):
-    return self.__service_name
-
-  @property
-  def type(self):
-    return self.__type
-
-  def build_with_docker(self):
-    self.as_docker()
+  def reset(self):
     dest = self.service_path
 
-    if os.path.exists(dest) and self.force:
-        shutil.rmtree(dest)
+    if os.path.exists(dest):
+      shutil.rmtree(dest)
 
-    if self.type == SERVICE_APPLICATION_TYPE:
-      shutil.copytree(self.application_template_path, dest, dirs_exist_ok=True)
-    elif self.type == SERVICE_EXTERNAL_TYPE:
-      shutil.copytree(self.external_template_path, dest, dirs_exist_ok=True)
-    elif self.type == SERVICE_SIDECAR_TYPE:
-      shutil.copytree(self.sidecar_template_path, dest, dirs_exist_ok=True)
-    else:
-      return
+  def __build_with_mock_workflow(self, service_builder: ServiceBuilder, **kwargs):
+    mock_workflow = WorkflowCreateCommand(**{ **kwargs, **{ 'workflow_name': 'mock'}})
 
-    self.write_config()
-    self.format(self.service_path, self.__format_handler)
-    
-  def write_config(self):
-    config = {}
+    workflow_decorators = get_workflow_decorators(WORKFLOW_MOCK_TYPE, self.service_config)
+    mock_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
 
-    if self.hostname:
-      config['SERVICE_HOSTNAME'] = self.hostname
-    
-    if self.port:
-      config['SERVICE_PORT'] = self.port
+  def __build_with_record_workflow(self, service_builder: ServiceBuilder, **kwargs):
+    record_workflow = WorkflowCreateCommand(**{ **kwargs, **{ 'workflow_name': 'record'}})
 
-    if self.scheme:
-      config['SERVICE_SCHEME'] = self.scheme
-
-    config_path = self.service_config_path
-    Config(config_path).write(config)
-
-  def __format_handler(self, path: str, contents: str):
-    workflow_name = os.path.basename(os.path.dirname(path))
-    contents = contents.replace(SERVICE_TEMPLATE_VARIABLE, self.service_name)
-    return contents.replace(WORKFLOW_TEMPLATE_VARIABLE, workflow_name)
+    workflow_decorators = get_workflow_decorators(WORKFLOW_RECORD_TYPE, self.service_config)
+    record_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)

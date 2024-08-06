@@ -9,4 +9,5 @@ services:
     ports:
       - '4200:4200'
     profiles:
-      - mock
+      - record
+

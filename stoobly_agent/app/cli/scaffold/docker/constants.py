@@ -1,0 +1,5 @@
+APP_NETWORK = '${APP_NETWORK}'
+DOCKERFILE_CONTEXT = 'Dockerfile.context'
+DOCKERFILE_PROXY = 'Dockerfile.proxy'
+DOCKERFILE_SERVICE = 'Dockerfile.source'
+GATEWAY_NETWORK = 'gateway'

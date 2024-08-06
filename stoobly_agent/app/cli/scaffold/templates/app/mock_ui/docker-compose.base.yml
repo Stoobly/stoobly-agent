@@ -1,11 +1,5 @@
-version: '2.4'
 services:
   mock_ui_base:
-    command: --ui-port 4200
     extends:
       file: ../docker-compose.base.yml
-      service: proxy_base
-    ports:
-      - '4200:4200'
-    profiles:
-      - mock_ui_base
+      service: context_base 

@@ -1,8 +1,8 @@
 import os
+import pdb
 
 from stoobly_agent.config.data_dir import DataDir
 
-from .constants import ENV_FILE
 from .env import Env
 from .workflow_command import WorkflowCommand
 
@@ -10,44 +10,69 @@ class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-    data_dir = DataDir.instance()
-
-    if not kwargs['certs_dir_path']:
-        kwargs['certs_dir_path'] = os.path.join(data_dir.tmp_dir_path, 'certs')
-        if not os.path.exists(kwargs['certs_dir_path']):
-            os.mkdir(kwargs['certs_dir_path'])
-
-    if not kwargs['data_dir_path']:
-        kwargs['data_dir_path'] = data_dir.path 
-
     self.__certs_dir_path = kwargs.get('certs_dir_path')
     self.__data_dir_path = kwargs.get('data_dir_path')
+    self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = kwargs.get('network')
 
   @property
   def certs_dir_path(self):
-    return self.__certs_dir_path or '/tmp'
+    if not self.__certs_dir_path:
+      data_dir = DataDir.instance()
+      dir_path = os.path.join(data_dir.tmp_dir_path, 'certs')
+      if not os.path.exists(dir_path):
+          os.mkdir(dir_path)
+
+    return self.__certs_dir_path
 
   @property
   def data_dir_path(self):
+    if not self.__data_dir_path:
+      data_dir = DataDir.instance()
+      return os.path.dirname(data_dir.path) 
+
     return self.__data_dir_path
+
+  @property
+  def extra_compose_path(self):
+    return self.__extra_compose_path
 
   @property
   def network(self):
     return self.__network
 
-  def build_with_docker(self):
-    self.as_docker()
+  def up(self):
+    command = ['docker', 'compose']
 
-    command = ['docker-compose']
-
+    # Add docker compose file
     command.append(f"-f {self.compose_path}")
+
+    # Add custom docker compose file
+    if self.custom_services:
+      command.append(f"-f {self.custom_compose_path}")
+
     command.append(f"--profile {self.workflow_name}") 
+    command.append('up')
+    command.append('-d')
+    command.append('--build')
 
     self.write_env()
 
-    command.append('up')
-    command.append('--build')
+    return ' '.join(command)
+
+  def down(self):
+    command = ['docker', 'compose']
+
+    # Add docker compose file
+    command.append(f"-f {self.compose_path}")
+
+    # Add custom docker compose file
+    if self.custom_services:
+      command.append(f"-f {self.custom_compose_path}")
+
+    command.append(f"--profile {self.workflow_name}") 
+    command.append('down')
+
     return ' '.join(command)
 
   def write_env(self):

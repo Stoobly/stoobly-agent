@@ -1,10 +1,17 @@
 import os
 import yaml
 
+from .constants import CONFIG_FILE
+
 class Config():
 
-  def __init__(self, path: str):
-    self.__path = path
+  def __init__(self, dir: str, file_name = None):
+    self.__dir = dir
+    self.__path = os.path.join(dir, file_name or CONFIG_FILE)
+
+  @property
+  def dir(self):
+    return self.__dir
 
   @property
   def path(self):

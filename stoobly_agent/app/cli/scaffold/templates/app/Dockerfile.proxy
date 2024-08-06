@@ -1,5 +1,3 @@
-ARG HOSTNAME=myhost.lab.ppops.net
-
 FROM ubuntu:23.10 AS build
 
 WORKDIR /tmp
@@ -10,7 +8,7 @@ RUN curl -JLO "https://dl.filippo.io/mkcert/v1.4.4?for=linux/amd64" && \
 
 FROM ubuntu:23.10 AS cert
 
-ARG HOSTNAME
+ARG SERVICE_HOSTNAME
 
 COPY --from=build /tmp/mkcert-v1.4.4-linux-amd64 /bin/mkcert
 
@@ -19,12 +17,12 @@ RUN useradd -m mkcert
 USER mkcert
 WORKDIR /home/mkcert
 
-RUN mkcert $HOSTNAME && mkcert -pkcs12 $HOSTNAME && cat $HOSTNAME.pem >> $HOSTNAME-joined.pem && cat $HOSTNAME-key.pem >> $HOSTNAME-joined.pem
+RUN mkcert $SERVICE_HOSTNAME && mkcert -pkcs12 $SERVICE_HOSTNAME && cat $SERVICE_HOSTNAME.pem >> $SERVICE_HOSTNAME-joined.pem && cat $SERVICE_HOSTNAME-key.pem >> $SERVICE_HOSTNAME-joined.pem
 
 FROM stoobly/agent:0.34
 
 ARG USER_ID
-ARG HOSTNAME
+ARG SERVICE_HOSTNAME
 
 # Change user id of stoobly user to that of host's user id
 USER root
@@ -38,4 +36,4 @@ RUN chown -R stoobly:stoobly /home/stoobly
 USER stoobly
 
 COPY ./build/ .
-COPY --from=cert /home/mkcert/$HOSTNAME-joined.pem .
+COPY --from=cert /home/mkcert/$SERVICE_HOSTNAME-joined.pem .

@@ -1,9 +1,6 @@
-version: '2.4'
 services:
   gateway_base:
     image: nginxproxy/nginx-proxy:1.5
-    networks:
-      - gateway
     ports:
       - '80:80'
       - '443:443' # Entry port
@@ -12,7 +9,3 @@ services:
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${PWD}/${CERTS_DIR}:/etc/nginx/certs
-networks:
-  gateway:
-    name: ${NETWORK}
-    external: true

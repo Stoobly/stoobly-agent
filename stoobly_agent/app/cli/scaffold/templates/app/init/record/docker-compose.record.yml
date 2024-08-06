@@ -7,7 +7,7 @@ services:
       file: ../docker-compose.base.yml
       service: build_base
     profiles:
-      - mock
+      - record
   init.configure:
     build:
       context: ./
@@ -19,4 +19,4 @@ services:
       file: ../docker-compose.base.yml
       service: configure_base
     profiles:
-      - mock
+      - record

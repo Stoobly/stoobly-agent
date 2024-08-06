@@ -1,9 +1,0 @@
-version: '2.4'
-services:
-  command:
-    entrypoint: ['${SIDECAR_COMMAND}', '${SIDECAR_ARGS}']
-    extends:
-      file: ../docker-compose.base.yml
-      service: sidecar_base
-    profiles:
-      - mock_command
