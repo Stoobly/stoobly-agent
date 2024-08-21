@@ -992,6 +992,17 @@ files = [
 ]
 
 [[package]]
+name = "multipart"
+version = "0.2.5"
+description = "Parser for multipart/form-data."
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "multipart-0.2.5-py3-none-any.whl", hash = "sha256:96352d67fa1f704e2bcbec9726d7fb316533bd010f0c66639f930fb59b734931"},
+    {file = "multipart-0.2.5.tar.gz", hash = "sha256:fa98838d40c967bb19589626a0fb8a5c40c421dda2febe1b0351fcf626e24651"},
+]
+
+[[package]]
 name = "openapi-core"
 version = "0.17.1"
 description = "client-side and server-side support for the OpenAPI Specification v3"
@@ -2084,4 +2095,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "7aaa7a32f14e68aafd01b054293d2cf681bc4996d7db3a52e72701f1fdfe0ad5"
+content-hash = "947d0a48dc21059bdf5a6ac8521d328e6310d53486bc2a724359924e4f33f1d2"
