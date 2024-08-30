@@ -19,7 +19,7 @@ from .constants import (
 
 class ServiceConfig(Config):
 
-  def __init__(self, dir: str):
+  def __init__(self, dir: str, **kwargs):
     super().__init__(dir)
 
     self.__detached = None
@@ -30,8 +30,26 @@ class ServiceConfig(Config):
     self.__priority = None
     self.__proxy_mode = None
     self.__scheme = None
-  
+
     self.load()
+
+    if kwargs.get('detached') != None:
+      self.__detached = bool(kwargs.get('detached'))
+    
+    if kwargs.get('hostname') != None:
+      self.__hostname = kwargs.get('hostname')
+
+    if kwargs.get('port') != None:
+      self.__port = kwargs.get('port')
+
+    if kwargs.get('priority') != None:
+      self.__priority = kwargs.get('priority')
+
+    if kwargs.get('proxy_mode') != None:
+      self.__proxy_mode = kwargs.get('proxy_mode')
+
+    if kwargs.get('scheme') != None:
+      self.__scheme = kwargs.get('scheme')
 
   @property
   def detached(self):
@@ -94,7 +112,7 @@ class ServiceConfig(Config):
     if _priority == float('inf'):
       return _priority
 
-    return int(_priority)
+    return float(_priority)
 
   @priority.setter
   def priority(self, v):
@@ -152,11 +170,9 @@ class ServiceConfig(Config):
     if self.scheme:
       config[SERVICE_SCHEME_ENV] = self.scheme
 
-    if self.detached:
-      config[SERVICE_DETACHED_ENV] = self.detached
+    config[SERVICE_DETACHED_ENV] = bool(self.detached)
 
-    if self.proxy_mode:
-      config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
+    config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)
 

@@ -85,11 +85,11 @@ class WorkflowCommand(ServiceCommand):
     custom_compose = self.custom_compose
 
     if not custom_compose:
-      return []
+      return {}
     
     services = custom_compose.get('services')
-    if not isinstance(services, list):
-      return []
+    if not isinstance(services, dict):
+      return {}
 
     return services
 
@@ -126,6 +126,10 @@ class WorkflowCommand(ServiceCommand):
       self.service_relative_path,
       self.workflow_name
     )
+
+  @property
+  def workflow_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'workflow')
   
   def env(self, _c: dict):
     _config = self.app_config.read()

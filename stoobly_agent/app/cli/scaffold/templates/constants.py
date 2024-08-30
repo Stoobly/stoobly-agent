@@ -1,23 +1,36 @@
 import os
 
+CORE_BUILD_SERVICE_NAME = 'build'
+CORE_MOCK_UI_SERVICE_NAME = 'mock-ui'
+CORE_GATEWAY_SERVICE_NAME = 'gateway'
+CORE_MOCK_WORKFLOW = 'mock'
+CORE_RECORD_WORKFLOW = 'record'
+
+CUSTOM_CONFIGURE = os.path.join('bin', 'configure')
+MAINTAINED_CONFIGURE = os.path.join('bin', '.configure')
+
 MOCK_WORKFLOW_MAINTAINED_FILES = [
-  os.path.join('bin', '.configure'),
+  MAINTAINED_CONFIGURE
 ]
 
 MOCK_WORKFLOW_CUSTOM_FILES = [
   os.path.join('bin', 'build'),
-  os.path.join('bin', 'configure'),
+  os.path.join('bin', 'init'),
+  CUSTOM_CONFIGURE,
   os.path.join('.keep'),
   os.path.join('lifecycle_hooks.py'),
 ]
 
 RECORD_WORKFLOW_MAINTAINED_FILES = [
-  os.path.join('bin', '.configure'),
+  MAINTAINED_CONFIGURE
 ]
 
 RECORD_WORKFLOW_CUSTOM_FILES = [
   os.path.join('bin', 'build'),
-  os.path.join('bin', 'configure'),
+  os.path.join('bin', 'init'),
+  CUSTOM_CONFIGURE,
   os.path.join('.keep'),
   os.path.join('lifecycle_hooks.py'),
 ]
+
+SERVICE_HOSTNAME_BUILD_ARG = 'SERVICE_HOSTNAME'

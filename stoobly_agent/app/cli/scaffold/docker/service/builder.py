@@ -98,8 +98,6 @@ class ServiceBuilder(Builder):
       }
     })
 
-    self.__with_url_environment(environment)
-
   def build_configure_base(self):
     environment = {}
     self.with_service(self.configure_base, {
@@ -110,8 +108,6 @@ class ServiceBuilder(Builder):
         'service': self.app_builder.context_base
       }
     })
-
-    self.__with_url_environment(environment) 
 
   def write(self):
     self.build_init_base()
@@ -125,13 +121,3 @@ class ServiceBuilder(Builder):
       'services': self.services,
       'version': self.version
     })
-
-  def __with_url_environment(self, environment):
-    if self.config.port:
-      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
-
-    if self.config.hostname:
-      environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-
-    if self.config.scheme:
-      environment[SERVICE_PORT_ENV] = SERVICE_PORT

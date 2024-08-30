@@ -57,7 +57,7 @@ def create(**kwargs):
 @click.option('--hostname')
 @click.option('--port')
 @click.option('--priority', help='Determines the service run order.')
-@click.option('--proxy-mode', default="regular", help='''
+@click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
   upstream proxy modes, SPEC is host specification in
@@ -89,6 +89,7 @@ def workflow(ctx):
   help="Scaffold a workflow",
 )
 @click.option('--app-dir-path')
+@click.option('--headless', is_flag=True, help='Disable running gateway and mock-ui services.')
 @click.option('--service-name')
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
@@ -102,7 +103,7 @@ def create(**kwargs):
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
-  command.build(workflow_decorators=workflow_decorators)
+  command.build(headless=kwargs['headless'], workflow_decorators=workflow_decorators)
 
 @workflow.command()
 @click.option('--app-dir-path', help='Path to application directory.')
@@ -203,7 +204,8 @@ def run(**kwargs):
     __print_header(f"SERVICE {command.service_name}")
 
     if not kwargs['dry_run']:
-      exec_stream(exec_command)
+      if exec_command:
+        exec_stream(exec_command)
     else:
       print(exec_command)
  

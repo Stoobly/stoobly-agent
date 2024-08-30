@@ -1,9 +1,12 @@
 import os
 import pdb
 
-from ...constants import DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
+from ...constants import (
+  DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
+)
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
+from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
 
 class WorkflowBuilder(Builder):
 
@@ -78,7 +81,11 @@ class WorkflowBuilder(Builder):
 
   @property
   def proxy_build(self):
+    args = {}
+    args[SERVICE_HOSTNAME_BUILD_ARG] = SERVICE_HOSTNAME
+
     return {
+      'args': args,
       'context': self.context,
       'dockerfile': self.proxy_docker_file_path,
     }
@@ -107,19 +114,29 @@ class WorkflowBuilder(Builder):
 
     if self.config.hostname:
       self.with_public_network()
-      self.build_proxy()
       self.build_configure()
 
+      self.build_proxy() # Depends on configure, must call build_configure first
+
   def build_init(self):
+    environment = {}
     volumes = []
+
     service = {
       'build': self.context_build,
+      'environment': environment,
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,
       'volumes': volumes
     }
 
+    if self.config.hostname:
+      self.__with_url_environment(environment)
+
     volumes.append(self.dist_volume)
+
+    if self.config.detached:
+      volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
     self.with_service(self.init, service)
 
@@ -130,6 +147,7 @@ class WorkflowBuilder(Builder):
 
     depends_on = {}
     environment = {}
+    volumes = []
 
     service = {
       'build': self.context_build,
@@ -137,16 +155,19 @@ class WorkflowBuilder(Builder):
       'environment': environment,
       'extends': self.service_builder.build_extends_configure_base(self.dir_path),
       'profiles': self.profiles,
+      'volumes': volumes,
     }
 
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-    environment[SERVICE_PORT_ENV] = SERVICE_PORT
-    environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
+    if self.config.hostname:
+      self.__with_url_environment(environment)
 
     if self.init in self.services:
       depends_on[self.init] = {
         'condition': 'service_completed_successfully',
       }
+
+    if self.config.detached:
+      volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
     self.with_service(self.configure, service)
 
@@ -187,9 +208,6 @@ class WorkflowBuilder(Builder):
       environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
       networks.append(self.public_network_name)
 
-      if self.config.dns:
-        service['dns'] = self.config.dns
-
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
@@ -202,3 +220,12 @@ class WorkflowBuilder(Builder):
       'version': self.version,
       'volumes': self.volumes,
     })
+
+  def __with_url_environment(self, environment):
+    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
+
+    if self.config.scheme:
+      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
+
+    if self.config.port:
+      environment[SERVICE_PORT_ENV] = SERVICE_PORT

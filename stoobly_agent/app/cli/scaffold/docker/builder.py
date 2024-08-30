@@ -15,7 +15,7 @@ class Builder():
     self.__templates_dir = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), 'templates')
     self.__volumes = {}
 
-    self.version = '2.4'
+    self.version = '3.8'
 
   @property
   def compose_file_name(self):
@@ -65,7 +65,7 @@ class Builder():
       return
 
     with open(self.compose_file_path, 'r') as fp:
-      contents = yaml.safe_load(fp)
+      contents = yaml.safe_load(fp) or {}
 
       networks = contents.get('networks')
       if isinstance(networks, dict):

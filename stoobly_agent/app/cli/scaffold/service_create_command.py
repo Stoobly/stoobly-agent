@@ -5,8 +5,6 @@ import shutil
 from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
-from .docker.workflow.mock_decorator import MockDecorator
-from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
 from .service_command import ServiceCommand
 from .workflow_create_command import WorkflowCreateCommand
 

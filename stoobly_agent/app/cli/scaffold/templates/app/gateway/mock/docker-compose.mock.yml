@@ -1,5 +1,5 @@
 services:
-  gatewa.service:
+  gateway.service:
     extends:
       file: ../docker-compose.base.yml
       service: gateway_base

@@ -1,5 +1,4 @@
 import os
-import pathlib
 import pdb
 import shutil
 
@@ -12,7 +11,6 @@ class AppCreateCommand(AppCommand):
 
         self.__app_name = kwargs['app_name']
         self.__force = not not kwargs.get('force')
-        self.__templates_dir = os.path.join(pathlib.Path(__file__).parent.resolve(), 'templates', 'app')
 
     @property
     def app_name(self):
@@ -24,7 +22,7 @@ class AppCreateCommand(AppCommand):
 
     def build(self):
         dest = os.path.join(self.app_dir_path, self.namespace)
-        shutil.copytree(self.__templates_dir, dest, dirs_exist_ok=True)
+        shutil.copytree(self.app_templates_root_dir, dest, dirs_exist_ok=True)
 
         self.app_config.write()
 

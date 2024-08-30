@@ -42,6 +42,9 @@ class WorkflowRunCommand(WorkflowCommand):
     return self.__network
 
   def up(self):
+    if not os.path.exists(self.compose_path):
+      return ''
+
     command = ['docker', 'compose']
 
     # Add docker compose file
@@ -50,6 +53,9 @@ class WorkflowRunCommand(WorkflowCommand):
     # Add custom docker compose file
     if self.custom_services:
       command.append(f"-f {self.custom_compose_path}")
+
+    if self.extra_compose_path:
+      command.append(f"-f {self.extra_compose_path}")
 
     command.append(f"--profile {self.workflow_name}") 
     command.append('up')
@@ -61,6 +67,9 @@ class WorkflowRunCommand(WorkflowCommand):
     return ' '.join(command)
 
   def down(self):
+    if not os.path.exists(self.compose_path):
+      return ''
+  
     command = ['docker', 'compose']
 
     # Add docker compose file
@@ -70,8 +79,13 @@ class WorkflowRunCommand(WorkflowCommand):
     if self.custom_services:
       command.append(f"-f {self.custom_compose_path}")
 
+    if self.extra_compose_path:
+      command.append(f"-f {self.extra_compose_path}")
+
     command.append(f"--profile {self.workflow_name}") 
     command.append('down')
+
+    self.write_env()
 
     return ' '.join(command)
 

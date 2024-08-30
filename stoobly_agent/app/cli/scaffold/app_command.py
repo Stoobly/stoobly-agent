@@ -1,4 +1,5 @@
 import os
+import pathlib
 import shutil
 
 from .app_config import AppConfig
@@ -36,31 +37,18 @@ class AppCommand(Command):
   def app_namespace_path(self):
     return os.path.join(self.app_dir_path, self.namespace)
 
+  @property
+  def app_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'app')
+
+  @property
+  def templates_root_dir(self):
+    return os.path.join(pathlib.Path(__file__).parent.resolve(), 'templates')
+
   def config(self, _c: dict):
     _config = self.app_config.read()
     _config.update(_c)
     return _config
-
-  # TODO: remove
-  def format(self, dir_path: str, handler = None):
-    for subdir, dirs, files in os.walk(dir_path):
-      for file in files:
-        path = os.path.join(subdir, file)
-        basename = os.path.basename(path)
-
-        if not basename.startswith('docker-compose') or not basename.endswith('.yml'):
-          continue
-
-        with open(path, 'r+') as fp:
-          contents = fp.read()
-
-          if handler:
-            try:
-              fp.seek(0)
-              fp.write(handler(path, contents))
-              fp.truncate()
-            except KeyError:
-              pass
 
   def copy_files_no_replace(self, source_dir: str, src_files: list, dest_dir: str):
     return self.copy_files(source_dir, src_files, dest_dir, False)
