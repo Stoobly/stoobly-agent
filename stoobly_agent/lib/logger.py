@@ -2,6 +2,7 @@ import logging
 import logging.config
 import os
 import pdb
+import sys
 
 from typing import Literal
 
@@ -56,8 +57,8 @@ class Logger:
             logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
             logging.basicConfig(level=logging.DEBUG)
         elif log_level.lower() == WARNING:
-            logging.basicConfig(level=logging.WARNING)
+            logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
         elif log_level.lower() == ERROR:
-            logging.basicConfig(level=logging.ERROR)
+            logging.basicConfig(level=logging.ERROR, stream=sys.stderr)
         else:
             logging.basicConfig(level=logging.INFO)

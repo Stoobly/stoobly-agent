@@ -1,0 +1,4 @@
+#! /bin/bash
+
+# ARGV[1] = Path to 'dist' folder
+# Contents within this folder will be shared

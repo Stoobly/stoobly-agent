@@ -1,9 +1,8 @@
 import os
 
 from .builder import Builder
-from .constants import DOCKERFILE_CONTEXT, DOCKERFILE_PROXY
+from .constants import DOCKER_COMPOSE_BASE, DOCKERFILE_CONTEXT, DOCKERFILE_PROXY
 from ..app_config import AppConfig
-from ..constants import DOCKER_COMPOSE_BASE
 
 class AppBuilder(Builder):
 

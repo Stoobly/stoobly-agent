@@ -23,7 +23,7 @@ from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
 from .lib.utils.decode import decode
 
-settings = Settings.instance()
+settings: Settings = Settings.instance()
 is_remote = remote(settings)
 is_local = local(settings)
 

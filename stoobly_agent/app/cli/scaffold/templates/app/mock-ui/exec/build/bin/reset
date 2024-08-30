@@ -1,0 +1,11 @@
+#!/bin/bash
+
+scenario_key=$1
+
+if [ ! "$scenario_key" ]; then 
+    echo "Missing argument 'scenario_key'"
+    stoobly-agent scenario list
+    exit
+fi
+
+stoobly-agent scenario reset "$scenario_key"

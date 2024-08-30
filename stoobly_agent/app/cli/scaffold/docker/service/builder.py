@@ -3,10 +3,10 @@ import pdb
 
 from ...app_config import AppConfig
 from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV
-from ...constants import DOCKER_COMPOSE_BASE
 from ...service_config import ServiceConfig
 from ..app_builder import AppBuilder
 from ..builder import Builder
+from ..constants import DOCKER_COMPOSE_BASE
 
 
 class ServiceBuilder(Builder):
@@ -54,10 +54,6 @@ class ServiceBuilder(Builder):
     return self.services.get(self.proxy_base)
 
   @property
-  def sidecar(self):
-    return not self.config.detached and self.config.hostname
-
-  @property
   def service_name(self):
     return self.__service_name
 
@@ -90,15 +86,13 @@ class ServiceBuilder(Builder):
   def build_init_base(self):
     environment = {}
     self.with_service(self.init_base, {
-      'entrypoint': ['bin/init', 'dist'],
+      'entrypoint': ['bin/.init', 'dist'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.app_builder.context_base
       }
     })
-
-    self.__with_url_environment(environment)
 
   def build_configure_base(self):
     environment = {}
@@ -111,27 +105,14 @@ class ServiceBuilder(Builder):
       }
     })
 
-    self.__with_url_environment(environment) 
-
   def write(self):
     self.build_init_base()
+    self.build_configure_base()
 
     if self.config.hostname:
       self.build_proxy_base()
-      self.build_configure_base()
 
     super().write({
       'networks': self.networks,
       'services': self.services,
-      'version': self.version
     })
-
-  def __with_url_environment(self, environment):
-    if self.config.port:
-      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
-
-    if self.config.hostname:
-      environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-
-    if self.config.scheme:
-      environment[SERVICE_PORT_ENV] = SERVICE_PORT

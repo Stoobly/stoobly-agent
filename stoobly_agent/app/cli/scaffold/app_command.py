@@ -1,24 +1,28 @@
 import os
+import pathlib
 import shutil
 
+from stoobly_agent.config.data_dir import DataDir
+
+from .app import App
 from .app_config import AppConfig
 from .command import Command
 
 class AppCommand(Command):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App):
+    super().__init__(app)
 
-    if not kwargs['app_dir_path']:
-        kwargs['app_dir_path'] = os.getcwd()
-
-    self.__app_dir_path = kwargs.get('app_dir_path')
-    self.__config = AppConfig(self.app_namespace_path)
-    self.__config.network = kwargs.get('network') or os.path.basename(self.app_dir_path)
+    self.__config = AppConfig(self.scaffold_namespace_path)
+    self.__config.network = app.network
 
   @property
   def app_dir_path(self):
-    return self.__app_dir_path
+    return self.app.dir_path
+
+  @property
+  def app_dir_exists(self):
+    return os.path.exists(self.app_dir_path)
 
   @property
   def app_config(self):
@@ -29,38 +33,29 @@ class AppCommand(Command):
     return self.__config.path
 
   @property
-  def app_namespace_exists(self):
-    return os.path.exists(self.app_namespace_path)
+  def app_namespace_path(self):
+    return self.app.namespace_path
 
   @property
-  def app_namespace_path(self):
-    return os.path.join(self.app_dir_path, self.namespace)
+  def app_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'app')
+
+  @property
+  def scaffold_dir_path(self):
+    return self.app.scaffold_dir_path
+
+  @property
+  def scaffold_namespace_path(self):
+    return self.app.scaffold_namespace_path
+
+  @property
+  def templates_root_dir(self):
+    return os.path.join(pathlib.Path(__file__).parent.resolve(), 'templates')
 
   def config(self, _c: dict):
     _config = self.app_config.read()
     _config.update(_c)
     return _config
-
-  # TODO: remove
-  def format(self, dir_path: str, handler = None):
-    for subdir, dirs, files in os.walk(dir_path):
-      for file in files:
-        path = os.path.join(subdir, file)
-        basename = os.path.basename(path)
-
-        if not basename.startswith('docker-compose') or not basename.endswith('.yml'):
-          continue
-
-        with open(path, 'r+') as fp:
-          contents = fp.read()
-
-          if handler:
-            try:
-              fp.seek(0)
-              fp.write(handler(path, contents))
-              fp.truncate()
-            except KeyError:
-              pass
 
   def copy_files_no_replace(self, source_dir: str, src_files: list, dest_dir: str):
     return self.copy_files(source_dir, src_files, dest_dir, False)

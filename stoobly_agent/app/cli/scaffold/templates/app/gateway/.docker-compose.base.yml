@@ -1,0 +1,11 @@
+services:
+  gateway_base:
+    image: nginxproxy/nginx-proxy:1.5
+    ports:
+      - '80:80'
+      - '443:443' # Entry port
+    profiles:
+      - gateway_base
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ${CERTS_DIR}:/etc/nginx/certs

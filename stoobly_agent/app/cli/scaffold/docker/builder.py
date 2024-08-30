@@ -3,7 +3,7 @@ import pathlib
 import pdb
 import yaml
 
-from .constants import APP_NETWORK, GATEWAY_NETWORK
+from .constants import APP_NETWORK, DOCKER_COMPOSE_CUSTOM, GATEWAY_NETWORK
 
 class Builder():
 
@@ -15,8 +15,6 @@ class Builder():
     self.__templates_dir = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), 'templates')
     self.__volumes = {}
 
-    self.version = '2.4'
-
   @property
   def compose_file_name(self):
     return self.__compose_file_name
@@ -24,6 +22,13 @@ class Builder():
   @property
   def compose_file_path(self):
     return os.path.join(self.dir_path, self.compose_file_name)
+
+  @property
+  def custom_compose_file_path(self):
+    return os.path.join(
+      self.dir_path,
+      DOCKER_COMPOSE_CUSTOM
+    )
 
   @property
   def dir_path(self):
@@ -65,7 +70,7 @@ class Builder():
       return
 
     with open(self.compose_file_path, 'r') as fp:
-      contents = yaml.safe_load(fp)
+      contents = yaml.safe_load(fp) or {}
 
       networks = contents.get('networks')
       if isinstance(networks, dict):
@@ -100,10 +105,13 @@ class Builder():
     self.__volumes[volume_name] = volume
     return self
 
-  def write(self, compose: dict):
-    if not os.path.exists(self.dir_path):
-      os.makedirs(self.dir_path)
+  def write(self, compose: dict, path = None):
+    path = path or self.compose_file_path
+    parent_dir = os.path.dirname(path)
 
-    with open(self.compose_file_path, 'w') as fp:
+    if not os.path.exists(parent_dir):
+      os.makedirs(parent_dir)
+
+    with open(path, 'w') as fp:
       yaml.dump(compose, fp, allow_unicode=True)
       fp.close()

@@ -7,11 +7,11 @@ from .reverse_proxy_decorator import ReverseProxyDecorator
 def get_workflow_decorators(workflow: str, service_config: ServiceConfig):
   workflow_decorators = []
 
-  if workflow == WORKFLOW_MOCK_TYPE:
-    if service_config.hostname:
-      workflow_decorators.append(ReverseProxyDecorator if service_config.detached else MockDecorator) 
-  elif workflow_decorators == WORKFLOW_RECORD_TYPE:
+  if workflow == WORKFLOW_RECORD_TYPE:
     if service_config.hostname:
       workflow_decorators.append(ReverseProxyDecorator)
+  else:
+    if service_config.hostname:
+      workflow_decorators.append(ReverseProxyDecorator if service_config.detached else MockDecorator) 
 
   return workflow_decorators

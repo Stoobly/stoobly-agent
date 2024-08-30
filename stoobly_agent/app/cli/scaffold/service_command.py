@@ -1,33 +1,17 @@
 import os
 import pdb
 
+from .app import App
 from .app_command import AppCommand
 from .service_config import ServiceConfig
 
 class ServiceCommand(AppCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app)
     self.__service_name = kwargs.get('service_name')
 
-    self.__config = ServiceConfig(self.service_path)
-    if kwargs.get('detached') != None:
-      self.__config.detached = kwargs.get('detached')
-    
-    if kwargs.get('hostname') != None:
-      self.__config.hostname = kwargs.get('hostname')
-
-    if kwargs.get('port') != None:
-      self.__config.port = kwargs.get('port')
-
-    if kwargs.get('priority') != None:
-      self.__config.priority = kwargs.get('priority')
-
-    if kwargs.get('proxy_mode') != None:
-      self.__config.proxy_mode = kwargs.get('proxy_mode')
-
-    if kwargs.get('scheme') != None:
-      self.__config.scheme = kwargs.get('scheme')
+    self.__config = ServiceConfig(self.service_path, **kwargs)
 
   @property
   def service_config(self):
@@ -48,7 +32,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.service_relative_path
     )
 

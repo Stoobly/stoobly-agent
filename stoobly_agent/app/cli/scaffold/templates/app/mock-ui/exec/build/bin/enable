@@ -1,0 +1,10 @@
+#!/bin/bash
+
+scenario_key=$1
+
+if [ "$scenario_key" ]; then 
+    stoobly-agent config scenario set "$scenario_key"
+fi
+
+stoobly-agent intercept configure --mode mock --policy all
+stoobly-agent intercept enable

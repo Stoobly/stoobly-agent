@@ -19,7 +19,7 @@ from .constants import (
 
 class ServiceConfig(Config):
 
-  def __init__(self, dir: str):
+  def __init__(self, dir: str, **kwargs):
     super().__init__(dir)
 
     self.__detached = None
@@ -30,8 +30,26 @@ class ServiceConfig(Config):
     self.__priority = None
     self.__proxy_mode = None
     self.__scheme = None
-  
+
     self.load()
+
+    if 'detached' in kwargs:
+      self.__detached = bool(kwargs.get('detached'))
+    
+    if 'hostname' in kwargs:
+      self.__hostname = kwargs.get('hostname')
+
+    if 'port' in kwargs:
+      self.__port = kwargs.get('port')
+
+    if 'priority' in kwargs:
+      self.__priority = kwargs.get('priority')
+
+    if 'proxy_mode' in kwargs:
+      self.__proxy_mode = kwargs.get('proxy_mode')
+
+    if 'scheme' in kwargs:
+      self.__scheme = kwargs.get('scheme')
 
   @property
   def detached(self):
@@ -71,7 +89,8 @@ class ServiceConfig(Config):
     # TODO: ideally we want to know if the service is built locally, if so, then no need to set DNS
     # since Docker's embedded DNS will resolve to it
     if self.hostname and not self.__dns:
-      self.__dns = self.__find_dns()
+      nameservers = self.__find_dns()
+      self.__dns = nameservers[0] if nameservers else None
     return self.__dns
 
   @dns.setter
@@ -94,7 +113,7 @@ class ServiceConfig(Config):
     if _priority == float('inf'):
       return _priority
 
-    return int(_priority)
+    return float(_priority)
 
   @priority.setter
   def priority(self, v):
@@ -122,15 +141,17 @@ class ServiceConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
+    # Do not load dns from config, have it dynamically determined
+    #self.dns = config.get(SERVICE_DNS_ENV)
+
     self.detached = config.get(SERVICE_DETACHED_ENV)
     self.docker_compose_path = config.get(SERVICE_DOCKER_COMPOSE_PATH_ENV)
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
-    self.dns = config.get(SERVICE_DNS_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
     self.proxy_mode = config.get(SERVICE_PROXY_MODE_ENV)
     self.scheme = config.get(SERVICE_SCHEME_ENV)
-    
+
   def write(self):
     config = {}
 
@@ -152,11 +173,9 @@ class ServiceConfig(Config):
     if self.scheme:
       config[SERVICE_SCHEME_ENV] = self.scheme
 
-    if self.detached:
-      config[SERVICE_DETACHED_ENV] = self.detached
+    config[SERVICE_DETACHED_ENV] = bool(self.detached)
 
-    if self.proxy_mode:
-      config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
+    config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)
 

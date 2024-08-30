@@ -4,16 +4,18 @@ import yaml
 
 from stoobly_agent.lib.logger import Logger
 
+from .app import App
 from .config import Config
-from .constants import BUILD_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DIST_FOLDER_NAME, DOCKER_COMPOSE_CUSTOM, ENV_FILE
+from .constants import BUILD_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DIST_FOLDER_NAME, ENV_FILE
+from .docker.constants import DOCKER_COMPOSE_CUSTOM
 from .service_command import ServiceCommand
 
 LOG_ID = 'WorkflowCommand'
 
 class WorkflowCommand(ServiceCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app, **kwargs)
 
     self.__workflow_name = kwargs['workflow_name']
 
@@ -28,7 +30,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def compose_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.compose_relative_path
     )
 
@@ -76,7 +78,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def custom_compose_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.custom_compose_relative_path
     )
 
@@ -85,11 +87,11 @@ class WorkflowCommand(ServiceCommand):
     custom_compose = self.custom_compose
 
     if not custom_compose:
-      return []
+      return {}
     
     services = custom_compose.get('services')
-    if not isinstance(services, list):
-      return []
+    if not isinstance(services, dict):
+      return {}
 
     return services
 
@@ -116,7 +118,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def workflow_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.workflow_relative_path
     )
 
@@ -126,6 +128,10 @@ class WorkflowCommand(ServiceCommand):
       self.service_relative_path,
       self.workflow_name
     )
+
+  @property
+  def workflow_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'workflow')
   
   def env(self, _c: dict):
     _config = self.app_config.read()

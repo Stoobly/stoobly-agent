@@ -1,6 +1,7 @@
 import json
 import os
 import pdb
+import shutil
 
 from typing import Callable
 
@@ -74,6 +75,26 @@ class ScenarioSnapshot(Snapshot):
 
     self.iter_request_snapshots(self.__handle_backup_requests)
 
+  def copy(self, destination):
+    self.copy_metadata(destination)
+    self.copy_requests(destination)
+  
+  def copy_metadata(self, dest_dir: str):
+    metadata_file_path = self.metadata_path
+    return self.copy_file(metadata_file_path, dest_dir)
+
+  def copy_requests(self, dest_dir: str):
+    if not os.path.exists(dest_dir):
+      os.makedirs(dest_dir, exist_ok=True)
+
+    requests_file_path = self.requests_path
+
+    if os.path.exists(requests_file_path):
+      # A request only ever belongs to one scenario
+      self.iter_request_snapshots(lambda snapshot: self.__handle_copy_requests(snapshot, dest_dir))
+
+      self.copy_file(requests_file_path, dest_dir)
+
   def iter_request_snapshots(self, handler: Callable[[RequestSnapshot], None]):
     requests_file_path = self.requests_path
 
@@ -135,6 +156,9 @@ class ScenarioSnapshot(Snapshot):
 
   def __handle_backup_requests(self, request_snapshot: RequestSnapshot):
     self.__requests_backup[request_snapshot.uuid] = request_snapshot.request
+
+  def __handle_copy_requests(self, request_snapshot: RequestSnapshot, dest_dir: str):
+    request_snapshot.copy(dest_dir)
 
   def __handle_remove_requests(self, request_snapshot: RequestSnapshot):
     request_snapshot.remove()
