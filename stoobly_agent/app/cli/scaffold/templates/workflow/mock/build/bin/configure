@@ -1,0 +1,9 @@
+#!/bin/bash
+
+scheme=$SERVICE_SCHEME
+hostname=$SERVICE_HOSTNAME
+port=$SERVICE_PORT
+
+# Match
+echo "Configuring match rules"
+stoobly-agent config match set --method GET --method POST --mode mock --pattern ".*?"
