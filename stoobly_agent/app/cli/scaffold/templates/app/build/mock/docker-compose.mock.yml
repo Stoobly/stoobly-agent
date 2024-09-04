@@ -2,7 +2,7 @@ services:
   build.init:
     build:
       context: ./
-      dockerfile: ../Dockerfile.proxy
+      dockerfile: ../../Dockerfile.context
     extends:
       file: ../docker-compose.base.yml
       service: build.init_base
@@ -11,7 +11,7 @@ services:
   build.configure:
     build:
       context: ./
-      dockerfile: ../Dockerfile.proxy
+      dockerfile: ../../Dockerfile.context
     depends_on:
       build.init:
         condition: service_completed_successfully
