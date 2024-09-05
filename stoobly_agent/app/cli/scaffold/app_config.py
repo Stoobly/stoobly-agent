@@ -1,4 +1,5 @@
 from .config import Config
+from .constants import APP_NETWORK_ENV
 
 class AppConfig(Config):
 
@@ -6,6 +7,8 @@ class AppConfig(Config):
     super().__init__(dir)
 
     self.__network = None
+
+    self.load()
 
   @property
   def network(self):
@@ -18,12 +21,12 @@ class AppConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
-    self.__network = config.get('APP_NETWORK')
+    self.__network = config.get(APP_NETWORK_ENV)
     
   def write(self):
     config = {}
 
     if self.network:
-      config['APP_NETWORK'] = self.network
+      config[APP_NETWORK_ENV] = self.network
 
     super().write(config)

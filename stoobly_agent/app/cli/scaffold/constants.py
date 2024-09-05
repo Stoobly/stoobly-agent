@@ -1,3 +1,4 @@
+APP_NETWORK_ENV = 'APP_NETWORK'
 BUILD_FOLDER_NAME = 'build'
 COMPOSE_TEMPLATE = 'docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'

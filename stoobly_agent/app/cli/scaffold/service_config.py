@@ -33,22 +33,22 @@ class ServiceConfig(Config):
 
     self.load()
 
-    if kwargs.get('detached') != None:
+    if 'detached' in kwargs:
       self.__detached = bool(kwargs.get('detached'))
     
-    if kwargs.get('hostname') != None:
+    if 'hostname' in kwargs:
       self.__hostname = kwargs.get('hostname')
 
-    if kwargs.get('port') != None:
+    if 'port' in kwargs:
       self.__port = kwargs.get('port')
 
-    if kwargs.get('priority') != None:
+    if 'priority' in kwargs:
       self.__priority = kwargs.get('priority')
 
-    if kwargs.get('proxy_mode') != None:
+    if 'proxy_mode' in kwargs:
       self.__proxy_mode = kwargs.get('proxy_mode')
 
-    if kwargs.get('scheme') != None:
+    if 'scheme' in kwargs:
       self.__scheme = kwargs.get('scheme')
 
   @property
