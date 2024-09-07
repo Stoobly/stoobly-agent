@@ -8,4 +8,4 @@ services:
       - gateway_base
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ${PWD}/${CERTS_DIR}:/etc/nginx/certs
+      - ${CERTS_DIR}:/etc/nginx/certs
