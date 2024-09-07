@@ -1,6 +1,6 @@
 import pdb
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, SERVICE_SCHEME
+from ...constants import SERVICE_DNS, SERVICE_HOSTNAME, SERVICE_PORT
 from .builder import WorkflowBuilder
 
 class ReverseProxyDecorator():
@@ -41,7 +41,7 @@ class ReverseProxyDecorator():
     # Docker's embedded DNS will use the host's /etc/host file as part of the resolution process
     # This can lead the hostname to resolve to localhost instead of the service's actual IP address
     if config.dns and not config.detached:
-      service['dns'] = config.dns
+      service['dns'] = SERVICE_DNS
 
     services[proxy_name] = service 
 

@@ -89,7 +89,8 @@ class ServiceConfig(Config):
     # TODO: ideally we want to know if the service is built locally, if so, then no need to set DNS
     # since Docker's embedded DNS will resolve to it
     if self.hostname and not self.__dns:
-      self.__dns = self.__find_dns()
+      nameservers = self.__find_dns()
+      self.__dns = nameservers[0] if nameservers else None
     return self.__dns
 
   @dns.setter
@@ -140,15 +141,17 @@ class ServiceConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
+    # Do not load dns from config, have it dynamically determined
+    #self.dns = config.get(SERVICE_DNS_ENV)
+
     self.detached = config.get(SERVICE_DETACHED_ENV)
     self.docker_compose_path = config.get(SERVICE_DOCKER_COMPOSE_PATH_ENV)
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
-    self.dns = config.get(SERVICE_DNS_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
     self.proxy_mode = config.get(SERVICE_PROXY_MODE_ENV)
     self.scheme = config.get(SERVICE_SCHEME_ENV)
-    
+
   def write(self):
     config = {}
 
