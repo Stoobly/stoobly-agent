@@ -25,7 +25,7 @@ class WorkflowCreateCommand(WorkflowCommand):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-    self.__env_vars = kwargs.get('env_vars') or []
+    self.__env_vars: List[str] = kwargs.get('env') or []
     self.__force = not not kwargs.get('force')
 
   @property
@@ -128,6 +128,7 @@ class WorkflowCreateCommand(WorkflowCommand):
     workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = kwargs.get('workflow_decorators')
 
     workflow_builder = builder_class(self.workflow_path, service_builder)
+    workflow_builder.with_env(list(self.env_vars))
     workflow_builder.build_all()
 
     if isinstance(workflow_decorators, list):

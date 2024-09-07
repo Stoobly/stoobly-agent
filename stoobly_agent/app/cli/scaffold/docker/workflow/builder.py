@@ -1,6 +1,8 @@
 import os
 import pdb
 
+from typing import List
+
 from ...constants import (
   DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
 )
@@ -11,6 +13,7 @@ from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
 class WorkflowBuilder(Builder):
 
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
+    self._env = []
     self.__workflow_name = os.path.basename(workflow_path)
     super().__init__(workflow_path, f"docker-compose.{self.__workflow_name}.yml")
 
@@ -119,7 +122,7 @@ class WorkflowBuilder(Builder):
       self.build_proxy() # Depends on configure, must call build_configure first
 
   def build_init(self):
-    environment = {}
+    environment = { **self.env_dict() }
     volumes = []
 
     service = {
@@ -146,7 +149,7 @@ class WorkflowBuilder(Builder):
       return
 
     depends_on = {}
-    environment = {}
+    environment = { **self.env_dict() }
     volumes = []
 
     service = {
@@ -177,7 +180,7 @@ class WorkflowBuilder(Builder):
       return
 
     depends_on = {}
-    environment = {}
+    environment = { **self.env_dict() }
     extra_hosts = []
     networks = [self.service_builder.service_name]
     volumes = [self.dist_volume]
@@ -212,6 +215,18 @@ class WorkflowBuilder(Builder):
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
     self.with_service(self.proxy, service)
+
+  def env_dict(self):
+    env = {}
+    for e in self._env:
+      env[e] = '${' + e + '}'
+    return env
+
+  def with_env(self, v: List[str]): 
+    if not isinstance(v, list):
+      return self
+    self._env = v
+    return self
 
   def write(self):
     super().write({

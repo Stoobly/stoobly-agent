@@ -13,7 +13,12 @@ class ServiceCreateCommand(ServiceCommand):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-    self.__workflows = kwargs['workflow'] or []
+    self.__env_vars = kwargs.get('env') or []
+    self.__workflows = kwargs.get('workflow') or []
+
+  @property
+  def env_vars(self):
+    return self.__env_vars
 
   @property
   def workflows(self):
@@ -30,6 +35,7 @@ class ServiceCreateCommand(ServiceCommand):
 
     workflow_kwargs = {
       'app_dir_path': self.app_dir_path,
+      'env': self.env_vars,
       'namespace': self.namespace, 
       'service_name': self.service_name,
     }

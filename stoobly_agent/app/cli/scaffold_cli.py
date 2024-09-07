@@ -1,4 +1,5 @@
 import click
+import os
 import pdb
 import sys
 
@@ -13,7 +14,10 @@ from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors
+
+DEFAULT_CERTS_DIR_PATH = os.path.join(DataDir.instance().tmp_dir_path, 'certs')
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -42,7 +46,7 @@ def service(ctx):
 @app.command(
   help="Scaffold application"
 )
-@click.option('--app-dir-path', help='Path to create the app scaffold.')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
 @click.option('--force', help='If destination folder exists, recreate it.')
 @click.argument('app_name')
 def create(**kwargs):
@@ -52,8 +56,9 @@ def create(**kwargs):
 @service.command(
   help="Scaffold a service",
 )
-@click.option('--app-dir-path')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--detached', is_flag=True)
+@click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--hostname')
 @click.option('--port')
 @click.option('--priority', help='Determines the service run order.')
@@ -88,7 +93,8 @@ def workflow(ctx):
 @workflow.command(
   help="Scaffold a workflow",
 )
-@click.option('--app-dir-path')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--headless', is_flag=True, help='Disable running gateway and mock-ui services.')
 @click.option('--service-name')
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
@@ -106,8 +112,8 @@ def create(**kwargs):
   command.build(headless=kwargs['headless'], workflow_decorators=workflow_decorators)
 
 @workflow.command()
-@click.option('--app-dir-path', help='Path to application directory.')
-@click.option('--data-dir-path', help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--data-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.argument('workflow_name')
@@ -131,13 +137,14 @@ def stop(**kwargs):
   commands = sorted(commands, key=lambda command: command.service_config.priority)
 
   for command in commands:
-    if kwargs['dry_run']:
-      print(command.down())
-    else:
+    if not kwargs['dry_run']:
+      os.chdir(kwargs['app_dir_path'])
       exec_stream(command.down())
+    else:
+      print(command.down())
 
 @workflow.command()
-@click.option('--app-dir-path', help='Path to application directory.')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
@@ -168,13 +175,15 @@ def logs(**kwargs):
 
     for shell_command in command.all():
       __print_subheader(f"LOGS {shell_command}")
+
       if not  kwargs['dry_run']:
+        os.chdir(kwargs['app_dir_path'])
         exec_stream(shell_command)
  
 @workflow.command()
-@click.option('--app-dir-path', help='Path to application directory.')
-@click.option('--certs-dir-path', help='Path to certs directory.')
-@click.option('--data-dir-path', help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--certs-dir-path', default=DEFAULT_CERTS_DIR_PATH, help='Path to certs directory.')
+@click.option('--data-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--network', help='Name of network namespace.')
@@ -205,6 +214,7 @@ def run(**kwargs):
 
     if not kwargs['dry_run']:
       if exec_command:
+        os.chdir(kwargs['app_dir_path'])
         exec_stream(exec_command)
     else:
       print(exec_command)
