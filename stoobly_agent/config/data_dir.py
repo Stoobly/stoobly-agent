@@ -150,6 +150,18 @@ class DataDir:
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
 
+            with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
+                fp.write(
+                    "\n".join([
+                        'db',
+                        'settings.yml',
+                        os.path.join('snapshots', 'log'), 
+                        os.path.join('snapshots', 'VERSION'), 
+                        'tmp'
+                    ])
+                )
+
+
     def find_data_dir(self, start_path: str) -> str:
         # Note: these paths won't work for Windows
         root_dir = os.path.abspath(os.sep)
