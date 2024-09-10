@@ -1,13 +1,14 @@
 import os
 import pdb
 
+from .app import App
 from .app_command import AppCommand
 from .service_config import ServiceConfig
 
 class ServiceCommand(AppCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app)
     self.__service_name = kwargs.get('service_name')
 
     self.__config = ServiceConfig(self.service_path, **kwargs)
@@ -31,7 +32,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.service_relative_path
     )
 

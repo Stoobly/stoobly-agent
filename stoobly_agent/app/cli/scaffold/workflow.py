@@ -16,8 +16,9 @@ class Workflow():
   def workflow_name(self):
     return self.__workflow_name
 
-  def services(self, namespace: str):
-    services_dir = os.path.join(self.app.path, namespace)
+  @property
+  def services(self):
+    services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
 
     services = []
     for filename in os.listdir(services_dir):

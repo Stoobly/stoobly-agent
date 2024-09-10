@@ -2,6 +2,7 @@ import os
 import pdb
 import shutil
 
+from .app import App
 from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
@@ -10,8 +11,8 @@ from .workflow_create_command import WorkflowCreateCommand
 
 class ServiceCreateCommand(ServiceCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app, **kwargs)
 
     self.__env_vars = kwargs.get('env') or []
     self.__workflows = kwargs.get('workflow') or []
@@ -55,13 +56,13 @@ class ServiceCreateCommand(ServiceCommand):
       shutil.rmtree(dest)
 
   def __build_with_mock_workflow(self, service_builder: ServiceBuilder, **kwargs):
-    mock_workflow = WorkflowCreateCommand(**{ **kwargs, **{ 'workflow_name': 'mock'}})
+    mock_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': 'mock'}})
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_MOCK_TYPE, self.service_config)
     mock_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
 
   def __build_with_record_workflow(self, service_builder: ServiceBuilder, **kwargs):
-    record_workflow = WorkflowCreateCommand(**{ **kwargs, **{ 'workflow_name': 'record'}})
+    record_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': 'record'}})
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_RECORD_TYPE, self.service_config)
     record_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)

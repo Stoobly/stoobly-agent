@@ -1,14 +1,82 @@
 import os
 
+from stoobly_agent.config.data_dir import DataDir
+
 class App():
 
-  def __init__(self, path: str):
-    self.__path = path or os.getcwd()
+  def __init__(self, path: str, namespace: str):
+    path = path or os.getcwd()
+    data_dir: DataDir = DataDir.instance(path) 
+
+    self.__scaffold_dir_path = data_dir.path
+    self.__certs_dir_path = os.path.join(data_dir.tmp_dir_path, 'certs')
+    self.__data_dir_path = data_dir.path
+    self.__dir_path = path
+    self.__name = os.path.basename(self.__dir_path)
+    self.__network = os.path.basename(self.__dir_path)
+    self.__namespace = namespace
+
+  @property
+  def certs_dir_path(self):
+    return self.__certs_dir_path
+
+  @certs_dir_path.setter
+  def certs_dir_path(self, v: str):
+    self.__validate_path(v)
+    self.__certs_dir_path = v
+
+  @property
+  def data_dir_path(self):
+    return self.__data_dir_path
+
+  @data_dir_path.setter
+  def data_dir_path(self, v: str):
+    self.__validate_path(v)
+    self.__data_dir_path = v 
 
   @property
   def exists(self):
-    return os.path.exists(self.path)
+    return os.path.exists(self.dir_path)
 
   @property
-  def path(self):
-    return self.__path
+  def name(self):
+    return self.__name
+
+  @name.setter
+  def name(self, v: str):
+    self.__name = v
+
+  @property
+  def network(self):
+    return self.__network
+
+  @network.setter
+  def network(self, v: str):
+    self.__network = v
+
+  @property
+  def namespace(self):
+    return self.__namespace
+
+  @property
+  def namespace_path(self):
+    return os.path.join(self.dir_path, self.namespace)
+
+  @property
+  def dir_path(self):
+    return self.__dir_path
+
+  @property
+  def scaffold_dir_path(self):
+    return self.__scaffold_dir_path
+
+  @property
+  def scaffold_namespace_path(self):
+    return os.path.join(self.scaffold_dir_path, self.namespace)
+
+  def __validate_path(self, v: str):
+    if not isinstance(v, str):
+      raise TypeError('Expected a str')
+
+    if not os.path.exists(v):
+      raise ValueError(f"{v} does not exist")

@@ -4,6 +4,7 @@ import shutil
 
 from typing import List, TypedDict, Union
 
+from .app import App
 from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
@@ -22,8 +23,8 @@ class BuildOptions(TypedDict):
 
 class WorkflowCreateCommand(WorkflowCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app, **kwargs)
 
     self.__env_vars: List[str] = kwargs.get('env') or []
     self.__force = not not kwargs.get('force')
@@ -69,7 +70,7 @@ class WorkflowCreateCommand(WorkflowCommand):
   
     app_templates_root_dir = self.app_templates_root_dir
     build_service_src = os.path.join(app_templates_root_dir, CORE_BUILD_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-    build_service_dest = os.path.join(self.app_namespace_path, CORE_BUILD_SERVICE_NAME, self.workflow_name)
+    build_service_dest = os.path.join(self.scaffold_namespace_path, CORE_BUILD_SERVICE_NAME, self.workflow_name)
 
     if os.path.exists(build_service_dest):
       shutil.rmtree(build_service_dest)
@@ -81,9 +82,9 @@ class WorkflowCreateCommand(WorkflowCommand):
 
     if not headless:
       gateway_service_src = os.path.join(app_templates_root_dir, CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-      gateway_service_dest = os.path.join(self.app_namespace_path, CORE_GATEWAY_SERVICE_NAME, self.workflow_name)
+      gateway_service_dest = os.path.join(self.scaffold_namespace_path, CORE_GATEWAY_SERVICE_NAME, self.workflow_name)
       mock_ui_service_src = os.path.join(app_templates_root_dir, CORE_MOCK_UI_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-      mock_ui_service_dest = os.path.join(self.app_namespace_path, CORE_MOCK_UI_SERVICE_NAME, self.workflow_name)
+      mock_ui_service_dest = os.path.join(self.scaffold_namespace_path, CORE_MOCK_UI_SERVICE_NAME, self.workflow_name)
 
       if os.path.exists(gateway_service_dest):
         shutil.rmtree(gateway_service_dest)

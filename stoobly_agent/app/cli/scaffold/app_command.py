@@ -2,24 +2,27 @@ import os
 import pathlib
 import shutil
 
+from stoobly_agent.config.data_dir import DataDir
+
+from .app import App
 from .app_config import AppConfig
 from .command import Command
 
 class AppCommand(Command):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App):
+    super().__init__(app)
 
-    if not kwargs['app_dir_path']:
-        kwargs['app_dir_path'] = os.getcwd()
-
-    self.__app_dir_path = kwargs.get('app_dir_path')
-    self.__config = AppConfig(self.app_namespace_path)
-    self.__config.network = kwargs.get('network') or os.path.basename(self.app_dir_path)
+    self.__config = AppConfig(self.scaffold_namespace_path)
+    self.__config.network = app.network
 
   @property
   def app_dir_path(self):
-    return self.__app_dir_path
+    return self.app.dir_path
+
+  @property
+  def app_dir_exists(self):
+    return os.path.exists(self.app_dir_path)
 
   @property
   def app_config(self):
@@ -30,16 +33,20 @@ class AppCommand(Command):
     return self.__config.path
 
   @property
-  def app_namespace_exists(self):
-    return os.path.exists(self.app_namespace_path)
-
-  @property
   def app_namespace_path(self):
-    return os.path.join(self.app_dir_path, self.namespace)
+    return self.app.namespace_path
 
   @property
   def app_templates_root_dir(self):
     return os.path.join(self.templates_root_dir, 'app')
+
+  @property
+  def scaffold_dir_path(self):
+    return self.app.scaffold_dir_path
+
+  @property
+  def scaffold_namespace_path(self):
+    return self.app.scaffold_namespace_path
 
   @property
   def templates_root_dir(self):

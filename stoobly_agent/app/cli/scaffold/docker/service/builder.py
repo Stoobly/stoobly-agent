@@ -54,10 +54,6 @@ class ServiceBuilder(Builder):
     return self.services.get(self.proxy_base)
 
   @property
-  def sidecar(self):
-    return not self.config.detached and self.config.hostname
-
-  @property
   def service_name(self):
     return self.__service_name
 

@@ -4,6 +4,7 @@ import yaml
 
 from stoobly_agent.lib.logger import Logger
 
+from .app import App
 from .config import Config
 from .constants import BUILD_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DIST_FOLDER_NAME, DOCKER_COMPOSE_CUSTOM, ENV_FILE
 from .service_command import ServiceCommand
@@ -12,8 +13,8 @@ LOG_ID = 'WorkflowCommand'
 
 class WorkflowCommand(ServiceCommand):
 
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app, **kwargs)
 
     self.__workflow_name = kwargs['workflow_name']
 
@@ -28,7 +29,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def compose_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.compose_relative_path
     )
 
@@ -76,7 +77,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def custom_compose_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.custom_compose_relative_path
     )
 
@@ -116,7 +117,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def workflow_path(self):
     return os.path.join(
-      self.app_dir_path,
+      self.scaffold_dir_path,
       self.workflow_relative_path
     )
 

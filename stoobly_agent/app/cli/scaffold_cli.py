@@ -17,7 +17,6 @@ from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
-DEFAULT_CERTS_DIR_PATH = os.path.join(DataDir.instance().tmp_dir_path, 'certs')
 LOG_ID = 'Scaffold'
 
 @click.group(
@@ -51,8 +50,8 @@ def service(ctx):
 @click.option('--force', help='If destination folder exists, recreate it.')
 @click.argument('app_name')
 def create(**kwargs):
-  kwargs['namespace'] = DOCKER_NAMESPACE
-  AppCreateCommand(**kwargs).build()
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  AppCreateCommand(app, **kwargs).build()
 
 @service.command(
   help="Scaffold a service",
@@ -70,14 +69,13 @@ def create(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--scheme', type=click.Choice(['http', 'https']))
-@click.option('--sidecar', is_flag=True)
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name')
 def create(**kwargs):
-  kwargs['namespace'] = DOCKER_NAMESPACE
-  command = ServiceCreateCommand(**kwargs)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  command = ServiceCreateCommand(app, **kwargs)
 
-  if not command.app_dir_path:
+  if not command.app_dir_exists:
     print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
@@ -101,11 +99,11 @@ def workflow(ctx):
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
-  kwargs['namespace'] = DOCKER_NAMESPACE
-  command = WorkflowCreateCommand(**kwargs)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  command = WorkflowCreateCommand(app, **kwargs)
 
-  if not command.app_namespace_exists:
-    print(f"Error: {command.app_namespace_path} does not exist", file=sys.stderr)
+  if not command.app_dir_exists:
+    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
   service_config = command.service_config
@@ -119,20 +117,24 @@ def create(**kwargs):
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.argument('workflow_name')
 def stop(**kwargs):
-  app = App(kwargs['app_dir_path'])
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+
+  if kwargs['data_dir_path']:
+    app.data_dir_path = kwargs['data_dir_path']
 
   if not app.exists:
-    print(f"Error: {app.path} does not exist", file=sys.stderr)
+    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
+  else:
+    os.chdir(kwargs['app_dir_path'])
 
-  kwargs['namespace'] = DOCKER_NAMESPACE
   workflow = Workflow(kwargs['workflow_name'], app)
 
   commands = []
   for service in workflow.services(kwargs['namespace']):
     config = { **kwargs }
     config['service_name'] = service
-    command = WorkflowRunCommand(**config)
+    command = WorkflowRunCommand(app, **config)
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
@@ -145,7 +147,6 @@ def stop(**kwargs):
       continue
 
     if not kwargs['dry_run']:
-      os.chdir(kwargs['app_dir_path'])
       exec_stream(exec_command)
     else:
       print(exec_command)
@@ -156,23 +157,24 @@ def stop(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
-  app = App(kwargs['app_dir_path'])
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
   if not app.exists:
-    print(f"Error: {app.path} does not exist", file=sys.stderr)
+    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
+  else:
+    os.chdir(kwargs['app_dir_path'])
 
-  kwargs['namespace'] = DOCKER_NAMESPACE
   workflow = Workflow(kwargs['workflow_name'], app)
 
   commands = []
-  for service in workflow.services(kwargs['namespace']):
+  for service in workflow.services:
     if len(kwargs['service']) > 0 and service not in kwargs['service']:
       continue
 
     config = { **kwargs }
     config['service_name'] = service 
-    command = WorkflowLogCommand(**config)
+    command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
@@ -181,16 +183,15 @@ def logs(**kwargs):
     __print_header(f"SERVICE {command.service_name}")
 
     for shell_command in command.all():
-      __print_subheader(f"LOGS {shell_command}")
+      print(shell_command)
 
       if not kwargs['dry_run']:
-        os.chdir(kwargs['app_dir_path'])
         exec_stream(shell_command)
  
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--certs-dir-path', default=DEFAULT_CERTS_DIR_PATH, help='Path to certs directory.')
-@click.option('--data-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
+@click.option('--certs-dir-path', help='Path to certs directory.')
+@click.option('--data-dir-path', help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -203,19 +204,24 @@ def run(**kwargs):
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'])
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  if kwargs['certs_dir_path']:
+    app.certs_dir_path = kwargs['certs_dir_path']
+
+  if kwargs['data_dir_path']:
+    app.data_dir_path = kwargs['data_dir_path']
 
   if not app.exists:
-    print(f"Error: {app.path} does not exist", file=sys.stderr)
+    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
+  else:
+    os.chdir(kwargs['app_dir_path'])
 
-  kwargs['namespace'] = DOCKER_NAMESPACE
-  workflow = Workflow(kwargs['workflow_name'], app)
-
-  app_create_command = AppCreateCommand(**kwargs)
+  app_create_command = AppCreateCommand(app)
   commands = []
 
-  services = workflow.services(kwargs['namespace'])
+  workflow = Workflow(kwargs['workflow_name'], app)
+  services = workflow.services
 
   # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
@@ -229,7 +235,7 @@ def run(**kwargs):
   for service in services:
     config = { **kwargs }
     config['service_name'] = service
-    command = WorkflowRunCommand(**config)
+    command = WorkflowRunCommand(app, **config)
     commands.append(command)
 
   # Create persistent network
@@ -248,7 +254,6 @@ def run(**kwargs):
       continue
 
     if not kwargs['dry_run']:
-      os.chdir(kwargs['app_dir_path'])
       exec_stream(exec_command)
     else:
       print(exec_command)

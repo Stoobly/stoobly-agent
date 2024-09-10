@@ -3,17 +3,18 @@ import pdb
 
 from stoobly_agent.config.data_dir import DataDir
 
+from .app import App
 from .env import Env
 from .workflow_command import WorkflowCommand
 
 class WorkflowRunCommand(WorkflowCommand):
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, app: App, **kwargs):
+    super().__init__(app, **kwargs)
 
-    self.__certs_dir_path = kwargs.get('certs_dir_path')
-    self.__data_dir_path = kwargs.get('data_dir_path')
+    self.__certs_dir_path = app.certs_dir_path
+    self.__data_dir_path = app.data_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
-    self.__network = kwargs.get('network')
+    self.__network = app.network
 
   @property
   def certs_dir_path(self):
