@@ -205,14 +205,16 @@ def run(**kwargs):
 
   services = workflow.services(kwargs['namespace'])
 
+  # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
   if missing_services:
     print(f"Warning: {','.join(missing_services)} are not found", file=sys.stderr)
 
-  for service in services:
-    if kwargs['service'] and service not in kwargs['service']:
-      continue
+  # If service is specified, run only those services
+  if kwargs['service']:
+    services = kwargs['service']
 
+  for service in services:
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(**config)
