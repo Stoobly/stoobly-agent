@@ -9,7 +9,7 @@ class AppCreateCommand(AppCommand):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.__app_name = kwargs['app_name']
+        self.__app_name = kwargs.get('app_name') or os.path.basename(self.app_dir_path)
         self.__force = not not kwargs.get('force')
 
     @property

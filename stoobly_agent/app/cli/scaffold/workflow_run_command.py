@@ -85,8 +85,6 @@ class WorkflowRunCommand(WorkflowCommand):
     command.append(f"--profile {self.workflow_name}") 
     command.append('down')
 
-    self.write_env()
-
     return ' '.join(command)
 
   def write_env(self):
