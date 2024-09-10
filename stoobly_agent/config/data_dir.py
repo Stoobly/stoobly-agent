@@ -31,7 +31,7 @@ class DataDir:
                         self.__data_dir_path = data_dir
 
             if not os.path.exists(self.__data_dir_path):
-                os.makedirs(self.__data_dir_path, exist_ok=True)
+                self.create(os.path.dirname(self.__data_dir_path))
 
     @classmethod
     def instance(cls, path: str = None):
