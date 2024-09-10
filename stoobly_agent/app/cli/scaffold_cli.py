@@ -13,10 +13,12 @@ from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.logger import bcolors
+from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 DEFAULT_CERTS_DIR_PATH = os.path.join(DataDir.instance().tmp_dir_path, 'certs')
+LOG_ID = 'Scaffold'
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -138,11 +140,15 @@ def stop(**kwargs):
   for command in commands:
     __print_header(f"SERVICE {command.service_name}")
 
+    exec_command = command.down()
+    if not exec_command:
+      continue
+
     if not kwargs['dry_run']:
       os.chdir(kwargs['app_dir_path'])
-      exec_stream(command.down())
+      exec_stream(exec_command)
     else:
-      print(command.down())
+      print(exec_command)
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
@@ -177,7 +183,7 @@ def logs(**kwargs):
     for shell_command in command.all():
       __print_subheader(f"LOGS {shell_command}")
 
-      if not  kwargs['dry_run']:
+      if not kwargs['dry_run']:
         os.chdir(kwargs['app_dir_path'])
         exec_stream(shell_command)
  
@@ -187,10 +193,16 @@ def logs(**kwargs):
 @click.option('--data-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+@click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
+    Log levels can be "debug", "info", "warning", or "error"
+''')
 @click.option('--network', help='Name of network namespace.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.argument('workflow_name')
 def run(**kwargs):
+  if not os.getenv(env_vars.LOG_LEVEL):
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
   app = App(kwargs['app_dir_path'])
 
   if not app.exists:
@@ -208,7 +220,7 @@ def run(**kwargs):
   # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
   if missing_services:
-    print(f"Warning: {','.join(missing_services)} are not found", file=sys.stderr)
+    Logger.instance(WARNING).warn(f"Service(s) {','.join(missing_services)} are not found")
 
   # If service is specified, run only those services
   if kwargs['service']:
@@ -221,18 +233,23 @@ def run(**kwargs):
     commands.append(command)
 
   # Create persistent network
-  exec_stream(f"docker network create {app_create_command.app_config.network} 2> /dev/null")
+  create_network_command = f"docker network create {app_create_command.app_config.network} 2> /dev/null"
+  if not kwargs['dry_run']:
+    exec_stream(create_network_command)
+  else:
+    print(create_network_command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for command in commands:
-    exec_command = command.up()
-
     __print_header(f"SERVICE {command.service_name}")
 
+    exec_command = command.up()
+    if not exec_command:
+      continue
+
     if not kwargs['dry_run']:
-      if exec_command:
-        os.chdir(kwargs['app_dir_path'])
-        exec_stream(exec_command)
+      os.chdir(kwargs['app_dir_path'])
+      exec_stream(exec_command)
     else:
       print(exec_command)
  
@@ -241,7 +258,7 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 
 def __print_header(text: str):
-  print(f"=== {bcolors.OKBLUE}{text}{bcolors.ENDC}")
+  Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
 
 def __print_subheader(text: str):
-  print(f"=== {bcolors.OKCYAN}{text}{bcolors.ENDC}")
+  Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}{text}{bcolors.ENDC}")
