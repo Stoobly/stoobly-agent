@@ -7,7 +7,6 @@ from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
-from stoobly_agent.app.cli.scaffold.docker.service.builder import ServiceBuilder
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
@@ -137,6 +136,8 @@ def stop(**kwargs):
   commands = sorted(commands, key=lambda command: command.service_config.priority)
 
   for command in commands:
+    __print_header(f"SERVICE {command.service_name}")
+
     if not kwargs['dry_run']:
       os.chdir(kwargs['app_dir_path'])
       exec_stream(command.down())
@@ -187,6 +188,7 @@ def logs(**kwargs):
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--network', help='Name of network namespace.')
+@click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.argument('workflow_name')
 def run(**kwargs):
   app = App(kwargs['app_dir_path'])
@@ -198,15 +200,28 @@ def run(**kwargs):
   kwargs['namespace'] = DOCKER_NAMESPACE
   workflow = Workflow(kwargs['workflow_name'], app)
 
+  app_create_command = AppCreateCommand(**kwargs)
   commands = []
-  for service in workflow.services(kwargs['namespace']):
+
+  services = workflow.services(kwargs['namespace'])
+
+  missing_services = [service for service in kwargs['service'] if service not in services]
+  if missing_services:
+    print(f"Warning: {','.join(missing_services)} are not found", file=sys.stderr)
+
+  for service in services:
+    if kwargs['service'] and service not in kwargs['service']:
+      continue
+
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(**config)
     commands.append(command)
 
-  commands = sorted(commands, key=lambda command: command.service_config.priority)
+  # Create persistent network
+  exec_stream(f"docker network create {app_create_command.app_config.network} 2> /dev/null")
 
+  commands = sorted(commands, key=lambda command: command.service_config.priority)
   for command in commands:
     exec_command = command.up()
 
