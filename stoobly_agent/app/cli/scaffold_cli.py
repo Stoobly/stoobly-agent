@@ -3,6 +3,8 @@ import os
 import pdb
 import sys
 
+from typing import List
+
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -130,8 +132,8 @@ def stop(**kwargs):
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
-  commands = []
-  for service in workflow.services(kwargs['namespace']):
+  commands: List[WorkflowRunCommand] = []
+  for service in workflow.services:
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
@@ -167,7 +169,7 @@ def logs(**kwargs):
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
-  commands = []
+  commands: List[WorkflowLogCommand] = []
   for service in workflow.services:
     if len(kwargs['service']) > 0 and service not in kwargs['service']:
       continue
