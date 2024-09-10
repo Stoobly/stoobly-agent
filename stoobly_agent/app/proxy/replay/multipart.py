@@ -1,7 +1,9 @@
+import io
 import mimetypes
 import re
 import pdb
 
+from multipart import MultipartParser
 from urllib.parse import quote
 
 from mitmproxy.net.http import headers
@@ -64,31 +66,11 @@ def decode(hdrs, content):
     except (KeyError, UnicodeError):
         return
 
-    boundary_parts = content.split(b"--" + boundary)
-    if len(boundary_parts) == 0:
-        return
-
-    rx = re.compile(br'\bname="([^"]+)"')
     r = []
-    for i in boundary_parts:
-        parts = i.splitlines(True)
-
-        if len(parts) > 1 and parts[0][0:2] != b"--":
-            match = rx.search(parts[1])
-            if match:
-                key = match.group(1)
-
-                # Continue parsing until we see just a line with CRLF
-                ar = parts[2:]
-                for i, ele in enumerate(ar):
-                    if ele == CRLF:
-                        value = b"".join(parts[3 + i:])
-
-                        # Remove CRLF preceding the next boundary
-                        length = len(value)
-                        if value[length - 2:] == CRLF:
-                            value = value[0:length - 2]
-
-                        r.append((key, value))
-                        break
+    parser = MultipartParser(io.BytesIO(content), boundary=boundary)
+    for part in parser.parts():
+        if part.content_type.lower() == 'application/octet-stream':
+            r.append((part.name, part.raw))
+        else:
+            r.append((part.name, part.value))
     return r

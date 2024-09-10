@@ -16,11 +16,11 @@ class TestMultipart():
   def test_decodes_response(self, multipart_string: bytes, content_type: str):
     multidict = decode_response(multipart_string, content_type)
 
-    assert multidict.get('author') == b'John Smith'
-    assert multidict.get('file') == b'Hello World'
+    assert multidict.get('author') == 'John Smith'
+    assert multidict.get('file') == 'Hello World'
 
   def test_encodes_response(self, content_type: str):
-    expected_params = { 'author': b'John Smith', 'file': b'Hello World'}
+    expected_params = { 'author': 'John Smith', 'file': 'Hello World'}
     multipart_string = encode_response(expected_params, content_type)
 
     multidict = decode_response(multipart_string, content_type)

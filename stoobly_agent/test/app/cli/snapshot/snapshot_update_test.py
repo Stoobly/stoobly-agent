@@ -3,7 +3,6 @@ import pytest
 import time
 
 from click.testing import CliRunner
-from typing import List
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter

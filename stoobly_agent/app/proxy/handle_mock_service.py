@@ -79,7 +79,11 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
         if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
             if handle_failure:
-                res = handle_failure(context)
+                try:
+                    res = handle_failure(context)
+                except RuntimeError:
+                    # Do nothing, return custom error response
+                    pass
         else:
             if handle_success:
                 res = handle_success(context) or res
@@ -146,7 +150,7 @@ def __handle_mock_failure(context: MockContext) -> None:
     if req.headers.get(custom_headers.REQUEST_ORIGIN) == request_origin.PROXY:
         # If this header is set, then it is likely that we are going to infinite loop
         # Unless we stop sending the same request
-        return
+        raise RuntimeError(f"Request originated from {request_origin.PROXY}")
     else:
         req.headers[custom_headers.REQUEST_ORIGIN] = request_origin.PROXY
 

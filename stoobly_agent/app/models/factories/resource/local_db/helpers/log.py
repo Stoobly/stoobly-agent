@@ -15,8 +15,9 @@ LOG_ID = 'Log'
 
 class Log():
 
-  def __init__(self):
-    data_dir = DataDir.instance()
+  def __init__(self, data_dir: DataDir = None):
+    data_dir = data_dir or DataDir.instance()
+    
     self.__log_file_path = data_dir.snapshots_log_file_path
     self.__history_dir_path = data_dir.snapshots_history_dir_path
 

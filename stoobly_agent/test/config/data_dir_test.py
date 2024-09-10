@@ -34,7 +34,8 @@ class TestDataDir():
 
   def test_in_cwd(self, original_cwd: str):
     os.environ[ENV] = NONE
-    DataDir._instance = None
+    DataDir._instances = None
+
     temp_dir = os.path.join(original_cwd, 'tmp')
     nested_temp_dir = os.path.join(temp_dir, 'tmp-nested')
     data_dir_path = os.path.join(nested_temp_dir, DataDir.DATA_DIR_NAME)
@@ -55,7 +56,8 @@ class TestDataDir():
 
   def test_in_parent_nested(self, original_cwd: str):
     os.environ[ENV] = NONE
-    DataDir._instance = None
+    DataDir._instances = None
+
     # Create a temporary directory structure for testing
     temp_dir = os.path.join(original_cwd, 'tmp')
 

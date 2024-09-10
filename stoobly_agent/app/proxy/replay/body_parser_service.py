@@ -73,12 +73,8 @@ def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
 
     if not decoded_multipart:
         return content
-
-    params_array = []
-    for ele in decoded_multipart:
-        params_array.append((decode(ele[0]), ele[1]))
  
-    return MultiDict(params_array)
+    return MultiDict(decoded_multipart)
 
 def parse_www_form_urlencoded(content):
     try:

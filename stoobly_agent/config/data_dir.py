@@ -8,34 +8,47 @@ class DataDir:
     DB_FILE_NAME = 'stoobly_agent.sqlite3'
     DB_VERSION_NAME = 'VERSION'
 
-    _instance = None
+    _instances = None
 
-    def __init__(self):
-        if DataDir._instance:
+    def __init__(self, path: str = None):
+        if DataDir._instances.get(path):
             raise RuntimeError('Call instance() instead')
         else:
-            cwd = os.getcwd()
-            self.__data_dir_path = os.path.join(cwd, self.DATA_DIR_NAME)
+            if path:
+                self.__data_dir_path = os.path.join(path, self.DATA_DIR_NAME)
+            else:
+                cwd = os.getcwd()
+                self.__data_dir_path = os.path.join(cwd, self.DATA_DIR_NAME)
 
-            # If the current working directory does not contain a .stoobly folder,
-            # then search in the parent directories until the home directory.
-            if not os.path.exists(self.__data_dir_path):
-                data_dir = self.find_data_dir(cwd)
+                # If the current working directory does not contain a .stoobly folder,
+                # then search in the parent directories until the home directory.
+                if not os.path.exists(self.__data_dir_path):
+                    data_dir = self.find_data_dir(cwd)
 
-                if not data_dir:
-                    self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
-                else:
-                    self.__data_dir_path = data_dir
+                    if not data_dir:
+                        self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
+                    else:
+                        self.__data_dir_path = data_dir
 
             if not os.path.exists(self.__data_dir_path):
                 os.makedirs(self.__data_dir_path, exist_ok=True)
 
     @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
+    def instance(cls, path: str = None):
+        if not cls._instances:
+            cls._instances = {}
 
-        return cls._instance
+        if not cls._instances.get(path):
+            cls._instances[path] = cls(path)
+
+        return cls._instances[path]
+
+    @classmethod
+    def handle_chdir(cls):
+        if cls._instances and None in cls._instances:
+            del cls._instances[None]
+
+        return cls.instance()
 
     @property
     def path(self):
@@ -137,9 +150,14 @@ class DataDir:
     def snapshosts_version_path(self):
         return os.path.join(self.snapshots_dir_path, 'VERSION')
 
-    def remove(self):
-        if os.path.exists(self.path):
-            shutil.rmtree(self.path) 
+    def remove(self, directory_path = None):
+        if directory_path:
+            data_dir_path = os.path.join(directory_path, self.DATA_DIR_NAME)
+        else:
+            data_dir_path = self.path
+
+        if os.path.exists(data_dir_path):
+            shutil.rmtree(data_dir_path) 
 
     def create(self, directory_path = None):
         if not directory_path:
