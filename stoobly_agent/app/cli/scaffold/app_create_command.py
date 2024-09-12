@@ -25,7 +25,7 @@ class AppCreateCommand(AppCommand):
         shutil.copytree(self.app_templates_root_dir, dest, dirs_exist_ok=True)
 
         with open(os.path.join(dest, '.gitignore'), 'w') as fp:
-            fp.write("\n".join(['**/.env', '**/.yml']))
+            fp.write("\n".join(['**/.env', '**/.config.yml']))
 
         self.app_config.write()
 

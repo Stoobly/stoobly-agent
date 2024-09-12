@@ -4,7 +4,7 @@ from stoobly_agent.config.data_dir import DataDir
 
 class App():
 
-  def __init__(self, path: str, namespace: str):
+  def __init__(self, path: str, namespace: str, **kwargs):
     path = path or os.getcwd()
     data_dir: DataDir = DataDir.instance(path) 
 
@@ -15,6 +15,7 @@ class App():
     self.__name = os.path.basename(self.__dir_path)
     self.__network = os.path.basename(self.__dir_path)
     self.__namespace = namespace
+    self.__skip_validate_path = not not kwargs.get('skip_validate_path')
 
   @property
   def certs_dir_path(self):
@@ -78,5 +79,6 @@ class App():
     if not isinstance(v, str):
       raise TypeError('Expected a str')
 
-    if not os.path.exists(v):
-      raise ValueError(f"{v} does not exist")
+    if not self.__skip_validate_path:
+      if not os.path.exists(v):
+        raise ValueError(f"{v} does not exist")

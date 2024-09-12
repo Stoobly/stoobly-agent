@@ -119,7 +119,7 @@ def create(**kwargs):
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.argument('workflow_name')
 def stop(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=True)
 
   if kwargs['data_dir_path']:
     app.data_dir_path = kwargs['data_dir_path']
@@ -206,7 +206,7 @@ def run(**kwargs):
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=kwargs['dry_run'])
   if kwargs['certs_dir_path']:
     app.certs_dir_path = kwargs['certs_dir_path']
 
