@@ -49,14 +49,14 @@ class WorkflowRunCommand(WorkflowCommand):
     command = ['docker', 'compose']
 
     # Add docker compose file
-    command.append(f"-f {self.compose_path}")
+    command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
 
     # Add custom docker compose file
     if self.custom_services:
-      command.append(f"-f {self.custom_compose_path}")
+      command.append(f"-f {os.path.relpath(self.custom_compose_path, os.getcwd())}")
 
     if self.extra_compose_path:
-      command.append(f"-f {self.extra_compose_path}")
+      command.append(f"-f {os.path.relpath(self.extra_compose_path, os.getcwd())}")
 
     command.append(f"--profile {self.workflow_name}") 
     command.append('up')
