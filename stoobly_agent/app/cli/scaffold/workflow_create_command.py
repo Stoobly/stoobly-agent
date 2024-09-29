@@ -16,6 +16,8 @@ from .templates.constants import (
 )
 from .workflow_command import WorkflowCommand
 
+CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]
+
 class BuildOptions(TypedDict):
   builder_class: type 
   service_builder: ServiceBuilder
@@ -42,6 +44,7 @@ class WorkflowCreateCommand(WorkflowCommand):
     return self.__force
 
   def build(self, **kwargs: BuildOptions):
+    # Create workflow folder
     dest = os.path.join(self.workflow_path)
     if os.path.exists(dest) and self.force:
         shutil.rmtree(dest)
@@ -57,42 +60,51 @@ class WorkflowCreateCommand(WorkflowCommand):
     if not os.path.exists(dist_dir_path):
       os.makedirs(dist_dir_path)
 
+    # Create workflow custom compose file
     self.__write_custom_compose_file()
 
+    # Create workflow maintained compose file
     workflow_builder = self.__write_docker_compose_file(**kwargs)
     self.__copy_templates(workflow_builder)
 
-    self.__build_core(kwargs.get('headless'))
+    # Create core services for a custom workflow
+    if self.workflow_name not in CORE_WORKFLOWS:
+      self.__build_core_services(kwargs.get('headless'))
 
-  def __build_core(self, headless: bool):
-    if self.workflow_name == WORKFLOW_MOCK_TYPE or self.workflow_name == WORKFLOW_RECORD_TYPE:
-      return
-  
+  # A custom workflow may depend on a core service
+  # However, currently core services are not build but copied
+  # For now, tailor the copied core service to the custom workflow
+  def __build_core_service(self, service_name):
     app_templates_root_dir = self.app_templates_root_dir
-    build_service_src = os.path.join(app_templates_root_dir, CORE_BUILD_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-    build_service_dest = os.path.join(self.scaffold_namespace_path, CORE_BUILD_SERVICE_NAME, self.workflow_name)
+    service_src = os.path.join(app_templates_root_dir, service_name, CORE_MOCK_WORKFLOW)
+    service_dest = os.path.join(self.scaffold_namespace_path, service_name, self.workflow_name)
 
-    if os.path.exists(build_service_dest):
-      shutil.rmtree(build_service_dest)
-    shutil.copytree(build_service_src, build_service_dest)
+    if os.path.exists(service_dest):
+      shutil.rmtree(service_dest)
+    shutil.copytree(service_src, service_dest)
 
-    build_compose_file_src = os.path.join(build_service_dest, COMPOSE_TEMPLATE.format(workflow=CORE_MOCK_WORKFLOW))
-    build_compose_file_dest = os.path.join(build_service_dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
-    os.rename(build_compose_file_src, build_compose_file_dest)
+    compose_file_src = os.path.join(service_dest, COMPOSE_TEMPLATE.format(workflow=CORE_MOCK_WORKFLOW))
+    compose_file_dest = os.path.join(service_dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
+    os.rename(compose_file_src, compose_file_dest)
 
+    # Replace workflow name
+    with open(compose_file_dest, 'r+') as fp:
+      contents = fp.read()
+      fp.seek(0)
+      fp.write(contents.replace(CORE_MOCK_WORKFLOW, self.workflow_name))
+      fp.truncate()
+
+  def __build_core_services(self, headless: bool):
+    app_templates_root_dir = self.app_templates_root_dir
+
+    self.__build_core_service(CORE_BUILD_SERVICE_NAME)
+
+    # If not headless, then create gateway and mock ui core services
     if not headless:
-      gateway_service_src = os.path.join(app_templates_root_dir, CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-      gateway_service_dest = os.path.join(self.scaffold_namespace_path, CORE_GATEWAY_SERVICE_NAME, self.workflow_name)
       mock_ui_service_src = os.path.join(app_templates_root_dir, CORE_MOCK_UI_SERVICE_NAME, CORE_MOCK_WORKFLOW)
       mock_ui_service_dest = os.path.join(self.scaffold_namespace_path, CORE_MOCK_UI_SERVICE_NAME, self.workflow_name)
 
-      if os.path.exists(gateway_service_dest):
-        shutil.rmtree(gateway_service_dest)
-      shutil.copytree(gateway_service_src, gateway_service_dest)
-
-      gateway_compose_file_src = os.path.join(gateway_service_dest, COMPOSE_TEMPLATE.format(workflow=CORE_MOCK_WORKFLOW))
-      gateway_compose_file_dest = os.path.join(gateway_service_dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
-      os.rename(gateway_compose_file_src, gateway_compose_file_dest)
+      self.__build_core_service(CORE_GATEWAY_SERVICE_NAME) 
 
       if os.path.exists(mock_ui_service_dest):
         shutil.rmtree(mock_ui_service_dest)

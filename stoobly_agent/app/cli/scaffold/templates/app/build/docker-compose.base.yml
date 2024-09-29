@@ -1,6 +1,6 @@
 services:
   build.init_base:
-    entrypoint: ['bin/apply']
+    entrypoint: ['bin/init']
     extends:
       file: ../docker-compose.base.yml
       service: proxy_base
