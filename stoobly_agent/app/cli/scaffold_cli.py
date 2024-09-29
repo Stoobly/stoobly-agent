@@ -49,11 +49,10 @@ def service(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
-@click.option('--force', help='If destination folder exists, recreate it.')
 @click.argument('app_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  AppCreateCommand(app, **kwargs).build()
+  __app_build(app, **kwargs)
 
 @service.command(
   help="Scaffold a service",
@@ -75,13 +74,7 @@ def create(**kwargs):
 @click.argument('service_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  command = ServiceCreateCommand(app, **kwargs)
-
-  if not command.app_dir_exists:
-    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
-
-  command.build()
+  __scaffold_build(app, **kwargs)
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
@@ -102,15 +95,7 @@ def workflow(ctx):
 @click.argument('workflow_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  command = WorkflowCreateCommand(app, **kwargs)
-
-  if not command.app_dir_exists:
-    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
-
-  service_config = command.service_config
-  workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
-  command.build(headless=kwargs['headless'], workflow_decorators=workflow_decorators)
+  __workflow_build(app, **kwargs)
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
@@ -269,3 +254,26 @@ def __print_header(text: str):
 
 def __print_subheader(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}{text}{bcolors.ENDC}")
+
+def __app_build(app, **kwargs):
+  AppCreateCommand(app, **kwargs).build()
+
+def __scaffold_build(app, **kwargs):
+  command = ServiceCreateCommand(app, **kwargs)
+
+  if not command.app_dir_exists:
+    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
+    sys.exit(1)
+
+  command.build()
+
+def __workflow_build(app, **kwargs):
+  command = WorkflowCreateCommand(app, **kwargs)
+
+  if not command.app_dir_exists:
+    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
+    sys.exit(1)
+
+  service_config = command.service_config
+  workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
+  command.build(headless=kwargs['headless'], workflow_decorators=workflow_decorators)

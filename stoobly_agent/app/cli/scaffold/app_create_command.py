@@ -10,15 +10,9 @@ class AppCreateCommand(AppCommand):
     def __init__(self, app: App, **kwargs):
         super().__init__(app)
 
-        self.__force = not not kwargs.get('force')
-
     @property
     def app_name(self):
         return self.app.name
-
-    @property
-    def force(self):
-        return self.__force
 
     def build(self):
         dest = self.scaffold_namespace_path
@@ -28,9 +22,3 @@ class AppCreateCommand(AppCommand):
             fp.write("\n".join(['**/.env', '**/.config.yml']))
 
         self.app_config.write()
-
-    def reset(self):
-        dest = self.scaffold_namespace_path
-
-        if os.path.exists(dest) and self.force:
-            shutil.rmtree(dest)
