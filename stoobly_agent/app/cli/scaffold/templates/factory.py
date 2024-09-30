@@ -1,6 +1,6 @@
 from ..constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
 from ..docker.workflow.builder import WorkflowBuilder
-from .constants import CUSTOM_CONFIGURE, MAINTAINED_CONFIGURE, MOCK_WORKFLOW_CUSTOM_FILES, MOCK_WORKFLOW_MAINTAINED_FILES, RECORD_WORKFLOW_CUSTOM_FILES, RECORD_WORKFLOW_MAINTAINED_FILES
+from .constants import CUSTOM_CONFIGURE, CUSTOM_INIT, MAINTAINED_CONFIGURE, MOCK_WORKFLOW_CUSTOM_FILES, MOCK_WORKFLOW_MAINTAINED_FILES, RECORD_WORKFLOW_CUSTOM_FILES, RECORD_WORKFLOW_MAINTAINED_FILES
 
 def custom_files(workflow: str, workflow_builder: WorkflowBuilder):
   files = []
@@ -11,6 +11,9 @@ def custom_files(workflow: str, workflow_builder: WorkflowBuilder):
   else:
     if workflow_builder.configure in workflow_builder.services:
       files.append(CUSTOM_CONFIGURE)
+
+    if workflow_builder.init in workflow_builder.services:
+      files.append(CUSTOM_INIT)
 
   service_config = workflow_builder.config
   if not service_config.hostname:

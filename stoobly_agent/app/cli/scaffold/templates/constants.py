@@ -7,6 +7,7 @@ CORE_MOCK_WORKFLOW = 'mock'
 CORE_RECORD_WORKFLOW = 'record'
 
 CUSTOM_CONFIGURE = os.path.join('bin', 'configure')
+CUSTOM_INIT = os.path.join('bin', 'init')
 MAINTAINED_CONFIGURE = os.path.join('bin', '.configure')
 
 MOCK_WORKFLOW_MAINTAINED_FILES = [
