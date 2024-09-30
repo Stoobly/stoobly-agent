@@ -5,7 +5,7 @@ services:
     command: --ui-port 4200
     extends:
       file: ../docker-compose.base.yml
-      service: mock_ui_base
+      service: mock_ui.base
     ports:
       - '4200:4200'
     profiles:

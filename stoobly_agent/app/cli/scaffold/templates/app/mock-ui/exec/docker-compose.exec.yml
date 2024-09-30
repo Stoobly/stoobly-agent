@@ -1,13 +1,10 @@
 services:
-  mock_ui.service:
+  mock_ui.exec:
     build:
       dockerfile: ../../Dockerfile.context
-    command: --ui-port 4200
+    entrypoint: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
     extends:
       file: ../docker-compose.base.yml
       service: mock_ui.base
-    ports:
-      - '4200:4200'
     profiles:
-      - record
-
+      - exec
