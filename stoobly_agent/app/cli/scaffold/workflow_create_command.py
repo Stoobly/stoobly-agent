@@ -5,7 +5,7 @@ import shutil
 from typing import List, TypedDict, Union
 
 from .app import App
-from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
+from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEMPLATE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
 from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
@@ -20,7 +20,9 @@ CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]
 
 class BuildOptions(TypedDict):
   builder_class: type 
+  headless: bool
   service_builder: ServiceBuilder
+  template: WORKFLOW_TEMPLATE
   workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]]
 
 class WorkflowCreateCommand(WorkflowCommand):
@@ -33,7 +35,7 @@ class WorkflowCreateCommand(WorkflowCommand):
 
   @property
   def build_templates_path(self):
-    return os.path.join(self.workflow_templates_root_dir, self.workflow_name, 'build')
+    return self.workflow_build_templates_path(self.workflow_name)
 
   @property
   def env_vars(self):
@@ -65,14 +67,17 @@ class WorkflowCreateCommand(WorkflowCommand):
 
     # Create workflow maintained compose file
     workflow_builder = self.__write_docker_compose_file(**kwargs)
-    self.__copy_templates(workflow_builder)
+    self.__copy_templates(workflow_builder, kwargs.get('template'))
 
     # Create core services for a custom workflow
     if self.workflow_name not in CORE_WORKFLOWS:
       self.__build_core_services(kwargs.get('headless'))
 
+  def workflow_build_templates_path(self, workflow_name: str):
+    return os.path.join(self.workflow_templates_root_dir, workflow_name, 'build')
+
   # A custom workflow may depend on a core service
-  # However, currently core services are not build but copied
+  # However, currently core services are not built but copied
   # For now, tailor the copied core service to the custom workflow
   def __build_core_service(self, service_name):
     app_templates_root_dir = self.app_templates_root_dir
@@ -94,28 +99,20 @@ class WorkflowCreateCommand(WorkflowCommand):
       fp.write(contents.replace(CORE_MOCK_WORKFLOW, self.workflow_name))
       fp.truncate()
 
-  def __build_core_services(self, headless: bool):
-    app_templates_root_dir = self.app_templates_root_dir
-
+  def __build_core_services(self, headless):
     self.__build_core_service(CORE_BUILD_SERVICE_NAME)
 
     # If not headless, then create gateway and mock ui core services
     if not headless:
-      mock_ui_service_src = os.path.join(app_templates_root_dir, CORE_MOCK_UI_SERVICE_NAME, CORE_MOCK_WORKFLOW)
-      mock_ui_service_dest = os.path.join(self.scaffold_namespace_path, CORE_MOCK_UI_SERVICE_NAME, self.workflow_name)
-
       self.__build_core_service(CORE_GATEWAY_SERVICE_NAME) 
+      self.__build_core_service(CORE_MOCK_UI_SERVICE_NAME)
 
-      if os.path.exists(mock_ui_service_dest):
-        shutil.rmtree(mock_ui_service_dest)
-      shutil.copytree(mock_ui_service_src, mock_ui_service_dest)
+  def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE = None):
+    if not template:
+      templates_path = self.build_templates_path
+    else:
+      templates_path = self.workflow_build_templates_path(template)
 
-      mock_ui_compose_file_src = os.path.join(mock_ui_service_dest, COMPOSE_TEMPLATE.format(workflow=CORE_MOCK_WORKFLOW))
-      mock_ui_compose_file_dest = os.path.join(mock_ui_service_dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
-      os.rename(mock_ui_compose_file_src, mock_ui_compose_file_dest)
-
-  def __copy_templates(self, workflow_builder: WorkflowBuilder):
-    templates_path = self.build_templates_path
     if not os.path.exists(templates_path):
       return
 
@@ -135,7 +132,7 @@ class WorkflowCreateCommand(WorkflowCommand):
       with open(dest, 'w') as fp:
         fp.write('# Define services here')
 
-  def __write_docker_compose_file(self, **kwargs):
+  def __write_docker_compose_file(self, **kwargs: BuildOptions):
     builder_class = kwargs.get('builder_class') or WorkflowBuilder
     service_builder = kwargs.get('service_builder') or ServiceBuilder(self.service_config)
     workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = kwargs.get('workflow_decorators')

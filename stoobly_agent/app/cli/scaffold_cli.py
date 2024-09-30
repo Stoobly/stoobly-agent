@@ -276,4 +276,8 @@ def __workflow_build(app, **kwargs):
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
-  command.build(headless=kwargs['headless'], workflow_decorators=workflow_decorators)
+  command.build(
+    headless=kwargs['headless'],
+    template=kwargs['template'],
+    workflow_decorators=workflow_decorators
+  )
