@@ -1,0 +1,9 @@
+#!/bin/bash
+
+extra=$1
+
+stoobly-agent scaffold workflow stop \
+  --app-dir-path "$(pwd)" \
+  --dry-run \
+  --log-level error \
+  $extra > .stoobly/tmp/run.sh

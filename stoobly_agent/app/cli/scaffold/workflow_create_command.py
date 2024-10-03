@@ -70,6 +70,7 @@ class WorkflowCreateCommand(WorkflowCommand):
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
     # Create core services for a custom workflow
+    # For now the core services are not differentiated by workflow thus no need to pass in 'template'
     if self.workflow_name not in CORE_WORKFLOWS:
       self.__build_core_services(kwargs.get('headless'))
 

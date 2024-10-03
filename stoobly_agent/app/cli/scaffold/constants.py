@@ -2,8 +2,10 @@ from typing import Literal
 
 APP_NETWORK_ENV = 'APP_NETWORK'
 BUILD_FOLDER_NAME = 'build'
+CERTS_DIR_ENV = 'CERTS_DIR'
 COMPOSE_TEMPLATE = 'docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'
+CONTEXT_DIR_ENV = 'CONTEXT_DIR'
 DIST_FOLDER_NAME = 'dist'
 DOCKER_COMPOSE_CUSTOM = 'docker-compose.yml'
 DOCKER_COMPOSE_BASE = 'docker-compose.base.yml'
@@ -25,6 +27,7 @@ SERVICE_PORT = '${SERVICE_PORT}'
 SERVICE_PORT_ENV = 'SERVICE_PORT'
 SERVICE_PRIORITY_ENV = 'SERVICE_PRIORITY'
 STOOBLY_HOME_DIR = '/home/stoobly'
+USER_ID_ENV = 'USER_ID'
 WORKFLOW_MOCK_TYPE = 'mock'
 WORKFLOW_RECORD_TYPE = 'record'
 

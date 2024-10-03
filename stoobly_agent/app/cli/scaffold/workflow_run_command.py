@@ -4,6 +4,7 @@ import pdb
 from stoobly_agent.config.data_dir import DataDir
 
 from .app import App
+from .constants import APP_NETWORK_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, USER_ID_ENV
 from .env import Env
 from .workflow_command import WorkflowCommand
 
@@ -12,7 +13,7 @@ class WorkflowRunCommand(WorkflowCommand):
     super().__init__(app, **kwargs)
 
     self.__certs_dir_path = app.certs_dir_path
-    self.__data_dir_path = app.data_dir_path
+    self.__context_dir_path = app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = app.network
 
@@ -27,12 +28,12 @@ class WorkflowRunCommand(WorkflowCommand):
     return self.__certs_dir_path
 
   @property
-  def data_dir_path(self):
-    if not self.__data_dir_path:
+  def context_dir_path(self):
+    if not self.__context_dir_path:
       data_dir = DataDir.instance()
       return os.path.dirname(data_dir.path) 
 
-    return self.__data_dir_path
+    return self.__context_dir_path
 
   @property
   def extra_compose_path(self):
@@ -74,14 +75,14 @@ class WorkflowRunCommand(WorkflowCommand):
     command = ['docker', 'compose']
 
     # Add docker compose file
-    command.append(f"-f {self.compose_path}")
+    command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
 
     # Add custom docker compose file
     if self.custom_services:
-      command.append(f"-f {self.custom_compose_path}")
+      command.append(f"-f {os.path.relpath(self.custom_compose_path, os.getcwd())}")
 
     if self.extra_compose_path:
-      command.append(f"-f {self.extra_compose_path}")
+      command.append(f"-f {os.path.relpath(self.extra_compose_path, os.getcwd())}")
 
     command.append(f"--profile {self.workflow_name}") 
     command.append('down')
@@ -89,14 +90,13 @@ class WorkflowRunCommand(WorkflowCommand):
     return ' '.join(command)
 
   def write_env(self):
-    _config = {
-      'CERTS_DIR': self.certs_dir_path,
-      'DATA_DIR': self.data_dir_path,
-      'USER_ID': os.getuid(),
-    }
+    _config = {}
+    _config[CERTS_DIR_ENV] = self.certs_dir_path
+    _config[CONTEXT_DIR_ENV] = self.context_dir_path
+    _config[USER_ID_ENV] = os.getuid()
 
     if self.network:
-      _config['NETWORK'] = self.network
+      _config[APP_NETWORK_ENV] = self.network
 
     env_vars = self.config(_config)
     env_path = self.workflow_env_path

@@ -1,6 +1,6 @@
 import os
 
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 class App():
 
@@ -10,7 +10,7 @@ class App():
 
     self.__scaffold_dir_path = data_dir.path
     self.__certs_dir_path = os.path.join(data_dir.tmp_dir_path, 'certs')
-    self.__data_dir_path = data_dir.path
+    self.__context_dir_path = data_dir.context_dir_path
     self.__dir_path = path
     self.__name = os.path.basename(self.__dir_path)
     self.__network = os.path.basename(self.__dir_path)
@@ -27,13 +27,17 @@ class App():
     self.__certs_dir_path = v
 
   @property
-  def data_dir_path(self):
-    return self.__data_dir_path
+  def context_dir_path(self):
+    return self.__context_dir_path
 
-  @data_dir_path.setter
-  def data_dir_path(self, v: str):
+  @context_dir_path.setter
+  def context_dir_path(self, v: str):
     self.__validate_path(v)
-    self.__data_dir_path = v 
+    self.__context_dir_path = v 
+
+  @property
+  def data_dir_path(self):
+    return os.path.join(self.context_dir_path, DATA_DIR_NAME)
 
   @property
   def exists(self):

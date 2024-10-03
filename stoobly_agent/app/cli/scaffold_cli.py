@@ -99,15 +99,21 @@ def create(**kwargs):
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--data-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+@click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
+    Log levels can be "debug", "info", "warning", or "error"
+''')
 @click.argument('workflow_name')
-def stop(**kwargs):
+def stop(**kwargs):  
+  if not os.getenv(env_vars.LOG_LEVEL):
+    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=True)
 
-  if kwargs['data_dir_path']:
-    app.data_dir_path = kwargs['data_dir_path']
+  if kwargs['context_dir_path']:
+    app.context_dir_path = kwargs['context_dir_path']
 
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
@@ -177,8 +183,8 @@ def logs(**kwargs):
  
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--certs-dir-path', help='Path to certs directory.')
-@click.option('--data-dir-path', help='Path to Stoobly data directory.')
+@click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Path to certs directory.')
+@click.option('--context-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -195,8 +201,8 @@ def run(**kwargs):
   if kwargs['certs_dir_path']:
     app.certs_dir_path = kwargs['certs_dir_path']
 
-  if kwargs['data_dir_path']:
-    app.data_dir_path = kwargs['data_dir_path']
+  if kwargs['context_dir_path']:
+    app.context_dir_path = kwargs['context_dir_path']
 
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)

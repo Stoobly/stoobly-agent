@@ -1,5 +1,5 @@
 services:
-  mock_ui.exec:
+  mock_ui.command:
     build:
       dockerfile: ../../Dockerfile.context
     entrypoint: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
