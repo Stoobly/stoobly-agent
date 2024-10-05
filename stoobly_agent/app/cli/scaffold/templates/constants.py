@@ -34,4 +34,16 @@ RECORD_WORKFLOW_CUSTOM_FILES = [
   os.path.join('lifecycle_hooks.py'),
 ]
 
+TEST_WORKFLOW_MAINTAINED_FILES = [
+  MAINTAINED_CONFIGURE
+]
+
+TEST_WORKFLOW_CUSTOM_FILES = [
+  os.path.join('bin', 'build'),
+  os.path.join('bin', 'init'),
+  CUSTOM_CONFIGURE,
+  os.path.join('.keep'),
+  os.path.join('lifecycle_hooks.py'),
+]
+
 SERVICE_HOSTNAME_BUILD_ARG = 'SERVICE_HOSTNAME'

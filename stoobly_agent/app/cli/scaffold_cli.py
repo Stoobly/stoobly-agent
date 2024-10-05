@@ -8,7 +8,7 @@ from typing import List
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE
+from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
@@ -70,7 +70,7 @@ def create(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--scheme', type=click.Choice(['http', 'https']))
-@click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Include pre-defined workflows.')
+@click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
