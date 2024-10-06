@@ -1,0 +1,5 @@
+#!/bin/bash
+
+stoobly-agent config reset
+
+cd $(dirname -- "$0") && ./configure

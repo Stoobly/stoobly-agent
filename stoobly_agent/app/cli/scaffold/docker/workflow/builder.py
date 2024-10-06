@@ -232,7 +232,6 @@ class WorkflowBuilder(Builder):
     super().write({
       'networks': self.networks,
       'services': self.services,
-      'version': self.version,
       'volumes': self.volumes,
     })
 

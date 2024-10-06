@@ -1,0 +1,17 @@
+networks:
+  tests:
+    name: tests
+services:
+  tests.init:
+    build:
+      context: ./
+      dockerfile: ../../Dockerfile.context
+    environment: {}
+    extends:
+      file: ../docker-compose.base.yml
+      service: tests.init_base
+    profiles:
+    - test
+    volumes:
+    - ./dist:/home/stoobly/dist
+volumes: {}

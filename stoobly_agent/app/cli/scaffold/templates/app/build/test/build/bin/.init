@@ -1,0 +1,5 @@
+#!/bin/bash
+
+stoobly-agent snapshot apply
+
+cd $(dirname -- "$0") && ./init

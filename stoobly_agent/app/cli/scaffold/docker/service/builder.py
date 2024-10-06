@@ -115,5 +115,4 @@ class ServiceBuilder(Builder):
     super().write({
       'networks': self.networks,
       'services': self.services,
-      'version': self.version
     })

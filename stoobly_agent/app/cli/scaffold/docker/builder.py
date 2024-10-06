@@ -15,8 +15,6 @@ class Builder():
     self.__templates_dir = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), 'templates')
     self.__volumes = {}
 
-    self.version = '3.8'
-
   @property
   def compose_file_name(self):
     return self.__compose_file_name

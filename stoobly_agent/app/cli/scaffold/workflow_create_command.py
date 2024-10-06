@@ -5,7 +5,7 @@ import shutil
 from typing import List, TypedDict, Union
 
 from .app import App
-from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEMPLATE
+from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_TEMPLATE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
 from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
@@ -16,7 +16,7 @@ from .templates.constants import (
 )
 from .workflow_command import WorkflowCommand
 
-CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]
+CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
 
 class BuildOptions(TypedDict):
   builder_class: type 
@@ -72,7 +72,7 @@ class WorkflowCreateCommand(WorkflowCommand):
     # Create core services for a custom workflow
     # For now the core services are not differentiated by workflow thus no need to pass in 'template'
     if self.workflow_name not in CORE_WORKFLOWS:
-      self.__build_core_services(kwargs.get('headless'))
+      self.__add_core_services(kwargs.get('headless'))
 
   def workflow_build_templates_path(self, workflow_name: str):
     return os.path.join(self.workflow_templates_root_dir, workflow_name, 'build')
@@ -80,7 +80,7 @@ class WorkflowCreateCommand(WorkflowCommand):
   # A custom workflow may depend on a core service
   # However, currently core services are not built but copied
   # For now, tailor the copied core service to the custom workflow
-  def __build_core_service(self, service_name):
+  def __add_core_service(self, service_name):
     app_templates_root_dir = self.app_templates_root_dir
     service_src = os.path.join(app_templates_root_dir, service_name, CORE_MOCK_WORKFLOW)
     service_dest = os.path.join(self.scaffold_namespace_path, service_name, self.workflow_name)
@@ -100,13 +100,13 @@ class WorkflowCreateCommand(WorkflowCommand):
       fp.write(contents.replace(CORE_MOCK_WORKFLOW, self.workflow_name))
       fp.truncate()
 
-  def __build_core_services(self, headless):
-    self.__build_core_service(CORE_BUILD_SERVICE_NAME)
+  def __add_core_services(self, headless):
+    self.__add_core_service(CORE_BUILD_SERVICE_NAME)
 
     # If not headless, then create gateway and mock ui core services
     if not headless:
-      self.__build_core_service(CORE_GATEWAY_SERVICE_NAME) 
-      self.__build_core_service(CORE_MOCK_UI_SERVICE_NAME)
+      self.__add_core_service(CORE_GATEWAY_SERVICE_NAME) 
+      self.__add_core_service(CORE_MOCK_UI_SERVICE_NAME)
 
   def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE = None):
     if not template:
