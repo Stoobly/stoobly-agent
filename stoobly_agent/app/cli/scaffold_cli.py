@@ -90,7 +90,7 @@ def workflow(ctx):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--headless', is_flag=True, help='Disable running gateway and mock-ui services.')
-@click.option('--service-name', help='Specify the service to create the workflow for.')
+@click.option('--service', help='Specify the service to create the workflow for.')
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
