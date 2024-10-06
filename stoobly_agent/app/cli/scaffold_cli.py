@@ -90,12 +90,18 @@ def workflow(ctx):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--headless', is_flag=True, help='Disable running gateway and mock-ui services.')
-@click.option('--service', help='Specify the service to create the workflow for.')
+@click.option('--service', multiple=True, help='Specify the service to create the workflow for.')
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  __workflow_build(app, **kwargs)
+
+  for service_name in kwargs['service']:
+    config = { **kwargs }
+    del config['service']
+    config['service_name'] = service_name
+
+    __workflow_build(app, **kwargs)
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
@@ -280,9 +286,7 @@ def __scaffold_build(app, **kwargs):
   command.build()
 
 def __workflow_build(app, **kwargs):
-  config = { **kwargs }
-  config['service_name'] = kwargs.get('service')
-  command = WorkflowCreateCommand(app, **config)
+  command = WorkflowCreateCommand(app, **kwargs)
 
   if not command.app_dir_exists:
     print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
