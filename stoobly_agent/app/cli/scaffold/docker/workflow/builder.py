@@ -4,8 +4,8 @@ import pdb
 from typing import List
 
 from ...constants import (
-  COMPOSE_TEMPLATE, DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
-  SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
+  COMPOSE_TEMPLATE, DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
+  SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR, WORKFLOW_NAME_ENV
 )
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
@@ -14,7 +14,7 @@ from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
 class WorkflowBuilder(Builder):
 
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
-    self._env = []
+    self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__workflow_name = os.path.basename(workflow_path)
     super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
 
@@ -225,7 +225,7 @@ class WorkflowBuilder(Builder):
   def with_env(self, v: List[str]): 
     if not isinstance(v, list):
       return self
-    self._env = v
+    self._env += v
     return self
 
   def write(self):

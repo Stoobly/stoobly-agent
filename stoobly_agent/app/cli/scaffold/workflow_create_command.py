@@ -5,15 +5,12 @@ import shutil
 from typing import List, TypedDict, Union
 
 from .app import App
-from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_TEMPLATE
+from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_TEMPLATE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
 from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
 from .docker.workflow.builder import WorkflowBuilder
 from .templates.factory import custom_files, maintained_files
-from .templates.constants import (
- CORE_BUILD_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CORE_MOCK_WORKFLOW
-)
 from .workflow_command import WorkflowCommand
 
 CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
@@ -69,44 +66,8 @@ class WorkflowCreateCommand(WorkflowCommand):
     workflow_builder = self.__write_docker_compose_file(**kwargs)
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
-    # Create core services for a custom workflow
-    # For now the core services are not differentiated by workflow thus no need to pass in 'template'
-    if self.workflow_name not in CORE_WORKFLOWS:
-      self.__add_core_services(kwargs.get('headless'))
-
   def workflow_build_templates_path(self, workflow_name: str):
     return os.path.join(self.workflow_templates_root_dir, workflow_name, 'build')
-
-  # A custom workflow may depend on a core service
-  # However, currently core services are not built but copied
-  # For now, tailor the copied core service to the custom workflow
-  def __add_core_service(self, service_name):
-    app_templates_root_dir = self.app_templates_root_dir
-    service_src = os.path.join(app_templates_root_dir, service_name, CORE_MOCK_WORKFLOW)
-    service_dest = os.path.join(self.scaffold_namespace_path, service_name, self.workflow_name)
-
-    if os.path.exists(service_dest):
-      shutil.rmtree(service_dest)
-    shutil.copytree(service_src, service_dest)
-
-    compose_file_src = os.path.join(service_dest, COMPOSE_TEMPLATE.format(workflow=CORE_MOCK_WORKFLOW))
-    compose_file_dest = os.path.join(service_dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
-    os.rename(compose_file_src, compose_file_dest)
-
-    # Replace workflow name
-    with open(compose_file_dest, 'r+') as fp:
-      contents = fp.read()
-      fp.seek(0)
-      fp.write(contents.replace(CORE_MOCK_WORKFLOW, self.workflow_name))
-      fp.truncate()
-
-  def __add_core_services(self, headless):
-    self.__add_core_service(CORE_BUILD_SERVICE_NAME)
-
-    # If not headless, then create gateway and mock ui core services
-    if not headless:
-      self.__add_core_service(CORE_GATEWAY_SERVICE_NAME) 
-      self.__add_core_service(CORE_MOCK_UI_SERVICE_NAME)
 
   def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE = None):
     if not template:

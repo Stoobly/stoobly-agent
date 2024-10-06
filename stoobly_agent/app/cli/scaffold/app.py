@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
@@ -78,6 +79,24 @@ class App():
   @property
   def scaffold_namespace_path(self):
     return os.path.join(self.scaffold_dir_path, self.namespace)
+
+  def copy_folders_and_hidden_files(self, src, dst):
+      os.makedirs(dst, exist_ok=True)
+
+      # Walk through the source directory
+      for root, dirs, files in os.walk(src):
+          # Copy hidden files only
+          for file_name in files:
+              src_file_path = os.path.join(root, file_name)
+              dst_file_path = os.path.join(dst, os.path.relpath(root, src), file_name)
+
+              if not (root == src and file_name == 'Makefile'):
+                  if not file_name.startswith('.'):
+                      if os.path.exists(dst_file_path):
+                          continue
+
+              os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)  # Create directories in destination
+              shutil.copy2(src_file_path, dst_file_path)
 
   def __validate_path(self, v: str):
     if not isinstance(v, str):

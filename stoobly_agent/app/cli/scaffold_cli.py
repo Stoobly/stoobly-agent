@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import ge
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
+from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.config.constants import env_vars
@@ -85,13 +86,12 @@ def workflow(ctx):
     pass
 
 @workflow.command(
-  help="Scaffold a workflow",
+  help="Create workflow for service(s)"
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
-@click.option('--headless', is_flag=True, help='Disable running gateway and mock-ui services.')
-@click.option('--service', multiple=True, help='Specify the service to create the workflow for.')
-@click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE]), help='Select which workflow to use as a template.')
+@click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
+@click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -101,7 +101,30 @@ def create(**kwargs):
     del config['service']
     config['service_name'] = service_name
 
-    __workflow_build(app, **kwargs)
+    __workflow_build(app, **config)
+
+@workflow.command(
+  help="Copy a workflow for service(s)",
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--service', multiple=True, help='Specify service(s) to add the workflow to.')
+@click.argument('workflow_name')
+@click.argument('destination_workflow_name')
+def copy(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+
+  for service_name in kwargs['service']:
+    config = { **kwargs }
+    del config['service']
+    config['service_name'] = service_name
+      
+    command = WorkflowCopyCommand(app, **config)
+
+    if not command.app_dir_exists:
+      print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
+      sys.exit(1)
+
+    command.copy(kwargs['destination_workflow_name'])
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')

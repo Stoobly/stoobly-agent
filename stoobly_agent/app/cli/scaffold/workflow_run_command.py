@@ -4,7 +4,7 @@ import pdb
 from stoobly_agent.config.data_dir import DataDir
 
 from .app import App
-from .constants import APP_NETWORK_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, USER_ID_ENV
+from .constants import APP_NETWORK_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
 from .env import Env
 from .workflow_command import WorkflowCommand
 
@@ -102,7 +102,9 @@ class WorkflowRunCommand(WorkflowCommand):
     _config = {}
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
+    _config[SERVICE_NAME_ENV] = self.service_name
     _config[USER_ID_ENV] = os.getuid()
+    _config[WORKFLOW_NAME_ENV] = self.workflow_name
 
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
