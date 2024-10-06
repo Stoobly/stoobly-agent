@@ -28,7 +28,7 @@ class BuildOptions(TypedDict):
 class WorkflowCreateCommand(WorkflowCommand):
 
   def __init__(self, app: App, **kwargs):
-    super().__init__(app, **{ 'service_name': kwargs.get('service'), **kwargs })
+    super().__init__(app, **kwargs)
 
     self.__env_vars: List[str] = kwargs.get('env') or []
     self.__force = not not kwargs.get('force')

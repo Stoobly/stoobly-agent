@@ -107,6 +107,8 @@ def create(**kwargs):
 ''')
 @click.argument('workflow_name')
 def stop(**kwargs):  
+  cwd = os.getcwd()
+
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
@@ -128,6 +130,7 @@ def stop(**kwargs):
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
+    command.current_working_dir = cwd
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
@@ -194,6 +197,8 @@ def logs(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.argument('workflow_name')
 def run(**kwargs):
+  cwd = os.getcwd()
+
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
@@ -229,6 +234,7 @@ def run(**kwargs):
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
+    command.current_working_dir = cwd
     commands.append(command)
 
   # Create persistent network
@@ -274,7 +280,9 @@ def __scaffold_build(app, **kwargs):
   command.build()
 
 def __workflow_build(app, **kwargs):
-  command = WorkflowCreateCommand(app, **kwargs)
+  config = { **kwargs }
+  config['service_name'] = kwargs.get('service')
+  command = WorkflowCreateCommand(app, **config)
 
   if not command.app_dir_exists:
     print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)

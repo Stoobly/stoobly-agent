@@ -9,7 +9,7 @@ run_script=$(data_dir)/tmp/run.sh
 app_dir=$${APP_DIR:-$$CONTEXT_DIR}
 certs_dir=$${CERTS_DIR:-$(data_dir)/certs}
 docker_compose_command=docker compose
-docker_compose_file_path=$(data_dir)/docker/mock-ui/exec/docker-compose.exec.yml
+docker_compose_file_path=$(data_dir)/docker/mock-ui/exec/.docker-compose.exec.yml
 docker_compose_args=--profile exec -p $(WORKFLOW_NAME) up --build
 docker_compose_stoobly_exec=export CONTEXT_DIR=$(context_dir) && $(docker_compose_command) -f $(docker_compose_file_path) $(docker_compose_args)
 docker_compose_stoobly_exec_run=export APP_DIR=$(app_dir) && export CERTS_DIR=$(certs_dir) && $(docker_compose_stoobly_exec)

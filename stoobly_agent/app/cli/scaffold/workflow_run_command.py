@@ -12,6 +12,7 @@ class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
     super().__init__(app, **kwargs)
 
+    self.__current_working_dir = os.getcwd()
     self.__certs_dir_path = app.certs_dir_path
     self.__context_dir_path = app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
@@ -36,6 +37,14 @@ class WorkflowRunCommand(WorkflowCommand):
     return self.__context_dir_path
 
   @property
+  def current_working_dir(self):
+    return self.__current_working_dir
+
+  @current_working_dir.setter
+  def current_working_dir(self, v):
+    self.__current_working_dir = v
+
+  @property
   def extra_compose_path(self):
     return self.__extra_compose_path
 
@@ -50,14 +59,14 @@ class WorkflowRunCommand(WorkflowCommand):
     command = ['docker', 'compose']
 
     # Add docker compose file
-    command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
+    command.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
 
     # Add custom docker compose file
     if self.custom_services:
-      command.append(f"-f {os.path.relpath(self.custom_compose_path, os.getcwd())}")
+      command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
 
     if self.extra_compose_path:
-      command.append(f"-f {os.path.relpath(self.extra_compose_path, os.getcwd())}")
+      command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
 
     command.append(f"--profile {self.workflow_name}") 
     command.append('up')
@@ -79,10 +88,10 @@ class WorkflowRunCommand(WorkflowCommand):
 
     # Add custom docker compose file
     if self.custom_services:
-      command.append(f"-f {os.path.relpath(self.custom_compose_path, os.getcwd())}")
+      command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
 
     if self.extra_compose_path:
-      command.append(f"-f {os.path.relpath(self.extra_compose_path, os.getcwd())}")
+      command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
 
     command.append(f"--profile {self.workflow_name}") 
     command.append('down')
