@@ -115,11 +115,10 @@ class WorkflowBuilder(Builder):
 
     # Services
     self.build_init()
+    self.build_configure()
 
     if self.config.hostname:
       self.with_public_network()
-      self.build_configure()
-
       self.build_proxy() # Depends on configure, must call build_configure first
 
   def build_init(self):

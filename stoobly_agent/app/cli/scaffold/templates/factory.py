@@ -19,11 +19,6 @@ def custom_files(workflow: str, workflow_builder: WorkflowBuilder):
     if workflow_builder.init in workflow_builder.services:
       files.append(CUSTOM_INIT)
 
-  service_config = workflow_builder.config
-  if not service_config.hostname:
-    if CUSTOM_CONFIGURE in files:
-      files.remove(CUSTOM_CONFIGURE)
-
   return files
 
 def maintained_files(workflow: str, workflow_builder: WorkflowBuilder):
@@ -38,9 +33,5 @@ def maintained_files(workflow: str, workflow_builder: WorkflowBuilder):
   else:
     if workflow_builder.configure in workflow_builder.services:
       files.append(MAINTAINED_CONFIGURE)
-
-  service_config = workflow_builder.config
-  if not service_config.hostname:
-    files.remove(MAINTAINED_CONFIGURE)
 
   return files

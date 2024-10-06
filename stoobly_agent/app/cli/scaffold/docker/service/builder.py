@@ -86,7 +86,7 @@ class ServiceBuilder(Builder):
   def build_init_base(self):
     environment = {}
     self.with_service(self.init_base, {
-      'entrypoint': ['bin/init', 'dist'],
+      'entrypoint': ['bin/.init', 'dist'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
@@ -107,10 +107,10 @@ class ServiceBuilder(Builder):
 
   def write(self):
     self.build_init_base()
+    self.build_configure_base()
 
     if self.config.hostname:
       self.build_proxy_base()
-      self.build_configure_base()
 
     super().write({
       'networks': self.networks,
