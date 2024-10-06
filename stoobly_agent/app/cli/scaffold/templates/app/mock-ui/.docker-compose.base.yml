@@ -1,5 +1,5 @@
 services:
   mock_ui.base:
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: context_base 

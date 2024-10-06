@@ -34,9 +34,10 @@ class AppCreateCommand(AppCommand):
                 src_file_path = os.path.join(root, file_name)
                 dst_file_path = os.path.join(dst, os.path.relpath(root, src), file_name)
 
-                if not file_name.startswith('.'):
-                    if os.path.exists(dst_file_path):
-                        continue
+                if not (root == src and file_name == 'Makefile'):
+                    if not file_name.startswith('.'):
+                        if os.path.exists(dst_file_path):
+                            continue
 
                 os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)  # Create directories in destination
                 shutil.copy2(src_file_path, dst_file_path)

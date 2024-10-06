@@ -2,10 +2,10 @@ services:
   build.init_base:
     entrypoint: ['bin/.init']
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: proxy_base
   build.configure_base:
     entrypoint: ['bin/.configure']
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: proxy_base

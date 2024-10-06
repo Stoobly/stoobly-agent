@@ -4,7 +4,8 @@ import pdb
 from typing import List
 
 from ...constants import (
-  DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
+  COMPOSE_TEMPLATE, DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
+  SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR
 )
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
@@ -15,7 +16,7 @@ class WorkflowBuilder(Builder):
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
     self._env = []
     self.__workflow_name = os.path.basename(workflow_path)
-    super().__init__(workflow_path, f"docker-compose.{self.__workflow_name}.yml")
+    super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
 
     self.__context = './'
     self.__profiles = [self.__workflow_name]

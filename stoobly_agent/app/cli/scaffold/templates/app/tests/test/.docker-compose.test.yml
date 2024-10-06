@@ -5,10 +5,10 @@ services:
   tests.init:
     build:
       context: ./
-      dockerfile: ../../Dockerfile.context
+      dockerfile: ../../.Dockerfile.context
     environment: {}
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: tests.init_base
     profiles:
     - test

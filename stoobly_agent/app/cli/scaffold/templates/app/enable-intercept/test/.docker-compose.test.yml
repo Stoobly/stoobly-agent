@@ -5,13 +5,13 @@ services:
   enable-intercept.init:
     build:
       context: ./
-      dockerfile: ../../Dockerfile.context
+      dockerfile: ../../.Dockerfile.context
     environment: {}
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: enable-intercept.init_base
     profiles:
-    - mock
+    - test
     volumes:
     - ./dist:/home/stoobly/dist
 volumes: {}

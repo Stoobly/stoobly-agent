@@ -1,10 +1,10 @@
 networks: {}
 services:
-  tests.init_base:
+  enable-intercept.init_base:
     entrypoint:
-    - bin/.init
+    - bin/init
     - dist
     environment: {}
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: context_base

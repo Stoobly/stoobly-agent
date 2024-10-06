@@ -1,12 +1,13 @@
 services:
   mock_ui.service:
     build:
-      dockerfile: ../../Dockerfile.context
+      dockerfile: ../../.Dockerfile.context
     command: --ui-port 4200
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: mock_ui.base
     ports:
       - '4200:4200'
     profiles:
-      - mock
+      - record
+

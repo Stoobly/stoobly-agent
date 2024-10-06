@@ -1,12 +1,12 @@
 services:
   gateway.service:
     extends:
-      file: ../docker-compose.base.yml
+      file: ../.docker-compose.base.yml
       service: gateway_base
     networks:
       - gateway
     profiles:
-      - record
+      - mock
 networks:
   gateway:
     name: ${APP_NETWORK}
