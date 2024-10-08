@@ -20,12 +20,24 @@ certs_dir=$$(realpath "$${CERTS_DIR:-$(data_dir)/certs}")
 docker_compose_command=docker compose
 docker_compose_file_path=$(data_dir)/docker/mock-ui/exec/.docker-compose.exec.yml
 docker_compose_args=--profile $(WORKFLOW_NAME) -p $(WORKFLOW_NAME) up --build
-docker_compose_stoobly_exec=export CONTEXT_DIR=$(context_dir) && $(docker_compose_command) -f $(docker_compose_file_path) $(docker_compose_args)
+docker_compose_stoobly_exec=export CONTEXT_DIR=$(context_dir) && $(docker_compose_command) -f "$(docker_compose_file_path) $(docker_compose_args)"
 
 run_script=$(data_dir)/tmp/run.sh
-env_exports=export APP_DIR=$(app_dir) && export CERTS_DIR=$(certs_dir) && export CONTEXT_DIR=$(context_dir) && source .env 2> /dev/null
-docker_compose_stoobly_exec_run=$(env_exports) && bash $(run_script)
+env_exports=export APP_DIR="$(app_dir)" && export CERTS_DIR="$(certs_dir)" && export CONTEXT_DIR="$(context_dir)" && source .env 2> /dev/null
+docker_compose_stoobly_exec_run=$(env_exports) && bash "$(run_script)"
 
+cert:
+	if [ -z "$$(which mkcert)" ]; then \
+		echo "Error: missing mkcert command"; \
+	else \
+		mkdir -p "$(certs_dir)" && \
+		cd "$(certs_dir)" && \
+		mkcert --install && \
+		mkcert $(hostname) && \
+		mkcert -pkcs12 $(hostname) && \
+		cat $(hostname).pem >> $(hostname)-joined.pem && \
+		cat $(hostname)-key.pem >> $(hostname)-joined.pem; \
+	fi
 mock:
 	export EXEC_COMMAND=bin/run && \
 	export EXEC_ARGS="$(services) mock" && \
