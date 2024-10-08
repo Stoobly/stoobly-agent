@@ -1,16 +1,28 @@
-WORKFLOW_NAME := exec
+# Environment Variables
+#
+# CONTEXT_DIR
+# APP_DIR
+# CERTS_DIR
+# WORKFLOW_NAME
+
+# Constant values
+WORKFLOW_NAME_DEFAULT := exec
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 DATA_DIR_DEFAULT := $(realpath $(DIR)/..)
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
-context_dir=$${CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}
+# Overridable values
+context_dir=$$(realpath "$${CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 data_dir=$(context_dir)/.stoobly
+app_dir=$$(realpath "$${APP_DIR:-$(context_dir)}")
+certs_dir=$$(realpath "$${CERTS_DIR:-$(data_dir)/certs}")
+project_name=$${WORKFLOW_NAME:-$(WORKFLOW_NAME_DEFAULT)}
+
+# Derived values
 run_script=$(data_dir)/tmp/run.sh
-app_dir=$${APP_DIR:-$$CONTEXT_DIR}
-certs_dir=$${CERTS_DIR:-$(data_dir)/certs}
 docker_compose_command=docker compose
 docker_compose_file_path=$(data_dir)/docker/mock-ui/exec/.docker-compose.exec.yml
-docker_compose_args=--profile exec -p $(WORKFLOW_NAME) up --build
+docker_compose_args=--profile exec -p $(project_name) up --build
 docker_compose_stoobly_exec=export CONTEXT_DIR=$(context_dir) && $(docker_compose_command) -f $(docker_compose_file_path) $(docker_compose_args)
 docker_compose_stoobly_exec_run=export APP_DIR=$(app_dir) && export CERTS_DIR=$(certs_dir) && $(docker_compose_stoobly_exec)
 
