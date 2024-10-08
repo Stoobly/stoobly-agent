@@ -34,9 +34,8 @@ cert:
 		cd "$(certs_dir)" && \
 		mkcert --install && \
 		mkcert $(hostname) && \
-		mkcert -pkcs12 $(hostname) && \
-		cat $(hostname).pem >> $(hostname)-joined.pem && \
-		cat $(hostname)-key.pem >> $(hostname)-joined.pem; \
+		cp $(hostname).pem $(hostname).crt && \
+		cp $(hostname)-key.pem $(hostname).key; \
 	fi
 mock:
 	export EXEC_COMMAND=bin/run && \
