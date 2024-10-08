@@ -24,7 +24,7 @@ docker_compose_stoobly_exec=export CONTEXT_DIR=$(context_dir) && $(docker_compos
 
 run_script=$(data_dir)/tmp/run.sh
 env_exports=export APP_DIR="$(app_dir)" && export CERTS_DIR="$(certs_dir)" && export CONTEXT_DIR="$(context_dir)" && source .env 2> /dev/null
-docker_compose_stoobly_exec_run=$(env_exports) && bash "$(run_script)"
+docker_compose_run=$(env_exports) && bash "$(run_script)"
 
 cert:
 	if [ -z "$$(which mkcert)" ]; then \
@@ -40,7 +40,8 @@ cert:
 mock:
 	export EXEC_COMMAND=bin/run && \
 	export EXEC_ARGS="$(services) mock" && \
-	$(docker_compose_stoobly_exec_run)
+	$(docker_compose_stoobly_exec) && \
+	$(docker_compose_run)
 mock/apply:
 # Build local mock scenarios from snapshots
 	export EXEC_COMMAND=bin/apply && \
@@ -58,7 +59,8 @@ mock/delete:
 mock/stop:
 	export EXEC_COMMAND=bin/stop && \
 	export EXEC_ARGS="$(services) mock" && \
-	$(docker_compose_stoobly_exec_run)
+	$(docker_compose_stoobly_exec) && \
+	$(docker_compose_run)
 mock/reset:
 # Resets a mock scenario to last snapshot
 	export EXEC_COMMAND=bin/reset && \
@@ -72,11 +74,13 @@ mock/snapshot:
 record:
 	export EXEC_COMMAND=bin/run && \
 	export EXEC_ARGS="$(services) record" && \
-	$(docker_compose_stoobly_exec_run)
+	$(docker_compose_stoobly_exec) && \
+	$(docker_compose_run)
 record/stop:
 	export EXEC_COMMAND=bin/stop && \
 	export EXEC_ARGS="$(services) record" && \
-	$(docker_compose_stoobly_exec_run)
+	$(docker_compose_stoobly_exec) && \
+	$(docker_compose_run)
 test:
 	export CONTEXT_DIR="$${CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}" && \
 	export APP_DIR="$${APP_DIR:-$(app_dir)}" && \
