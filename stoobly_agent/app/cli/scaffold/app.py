@@ -66,7 +66,7 @@ class App():
 
   @property
   def namespace_path(self):
-    return os.path.join(self.dir_path, self.namespace)
+    return os.path.join(self.data_dir_path, self.namespace)
 
   @property
   def dir_path(self):

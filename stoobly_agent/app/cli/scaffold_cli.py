@@ -10,6 +10,8 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
+from stoobly_agent.app.cli.scaffold.service import Service
+from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
@@ -50,10 +52,22 @@ def service(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
+@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.argument('app_name')
 def create(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  __app_build(app, **kwargs)
+
+  if kwargs['force'] or not os.path.exists(app.namespace_path):
+    __app_build(app, **kwargs)
+  else:
+    print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
+
+def service_create_options(f):
+  def wrapper(*args, **kwargs):
+    return f(*args, **kwargs)
+  return wrapper
 
 @service.command(
   help="Scaffold a service",
@@ -61,9 +75,10 @@ def create(**kwargs):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--detached', is_flag=True)
 @click.option('--env', multiple=True, help='Specify an environment variable.')
+@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
 @click.option('--hostname')
 @click.option('--port')
-@click.option('--priority', help='Determines the service run order.')
+@click.option('--priority', default='5.0', help='Determines the service run order.')
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
@@ -74,8 +89,36 @@ def create(**kwargs):
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name')
 def create(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  __scaffold_build(app, **kwargs)
+
+  service = Service(kwargs['service_name'], app)
+  if kwargs['force'] or not os.path.exists(service.dir_path):
+    __scaffold_build(app, **kwargs)
+  else:
+    print(f"{service.dir_path} already exists, use option '--force' to continue")
+
+@service.command(
+  help="Update a service config"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--priority', help='Determines the service run order.')
+@click.argument('service_name')
+def update(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  service = Service(kwargs['service_name'], app)
+
+  __validate_service_dir(service.dir_path)
+
+  service_config = ServiceConfig(service.dir_path)
+
+  if kwargs['priority']:
+    service_config.priority = kwargs['priority']
+
+  service_config.write()
 
 @click.group(
   epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
@@ -90,10 +133,13 @@ def workflow(ctx):
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
+@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
   for service_name in kwargs['service']:
@@ -101,7 +147,14 @@ def create(**kwargs):
     del config['service']
     config['service_name'] = service_name
 
-    __workflow_build(app, **config)
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
+    if kwargs['force'] or not os.path.exists(workflow_dir_path):
+      __workflow_build(app, **config)
+    else:
+      print(f"{workflow_dir_path} already exists, use option '--force' to continue")
 
 @workflow.command(
   help="Copy a workflow for service(s)",
@@ -302,18 +355,20 @@ def __app_build(app, **kwargs):
 def __scaffold_build(app, **kwargs):
   command = ServiceCreateCommand(app, **kwargs)
 
-  if not command.app_dir_exists:
-    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
+  command.build()
+
+def __validate_app_dir(app_dir_path):
+  if not os.path.exists(app_dir_path):
+    print(f"Error: {app_dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
-  command.build()
+def __validate_service_dir(service_dir_path):
+  if not os.path.exists(service_dir_path):
+    print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
+    sys.exit(1)
 
 def __workflow_build(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
-
-  if not command.app_dir_exists:
-    print(f"Error: {command.app_dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
