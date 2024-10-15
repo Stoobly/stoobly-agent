@@ -24,16 +24,12 @@ FROM stoobly/agent:0.34
 ARG USER_ID
 ARG SERVICE_HOSTNAME
 
-# Change user id of stoobly user to that of host's user id
-USER root
-RUN if [ -n "$USER_ID" ]; then groupmod -g $USER_ID stoobly; usermod -u $USER_ID stoobly; fi
-
 # Allow running stoobly on port 443
 RUN apt-get update && apt-get install -y curl libcap2-bin
 RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/python3.8
-RUN chown -R stoobly:stoobly /home/stoobly
 
-USER stoobly
+# Change user id of stoobly user to that of host's user id
+RUN if [ -n "$USER_ID" ]; then groupmod -g $USER_ID stoobly; usermod -u $USER_ID stoobly; fi
 
 COPY --chown=stoobly:stoobly ./build/ .
 COPY --chown=stoobly:stoobly --from=cert /home/mkcert/$SERVICE_HOSTNAME-joined.pem .
