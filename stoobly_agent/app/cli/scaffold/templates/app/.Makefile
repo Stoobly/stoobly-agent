@@ -11,11 +11,11 @@ DATA_DIR_DEFAULT := $(realpath $(DIR)/..)
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
 # Configuration
+app_data_dir=$(app_dir)/.stoobly
+app_dir=$$(realpath "$${APP_DIR:-$(context_dir)}")
+certs_dir=$$(realpath "$${CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 data_dir=$(context_dir)/.stoobly
-certs_dir=$$(realpath "$${CERTS_DIR:-$(data_dir)/certs}")
-app_dir=$$(realpath "$${APP_DIR:-$(context_dir)}")
-app_data_dir=$(app_dir)/.stoobly
 
 # Commands
 docker_compose_command=docker compose
@@ -56,22 +56,22 @@ intercept/enable:
 mock:
 	export EXEC_COMMAND=bin/.run && \
 	export EXEC_ARGS="$(services) mock" && \
-	$(stoobly_exec) && \
+	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/stop:
 	export EXEC_COMMAND=bin/.stop && \
 	export EXEC_ARGS="$(services) mock" && \
-	$(stoobly_exec) && \
+	$(stoobly_exec_run) && \
 	$(workflow_run)
 record:
 	export EXEC_COMMAND=bin/.run && \
 	export EXEC_ARGS="$(services) record" && \
-	$(stoobly_exec) && \
+	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/stop:
 	export EXEC_COMMAND=bin/.stop && \
 	export EXEC_ARGS="$(services) record" && \
-	$(stoobly_exec) && \
+	$(stoobly_exec_run) && \
 	$(workflow_run)
 scenario/create:
 # Create a scenario
@@ -93,3 +93,13 @@ scenario/snapshot:
 	export EXEC_COMMAND=bin/.snapshot && \
 	export EXEC_ARGS=$(key) && \
 	$(stoobly_exec)
+test:
+	export EXEC_COMMAND=bin/.run && \
+	export EXEC_ARGS="$(services) test" && \
+	$(stoobly_exec_run) && \
+	$(workflow_run)
+test/stop:
+	export EXEC_COMMAND=bin/.stop && \
+	export EXEC_ARGS="$(services) test" && \
+	$(stoobly_exec_run) && \
+	$(workflow_run)

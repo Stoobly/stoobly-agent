@@ -1,5 +1,5 @@
 #!/bin/bash
 
-stoobly-agent snapshot apply
+stoobly-agent intercept enable
 
 cd $(dirname -- "$0") && ./init
