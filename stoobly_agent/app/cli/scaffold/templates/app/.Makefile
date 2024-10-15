@@ -40,9 +40,12 @@ cert:
 		cp $(hostname).pem $(hostname).crt && \
 		cp $(hostname)-key.pem $(hostname).key; \
 	fi
-enable:
+intercept/disable:
+	export EXEC_COMMAND=bin/disable && \
+	$(docker_compose_stoobly_exec)
+intercept/enable:
 	export EXEC_COMMAND=bin/enable && \
-	export EXEC_ARGS=$(key) && \
+	export EXEC_ARGS=$(scenario_key) && \
 	$(docker_compose_stoobly_exec)
 mock:
 	export EXEC_COMMAND=bin/run && \

@@ -1,7 +1,7 @@
 networks: {}
 services:
   enable-intercept.init_base:
-    entrypoint:
+    command:
     - bin/.init
     - dist
     environment: {}

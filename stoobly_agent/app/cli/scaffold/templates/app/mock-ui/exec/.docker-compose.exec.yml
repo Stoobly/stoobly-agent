@@ -2,7 +2,7 @@ services:
   mock_ui.command:
     build:
       dockerfile: ../../.Dockerfile.context
-    entrypoint: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
+    command: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
     extends:
       file: ../.docker-compose.base.yml
       service: mock_ui.base

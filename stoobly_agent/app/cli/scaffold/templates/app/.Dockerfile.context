@@ -9,4 +9,4 @@ RUN chown -R stoobly:stoobly /home/stoobly
 
 USER stoobly
 
-COPY ./build/ .
+COPY --chown=stoobly:stoobly ./build/ .

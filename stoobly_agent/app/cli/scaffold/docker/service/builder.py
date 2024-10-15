@@ -86,7 +86,7 @@ class ServiceBuilder(Builder):
   def build_init_base(self):
     environment = {}
     self.with_service(self.init_base, {
-      'entrypoint': ['bin/.init', 'dist'],
+      'command': ['bin/.init', 'dist'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
@@ -97,7 +97,7 @@ class ServiceBuilder(Builder):
   def build_configure_base(self):
     environment = {}
     self.with_service(self.configure_base, {
-      'entrypoint': ['bin/.configure'],
+      'command': ['bin/.configure'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),

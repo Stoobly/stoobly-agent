@@ -1,14 +1,14 @@
 networks: {}
 services:
   tests.configure_base:
-    entrypoint:
+    command:
     - bin/.configure
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
   tests.init_base:
-    entrypoint:
+    command:
     - bin/.init
     - dist
     environment: {}
