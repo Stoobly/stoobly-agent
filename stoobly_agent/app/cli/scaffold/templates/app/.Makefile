@@ -41,53 +41,49 @@ cert:
 		cp $(hostname)-key.pem $(hostname).key; \
 	fi
 intercept/disable:
-	export EXEC_COMMAND=bin/disable && \
+	export EXEC_COMMAND=bin/.disable && \
 	$(docker_compose_stoobly_exec)
 intercept/enable:
-	export EXEC_COMMAND=bin/enable && \
+	export EXEC_COMMAND=bin/.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(docker_compose_stoobly_exec)
 mock:
-	export EXEC_COMMAND=bin/run && \
+	export EXEC_COMMAND=bin/.run && \
 	export EXEC_ARGS="$(services) mock" && \
 	$(docker_compose_stoobly_exec) && \
 	$(docker_compose_run)
 mock/stop:
-	export EXEC_COMMAND=bin/stop && \
+	export EXEC_COMMAND=bin/.stop && \
 	export EXEC_ARGS="$(services) mock" && \
 	$(docker_compose_stoobly_exec) && \
 	$(docker_compose_run)
 record:
-	export EXEC_COMMAND=bin/run && \
+	export EXEC_COMMAND=bin/.run && \
 	export EXEC_ARGS="$(services) record" && \
 	$(docker_compose_stoobly_exec) && \
 	$(docker_compose_run)
 record/stop:
-	export EXEC_COMMAND=bin/stop && \
+	export EXEC_COMMAND=bin/.stop && \
 	export EXEC_ARGS="$(services) record" && \
 	$(docker_compose_stoobly_exec) && \
 	$(docker_compose_run)
-snapshot/apply:
-# Build mocks from snapshots
-	export EXEC_COMMAND=bin/apply && \
-	$(docker_compose_stoobly_exec)
 scenario/create:
 # Create a scenario
-	export EXEC_COMMAND=bin/create && \
+	export EXEC_COMMAND=bin/.create && \
 	export EXEC_ARGS=$(name) && \
 	$(docker_compose_stoobly_exec)
 scenario/delete:
 # Delete a scenario
-	export EXEC_COMMAND=bin/delete && \
+	export EXEC_COMMAND=bin/.delete && \
 	export EXEC_ARGS=$(key) && \
 	$(docker_compose_stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
-	export EXEC_COMMAND=bin/reset && \
+	export EXEC_COMMAND=bin/.reset && \
 	export EXEC_ARGS=$(key) && \
 	$(docker_compose_stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
-	export EXEC_COMMAND=bin/snapshot && \
+	export EXEC_COMMAND=bin/.snapshot && \
 	export EXEC_ARGS=$(key) && \
 	$(docker_compose_stoobly_exec)

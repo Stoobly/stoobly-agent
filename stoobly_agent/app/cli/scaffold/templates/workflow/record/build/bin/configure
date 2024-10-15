@@ -6,7 +6,7 @@ port=$SERVICE_PORT
 
 url="$scheme://$hostname"
 
-if [ -n "$port" ]; then
+if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
   url="$url:$port"
 fi
 
