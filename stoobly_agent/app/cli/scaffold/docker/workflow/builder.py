@@ -209,7 +209,12 @@ class WorkflowBuilder(Builder):
       environment['VIRTUAL_HOST'] = SERVICE_HOSTNAME
       environment['VIRTUAL_PORT'] = SERVICE_PORT
       environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
+
+      # Expose this container service to the public network 
+      # so that it is accessible to other Stoobly services
       networks.append(self.public_network_name)
+
+      service['hostname'] = self.config.hostname
 
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
