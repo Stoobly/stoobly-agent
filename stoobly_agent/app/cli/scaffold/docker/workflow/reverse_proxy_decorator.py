@@ -32,6 +32,9 @@ class ReverseProxyDecorator():
     proxy_name = self.workflow_builder.proxy
     proxy_service = services.get(proxy_name) or {}
 
+    # proxying forwards requests to the actual service
+    # If we set the 'hostname' property, this will cause an "infinite loop"
+
     service = { 
       **proxy_service,
       **{ 'command': command },

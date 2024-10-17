@@ -214,8 +214,6 @@ class WorkflowBuilder(Builder):
       # so that it is accessible to other Stoobly services
       networks.append(self.public_network_name)
 
-      service['hostname'] = self.config.hostname
-
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
