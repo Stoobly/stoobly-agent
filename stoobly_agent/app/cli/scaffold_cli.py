@@ -202,8 +202,6 @@ def stop(**kwargs):
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
-  else:
-    os.chdir(kwargs['app_dir_path'])
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -240,8 +238,6 @@ def logs(**kwargs):
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
-  else:
-    os.chdir(kwargs['app_dir_path'])
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -294,8 +290,6 @@ def run(**kwargs):
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
-  else:
-    os.chdir(kwargs['app_dir_path'])
 
   app_create_command = AppCreateCommand(app)
   commands = []

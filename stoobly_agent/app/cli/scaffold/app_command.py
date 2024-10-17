@@ -2,8 +2,6 @@ import os
 import pathlib
 import shutil
 
-from stoobly_agent.config.data_dir import DataDir
-
 from .app import App
 from .app_config import AppConfig
 from .command import Command
