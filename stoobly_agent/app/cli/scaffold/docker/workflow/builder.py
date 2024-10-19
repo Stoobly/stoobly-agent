@@ -18,8 +18,9 @@ class WorkflowBuilder(Builder):
     self.__workflow_name = os.path.basename(workflow_path)
     super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
 
-    self.__context = './'
+    self.__context = '../'
     self.__profiles = [self.__workflow_name]
+    self.__workdir = os.path.join(STOOBLY_HOME_DIR, self.workflow_name)
 
     if not service_builder:
       service_path = os.path.dirname(workflow_path)
@@ -65,11 +66,11 @@ class WorkflowBuilder(Builder):
 
   @property
   def context_docker_file_path(self):
-    return os.path.relpath(self.service_builder.app_builder.context_docker_file_path, self.dir_path)
+    return os.path.relpath(self.service_builder.app_builder.context_docker_file_path, self.service_path)
 
   @property
   def dist_volume(self):
-    return f"./{DIST_FOLDER_NAME}:{STOOBLY_HOME_DIR}/{DIST_FOLDER_NAME}"
+    return f"./{DIST_FOLDER_NAME}:{os.path.join(STOOBLY_HOME_DIR, self.workflow_name, DIST_FOLDER_NAME)}"
 
   @property
   def namespace(self):
@@ -96,11 +97,15 @@ class WorkflowBuilder(Builder):
 
   @property
   def proxy_docker_file_path(self):
-    return os.path.relpath(self.service_builder.app_builder.proxy_docker_file_path, self.dir_path)
+    return os.path.relpath(self.service_builder.app_builder.proxy_docker_file_path, self.service_path)
 
   @property
   def service_builder(self):
     return self.__service_builder
+
+  @property
+  def service_path(self):
+    return self.__service_builder.dir_path
 
   @property
   def workflow_name(self):
@@ -130,7 +135,8 @@ class WorkflowBuilder(Builder):
       'environment': environment,
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,
-      'volumes': volumes
+      'volumes': volumes,
+      'working_dir': self.__workdir,
     }
 
     if self.config.hostname:
@@ -159,6 +165,7 @@ class WorkflowBuilder(Builder):
       'extends': self.service_builder.build_extends_configure_base(self.dir_path),
       'profiles': self.profiles,
       'volumes': volumes,
+      'working_dir': self.__workdir,
     }
 
     if self.config.hostname:
@@ -193,7 +200,8 @@ class WorkflowBuilder(Builder):
       'extends': self.service_builder.build_extends_proxy_base(self.dir_path),
       'networks': networks,
       'profiles': self.profiles,
-      'volumes': volumes
+      'volumes': volumes,
+      'working_dir': self.__workdir,
     }
 
     if self.configure in self.services:

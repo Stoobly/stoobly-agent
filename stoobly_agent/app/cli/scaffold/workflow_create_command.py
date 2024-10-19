@@ -31,8 +31,8 @@ class WorkflowCreateCommand(WorkflowCommand):
     self.__force = not not kwargs.get('force')
 
   @property
-  def build_templates_path(self):
-    return self.workflow_build_templates_path(self.workflow_name)
+  def workflow_templates_path(self):
+    return self.build_workflow_templates_path(self.workflow_name)
 
   @property
   def env_vars(self):
@@ -63,27 +63,25 @@ class WorkflowCreateCommand(WorkflowCommand):
     workflow_builder = self.__write_docker_compose_file(**kwargs)
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
-  def workflow_build_templates_path(self, workflow_name: str):
-    return os.path.join(self.workflow_templates_root_dir, workflow_name, 'build')
+  def build_workflow_templates_path(self, workflow_name: str):
+    return os.path.join(self.workflow_templates_root_dir, workflow_name)
 
   def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE = None):
     if not template:
-      templates_path = self.build_templates_path
+      templates_path = self.workflow_templates_path
     else:
-      templates_path = self.workflow_build_templates_path(template)
+      templates_path = self.build_workflow_templates_path(template)
 
     if not os.path.exists(templates_path):
       return
 
-    build_dir_path = self.build_dir_path
-
     # Maintained files are files that will always be overwritten
     maintained_workflow_files = maintained_files(self.workflow_name, workflow_builder)
-    self.copy_files(templates_path, maintained_workflow_files, build_dir_path)
+    self.copy_files(templates_path, maintained_workflow_files, self.workflow_path)
 
     # Custom files are files that may be modified by the user
     custom_workflow_files = custom_files(self.workflow_name, workflow_builder)
-    self.copy_files_no_replace(templates_path, custom_workflow_files, build_dir_path)
+    self.copy_files_no_replace(templates_path, custom_workflow_files, self.workflow_path)
 
   def __write_docker_compose_file(self, **kwargs: BuildOptions):
     builder_class = kwargs.get('builder_class') or WorkflowBuilder

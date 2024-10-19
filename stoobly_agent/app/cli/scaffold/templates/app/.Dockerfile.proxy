@@ -31,5 +31,5 @@ RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/python3.8
 # Change user id of stoobly user to that of host's user id
 RUN if [ -n "$USER_ID" ]; then groupmod -g $USER_ID stoobly; usermod -u $USER_ID stoobly; fi
 
-COPY --chown=stoobly:stoobly ./build/ .
+COPY --chown=stoobly:stoobly . .
 COPY --chown=stoobly:stoobly --from=cert /home/mkcert/$SERVICE_HOSTNAME-joined.pem .

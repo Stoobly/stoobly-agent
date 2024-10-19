@@ -8,7 +8,6 @@ from ..app_builder import AppBuilder
 from ..builder import Builder
 from ..constants import DOCKER_COMPOSE_BASE
 
-
 class ServiceBuilder(Builder):
 
   def __init__(self, config: ServiceConfig, app_builder: AppBuilder = None):
@@ -116,3 +115,6 @@ class ServiceBuilder(Builder):
       'networks': self.networks,
       'services': self.services,
     })
+
+    with open(os.path.join(self.config.dir, '.dockerignore'), 'w') as fp:
+      fp.write('*/dist')
