@@ -2,6 +2,6 @@
 
 # Data
 echo "Configuring data rules"
-stoobly-agent intercept configure --mode mock --policy found
+stoobly-agent intercept configure --mode mock --policy all
 
 cd $(dirname -- "$0") && ./configure
