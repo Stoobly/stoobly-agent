@@ -19,7 +19,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__certs_dir_path = app.certs_dir_path
     self.__context_dir_path = app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
-    self.__network = app.network
+    self.__network = kwargs.get('network') or os.environ.get(APP_NETWORK_ENV) or app.network
 
   @property
   def certs_dir_path(self):
@@ -54,6 +54,9 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def network(self):
     return self.__network
+
+  def create_network(self):
+    return f"docker network create {self.network} 2> /dev/null"
 
   def up(self):
     if not os.path.exists(self.compose_path):

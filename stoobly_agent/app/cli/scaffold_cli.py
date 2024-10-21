@@ -8,7 +8,7 @@ from typing import List
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from stoobly_agent.app.cli.scaffold.constants import APP_NETWORK_ENV, DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
@@ -291,8 +291,6 @@ def run(**kwargs):
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
-  app_create_command = AppCreateCommand(app)
-  commands = []
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = workflow.services
@@ -306,6 +304,7 @@ def run(**kwargs):
   if kwargs['service']:
     services = kwargs['service']
 
+  commands: List[WorkflowRunCommand] = []
   for service in services:
     config = { **kwargs }
     config['service_name'] = service
@@ -313,12 +312,13 @@ def run(**kwargs):
     command.current_working_dir = cwd
     commands.append(command)
 
-  # Create persistent network
-  create_network_command = f"docker network create {app_create_command.app_config.network} 2> /dev/null"
-  if not kwargs['dry_run']:
-    exec_stream(create_network_command)
-  else:
-    print(create_network_command)
+  # Before services can be started, their network needs to be created
+  if len(commands) > 0:
+    create_network_command = commands[0].create_network()
+    if not kwargs['dry_run']:
+      exec_stream(create_network_command)
+    else:
+      print(create_network_command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for command in commands:
