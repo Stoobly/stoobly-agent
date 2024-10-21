@@ -8,16 +8,19 @@ from typing import List
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from stoobly_agent.app.cli.scaffold.app_validate_command import AppValidateCommand
+from stoobly_agent.app.cli.scaffold.constants import CORE_SERVICES, DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
+from stoobly_agent.app.cli.scaffold.service_validate_command import ServiceValidateCommand
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
@@ -63,6 +66,15 @@ def create(**kwargs):
     __app_build(app, **kwargs)
   else:
     print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
+
+@app.command(
+  help="Validate a scaffolded app"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
+def validate(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  AppValidateCommand(app, **kwargs).validate()
+
 
 def service_create_options(f):
   def wrapper(*args, **kwargs):
@@ -332,7 +344,32 @@ def run(**kwargs):
       exec_stream(exec_command)
     else:
       print(exec_command)
- 
+
+@workflow.command(
+  help="Validate a scaffold workflow"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
+@click.argument('workflow_name')
+def validate(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  workflow = Workflow(kwargs['workflow_name'], app)
+  
+  config = { **kwargs }
+  config['service_name'] = 'build'
+  result = WorkflowValidateCommand(app, **config).validate()
+  if not result:
+    print(f"Workflow is not valid!!!")
+
+  excluded_services = ['assets', 'tests', 'enable-intercept']
+
+  for service in workflow.services:
+    if service not in CORE_SERVICES and service not in excluded_services:
+      config['service_name'] = service
+      result = ServiceValidateCommand(app, **config).validate()
+      if not result:
+        print(f"Service is not valid!!!")
+
+
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)

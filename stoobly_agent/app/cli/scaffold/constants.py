@@ -6,6 +6,7 @@ CERTS_DIR_ENV = 'CERTS_DIR'
 COMPOSE_TEMPLATE = '.docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'
 CONTEXT_DIR_ENV = 'CONTEXT_DIR'
+CORE_SERVICES = ['build', 'gateway', 'mock-ui']
 DIST_FOLDER_NAME = 'dist'
 DOCKER_NAMESPACE = 'docker'
 ENV_FILE = '.env'
