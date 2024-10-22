@@ -336,9 +336,7 @@ scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 
-def __get_services(all_services: List[str], **kwargs):
-  services = list(all_services.copy())
-
+def __get_services(services: List[str], **kwargs):
   # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
   if missing_services:
@@ -346,7 +344,7 @@ def __get_services(all_services: List[str], **kwargs):
 
   if kwargs['service']:
     # If service is specified, run only those services
-    services = kwargs['service']
+    services = list(kwargs['service'])
 
     if WORKFLOW_CUSTOM_FILTER not in kwargs['filter']:
       services += CORE_SERVICES
