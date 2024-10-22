@@ -1,5 +1,6 @@
 #!/bin/bash
 
+extra_options=$EXEC_OPTIONS
 scenario_key=$1
 
 if [ ! "$scenario_key" ]; then 
@@ -8,4 +9,4 @@ if [ ! "$scenario_key" ]; then
     exit
 fi
 
-stoobly-agent scenario reset "$scenario_key"
+stoobly-agent scenario reset $extra_options "$scenario_key"

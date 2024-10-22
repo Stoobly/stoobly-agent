@@ -291,7 +291,6 @@ def run(**kwargs):
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
-
   workflow = Workflow(kwargs['workflow_name'], app)
   services = workflow.services
 

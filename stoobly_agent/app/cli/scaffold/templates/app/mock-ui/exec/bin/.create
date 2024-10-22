@@ -1,5 +1,6 @@
 #!/bin/bash
 
+extra_options=$EXEC_OPTIONS
 scenario_name="$1"
 
 if [ ! "$scenario_name" ]; then 
@@ -7,4 +8,4 @@ if [ ! "$scenario_name" ]; then
     exit 
 fi
 
-stoobly-agent scenario create --select key --without-headers "$scenario_name"
+stoobly-agent scenario create --select key --without-headers $extra_options "$scenario_name"

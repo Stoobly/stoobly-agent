@@ -55,51 +55,63 @@ intercept/enable:
 	$(stoobly_exec)
 mock:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_ARGS="$(services) mock" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_ARGS="$(services) mock" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_ARGS="$(services) record" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_ARGS="$(services) record" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 scenario/create:
 # Create a scenario
 	export EXEC_COMMAND=bin/.create && \
-	export EXEC_ARGS=$(name) && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="$(name)" && \
 	$(stoobly_exec)
 scenario/delete:
 # Delete a scenario
 	export EXEC_COMMAND=bin/.delete && \
-	export EXEC_ARGS=$(key) && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
-	export EXEC_COMMAND=bin/.reset && \
-	export EXEC_ARGS=$(key) && \
+	export EXEC_COMMAND=bin/.reset && \:
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
 	export EXEC_COMMAND=bin/.snapshot && \
-	export EXEC_ARGS=$(key) && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 test:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_ARGS="$(services) test" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 test/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_ARGS="$(services) test" && \
+	export EXEC_OPTIONS="$$COMMAND_OPTIONS $(options)" && \
+	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
+foo:
+	echo $(app_network)
