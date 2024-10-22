@@ -9,11 +9,10 @@
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 WORKFLOW_NAME := exec
 
-DATA_DIR_DEFAULT := $(realpath $(DIR)/..)
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
 # Configuration
-app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(context_dir)}")
+app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 workflow_run_options=$${STOOBLY_WORKFLOW_RUN_OPTIONS:+$$STOOBLY_WORKFLOW_RUN_OPTIONS }
