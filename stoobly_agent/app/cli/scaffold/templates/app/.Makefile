@@ -3,11 +3,12 @@
 # STOOBLY_APP_DIR: path to the application source code directory
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
 # STOOBLY_CERTS_DIR: path to a folder to store certs
-# STOOBLY_COMMAND_OPTIONS: options to add to stoobly commands
+# STOOBLY_WORKFLOW_RUN_OPTIONS: extra options to pass to 'stoobly-agent scaffold workflow run' command
 
 # Constants
-WORKFLOW_NAME := exec
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+WORKFLOW_NAME := exec
+
 DATA_DIR_DEFAULT := $(realpath $(DIR)/..)
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
@@ -15,6 +16,7 @@ CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(context_dir)}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+workflow_run_options=$${STOOBLY_WORKFLOW_RUN_OPTIONS:+$$STOOBLY_WORKFLOW_RUN_OPTIONS }
 
 app_data_dir=$(app_dir)/.stoobly
 data_dir=$(context_dir)/.stoobly
@@ -57,63 +59,61 @@ intercept/enable:
 	$(stoobly_exec)
 mock:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 scenario/create:
 # Create a scenario
 	export EXEC_COMMAND=bin/.create && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(name)" && \
 	$(stoobly_exec)
 scenario/delete:
 # Delete a scenario
 	export EXEC_COMMAND=bin/.delete && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
 	export EXEC_COMMAND=bin/.reset && \:
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
 	export EXEC_COMMAND=bin/.snapshot && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 test:
 	export EXEC_COMMAND=bin/.run && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 test/stop:
 	export EXEC_COMMAND=bin/.stop && \
-	export EXEC_OPTIONS="$$STOOBLY_COMMAND_OPTIONS $(options)" && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-foo:
-	echo $(app_network)
