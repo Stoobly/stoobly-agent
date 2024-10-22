@@ -337,7 +337,7 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 
 def __get_services(all_services: List[str], **kwargs):
-  services = all_services.copy()
+  services = list(all_services.copy())
 
   # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
