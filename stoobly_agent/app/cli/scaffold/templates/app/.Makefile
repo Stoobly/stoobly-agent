@@ -24,7 +24,7 @@ data_dir=$(context_dir)/.stoobly
 docker_compose_command=docker compose
 source_env=set -a; [ -f .env ] && source .env; set +a
 
-docker_compose_file_path=$(app_data_dir)/docker/mock-ui/exec/.docker-compose.exec.yml
+docker_compose_file_path=$(app_data_dir)/docker/stoobly-ui/exec/.docker-compose.exec.yml
 stoobly_exec_args=--profile $(WORKFLOW_NAME) -p $(WORKFLOW_NAME) up --build --remove-orphans
 stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID
 stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)

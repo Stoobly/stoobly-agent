@@ -1,11 +1,11 @@
 services:
-  mock_ui.service:
+  stoobly_ui.service:
     build:
       dockerfile: ../../.Dockerfile.context
     command: --ui-port 4200
     extends:
       file: ../.docker-compose.base.yml
-      service: mock_ui.base
+      service: stoobly_ui.base
     ports:
       - '4200:4200'
     profiles:

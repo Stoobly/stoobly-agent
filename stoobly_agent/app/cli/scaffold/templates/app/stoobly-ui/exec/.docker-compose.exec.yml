@@ -1,5 +1,5 @@
 services:
-  mock_ui.command:
+  stoobly_ui.command:
     build:
       dockerfile: ../../.Dockerfile.context
     command: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
@@ -7,6 +7,6 @@ services:
       EXEC_OPTIONS: ${EXEC_OPTIONS}
     extends:
       file: ../.docker-compose.base.yml
-      service: mock_ui.base
+      service: stoobly_ui.base
     profiles:
       - exec

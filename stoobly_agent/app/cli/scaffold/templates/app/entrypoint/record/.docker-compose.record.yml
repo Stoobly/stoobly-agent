@@ -1,31 +1,31 @@
 networks:
-  tests:
-    name: tests
+  entrypoint:
+    name: entrypoint
 services:
-  tests.configure:
+  entrypoint.configure:
     build:
       context: ./
       dockerfile: ../../.Dockerfile.context
     depends_on:
-      tests.init:
+      entrypoint.init:
         condition: service_completed_successfully
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
-      service: tests.configure_base
+      service: entrypoint.configure_base
     profiles:
-      - test
+      - record
     volumes: []
-  tests.init:
+  entrypoint.init:
     build:
       context: ./
       dockerfile: ../../.Dockerfile.context
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
-      service: tests.init_base
+      service: entrypoint.init_base
     profiles:
-      - test
+      - record
     volumes:
       - ./dist:/home/stoobly/dist
 volumes: {}
