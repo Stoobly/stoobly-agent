@@ -360,9 +360,9 @@ def validate(**kwargs):
   if not result:
     print(f"Workflow is not valid!!!")
 
-  excluded_services = ['assets', 'tests', 'enable-intercept']
+  excluded_services = ['enable-intercept']
 
-  for service in workflow.services:
+  for service in workflow.services_ran:
     if service not in CORE_SERVICES and service not in excluded_services:
       config['service_name'] = service
       result = ServiceValidateCommand(app, **config).validate()

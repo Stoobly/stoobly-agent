@@ -1,56 +1,49 @@
 import pdb
+from time import sleep
 from typing import List
 
 import docker
 from docker.models.containers import Container
 
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
-from .app import App
 
 class ValidateCommand():
   def __init__(self):
     self.docker_client = docker.from_env()
 
-  # @property
-  # def app_name(self):
-  #   return self.app.name
-
   def validate_init_containers(self, containers: List[Container], init_container_name, configure_container_name) -> None:
-    init_container_ran = False
-    configure_container_ran = False
-
     print(f"Validating init containers: {init_container_name}, {configure_container_name}")
 
-    for container in containers:
-      container_name = container.attrs['Name']
-      if container_name == init_container_name:
-        logs = container.logs()
-        # No errors in log or container status
-        if not logs and container.attrs['State']['Status'] == 'exited' and container.attrs['State']['ExitCode'] == 0:
-          init_container_ran = True
+    init_container = self.docker_client.containers.get(init_container_name)
+    logs = init_container.logs()
+    if logs or init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
+      assert False
 
-      if container_name == configure_container_name:
-        if container.attrs['State']['Status'] == 'exited' and container.attrs['State']['ExitCode'] == 0:
-          configure_container_ran = True
-
-    assert init_container_ran
+    # Configure container can take slightly longer than expected to finish so retry
+    configure_container_ran = False
+    tries = 10
+    for i in range(tries):
+      configure_container = self.docker_client.containers.get(configure_container_name)
+      if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
+        configure_container_ran = True
+        break
+      else:
+        sleep(0.1)
+    
     assert configure_container_ran
   
   def validate_detached(self, container: Container) -> None:
     if not container.attrs:
       assert False
 
+    print(f"Validating detached for: {container.name}")
+
     volume_mounts = container.attrs['Mounts']
 
     for volume_mount in volume_mounts:
-      if DataDir.DATA_DIR_NAME in volume_mount['Source']:
+      if DATA_DIR_NAME in volume_mount['Source']:
         return
 
     assert False
-
-  # def validate(self, **kwargs):
-  #   print(f"Validating workflow: {self.workflow_name}")
-  #
-  #   self.validate_core_components()
 

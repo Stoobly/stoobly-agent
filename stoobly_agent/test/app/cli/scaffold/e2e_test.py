@@ -1,6 +1,7 @@
 from pathlib import Path
 import pathlib
 import shutil
+import tempfile
 from click.testing import CliRunner
 from docker.models.containers import Container
 from requests.adapters import HTTPAdapter
@@ -18,7 +19,6 @@ from typing import List
 import docker
 import pytest
 import pdb
-import requests
 
 
 class TestScaffoldE2e():
@@ -32,12 +32,13 @@ class TestScaffoldE2e():
 
   @pytest.fixture(scope='class')
   def app_name(self):
-    # yield "0.0.0"
     yield "0.0.1"
 
   @pytest.fixture(scope='class', autouse=True)
   def app_dir_path(self, app_name):
-    yield f"/home/matt/Downloads/github/stoobly/stoobly-agent-scaffold/{app_name}"
+    temp_dir = tempfile.TemporaryDirectory()
+    yield temp_dir.name
+    temp_dir.cleanup()
 
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):
@@ -64,109 +65,6 @@ class TestScaffoldE2e():
   def local_service_name(self):
     yield "my-httpbin"
 
-  @staticmethod
-  # Domain name, port and scheme
-  def hostname_reachable(url: str) -> None:
-    # Retry HTTP request. Source: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
-    s = requests.Session()
-    retries = Retry(total=5,
-                    backoff_factor=0.1,
-                    status_forcelist=[ 500, 502, 503, 504 ])
-    s.mount('http://', HTTPAdapter(max_retries=retries))
-    response = s.get(url=url)
-
-    assert response.ok
-
-  @staticmethod
-  # TODO: might not need this if the hostname is reachable and working
-  def proxy_environment_variables_exist(container: Container) -> None:
-    environment_variables = container.attrs['Config']['Env']
-    virtual_host_exists = False
-    virtual_port_exists = False
-    virtual_proto_exists = False
-
-    for environment_variable in environment_variables:
-      environment_variable_name, environment_variable_value = environment_variable.split('=')
-      if environment_variable_name == 'VIRTUAL_HOST':
-        virtual_host_exists = True
-      elif environment_variable_name == 'VIRTUAL_PORT':
-        virtual_port_exists = True
-      elif environment_variable_name == 'VIRTUAL_PROTO':
-        virtual_proto_exists = True
-
-    assert (virtual_host_exists and virtual_port_exists and virtual_proto_exists)
-
-  @staticmethod
-  def validate_hostname(url: str) -> None:
-    TestScaffoldE2e.hostname_reachable(url)
-
-    # TODO: add to /etc/hosts? provide route inside Docker container with --add-host
-
-    # TODO: check logs of proxy. lifecycle hook for custom logging?
-    # TODO: does mitmproxy support json logging?
-
-  @staticmethod
-  def validate_detached(container: Container) -> None:
-    if not container.attrs:
-      assert False
-
-    volume_mounts = container.attrs['Mounts']
-
-    for volume_mount in volume_mounts:
-      if DATA_DIR_NAME in volume_mount['Source']:
-        return
-
-    assert False
-
-  @staticmethod
-  def validate_init_containers(containers: List[Container], init_container_name, configure_container_name) -> None:
-    init_container_ran = False
-    configure_container_ran = False
-
-    for container in containers:
-      container_name = container.attrs['Name']
-      if container_name == init_container_name:
-        logs = container.logs()
-        # No errors in log or container status
-        if not logs and container.attrs['State']['Status'] == 'exited' and container.attrs['State']['ExitCode'] == 0:
-          init_container_ran = True
-
-      if container_name == configure_container_name:
-        if container.attrs['State']['Status'] == 'exited' and container.attrs['State']['ExitCode'] == 0:
-          configure_container_ran = True
-
-    assert init_container_ran
-    assert configure_container_ran
-
-  @staticmethod
-  # Check dist folder mounted into container
-  def validate_dist_folder(container: Container, target_workflow_name):
-    dist_folder_exists = False
-    # TODO: add destination folder as constant, use in main path too
-    dist_folder = f"{STOOBLY_HOME_DIR}/{target_workflow_name}/{DIST_FOLDER_NAME}"
-
-    volume_mounts = container.attrs['Mounts']
-    for volume_mount in volume_mounts:
-      if volume_mount['Destination'] == dist_folder:
-        dist_folder_exists = True
-        break
-    assert dist_folder_exists
-
-    # Check contents of dist folder to confirm it's shared
-    # Only the running proxy containers will be checkable
-    if not container.status == 'exited':
-      exec_result = container.exec_run(f"ls {dist_folder}")
-      output = exec_result.output
-      if 'shared_file.txt' not in output.decode('ascii'):
-        assert False
-
-  @staticmethod
-  def validate_proxy_container(service_proxy_container: Container, target_workflow_name):
-    assert service_proxy_container.attrs
- 
-    TestScaffoldE2e.validate_dist_folder(service_proxy_container, target_workflow_name)
-
-    TestScaffoldE2e.proxy_environment_variables_exist(service_proxy_container)
 
   class TestRecordWorkflow():
     @pytest.fixture(scope='class', autouse=True)
@@ -197,11 +95,9 @@ class TestScaffoldE2e():
 
       # Create external user defined service
       TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_composite.hostname, external_service_composite.service_name)
-      # TestScaffoldE2e.cli_workflow_create(runner, app_dir_path, external_service_composite.service_name)
 
       # Create local user defined service
       TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_composite.hostname, local_service_composite.service_name)
-      # TestScaffoldE2e.cli_workflow_create(runner, app_dir_path, local_service_composite.service_name)
 
       # Validate docker-compose path exists
       destination_path = Path(local_service_composite.docker_compose_path)
@@ -221,32 +117,29 @@ class TestScaffoldE2e():
 
     def test_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
-      # workflow = Workflow(target_workflow_name, app)
-      
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'build'
       }
+
       WorkflowValidateCommand(app, **config).validate()
 
     def test_external_service(self, external_service_composite: ServiceComposite, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
-      # workflow = Workflow(target_workflow_name, app)
-      
       config = {
         'workflow_name': target_workflow_name,
         'service_name': external_service_composite.service_name 
       }
+
       ServiceValidateCommand(app, **config).validate()
 
     def test_local_service(self, app_dir_path, target_workflow_name, local_service_composite: ServiceComposite):
       app = App(app_dir_path, DOCKER_NAMESPACE)
-      # workflow = Workflow(target_workflow_name, app)
-      
       config = {
         'workflow_name': target_workflow_name,
         'service_name': local_service_composite.service_name 
       }
+
       ServiceValidateCommand(app, **config).validate()
 
 
@@ -303,11 +196,9 @@ class TestScaffoldE2e():
 
       # Create external user defined service
       TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_composite.hostname, external_service_composite.service_name)
-      # TestScaffoldE2e.cli_workflow_create(runner, app_dir_path, external_service_composite.service_name)
-
-      # Create local user defined service
+      # Create local user defined services
       TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_composite.hostname, local_service_composite.service_name)
-      # TestScaffoldE2e.cli_workflow_create(runner, app_dir_path, local_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_composite.hostname, assets_service_composite.service_name)
 
       # Validate docker-compose path exists
       destination_path = Path(local_service_composite.docker_compose_path)
@@ -327,7 +218,6 @@ class TestScaffoldE2e():
       shutil.copyfile(assets_service_mock_docker_compose_path, destination_path)
 
       TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_composite.hostname, assets_service_composite.service_name)
-      # TestScaffoldE2e.cli_workflow_create(runner, app_dir_path, assets_service_composite.service_name)
 
       # Add assets for assets service
       destination_assets_path = f"{app_dir_path}/{DATA_DIR_NAME}/docker/{assets_service_composite.service_name}/{target_workflow_name}/index.html"
@@ -344,30 +234,55 @@ class TestScaffoldE2e():
 
       TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name=target_workflow_name)
 
-    def test_tests(self, docker_client: docker.DockerClient, target_workflow_name, core_components_composite, external_service_composite, local_service_composite):
+    def test_no_core_components(self, app_dir_path, target_workflow_name):
+      app = App(app_dir_path, DOCKER_NAMESPACE)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'build'
+      }
 
-      all_containers = docker_client.containers.list(all=True)
+      WorkflowValidateCommand(app, **config).validate()
 
-      # NOTE: don't need to validate gateway and mock_ui core components
+    def test_user_services(self, app_dir_path, target_workflow_name, external_service_composite, local_service_composite):
+      app = App(app_dir_path, DOCKER_NAMESPACE)
 
-      TestScaffoldE2e.validate_init_containers(all_containers, core_components_composite.core_init_container_name, core_components_composite.core_configure_container_name)
-      TestScaffoldE2e.validate_init_containers(all_containers, external_service_composite.service_init_container_name, external_service_composite.service_configure_container_name)
-      TestScaffoldE2e.validate_init_containers(all_containers, local_service_composite.service_init_container_name, local_service_composite.service_configure_container_name)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': external_service_composite.service_name 
+      }
+      ServiceValidateCommand(app, **config).validate()
 
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': local_service_composite.service_name 
+      }
+      ServiceValidateCommand(app, **config).validate()
+
+    def test_tests(self, app_dir_path, target_workflow_name):
+      app = App(app_dir_path, DOCKER_NAMESPACE)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'tests'
+      }
+
+      ServiceValidateCommand(app, **config).validate()
+
+    def test_assets(self, docker_client: docker.DockerClient, app_dir_path, target_workflow_name, external_service_composite, assets_service_composite):
+
+      app = App(app_dir_path, DOCKER_NAMESPACE)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'assets'
+      }
+
+      ServiceValidateCommand(app, **config).validate()
+
+
+      # TODO: can we move this into validate command?
+      # Yes: use curl docker container. add docker networks
+
+      # Test workflow won't expose assets to the host. curl from inside the Docker network
       external_service_proxy_container = docker_client.containers.get(external_service_composite.service_proxy_container_name)
-      TestScaffoldE2e.validate_proxy_container(external_service_proxy_container, target_workflow_name)
-
-      # NOTE: check mock mode enabled one day
-
-    def test_assets(self, docker_client: docker.DockerClient, target_workflow_name, external_service_composite, local_service_composite, assets_service_composite):
-
-      all_containers = docker_client.containers.list(all=True)
-      TestScaffoldE2e.validate_init_containers(all_containers, assets_service_composite.service_init_container_name, assets_service_composite.service_configure_container_name)
-
-      external_service_proxy_container = docker_client.containers.get(external_service_composite.service_proxy_container_name)
-      TestScaffoldE2e.validate_proxy_container(external_service_proxy_container, target_workflow_name)
-
-      # CI workflow won't expose assets to the host. curl from inside the Docker network
       if not external_service_proxy_container.status == 'exited':
         timeout_seconds = 1
         exec_result = external_service_proxy_container.exec_run(f"curl --max-time {timeout_seconds} {assets_service_composite.hostname} --verbose")
@@ -376,12 +291,9 @@ class TestScaffoldE2e():
         # connection is working, but we haven't recorded anything yet
         # if '499' not in output.decode('ascii'):
         #   assert False
-        
+
         if '200' not in output.decode('ascii'):
           assert False
-
-      # TODO: detached, we're not mocking it
-      # self.validate_detached(containers[0])
 
   @staticmethod
   def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):

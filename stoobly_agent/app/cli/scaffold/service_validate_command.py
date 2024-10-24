@@ -1,24 +1,27 @@
+from pathlib import Path
 import pdb
 
 from docker.models.containers import Container
-from pathlib import Path
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 import yaml
-from stoobly_agent.app.cli.scaffold.constants import DIST_FOLDER_NAME, STOOBLY_HOME_DIR
+
+from stoobly_agent.app.cli.scaffold.constants import (
+  DIST_FOLDER_NAME,
+  STOOBLY_HOME_DIR,
+  WORKFLOW_TEST_TYPE,
+)
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
-from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
 from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
+from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from .app import App
 
-import requests
-
 
 class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   def __init__(self, app: App, **kwargs):
-    # super().__init__(app, **kwargs)
     ServiceCommand.__init__(self, app, **kwargs)
     ValidateCommand.__init__(self)
 
@@ -26,21 +29,11 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     self.hostname = self.service_config.hostname
     self.service_composite = ServiceComposite(app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname)
 
-  # @property
-  # def app_name(self):
-  #   return self.app.name
-
   def is_local(self):
     with open (self.service_composite.docker_compose_path,'rb') as f:
       docker_compose_file_content = yaml.safe_load(f)
       if docker_compose_file_content and docker_compose_file_content.get('services'):
         return True
-
-      # line_count = 0
-      # for line in f:
-      #   line_count += 1
-      # if line_count > 3:
-      #   return True
 
     return False
 
@@ -59,6 +52,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     assert response.ok
  
   def validate_hostname(self, url: str) -> None:
+    print(f"Validating hostname: {url}")
     self.hostname_reachable(url)
 
     # TODO: add to /etc/hosts? provide route inside Docker container with --add-host
@@ -72,11 +66,20 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     # TODO: add destination folder as constant, use in main path too
     dist_folder = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{DIST_FOLDER_NAME}"
 
-    volume_mounts = container.attrs['Mounts']
-    for volume_mount in volume_mounts:
-      if volume_mount['Destination'] == dist_folder:
-        dist_folder_exists = True
-        break
+    # TODO: bug here where 'test-tests.init-1' container has /home/stoobly/dist mounted and not /home/stoobly/test/dist
+    legacy_dist_folder = f"{STOOBLY_HOME_DIR}/{DIST_FOLDER_NAME}"
+    folders = [dist_folder, legacy_dist_folder]
+
+    for dist_folder in folders:
+      volume_mounts = container.attrs['Mounts']
+      for volume_mount in volume_mounts:
+        if volume_mount['Destination'] == dist_folder:
+          dist_folder_exists = True
+          break
+      else:
+        continue
+      break
+
     assert dist_folder_exists
 
     # Check contents of dist folder to confirm it's shared
@@ -108,8 +111,9 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   def validate_proxy_container(self, service_proxy_container: Container):
     print(f"Validating proxy container: {service_proxy_container.name}")
     assert service_proxy_container.attrs
- 
-    self.validate_dist_folder(service_proxy_container)
+
+    if not self.service_config.detached:
+      self.validate_dist_folder(service_proxy_container)
 
     self.proxy_environment_variables_exist(service_proxy_container)
 
@@ -118,11 +122,9 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   
   def validate(self, **kwargs) -> bool:
     print(f"Validating service_name: {self.service_name}")
-    # print(f"hostname: {self.service_composite.hostname}")
-    # print(f"is_local: {self.is_local()}")
 
-    url = f"http://{self.hostname}"
-    if self.workflow_name not in ['ci', 'test']:
+    if (self.workflow_name not in [WORKFLOW_TEST_TYPE]) and self.service_config.hostname:
+      url = f"{self.service_config.scheme}://{self.hostname}"
       self.validate_hostname(url)
 
     all_containers = self.docker_client.containers.list(all=True)
@@ -132,8 +134,9 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     init_container = self.docker_client.containers.get(self.service_composite.service_init_container_name)
     self.validate_dist_folder(init_container)
 
-    service_proxy_container = self.docker_client.containers.get(self.service_composite.service_proxy_container_name)
-    self.validate_proxy_container(service_proxy_container)
+    if self.service_config.hostname:
+      service_proxy_container = self.docker_client.containers.get(self.service_composite.service_proxy_container_name)
+      self.validate_proxy_container(service_proxy_container)
 
     if self.is_local():
       print(f"Validating local user defined service: {self.service_name}")
@@ -150,6 +153,12 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
       if service_container.status == 'exited':
         return False
+
+    if self.service_config.detached:
+      service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
+      self.validate_detached(service_container)
+
+    print()
 
     return True
 
