@@ -6,7 +6,7 @@ from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .config import Config
-from .constants import BUILD_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DIST_FOLDER_NAME, ENV_FILE
+from .constants import COMPOSE_TEMPLATE, CONFIG_FILE, ENV_FILE, FIXTURES_FOLDER_NAME
 from .docker.constants import DOCKER_COMPOSE_CUSTOM
 from .service_command import ServiceCommand
 
@@ -18,14 +18,6 @@ class WorkflowCommand(ServiceCommand):
     super().__init__(app, **kwargs)
 
     self.__workflow_name = kwargs['workflow_name']
-
-  @property
-  def dist_dir_path(self):
-    return os.path.join(self.workflow_path, DIST_FOLDER_NAME)
-
-  @property
-  def build_dir_path(self):
-    return os.path.join(self.workflow_path, BUILD_FOLDER_NAME)
 
   @property
   def compose_path(self):
@@ -94,6 +86,10 @@ class WorkflowCommand(ServiceCommand):
       return {}
 
     return services
+
+  @property
+  def fixtures_dir_path(self):
+    return os.path.join(self.workflow_path, FIXTURES_FOLDER_NAME)
 
   @property
   def workflow_config(self):

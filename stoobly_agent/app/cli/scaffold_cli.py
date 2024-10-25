@@ -10,6 +10,10 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.app_validate_command import AppValidateCommand
 from stoobly_agent.app.cli.scaffold.constants import CORE_SERVICES, DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from stoobly_agent.app.cli.scaffold.constants import (
+  DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+)
+from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
@@ -195,10 +199,12 @@ def copy(**kwargs):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
-@click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+
+@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
+@click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def stop(**kwargs):  
   cwd = os.getcwd()
@@ -216,9 +222,10 @@ def stop(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
+  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
 
   commands: List[WorkflowRunCommand] = []
-  for service in workflow.services:
+  for service in services:
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
@@ -242,6 +249,7 @@ def stop(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--dry-run', default=False, is_flag=True)
+@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
@@ -252,9 +260,10 @@ def logs(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
+  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
 
   commands: List[WorkflowLogCommand] = []
-  for service in workflow.services:
+  for service in services:
     if len(kwargs['service']) > 0 and service not in kwargs['service']:
       continue
 
@@ -278,7 +287,8 @@ def logs(**kwargs):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Path to certs directory.')
 @click.option('--context-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
-@click.option('--dry-run', default=False, is_flag=True)
+@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
+@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -303,21 +313,13 @@ def run(**kwargs):
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
-  app_create_command = AppCreateCommand(app)
-  commands = []
-
   workflow = Workflow(kwargs['workflow_name'], app)
-  services = workflow.services
+  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
 
-  # Log services that don't exist
-  missing_services = [service for service in kwargs['service'] if service not in services]
-  if missing_services:
-    Logger.instance(WARNING).warn(f"Service(s) {','.join(missing_services)} are not found")
+  # Gateway ports are dynamically set depending on the workflow run
+  set_gateway_ports(workflow.service_paths_from_services(services))
 
-  # If service is specified, run only those services
-  if kwargs['service']:
-    services = kwargs['service']
-
+  commands: List[WorkflowRunCommand] = []
   for service in services:
     config = { **kwargs }
     config['service_name'] = service
@@ -325,12 +327,13 @@ def run(**kwargs):
     command.current_working_dir = cwd
     commands.append(command)
 
-  # Create persistent network
-  create_network_command = f"docker network create {app_create_command.app_config.network} 2> /dev/null"
-  if not kwargs['dry_run']:
-    exec_stream(create_network_command)
-  else:
-    print(create_network_command)
+  # Before services can be started, their network needs to be created
+  if len(commands) > 0:
+    create_network_command = commands[0].create_network()
+    if not kwargs['dry_run']:
+      exec_stream(create_network_command)
+    else:
+      print(create_network_command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for command in commands:
@@ -374,11 +377,27 @@ scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 
+def __get_services(services: List[str], **kwargs):
+  # Log services that don't exist
+  missing_services = [service for service in kwargs['service'] if service not in services]
+  if missing_services:
+    Logger.instance(WARNING).warn(f"Service(s) {','.join(missing_services)} are not found")
+
+  if kwargs['service']:
+    # If service is specified, run only those services
+    services = list(kwargs['service'])
+
+    if WORKFLOW_CUSTOM_FILTER not in kwargs['filter']:
+      services += CORE_SERVICES
+  else:
+    if WORKFLOW_CUSTOM_FILTER in kwargs['filter']:
+      # If this filter is set, then the user does not want to run core services
+      services = list(filter(lambda service: service not in CORE_SERVICES, services))
+    
+  return list(set(services))
+
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
-
-def __print_subheader(text: str):
-  Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}{text}{bcolors.ENDC}")
 
 def __app_build(app, **kwargs):
   AppCreateCommand(app, **kwargs).build()

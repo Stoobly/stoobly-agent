@@ -115,6 +115,3 @@ class ServiceBuilder(Builder):
       'networks': self.networks,
       'services': self.services,
     })
-
-    with open(os.path.join(self.config.dir, '.dockerignore'), 'w') as fp:
-      fp.write('*/dist')

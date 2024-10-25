@@ -1,6 +1,3 @@
 #!/bin/bash
 
-echo "Configuring intercept mode"
-stoobly-agent intercept configure --mode record --policy all
-
 cd $(dirname -- "$0") && ./configure

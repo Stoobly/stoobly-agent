@@ -2,6 +2,8 @@ import os
 import pdb
 from typing import List
 
+from typing import List
+
 from .app import App
 
 class Workflow():
@@ -28,6 +30,10 @@ class Workflow():
 
   @property
   def services(self):
+    return list(map(lambda path: os.path.basename(path), self.service_paths))
+
+  @property
+  def service_paths(self):
     services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
 
     services = []
@@ -36,7 +42,7 @@ class Workflow():
       if not os.path.isdir(path):
         continue
       
-      services.append(filename)
+      services.append(path)
 
     return services
 
@@ -60,3 +66,6 @@ class Workflow():
 
     return services
 
+  def service_paths_from_services(self, services: List[str]):
+    app_namespace_path = self.app.namespace_path
+    return list(map(lambda service: os.path.join(app_namespace_path, service), services))
