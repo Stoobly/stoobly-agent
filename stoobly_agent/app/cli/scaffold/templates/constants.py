@@ -11,22 +11,27 @@ CORE_SERVICES = [
 CORE_MOCK_WORKFLOW = 'mock'
 CORE_RECORD_WORKFLOW = 'record'
 
+CUSTOM_BUILD = os.path.join('bin', 'build')
 CUSTOM_CONFIGURE = os.path.join('bin', 'configure')
 CUSTOM_INIT = os.path.join('bin', 'init')
+CUSTOM_FIXTURES = 'fixtures.yml'
+CUSTOM_LIFECYCLE_HOOKS = os.path.join('lifecycle_hooks.py')
 MAINTAINED_CONFIGURE = os.path.join('bin', '.configure')
 MAINTAINED_INIT = os.path.join('bin', '.init')
+MAINTAINED_FIXTURES = os.path.join('fixtures', '.keep')
 
 MOCK_WORKFLOW_MAINTAINED_FILES = [
   MAINTAINED_CONFIGURE,
-  MAINTAINED_INIT
+  MAINTAINED_INIT,
+  MAINTAINED_FIXTURES
 ]
 
 MOCK_WORKFLOW_CUSTOM_FILES = [
-  os.path.join('bin', 'build'),
-  os.path.join('bin', 'init'),
+  CUSTOM_BUILD,
   CUSTOM_CONFIGURE,
-  os.path.join('.keep'),
-  os.path.join('lifecycle_hooks.py'),
+  CUSTOM_FIXTURES,
+  CUSTOM_INIT,
+  CUSTOM_LIFECYCLE_HOOKS,
 ]
 
 RECORD_WORKFLOW_MAINTAINED_FILES = [
@@ -35,24 +40,24 @@ RECORD_WORKFLOW_MAINTAINED_FILES = [
 ]
 
 RECORD_WORKFLOW_CUSTOM_FILES = [
-  os.path.join('bin', 'build'),
-  os.path.join('bin', 'init'),
+  CUSTOM_BUILD,
   CUSTOM_CONFIGURE,
-  os.path.join('.keep'),
-  os.path.join('lifecycle_hooks.py'),
+  CUSTOM_INIT,
+  CUSTOM_LIFECYCLE_HOOKS
 ]
 
 TEST_WORKFLOW_MAINTAINED_FILES = [
   MAINTAINED_CONFIGURE,
-  MAINTAINED_INIT
+  MAINTAINED_INIT,
+  MAINTAINED_FIXTURES
 ]
 
 TEST_WORKFLOW_CUSTOM_FILES = [
-  os.path.join('bin', 'build'),
-  os.path.join('bin', 'init'),
+  CUSTOM_BUILD,
   CUSTOM_CONFIGURE,
-  os.path.join('.keep'),
-  os.path.join('lifecycle_hooks.py'),
+  CUSTOM_FIXTURES,
+  CUSTOM_INIT,
+  CUSTOM_LIFECYCLE_HOOKS
 ]
 
 SERVICE_HOSTNAME_BUILD_ARG = 'SERVICE_HOSTNAME'

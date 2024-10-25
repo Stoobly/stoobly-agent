@@ -4,7 +4,7 @@ import pdb
 from typing import List
 
 from ...constants import (
-  COMPOSE_TEMPLATE, DIST_FOLDER_NAME, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
+  COMPOSE_TEMPLATE, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
   SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR, WORKFLOW_NAME_ENV
 )
 from ..builder import Builder
@@ -67,10 +67,6 @@ class WorkflowBuilder(Builder):
   @property
   def context_docker_file_path(self):
     return os.path.relpath(self.service_builder.app_builder.context_docker_file_path, self.service_path)
-
-  @property
-  def dist_volume(self):
-    return f"./{DIST_FOLDER_NAME}:{os.path.join(STOOBLY_HOME_DIR, self.workflow_name, DIST_FOLDER_NAME)}"
 
   @property
   def namespace(self):
@@ -142,8 +138,6 @@ class WorkflowBuilder(Builder):
     if self.config.hostname:
       self.__with_url_environment(environment)
 
-    volumes.append(self.dist_volume)
-
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
 
@@ -190,7 +184,7 @@ class WorkflowBuilder(Builder):
     environment = { **self.env_dict() }
     extra_hosts = []
     networks = [self.service_builder.service_name]
-    volumes = [self.dist_volume]
+    volumes = []
 
     service = {
       'build': self.proxy_build, 

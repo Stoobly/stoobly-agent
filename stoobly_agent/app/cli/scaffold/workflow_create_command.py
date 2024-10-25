@@ -51,10 +51,6 @@ class WorkflowCreateCommand(WorkflowCommand):
     if not os.path.exists(dest):
       os.makedirs(dest) 
 
-    dist_dir_path = self.dist_dir_path
-    if not os.path.exists(dist_dir_path):
-      os.makedirs(dist_dir_path)
-
     # Create workflow maintained compose file
     workflow_builder = self.__write_docker_compose_file(**kwargs)
     self.__copy_templates(workflow_builder, kwargs.get('template'))
