@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
+from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
@@ -302,6 +303,9 @@ def run(**kwargs):
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
+
+  # Gateway ports are dynamically set depending on the workflow run
+  set_gateway_ports(workflow.service_paths_from_services(services))
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
