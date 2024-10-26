@@ -274,7 +274,7 @@ def logs(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Path to certs directory.')
-@click.option('--context-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')

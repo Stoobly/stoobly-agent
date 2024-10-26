@@ -19,7 +19,7 @@ WORKDIR /home/mkcert
 
 RUN mkcert $SERVICE_HOSTNAME && mkcert -pkcs12 $SERVICE_HOSTNAME && cat $SERVICE_HOSTNAME.pem >> $SERVICE_HOSTNAME-joined.pem && cat $SERVICE_HOSTNAME-key.pem >> $SERVICE_HOSTNAME-joined.pem
 
-FROM stoobly/agent:0.34
+FROM stoobly/agent:1.0
 
 ARG USER_ID
 ARG SERVICE_HOSTNAME
