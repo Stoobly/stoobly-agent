@@ -13,7 +13,7 @@ readme = "README.md"
 version = "0.34.13"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 
 click = ">=7.0.0,<8.0.0"
 diff-match-patch = "^20230430"
@@ -22,7 +22,7 @@ dnspython = ">=2.6.1,<2.7.0"
 httptools = ">=0.4.0"
 jmespath = ">=1.0.0"
 mergedeep = ">=1.3.0,<1.3.4"
-mitmproxy = ">=8.0.0,<=8.1.0"
+mitmproxy = ">=9.0.0,<10.0.0"
 multipart = "^0.2.5"
 openapi-core = ">=0.17.0,<0.18.0"
 python-dotenv = "^1.0.1"
