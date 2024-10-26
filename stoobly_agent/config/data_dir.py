@@ -3,10 +3,11 @@ import shutil
 
 from stoobly_agent.config.constants.env_vars import ENV
 
+DATA_DIR_NAME = '.stoobly'
+DB_FILE_NAME = 'stoobly_agent.sqlite3'
+DB_VERSION_NAME = 'VERSION'
+
 class DataDir:
-    DATA_DIR_NAME = '.stoobly'
-    DB_FILE_NAME = 'stoobly_agent.sqlite3'
-    DB_VERSION_NAME = 'VERSION'
 
     _instances = None
 
@@ -15,10 +16,10 @@ class DataDir:
             raise RuntimeError('Call instance() instead')
         else:
             if path:
-                self.__data_dir_path = os.path.join(path, self.DATA_DIR_NAME)
+                self.__data_dir_path = os.path.join(path, DATA_DIR_NAME)
             else:
                 cwd = os.getcwd()
-                self.__data_dir_path = os.path.join(cwd, self.DATA_DIR_NAME)
+                self.__data_dir_path = os.path.join(cwd, DATA_DIR_NAME)
 
                 # If the current working directory does not contain a .stoobly folder,
                 # then search in the parent directories until the home directory.
@@ -26,12 +27,12 @@ class DataDir:
                     data_dir = self.find_data_dir(cwd)
 
                     if not data_dir:
-                        self.__data_dir_path = os.path.join(os.path.expanduser('~'), self.DATA_DIR_NAME)
+                        self.__data_dir_path = os.path.join(os.path.expanduser('~'), DATA_DIR_NAME)
                     else:
                         self.__data_dir_path = data_dir
 
             if not os.path.exists(self.__data_dir_path):
-                os.makedirs(self.__data_dir_path, exist_ok=True)
+                self.create(os.path.dirname(self.__data_dir_path))
 
     @classmethod
     def instance(cls, path: str = None):
@@ -51,9 +52,13 @@ class DataDir:
         return cls.instance()
 
     @property
+    def context_dir_path(self):
+        return os.path.abspath(os.path.join(self.path, '..'))
+
+    @property
     def path(self):
         if os.environ.get(ENV) == 'test':
-            test_path = os.path.join(self.__data_dir_path, 'tmp', self.DATA_DIR_NAME)
+            test_path = os.path.join(self.__data_dir_path, 'tmp', DATA_DIR_NAME)
 
             if not os.path.exists(test_path):
                 os.makedirs(test_path, exist_ok=True)
@@ -72,6 +77,15 @@ class DataDir:
         return tmp_dir_path
 
     @property
+    def certs_dir_path(self):
+        certs_dir_path = os.path.join(self.path, 'certs')
+
+        if not os.path.exists(certs_dir_path):
+            os.mkdir(certs_dir_path)
+
+        return certs_dir_path
+
+    @property
     def db_dir_path(self):
         db_dir_path = os.path.join(self.path, 'db')
 
@@ -82,11 +96,11 @@ class DataDir:
 
     @property
     def db_file_path(self):
-        return os.path.join(self.db_dir_path, self.DB_FILE_NAME)
+        return os.path.join(self.db_dir_path, DB_FILE_NAME)
 
     @property
     def db_version_path(self):
-        return os.path.join(self.db_dir_path, self.DB_VERSION_NAME)
+        return os.path.join(self.db_dir_path, DB_VERSION_NAME)
 
     @property
     def settings_file_path(self):
@@ -152,21 +166,33 @@ class DataDir:
 
     def remove(self, directory_path = None):
         if directory_path:
-            data_dir_path = os.path.join(directory_path, self.DATA_DIR_NAME)
+            data_dir_path = os.path.join(directory_path, DATA_DIR_NAME)
         else:
             data_dir_path = self.path
 
         if os.path.exists(data_dir_path):
-            shutil.rmtree(data_dir_path) 
+            shutil.rmtree(data_dir_path)
 
     def create(self, directory_path = None):
         if not directory_path:
             directory_path = os.getcwd()
 
-        self.__data_dir_path = os.path.join(directory_path, self.DATA_DIR_NAME)
+        self.__data_dir_path = os.path.join(directory_path, DATA_DIR_NAME)
 
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
+
+            with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
+                fp.write(
+                    "\n".join([
+                        'db',
+                        'settings.yml',
+                        os.path.join('snapshots', 'log'),
+                        os.path.join('snapshots', 'VERSION'),
+                        'tmp'
+                    ])
+                )
+
 
     def find_data_dir(self, start_path: str) -> str:
         # Note: these paths won't work for Windows
@@ -175,7 +201,7 @@ class DataDir:
         root_reached = False
 
         while start_path != home_dir:
-            data_dir_path = os.path.join(start_path, self.DATA_DIR_NAME)
+            data_dir_path = os.path.join(start_path, DATA_DIR_NAME)
 
             if os.path.exists(data_dir_path):
                 return data_dir_path

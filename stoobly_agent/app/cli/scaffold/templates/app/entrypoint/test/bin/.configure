@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Data
+echo "Configuring intercept mode"
+stoobly-agent intercept configure --mode mock --policy found
+
+echo "Enabling intercept"
+stoobly-agent intercept enable
+
+cd $(dirname -- "$0") && ./configure

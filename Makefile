@@ -1,6 +1,17 @@
 TEST_CONTAINER_NAME = stoobly.test
 TEST_DIR = /root/stoobly-agent
 
+cert:
+	HOSTNAME=$(hostname) HOSTNAME="$${HOSTNAME:-$(DEFAULT_HOSTNAME)}" && \
+	mkdir -p $(CERTS_DIR) && cd $(CERTS_DIR); \
+	mkcert --install && \
+	mkcert $$HOSTNAME && \
+	mkcert -pkcs12 $$HOSTNAME && \
+	cat $$HOSTNAME.pem >> $$HOSTNAME-joined.pem && \
+	cat $$HOSTNAME-key.pem >> $$HOSTNAME-joined.pem && \
+	cp $$HOSTNAME.pem $$HOSTNAME.crt && \
+	cp $$HOSTNAME-key.pem $$HOSTNAME.key
+
 clean:
 	rm -rf dist
 	rm -rf build

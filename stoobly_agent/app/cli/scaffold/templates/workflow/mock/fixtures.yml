@@ -1,0 +1,5 @@
+# The following example matches requests for GET /users/d+ (e.g. /users/1) with the contents of user-1.json
+# Assumes that 'user-1.json' is created in the 'fixtures' folder
+#GET:
+#  /users/d+:
+#    path: ./fixtures/user-1.json

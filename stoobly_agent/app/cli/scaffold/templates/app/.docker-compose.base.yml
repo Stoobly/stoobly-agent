@@ -1,0 +1,15 @@
+services:
+  context_base:
+    build:
+      args:
+        USER_ID: ${USER_ID}
+      dockerfile: ./.Dockerfile.context
+    volumes:
+      - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly   
+  proxy_base:
+    build:
+      args:
+        USER_ID: ${USER_ID}
+      dockerfile: ./.Dockerfile.proxy
+    volumes:
+      - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
