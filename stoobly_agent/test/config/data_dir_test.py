@@ -5,7 +5,7 @@ import pytest
 
 from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.constants.mode import NONE
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
 
@@ -25,7 +25,7 @@ class TestDataDir():
   def test_in_home(self, original_cwd: str, home_dir: str):
     # A previous test can put us in 'stoobly_agent/test/app/models/schemas/.stoobly'
     os.chdir(original_cwd)
-    data_dir_path = os.path.join(home_dir, DataDir.DATA_DIR_NAME)
+    data_dir_path = os.path.join(home_dir, DATA_DIR_NAME)
     os.environ[ENV] = NONE
 
     result = DataDir.instance().path
@@ -34,10 +34,11 @@ class TestDataDir():
 
   def test_in_cwd(self, original_cwd: str):
     os.environ[ENV] = NONE
-    DataDir._instance = None
+    DataDir._instances = None
+
     temp_dir = os.path.join(original_cwd, 'tmp')
     nested_temp_dir = os.path.join(temp_dir, 'tmp-nested')
-    data_dir_path = os.path.join(nested_temp_dir, DataDir.DATA_DIR_NAME)
+    data_dir_path = os.path.join(nested_temp_dir, DATA_DIR_NAME)
     os.makedirs(data_dir_path)
 
     # Go into nested folder
@@ -55,7 +56,8 @@ class TestDataDir():
 
   def test_in_parent_nested(self, original_cwd: str):
     os.environ[ENV] = NONE
-    DataDir._instance = None
+    DataDir._instances = None
+
     # Create a temporary directory structure for testing
     temp_dir = os.path.join(original_cwd, 'tmp')
 
@@ -66,7 +68,7 @@ class TestDataDir():
     os.makedirs(nested_dir3)
 
     # Create .stoobly folder in the nested structure
-    data_dir_path = os.path.join(nested_dir1, DataDir.DATA_DIR_NAME)
+    data_dir_path = os.path.join(nested_dir1, DATA_DIR_NAME)
     os.makedirs(data_dir_path)
 
     # Go into dir3

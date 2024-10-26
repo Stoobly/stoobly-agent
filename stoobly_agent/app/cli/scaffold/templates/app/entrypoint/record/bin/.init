@@ -1,0 +1,5 @@
+#!/bin/bash
+
+stoobly-agent intercept enable
+
+cd $(dirname -- "$0") && ./init

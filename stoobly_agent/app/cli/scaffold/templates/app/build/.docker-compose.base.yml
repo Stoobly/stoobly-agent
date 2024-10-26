@@ -1,0 +1,11 @@
+services:
+  build.init_base:
+    command: ['bin/.init']
+    extends:
+      file: ../.docker-compose.base.yml
+      service: proxy_base
+  build.configure_base:
+    command: ['bin/.configure']
+    extends:
+      file: ../.docker-compose.base.yml
+      service: proxy_base

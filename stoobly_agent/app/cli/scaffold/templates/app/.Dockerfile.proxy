@@ -1,0 +1,35 @@
+FROM ubuntu:23.10 AS build
+
+WORKDIR /tmp
+
+RUN apt-get update && apt-get install -y curl
+RUN curl -JLO "https://dl.filippo.io/mkcert/v1.4.4?for=linux/amd64" && \
+  chmod +x mkcert-v1.4.4-linux-amd64
+
+FROM ubuntu:23.10 AS cert
+
+ARG SERVICE_HOSTNAME
+
+COPY --from=build /tmp/mkcert-v1.4.4-linux-amd64 /bin/mkcert
+
+RUN useradd -m mkcert
+
+USER mkcert
+WORKDIR /home/mkcert
+
+RUN mkcert $SERVICE_HOSTNAME && mkcert -pkcs12 $SERVICE_HOSTNAME && cat $SERVICE_HOSTNAME.pem >> $SERVICE_HOSTNAME-joined.pem && cat $SERVICE_HOSTNAME-key.pem >> $SERVICE_HOSTNAME-joined.pem
+
+FROM stoobly/agent:0.34
+
+ARG USER_ID
+ARG SERVICE_HOSTNAME
+
+# Allow running stoobly on port 443
+RUN apt-get update && apt-get install -y curl libcap2-bin
+RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/python3.8
+
+# Change user id of stoobly user to that of host's user id
+RUN if [ -n "$USER_ID" ]; then groupmod -g $USER_ID stoobly; usermod -u $USER_ID stoobly; fi
+
+COPY --chown=stoobly:stoobly . .
+COPY --chown=stoobly:stoobly --from=cert /home/mkcert/$SERVICE_HOSTNAME-joined.pem .

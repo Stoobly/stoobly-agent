@@ -58,12 +58,16 @@ class LocalDBQueryParamAdapter(LocalDBAdapter):
     if not name in _query_params:
       _query_params[name] = []
 
-    try:
-      index = _query_params[name].index(decoded_id['value'])
-    except ValueError as e:
-      return self.not_found()
+    if isinstance(_query_params[name], list):
+      try:
+        index = _query_params[name].index(decoded_id['value'])
+      except ValueError as e:
+        return self.not_found()
 
-    _query_params[name][index] = value
+      _query_params[name][index] = value
+    else:
+      _query_params[name] = value
+
     parsed_url = parsed_url._replace(query=urlencode(_query_params, True))
 
     request = LocalDBRequestAdapter(self.__request_orm).update(request_id, url=parsed_url.geturl())

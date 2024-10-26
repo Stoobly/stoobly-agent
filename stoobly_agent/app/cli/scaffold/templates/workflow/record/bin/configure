@@ -1,0 +1,29 @@
+#!/bin/bash
+
+scheme=$SERVICE_SCHEME
+hostname=$SERVICE_HOSTNAME
+port=$SERVICE_PORT
+
+url="$scheme://$hostname"
+
+if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
+  url="$url:$port"
+fi
+
+# Firewall
+echo "Configuring firewall rules"
+stoobly-agent config firewall set \
+  --action include \
+  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --mode record \
+  --pattern "$url/.*?"
+
+# Rewrite
+echo "Configuring rewrite rules"
+stoobly-agent config rewrite set \
+  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --mode record \
+  --name cookie \
+  --pattern "$host/?.*?" \
+  --type Header \
+  --value '' \

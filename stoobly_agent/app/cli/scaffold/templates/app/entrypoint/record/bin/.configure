@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Data
+echo "Configuring intercept mode"
+stoobly-agent intercept configure --mode record --policy all
+
+echo "Disabling intercept"
+stoobly-agent intercept disable
+
+cd $(dirname -- "$0") && ./configure
