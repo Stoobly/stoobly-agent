@@ -7,6 +7,8 @@ from stoobly_agent.config.constants import headers
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.lib.logger import Logger
 
+LOG_ID = 'ProxyController'
+
 class ProxyController:
     _instance = None
 
@@ -54,14 +56,14 @@ class ProxyController:
             _params = context.params
             _verify = not MitmproxyConfig.instance().get('ssl_insecure')
 
-            Logger.instance().debug('Request Headers')
-            Logger.instance().debug(_headers)
-            Logger.instance().debug('Cookies')
-            Logger.instance().debug(_cookies)
-            Logger.instance().debug('Body')
-            Logger.instance().debug(_body)
-            Logger.instance().debug('Query Params')
-            Logger.instance().debug(_params)
+            Logger.instance(LOG_ID).debug('Request Headers')
+            Logger.instance(LOG_ID).debug(_headers)
+            Logger.instance(LOG_ID).debug('Cookies')
+            Logger.instance(LOG_ID).debug(_cookies)
+            Logger.instance(LOG_ID).debug('Body')
+            Logger.instance(LOG_ID).debug(_body)
+            Logger.instance(LOG_ID).debug('Query Params')
+            Logger.instance(LOG_ID).debug(_params)
 
             body = None
             headers = {}
@@ -99,8 +101,8 @@ class ProxyController:
                 body = b'Unknown Error'
                 status = 0
 
-            Logger.instance().debug('Response Headers')
-            Logger.instance().debug(res.headers)
+            Logger.instance(LOG_ID).debug('Response Headers')
+            Logger.instance(LOG_ID).debug(res.headers)
 
             context.render(
                 headers = headers,

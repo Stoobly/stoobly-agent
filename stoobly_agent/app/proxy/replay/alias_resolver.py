@@ -6,6 +6,8 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.trace import Trace
 from stoobly_agent.lib.orm.trace_alias import TraceAlias
 
+LOG_ID = 'Alias'
+
 class AliasResolver():
 
   def __init__(self, trace: Trace, strategy: alias_resolve_strategy.AliasResolveStrategy):
@@ -28,7 +30,7 @@ class AliasResolver():
       trace_alias.assigned_to = value
       trace_alias.save()
 
-      Logger.instance().info(f"{bcolors.OKBLUE}ASSIGN alias {trace_alias.name}: {value} -> {trace_alias.value}{bcolors.ENDC}")
+      Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Assigned{bcolors.ENDC} {trace_alias.name}: {value} -> {trace_alias.value}")
 
   def resolve_alias(self, alias_name: str, value: str):
     trace_alias = self.__resolve_alias(alias_name, value)
@@ -51,7 +53,7 @@ class AliasResolver():
     })
 
     if trace_alias:
-      Logger.instance().info(f"{bcolors.OKGREEN}CREATE alias {trace_alias.name}: {value}{bcolors.ENDC}")
+      Logger.instance(LOG_ID).info(f"{bcolors.OKGREEN}Created{bcolors.ENDC} alias {trace_alias.name}: {value}")
 
     return trace_alias
 
@@ -114,4 +116,4 @@ class AliasResolver():
     return str(value) if isinstance(value, list) or isinstance(value, dict) else value
 
   def __log_resolved_aliases(self, trace_aliases):
-    trace_aliases.each(lambda trace_alias: Logger.instance().debug(f"\tResolved Trace Alias: {trace_alias.to_dict()}"))
+    trace_aliases.each(lambda trace_alias: Logger.instance(LOG_ID).debug(f"\tResolved Trace Alias: {trace_alias.to_dict()}"))

@@ -6,8 +6,10 @@ from urllib.parse import urlparse
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 
+LOG_ID = 'ReversePorxy'
+
 def reverse_proxy(request: MitmproxyRequest, service_url: str, options = {}):
-    Logger.instance().debug(f"ReverseProxy:ServiceUrl: {service_url}")
+    Logger.instance(LOG_ID).debug(service_url)
 
     uri = urlparse(service_url)
 

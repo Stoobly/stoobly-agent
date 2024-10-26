@@ -112,6 +112,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     headers = {}
     headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
+    headers[custom_headers.MOCK_REQUEST_KEY] = request.key()
     headers[custom_headers.RESPONSE_LATENCY] = str(request.latency)
 
     return (

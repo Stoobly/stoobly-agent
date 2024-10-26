@@ -1,0 +1,11 @@
+#!/bin/bash
+
+extra_options=$EXEC_OPTIONS
+scenario_name="$1"
+
+if [ ! "$scenario_name" ]; then 
+    echo "Missing argument 'scenario_name'"
+    exit 
+fi
+
+stoobly-agent scenario create --select key --without-headers $extra_options "$scenario_name"

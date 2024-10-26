@@ -2,6 +2,7 @@ import logging
 import logging.config
 import os
 import pdb
+import sys
 
 from typing import Literal
 
@@ -31,13 +32,16 @@ class Logger:
         raise RuntimeError('Call instance() instead')
 
     @classmethod
-    def instance(cls):
+    def instance(cls, name = None):
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
 
         cls._instance.load()
 
-        return logging
+        if not name:
+            return logging
+        else:
+            return logging.getLogger(name)
 
     @classmethod
     def reload(cls):
@@ -53,8 +57,8 @@ class Logger:
             logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
             logging.basicConfig(level=logging.DEBUG)
         elif log_level.lower() == WARNING:
-            logging.basicConfig(level=logging.WARNING)
+            logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
         elif log_level.lower() == ERROR:
-            logging.basicConfig(level=logging.ERROR)
+            logging.basicConfig(level=logging.ERROR, stream=sys.stderr)
         else:
             logging.basicConfig(level=logging.INFO)

@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.lib.orm.request import Request
@@ -46,6 +47,10 @@ class RequestSnapshot(Snapshot):
     if os.path.exists(self.path):
       with open(self.path, 'rb') as fp:
         self.__backup = fp.read()
+
+  def copy(self, dest_dir: str):
+    request_file_path = self.path
+    return self.copy_file(request_file_path, dest_dir)
 
   def find_resource(self):
     return Request.find_by(uuid=self.uuid)

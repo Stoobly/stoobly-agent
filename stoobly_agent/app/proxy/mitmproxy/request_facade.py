@@ -17,6 +17,8 @@ from stoobly_agent.lib.utils.decode import decode
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
 
+LOG_ID = 'Request'
+
 class MitmproxyRequestFacade(Request):
 
     ###
@@ -137,7 +139,7 @@ class MitmproxyRequestFacade(Request):
 
         if len(rewrites):
             self.__rewrite_url(rewrites)
-            Logger.instance().debug(f"{bcolors.OKBLUE} Rewritten URL{bcolors.ENDC} {self.url}")
+            Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE} Rewritten URL{bcolors.ENDC} {self.url}")
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
@@ -186,7 +188,7 @@ class MitmproxyRequestFacade(Request):
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:
-        Logger.instance().info(f"{bcolors.OKCYAN}Rewriting {rewrite.type.lower()}{bcolors.ENDC} {rewrite.name} => {rewrite.value}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {rewrite.type.lower()} {rewrite.name} => {rewrite.value}")
         return rewrite.value
 
     def __rewrite_url(self, rewrites: List[UrlRule]):

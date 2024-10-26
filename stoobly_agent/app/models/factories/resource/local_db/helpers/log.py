@@ -11,11 +11,13 @@ from .log_event import LogEvent
 from .snapshot_types import DELETE_ACTION, PUT_ACTION, Resource
 
 EVENT_DELIMITTER = "\n"
+LOG_ID = 'Log'
 
 class Log():
 
-  def __init__(self):
-    data_dir = DataDir.instance()
+  def __init__(self, data_dir: DataDir = None):
+    data_dir = data_dir or DataDir.instance()
+    
     self.__log_file_path = data_dir.snapshots_log_file_path
     self.__history_dir_path = data_dir.snapshots_history_dir_path
 
@@ -194,7 +196,7 @@ class Log():
       snapshot_exists = snapshot.exists
 
       if event.action == DELETE_ACTION or not snapshot_exists:
-        Logger.instance().info(f"{bcolors.OKBLUE}Removing {event.resource} {event.resource_uuid}{bcolors.ENDC}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Removing{bcolors.ENDC} {event.resource} {event.resource_uuid}")
 
         resource_events: List[LogEvent] = resource_index[event.resource_uuid]
         removed_events = {}
@@ -204,14 +206,14 @@ class Log():
           if event.uuid in removed_events:
             continue
 
-          Logger.instance().info(f"Removing event {event.uuid}")
+          Logger.instance(LOG_ID).info(f"Removing event {event.uuid}")
           self.remove_event_history(event, history_path, dry_run)
           removed_events[event.uuid] = True
 
         if event.action == DELETE_ACTION and snapshot_exists: 
           if not dry_run:
             snapshot.remove()
-          Logger.instance().info(f"Removing {event.resource} snapshot")
+          Logger.instance(LOG_ID).info(f"Removing {event.resource} snapshot")
 
   def build_raw_events(self, contents: str) -> List[str]:
     if not contents:
@@ -259,13 +261,13 @@ class Log():
       events = list(filter(lambda log_event: log_event.uuid != event.uuid, events))
 
     if len(events) == 0:
-      Logger.instance().info(f"Removing {history_path}")
+      Logger.instance(LOG_ID).info(f"Removing {history_path}")
 
       if not dry_run:
         os.remove(history_path)
     else:
       new_raw_events = list(map(lambda event: str(event), events))
-      Logger.instance().info(f"Updating {history_path}, Events: {len(raw_events)} -> {len(new_raw_events)}")
+      Logger.instance(LOG_ID).info(f"Updating {history_path}, Events: {len(raw_events)} -> {len(new_raw_events)}")
 
       if not dry_run:
         with open(history_path, 'w') as fp:

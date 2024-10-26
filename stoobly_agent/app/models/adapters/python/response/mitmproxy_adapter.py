@@ -31,7 +31,7 @@ class MitmproxyResponseAdapter():
     if isinstance(status_code, int):
       return status_code
 
-    return decode(status_code)
+    return int(decode(status_code))
 
   @property
   def headers(self):

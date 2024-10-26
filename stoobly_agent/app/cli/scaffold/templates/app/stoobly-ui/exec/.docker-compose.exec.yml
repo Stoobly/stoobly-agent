@@ -1,0 +1,12 @@
+services:
+  stoobly_ui.command:
+    build:
+      dockerfile: ../../.Dockerfile.context
+    command: ['${EXEC_COMMAND}', '${EXEC_ARGS}']
+    environment:
+      EXEC_OPTIONS: ${EXEC_OPTIONS}
+    extends:
+      file: ../.docker-compose.base.yml
+      service: stoobly_ui.base
+    profiles:
+      - exec

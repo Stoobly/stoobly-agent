@@ -5,7 +5,7 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.context import InterceptContext
-from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock
+from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.proxy.handle_record_service import handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
@@ -21,7 +21,7 @@ from stoobly_agent.lib.logger import Logger
 # Disable proxy settings in urllib
 os.environ['no_proxy'] = '*'
 
-LOG_ID = 'InterceptHandler'
+LOG_ID = 'Intercept'
 
 def request(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
@@ -36,7 +36,7 @@ def request(flow: MitmproxyHTTPFlow):
     __intercept_hook(lifecycle_hooks.BEFORE_REQUEST, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
-    Logger.instance().debug(f"{LOG_ID}:ProxyMode: {active_mode}")
+    Logger.instance(LOG_ID).debug(f"ProxyMode: {active_mode}")
 
     if active_mode == mode.MOCK:
         context = MockContext(flow, intercept_settings)
@@ -69,7 +69,10 @@ def response(flow: MitmproxyHTTPFlow):
 
     active_mode = intercept_settings.mode
 
-    if active_mode == mode.RECORD:
+    if active_mode == mode.MOCK:
+        context = MockContext(flow, intercept_settings)
+        return handle_response_mock(context)
+    elif active_mode == mode.RECORD:
         context = RecordContext(flow, intercept_settings)
         return handle_response_record(context)
     elif active_mode == mode.REPLAY:

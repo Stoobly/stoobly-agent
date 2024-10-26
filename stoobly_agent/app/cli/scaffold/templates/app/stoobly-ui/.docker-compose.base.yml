@@ -1,0 +1,5 @@
+services:
+  stoobly_ui.base:
+    extends:
+      file: ../.docker-compose.base.yml
+      service: context_base 
