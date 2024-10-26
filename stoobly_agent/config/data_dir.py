@@ -171,7 +171,7 @@ class DataDir:
             data_dir_path = self.path
 
         if os.path.exists(data_dir_path):
-            shutil.rmtree(data_dir_path) 
+            shutil.rmtree(data_dir_path)
 
     def create(self, directory_path = None):
         if not directory_path:
@@ -187,8 +187,8 @@ class DataDir:
                     "\n".join([
                         'db',
                         'settings.yml',
-                        os.path.join('snapshots', 'log'), 
-                        os.path.join('snapshots', 'VERSION'), 
+                        os.path.join('snapshots', 'log'),
+                        os.path.join('snapshots', 'VERSION'),
                         'tmp'
                     ])
                 )
