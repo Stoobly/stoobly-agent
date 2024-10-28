@@ -52,8 +52,8 @@ class ServiceConfig(Config):
       self.__scheme = kwargs.get('scheme')
 
   @property
-  def detached(self):
-    return self.__detached
+  def detached(self) -> bool:
+    return not not self.__detached
 
   @detached.setter
   def detached(self, v):
@@ -69,7 +69,7 @@ class ServiceConfig(Config):
 
   @property
   def hostname(self):
-    return self.__hostname
+    return (self.__hostname or '').strip()
 
   @hostname.setter
   def hostname(self, v):
@@ -99,6 +99,12 @@ class ServiceConfig(Config):
 
   @property
   def port(self):
+    if not self.__port:
+      if self.scheme == 'https':
+        return '443' 
+      elif self.scheme == 'http':
+        return '80'
+
     return self.__port
 
   @port.setter
@@ -120,9 +126,9 @@ class ServiceConfig(Config):
     self.__priority = v
 
   @property
-  def proxy_mode(self):
+  def proxy_mode(self) -> str:
     if self.__proxy_mode:
-      return self.__proxy_mode
+      return (self.__proxy_mode or '').strip()
 
     return f"reverse:{self.scheme}://{self.hostname}"
 
@@ -132,7 +138,7 @@ class ServiceConfig(Config):
 
   @property
   def scheme(self):
-    return self.__scheme or 'https'
+    return (self.__scheme or 'https').strip()
 
   @scheme.setter
   def scheme(self, v):
