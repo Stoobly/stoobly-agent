@@ -1,6 +1,6 @@
 import pdb
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, SERVICE_SCHEME
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT
 from .builder import WorkflowBuilder
 
 class MockDecorator():
