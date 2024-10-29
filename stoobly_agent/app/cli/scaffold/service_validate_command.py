@@ -8,7 +8,6 @@ from urllib3 import Retry
 import yaml
 
 from stoobly_agent.app.cli.scaffold.constants import (
-  DIST_FOLDER_NAME,
   STOOBLY_HOME_DIR,
   WORKFLOW_TEST_TYPE,
 )
@@ -60,32 +59,32 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     # TODO: check logs of proxy. lifecycle hook for custom logging?
     # TODO: does mitmproxy support json logging?
 
-  # Check dist folder mounted into container
-  def validate_dist_folder(self, container: Container):
-    dist_folder_exists = False
+  # Check fixtures folder mounted into container
+  def validate_fixtures_folder(self, container: Container):
+    fixtures_folder_exists = False
     # TODO: add destination folder as constant, use in main path too
-    dist_folder = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{DIST_FOLDER_NAME}"
+    fixtures_folder = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/fixtures"
 
-    # TODO: bug here where 'test-tests.init-1' container has /home/stoobly/dist mounted and not /home/stoobly/test/dist
-    legacy_dist_folder = f"{STOOBLY_HOME_DIR}/{DIST_FOLDER_NAME}"
-    folders = [dist_folder, legacy_dist_folder]
+    # TODO: bug here where 'test-tests.init-1' container has /home/stoobly/fixtures mounted and not /home/stoobly/test/fixtures
+    legacy_fixtures_folder = f"{STOOBLY_HOME_DIR}/fixtures"
+    folders = [fixtures_folder, legacy_fixtures_folder]
 
-    for dist_folder in folders:
+    for fixtures_folder in folders:
       volume_mounts = container.attrs['Mounts']
       for volume_mount in volume_mounts:
-        if volume_mount['Destination'] == dist_folder:
-          dist_folder_exists = True
+        if volume_mount['Destination'] == fixtures_folder:
+          fixtures_folder_exists = True
           break
       else:
         continue
       break
 
-    assert dist_folder_exists
+    assert fixtures_folder_exists
 
-    # Check contents of dist folder to confirm it's shared
+    # Check contents of fixtures folder to confirm it's shared
     # Only the running proxy containers will be checkable
     if not container.status == 'exited':
-      exec_result = container.exec_run(f"ls {dist_folder}")
+      exec_result = container.exec_run(f"ls {fixtures_folder}")
       output = exec_result.output
       if 'shared_file.txt' not in output.decode('ascii'):
         assert False
@@ -113,7 +112,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     assert service_proxy_container.attrs
 
     if not self.service_config.detached:
-      self.validate_dist_folder(service_proxy_container)
+      self.validate_fixtures_folder(service_proxy_container)
 
     self.proxy_environment_variables_exist(service_proxy_container)
 
@@ -132,7 +131,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
 
     # Service init containers have a mounted dist folder unlike the core init container
     init_container = self.docker_client.containers.get(self.service_composite.service_init_container_name)
-    self.validate_dist_folder(init_container)
+    self.validate_fixtures_folder(init_container)
 
     if self.service_config.hostname:
       service_proxy_container = self.docker_client.containers.get(self.service_composite.service_proxy_container_name)

@@ -21,7 +21,7 @@ See our docs for more detailed information! https://docs.stoobly.com
 
 ## Prerequisite
 
-- Python >= 3.8, < 3.11
+- Python 3.10, 3.11, 3.12
 
 ## Installation
 

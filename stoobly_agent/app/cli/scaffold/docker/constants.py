@@ -10,3 +10,4 @@ GATEWAY_NETWORK = 'gateway'
 
 # Example:
 # COMPOSE_TEMPLATE = 'docker-compose.{workflow}.yml'
+

@@ -1,5 +1,7 @@
 import pdb
 
+from urllib.parse import urlparse
+
 from ...constants import SERVICE_DNS, SERVICE_HOSTNAME, SERVICE_PORT
 from .builder import WorkflowBuilder
 
@@ -32,12 +34,24 @@ class ReverseProxyDecorator():
     proxy_name = self.workflow_builder.proxy
     proxy_service = services.get(proxy_name) or {}
 
-    # proxying forwards requests to the actual service
+    additional_properties = { 'command': command }
+
+    # Proxying forwards requests to the actual service
+    # If the destination hostname is the same as the service's hostname, then
     # If we set the 'hostname' property, this will cause an "infinite loop"
+    proxy_mode_toks = config.proxy_mode.split(':', 1)
+
+    if len(proxy_mode_toks) > 1:
+      directed = proxy_mode_toks[0] == 'reverse' or proxy_mode_toks[0] == 'upstream'
+      if directed:
+        spec = proxy_mode_toks[1]
+        uri = urlparse(spec)
+        if uri.hostname != self.service_builder.config.hostname:
+          additional_properties['hostname'] = f"{SERVICE_HOSTNAME}"
 
     service = { 
       **proxy_service,
-      **{ 'command': command },
+      **additional_properties,
     }
 
     # If we are reverse proxying to potentially an external host,
@@ -47,5 +61,4 @@ class ReverseProxyDecorator():
       service['dns'] = SERVICE_DNS
 
     services[proxy_name] = service 
-
 

@@ -1,4 +1,4 @@
-FROM python:3.8.11-slim
+FROM python:3.12.3-slim
 
 RUN useradd -mU stoobly
 
@@ -53,3 +53,4 @@ EXPOSE 8080
 EXPOSE 4200
 
 CMD ["stoobly-agent"]
+

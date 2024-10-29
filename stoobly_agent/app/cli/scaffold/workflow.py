@@ -2,9 +2,8 @@ import os
 import pdb
 from typing import List
 
-from typing import List
-
 from .app import App
+
 
 class Workflow():
 

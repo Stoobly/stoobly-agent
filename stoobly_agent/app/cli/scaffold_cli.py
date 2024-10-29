@@ -19,6 +19,7 @@ from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_validate_command import ServiceValidateCommand
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
@@ -286,7 +287,7 @@ def logs(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Path to certs directory.')
-@click.option('--context-dir-path', default=DataDir.instance().path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
@@ -427,3 +428,4 @@ def __workflow_build(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
+

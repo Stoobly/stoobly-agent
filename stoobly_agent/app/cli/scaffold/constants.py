@@ -1,12 +1,12 @@
 from typing import Literal
 
+
 APP_NETWORK_ENV = 'APP_NETWORK'
 CERTS_DIR_ENV = 'CERTS_DIR'
 COMPOSE_TEMPLATE = '.docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'
 CONTEXT_DIR_ENV = 'CONTEXT_DIR'
-CORE_SERVICES = ['build', 'gateway', 'mock-ui']
-DIST_FOLDER_NAME = 'dist'
+CORE_SERVICES = ['build', 'gateway', 'stoobly_ui']
 DOCKER_NAMESPACE = 'docker'
 ENV_FILE = '.env'
 FIXTURES_FOLDER_NAME = 'fixtures'
@@ -33,5 +33,6 @@ WORKFLOW_MOCK_TYPE = 'mock'
 WORKFLOW_NAME_ENV = 'WORKFLOW_NAME'
 WORKFLOW_RECORD_TYPE = 'record'
 WORKFLOW_TEST_TYPE = 'test'
+
 WORKFLOW_TEMPLATE = Literal[WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
 
