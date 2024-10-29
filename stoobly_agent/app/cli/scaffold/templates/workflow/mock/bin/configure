@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Add custom Stoobly configuration here
+
 scheme=$SERVICE_SCHEME
 hostname=$SERVICE_HOSTNAME
 port=$SERVICE_PORT
@@ -10,7 +12,7 @@ if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port"
   url="$url:$port"
 fi
 
-# Match
+# Match Rules
 echo "Configuring match rules"
 stoobly-agent config match set \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
