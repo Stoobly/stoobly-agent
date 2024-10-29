@@ -1,5 +1,7 @@
 #!/bin/bash
 
-stoobly-agent intercept enable
+entrypoint=$(dirname -- "$0")/init
 
-cd $(dirname -- "$0") && ./init
+if [ -e "$entrypoint" ]; then
+  "$entrypoint"
+fi
