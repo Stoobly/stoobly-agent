@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Add custom Stoobly configuration here
+
 scheme=$SERVICE_SCHEME
 hostname=$SERVICE_HOSTNAME
 port=$SERVICE_PORT

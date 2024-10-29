@@ -10,7 +10,6 @@ services:
   entrypoint.init_base:
     command:
     - bin/.init
-    - dist
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
