@@ -8,7 +8,9 @@ from urllib3 import Retry
 import yaml
 
 from stoobly_agent.app.cli.scaffold.constants import (
+  FIXTURES_FOLDER_NAME,
   STOOBLY_HOME_DIR,
+  WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
@@ -33,6 +35,8 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       docker_compose_file_content = yaml.safe_load(f)
       if docker_compose_file_content and docker_compose_file_content.get('services'):
         return True
+
+      # We can potentially check the port too someday
 
     return False
 
@@ -59,32 +63,31 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     # TODO: check logs of proxy. lifecycle hook for custom logging?
     # TODO: does mitmproxy support json logging?
 
+  # TODO: might be better in WorkflowValidateCommand
   # Check fixtures folder mounted into container
   def validate_fixtures_folder(self, container: Container):
-    fixtures_folder_exists = False
+    
+    if self.workflow_name == WORKFLOW_RECORD_TYPE:
+      print('Skipping validating fixtures folder')
+      return
+
+    print(f"Validating fixtures folder in container: {container.name}")
+
+    data_dir_mounted = False
     # TODO: add destination folder as constant, use in main path too
-    fixtures_folder = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/fixtures"
-
-    # TODO: bug here where 'test-tests.init-1' container has /home/stoobly/fixtures mounted and not /home/stoobly/test/fixtures
-    legacy_fixtures_folder = f"{STOOBLY_HOME_DIR}/fixtures"
-    folders = [fixtures_folder, legacy_fixtures_folder]
-
-    for fixtures_folder in folders:
-      volume_mounts = container.attrs['Mounts']
-      for volume_mount in volume_mounts:
-        if volume_mount['Destination'] == fixtures_folder:
-          fixtures_folder_exists = True
-          break
-      else:
-        continue
-      break
-
-    assert fixtures_folder_exists
+    data_dir = f"{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}"
+    volume_mounts = container.attrs['Mounts']
+    for volume_mount in volume_mounts:
+      if volume_mount['Destination'] == data_dir:
+        data_dir_mounted = True
+        break
+    assert data_dir_mounted
 
     # Check contents of fixtures folder to confirm it's shared
     # Only the running proxy containers will be checkable
     if not container.status == 'exited':
-      exec_result = container.exec_run(f"ls {fixtures_folder}")
+      fixtures_folder_path = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{FIXTURES_FOLDER_NAME}"
+      exec_result = container.exec_run(f"ls {fixtures_folder_path}")
       output = exec_result.output
       if 'shared_file.txt' not in output.decode('ascii'):
         assert False
@@ -120,7 +123,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     pass
   
   def validate(self, **kwargs) -> bool:
-    print(f"Validating service_name: {self.service_name}")
+    print(f"Validating service: {self.service_name}")
 
     if (self.workflow_name not in [WORKFLOW_TEST_TYPE]) and self.service_config.hostname:
       url = f"{self.service_config.scheme}://{self.hostname}"

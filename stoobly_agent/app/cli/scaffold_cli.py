@@ -9,7 +9,7 @@ from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.app_validate_command import AppValidateCommand
-from stoobly_agent.app.cli.scaffold.constants import CORE_SERVICES, DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
@@ -20,6 +20,7 @@ from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_validate_command import ServiceValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
@@ -360,18 +361,21 @@ def validate(**kwargs):
   
   config = { **kwargs }
   config['service_name'] = 'build'
-  result = WorkflowValidateCommand(app, **config).validate()
-  if not result:
-    print(f"Workflow is not valid!!!")
 
-  excluded_services = ['enable-intercept']
+  try:
+    WorkflowValidateCommand(app, **config).validate()
+  except ScaffoldValidateException as sve:
+    print(f"\nFatal Scaffold Validation Exception: {sve}")
+    sys.exit(1)
 
-  for service in workflow.services_ran:
-    if service not in CORE_SERVICES and service not in excluded_services:
-      config['service_name'] = service
-      result = ServiceValidateCommand(app, **config).validate()
-      if not result:
-        print(f"Service is not valid!!!")
+  try:
+    for service in workflow.services_ran:
+      if service not in CORE_SERVICES:
+        config['service_name'] = service
+        ServiceValidateCommand(app, **config).validate()
+  except ScaffoldValidateException as sve:
+    print(f"\nFatal Scaffold Validation Exception: {sve}")
+    sys.exit(1)
 
 
 scaffold.add_command(app)

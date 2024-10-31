@@ -5,6 +5,7 @@ from typing import List
 import docker
 from docker.models.containers import Container
 
+from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateNotDetachedException
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 
@@ -13,7 +14,7 @@ class ValidateCommand():
     self.docker_client = docker.from_env()
 
   def validate_init_containers(self, containers: List[Container], init_container_name, configure_container_name) -> None:
-    print(f"Validating init containers: {init_container_name}, {configure_container_name}")
+    print(f"Validating setup containers: {init_container_name}, {configure_container_name}")
 
     init_container = self.docker_client.containers.get(init_container_name)
     logs = init_container.logs()
@@ -34,16 +35,15 @@ class ValidateCommand():
     assert configure_container_ran
   
   def validate_detached(self, container: Container) -> None:
-    if not container.attrs:
-      assert False
-
     print(f"Validating detached for: {container.name}")
+    
+    if not container.attrs:
+      raise ScaffoldValidateNotDetachedException(f"Container is missing: {container.name}")
 
     volume_mounts = container.attrs['Mounts']
-
     for volume_mount in volume_mounts:
       if DATA_DIR_NAME in volume_mount['Source']:
         return
 
-    assert False
+    raise ScaffoldValidateNotDetachedException(f"Data directory is missing from container: {container.name}")
 

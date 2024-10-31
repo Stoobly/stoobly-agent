@@ -6,7 +6,6 @@ CERTS_DIR_ENV = 'CERTS_DIR'
 COMPOSE_TEMPLATE = '.docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'
 CONTEXT_DIR_ENV = 'CONTEXT_DIR'
-CORE_SERVICES = ['build', 'gateway', 'stoobly_ui']
 DOCKER_NAMESPACE = 'docker'
 ENV_FILE = '.env'
 FIXTURES_FOLDER_NAME = 'fixtures'
