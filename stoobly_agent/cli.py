@@ -15,7 +15,7 @@ from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .app.api import run as run_api
+from .app.api import initialize as initialize_api, run as run_api
 from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
@@ -144,8 +144,9 @@ def run(**kwargs):
     if 'api_url' in kwargs and kwargs['api_url']:
         os.environ[env_vars.API_URL] = kwargs['api_url']
 
+    url = initialize_api(**kwargs)
     if 'headless' in kwargs and not kwargs['headless']:
-        run_api(**kwargs)
+        run_api(url)
 
     if 'proxyless' in kwargs and not kwargs['proxyless']:
         run_proxy(**kwargs)
