@@ -1,3 +1,5 @@
+from collections import Counter
+import os
 from pathlib import Path
 import pdb
 
@@ -16,6 +18,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
 from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
 from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
+from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from .app import App
@@ -29,6 +32,23 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     self.workflow_name = kwargs['workflow_name']
     self.hostname = self.service_config.hostname
     self.service_composite = ServiceComposite(app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname)
+
+  @property
+  def fixtures_dir_path(self):
+    return os.path.join(self.workflow_path, FIXTURES_FOLDER_NAME)
+  
+  @property
+  def workflow_path(self):
+    return os.path.join(
+      self.scaffold_dir_path,
+      self.workflow_relative_path
+    )
+  @property
+  def workflow_relative_path(self):
+    return os.path.join(
+      self.service_relative_path,
+      self.workflow_name
+    )
 
   def is_local(self):
     with open (self.service_composite.docker_compose_path,'rb') as f:
@@ -52,7 +72,8 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     s.mount('http://', HTTPAdapter(max_retries=retries))
     response = s.get(url=url)
 
-    assert response.ok
+    if not response.ok:
+      raise ScaffoldValidateException(f"Host is not reachable: {url}")
  
   def validate_hostname(self, url: str) -> None:
     print(f"Validating hostname: {url}")
@@ -68,7 +89,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   def validate_fixtures_folder(self, container: Container):
     
     if self.workflow_name == WORKFLOW_RECORD_TYPE:
-      print('Skipping validating fixtures folder')
+      print(f"Skipping validating fixtures folder in workflow: {self.workflow_name}")
       return
 
     print(f"Validating fixtures folder in container: {container.name}")
@@ -81,17 +102,27 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       if volume_mount['Destination'] == data_dir:
         data_dir_mounted = True
         break
-    assert data_dir_mounted
+    if not data_dir_mounted:
+      raise ScaffoldValidateException(f"Data directory is not mounted for: {container.name}")
+
+    # Only the running proxy containers will be checkable
+    if container.status == 'exited':
+      print(f"Skipping validating fixtures folder contents because container is exited: {container.name}")
+      return
 
     # Check contents of fixtures folder to confirm it's shared
-    # Only the running proxy containers will be checkable
-    if not container.status == 'exited':
-      fixtures_folder_path = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{FIXTURES_FOLDER_NAME}"
-      exec_result = container.exec_run(f"ls {fixtures_folder_path}")
-      output = exec_result.output
-      if 'shared_file.txt' not in output.decode('ascii'):
-        assert False
-  
+    fixtures_folder_path = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{FIXTURES_FOLDER_NAME}"
+    exec_result = container.exec_run(f"ls -A {fixtures_folder_path}")
+    output = exec_result.output
+
+    fixtures_folder_contents_container = output.decode('ascii').split('\n')
+    if fixtures_folder_contents_container[-1] == '':
+      fixtures_folder_contents_container.pop()
+    fixtures_folder_contents_scaffold = os.listdir(self.fixtures_dir_path)
+
+    if Counter(fixtures_folder_contents_container) != Counter(fixtures_folder_contents_scaffold):
+      raise ScaffoldValidateException('Contents of fixtures folder is not equal')
+
   # TODO: might not need this if the hostname is reachable and working
   def proxy_environment_variables_exist(self, container: Container) -> None:
     environment_variables = container.attrs['Config']['Env']
@@ -112,7 +143,8 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   
   def validate_proxy_container(self, service_proxy_container: Container):
     print(f"Validating proxy container: {service_proxy_container.name}")
-    assert service_proxy_container.attrs
+    if not service_proxy_container.attrs:
+      raise ScaffoldValidateException(f"Container attributes are missing for: {container.name}")
 
     if not self.service_config.detached:
       self.validate_fixtures_folder(service_proxy_container)
@@ -129,8 +161,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       url = f"{self.service_config.scheme}://{self.hostname}"
       self.validate_hostname(url)
 
-    all_containers = self.docker_client.containers.list(all=True)
-    self.validate_init_containers(all_containers, self.service_composite.service_init_container_name, self.service_composite.service_configure_container_name)
+    self.validate_init_containers(self.service_composite.service_init_container_name, self.service_composite.service_configure_container_name)
 
     # Service init containers have a mounted dist folder unlike the core init container
     init_container = self.docker_client.containers.get(self.service_composite.service_init_container_name)

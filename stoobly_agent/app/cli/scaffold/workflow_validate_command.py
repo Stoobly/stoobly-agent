@@ -7,11 +7,15 @@ from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.core_components_composite import (
   CoreComponentsComposite,
 )
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.templates.constants import (
+  CORE_ENTRYPOINT_SERVICE_NAME,
+  CORE_GATEWAY_SERVICE_NAME,
+  CORE_MOCK_UI_SERVICE_NAME,
+  CORE_SERVICES,
+)
 from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
-from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateGatewayMissingException, ScaffoldValidateStooblyUiMissingException
+from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from .app import App
 
@@ -38,12 +42,12 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
     print(f"Validating core component: {CORE_GATEWAY_SERVICE_NAME}")
     if not gateway_up:
-      raise ScaffoldValidateGatewayMissingException(f"Gateway container is missing: {self.core_components_composite.core_gateway_container_name}")
+      raise ScaffoldValidateException(f"Gateway container is missing: {self.core_components_composite.core_gateway_container_name}")
     self.validate_detached(gateway_container)
 
     print(f"Validating core component: {CORE_MOCK_UI_SERVICE_NAME}")
     if not mock_ui_up:
-      raise ScaffoldValidateStooblyUiMissingException(f"Container '{self.core_components_composite.core_mock_ui_container_name}' is missing for service '{CORE_MOCK_UI_SERVICE_NAME}'")
+      raise ScaffoldValidateException(f"Container '{self.core_components_composite.core_mock_ui_container_name}' is missing for service '{CORE_MOCK_UI_SERVICE_NAME}'")
 
     return True
 
@@ -76,9 +80,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     else:
       self.validate_core_components()
 
-    # docker ps -a
-    all_containers = self.docker_client.containers.list(all=True)
-    self.validate_init_containers(all_containers, self.core_components_composite.core_init_container_name, self.core_components_composite.core_configure_container_name)
+    self.validate_init_containers(self.core_components_composite.core_init_container_name, self.core_components_composite.core_configure_container_name)
 
     print(f"Validating core component: {CORE_ENTRYPOINT_SERVICE_NAME}")
     entrypoint_init_container = self.docker_client.containers.get(self.core_components_composite.core_entrypoint_init_container_name)
