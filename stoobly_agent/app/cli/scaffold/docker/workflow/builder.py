@@ -124,7 +124,7 @@ class WorkflowBuilder(Builder):
 
   def build_init(self):
     environment = { **self.env_dict() }
-    volumes = [f"{self.service_path}:{STOOBLY_HOME_DIR}"]
+    volumes = []
 
     service = {
       'build': self.context_build,
