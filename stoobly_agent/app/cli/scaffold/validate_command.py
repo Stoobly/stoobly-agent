@@ -18,8 +18,10 @@ class ValidateCommand():
 
     init_container = self.docker_client.containers.get(init_container_name)
     logs = init_container.logs()
-    if logs or init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
-      assert False
+    if logs:
+      raise ScaffoldValidateException(f"Error logs potentially detected in: {init_container_name}")
+    if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
+      raise ScaffoldValidateException(f"init container has not exited like expected: {init_container_name}")
 
     # Configure container can take slightly longer than expected to finish so retry
     configure_container_ran = False
@@ -32,7 +34,8 @@ class ValidateCommand():
       else:
         sleep(0.1)
     
-    assert configure_container_ran
+    if not configure_container_ran:
+      raise ScaffoldValidateException(f"Configure container has not ran like expected: {configure_container_name}")
   
   def validate_detached(self, container: Container) -> None:
     print(f"Validating detached for: {container.name}")

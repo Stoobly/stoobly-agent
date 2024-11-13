@@ -139,7 +139,13 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       elif environment_variable_name == 'VIRTUAL_PROTO':
         virtual_proto_exists = True
 
-    assert (virtual_host_exists and virtual_port_exists and virtual_proto_exists)
+    if not virtual_host_exists:
+      raise ScaffoldValidateException(f"VIRTUAL_HOST environment variable is missing from container: {container.name}")
+    if not virtual_port_exists:
+      raise ScaffoldValidateException(f"VIRTUAL_POST environment variable is missing from container: {container.name}")
+    if not virtual_proto_exists:
+      raise ScaffoldValidateException(f"VIRTUAL_PROTO environment variable is missing from container: {container.name}")
+
   
   def validate_proxy_container(self, service_proxy_container: Container):
     print(f"Validating proxy container: {service_proxy_container.name}")
@@ -176,7 +182,8 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       # Validate docker-compose path exists
       docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/docker/{self.service_composite.service_name}/{self.workflow_name}/docker-compose.yml"
       destination_path = Path(docker_compose_path)
-      assert destination_path.is_file()
+      if not destination_path.is_file():
+        raise ScaffoldValidateException(f"Docker compose path is not a file: {destination_path}")
 
       # Validate docker-compose.yml file has contents
       # with open(destination_path) as f:

@@ -55,16 +55,16 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     try:
       core_gateway_container = self.docker_client.containers.get(self.core_components_composite.core_gateway_container_name)
       if core_gateway_container:
-        assert False
+        raise ScaffoldValidateException(f"Gateway container is running when it shouldn't: {core_gateway_container.name}")
     except docker_errors.NotFound:
-      assert True
+      pass
     
     try:
       core_mock_ui_container_name = self.docker_client.containers.get(self.core_components_composite.core_mock_ui_container_name)
       if core_mock_ui_container_name:
-        assert False
+        raise ScaffoldValidateException(f"Stoobly UI container is running when it shouldn't: {core_mock_ui_container_name.name}")
     except docker_errors.NotFound:
-      assert True
+      pass
     
     print(f"Skipping validating core component: {CORE_GATEWAY_SERVICE_NAME}")
     print(f"Skipping validating core component: {CORE_MOCK_UI_SERVICE_NAME}")
@@ -83,11 +83,18 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     self.validate_init_containers(self.core_components_composite.core_init_container_name, self.core_components_composite.core_configure_container_name)
 
     print(f"Validating core component: {CORE_ENTRYPOINT_SERVICE_NAME}")
-    entrypoint_init_container = self.docker_client.containers.get(self.core_components_composite.core_entrypoint_init_container_name)
-    entrypoint_configure_container = self.docker_client.containers.get(self.core_components_composite.core_entrypoint_configure_container_name)
-    assert entrypoint_init_container
-    assert entrypoint_configure_container
 
+    try:
+      core_entrypoint_init_container_name = self.core_components_composite.core_entrypoint_init_container_name
+      entrypoint_init_container = self.docker_client.containers.get(core_entrypoint_init_container_name)
+    except docker_errors.NotFound:
+      raise ScaffoldValidateException(f"Container not found: {core_entrypoint_init_container_name}")
+
+    try:
+      core_entrypoint_configure_container_name = self.core_components_composite.core_entrypoint_configure_container_name
+      entrypoint_configure_container = self.docker_client.containers.get(core_entrypoint_configure_container_name)
+    except docker_errors.NotFound:
+      raise ScaffoldValidateException(f"Container not found: {core_entrypoint_configure_container_name}")
 
     # NOTE: we should check the correct workflow mode is enabled one day
     # That's not currently queryable
