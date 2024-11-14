@@ -1,24 +1,31 @@
 from pathlib import Path
 import pathlib
+import pdb
 import shutil
 import tempfile
+
 from click.testing import CliRunner
-from docker.models.containers import Container
-from requests.adapters import HTTPAdapter
-from urllib3 import Retry
-from stoobly_agent.app.cli.scaffold.app import App
-from stoobly_agent.app.cli import scaffold
-from stoobly_agent.app.cli.scaffold.constants import FIXTURES_FOLDER_NAME, STOOBLY_HOME_DIR, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
-from stoobly_agent.app.cli.scaffold.core_components_composite import CoreComponentsComposite
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE
-from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
-from stoobly_agent.app.cli.scaffold.service_validate_command import ServiceValidateCommand
-from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
-from typing import List
 import docker
 import pytest
-import pdb
+
+from stoobly_agent.app.cli import scaffold
+from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.constants import (
+  WORKFLOW_RECORD_TYPE,
+  WORKFLOW_TEST_TYPE,
+)
+from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE
+from stoobly_agent.app.cli.scaffold.core_components_composite import (
+  CoreComponentsComposite,
+)
+from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
+from stoobly_agent.app.cli.scaffold.service_validate_command import (
+  ServiceValidateCommand,
+)
+from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
+  WorkflowValidateCommand,
+)
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 
 class TestScaffoldE2e():
@@ -65,7 +72,7 @@ class TestScaffoldE2e():
   def local_service_name(self):
     yield "my-httpbin"
 
-
+  
   class TestRecordWorkflow():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
@@ -109,6 +116,11 @@ class TestScaffoldE2e():
 
       TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name)
 
+    @pytest.fixture(scope="class", autouse=True)
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+      yield
+      TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+
 
     def test_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -117,7 +129,8 @@ class TestScaffoldE2e():
         'service_name': 'build'
       }
 
-      WorkflowValidateCommand(app, **config).validate()
+      command = WorkflowValidateCommand(app, **config)
+      command.validate()
 
     def test_external_service(self, external_service_composite: ServiceComposite, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -126,7 +139,8 @@ class TestScaffoldE2e():
         'service_name': external_service_composite.service_name 
       }
 
-      ServiceValidateCommand(app, **config).validate()
+      command = ServiceValidateCommand(app, **config)
+      command.validate()
 
     def test_local_service(self, app_dir_path, target_workflow_name, local_service_composite: ServiceComposite):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -135,7 +149,8 @@ class TestScaffoldE2e():
         'service_name': local_service_composite.service_name 
       }
 
-      ServiceValidateCommand(app, **config).validate()
+      command = ServiceValidateCommand(app, **config)
+      command.validate()
 
 
   class TestTestWorkflow():
@@ -185,7 +200,7 @@ class TestScaffoldE2e():
       self.assets_service_composite = assets_service_composite
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_composite, local_service_composite, assets_service_composite, mock_data_directory_path, local_service_mock_docker_compose_path, assets_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_composite, local_service_composite, assets_service_composite, mock_data_directory_path, assets_service_mock_docker_compose_path):
 
       TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
 
@@ -211,14 +226,23 @@ class TestScaffoldE2e():
       assets_mock_path = mock_data_directory_path / "scaffold" / "index.html"
       shutil.copyfile(assets_mock_path, destination_path)
 
-      # Created shared file in fixtures/ for both services
-      fixtures_folder = f"{STOOBLY_HOME_DIR}/{target_workflow_name}/{FIXTURES_FOLDER_NAME}"
-      with open(local_service_composite.init_script_path, "a") as init_file:
-        init_file.write(f"\ntouch {fixtures_folder}/shared_file.txt")
-      with open(external_service_composite.init_script_path, "a") as init_file:
-        init_file.write(f"\ntouch {fixtures_folder}/shared_file.txt")
+      # Created shared file in fixtures folder
+      app = App(app_dir_path, DOCKER_NAMESPACE)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': external_service_composite.service_name 
+      }
+      command = ServiceValidateCommand(app, **config)
+      with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
+        file.write('this is a shared file')
 
       TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name=target_workflow_name)
+    
+    @pytest.fixture(scope="class", autouse=True)
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+      yield
+      TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+    
 
     def test_no_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -227,7 +251,8 @@ class TestScaffoldE2e():
         'service_name': 'build'
       }
 
-      WorkflowValidateCommand(app, **config).validate()
+      command = WorkflowValidateCommand(app, **config)
+      command.validate()
 
     def test_user_services(self, app_dir_path, target_workflow_name, external_service_composite, local_service_composite):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -236,25 +261,21 @@ class TestScaffoldE2e():
         'workflow_name': target_workflow_name,
         'service_name': external_service_composite.service_name 
       }
-      ServiceValidateCommand(app, **config).validate()
+      command = ServiceValidateCommand(app, **config)
+      command.validate()
 
       config = {
         'workflow_name': target_workflow_name,
         'service_name': local_service_composite.service_name 
       }
-      ServiceValidateCommand(app, **config).validate()
+      command = ServiceValidateCommand(app, **config)
+      command.validate()
 
-    def test_tests(self, app_dir_path, target_workflow_name):
-      # app = App(app_dir_path, DOCKER_NAMESPACE)
-      # config = {
-      #   'workflow_name': target_workflow_name,
-      #   'service_name': 'tests'
-      # }
-
-      # ServiceValidateCommand(app, **config).validate()
+    def test_tests(self):
+      # This is covered by test_assets
       pass
 
-    def test_assets(self, docker_client: docker.DockerClient, app_dir_path, target_workflow_name, external_service_composite, assets_service_composite):
+    def test_assets(self, app_dir_path, target_workflow_name):
 
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
@@ -262,25 +283,8 @@ class TestScaffoldE2e():
         'service_name': 'assets'
       }
 
-      ServiceValidateCommand(app, **config).validate()
-
-
-      # TODO: can we move this into validate command?
-      # Yes: use curl docker container. add docker networks
-
-      # Test workflow won't expose assets to the host. curl from inside the Docker network
-      external_service_proxy_container = docker_client.containers.get(external_service_composite.service_proxy_container_name)
-      if not external_service_proxy_container.status == 'exited':
-        timeout_seconds = 1
-        exec_result = external_service_proxy_container.exec_run(f"curl --max-time {timeout_seconds} {assets_service_composite.hostname} --verbose")
-        output = exec_result.output
-        # 499 error actually means success because it shows the proxy
-        # connection is working, but we haven't recorded anything yet
-        # if '499' not in output.decode('ascii'):
-        #   assert False
-
-        if '200' not in output.decode('ascii'):
-          assert False
+      command = ServiceValidateCommand(app, **config)
+      command.validate()
 
   @staticmethod
   def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):
@@ -336,11 +340,9 @@ class TestScaffoldE2e():
   def cli_workflow_create(runner: CliRunner, app_dir_path: str, service_name: str):
     result = runner.invoke(scaffold, ['workflow', 'create',
       '--app-dir-path', app_dir_path,
-      # '--service-name', service_name,
       '--service', service_name,
       '--template', 'mock',
       'ci',
-      # '--headless',
     ])
 
     assert result.exit_code == 0
@@ -351,9 +353,7 @@ class TestScaffoldE2e():
   def cli_workflow_run(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'run',
       '--app-dir-path', app_dir_path,
-      # '--data-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
-      # '--dry-run', 
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
@@ -361,5 +361,17 @@ class TestScaffoldE2e():
     assert result.exit_code == 0
     output = result.stdout
     assert output
-    # assert 'docker compose' in output
+  
+  @staticmethod
+  def cli_workflow_stop(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+    command = ['workflow', 'stop',
+      '--app-dir-path', app_dir_path,
+      '--context-dir-path', app_dir_path,
+      target_workflow_name,
+    ]
+    result = runner.invoke(scaffold, command)
+
+    assert result.exit_code == 0
+    output = result.stdout
+    assert output
 

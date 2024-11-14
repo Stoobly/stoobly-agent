@@ -363,7 +363,8 @@ def validate(**kwargs):
   config['service_name'] = 'build'
 
   try:
-    WorkflowValidateCommand(app, **config).validate()
+    command = WorkflowValidateCommand(app, **config)
+    command.validate()
   except ScaffoldValidateException as sve:
     print(f"\nFatal Scaffold Validation Exception: {sve}")
     sys.exit(1)
@@ -372,7 +373,8 @@ def validate(**kwargs):
     for service in workflow.services_ran:
       if service not in CORE_SERVICES:
         config['service_name'] = service
-        ServiceValidateCommand(app, **config).validate()
+        command = ServiceValidateCommand(app, **config)
+        command.validate()
   except ScaffoldValidateException as sve:
     print(f"\nFatal Scaffold Validation Exception: {sve}")
     sys.exit(1)

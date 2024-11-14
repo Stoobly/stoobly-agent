@@ -84,12 +84,30 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     # TODO: check logs of proxy. lifecycle hook for custom logging?
     # TODO: does mitmproxy support json logging?
 
+  def validate_internal_hostname(self, url: str) -> None:
+    print(f"Validating hostname inside Docker network, url: {url}")
+    
+    timeout_seconds = 1
+    output = self.docker_client.containers.run(
+      image='curlimages/curl:8.11.0',
+      command=f"curl --max-time {timeout_seconds} {url} --verbose",
+      network=self.app_config.network,
+      stderr=True,
+      remove=True,
+    )
+
+    # Note: 499 error could also mean success because it shows the proxy
+    # connection is working, but we haven't recorded anything yet
+    logs = output.decode('ascii')
+    if ('200 OK' not in logs) and ('499' not in logs):
+      raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network")
+
   # TODO: might be better in WorkflowValidateCommand
   # Check fixtures folder mounted into container
   def validate_fixtures_folder(self, container: Container):
     
     if self.workflow_name == WORKFLOW_RECORD_TYPE:
-      print(f"Skipping validating fixtures folder in workflow: {self.workflow_name}")
+      print(f"Skipping validating fixtures folder in workflow: {self.workflow_name}, container: {container.name}")
       return
 
     print(f"Validating fixtures folder in container: {container.name}")
@@ -163,9 +181,15 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   def validate(self, **kwargs) -> bool:
     print(f"Validating service: {self.service_name}")
 
-    if (self.workflow_name not in [WORKFLOW_TEST_TYPE]) and self.service_config.hostname:
-      url = f"{self.service_config.scheme}://{self.hostname}"
+    url = f"{self.service_config.scheme}://{self.hostname}"
+
+    if self.service_config.hostname and self.workflow_name not in [WORKFLOW_TEST_TYPE]:
       self.validate_hostname(url)
+    
+    # Test workflow won't expose services that are detached and have a hostname to the host such as assets.
+    # Need to test connection from inside the Docker network
+    if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE and self.service_config.detached:
+      self.validate_internal_hostname(url)
 
     self.validate_init_containers(self.service_composite.service_init_container_name, self.service_composite.service_configure_container_name)
 

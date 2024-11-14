@@ -1,21 +1,16 @@
 # Define services here
 
 networks:
-  gateway:
+  app:
     external: true
     name: ${APP_NETWORK}
-  # assets:
-  #   name: assets
 
 services:
   assets:
     image: nginx:1.27
-    # ports:
-    #   - "8080:80"
     hostname: assets
-    # networks:
-    #   - gateway
-    #   - assets
+    networks:
+      - app
     volumes:
       - ./index.html:/usr/share/nginx/html/index.html
     profiles: &id001
