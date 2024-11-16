@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pathlib
 import pdb
@@ -42,10 +43,14 @@ class TestScaffoldE2e():
     yield "0.0.1"
 
   @pytest.fixture(scope='class', autouse=True)
-  def app_dir_path(self, app_name):
+  def app_dir_path(self, docker_client, app_name):
     temp_dir = tempfile.TemporaryDirectory()
     yield temp_dir.name
     temp_dir.cleanup()
+
+    temp_dir_name = os.path.basename(temp_dir.name)
+    docker_network = docker_client.networks.get(temp_dir_name)
+    docker_network.remove()
 
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):

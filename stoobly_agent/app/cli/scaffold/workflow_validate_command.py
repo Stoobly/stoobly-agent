@@ -1,7 +1,6 @@
 import pdb
 
 from docker import errors as docker_errors
-from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.core_components_composite import (
@@ -27,29 +26,17 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     self.core_components_composite = CoreComponentsComposite(target_workflow_name=self.workflow_name)
 
   def validate_core_components(self):
-    gateway_up = False
-    mock_ui_up = False
-    gateway_container = Container()
-
-    # docker ps
-    containers = self.docker_client.containers.list()
-    for container in containers:
-      if container.name == self.core_components_composite.core_gateway_container_name:
-        gateway_up = True
-        gateway_container = container
-      elif container.name == self.core_components_composite.core_mock_ui_container_name:
-        mock_ui_up = True
-
     print(f"Validating core component: {CORE_GATEWAY_SERVICE_NAME}")
-    if not gateway_up:
-      raise ScaffoldValidateException(f"Gateway container is missing: {self.core_components_composite.core_gateway_container_name}")
-    self.validate_detached(gateway_container)
+    gateway_container_name = self.core_components_composite.core_gateway_container_name
+    gateway_container = self.docker_client.containers.get(gateway_container_name)
+    if not gateway_container or (gateway_container.status != 'running'):
+      raise ScaffoldValidateException(f"Container '{gateway_container_name}' not found for service '{CORE_GATEWAY_SERVICE_NAME}'")
 
     print(f"Validating core component: {CORE_MOCK_UI_SERVICE_NAME}")
-    if not mock_ui_up:
-      raise ScaffoldValidateException(f"Container '{self.core_components_composite.core_mock_ui_container_name}' is missing for service '{CORE_MOCK_UI_SERVICE_NAME}'")
-
-    return True
+    mock_ui_container_name = self.core_components_composite.core_mock_ui_container_name
+    mock_ui_container = self.docker_client.containers.get(mock_ui_container_name)
+    if not mock_ui_container or (mock_ui_container.status != 'running'):
+      raise ScaffoldValidateException(f"Container '{mock_ui_container_name}' not found for service '{CORE_MOCK_UI_SERVICE_NAME}'")
 
   def validate_no_core_components(self):
     try:
@@ -99,6 +86,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     # NOTE: we should check the correct workflow mode is enabled one day
     # That's not currently queryable
 
+    print(f"Done validating workflow: {self.workflow_name}, success!")
     print()
 
     return True

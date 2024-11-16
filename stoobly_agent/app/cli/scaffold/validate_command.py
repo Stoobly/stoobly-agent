@@ -1,8 +1,8 @@
 import pdb
 from time import sleep
-from typing import List
 
 import docker
+from docker import errors as docker_errors
 from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -13,29 +13,36 @@ class ValidateCommand():
   def __init__(self):
     self.docker_client = docker.from_env()
 
+  # Some containers like init and configure can take longer than expected to finish so retry
+  def __get_container(self, container_name: str) -> Container:
+    tries = 10
+    for _ in range(tries):
+      try:
+        container = self.docker_client.containers.get(container_name)
+        return container
+      except docker_errors.NotFound:
+        sleep(0.5)
+
+    raise ScaffoldValidateException(f"Container not found: {container_name}")
+
   def validate_init_containers(self, init_container_name, configure_container_name) -> None:
     print(f"Validating setup containers: {init_container_name}, {configure_container_name}")
 
-    init_container = self.docker_client.containers.get(init_container_name)
+
+    init_container = self.__get_container(init_container_name)
     logs = init_container.logs()
     if logs:
       raise ScaffoldValidateException(f"Error logs potentially detected in: {init_container_name}")
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
       raise ScaffoldValidateException(f"init container has not exited like expected: {init_container_name}")
 
-    # Configure container can take slightly longer than expected to finish so retry
+    configure_container = self.__get_container(configure_container_name)
+
     configure_container_ran = False
-    tries = 10
-    for i in range(tries):
-      configure_container = self.docker_client.containers.get(configure_container_name)
-      if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
-        configure_container_ran = True
-        break
-      else:
-        sleep(0.1)
-    
+    if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
+      configure_container_ran = True
     if not configure_container_ran:
-      raise ScaffoldValidateException(f"Configure container has not ran like expected: {configure_container_name}")
+      raise ScaffoldValidateException(f"Configure container has not ran as expected: {configure_container_name}")
   
   def validate_detached(self, container: Container) -> None:
     print(f"Validating detached for: {container.name}")

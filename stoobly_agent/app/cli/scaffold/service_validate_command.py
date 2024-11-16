@@ -178,7 +178,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
   def validate_service_container(self):
     pass
   
-  def validate(self, **kwargs) -> bool:
+  def validate(self) -> bool:
     print(f"Validating service: {self.service_name}")
 
     url = f"{self.service_config.scheme}://{self.hostname}"
@@ -209,10 +209,10 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       if not destination_path.is_file():
         raise ScaffoldValidateException(f"Docker compose path is not a file: {destination_path}")
 
-      # Validate docker-compose.yml file has contents
-      # with open(destination_path) as f:
-      #   if self.service_name not in f.read():
-      #     assert False
+      # Validate docker-compose.yml file has the service defined
+      with open(destination_path) as f:
+        if self.service_name not in f.read():
+          raise ScaffoldValidateException(f"Local service is not defined in Docker Compose file: {destination_path}")
 
       service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
       if service_container.status == 'exited':
@@ -222,6 +222,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
       service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
       self.validate_detached(service_container)
 
+    print(f"Done validating service: {self.service_name}, success!")
     print()
 
     return True
