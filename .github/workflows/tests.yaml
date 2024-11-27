@@ -62,7 +62,7 @@ jobs:
         run: |
           echo 'Adding hosts to /etc/hosts'
           sudo echo "127.0.0.1 http.badssl.com" | sudo tee -a /etc/hosts
-          sudo echo "127.0.0.1 my-httpbin" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
           sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
 
       - name: Test with pytest
