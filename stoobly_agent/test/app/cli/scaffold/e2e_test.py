@@ -1,9 +1,7 @@
-import os
 from pathlib import Path
 import pathlib
 import pdb
 import shutil
-import tempfile
 
 from click.testing import CliRunner
 import docker
@@ -26,13 +24,19 @@ from stoobly_agent.app.cli.scaffold.service_validate_command import (
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
 )
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
+from stoobly_agent.test.test_helper import reset
 
 
 class TestScaffoldE2e():
+
+  @pytest.fixture(scope='module', autouse=True)
+  def settings(self):
+    return reset()
+
   @pytest.fixture(scope='module')
   def runner(self):
-    return CliRunner()
+    yield CliRunner()
 
   @pytest.fixture(scope='class')
   def docker_client(self):
@@ -43,23 +47,24 @@ class TestScaffoldE2e():
     yield "0.0.1"
 
   @pytest.fixture(scope='class', autouse=True)
-  def app_dir_path(self, docker_client, app_name):
-    temp_dir = tempfile.TemporaryDirectory()
-    yield temp_dir.name
-    temp_dir.cleanup()
+  def temp_dir(self):
+    data_dir_path = DataDir.instance().path
+    tmp_path = data_dir_path[:data_dir_path.rfind('/')]
 
-    temp_dir_name = os.path.basename(temp_dir.name)
-    docker_network = docker_client.networks.get(temp_dir_name)
-    docker_network.remove()
+    yield tmp_path
+
+  @pytest.fixture(scope='class', autouse=True)
+  def app_dir_path(self, temp_dir, app_name):
+    yield temp_dir
 
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):
-    return Path(__file__).parent.parent.parent.parent / 'mock_data'
+    yield Path(__file__).parent.parent.parent.parent / 'mock_data'
   
   @pytest.fixture(scope='class')
   def local_service_mock_docker_compose_path(self, mock_data_directory_path):
     path = mock_data_directory_path / "scaffold" / "docker-compose-local-service.yml"
-    return path
+    yield path
 
   @pytest.fixture(scope='class')
   def hostname(self):
@@ -126,7 +131,6 @@ class TestScaffoldE2e():
       yield
       TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
 
-
     def test_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
@@ -162,12 +166,12 @@ class TestScaffoldE2e():
     @pytest.fixture(scope='class')
     def assets_service_mock_docker_compose_path(self, mock_data_directory_path):
       path = mock_data_directory_path / "scaffold" / "docker-compose-assets-service.yml"
-      return path
+      yield path
 
     @pytest.fixture(scope='class')
     def assets_service_assets_path(self, mock_data_directory_path):
       path = mock_data_directory_path / "scaffold" / "index.html"
-      return path
+      yield path
     
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
@@ -226,7 +230,8 @@ class TestScaffoldE2e():
       TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_composite.hostname, assets_service_composite.service_name)
 
       # Add assets for assets service
-      destination_assets_path = f"{app_dir_path}/{DATA_DIR_NAME}/docker/{assets_service_composite.service_name}/{target_workflow_name}/index.html"
+      data_dir_path = DataDir.instance().path
+      destination_assets_path = f"{data_dir_path}/docker/{assets_service_composite.service_name}/{target_workflow_name}/index.html"
       destination_path = Path(destination_assets_path)
       assets_mock_path = mock_data_directory_path / "scaffold" / "index.html"
       shutil.copyfile(assets_mock_path, destination_path)
@@ -247,7 +252,6 @@ class TestScaffoldE2e():
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
       TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
-    
 
     def test_no_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)

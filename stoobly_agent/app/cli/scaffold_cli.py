@@ -301,6 +301,8 @@ def logs(**kwargs):
 def run(**kwargs):
   cwd = os.getcwd()
 
+  DataDir.instance().certs_dir_path
+
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 

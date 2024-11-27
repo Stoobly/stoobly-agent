@@ -1,4 +1,4 @@
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DataDir
 
 
 class ServiceComposite():
@@ -9,6 +9,7 @@ class ServiceComposite():
     self.service_proxy_container_name = f"{target_workflow_name}-{service_name}.proxy-1"
     self.service_init_container_name = f"{target_workflow_name}-{service_name}.init-1"
     self.service_configure_container_name = f"{target_workflow_name}-{service_name}.configure-1"
-    self.docker_compose_path = f"{app_dir_path}/{DATA_DIR_NAME}/docker/{service_name}/{target_workflow_name}/docker-compose.yml"
-    self.init_script_path = f"{app_dir_path}/{DATA_DIR_NAME}/docker/{service_name}/{target_workflow_name}/bin/init"
 
+    data_dir_path = DataDir.instance(app_dir_path).path
+    self.docker_compose_path = f"{data_dir_path}/docker/{service_name}/{target_workflow_name}/docker-compose.yml"
+    self.init_script_path = f"{data_dir_path}/docker/{service_name}/{target_workflow_name}/bin/init"
