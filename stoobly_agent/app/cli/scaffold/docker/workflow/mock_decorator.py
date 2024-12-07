@@ -20,7 +20,7 @@ class MockDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"../{SERVICE_HOSTNAME}-joined.pem",
+      '--certs', f"/etc/ssl/certs/{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--intercept',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
