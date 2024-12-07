@@ -1,8 +1,9 @@
 import os
-
+import pdb
 from typing import List
 
 from .app import App
+
 
 class Workflow():
 
@@ -41,6 +42,26 @@ class Workflow():
         continue
       
       services.append(path)
+
+    return services
+
+  # TODO: merge into 1 services property
+
+  # Returns services that run in this specific workflow
+  @property
+  def services_ran(self) -> List[str]:
+    services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
+
+    services = []
+    for filename in os.listdir(services_dir):
+      path = os.path.join(services_dir, filename)
+      if not os.path.isdir(path):
+        continue
+
+      for sub_path in os.scandir(path):
+        if os.path.isdir(sub_path):
+          if sub_path.name == self.workflow_name:
+            services.append(filename)
 
     return services
 

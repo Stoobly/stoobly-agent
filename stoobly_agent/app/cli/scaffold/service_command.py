@@ -5,6 +5,7 @@ from .app import App
 from .app_command import AppCommand
 from .service_config import ServiceConfig
 
+
 class ServiceCommand(AppCommand):
 
   def __init__(self, app: App, **kwargs):
@@ -48,3 +49,4 @@ class ServiceCommand(AppCommand):
     _config.update(self.service_config.read())
     _config.update(_c)
     return _config
+
