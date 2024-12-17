@@ -4,14 +4,17 @@ set -e
 cli=stoobly-agent
 user=stoobly
 
-# If first arg is `-some-option` or `--some-option`, pass it to $cli run
-if [ "${1#-}" != "$1" ]; then
+if [[ "$1" == "$cli" ]]; then
+    # If first arg is `$cli`, then default to run command
+    set -- $cli run
+elif [[ "${1#-}" != "$1" ]]; then
+    # If first arg is `-some-option` or `--some-option` or empty, pass it to $cli run
 	set -- $cli run "$@"
 fi
 
 # If the current current user UID == 0
 if [ "$(id -u)" = '0' ]; then
-    # If the first argument is $cli OR bin/* 
+    # If the first argument is $cli OR bin/*
     if [ "$1" = $cli ] || [[ "$1" == bin/* ]]; then
         # changes any file that is not already $user to be owned by $user
         find . \! -user $user -exec chown $user '{}' +
