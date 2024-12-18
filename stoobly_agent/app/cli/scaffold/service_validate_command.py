@@ -16,7 +16,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_TEST_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
-from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
+from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
 from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
@@ -31,7 +31,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
 
     self.workflow_name = kwargs['workflow_name']
     self.hostname = self.service_config.hostname
-    self.service_composite = ServiceComposite(app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname)
+    self.service_docker_compose = ServiceDockerCompose(app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname)
 
   @property
   def fixtures_dir_path(self):
@@ -51,7 +51,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     )
 
   def is_local(self):
-    with open (self.service_composite.docker_compose_path,'rb') as f:
+    with open (self.service_docker_compose.docker_compose_path,'rb') as f:
       docker_compose_file_content = yaml.safe_load(f)
       if docker_compose_file_content and docker_compose_file_content.get('services'):
         return True
@@ -191,20 +191,20 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE and self.service_config.detached:
       self.validate_internal_hostname(url)
 
-    self.validate_init_containers(self.service_composite.service_init_container_name, self.service_composite.service_configure_container_name)
+    self.validate_init_containers(self.service_docker_compose.service_init_container_name, self.service_docker_compose.service_configure_container_name)
 
     # Service init containers have a mounted dist folder unlike the core init container
-    init_container = self.docker_client.containers.get(self.service_composite.service_init_container_name)
+    init_container = self.docker_client.containers.get(self.service_docker_compose.service_init_container_name)
     self.validate_fixtures_folder(init_container)
 
     if self.service_config.hostname:
-      service_proxy_container = self.docker_client.containers.get(self.service_composite.service_proxy_container_name)
+      service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.service_proxy_container_name)
       self.validate_proxy_container(service_proxy_container)
 
     if self.is_local():
       print(f"Validating local user defined service: {self.service_name}")
       # Validate docker-compose path exists
-      docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/docker/{self.service_composite.service_name}/{self.workflow_name}/docker-compose.yml"
+      docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/docker/{self.service_docker_compose.service_name}/{self.workflow_name}/docker-compose.yml"
       destination_path = Path(docker_compose_path)
       if not destination_path.is_file():
         raise ScaffoldValidateException(f"Docker compose path is not a file: {destination_path}")
@@ -214,12 +214,12 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
         if self.service_name not in f.read():
           raise ScaffoldValidateException(f"Local service is not defined in Docker Compose file: {destination_path}")
 
-      service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
+      service_container = self.docker_client.containers.get(self.service_docker_compose.service_container_name)
       if service_container.status == 'exited':
         return False
 
     if self.service_config.detached:
-      service_container = self.docker_client.containers.get(self.service_composite.service_container_name)
+      service_container = self.docker_client.containers.get(self.service_docker_compose.service_container_name)
       self.validate_detached(service_container)
 
     print(f"Done validating service: {self.service_name}, success!")

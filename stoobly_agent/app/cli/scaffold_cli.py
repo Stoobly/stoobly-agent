@@ -8,7 +8,6 @@ from typing import List
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.app_validate_command import AppValidateCommand
 from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
@@ -72,15 +71,6 @@ def create(**kwargs):
     __app_build(app, **kwargs)
   else:
     print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
-
-@app.command(
-  help="Validate a scaffolded app"
-)
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
-def validate(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-  AppValidateCommand(app, **kwargs).validate()
-
 
 def service_create_options(f):
   def wrapper(*args, **kwargs):

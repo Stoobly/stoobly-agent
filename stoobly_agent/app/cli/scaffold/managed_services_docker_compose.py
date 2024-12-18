@@ -1,5 +1,5 @@
 
-class CoreComponentsComposite():
+class ManagedServicesDockerCompose():
   def __init__(self, target_workflow_name):
     self.core_init_container_name = f"{target_workflow_name}-build.init-1" 
     self.core_configure_container_name = f"{target_workflow_name}-build.configure-1"

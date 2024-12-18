@@ -1,7 +1,7 @@
 from stoobly_agent.config.data_dir import DataDir
 
 
-class ServiceComposite():
+class ServiceDockerCompose():
   def __init__(self, app_dir_path, target_workflow_name, service_name, hostname):
     self.service_name = service_name
     self.hostname = hostname

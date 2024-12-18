@@ -14,10 +14,10 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_TEST_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE
-from stoobly_agent.app.cli.scaffold.core_components_composite import (
-  CoreComponentsComposite,
+from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
+  ManagedServicesDockerCompose,
 )
-from stoobly_agent.app.cli.scaffold.service_composite import ServiceComposite
+from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
 from stoobly_agent.app.cli.scaffold.service_validate_command import (
   ServiceValidateCommand,
 )
@@ -89,35 +89,35 @@ class TestScaffoldE2e():
       yield WORKFLOW_RECORD_TYPE
 
     @pytest.fixture(scope='class')
-    def core_components_composite(self, target_workflow_name):
-      yield CoreComponentsComposite(target_workflow_name=target_workflow_name)
+    def managed_services_docker_compose(self, target_workflow_name):
+      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
     
     @pytest.fixture(scope='class')
-    def external_service_composite(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceComposite(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
 
     @pytest.fixture(scope='class')
-    def local_service_composite(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceComposite(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+    def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope='class', autouse=True)
-    def setup_composites(self, core_components_composite, external_service_composite, local_service_composite):
-      self.core_components_composite = core_components_composite
-      self.external_service_composite = external_service_composite
-      self.local_service_composite = local_service_composite
+    def setup_docker_composes(self, managed_services_docker_compose, external_service_docker_compose, local_service_docker_compose):
+      self.managed_services_docker_compose = managed_services_docker_compose
+      self.external_service_docker_compose = external_service_docker_compose
+      self.local_service_docker_compose = local_service_docker_compose
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_composite, local_service_composite, local_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
       TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_composite.hostname, external_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name)
 
       # Create local user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_composite.hostname, local_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name)
 
       # Validate docker-compose path exists
-      destination_path = Path(local_service_composite.docker_compose_path)
+      destination_path = Path(local_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
       # Add user defined Docker Compose file for the local service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
@@ -141,21 +141,21 @@ class TestScaffoldE2e():
       command = WorkflowValidateCommand(app, **config)
       command.validate()
 
-    def test_external_service(self, external_service_composite: ServiceComposite, app_dir_path, target_workflow_name):
+    def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
-        'service_name': external_service_composite.service_name 
+        'service_name': external_service_docker_compose.service_name 
       }
 
       command = ServiceValidateCommand(app, **config)
       command.validate()
 
-    def test_local_service(self, app_dir_path, target_workflow_name, local_service_composite: ServiceComposite):
+    def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
-        'service_name': local_service_composite.service_name 
+        'service_name': local_service_docker_compose.service_name 
       }
 
       command = ServiceValidateCommand(app, **config)
@@ -186,52 +186,52 @@ class TestScaffoldE2e():
       yield "assets"
 
     @pytest.fixture(scope='class')
-    def core_components_composite(self, target_workflow_name):
-      yield CoreComponentsComposite(target_workflow_name=target_workflow_name)
+    def managed_services_docker_compose(self, target_workflow_name):
+      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
     
     @pytest.fixture(scope='class')
-    def external_service_composite(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceComposite(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
 
     @pytest.fixture(scope='class')
-    def local_service_composite(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceComposite(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+    def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
     
     @pytest.fixture(scope='class')
-    def assets_service_composite(self, app_dir_path, target_workflow_name, assets_service_name, assets_hostname):
-      yield ServiceComposite(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname)
+    def assets_service_docker_compose(self, app_dir_path, target_workflow_name, assets_service_name, assets_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname)
 
     @pytest.fixture(scope='class', autouse=True)
-    def setup_composites(self, core_components_composite, external_service_composite, local_service_composite, assets_service_composite):
-      self.core_components_composite = core_components_composite
-      self.external_service_composite = external_service_composite
-      self.local_service_composite = local_service_composite
-      self.assets_service_composite = assets_service_composite
+    def setup_docker_composes(self, managed_services_docker_compose, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose):
+      self.managed_services_docker_compose = managed_services_docker_compose
+      self.external_service_docker_compose = external_service_docker_compose
+      self.local_service_docker_compose = local_service_docker_compose
+      self.assets_service_docker_compose = assets_service_docker_compose
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_composite, local_service_composite, assets_service_composite, mock_data_directory_path, assets_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose, mock_data_directory_path, assets_service_mock_docker_compose_path):
 
       TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_composite.hostname, external_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name)
       # Create local user defined services
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_composite.hostname, local_service_composite.service_name)
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_composite.hostname, assets_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name)
 
       # Don't run the local user defined service in the 'test' workflow
       # So don't copy the Docker Compose file over
 
       # Add user defined Docker Compose file for the assets service
-      destination_path = Path(assets_service_composite.docker_compose_path)
+      destination_path = Path(assets_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
       shutil.copyfile(assets_service_mock_docker_compose_path, destination_path)
 
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_composite.hostname, assets_service_composite.service_name)
+      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name)
 
       # Add assets for assets service
       data_dir_path = DataDir.instance().path
-      destination_assets_path = f"{data_dir_path}/docker/{assets_service_composite.service_name}/{target_workflow_name}/index.html"
+      destination_assets_path = f"{data_dir_path}/docker/{assets_service_docker_compose.service_name}/{target_workflow_name}/index.html"
       destination_path = Path(destination_assets_path)
       assets_mock_path = mock_data_directory_path / "scaffold" / "index.html"
       shutil.copyfile(assets_mock_path, destination_path)
@@ -240,7 +240,7 @@ class TestScaffoldE2e():
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
-        'service_name': external_service_composite.service_name 
+        'service_name': external_service_docker_compose.service_name 
       }
       command = ServiceValidateCommand(app, **config)
       with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
@@ -263,19 +263,19 @@ class TestScaffoldE2e():
       command = WorkflowValidateCommand(app, **config)
       command.validate()
 
-    def test_user_services(self, app_dir_path, target_workflow_name, external_service_composite, local_service_composite):
+    def test_user_services(self, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose):
       app = App(app_dir_path, DOCKER_NAMESPACE)
 
       config = {
         'workflow_name': target_workflow_name,
-        'service_name': external_service_composite.service_name 
+        'service_name': external_service_docker_compose.service_name 
       }
       command = ServiceValidateCommand(app, **config)
       command.validate()
 
       config = {
         'workflow_name': target_workflow_name,
-        'service_name': local_service_composite.service_name 
+        'service_name': local_service_docker_compose.service_name 
       }
       command = ServiceValidateCommand(app, **config)
       command.validate()
