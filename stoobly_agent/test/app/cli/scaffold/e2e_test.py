@@ -18,8 +18,8 @@ from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
   ManagedServicesDockerCompose,
 )
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
-from stoobly_agent.app.cli.scaffold.service_validate_command import (
-  ServiceValidateCommand,
+from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import (
+  ServiceWorkflowValidateCommand,
 )
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
@@ -148,7 +148,7 @@ class TestScaffoldE2e():
         'service_name': external_service_docker_compose.service_name 
       }
 
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
 
     def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
@@ -158,7 +158,7 @@ class TestScaffoldE2e():
         'service_name': local_service_docker_compose.service_name 
       }
 
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
 
 
@@ -242,7 +242,7 @@ class TestScaffoldE2e():
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
       }
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
 
@@ -270,14 +270,14 @@ class TestScaffoldE2e():
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
       }
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
 
       config = {
         'workflow_name': target_workflow_name,
         'service_name': local_service_docker_compose.service_name 
       }
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
 
     def test_tests(self):
@@ -292,7 +292,7 @@ class TestScaffoldE2e():
         'service_name': 'assets'
       }
 
-      command = ServiceValidateCommand(app, **config)
+      command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
 
   @staticmethod

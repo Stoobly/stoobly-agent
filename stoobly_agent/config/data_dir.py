@@ -187,6 +187,8 @@ class DataDir:
 
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
+
+            # Create the certs_dir_path if it doesn't exist
             self.certs_dir_path
 
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:

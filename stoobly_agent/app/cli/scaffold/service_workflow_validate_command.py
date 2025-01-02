@@ -1,13 +1,13 @@
-from collections import Counter
 import os
-from pathlib import Path
 import pdb
+from collections import Counter
+from pathlib import Path
 
-from docker.models.containers import Container
 import requests
+import yaml
+from docker.models.containers import Container
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
-import yaml
 
 from stoobly_agent.app.cli.scaffold.constants import (
   FIXTURES_FOLDER_NAME,
@@ -24,7 +24,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from .app import App
 
 
-class ServiceValidateCommand(ServiceCommand, ValidateCommand):
+class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def __init__(self, app: App, **kwargs):
     ServiceCommand.__init__(self, app, **kwargs)
     ValidateCommand.__init__(self)
@@ -79,10 +79,7 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     print(f"Validating hostname: {url}")
     self.hostname_reachable(url)
 
-    # TODO: add to /etc/hosts? provide route inside Docker container with --add-host
-
-    # TODO: check logs of proxy. lifecycle hook for custom logging?
-    # TODO: does mitmproxy support json logging?
+    # TODO: check logs of proxy. lifecycle hook for custom logging? Does mitmproxy support json logging?
 
   def validate_internal_hostname(self, url: str) -> None:
     print(f"Validating hostname inside Docker network, url: {url}")
@@ -139,9 +136,9 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     fixtures_folder_contents_scaffold = os.listdir(self.fixtures_dir_path)
 
     if Counter(fixtures_folder_contents_container) != Counter(fixtures_folder_contents_scaffold):
-      raise ScaffoldValidateException('Contents of fixtures folder is not equal')
+      raise ScaffoldValidateException(f"Fixtures was not mounted properly, expected {self.fixtures_dir_path} to exist in container path {fixtures_folder_path}")
 
-  # TODO: might not need this if the hostname is reachable and working
+  # Note: might not need this if the hostname is reachable and working
   def proxy_environment_variables_exist(self, container: Container) -> None:
     environment_variables = container.attrs['Config']['Env']
     virtual_host_exists = False
@@ -191,14 +188,14 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
     if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE and self.service_config.detached:
       self.validate_internal_hostname(url)
 
-    self.validate_init_containers(self.service_docker_compose.service_init_container_name, self.service_docker_compose.service_configure_container_name)
+    self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
 
     # Service init containers have a mounted dist folder unlike the core init container
-    init_container = self.docker_client.containers.get(self.service_docker_compose.service_init_container_name)
+    init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
     self.validate_fixtures_folder(init_container)
 
     if self.service_config.hostname:
-      service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.service_proxy_container_name)
+      service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
       self.validate_proxy_container(service_proxy_container)
 
     if self.is_local():
@@ -214,12 +211,12 @@ class ServiceValidateCommand(ServiceCommand, ValidateCommand):
         if self.service_name not in f.read():
           raise ScaffoldValidateException(f"Local service is not defined in Docker Compose file: {destination_path}")
 
-      service_container = self.docker_client.containers.get(self.service_docker_compose.service_container_name)
+      service_container = self.docker_client.containers.get(self.service_docker_compose.container_name)
       if service_container.status == 'exited':
         return False
 
     if self.service_config.detached:
-      service_container = self.docker_client.containers.get(self.service_docker_compose.service_container_name)
+      service_container = self.docker_client.containers.get(self.service_docker_compose.container_name)
       self.validate_detached(service_container)
 
     print(f"Done validating service: {self.service_name}, success!")

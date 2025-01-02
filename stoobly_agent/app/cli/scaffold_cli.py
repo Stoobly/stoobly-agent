@@ -17,7 +17,7 @@ from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import ge
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
-from stoobly_agent.app.cli.scaffold.service_validate_command import ServiceValidateCommand
+from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
@@ -291,6 +291,7 @@ def logs(**kwargs):
 def run(**kwargs):
   cwd = os.getcwd()
 
+  # Create the certs_dir_path if it doesn't exist
   DataDir.instance().certs_dir_path
 
   if not os.getenv(env_vars.LOG_LEVEL):
@@ -365,7 +366,7 @@ def validate(**kwargs):
     for service in workflow.services_ran:
       if service not in CORE_SERVICES:
         config['service_name'] = service
-        command = ServiceValidateCommand(app, **config)
+        command = ServiceWorkflowValidateCommand(app, **config)
         command.validate()
   except ScaffoldValidateException as sve:
     print(f"\nFatal Scaffold Validation Exception: {sve}")
