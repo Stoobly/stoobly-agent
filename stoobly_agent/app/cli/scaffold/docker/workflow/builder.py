@@ -182,7 +182,6 @@ class WorkflowBuilder(Builder):
 
     depends_on = {}
     environment = { **self.env_dict() }
-    extra_hosts = []
     networks = [self.service_builder.service_name]
     volumes = []
 
@@ -190,7 +189,6 @@ class WorkflowBuilder(Builder):
       'build': self.proxy_build, 
       'depends_on': depends_on,
       'environment': environment,
-      'extra_hosts': extra_hosts,
       'extends': self.service_builder.build_extends_proxy_base(self.dir_path),
       'networks': networks,
       'profiles': self.profiles,
