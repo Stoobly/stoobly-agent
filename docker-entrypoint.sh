@@ -4,10 +4,7 @@ set -e
 cli=stoobly-agent
 user=stoobly
 
-if [[ "$1" == "$cli" ]]; then
-    # If first arg is `$cli`, then default to run command
-    set -- $cli run
-elif [[ "${1#-}" != "$1" ]]; then
+if [[ "${1#-}" != "$1" ]]; then
     # If first arg is `-some-option` or `--some-option` or empty, pass it to $cli run
 	set -- $cli run "$@"
 fi
