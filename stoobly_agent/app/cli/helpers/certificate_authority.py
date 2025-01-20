@@ -172,6 +172,7 @@ class CertificateAuthority():
         try:
             # Connect to the server and get the certificate
             context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
             timeout = 2.5
             with socket.create_connection((domain, port), timeout) as sock:
                 with context.wrap_socket(sock, server_hostname=domain) as ssock:
