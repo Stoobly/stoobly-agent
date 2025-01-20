@@ -15,13 +15,9 @@ class TestCertificateAuthority():
 
   @pytest.fixture(autouse=True, scope='class')
   def certificate_authority(self):
-    return CertificateAuthority()
+    return CertificateAuthority(DataDir.instance().certs_dir_path)
 
   class TestWhenCertDirConfigured():
-
-    @pytest.fixture(autouse=True, scope='class')
-    def certificate_authority(self):
-      return CertificateAuthority(DataDir.instance().certs_dir_path)
 
     def test_defaults_to_not_installed(self, certificate_authority: CertificateAuthority):
       assert not certificate_authority.certs_generated
@@ -31,6 +27,10 @@ class TestCertificateAuthority():
       assert certificate_authority.certs_generated
 
   class TestWhenCertDirNotConfigured():
+
+    @pytest.fixture(autouse=True, scope='class')
+    def certificate_authority(self):
+      return CertificateAuthority()
 
     def test_defaults_to_mitmproxy_confdir(self, certificate_authority: CertificateAuthority):
       assert certificate_authority.certs_dir == DEFAULT_CONF_DIR_PATH
