@@ -4,6 +4,7 @@ import time
 import yaml
 
 from shutil import copyfile
+from typing import Self
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -50,7 +51,7 @@ class Settings:
         self.__load_settings()
 
     @classmethod
-    def instance(cls, data_dir_path: str = None):
+    def instance(cls, data_dir_path: str = None) -> Self:
         if not cls._instances:
             cls._instances = {}
 
