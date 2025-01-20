@@ -5,6 +5,7 @@ import sys
 
 from typing import List
 
+from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -68,10 +69,45 @@ def create(**kwargs):
   else:
     print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
 
-def service_create_options(f):
-  def wrapper(*args, **kwargs):
-    return f(*args, **kwargs)
-  return wrapper
+@app.command(
+  help="Scaffold app service certs"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
+def mkcert(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, ca_certs_dir_path=kwargs['ca_certs_dir_path'])
+
+  if kwargs['certs_dir_path']:
+    app.certs_dir_path = kwargs['certs_dir_path']
+
+  if kwargs['context_dir_path']:
+    app.context_dir_path = kwargs['context_dir_path']
+
+  if not app.exists:
+    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
+    sys.exit(1)
+
+  services = __get_services(app.services, service=kwargs['service'])
+
+  for service_name in services:
+    service = Service(service_name, app)
+    service_config = ServiceConfig(service.dir_path)
+
+    if service_config.scheme != 'https':
+      continue
+
+    hostname = service_config.hostname
+    
+    if not hostname:
+      continue
+
+    ca = CertificateAuthority(app.ca_certs_dir_path)
+    if not ca.signed(hostname, app.certs_dir_path):
+      Logger.instance(LOG_ID).info(f"Creating cert for {hostname}")
+      ca.sign(hostname, app.certs_dir_path)
 
 @service.command(
   help="Scaffold a service",
@@ -273,7 +309,8 @@ def logs(**kwargs):
  
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Path to certs directory.')
+@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
@@ -290,7 +327,11 @@ def run(**kwargs):
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=kwargs['dry_run'])
+  app = App(
+    kwargs['app_dir_path'], DOCKER_NAMESPACE, 
+    ca_certs_dir_path=kwargs['ca_certs_dir_path'], skip_validate_path=kwargs['dry_run']
+  )
+
   if kwargs['certs_dir_path']:
     app.certs_dir_path = kwargs['certs_dir_path']
 
@@ -344,16 +385,17 @@ def __get_services(services: List[str], **kwargs):
   # Log services that don't exist
   missing_services = [service for service in kwargs['service'] if service not in services]
   if missing_services:
-    Logger.instance(WARNING).warn(f"Service(s) {','.join(missing_services)} are not found")
+    Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
 
+  filter = kwargs.get('filter') or []
   if kwargs['service']:
     # If service is specified, run only those services
     services = list(kwargs['service'])
 
-    if WORKFLOW_CUSTOM_FILTER not in kwargs['filter']:
+    if WORKFLOW_CUSTOM_FILTER not in filter:
       services += CORE_SERVICES
   else:
-    if WORKFLOW_CUSTOM_FILTER in kwargs['filter']:
+    if WORKFLOW_CUSTOM_FILTER in filter:
       # If this filter is set, then the user does not want to run core services
       services = list(filter(lambda service: service not in CORE_SERVICES, services))
     

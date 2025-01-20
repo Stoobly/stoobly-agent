@@ -5,7 +5,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
-from .constants import APP_NETWORK_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
+from .constants import APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
 from .env import Env
 from .workflow_command import WorkflowCommand
 
@@ -16,18 +16,23 @@ class WorkflowRunCommand(WorkflowCommand):
     super().__init__(app, **kwargs)
 
     self.__current_working_dir = os.getcwd()
+    self.__ca_certs_dir_path = app.ca_certs_dir_path
     self.__certs_dir_path = app.certs_dir_path
     self.__context_dir_path = app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = kwargs.get('network') or app.network
 
   @property
+  def ca_certs_dir_path(self):
+    if not os.path.exists(self.__ca_certs_dir_path):
+      os.makedirs(self.__ca_certs_dir_path)
+
+    return self.__ca_certs_dir_path
+
+  @property
   def certs_dir_path(self):
-    if not self.__certs_dir_path:
-      data_dir = DataDir.instance()
-      dir_path = os.path.join(data_dir.tmp_dir_path, 'certs')
-      if not os.path.exists(dir_path):
-          os.mkdir(dir_path)
+    if not os.path.exists(self.__certs_dir_path):
+      os.makedirs(self.__certs_dir_path)
 
     return self.__certs_dir_path
 
@@ -120,6 +125,7 @@ class WorkflowRunCommand(WorkflowCommand):
 
   def write_env(self):
     _config = {}
+    _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
