@@ -1,8 +1,6 @@
 import os
 import shutil
 
-from typing import Self
-
 from stoobly_agent.config.constants.env_vars import ENV
 
 DATA_DIR_NAME = '.stoobly'
@@ -38,7 +36,7 @@ class DataDir:
                 self.create(os.path.dirname(self.__data_dir_path))
 
     @classmethod
-    def instance(cls, path: str = None) -> Self:
+    def instance(cls, path: str = None):
         if not cls._instances:
             cls._instances = {}
 
