@@ -1,4 +1,3 @@
-from nis import match
 import os
 
 from stoobly_agent.config.constants import env_vars
