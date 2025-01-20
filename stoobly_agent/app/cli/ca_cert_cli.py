@@ -1,8 +1,10 @@
-
 import click
-import distro
+import pdb
+import sys
 
-from .ca_cert_installer import CACertInstaller
+from stoobly_agent.config.data_dir import DataDir
+
+from .helpers.certificate_authority import CertificateAuthority
 
 @click.group(
     epilog="Run 'stoobly-agent COMMAND --help' for more information on a command.",
@@ -13,22 +15,31 @@ def ca_cert(ctx):
     pass
 
 @ca_cert.command()
+@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--certs-dir-path', default=DataDir.instance().certs_dir_path, help='Output directory.')
+@click.argument('hostname')
+def mkcert(**kwargs):
+    mitmproxy_ca_certs_dir = kwargs['ca_certs_dir_path']
+
+    installer = CertificateAuthority(mitmproxy_ca_certs_dir)
+
+    try:
+        installer.sign(kwargs['hostname'], kwargs['certs_dir_path'])
+    except Exception as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+
+@ca_cert.command()
+@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory.')
 def install(**kwargs):
-    distro_name = distro.name(pretty=True)
+    mitmproxy_ca_certs_dir = kwargs['ca_certs_dir_path']
+    installer = CertificateAuthority(mitmproxy_ca_certs_dir)
 
-    installer = CACertInstaller()
-
-    # Ubuntu or other Debian based
-    if distro.like() == 'debian':
-        print(f"Installing CA certificate for {distro_name}...")
-        installer.handle_debian()
-    # MacOS
-    elif distro.id() == 'darwin':
-        installer.handle_darwin()
-    # elif distro.id() == 'rhel':
-    #     return
-    else:
-        print(f"{distro_name} is not supported yet for automatic CA cert installation.")
+    try:
+        installer.install()
+    except Exception as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
 @ca_cert.command()
 def uninstall():
