@@ -52,5 +52,5 @@ EXPOSE 8080
 # UI $port
 EXPOSE 4200
 
-CMD ["stoobly-agent"]
+CMD ["stoobly-agent", "run"]
 
