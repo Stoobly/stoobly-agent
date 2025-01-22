@@ -32,17 +32,7 @@ class Workflow():
 
   @property
   def service_paths(self):
-    services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
-
-    services = []
-    for filename in os.listdir(services_dir):
-      path = os.path.join(services_dir, filename)
-      if not os.path.isdir(path):
-        continue
-      
-      services.append(path)
-
-    return services
+    return self.app.service_paths
 
   def service_paths_from_services(self, services: List[str]):
     app_namespace_path = self.app.namespace_path

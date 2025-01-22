@@ -1,6 +1,7 @@
 from typing import Literal
 
 APP_NETWORK_ENV = 'APP_NETWORK'
+CA_CERTS_DIR_ENV = 'CA_CERTS_DIR'
 CERTS_DIR_ENV = 'CERTS_DIR'
 COMPOSE_TEMPLATE = '.docker-compose.{workflow}.yml'
 CONFIG_FILE = '.config.yml'

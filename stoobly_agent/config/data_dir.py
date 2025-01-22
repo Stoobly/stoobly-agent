@@ -6,6 +6,7 @@ from stoobly_agent.config.constants.env_vars import ENV
 DATA_DIR_NAME = '.stoobly'
 DB_FILE_NAME = 'stoobly_agent.sqlite3'
 DB_VERSION_NAME = 'VERSION'
+MITMPROXY_OPTIONS_FILE_NAME = 'options.json'
 
 class DataDir:
 
@@ -103,6 +104,35 @@ class DataDir:
         return os.path.join(self.db_dir_path, DB_VERSION_NAME)
 
     @property
+    def mitmproxy_options_json_path(self):
+        return os.path.join(self.tmp_dir_path, MITMPROXY_OPTIONS_FILE_NAME)
+
+    @property
+    def mitmproxy_conf_dir_path(self):
+        from stoobly_agent.config.constants.mitmproxy import DEFAULT_CONF_DIR_PATH
+
+        conf_dir = DEFAULT_CONF_DIR_PATH
+
+        options_json = self.mitmproxy_options_json_path
+        if os.path.exists(options_json):
+            try:
+                with open(options_json, 'r') as fp:
+                    import json
+                    contents = fp.read()
+                    options = json.loads(contents)
+                    _conf_dir = options.get('confdir')
+
+                    if _conf_dir or not os.path.exists(_conf_dir):
+                        conf_dir = _conf_dir
+            except Exception:
+                pass
+
+        if not os.path.exists(conf_dir):
+            os.makedirs(conf_dir)
+
+        return conf_dir
+
+    @property
     def settings_file_path(self):
         return os.path.join(self.path, 'settings.yml')
 
@@ -181,6 +211,9 @@ class DataDir:
 
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
+
+            # Create tmp folder
+            os.mkdir(os.path.join(self.__data_dir_path, 'tmp'))
 
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(

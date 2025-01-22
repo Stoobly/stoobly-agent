@@ -5,7 +5,7 @@ import requests
 from time import time
 from typing import Callable, TypedDict, Union
 
-from stoobly_agent.app.cli.ca_cert_installer import CACertInstaller
+from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 from stoobly_agent.app.models.schemas.request import Request
@@ -125,6 +125,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   else:
     settings = Settings.instance()
     handler = getattr(requests, method.lower())
+    ca = CertificateAuthority()
 
     res = handler(
       request.url, 
@@ -135,7 +136,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
           'http': settings.proxy.url,
           'https': settings.proxy.url,
         },
-        'verify': CACertInstaller().mitm_crt_absolute_path if request_config['verify'] else False,
+        'verify': ca.ca_cert_path('.crt') if request_config['verify'] else False,
       }
     )
   received_at = time()

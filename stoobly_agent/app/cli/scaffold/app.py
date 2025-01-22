@@ -10,13 +10,23 @@ class App():
     data_dir: DataDir = DataDir.instance(path) 
 
     self.__scaffold_dir_path = data_dir.path
-    self.__certs_dir_path = os.path.join(data_dir.tmp_dir_path, 'certs')
+    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.mitmproxy_conf_dir_path
+    self.__certs_dir_path = data_dir.certs_dir_path
     self.__context_dir_path = data_dir.context_dir_path
     self.__dir_path = path
     self.__name = os.path.basename(self.__dir_path)
     self.__network = os.path.basename(self.__dir_path)
     self.__namespace = namespace
     self.__skip_validate_path = not not kwargs.get('skip_validate_path')
+
+  @property
+  def ca_certs_dir_path(self):
+    return self.__ca_certs_dir_path
+
+  @ca_certs_dir_path.setter
+  def ca_certs_dir_path(self, v: str):
+    self.__validate_path(v)
+    self.__certs_dir_path = v
 
   @property
   def certs_dir_path(self):
@@ -79,6 +89,24 @@ class App():
   @property
   def scaffold_namespace_path(self):
     return os.path.join(self.scaffold_dir_path, self.namespace)
+
+  @property
+  def services(self):
+    return list(map(lambda path: os.path.basename(path), self.service_paths))
+
+  @property
+  def service_paths(self):
+    services_dir = os.path.join(self.scaffold_dir_path, self.namespace)
+
+    services = []
+    for filename in os.listdir(services_dir):
+      path = os.path.join(services_dir, filename)
+      if not os.path.isdir(path):
+        continue
+      
+      services.append(path)
+
+    return services
 
   def copy_folders_and_hidden_files(self, src, dst):
       os.makedirs(dst, exist_ok=True)

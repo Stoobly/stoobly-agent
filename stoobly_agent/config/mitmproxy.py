@@ -3,11 +3,9 @@ import os
 import pdb
 
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.logger import Logger
 
 class MitmproxyConfig():
   MITMPROXY_DIR_NAME = '.mitmproxy'
-  MITMPROXY_OPTIONS_FILE_NAME = 'options.json'
 
   __instance = None
   __master = None
@@ -18,7 +16,7 @@ class MitmproxyConfig():
     else:
         self.__master = master 
 
-        self.__mitmproxy_dir_path = os.path.join(os.path.expanduser('~'), self.MITMPROXY_DIR_NAME)
+        self.__mitmproxy_dir_path = DataDir.instance().mitmproxy_conf_dir_path
 
         if not os.path.exists(self.__mitmproxy_dir_path):
             os.mkdir(self.__mitmproxy_dir_path)
@@ -46,7 +44,7 @@ class MitmproxyConfig():
   def get(self, key: str):
     if not self.__master:
       try:
-        fp = open(self.options_json_path, 'r')
+        fp = open(DataDir.instance().mitmproxy_options_json_path, 'r')
         contents = fp.read()
         fp.close()
         options = json.loads(contents)
@@ -66,10 +64,6 @@ class MitmproxyConfig():
     if self.__master:
       self.__master.options.set(*option)
 
-  @property
-  def options_json_path(self):
-    return os.path.join(DataDir.instance().tmp_dir_path, self.MITMPROXY_OPTIONS_FILE_NAME)
-
   def dump(self):
     if not self.__master:
       return
@@ -78,6 +72,6 @@ class MitmproxyConfig():
     for k, v in self.__master.options.items():
       options[k] = v.current()
 
-    fp = open(self.options_json_path, 'w')
+    fp = open(DataDir.instance().mitmproxy_options_json_path, 'w')
     fp.write(json.dumps(options, indent=2, sort_keys=True))
     fp.close()
