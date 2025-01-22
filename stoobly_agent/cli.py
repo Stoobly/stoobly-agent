@@ -11,7 +11,7 @@ from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
-from stoobly_agent.config.constants import env_vars, mode
+from stoobly_agent.config.constants import env_vars, mitmproxy, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -87,7 +87,7 @@ def init(**kwargs):
   Passphrase for decrypting the private key provided in the --cert option. Note that passing cert_passphrase on the command line makes your passphrase visible in your system's process list. Specify it in
   config.yaml to avoid this.
 ''')
-@click.option('--confdir', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Location of the default mitmproxy configuration files.')
+@click.option('--confdir', default=mitmproxy.DEFAULT_CONF_DIR_PATH, help='Location of the default mitmproxy configuration files.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
 @click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
