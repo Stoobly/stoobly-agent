@@ -221,7 +221,7 @@ class DataDir:
             # Create the certs_dir_path if it doesn't exist
             self.certs_dir_path
             # Create tmp folder
-            os.mkdir(os.path.join(self.__data_dir_path, 'tmp'))
+            os.makedirs(os.path.join(self.__data_dir_path, 'tmp'), exist_ok=True)
 
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
