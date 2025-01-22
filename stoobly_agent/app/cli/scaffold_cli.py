@@ -359,7 +359,7 @@ def validate(**kwargs):
     command = WorkflowValidateCommand(app, **config)
     command.validate()
   except ScaffoldValidateException as sve:
-    print(f"\nFatal Scaffold Validation Exception: {sve}")
+    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
     sys.exit(1)
 
   try:
@@ -369,7 +369,7 @@ def validate(**kwargs):
         command = ServiceWorkflowValidateCommand(app, **config)
         command.validate()
   except ScaffoldValidateException as sve:
-    print(f"\nFatal Scaffold Validation Exception: {sve}")
+    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
     sys.exit(1)
 
 

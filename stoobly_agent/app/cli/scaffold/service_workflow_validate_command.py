@@ -12,6 +12,9 @@ from urllib3 import Retry
 from stoobly_agent.app.cli.scaffold.constants import (
   FIXTURES_FOLDER_NAME,
   STOOBLY_HOME_DIR,
+  VIRTUAL_HOST_ENV,
+  VIRTUAL_PORT_ENV,
+  VIRTUAL_PROTO_ENV,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -99,7 +102,6 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if ('200 OK' not in logs) and ('499' not in logs):
       raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network")
 
-  # TODO: might be better in WorkflowValidateCommand
   # Check fixtures folder mounted into container
   def validate_fixtures_folder(self, container: Container):
     
@@ -110,11 +112,10 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     print(f"Validating fixtures folder in container: {container.name}")
 
     data_dir_mounted = False
-    # TODO: add destination folder as constant, use in main path too
-    data_dir = f"{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}"
     volume_mounts = container.attrs['Mounts']
+
     for volume_mount in volume_mounts:
-      if volume_mount['Destination'] == data_dir:
+      if volume_mount['Destination'] == STOOBLY_DATA_DIR:
         data_dir_mounted = True
         break
     if not data_dir_mounted:
@@ -147,11 +148,11 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     for environment_variable in environment_variables:
       environment_variable_name, environment_variable_value = environment_variable.split('=')
-      if environment_variable_name == 'VIRTUAL_HOST':
+      if environment_variable_name == VIRTUAL_HOST_ENV:
         virtual_host_exists = True
-      elif environment_variable_name == 'VIRTUAL_PORT':
+      elif environment_variable_name == VIRTUAL_PORT_ENV:
         virtual_port_exists = True
-      elif environment_variable_name == 'VIRTUAL_PROTO':
+      elif environment_variable_name == VIRTUAL_PROTO_ENV:
         virtual_proto_exists = True
 
     if not virtual_host_exists:
