@@ -11,6 +11,7 @@ from urllib3 import Retry
 
 from stoobly_agent.app.cli.scaffold.constants import (
   FIXTURES_FOLDER_NAME,
+  STOOBLY_DATA_DIR,
   STOOBLY_HOME_DIR,
   VIRTUAL_HOST_ENV,
   VIRTUAL_PORT_ENV,

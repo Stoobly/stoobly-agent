@@ -15,7 +15,7 @@ class ValidateCommand():
 
   # Some containers like init and configure can take longer than expected to finish so retry
   def __get_container(self, container_name: str) -> Container:
-    tries = 10
+    tries = 30
     for _ in range(tries):
       try:
         container = self.docker_client.containers.get(container_name)
