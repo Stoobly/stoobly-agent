@@ -128,13 +128,13 @@ class DataDir:
                     options = json.loads(contents)
                     _conf_dir = options.get('confdir')
 
-                    if _conf_dir or not os.path.exists(_conf_dir):
+                    if _conf_dir and os.path.exists(_conf_dir):
                         conf_dir = _conf_dir
             except Exception:
                 pass
-
-        if not os.path.exists(conf_dir):
-            os.makedirs(conf_dir)
+        else:
+            if not os.path.exists(conf_dir):
+                os.makedirs(conf_dir)
 
         return conf_dir
 
