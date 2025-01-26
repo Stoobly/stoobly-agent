@@ -28,6 +28,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.test.test_helper import reset
 
 
+@pytest.mark.e2e
 class TestScaffoldE2e():
 
   @pytest.fixture(scope='module', autouse=True)
