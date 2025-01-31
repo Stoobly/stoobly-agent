@@ -1,5 +1,6 @@
 import os
 import pdb
+import ssl
 from collections import Counter
 from pathlib import Path
 
@@ -69,13 +70,18 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
   def hostname_reachable(self, url: str) -> None:
     # Retry HTTP request. Source: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
-    s = requests.Session()
+    session = requests.Session()
     retries = Retry(total=5,
                     backoff_factor=0.1,
                     status_forcelist=[ 500, 502, 503, 504 ])
-    s.mount('http://', HTTPAdapter(max_retries=retries))
-    response = s.get(url=url)
+    session.mount('http://', HTTPAdapter(max_retries=retries))
+    session.mount('https://', HTTPAdapter(max_retries=retries))
 
+    # Use default OpenSSL path to CA certs on the system
+    default_ssl_verify_paths = ssl.get_default_verify_paths()
+    default_capath = default_ssl_verify_paths.capath
+
+    response = session.get(url=url, verify=default_capath)
     if not response.ok:
       raise ScaffoldValidateException(f"Host is not reachable: {url}")
  
