@@ -53,3 +53,4 @@ EXPOSE 8080
 EXPOSE 4200
 
 CMD ["stoobly-agent", "run"]
+

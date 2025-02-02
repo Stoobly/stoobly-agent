@@ -5,3 +5,9 @@ DOCKERFILE_CONTEXT = '.Dockerfile.context'
 DOCKERFILE_PROXY = '.Dockerfile.proxy'
 DOCKERFILE_SERVICE = 'Dockerfile.source'
 GATEWAY_NETWORK = 'gateway'
+
+# TODO: add scaffold container name templates here
+
+# Example:
+# COMPOSE_TEMPLATE = 'docker-compose.{workflow}.yml'
+
