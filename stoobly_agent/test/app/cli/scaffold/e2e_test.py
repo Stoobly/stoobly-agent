@@ -70,10 +70,18 @@ class TestScaffoldE2e():
   @pytest.fixture(scope='class')
   def hostname(self):
     yield "http.badssl.com"
+
+  @pytest.fixture(scope='class')
+  def https_service_hostname(self):
+    yield "example.com"
   
   @pytest.fixture(scope='class')
   def external_service_name(self):
     yield "external-service"
+
+  @pytest.fixture(scope='class')
+  def external_https_service_name(self):
+    yield "external-https-service"
 
   @pytest.fixture(scope='class')
   def local_hostname(self):
@@ -92,10 +100,14 @@ class TestScaffoldE2e():
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
       yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
-    
+
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
       yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+    
+    @pytest.fixture(scope='class')
+    def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
@@ -108,14 +120,15 @@ class TestScaffoldE2e():
       self.local_service_docker_compose = local_service_docker_compose
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
       TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
 
       # Create local user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
 
       # Validate docker-compose path exists
       destination_path = Path(local_service_docker_compose.docker_compose_path)
@@ -124,6 +137,9 @@ class TestScaffoldE2e():
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
 
       # Record workflow doesn't have a fixtures folder
+
+      # Generate certs
+      TestScaffoldE2e.cli_app_mkcert(runner, app_dir_path)
 
       TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name)
 
@@ -215,10 +231,10 @@ class TestScaffoldE2e():
       TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       # Create local user defined services
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name)
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
 
       # Don't run the local user defined service in the 'test' workflow
       # So don't copy the Docker Compose file over
@@ -228,7 +244,7 @@ class TestScaffoldE2e():
       assert destination_path.is_file()
       shutil.copyfile(assets_service_mock_docker_compose_path, destination_path)
 
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name)
+      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
 
       # Add assets for assets service
       data_dir_path = DataDir.instance().path
@@ -311,14 +327,32 @@ class TestScaffoldE2e():
     assert not output
 
   @staticmethod
-  def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str):
+  def cli_app_mkcert(runner: CliRunner, app_dir_path: str):
+    result = runner.invoke(scaffold, ['app', 'mkcert',
+      '--app-dir-path', app_dir_path,
+      '--context-dir-path', app_dir_path,
+    ])
+
+    assert result.exit_code == 0
+    output = result.stdout
+    assert not output
+
+
+  @staticmethod
+  def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
+    scheme = 'http'
+    port = '80'
+    if https == True:
+      scheme = 'https'
+      port = '443'
+
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--env', 'TEST',
       '--force',
       '--hostname', hostname,
-      '--scheme', 'http',
-      '--port', '80',
+      '--scheme', scheme,
+      '--port', port,
       '--workflow', 'mock',
       '--workflow', 'record',
       '--workflow', 'test',
@@ -330,14 +364,21 @@ class TestScaffoldE2e():
  
   # Specific flags for assets
   @staticmethod
-  def cli_service_create_assets(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str):
+  def cli_service_create_assets(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
+    scheme = 'http'
+    port = '80'
+    if https == True:
+      scheme = 'https'
+      port = '443'
+    proxy_mode_reverse_spec = f"reverse:{scheme}://{hostname}:8080"
+
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--force',
       '--hostname', hostname,
-      '--scheme', 'http',
-      '--port', '80',
-      '--proxy-mode', f"reverse:http://{hostname}:8080",
+      '--scheme', scheme,
+      '--port', port,
+      '--proxy-mode', proxy_mode_reverse_spec,
       '--detached',
       '--workflow', 'test',
       service_name
