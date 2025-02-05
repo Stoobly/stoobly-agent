@@ -110,6 +110,7 @@ class WorkflowRunCommand(WorkflowCommand):
       command.append('-d')
 
     command.append('--build')
+    command.append('--pull always')
 
     self.write_env()
 
