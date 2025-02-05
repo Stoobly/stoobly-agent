@@ -1,6 +1,8 @@
 import os
 import pdb
 
+from typing import TypedDict
+
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
@@ -10,6 +12,10 @@ from .env import Env
 from .workflow_command import WorkflowCommand
 
 LOG_ID = 'WorkflowRunCommand'
+
+class UpOptions(TypedDict):
+  attached: bool
+  namespace: str
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -63,7 +69,7 @@ class WorkflowRunCommand(WorkflowCommand):
   def create_network(self):
     return f"docker network create {self.network} 2> /dev/null"
 
-  def up(self):
+  def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
       return ''
 
@@ -94,8 +100,15 @@ class WorkflowRunCommand(WorkflowCommand):
       command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
 
     command.append(f"--profile {self.workflow_name}") 
+
+    if options.get('namespace'):
+      command.append(f"-p {options['namespace']}")
+
     command.append('up')
-    command.append('-d')
+
+    if not options.get('attached'):
+      command.append('-d')
+
     command.append('--build')
 
     self.write_env()

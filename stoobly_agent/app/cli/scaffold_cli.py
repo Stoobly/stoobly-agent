@@ -316,13 +316,15 @@ def logs(**kwargs):
 @click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--network', help='Name of network namespace.')
+@click.option('--namespace', help='Workflow namespace.')
+@click.option('--network', help='Workflow network namespace.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.argument('workflow_name')
 def run(**kwargs):
@@ -372,10 +374,13 @@ def run(**kwargs):
       print(create_network_command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for command in commands:
+  for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
-    exec_command = command.up()
+    # By default, the entrypoint service should be last
+    # However, this can change if the user has configured a service's priority to be higher
+    attached = not kwargs['detached'] and index == len(commands) - 1
+    exec_command = command.up(attached=attached, namespace=kwargs['namespace'])
     if not exec_command:
       continue
 

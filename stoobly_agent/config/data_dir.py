@@ -226,6 +226,7 @@ class DataDir:
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
                     "\n".join([
+                        'certs',
                         'db',
                         'settings.yml',
                         os.path.join('snapshots', 'log'),
