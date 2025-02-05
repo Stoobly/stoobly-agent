@@ -1,0 +1,16 @@
+# Define services here
+
+networks:
+  gateway:
+    external: true
+    name: ${APP_NETWORK}
+
+services:
+  my-httpbin:
+    image: kennethreitz/httpbin:latest
+    hostname: my-httpbin.com
+    networks:
+      - gateway
+    profiles: &id001
+      - record
+

@@ -9,6 +9,7 @@ from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAutho
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
+from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
@@ -17,12 +18,15 @@ from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import ge
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
+from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
@@ -326,6 +330,9 @@ def logs(**kwargs):
 def run(**kwargs):
   cwd = os.getcwd()
 
+  # Create the certs_dir_path if it doesn't exist
+  DataDir.instance().certs_dir_path
+
   if not os.getenv(env_vars.LOG_LEVEL):
     os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
@@ -381,7 +388,37 @@ def run(**kwargs):
       exec_stream(exec_command)
     else:
       print(exec_command)
- 
+
+@workflow.command(
+  help="Validate a scaffold workflow"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
+@click.argument('workflow_name')
+def validate(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  workflow = Workflow(kwargs['workflow_name'], app)
+  
+  config = { **kwargs }
+  config['service_name'] = 'build'
+
+  try:
+    command = WorkflowValidateCommand(app, **config)
+    command.validate()
+  except ScaffoldValidateException as sve:
+    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
+    sys.exit(1)
+
+  try:
+    for service in workflow.services_ran:
+      if service not in CORE_SERVICES:
+        config['service_name'] = service
+        command = ServiceWorkflowValidateCommand(app, **config)
+        command.validate()
+  except ScaffoldValidateException as sve:
+    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
+    sys.exit(1)
+
+
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
@@ -437,3 +474,4 @@ def __workflow_build(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
+

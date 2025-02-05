@@ -151,3 +151,4 @@ class WorkflowRunCommand(WorkflowCommand):
     env_vars = self.config(_config)
     env_path = self.workflow_env_path
     Env(env_path).write(env_vars)
+

@@ -1,3 +1,4 @@
+import pdb
 import os
 import shutil
 
@@ -16,6 +17,8 @@ class DataDir:
         if DataDir._instances.get(path):
             raise RuntimeError('Call instance() instead')
         else:
+            self.__path = path
+
             if path:
                 self.__data_dir_path = os.path.join(path, DATA_DIR_NAME)
             else:
@@ -34,6 +37,9 @@ class DataDir:
 
             if not os.path.exists(self.__data_dir_path):
                 self.create(os.path.dirname(self.__data_dir_path))
+
+    def __repr__(self) -> str:
+      return self.path
 
     @classmethod
     def instance(cls, path: str = None):
@@ -58,7 +64,7 @@ class DataDir:
 
     @property
     def path(self):
-        if os.environ.get(ENV) == 'test':
+        if not self.__path and os.environ.get(ENV) == 'test':
             test_path = os.path.join(self.__data_dir_path, 'tmp', DATA_DIR_NAME)
 
             if not os.path.exists(test_path):
@@ -122,13 +128,13 @@ class DataDir:
                     options = json.loads(contents)
                     _conf_dir = options.get('confdir')
 
-                    if _conf_dir or not os.path.exists(_conf_dir):
+                    if _conf_dir and os.path.exists(_conf_dir):
                         conf_dir = _conf_dir
             except Exception:
                 pass
-
-        if not os.path.exists(conf_dir):
-            os.makedirs(conf_dir)
+        else:
+            if not os.path.exists(conf_dir):
+                os.makedirs(conf_dir)
 
         return conf_dir
 
@@ -212,8 +218,10 @@ class DataDir:
         if not os.path.exists(self.__data_dir_path):
             os.mkdir(self.__data_dir_path)
 
+            # Create the certs_dir_path if it doesn't exist
+            self.certs_dir_path
             # Create tmp folder
-            os.mkdir(os.path.join(self.__data_dir_path, 'tmp'))
+            os.makedirs(os.path.join(self.__data_dir_path, 'tmp'), exist_ok=True)
 
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(

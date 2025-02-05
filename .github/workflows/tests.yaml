@@ -66,3 +66,35 @@ jobs:
 
           make test
 
+  e2e_tests:
+    name: End-to-end Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: ${{ matrix.python-version }}
+
+      - name: Add hosts to /etc/hosts
+        run: |
+          echo 'Adding hosts to /etc/hosts'
+          sudo echo "127.0.0.1 http.badssl.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 example.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
+
+      - name: Test with pytest
+        run: |
+          python --version
+          python -m pip install poetry && \
+          python -m poetry install --with test
+
+          make test/e2e
+

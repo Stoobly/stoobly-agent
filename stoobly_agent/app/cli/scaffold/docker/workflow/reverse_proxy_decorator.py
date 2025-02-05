@@ -62,4 +62,3 @@ class ReverseProxyDecorator():
 
     services[proxy_name] = service 
 
-
