@@ -7,9 +7,10 @@ from ...constants import (
   COMPOSE_TEMPLATE, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
   SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR, WORKFLOW_NAME_ENV
 )
+from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
+from ...workflow_env import WorkflowEnv
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
-from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
 
 class WorkflowBuilder(Builder):
 

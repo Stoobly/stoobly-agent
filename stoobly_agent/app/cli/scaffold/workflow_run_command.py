@@ -1,5 +1,8 @@
+import dns.resolver
 import os
 import pdb
+import subprocess
+import re
 
 from typing import TypedDict
 
@@ -7,9 +10,12 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
-from .constants import APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
-from .env import Env
+from .constants import (
+  APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
+)
 from .workflow_command import WorkflowCommand
+from .workflow_env import WorkflowEnv
 
 LOG_ID = 'WorkflowRunCommand'
 
@@ -61,6 +67,20 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def extra_compose_path(self):
     return self.__extra_compose_path
+
+  @property
+  def nameservers(self):
+    path = self.nameservers_path
+    if not os.path.exists(path):
+      return []
+
+    with open(path, 'r') as fp:
+      nameservers = fp.read()
+      return nameservers.split("\n")
+
+  @property
+  def nameservers_path(self):
+    return os.path.join(self.app.data_dir.tmp_dir_path, NAMESERVERS_FILE)
 
   @property
   def network(self):
@@ -137,6 +157,27 @@ class WorkflowRunCommand(WorkflowCommand):
 
     return ' '.join(command)
 
+  def write_nameservers(self):
+    # If hostname is set then the service is external and we will need to configure the container's DNS.
+    # If we don't configure the container's DNS, then Docker's embedded DNS will potentially
+    # use configuration from the host's /etc/hosts file. The user may have configured their
+    # /etc/hosts file to resolve requests to localhost
+    #
+    # See: 
+    # https://forums.docker.com/t/docker-127-0-0-11-resolver-should-use-host-etc-hosts-file/55157
+    # https://docs.docker.com/network/#dns-services
+    # 
+    # TODO: ideally we want to know if the service is built locally, if so, then no need to set DNS
+    # since Docker's embedded DNS will resolve to it
+    dns_resolver = dns.resolver.Resolver()
+
+    with open(self.nameservers_path, 'w') as fp:
+      nameservers = self.__find_nameservers(dns_resolver)
+      ipv4_pattern = re.compile(r'^((25[0-5]|2[0-4][0-9]|1?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9][0-9]?)$')
+      nameservers = [ip for ip in nameservers if ipv4_pattern.match(ip)]
+      if nameservers:
+        fp.write("\n".join(nameservers))
+
   def write_env(self):
     _config = {}
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
@@ -149,7 +190,36 @@ class WorkflowRunCommand(WorkflowCommand):
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
 
-    env_vars = self.config(_config)
-    env_path = self.workflow_env_path
-    Env(env_path).write(env_vars)
+    nameservers = self.nameservers
+    if nameservers:
+      _config[SERVICE_DNS_ENV] = nameservers[0]
 
+    env_vars = self.config(_config)
+    WorkflowEnv(self.workflow_path).write(env_vars)
+    return env_vars
+
+  def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
+    nameservers = dns_resolver.nameservers
+
+    # If systemd-resolved is not used
+    if nameservers != ['127.0.0.53']:
+      return nameservers
+
+    # Run the `resolvectl status` command and capture its output
+    result = subprocess.run(['resolvectl', 'status'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Check if the command ran successfully
+    if result.returncode != 0:
+      return []
+
+    # Extract the DNS servers using a regular expression
+    #dns_servers = re.findall(r'DNS Servers: ([\d.]+(?:, [\d.]+)*)', result.stdout)
+    pattern = re.compile('DNS Servers:(.*?)DNS Domain', re.DOTALL)
+    match = re.findall(pattern, result.stdout)
+
+    if not match:
+      return []
+      
+    # Split the DNS servers string into a list
+    dns_servers = match[0].strip().split("\n")
+    return list(map(lambda dns_server: dns_server.strip(), dns_servers))
