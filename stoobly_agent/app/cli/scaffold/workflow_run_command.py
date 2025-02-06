@@ -21,6 +21,7 @@ LOG_ID = 'WorkflowRunCommand'
 
 class UpOptions(TypedDict):
   attached: bool
+  exit_code_from: str
   namespace: str
 
 class WorkflowRunCommand(WorkflowCommand):
@@ -128,6 +129,9 @@ class WorkflowRunCommand(WorkflowCommand):
 
     if not options.get('attached'):
       command.append('-d')
+    else:
+      if options.get('exit_code_from'):
+        command.append(f"--exit-code-from {options['exit_code_from']}")
 
     command.append('--build')
     command.append('--pull always')
