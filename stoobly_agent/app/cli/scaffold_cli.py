@@ -319,6 +319,7 @@ def logs(**kwargs):
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--exit-code-from', help='Name of container service to obtain exit code from.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -384,7 +385,7 @@ def run(**kwargs):
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
     attached = not kwargs['detached'] and index == len(commands) - 1
-    exec_command = command.up(attached=attached, namespace=kwargs['namespace'])
+    exec_command = command.up(attached=attached, exit_code_from=kwargs['exit_code_from'], namespace=kwargs['namespace'])
     if not exec_command:
       continue
 
