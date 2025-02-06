@@ -21,6 +21,7 @@ class HostsFileReader():
 
     return ''
 
+  # Split IP address and hostnames. Don't include inline comments
   def __split_hosts_line(self, line: str) -> list[str]:
     ip_addr_hosts_split = line.split('#')[0].split()
     return ip_addr_hosts_split
@@ -42,7 +43,6 @@ class HostsFileReader():
 
     hosts = []
     for line in hostlines:
-      # Split IP address and hostnames. Don't include inline comments
       ip_addr_hosts_split = self.__split_hosts_line(line)
       ip_address = ip_addr_hosts_split[0]
       hostnames = ip_addr_hosts_split[1:]

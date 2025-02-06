@@ -54,6 +54,12 @@ class TestHostsFileReader():
       assert split[0] == '0.0.0.0'
       assert split[1] == 'example.com'
 
+    def test_comment(self, hosts_file_reader):
+      line = '# 0.0.0.0 example.com'
+      split = hosts_file_reader._HostsFileReader__split_hosts_line(line)
+
+      assert len(split) == 0
+
     def test_inline_comment(self, hosts_file_reader):
       line = '0.0.0.0\texample.com # Comment'
       split = hosts_file_reader._HostsFileReader__split_hosts_line(line)
