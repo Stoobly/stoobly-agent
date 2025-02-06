@@ -5,6 +5,8 @@ workflow=$1
 
 mkdir -p .stoobly/tmp
 
+stoobly-agent scaffold app mkcert
+
 stoobly-agent scaffold workflow run \
   --app-dir-path "$(pwd)" \
   --dry-run \

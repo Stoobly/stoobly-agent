@@ -367,8 +367,12 @@ def run(**kwargs):
 
   # Before services can be started, their network needs to be created
   if len(commands) > 0:
-    create_network_command = commands[0].create_network()
+    command = commands[0]
+    create_network_command = command.create_network()
+
     if not kwargs['dry_run']:
+      command.write_nameservers()
+
       exec_stream(create_network_command)
     else:
       print(create_network_command)
@@ -417,7 +421,6 @@ def validate(**kwargs):
   except ScaffoldValidateException as sve:
     print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
     sys.exit(1)
-
 
 scaffold.add_command(app)
 scaffold.add_command(service)
@@ -474,4 +477,3 @@ def __workflow_build(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
-
