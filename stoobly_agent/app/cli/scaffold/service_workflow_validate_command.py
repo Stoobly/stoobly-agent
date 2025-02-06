@@ -20,6 +20,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.hosts_file_reader import HostsFileReader
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
 from stoobly_agent.app.cli.scaffold.validate_command import ValidateCommand
@@ -84,9 +85,24 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     response = session.get(url=url, verify=default_capath)
     if not response.ok:
       raise ScaffoldValidateException(f"Host is not reachable: {url}")
+
+  # Check if hostname is defined in hosts file
+  def hostname_exists(self, url: str) -> bool:
+    print(f"Validating hostname exists in hosts file for url: {url}")
+
+    hosts_file_reader = HostsFileReader()
+    host_mapping = hosts_file_reader.find_host(url)
+    if host_mapping:
+      print(f"Correct hosts mapping found for {url}")
+      return True
+
+    raise ScaffoldValidateException(f"Missing hosts mapping for {url}")
  
   def validate_hostname(self, url: str) -> None:
     print(f"Validating hostname: {url}")
+
+    self.hostname_exists(url)
+
     self.hostname_reachable(url)
 
     # TODO: check logs of proxy. lifecycle hook for custom logging? Does mitmproxy support json logging?
