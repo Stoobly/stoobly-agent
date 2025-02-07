@@ -21,7 +21,6 @@ LOG_ID = 'WorkflowRunCommand'
 
 class UpOptions(TypedDict):
   attached: bool
-  exit_code_from: str
   namespace: str
 
 class WorkflowRunCommand(WorkflowCommand):
@@ -130,8 +129,10 @@ class WorkflowRunCommand(WorkflowCommand):
     if not options.get('attached'):
       command.append('-d')
     else:
-      if options.get('exit_code_from'):
-        command.append(f"--exit-code-from {options['exit_code_from']}")
+      # This option enables docker compose to return exit code 1 
+      # when one of the services exits with a non-zero exit code
+      # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
+      command.append('--abort-on-container-failure')
 
     command.append('--build')
     command.append('--pull always')
