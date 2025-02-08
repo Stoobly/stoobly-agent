@@ -129,10 +129,17 @@ class WorkflowRunCommand(WorkflowCommand):
     if not options.get('attached'):
       command.append('-d')
     else:
+      major_version = 2
+      minor_version = 27
+      patch_version = 0
+      min_version = major_version * 10000 + minor_version * 100 + patch_version
+      formula = "'{print $1*10000 + $2*100 + $3}'"
+      option = f"$(test $(echo $(docker compose version --short) | awk -F. {formula}) -ge {min_version} && echo '--abort-on-container-failure')"
+
       # This option enables docker compose to return exit code 1 
       # when one of the services exits with a non-zero exit code
       # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
-      command.append('--abort-on-container-failure')
+      command.append(option)
 
     command.append('--build')
     command.append('--pull always')
