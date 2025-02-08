@@ -46,7 +46,7 @@ certs:
 	$(stoobly_exec)
 nameservers:
 	@if [ -f /etc/resolv.conf ]; then \
-		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf | tr -d '\n') && \
+		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
 		if [ "$$nameserver" = "127.0.0.53" ]; then \
 			echo "Nameserver is 127.0.0.53. Checking resolvectl status..."; \
 			nameserver=$$(resolvectl status | sed -n '/DNS Servers:/s/.*DNS Servers:\s*\([^ ]*\).*/\1/p' | head -n 1); \
@@ -97,6 +97,11 @@ scenario/delete:
 	@export EXEC_COMMAND=bin/.delete && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
+	$(stoobly_exec)
+scenario/list:
+# List scenarios
+	@export EXEC_COMMAND=bin/.list && \
+	export EXEC_OPTIONS="$(options)" && \
 	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
