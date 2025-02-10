@@ -19,6 +19,6 @@ class AppCreateCommand(AppCommand):
         self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest)
 
         with open(os.path.join(dest, '.gitignore'), 'w') as fp:
-            fp.write("\n".join(['**/.env', '**/.config.yml']))
+            fp.write("\n".join(['**/.env']))
 
         self.app_config.write()
