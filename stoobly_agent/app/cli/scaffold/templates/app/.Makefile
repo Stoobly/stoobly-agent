@@ -21,13 +21,14 @@ workflow_run_options=$${STOOBLY_WORKFLOW_RUN_OPTIONS:+$$STOOBLY_WORKFLOW_RUN_OPT
 
 app_data_dir=$(app_dir)/.stoobly
 data_dir=$(context_dir)/.stoobly
+app_tmp_dir=$(app_data_dir)/tmp
 
 # Commands
 docker_compose_command=docker compose
 source_env=set -a; [ -f .env ] && source .env; set +a
 
 docker_compose_file_path=$(app_data_dir)/docker/stoobly-ui/exec/.docker-compose.exec.yml
-stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --build --remove-orphans
+stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --build --remove-orphans --pull always
 stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
 stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
 
@@ -41,71 +42,87 @@ workflow_run_env=export APP_DIR="$(app_dir)" && export CERTS_DIR="$(certs_dir)" 
 workflow_run=$(workflow_run_env) && $(source_env) && bash "$(workflow_run_script)"
 
 certs:
-	export EXEC_COMMAND=bin/.mkcert && \
+	@export EXEC_COMMAND=bin/.mkcert && \
 	$(stoobly_exec)
+nameservers:
+	@if [ -f /etc/resolv.conf ]; then \
+		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
+		if [ "$$nameserver" = "127.0.0.53" ]; then \
+			echo "Nameserver is 127.0.0.53. Checking resolvectl status..."; \
+			nameserver=$$(resolvectl status | sed -n '/DNS Servers:/s/.*DNS Servers:\s*\([^ ]*\).*/\1/p' | head -n 1); \
+		fi; \
+		echo "$$nameserver" > $(app_tmp_dir)/.nameservers; \
+	else \
+		echo "/etc/resolv.conf not found."; \
+	fi
 intercept/disable:
-	export EXEC_COMMAND=bin/.disable && \
+	@export EXEC_COMMAND=bin/.disable && \
 	$(stoobly_exec)
 intercept/enable:
-	export EXEC_COMMAND=bin/.enable && \
+	@export EXEC_COMMAND=bin/.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: certs
-	export EXEC_COMMAND=bin/.run && \
+mock: nameservers
+	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/stop:
-	export EXEC_COMMAND=bin/.stop && \
+	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-record: certs
-	export EXEC_COMMAND=bin/.run && \
+record: nameservers
+	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/stop:
-	export EXEC_COMMAND=bin/.stop && \
+	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 scenario/create:
 # Create a scenario
-	export EXEC_COMMAND=bin/.create && \
+	@export EXEC_COMMAND=bin/.create && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(name)" && \
 	$(stoobly_exec)
 scenario/delete:
 # Delete a scenario
-	export EXEC_COMMAND=bin/.delete && \
+	@export EXEC_COMMAND=bin/.delete && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
+scenario/list:
+# List scenarios
+	@export EXEC_COMMAND=bin/.list && \
+	export EXEC_OPTIONS="$(options)" && \
+	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
-	export EXEC_COMMAND=bin/.reset && \:
+	@export EXEC_COMMAND=bin/.reset && \:
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
-	export EXEC_COMMAND=bin/.snapshot && \
+	@export EXEC_COMMAND=bin/.snapshot && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 test:
-	export EXEC_COMMAND=bin/.run && \
+	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 test/stop:
-	export EXEC_COMMAND=bin/.stop && \
+	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \

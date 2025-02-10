@@ -1,4 +1,5 @@
 import pdb
+import re
 from time import sleep
 
 import docker
@@ -31,7 +32,7 @@ class ValidateCommand():
 
     init_container = self.__get_container(init_container_name)
     logs = init_container.logs()
-    if logs:
+    if logs and re.search('error', str(logs), re.IGNORECASE):
       raise ScaffoldValidateException(f"Error logs potentially detected in: {init_container_name}")
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
       raise ScaffoldValidateException(f"init container has not exited like expected: {init_container_name}")

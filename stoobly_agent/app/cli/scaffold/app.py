@@ -13,6 +13,7 @@ class App():
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.mitmproxy_conf_dir_path
     self.__certs_dir_path = data_dir.certs_dir_path
     self.__context_dir_path = data_dir.context_dir_path
+    self.__data_dir = data_dir
     self.__dir_path = path
     self.__name = os.path.basename(self.__dir_path)
     self.__network = os.path.basename(self.__dir_path)
@@ -45,6 +46,10 @@ class App():
   def context_dir_path(self, v: str):
     self.__validate_path(v)
     self.__context_dir_path = v 
+
+  @property
+  def data_dir(self):
+    return self.__data_dir
 
   @property
   def data_dir_path(self):

@@ -1,16 +1,11 @@
 # Wraps the .config.yml file in the service folder
-
-import dns.resolver
 import pdb
-import subprocess
-import re
 
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
   SERVICE_DOCKER_COMPOSE_PATH_ENV,
   SERVICE_HOSTNAME_ENV,
-  SERVICE_DNS_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
   SERVICE_PROXY_MODE_ENV,
@@ -25,7 +20,6 @@ class ServiceConfig(Config):
     self.__detached = None
     self.__docker_compose_path = None
     self.__hostname = None
-    self.__dns = None
     self.__port = None
     self.__priority = None
     self.__proxy_mode = None
@@ -74,28 +68,6 @@ class ServiceConfig(Config):
   @hostname.setter
   def hostname(self, v):
     self.__hostname = v
-
-  @property
-  def dns(self):
-    # If hostname is set then the service is external and we will need to configure the container's DNS.
-    # If we don't configure the container's DNS, then Docker's embedded DNS will potentially
-    # use configuration from the host's /etc/hosts file. The user may have configured their
-    # /etc/hosts file to resolve requests to localhost
-    #
-    # See: 
-    # https://forums.docker.com/t/docker-127-0-0-11-resolver-should-use-host-etc-hosts-file/55157
-    # https://docs.docker.com/network/#dns-services
-    # 
-    # TODO: ideally we want to know if the service is built locally, if so, then no need to set DNS
-    # since Docker's embedded DNS will resolve to it
-    if self.hostname and not self.__dns:
-      nameservers = self.__find_dns()
-      self.__dns = nameservers[0] if nameservers else None
-    return self.__dns
-
-  @dns.setter
-  def dns(self, v):
-    self.__dns = v
 
   @property
   def port(self):
@@ -147,9 +119,6 @@ class ServiceConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
-    # Do not load dns from config, have it dynamically determined
-    #self.dns = config.get(SERVICE_DNS_ENV)
-
     self.detached = config.get(SERVICE_DETACHED_ENV)
     self.docker_compose_path = config.get(SERVICE_DOCKER_COMPOSE_PATH_ENV)
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
@@ -167,9 +136,6 @@ class ServiceConfig(Config):
     if self.hostname:
       config[SERVICE_HOSTNAME_ENV] = self.hostname
 
-    if self.dns:
-      config[SERVICE_DNS_ENV] = self.dns
-    
     if self.port:
       config[SERVICE_PORT_ENV] = self.port
 
@@ -184,31 +150,3 @@ class ServiceConfig(Config):
     config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)
-
-  def __find_dns(self):
-    dns_resolver = dns.resolver.Resolver()
-    nameservers = dns_resolver.nameservers
-
-    # If systemd-resolved is not used
-    if nameservers != ['127.0.0.53']:
-      return nameservers
-
-    # Run the `resolvectl status` command and capture its output
-    result = subprocess.run(['resolvectl', 'status'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Check if the command ran successfully
-    if result.returncode != 0:
-      return []
-
-    # Extract the DNS servers using a regular expression
-    #dns_servers = re.findall(r'DNS Servers: ([\d.]+(?:, [\d.]+)*)', result.stdout)
-    pattern = re.compile('DNS Servers:(.*?)DNS Domain', re.DOTALL)
-    match = re.findall(pattern, result.stdout)
-
-    if not match:
-      return []
-      
-    # Split the DNS servers string into a list
-    dns_servers = match[0].strip().split("\n")
-    return list(map(lambda dns_server: dns_server.strip(), dns_servers))
-

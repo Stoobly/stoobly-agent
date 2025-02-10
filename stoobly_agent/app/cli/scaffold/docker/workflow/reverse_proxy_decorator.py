@@ -2,7 +2,9 @@ import pdb
 
 from urllib.parse import urlparse
 
-from ...constants import SERVICE_DNS, SERVICE_HOSTNAME, SERVICE_PORT
+from stoobly_agent.config.data_dir import DataDir
+
+from ...constants import SERVICE_DNS, SERVICE_DNS_ENV, SERVICE_HOSTNAME, SERVICE_PORT
 from .builder import WorkflowBuilder
 
 class ReverseProxyDecorator():
@@ -57,7 +59,7 @@ class ReverseProxyDecorator():
     # If we are reverse proxying to potentially an external host,
     # Docker's embedded DNS will use the host's /etc/host file as part of the resolution process
     # This can lead the hostname to resolve to localhost instead of the service's actual IP address
-    if config.dns and not config.detached:
+    if not config.detached:
       service['dns'] = SERVICE_DNS
 
     services[proxy_name] = service 
