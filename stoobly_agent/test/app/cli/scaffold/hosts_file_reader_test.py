@@ -30,7 +30,7 @@ class TestHostsFileReader():
     assert localhost_found
 
   def test_find_host(self, hosts_file_reader):
-    url = 'http://localhost'
+    url = 'localhost'
 
     host = hosts_file_reader.find_host(url)
 

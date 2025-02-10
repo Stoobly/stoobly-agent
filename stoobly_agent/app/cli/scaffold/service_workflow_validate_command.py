@@ -70,6 +70,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     return not self.is_local()
 
   def hostname_reachable(self, url: str) -> None:
+    print(f"Validating reachable url: {url}")
     # Retry HTTP request. Source: https://stackoverflow.com/questions/15431044/can-i-set-max-retries-for-requests-request
     session = requests.Session()
     retries = Retry(total=5,
@@ -87,21 +88,21 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       raise ScaffoldValidateException(f"Host is not reachable: {url}")
 
   # Check if hostname is defined in hosts file
-  def hostname_exists(self, url: str) -> bool:
-    print(f"Validating hostname exists in hosts file for url: {url}")
+  def hostname_exists(self, hostname: str) -> bool:
+    print(f"Validating hostname exists in hosts file for hostname: {hostname}")
 
     hosts_file_reader = HostsFileReader()
-    host_mapping = hosts_file_reader.find_host(url)
+    host_mapping = hosts_file_reader.find_host(hostname)
     if host_mapping:
-      print(f"Correct hosts mapping found for {url}")
+      print(f"Correct hosts mapping found for {hostname}")
       return True
 
     raise ScaffoldValidateException(f"Missing hosts mapping for {url}")
  
-  def validate_hostname(self, url: str) -> None:
-    print(f"Validating hostname: {url}")
+  def validate_hostname(self, url: str, hostname: str) -> None:
+    print(f"Validating hostname: {hostname}")
 
-    self.hostname_exists(url)
+    self.hostname_exists(hostname)
 
     self.hostname_reachable(url)
 
@@ -205,7 +206,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     url = f"{self.service_config.scheme}://{self.hostname}"
 
     if self.service_config.hostname and self.workflow_name not in [WORKFLOW_TEST_TYPE]:
-      self.validate_hostname(url)
+      self.validate_hostname(url, self.hostname)
     
     # Test workflow won't expose services that are detached and have a hostname to the host such as assets.
     # Need to test connection from inside the Docker network

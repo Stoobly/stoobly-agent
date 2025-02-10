@@ -2,7 +2,6 @@ import pdb
 import platform
 from dataclasses import dataclass
 from typing import Union
-from urllib.parse import urlparse
 
 
 class HostsFileReader():
@@ -52,13 +51,12 @@ class HostsFileReader():
 
     return hosts
 
-  def find_host(self, url) -> Union[IpAddressToHostnames, None]:
+  def find_host(self, hostname) -> Union[IpAddressToHostnames, None]:
     hosts = self.get_hosts()
-    network_location = urlparse(url).netloc
 
     for mapping in hosts:
       if ((mapping.ip_address == '0.0.0.0' or mapping.ip_address == '127.0.0.1') and
-        network_location in mapping.hostnames):
+        hostname in mapping.hostnames):
 
         return mapping
 
