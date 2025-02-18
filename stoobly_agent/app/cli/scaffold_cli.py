@@ -18,6 +18,7 @@ from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import ge
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
+from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -142,6 +143,24 @@ def create(**kwargs):
     __scaffold_build(app, **kwargs)
   else:
     print(f"{service.dir_path} already exists, use option '--force' to continue")
+
+@service.command(
+  help="Delete a service",
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.argument('service_name')
+def delete(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  service = Service(kwargs['service_name'], app)
+
+  if not os.path.exists(service.dir_path):
+    print(f"Service does not exist, so not deleting")
+  else:
+    print(f"Deleting service: {service.service_name}")
+    __scaffold_delete(app, **kwargs)
+    print(f"Successfully deleted service: {service.service_name}")
 
 @service.command(
   help="Update a service config"
@@ -456,6 +475,11 @@ def __scaffold_build(app, **kwargs):
   command = ServiceCreateCommand(app, **kwargs)
 
   command.build()
+
+def __scaffold_delete(app, **kwargs):
+  command = ServiceDeleteCommand(app, **kwargs)
+
+  command.delete()
 
 def __validate_app_dir(app_dir_path):
   if not os.path.exists(app_dir_path):

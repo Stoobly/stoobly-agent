@@ -1,19 +1,16 @@
 from pathlib import Path
-import pathlib
 import pdb
 import shutil
 
 from click.testing import CliRunner
-import docker
 import pytest
 
-from stoobly_agent.app.cli import scaffold
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
+  DOCKER_NAMESPACE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE
 from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
   ManagedServicesDockerCompose,
 )
@@ -24,7 +21,8 @@ from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import (
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
 )
-from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
+from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.test.app.cli.scaffold.cli_invoker import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
 
@@ -38,10 +36,6 @@ class TestScaffoldE2e():
   @pytest.fixture(scope='module')
   def runner(self):
     yield CliRunner()
-
-  @pytest.fixture(scope='class')
-  def docker_client(self):
-    yield docker.from_env()
 
   @pytest.fixture(scope='class')
   def app_name(self):
@@ -113,22 +107,16 @@ class TestScaffoldE2e():
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
       yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
-    @pytest.fixture(scope='class', autouse=True)
-    def setup_docker_composes(self, managed_services_docker_compose, external_service_docker_compose, local_service_docker_compose):
-      self.managed_services_docker_compose = managed_services_docker_compose
-      self.external_service_docker_compose = external_service_docker_compose
-      self.local_service_docker_compose = local_service_docker_compose
-
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
-      TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
+      ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
 
       # Create local user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
 
       # Validate docker-compose path exists
       destination_path = Path(local_service_docker_compose.docker_compose_path)
@@ -139,14 +127,15 @@ class TestScaffoldE2e():
       # Record workflow doesn't have a fixtures folder
 
       # Generate certs
-      TestScaffoldE2e.cli_app_mkcert(runner, app_dir_path)
+      ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
 
-      TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_run(runner, app_dir_path, target_workflow_name)
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
-      TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      shutil.rmtree(app_dir_path)
 
     def test_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -228,13 +217,13 @@ class TestScaffoldE2e():
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose, mock_data_directory_path, assets_service_mock_docker_compose_path):
 
-      TestScaffoldE2e.cli_app_create(runner, app_dir_path, app_name)
+      ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       # Create local user defined services
-      TestScaffoldE2e.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
 
       # Don't run the local user defined service in the 'test' workflow
       # So don't copy the Docker Compose file over
@@ -244,7 +233,7 @@ class TestScaffoldE2e():
       assert destination_path.is_file()
       shutil.copyfile(assets_service_mock_docker_compose_path, destination_path)
 
-      TestScaffoldE2e.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
 
       # Add assets for assets service
       data_dir_path = DataDir.instance().path
@@ -263,12 +252,13 @@ class TestScaffoldE2e():
       with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
 
-      TestScaffoldE2e.cli_workflow_run(runner, app_dir_path, target_workflow_name=target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_run(runner, app_dir_path, target_workflow_name=target_workflow_name)
     
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
-      TestScaffoldE2e.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      shutil.rmtree(app_dir_path)
 
     def test_no_core_components(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
@@ -311,118 +301,4 @@ class TestScaffoldE2e():
 
       command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
-
-  @staticmethod
-  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):
-    pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
-
-    result = runner.invoke(scaffold, ['app', 'create',
-      '--app-dir-path', app_dir_path,
-      '--force',
-      app_name
-    ])
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
-
-  @staticmethod
-  def cli_app_mkcert(runner: CliRunner, app_dir_path: str):
-    result = runner.invoke(scaffold, ['app', 'mkcert',
-      '--app-dir-path', app_dir_path,
-      '--context-dir-path', app_dir_path,
-    ])
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
-
-
-  @staticmethod
-  def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
-    scheme = 'http'
-    port = '80'
-    if https == True:
-      scheme = 'https'
-      port = '443'
-
-    result = runner.invoke(scaffold, ['service', 'create',
-      '--app-dir-path', app_dir_path,
-      '--env', 'TEST',
-      '--force',
-      '--hostname', hostname,
-      '--scheme', scheme,
-      '--port', port,
-      '--workflow', 'mock',
-      '--workflow', 'record',
-      '--workflow', 'test',
-      service_name
-    ])
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
- 
-  # Specific flags for assets
-  @staticmethod
-  def cli_service_create_assets(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
-    scheme = 'http'
-    port = '80'
-    if https == True:
-      scheme = 'https'
-      port = '443'
-    proxy_mode_reverse_spec = f"reverse:{scheme}://{hostname}:8080"
-
-    result = runner.invoke(scaffold, ['service', 'create',
-      '--app-dir-path', app_dir_path,
-      '--force',
-      '--hostname', hostname,
-      '--scheme', scheme,
-      '--port', port,
-      '--proxy-mode', proxy_mode_reverse_spec,
-      '--detached',
-      '--workflow', 'test',
-      service_name
-    ])
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
-  
-  @staticmethod
-  def cli_workflow_create(runner: CliRunner, app_dir_path: str, service_name: str):
-    result = runner.invoke(scaffold, ['workflow', 'create',
-      '--app-dir-path', app_dir_path,
-      '--service', service_name,
-      '--template', 'mock',
-      'ci',
-    ])
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
-
-  @staticmethod
-  def cli_workflow_run(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
-    command = ['workflow', 'run',
-      '--app-dir-path', app_dir_path,
-      '--context-dir-path', app_dir_path,
-      target_workflow_name,
-    ]
-    result = runner.invoke(scaffold, command)
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert output
-  
-  @staticmethod
-  def cli_workflow_stop(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
-    command = ['workflow', 'stop',
-      '--app-dir-path', app_dir_path,
-      '--context-dir-path', app_dir_path,
-      target_workflow_name,
-    ]
-    result = runner.invoke(scaffold, command)
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert output
 
