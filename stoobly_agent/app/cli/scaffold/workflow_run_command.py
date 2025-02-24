@@ -142,7 +142,6 @@ class WorkflowRunCommand(WorkflowCommand):
       command.append(option)
 
     command.append('--build')
-    command.append('--pull always')
 
     self.write_env()
 

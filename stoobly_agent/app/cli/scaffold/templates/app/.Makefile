@@ -28,7 +28,7 @@ docker_compose_command=docker compose
 source_env=set -a; [ -f .env ] && source .env; set +a
 
 docker_compose_file_path=$(app_data_dir)/docker/stoobly-ui/exec/.docker-compose.exec.yml
-stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --build --remove-orphans --pull always
+stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --build --remove-orphans --pull always 
 stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
 stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
 
@@ -68,6 +68,12 @@ mock: nameservers
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
+mock/logs: 
+	@export EXEC_COMMAND=bin/.logs && \
+	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_ARGS="mock" && \
+	$(stoobly_exec_run) && \
+	$(workflow_run)
 mock/stop:
 	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
@@ -77,6 +83,12 @@ mock/stop:
 record: nameservers
 	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
+	export EXEC_ARGS="record" && \
+	$(stoobly_exec_run) && \
+	$(workflow_run)
+record/logs: 
+	@export EXEC_COMMAND=bin/.logs && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -118,6 +130,12 @@ scenario/snapshot:
 test:
 	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
+	export EXEC_ARGS="test" && \
+	$(stoobly_exec_run) && \
+	$(workflow_run)
+test/logs: 
+	@export EXEC_COMMAND=bin/.logs && \
+	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
