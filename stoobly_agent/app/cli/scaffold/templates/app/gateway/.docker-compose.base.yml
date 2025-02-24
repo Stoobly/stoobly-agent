@@ -1,9 +1,9 @@
 services:
   gateway_base:
+    environment:
+      TRUST_DOWNSTREAM_PROXY: true
     image: nginxproxy/nginx-proxy:1.5
-    ports:
-      - '80:80'
-      - '443:443' # Entry port
+    ports: {}
     profiles:
       - gateway_base
     volumes:
