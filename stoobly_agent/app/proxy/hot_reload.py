@@ -21,7 +21,12 @@ patterns = "*"
 ignore_patterns = ""
 ignore_directories = False
 case_sensitive = True
-event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+event_handler = PatternMatchingEventHandler(
+    patterns=patterns, 
+    ignore_patterns=ignore_patterns, 
+    ignore_directories=ignore_directories, 
+    case_sensitive=case_sensitive
+)
 
 event_handler.on_modified = trigger_reload
 
