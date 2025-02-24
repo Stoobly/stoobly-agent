@@ -4,11 +4,11 @@ import pdb
 from typing import List
 
 from ...constants import (
-  COMPOSE_TEMPLATE, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, 
-  SERVICE_SCHEME_ENV, STOOBLY_HOME_DIR, WORKFLOW_NAME_ENV
+  COMPOSE_TEMPLATE, STOOBLY_HOME_DIR, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, 
+  SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
+  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME_ENV
 )
 from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
-from ...workflow_env import WorkflowEnv
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
 
@@ -44,7 +44,7 @@ class WorkflowBuilder(Builder):
 
   @property
   def init(self):
-    return f"{self.namespace}.init"
+    return WORKFLOW_CONTAINER_INIT_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def config(self):
@@ -52,7 +52,7 @@ class WorkflowBuilder(Builder):
 
   @property
   def configure(self):
-    return f"{self.namespace}.configure"
+    return WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def context(self):
@@ -79,7 +79,7 @@ class WorkflowBuilder(Builder):
 
   @property
   def proxy(self):
-    return f"{self.namespace}.proxy"
+    return WORKFLOW_CONTAINER_PROXY_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def proxy_build(self):
