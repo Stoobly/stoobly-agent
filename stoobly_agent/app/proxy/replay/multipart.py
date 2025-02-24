@@ -73,4 +73,7 @@ def decode(hdrs, content):
             r.append((part.name, part.raw))
         else:
             r.append((part.name, part.value))
+
+        # Free up resources after use
+        part.close()
     return r
