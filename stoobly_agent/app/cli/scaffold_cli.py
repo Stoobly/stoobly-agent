@@ -311,7 +311,7 @@ def logs(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, service=kwargs['service'])
+  services = __get_services(workflow.services, service=kwargs['service'], without_core=True)
 
   commands: List[WorkflowLogCommand] = []
   for service in services:
@@ -468,6 +468,13 @@ def __get_services(services: List[str], **kwargs):
   if kwargs['service']:
     # If service is specified, run only those services
     services = list(kwargs['service'])
+
+    if not kwargs.get('without_core'):
+      services += CORE_SERVICES
+  else:
+    # If set, filter out core services
+    if kwargs.get('without_core'):
+      services = list(filter(lambda service: service not in CORE_SERVICES, services))
     
   return list(set(services))
 
