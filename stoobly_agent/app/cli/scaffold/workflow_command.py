@@ -39,7 +39,6 @@ class WorkflowCommand(ServiceCommand):
 
   @property
   def containers(self):
-    _containers = []
     if not os.path.exists(self.compose_path):
       return []
 
@@ -49,11 +48,8 @@ class WorkflowCommand(ServiceCommand):
       if not isinstance(services, dict):
         return []
 
-      for service in services:
-        _containers.append(f"{self.workflow_name}-{service}-1")
+      return services
         
-    return _containers
-
   @property
   def custom_compose(self):
     if os.path.exists(self.custom_compose_path):
