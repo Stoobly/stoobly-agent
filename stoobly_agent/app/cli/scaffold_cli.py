@@ -9,9 +9,8 @@ from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAutho
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.constants import DOCKER_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.constants import (
-  DOCKER_NAMESPACE, WORKFLOW_CUSTOM_FILTER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -227,8 +226,6 @@ def copy(**kwargs):
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
-
-@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -250,7 +247,7 @@ def stop(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
+  services = __get_services(workflow.services, service=kwargs['service'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -276,11 +273,18 @@ def stop(**kwargs):
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--dry-run', default=False, is_flag=True)
-@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
+@click.option(
+  '--container', multiple=True, help=f"Select which containers to log. Defaults to '{WORKFLOW_CONTAINER_PROXY}'"
+)
+@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--follow', is_flag=True, help='Follow last container log output.')
+@click.option('--namespace', help='Workflow namespace.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
+  if len(kwargs['container']) == 0:
+    kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
+
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
   if not app.exists:
@@ -288,12 +292,18 @@ def logs(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
+  services = __get_services(workflow.services, service=kwargs['service'])
 
   commands: List[WorkflowLogCommand] = []
   for service in services:
-    if len(kwargs['service']) > 0 and service not in kwargs['service']:
-      continue
+    if len(kwargs['service']) == 0:
+      # If no filter is specified, ignore CORE_SERVICES
+      if service in CORE_SERVICES:
+        continue
+    else:
+      # If a filter is specified, ignore all other services
+      if service not in kwargs['service']:
+        continue
 
     config = { **kwargs }
     config['service_name'] = service 
@@ -302,10 +312,15 @@ def logs(**kwargs):
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
 
-  for command in commands:
+  for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
-    for shell_command in command.all():
+    follow = kwargs['follow'] and index == len(commands) - 1
+    shell_commands = command.build(
+      containers=kwargs['container'], follow=follow, namespace=kwargs['namespace']
+    )
+
+    for shell_command in shell_commands:
       print(shell_command)
 
       if not kwargs['dry_run']:
@@ -317,7 +332,6 @@ def logs(**kwargs):
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
-@click.option('--filter', multiple=True, type=click.Choice([WORKFLOW_CUSTOM_FILTER]), help='Select which service groups to run. Defaults to all.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -352,7 +366,7 @@ def run(**kwargs):
     sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, filter=kwargs['filter'], service=kwargs['service'])
+  services = __get_services(workflow.services, service=kwargs['service'])
 
   # Gateway ports are dynamically set depending on the workflow run
   set_gateway_ports(workflow.service_paths_from_services(services))
@@ -432,17 +446,9 @@ def __get_services(services: List[str], **kwargs):
   if missing_services:
     Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
 
-  filter = kwargs.get('filter') or []
   if kwargs['service']:
     # If service is specified, run only those services
     services = list(kwargs['service'])
-
-    if WORKFLOW_CUSTOM_FILTER not in filter:
-      services += CORE_SERVICES
-  else:
-    if WORKFLOW_CUSTOM_FILTER in filter:
-      # If this filter is set, then the user does not want to run core services
-      services = list(filter(lambda service: service not in CORE_SERVICES, services))
     
   return list(set(services))
 
