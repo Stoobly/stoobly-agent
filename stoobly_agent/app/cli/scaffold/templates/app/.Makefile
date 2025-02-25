@@ -14,7 +14,7 @@ CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
 # Configuration
 app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~/.mitmproxy)}")
+ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 workflow_run_options=$${STOOBLY_WORKFLOW_RUN_OPTIONS:+$$STOOBLY_WORKFLOW_RUN_OPTIONS }
@@ -44,7 +44,7 @@ workflow_run=$(workflow_run_env) && $(source_env) && bash "$(workflow_run_script
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \
 	$(stoobly_exec)
-nameservers:
+nameservers: tmpdir
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
 		if [ "$$nameserver" = "127.0.0.53" ]; then \
@@ -145,3 +145,5 @@ test/stop:
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
+tmpdir:
+	@mkdir -p $(app_tmp_dir)
