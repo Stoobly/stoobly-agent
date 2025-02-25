@@ -54,7 +54,7 @@ class ServiceBuilder(Builder):
 
   @property
   def service_mount(self):
-    return f"{self.dir_path}:{STOOBLY_HOME_DIR}"
+    return f".:{STOOBLY_HOME_DIR}"
 
   @property
   def service_name(self):

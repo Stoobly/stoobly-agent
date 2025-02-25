@@ -23,6 +23,10 @@ class CertificateAuthority():
 
     def __init__(self, certs_dir = DataDir.instance().mitmproxy_conf_dir_path, cn = MITMPROXY_CN):
         self.certs_dir = certs_dir
+
+        if not os.path.exists(certs_dir):
+            self.generate_certs()
+
         self.cn = cn
         self.key_size = 2048
 
@@ -55,7 +59,7 @@ class CertificateAuthority():
 
     def generate_certs(self):
         if not os.path.exists(self.certs_dir):
-            os.makedirs(self.certs_dir)
+            os.makedirs(self.certs_dir, exist_ok=True)
 
         path = Path(self.certs_dir)
         CertStore.create_store(path, self.cn, self.key_size)
