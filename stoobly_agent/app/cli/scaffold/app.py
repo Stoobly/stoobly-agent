@@ -6,7 +6,7 @@ from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 class App():
 
   def __init__(self, path: str, namespace: str, **kwargs):
-    path = path or os.getcwd()
+    path = os.path.abspath(path) or os.getcwd()
     data_dir: DataDir = DataDir.instance(path) 
 
     self.__scaffold_dir_path = data_dir.path
