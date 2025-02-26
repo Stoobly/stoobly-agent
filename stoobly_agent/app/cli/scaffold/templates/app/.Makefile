@@ -55,6 +55,14 @@ nameservers: tmpdir
 	else \
 		echo "/etc/resolv.conf not found."; \
 	fi
+hostname/install:
+	@export EXEC_COMMAND=bin/.hostname_install && \
+	export EXEC_OPTIONS="$(options)" && \
+	$(stoobly_exec)
+hostname/uninstall:
+	@export EXEC_COMMAND=bin/.hostname_uninstall && \
+	export EXEC_OPTIONS="$(options)" && \
+	$(stoobly_exec)
 intercept/disable:
 	@export EXEC_COMMAND=bin/.disable && \
 	$(stoobly_exec)
@@ -62,7 +70,7 @@ intercept/enable:
 	@export EXEC_COMMAND=bin/.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: nameservers
+mock: nameservers hostname/install
 	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
@@ -74,13 +82,13 @@ mock/logs:
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-mock/stop:
+mock/stop: hostname/uninstall
 	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-record: nameservers
+record: nameservers hostname/install
 	@export EXEC_COMMAND=bin/.run && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="record" && \
@@ -92,7 +100,7 @@ record/logs:
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-record/stop:
+record/stop: hostname/uninstall
 	@export EXEC_COMMAND=bin/.stop && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="record" && \
