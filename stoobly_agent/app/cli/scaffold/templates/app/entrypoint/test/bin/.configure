@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Configuring intercept mode"
-stoobly-agent intercept configure --mode mock --policy found
+stoobly-agent intercept configure --mode mock --policy all
 
 echo "Enabling intercept"
 stoobly-agent intercept enable
