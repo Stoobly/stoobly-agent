@@ -349,7 +349,6 @@ def logs(**kwargs):
  
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--no-cache', is_flag=True, help='Do not use cache when building images.')
 @click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
@@ -361,6 +360,7 @@ def logs(**kwargs):
 ''')
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network namespace.')
+@click.option('--no-cache', is_flag=True, help='Do not use cache when building images.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
