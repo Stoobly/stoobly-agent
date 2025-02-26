@@ -69,7 +69,7 @@ class HostsFileManager():
 
   def install_hostnames(self, hostnames: list[str]) -> None:
     # Remove the scaffold service hostnames to prevent duplicates
-    self.delete_hostnames(hostnames)
+    self.uninstall_hostnames(hostnames)
 
     hosts_file_path = self.__get_hosts_file_path()
 
@@ -83,6 +83,8 @@ class HostsFileManager():
 
       if self.SCAFFOLD_HOSTS_DELIMITTER_END not in f.read():
         f.write(self.SCAFFOLD_HOSTS_DELIMITTER_END)
+
+    print(f"Successfully installed hostnames to {hosts_file_path}")
 
   def uninstall_hostnames(self, hostnames: list[str]) -> None:
     hosts_file_path = self.__get_hosts_file_path()
@@ -108,8 +110,7 @@ class HostsFileManager():
       # Atomically replace the original hosts file with the temp file
       if temp_file_path:
         os.replace(temp_file_path, hosts_file_path)
-        # shutil.move(temp_file_path, hosts_file_path)
-        print(f"Successfully removed '0.0.0.0 {hostname}' from {hosts_file_path}.")
+        print(f"Successfully uninstalled hostnames from {hosts_file_path}")
 
     finally:
       # Clean up the temp file if it wasn't moved

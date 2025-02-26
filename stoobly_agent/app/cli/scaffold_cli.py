@@ -489,7 +489,7 @@ def install(**kwargs):
   hosts_file_manager = HostsFileManager()
 
   try:
-    hosts_file_manager.write_hostnames(hostnames)
+    hosts_file_manager.install_hostnames(hostnames)
   except PermissionError:
     print("Permission denied. Please run this command with sudo.")
 
@@ -511,7 +511,7 @@ def uninstall(**kwargs):
   hosts_file_manager = HostsFileManager()
 
   try:
-    hosts_file_manager.delete_hostnames(hostnames)
+    hosts_file_manager.uninstall_hostnames(hostnames)
   except OSError as e:
     if e.errno == errno.EACCES or e.errno == errno.EPERM:
       print("Permission denied. Please run this command with sudo.")
