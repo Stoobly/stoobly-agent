@@ -22,6 +22,8 @@ LOG_ID = 'WorkflowRunCommand'
 class UpOptions(TypedDict):
   attached: bool
   namespace: str
+  no_cache: bool
+  verbose: bool
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -93,10 +95,12 @@ class WorkflowRunCommand(WorkflowCommand):
     if not os.path.exists(self.compose_path):
       return ''
 
+    build_command = ['docker', 'compose']
     command = ['COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
+    command_options = []
 
     # Add docker compose file
-    command.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
+    command_options.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
 
     # Add custom docker compose file
     custom_services = self.custom_services
@@ -114,16 +118,27 @@ class WorkflowRunCommand(WorkflowCommand):
         # TODO: looking into why warning does not print in docker
         Logger.instance(LOG_ID).error(f"Missing {self.workflow_name} profile in custom compose file")
 
-      command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
+      command_options.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
 
     if self.extra_compose_path:
-      command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
+      command_options.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
 
-    command.append(f"--profile {self.workflow_name}") 
+    command_options.append(f"--profile {self.workflow_name}") 
 
     if options.get('namespace'):
-      command.append(f"-p {options['namespace']}")
+      command_options.append(f"-p {options['namespace']}")
 
+    build_command += command_options
+    build_command.append('build')
+    build_command.append('--pull')
+
+    if not options.get('verbose'):
+      build_command.append('--quiet')
+
+    if options.get('no_cache'):
+      build_command.append('--no-cache')
+
+    command += command_options
     command.append('up')
 
     if not options.get('attached'):
@@ -141,13 +156,11 @@ class WorkflowRunCommand(WorkflowCommand):
       # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
       command.append(option)
 
-    command.append('--build')
-
     self.write_env()
 
-    return ' '.join(command)
+    return ' && '.join([' '.join(build_command), ' '.join(command)]) 
 
-  def down(self):
+  def down(self, **options):
     if not os.path.exists(self.compose_path):
       return ''
   
@@ -164,7 +177,14 @@ class WorkflowRunCommand(WorkflowCommand):
       command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
 
     command.append(f"--profile {self.workflow_name}") 
+
+    if options.get('namespace'):
+      command.append(f"-p {options['namespace']}")
+
     command.append('down')
+
+    if options.get('rmi'):
+      command.append(f"--rmi local")
 
     return ' '.join(command)
 

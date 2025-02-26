@@ -250,6 +250,8 @@ def copy(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
+@click.option('--namespace', help='Workflow namespace.')
+@click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def stop(**kwargs):  
@@ -283,7 +285,7 @@ def stop(**kwargs):
   for command in commands:
     __print_header(f"SERVICE {command.service_name}")
 
-    exec_command = command.down()
+    exec_command = command.down(namespace=kwargs['namespace'], rmi=kwargs['rmi'])
     if not exec_command:
       continue
 
@@ -360,7 +362,9 @@ def logs(**kwargs):
 ''')
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network namespace.')
+@click.option('--no-cache', is_flag=True, help='Do not use cache when building images.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
+@click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
 def run(**kwargs):
   cwd = os.getcwd()
@@ -419,7 +423,9 @@ def run(**kwargs):
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
     attached = not kwargs['detached'] and index == len(commands) - 1
-    exec_command = command.up(attached=attached, namespace=kwargs['namespace'])
+    exec_command = command.up(
+      attached=attached, namespace=kwargs['namespace'], no_cache=kwargs['no_cache'], verbose=kwargs['verbose']
+    )
     if not exec_command:
       continue
 
