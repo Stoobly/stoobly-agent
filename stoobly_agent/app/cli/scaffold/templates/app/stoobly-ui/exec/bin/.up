@@ -5,9 +5,11 @@ workflow=$1
 
 mkdir -p .stoobly/tmp
 
-stoobly-agent scaffold workflow stop \
+stoobly-agent scaffold app mkcert
+
+stoobly-agent scaffold workflow up \
   --app-dir-path "$(pwd)" \
   --dry-run \
-  --log-level error \
+  --log-level warning \
   $extra_options \
   $workflow > .stoobly/tmp/run.sh
