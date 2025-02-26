@@ -85,7 +85,7 @@ class TestScaffoldCli():
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
-      ScaffoldCliInvoker.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
       shutil.rmtree(app_dir_path)
     
  
