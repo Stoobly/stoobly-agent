@@ -65,7 +65,7 @@ intercept/enable:
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
 mock: nameservers
-	@export EXEC_COMMAND=bin/.run && \
+	@export EXEC_COMMAND=bin/.up && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
@@ -76,14 +76,14 @@ mock/logs:
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-mock/stop:
-	@export EXEC_COMMAND=bin/.stop && \
+mock/down:
+	@export EXEC_COMMAND=bin/.down && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record: nameservers
-	@export EXEC_COMMAND=bin/.run && \
+	@export EXEC_COMMAND=bin/.up && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
@@ -94,8 +94,8 @@ record/logs:
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-record/stop:
-	@export EXEC_COMMAND=bin/.stop && \
+record/down:
+	@export EXEC_COMMAND=bin/.down && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
@@ -130,7 +130,7 @@ scenario/snapshot:
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 test:
-	@export EXEC_COMMAND=bin/.run && \
+	@export EXEC_COMMAND=bin/.up && \
 	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
@@ -141,8 +141,8 @@ test/logs:
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-test/stop:
-	@export EXEC_COMMAND=bin/.stop && \
+test/down:
+	@export EXEC_COMMAND=bin/.down && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \

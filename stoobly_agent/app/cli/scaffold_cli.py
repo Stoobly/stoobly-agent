@@ -252,7 +252,7 @@ def copy(**kwargs):
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
-def stop(**kwargs):  
+def down(**kwargs):  
   cwd = os.getcwd()
 
   if not os.getenv(env_vars.LOG_LEVEL):
@@ -364,7 +364,7 @@ def logs(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
-def run(**kwargs):
+def up(**kwargs):
   cwd = os.getcwd()
 
   # Create the certs_dir_path if it doesn't exist

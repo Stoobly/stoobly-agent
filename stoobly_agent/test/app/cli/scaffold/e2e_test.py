@@ -129,12 +129,12 @@ class TestScaffoldE2e():
       # Generate certs
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
 
-      ScaffoldCliInvoker.cli_workflow_run(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
-      ScaffoldCliInvoker.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
       shutil.rmtree(app_dir_path)
 
     def test_core_components(self, app_dir_path, target_workflow_name):
@@ -252,12 +252,12 @@ class TestScaffoldE2e():
       with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
 
-      ScaffoldCliInvoker.cli_workflow_run(runner, app_dir_path, target_workflow_name=target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name=target_workflow_name)
     
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
-      ScaffoldCliInvoker.cli_workflow_stop(runner, app_dir_path, target_workflow_name)
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
       shutil.rmtree(app_dir_path)
 
     def test_no_core_components(self, app_dir_path, target_workflow_name):
