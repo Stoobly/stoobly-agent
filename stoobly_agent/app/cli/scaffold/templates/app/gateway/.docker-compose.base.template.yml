@@ -3,7 +3,6 @@ services:
     environment:
       TRUST_DOWNSTREAM_PROXY: true
     image: nginxproxy/nginx-proxy:1.5
-    ports: {}
     profiles:
       - gateway_base
     volumes:
