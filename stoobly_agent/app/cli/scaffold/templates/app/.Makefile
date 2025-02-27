@@ -4,7 +4,7 @@
 # STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored
 # STOOBLY_CERTS_DIR: path to a folder to store certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
-# STOOBLY_WORKFLOW_RUN_OPTIONS: extra options to pass to 'stoobly-agent scaffold workflow run' command
+# STOOBLY_WORKFLOW_OPTIONS: extra options to pass to 'stoobly-agent scaffold workflow' commands
 
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -17,7 +17,7 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-workflow_run_options=$${STOOBLY_WORKFLOW_RUN_OPTIONS:+$$STOOBLY_WORKFLOW_RUN_OPTIONS }
+workflow_options=$${STOOBLY_WORKFLOW_OPTIONS:+$$STOOBLY_WORKFLOW_OPTIONS }
 
 app_data_dir=$(app_dir)/.stoobly
 data_dir=$(context_dir)/.stoobly
@@ -67,37 +67,37 @@ intercept/enable:
 	$(stoobly_exec)
 mock: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/logs: 
 	@export EXEC_COMMAND=bin/.logs && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 mock/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/logs: 
 	@export EXEC_COMMAND=bin/.logs && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -132,19 +132,19 @@ scenario/snapshot:
 	$(stoobly_exec)
 test:
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_run_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 test/logs: 
 	@export EXEC_COMMAND=bin/.logs && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 test/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
