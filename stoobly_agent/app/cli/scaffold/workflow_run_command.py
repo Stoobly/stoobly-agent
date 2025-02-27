@@ -34,7 +34,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__certs_dir_path = app.certs_dir_path
     self.__context_dir_path = app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
-    self.__network = kwargs.get('network') or app.network
+    self.__network = kwargs.get('network') or self.app_config.network
 
   @property
   def ca_certs_dir_path(self):

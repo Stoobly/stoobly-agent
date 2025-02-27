@@ -28,16 +28,17 @@ docker_compose_command=docker compose
 source_env=set -a; [ -f .env ] && source .env; set +a
 
 docker_compose_file_path=$(app_data_dir)/docker/stoobly-ui/exec/.docker-compose.exec.yml
+
 stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --remove-orphans
-stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
+stoobly_exec_build=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_build_args)
 stoobly_exec_build_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) build --pull --quiet
-stoobly_exec_build=$(docker_compose_command) "$(docker_compose_file_path)" $(stoobly_exec_build_args)
+stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
+
 stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(stoobly_exec_build) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
 
 # Because scaffold is stored in the APP_DIR, when running a scaffold command from within a container,
 # it needs access to APP_DIR rather than CONTEXT_DIR
-stoobly_exec_run_env=export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
-stoobly_exec_run=$(stoobly_exec_run_env) && $(source_env) && CONTEXT_DIR=$(app_dir) $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
+stoobly_exec_run=$(stoobly_exec_env) && $(source_env) && $(stoobly_exec_build) && CONTEXT_DIR=$(app_dir) $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
 
 workflow_run_script=$(app_data_dir)/tmp/run.sh
 workflow_run_env=export APP_DIR="$(app_dir)" && export CERTS_DIR="$(certs_dir)" && export CONTEXT_DIR="$(context_dir)"
