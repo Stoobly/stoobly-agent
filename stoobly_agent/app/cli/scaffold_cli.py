@@ -249,6 +249,7 @@ def copy(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', help='Workflow namespace.')
+@click.option('--network', help='Workflow network namespace.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
@@ -279,7 +280,6 @@ def down(**kwargs):
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
-
   for command in commands:
     __print_header(f"SERVICE {command.service_name}")
 
@@ -291,6 +291,18 @@ def down(**kwargs):
       exec_stream(exec_command)
     else:
       print(exec_command)
+
+  # After services are stopped, their network needs to be removed
+  if len(commands) > 0:
+    command: WorkflowRunCommand = commands[0]
+    remove_network_command = command.remove_network()
+
+    if not kwargs['dry_run']:
+      command.write_nameservers()
+
+      exec_stream(remove_network_command)
+    else:
+      print(remove_network_command)
 
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
@@ -332,7 +344,6 @@ def logs(**kwargs):
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
-
   for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
@@ -404,7 +415,7 @@ def up(**kwargs):
 
   # Before services can be started, their network needs to be created
   if len(commands) > 0:
-    command = commands[0]
+    command: WorkflowRunCommand = commands[0]
     create_network_command = command.create_network()
 
     if not kwargs['dry_run']:

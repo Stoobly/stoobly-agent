@@ -86,7 +86,7 @@ class Builder():
 
   def with_network(self, network):
     self.__networks[network] = {
-      'name': network
+      'name': f"{APP_NETWORK}.{network}"
     }
     return self
 

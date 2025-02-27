@@ -91,6 +91,9 @@ class WorkflowRunCommand(WorkflowCommand):
   def create_network(self):
     return f"docker network create {self.network} 2> /dev/null"
 
+  def remove_network(self):
+    return f"docker network rm {self.network} > /dev/null"
+
   def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
       return ''
