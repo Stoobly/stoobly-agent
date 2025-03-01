@@ -15,8 +15,6 @@ class App():
     self.__context_dir_path = data_dir.context_dir_path
     self.__data_dir = data_dir
     self.__dir_path = path
-    self.__name = os.path.basename(self.__dir_path)
-    self.__network = os.path.basename(self.__dir_path)
     self.__namespace = namespace
     self.__skip_validate_path = not not kwargs.get('skip_validate_path')
 
@@ -58,22 +56,6 @@ class App():
   @property
   def exists(self):
     return os.path.exists(self.dir_path)
-
-  @property
-  def name(self):
-    return self.__name
-
-  @name.setter
-  def name(self, v: str):
-    self.__name = v
-
-  @property
-  def network(self):
-    return self.__network
-
-  @network.setter
-  def network(self, v: str):
-    self.__network = v
 
   @property
   def namespace(self):

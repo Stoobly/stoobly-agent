@@ -13,9 +13,6 @@ class AppCommand(Command):
 
     self.__config = AppConfig(self.scaffold_namespace_path)
 
-    if not self.__config.network:
-      self.__config.network = app.network
-
   @property
   def app_dir_path(self):
     return self.app.dir_path
