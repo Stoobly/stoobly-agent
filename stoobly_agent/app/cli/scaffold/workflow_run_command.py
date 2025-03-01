@@ -12,7 +12,7 @@ from stoobly_agent.lib.logger import Logger
 from .app import App
 from .constants import (
   APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 )
 from .docker.constants import DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
@@ -164,7 +164,7 @@ class WorkflowRunCommand(WorkflowCommand):
       # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
       command.append(option)
 
-    self.write_env()
+    self.write_env(options.get('namespace'))
 
     return ' && '.join([' '.join(build_command), ' '.join(command)]) 
 
@@ -217,7 +217,7 @@ class WorkflowRunCommand(WorkflowCommand):
       if nameservers:
         fp.write("\n".join(nameservers))
 
-  def write_env(self):
+  def write_env(self, namespace = None):
     _config = {}
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
@@ -225,6 +225,9 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[SERVICE_NAME_ENV] = self.service_name
     _config[USER_ID_ENV] = os.getuid()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
+    
+    if namespace:
+      _config[WORKFLOW_NAMESPACE_ENV] = namespace
 
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
