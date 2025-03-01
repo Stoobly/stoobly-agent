@@ -14,6 +14,7 @@ from .constants import (
   APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
 )
+from .docker.constants import DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 
@@ -88,11 +89,16 @@ class WorkflowRunCommand(WorkflowCommand):
   def network(self):
     return self.__network
 
+  def create_image(self):
+    relative_namespace_path = os.path.relpath(self.app_namespace_path, self.__current_working_dir)
+    dockerfile_path = os.path.join(relative_namespace_path, DOCKERFILE_CONTEXT)
+    return f"docker build -f {dockerfile_path} -t {self.network} {relative_namespace_path}"
+
   def create_network(self):
     return f"docker network create {self.network} 2> /dev/null"
 
   def remove_network(self):
-    return f"docker network rm {self.network} > /dev/null"
+    return f"docker network rm {self.network} 2> /dev/null"
 
   def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
@@ -133,7 +139,6 @@ class WorkflowRunCommand(WorkflowCommand):
 
     build_command += command_options
     build_command.append('build')
-    build_command.append('--pull')
 
     if not options.get('verbose'):
       build_command.append('--quiet')
