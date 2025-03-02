@@ -151,7 +151,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       return
 
     # Check contents of fixtures folder to confirm it's shared
-    fixtures_folder_path = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{FIXTURES_FOLDER_NAME}"
+    fixtures_folder_path = f"{FIXTURES_FOLDER_NAME}"
     exec_result = container.exec_run(f"ls -A {fixtures_folder_path}")
     output = exec_result.output
 
