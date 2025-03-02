@@ -16,3 +16,7 @@ class AppBuilder(Builder):
   @property
   def context_docker_file_path(self):
     return os.path.join(self.dir_path, DOCKERFILE_CONTEXT)
+
+  @property
+  def stoobly_base(self):
+    return 'stoobly_base'

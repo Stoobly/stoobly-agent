@@ -45,6 +45,13 @@ class ServiceBuilder(Builder):
     return self.services.get(self.configure_base)
 
   @property
+  def extends_service(self):
+    if self.config.detached:
+      return self.app_builder.stoobly_base
+    else:
+      return self.app_builder.context_base
+
+  @property
   def proxy_base(self):
     return f"{self.service_name}.proxy_base"
 
@@ -76,7 +83,7 @@ class ServiceBuilder(Builder):
       },
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.context_base
+        'service': self.extends_service
       },
     })
 
@@ -89,7 +96,7 @@ class ServiceBuilder(Builder):
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.context_base
+        'service': self.extends_service
       },
     })
 
@@ -100,7 +107,7 @@ class ServiceBuilder(Builder):
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.context_base
+        'service': self.extends_service
       }
     })
 

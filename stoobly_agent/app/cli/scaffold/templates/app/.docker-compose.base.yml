@@ -1,10 +1,13 @@
 services:
+  context_base:
+    extends:
+      service: stoobly_base
+    volumes:
+      - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
+  stoobly_base:
+    image: stoobly.${USER_ID}
   ui_base:
     extends:
       service: context_base 
     volumes:
-      - ${CA_CERTS_DIR}:/home/stoobly/.mitmproxy   
-  context_base:
-    image: stoobly.${USER_ID}
-    volumes:
-      - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
+      - ${CA_CERTS_DIR}:/home/stoobly/.mitmproxy
