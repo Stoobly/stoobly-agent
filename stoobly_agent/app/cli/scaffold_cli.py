@@ -459,7 +459,9 @@ def up(**kwargs):
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
     attached = not kwargs['detached'] and index == len(commands) - 1
-    exec_command = command.up(attached=attached, build=kwargs['build'], namespace=kwargs['namespace'], pull=kwargs['pull'])
+    exec_command = command.up(
+      attached=attached, build=kwargs['build'], namespace=kwargs['namespace'], pull=kwargs['pull'], user_id=kwargs['user_id']
+    )
     if not exec_command:
       continue
 

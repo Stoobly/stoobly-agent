@@ -31,6 +31,7 @@ class DownOptions(TypedDict):
 class UpOptions(TypedDict):
   attached: bool
   namespace: str
+  user_id: str
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -130,7 +131,8 @@ class WorkflowRunCommand(WorkflowCommand):
     if not os.path.exists(self.compose_path):
       return ''
 
-    command = ['COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
+    user_id = options['user_id'] or os.getuid()
+    command = [f"USER_ID={user_id}", 'COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
     command_options = []
 
     # Add docker compose file
