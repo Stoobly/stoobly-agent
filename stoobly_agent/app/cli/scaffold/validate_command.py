@@ -43,7 +43,7 @@ class ValidateCommand():
     if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
       configure_container_ran = True
     if not configure_container_ran:
-      raise ScaffoldValidateException(f"Configure container has not ran as expected: {configure_container_name}")
+      raise ScaffoldValidateException(f"configure container {configure_container_name} exited with: {configure_container.attrs['State']['ExitCode']}")
   
   def validate_detached(self, container: Container) -> None:
     print(f"Validating detached for: {container.name}")
