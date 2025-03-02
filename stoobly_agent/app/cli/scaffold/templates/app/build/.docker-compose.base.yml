@@ -1,11 +1,13 @@
 services:
   build.init_base:
-    command: ['bin/.init']
+    command: 
+    - .stoobly/docker/build/${WORKFLOW_NAME}/bin/.init
     extends:
       file: ../.docker-compose.base.yml
-      service: proxy_base
+      service: context_base
   build.configure_base:
-    command: ['bin/.configure']
+    command: 
+    - .stoobly/docker/build/${WORKFLOW_NAME}/bin/.configure
     extends:
       file: ../.docker-compose.base.yml
-      service: proxy_base
+      service: context_base

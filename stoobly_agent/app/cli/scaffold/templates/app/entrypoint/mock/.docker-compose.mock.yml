@@ -3,9 +3,6 @@ networks:
     name: entrypoint
 services:
   entrypoint.configure:
-    build:
-      context: ./
-      dockerfile: ../../.Dockerfile.context
     depends_on:
       entrypoint.init:
         condition: service_completed_successfully
@@ -13,17 +10,16 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: entrypoint.configure_base
+    image: stoobly.${USER_ID}
     profiles:
       - mock
     volumes: []
   entrypoint.init:
-    build:
-      context: ./
-      dockerfile: ../../.Dockerfile.context
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
       service: entrypoint.init_base
+    image: stoobly.${USER_ID}
     profiles:
       - mock
     volumes:

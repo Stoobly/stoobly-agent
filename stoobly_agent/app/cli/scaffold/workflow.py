@@ -33,7 +33,8 @@ class Workflow():
 
   @property
   def service_paths(self):
-    return self.app.service_paths
+    all_service_paths = self.app.service_paths
+    return list(filter(lambda path: os.path.exists(os.path.join(path, self.workflow_name)), all_service_paths))
 
   # TODO: merge into 1 services property
 

@@ -9,6 +9,7 @@
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 EXEC_WORKFLOW_NAME := exec
+USER_ID := $(shell id -u)
 
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
@@ -17,22 +18,26 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+user_id_option=--user-id $(USER_ID) 
 workflow_options=$${STOOBLY_WORKFLOW_OPTIONS:+$$STOOBLY_WORKFLOW_OPTIONS }
 
 app_data_dir=$(app_dir)/.stoobly
+app_namespace_dir=$(app_data_dir)/docker
 data_dir=$(context_dir)/.stoobly
 app_tmp_dir=$(app_data_dir)/tmp
 
 # Commands
-docker_compose_command=docker compose
+docker_command=docker
+docker_compose_command=$(docker_command) compose
 source_env=set -a; [ -f .env ] && source .env; set +a
 
-docker_compose_file_path=$(app_data_dir)/docker/stoobly-ui/exec/.docker-compose.exec.yml
+dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
+docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
 
 stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --remove-orphans
-stoobly_exec_build=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_build_args)
-stoobly_exec_build_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) build --pull --quiet
-stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$$UID && export CA_CERTS_DIR="$(ca_certs_dir)"
+stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
+stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) --pull --quiet
+stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$(USER_ID) && export CA_CERTS_DIR="$(ca_certs_dir)"
 
 stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(stoobly_exec_build) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
 
@@ -67,7 +72,7 @@ intercept/enable:
 	$(stoobly_exec)
 mock: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -79,13 +84,13 @@ mock/logs:
 	$(workflow_run)
 mock/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -97,7 +102,7 @@ record/logs:
 	$(workflow_run)
 record/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -132,7 +137,7 @@ scenario/snapshot:
 	$(stoobly_exec)
 test:
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -144,7 +149,7 @@ test/logs:
 	$(workflow_run)
 test/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)

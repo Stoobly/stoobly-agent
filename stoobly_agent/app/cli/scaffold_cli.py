@@ -62,6 +62,7 @@ def service(ctx):
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
+@click.option('--network', help='App default network name. Defaults to app name.')
 @click.argument('app_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
@@ -69,7 +70,10 @@ def create(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
   if kwargs['force'] or not os.path.exists(app.namespace_path):
-    __app_build(app, **kwargs)
+    if not kwargs['network']:
+      kwargs['network'] = kwargs['app_name']
+
+    AppCreateCommand(app, **kwargs).build()
   else:
     print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
 
@@ -249,20 +253,24 @@ def copy(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', help='Workflow namespace.')
-@click.option('--network', help='Workflow network namespace.')
+@click.option('--network', help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
+@click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
 def down(**kwargs):  
   cwd = os.getcwd()
 
-  if not os.getenv(env_vars.LOG_LEVEL):
-    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=True)
 
   if kwargs['context_dir_path']:
     app.context_dir_path = kwargs['context_dir_path']
+
+  # If namespace is set, default network to namespace
+  if kwargs['namespace'] and not kwargs['network']:
+    kwargs['network'] = kwargs['namespace']
 
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
@@ -295,11 +303,16 @@ def down(**kwargs):
   # After services are stopped, their network needs to be removed
   if len(commands) > 0:
     command: WorkflowRunCommand = commands[0]
+
+    if kwargs['rmi']:
+      remove_image_command = command.remove_image(kwargs['user_id'])
+      if not kwargs['dry_run']:
+        exec_stream(remove_image_command)
+      else:
+        print(remove_image_command)
+
     remove_network_command = command.remove_network()
-
     if not kwargs['dry_run']:
-      command.write_nameservers()
-
       exec_stream(remove_network_command)
     else:
       print(remove_network_command)
@@ -311,10 +324,15 @@ def down(**kwargs):
 )
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--follow', is_flag=True, help='Follow last container log output.')
+@click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
+    Log levels can be "debug", "info", "warning", or "error"
+''')
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
 
@@ -360,29 +378,28 @@ def logs(**kwargs):
  
 @workflow.command()
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--build', is_flag=True, help='Build images before starting containers.')
 @click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+@click.option('--from-make', is_flag=True, help='Set if run from scaffolded Makefile.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', help='Workflow namespace.')
-@click.option('--network', help='Workflow network namespace.')
-@click.option('--no-cache', is_flag=True, help='Do not use cache when building images.')
+@click.option('--network', help='Workflow network name.')
+@click.option('--pull', is_flag=True, help='Pull image before running.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
+@click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
 def up(**kwargs):
   cwd = os.getcwd()
 
-  # Create the certs_dir_path if it doesn't exist
-  DataDir.instance().certs_dir_path
-
-  if not os.getenv(env_vars.LOG_LEVEL):
-    os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(
     kwargs['app_dir_path'], DOCKER_NAMESPACE, 
@@ -394,6 +411,10 @@ def up(**kwargs):
 
   if kwargs['context_dir_path']:
     app.context_dir_path = kwargs['context_dir_path']
+
+  # If namespace is set, default network to namespace
+  if kwargs['namespace'] and not kwargs['network']:
+    kwargs['network'] = kwargs['namespace']
 
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
@@ -413,17 +434,23 @@ def up(**kwargs):
     command.current_working_dir = cwd
     commands.append(command)
 
-  # Before services can be started, their network needs to be created
+  # Before services can be started, their image and network needs to be created
   if len(commands) > 0:
     command: WorkflowRunCommand = commands[0]
-    create_network_command = command.create_network()
+
+    init_commands = []
+    if not kwargs['from_make']:
+      create_image_command = command.create_image(user_id=kwargs['user_id'], verbose=kwargs['verbose'])
+      init_commands.append(create_image_command)
+
+    init_commands.append(command.create_network())
+    joined_command = ' && '.join(init_commands)
 
     if not kwargs['dry_run']:
       command.write_nameservers()
-
-      exec_stream(create_network_command)
+      exec_stream(joined_command)
     else:
-      print(create_network_command)
+      print(joined_command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -432,9 +459,7 @@ def up(**kwargs):
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
     attached = not kwargs['detached'] and index == len(commands) - 1
-    exec_command = command.up(
-      attached=attached, namespace=kwargs['namespace'], no_cache=kwargs['no_cache'], verbose=kwargs['verbose']
-    )
+    exec_command = command.up(attached=attached, build=kwargs['build'], namespace=kwargs['namespace'], pull=kwargs['pull'])
     if not exec_command:
       continue
 
@@ -497,9 +522,6 @@ def __get_services(services: List[str], **kwargs):
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
-
-def __app_build(app, **kwargs):
-  AppCreateCommand(app, **kwargs).build()
 
 def __scaffold_build(app, **kwargs):
   command = ServiceCreateCommand(app, **kwargs)

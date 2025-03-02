@@ -30,8 +30,8 @@ class AppConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
-    self.__network = config.get(APP_NAME_ENV)
-    self.__network = config.get(APP_NETWORK_ENV)
+    self.name = config.get(APP_NAME_ENV)
+    self.network = config.get(APP_NETWORK_ENV)
     
   def write(self):
     config = {}

@@ -2,14 +2,14 @@ networks: {}
 services:
   entrypoint.configure_base:
     command:
-    - bin/.configure
+    - .stoobly/docker/entrypoint/${WORKFLOW_NAME}/bin/.configure
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
   entrypoint.init_base:
     command:
-    - bin/.init
+    - .stoobly/docker/entrypoint/${WORKFLOW_NAME}/bin/.init
     environment: {}
     extends:
       file: ../.docker-compose.base.yml

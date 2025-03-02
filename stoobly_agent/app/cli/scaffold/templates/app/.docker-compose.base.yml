@@ -5,14 +5,6 @@ services:
     volumes:
       - ${CA_CERTS_DIR}:/home/stoobly/.mitmproxy   
   context_base:
-    build:
-      args:
-        USER_ID: ${USER_ID}
-      dockerfile: ./.Dockerfile.context
+    image: stoobly.${USER_ID}
     volumes:
       - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
-  proxy_base:
-    build:
-      dockerfile: ./.Dockerfile.proxy
-    extends:
-      service: context_base

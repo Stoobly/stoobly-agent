@@ -1,7 +1,13 @@
 #!/bin/bash
 
-entrypoint=$(dirname -- "$0")/init
+# This file was automatically generated. DO NOT EDIT.
+# Any changes made to this file will be overwritten.
 
+if [ -n "$SERVICE_HOSTNAME" ]; then
+  stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME --certs-dir-path .
+fi
+
+entrypoint=$(dirname -- "$0")/init
 if [ -e "$entrypoint" ]; then
   "$entrypoint"
 fi

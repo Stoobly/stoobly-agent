@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...app_config import AppConfig
-from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, STOOBLY_HOME_DIR
+from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME, STOOBLY_HOME_DIR, WORKFLOW_NAME
 from ...service_config import ServiceConfig
 from ..app_builder import AppBuilder
 from ..builder import Builder
@@ -53,10 +53,6 @@ class ServiceBuilder(Builder):
     return self.services.get(self.proxy_base)
 
   @property
-  def service_mount(self):
-    return f".:{STOOBLY_HOME_DIR}"
-
-  @property
   def service_name(self):
     return self.__service_name
 
@@ -80,9 +76,8 @@ class ServiceBuilder(Builder):
       },
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.proxy_base
+        'service': self.app_builder.context_base
       },
-      'volumes': [self.service_mount]
     })
 
     args[SERVICE_HOSTNAME_ENV] = f"{SERVICE_HOSTNAME}"
@@ -96,7 +91,6 @@ class ServiceBuilder(Builder):
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.app_builder.context_base
       },
-      'volumes': [self.service_mount]
     })
 
   def build_configure_base(self):

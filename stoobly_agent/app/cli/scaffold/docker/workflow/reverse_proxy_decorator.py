@@ -22,7 +22,7 @@ class ReverseProxyDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"/etc/ssl/certs/{SERVICE_HOSTNAME}-joined.pem",
+      '--certs', f"{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', config.proxy_mode,

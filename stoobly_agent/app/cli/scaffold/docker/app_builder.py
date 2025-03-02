@@ -18,9 +18,5 @@ class AppBuilder(Builder):
     return os.path.join(self.dir_path, DOCKERFILE_CONTEXT)
 
   @property
-  def proxy_base(self):
-    return 'proxy_base'
-
-  @property
   def proxy_docker_file_path(self):
     return os.path.join(self.dir_path, DOCKERFILE_PROXY)
