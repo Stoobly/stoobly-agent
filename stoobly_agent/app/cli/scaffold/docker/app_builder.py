@@ -1,7 +1,7 @@
 import os
 
 from .builder import Builder
-from .constants import DOCKER_COMPOSE_BASE, DOCKERFILE_CONTEXT, DOCKERFILE_PROXY
+from .constants import DOCKER_COMPOSE_BASE, DOCKERFILE_CONTEXT
 from ..app_config import AppConfig
 
 class AppBuilder(Builder):
@@ -16,7 +16,3 @@ class AppBuilder(Builder):
   @property
   def context_docker_file_path(self):
     return os.path.join(self.dir_path, DOCKERFILE_CONTEXT)
-
-  @property
-  def proxy_docker_file_path(self):
-    return os.path.join(self.dir_path, DOCKERFILE_PROXY)
