@@ -39,9 +39,9 @@ class WorkflowRunCommand(WorkflowCommand):
     super().__init__(app, **kwargs)
 
     self.__current_working_dir = os.getcwd()
-    self.__ca_certs_dir_path = app.ca_certs_dir_path
-    self.__certs_dir_path = app.certs_dir_path
-    self.__context_dir_path = app.context_dir_path
+    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
+    self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
+    self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = kwargs.get('network') or self.app_config.network
 
@@ -98,7 +98,7 @@ class WorkflowRunCommand(WorkflowCommand):
     return self.__network
 
   def create_image(self, **options: BuildOptions):
-    relative_namespace_path = os.path.relpath(self.app_namespace_path, self.__current_working_dir)
+    relative_namespace_path = os.path.relpath(self.scaffold_namespace_path, self.__current_working_dir)
     dockerfile_path = os.path.join(relative_namespace_path, DOCKERFILE_CONTEXT)
     user_id = options['user_id'] or os.getuid()
     

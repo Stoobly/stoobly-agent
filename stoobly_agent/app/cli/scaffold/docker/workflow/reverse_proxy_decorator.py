@@ -22,13 +22,16 @@ class ReverseProxyDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', config.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
       '--ssl-insecure'
     ]
+
+    if config.scheme == 'https':
+      command.append('--certs')
+      command.append(f"{SERVICE_HOSTNAME}-joined.pem")
 
     services = self.workflow_builder.services
     proxy_name = self.workflow_builder.proxy

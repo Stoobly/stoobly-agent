@@ -20,7 +20,6 @@ class MockDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--intercept',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
@@ -29,6 +28,10 @@ class MockDecorator():
       '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure'
     ]
+
+    if config.scheme == 'https':
+      command.append('--certs')
+      command.append(f"{SERVICE_HOSTNAME}-joined.pem")
 
     services = self.__workflow_builder.services
     proxy_name = self.__workflow_builder.proxy

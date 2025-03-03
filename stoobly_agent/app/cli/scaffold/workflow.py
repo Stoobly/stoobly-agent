@@ -41,7 +41,7 @@ class Workflow():
   # Returns services that run in this specific workflow
   @property
   def services_ran(self) -> List[str]:
-    services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
+    services_dir = os.path.join(self.app.data_dir_path, self.app.scaffold_namespace)
 
     services = []
     for filename in os.listdir(services_dir):
@@ -57,5 +57,5 @@ class Workflow():
     return services
 
   def service_paths_from_services(self, services: List[str]):
-    app_namespace_path = self.app.namespace_path
-    return list(map(lambda service: os.path.join(app_namespace_path, service), services))
+    scaffold_namespace_path = self.app.scaffold_namespace_path
+    return list(map(lambda service: os.path.join(scaffold_namespace_path, service), services))

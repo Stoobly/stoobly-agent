@@ -69,7 +69,7 @@ def create(**kwargs):
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
-  if kwargs['force'] or not os.path.exists(app.namespace_path):
+  if kwargs['force'] or not os.path.exists(app.scaffold_namespace_path):
     if not kwargs['network']:
       kwargs['network'] = kwargs['app_name']
 
@@ -86,13 +86,7 @@ def create(**kwargs):
 @click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 def mkcert(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, ca_certs_dir_path=kwargs['ca_certs_dir_path'])
-
-  if kwargs['certs_dir_path']:
-    app.certs_dir_path = kwargs['certs_dir_path']
-
-  if kwargs['context_dir_path']:
-    app.context_dir_path = kwargs['context_dir_path']
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   if not app.exists:
     print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
@@ -263,10 +257,7 @@ def down(**kwargs):
 
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, skip_validate_path=True)
-
-  if kwargs['context_dir_path']:
-    app.context_dir_path = kwargs['context_dir_path']
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
@@ -401,16 +392,7 @@ def up(**kwargs):
 
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(
-    kwargs['app_dir_path'], DOCKER_NAMESPACE, 
-    ca_certs_dir_path=kwargs['ca_certs_dir_path'], skip_validate_path=kwargs['dry_run']
-  )
-
-  if kwargs['certs_dir_path']:
-    app.certs_dir_path = kwargs['certs_dir_path']
-
-  if kwargs['context_dir_path']:
-    app.context_dir_path = kwargs['context_dir_path']
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:

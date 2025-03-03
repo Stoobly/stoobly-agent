@@ -30,16 +30,16 @@ class AppCommand(Command):
     return self.__config.path
 
   @property
-  def app_namespace_path(self):
-    return self.app.namespace_path
+  def scaffold_namespace_path(self):
+    return self.app.scaffold_namespace_path
 
   @property
   def app_templates_root_dir(self):
     return os.path.join(self.templates_root_dir, 'app')
 
   @property
-  def scaffold_dir_path(self):
-    return self.app.scaffold_dir_path
+  def data_dir_path(self):
+    return self.app.data_dir_path
 
   @property
   def scaffold_namespace_path(self):

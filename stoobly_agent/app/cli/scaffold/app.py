@@ -5,18 +5,18 @@ from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 class App():
 
-  def __init__(self, path: str, namespace: str, **kwargs):
+  def __init__(self, path: str, scaffold_namespace: str, **kwargs):
     path = os.path.abspath(path) or os.getcwd()
     data_dir: DataDir = DataDir.instance(path) 
 
-    self.__scaffold_dir_path = data_dir.path
+    self.__data_dir_path = data_dir.path
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.mitmproxy_conf_dir_path
-    self.__certs_dir_path = data_dir.certs_dir_path
-    self.__context_dir_path = data_dir.context_dir_path
+    self.__certs_dir_path = kwargs.get('certs_dir_path') or data_dir.certs_dir_path
+    self.__context_dir_path = kwargs.get('context_dir_path') or data_dir.context_dir_path
     self.__data_dir = data_dir
     self.__dir_path = path
-    self.__namespace = namespace
-    self.__skip_validate_path = not not kwargs.get('skip_validate_path')
+    self.__scaffold_namespace = scaffold_namespace
+    self.__skip_validate_path = not not kwargs.get('dry_run')
 
   @property
   def ca_certs_dir_path(self):
@@ -58,24 +58,24 @@ class App():
     return os.path.exists(self.dir_path)
 
   @property
-  def namespace(self):
-    return self.__namespace
+  def scaffold_namespace(self):
+    return self.__scaffold_namespace
 
   @property
-  def namespace_path(self):
-    return os.path.join(self.data_dir_path, self.namespace)
+  def scaffold_namespace_path(self):
+    return os.path.join(self.data_dir_path, self.scaffold_namespace)
 
   @property
   def dir_path(self):
     return self.__dir_path
 
   @property
-  def scaffold_dir_path(self):
-    return self.__scaffold_dir_path
+  def data_dir_path(self):
+    return self.__data_dir_path
 
   @property
   def scaffold_namespace_path(self):
-    return os.path.join(self.scaffold_dir_path, self.namespace)
+    return os.path.join(self.data_dir_path, self.scaffold_namespace)
 
   @property
   def services(self):
@@ -83,7 +83,7 @@ class App():
 
   @property
   def service_paths(self):
-    services_dir = os.path.join(self.scaffold_dir_path, self.namespace)
+    services_dir = os.path.join(self.data_dir_path, self.scaffold_namespace)
 
     services = []
     for filename in os.listdir(services_dir):

@@ -2,6 +2,7 @@
 #
 # STOOBLY_APP_DIR: path to the application source code directory
 # STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored
+# STOOBLY_CERTS_DIR: path to a folder to store certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
 # STOOBLY_WORKFLOW_OPTIONS: extra options to pass to 'stoobly-agent scaffold workflow' commands
 
@@ -15,10 +16,15 @@ CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 # Configuration
 app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
+certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
-user_id_option=--user-id $(USER_ID) 
+
+context_dir_option=--context-dir-path $(context_dir)
+user_id_option=--user-id $(USER_ID)
+stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
+workflow_down_options=$(user_id_option)
 workflow_options=$${STOOBLY_WORKFLOW_OPTIONS:+$$STOOBLY_WORKFLOW_OPTIONS }
+workflow_up_options=$(context_dir_option) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) --from-make $(user_id_option)
 
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
@@ -32,27 +38,26 @@ workflow_run_script=$(app_data_dir)/tmp/run.sh
 docker_command=docker
 docker_compose_command=$(docker_command) compose
 exec_env=export CA_CERTS_DIR="$(ca_certs_dir)" && export USER_ID=$(USER_ID)
-exec_up=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args) up --remove-orphans
+exec_up=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_options) up --remove-orphans
 source_env=set -a; [ -f .env ] && source .env; set +a
 
 # Build base image
 stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
-stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) --pull --quiet
+stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) --quiet
 
 # Exec any
 stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) && $(exec_up)
-stoobly_exec_env=$(source_env) && $(exec_env) && export CONTEXT_DIR=$(context_dir) 
+stoobly_exec_env=$(source_env) && $(exec_env) && export CONTEXT_DIR="$(context_dir)" 
 
 # Exec workflow run
 # Because scaffold is stored in the application source code directory, 
 # when running a scaffold command from within a container,
 # it needs access to $(app_dir) rather than $(context_dir)
 stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) && $(exec_up)
-stoobly_exec_run_env=$(source_env) && $(exec_env) && export CONTEXT_DIR=$(app_dir)
+stoobly_exec_run_env=$(source_env) && $(exec_env) && export CONTEXT_DIR="$(app_dir)"
 
 # Workflow run
-workflow_run=$(workflow_run_env) && bash "$(workflow_run_script)"
-workflow_run_env=$(source_env) && export CONTEXT_DIR="$(context_dir)"
+workflow_run=$(source_env) && bash "$(workflow_run_script)"
 
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \
@@ -77,7 +82,7 @@ intercept/enable:
 	$(stoobly_exec)
 mock: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -89,13 +94,13 @@ mock/logs:
 	$(workflow_run)
 mock/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="mock" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 record: nameservers
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -107,7 +112,7 @@ record/logs:
 	$(workflow_run)
 record/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="record" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -142,7 +147,7 @@ scenario/snapshot:
 	$(stoobly_exec)
 test:
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="--from-make $(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -154,7 +159,7 @@ test/logs:
 	$(workflow_run)
 test/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(user_id_option) $(workflow_options)$(options)" && \
+	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_options)$(options)" && \
 	export EXEC_ARGS="test" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
