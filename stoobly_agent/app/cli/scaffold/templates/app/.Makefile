@@ -2,7 +2,6 @@
 #
 # STOOBLY_APP_DIR: path to the application source code directory
 # STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored
-# STOOBLY_CERTS_DIR: path to a folder to store certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
 # STOOBLY_WORKFLOW_OPTIONS: extra options to pass to 'stoobly-agent scaffold workflow' commands
 
@@ -16,38 +15,44 @@ CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 # Configuration
 app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
-certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
 user_id_option=--user-id $(USER_ID) 
 workflow_options=$${STOOBLY_WORKFLOW_OPTIONS:+$$STOOBLY_WORKFLOW_OPTIONS }
 
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
-data_dir=$(context_dir)/.stoobly
 app_tmp_dir=$(app_data_dir)/tmp
+data_dir=$(context_dir)/.stoobly
+dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
+docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
+workflow_run_script=$(app_data_dir)/tmp/run.sh
 
 # Commands
 docker_command=docker
 docker_compose_command=$(docker_command) compose
+exec_env=export CA_CERTS_DIR="$(ca_certs_dir)" && export USER_ID=$(USER_ID)
+exec_up=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args) up --remove-orphans
 source_env=set -a; [ -f .env ] && source .env; set +a
 
-dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
-docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
-
-stoobly_exec_args=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME) up --remove-orphans
+# Build base image
 stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) --pull --quiet
-stoobly_exec_env=export CONTEXT_DIR=$(context_dir) && export USER_ID=$(USER_ID) && export CA_CERTS_DIR="$(ca_certs_dir)"
 
-stoobly_exec=$(stoobly_exec_env) && $(source_env) && $(stoobly_exec_build) && $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
+# Exec any
+stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) && $(exec_up)
+stoobly_exec_env=$(source_env) && $(exec_env) && export CONTEXT_DIR=$(context_dir) 
 
-# Because scaffold is stored in the APP_DIR, when running a scaffold command from within a container,
-# it needs access to APP_DIR rather than CONTEXT_DIR
-stoobly_exec_run=$(stoobly_exec_env) && $(source_env) && $(stoobly_exec_build) && CONTEXT_DIR=$(app_dir) $(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_args)
+# Exec workflow run
+# Because scaffold is stored in the application source code directory, 
+# when running a scaffold command from within a container,
+# it needs access to $(app_dir) rather than $(context_dir)
+stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) && $(exec_up)
+stoobly_exec_run_env=$(source_env) && $(exec_env) && export CONTEXT_DIR=$(app_dir)
 
-workflow_run_script=$(app_data_dir)/tmp/run.sh
-workflow_run_env=export APP_DIR="$(app_dir)" && export CERTS_DIR="$(certs_dir)" && export CONTEXT_DIR="$(context_dir)"
-workflow_run=$(workflow_run_env) && $(source_env) && bash "$(workflow_run_script)"
+# Workflow run
+workflow_run=$(workflow_run_env) && bash "$(workflow_run_script)"
+workflow_run_env=$(source_env) && export CONTEXT_DIR="$(context_dir)"
 
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \

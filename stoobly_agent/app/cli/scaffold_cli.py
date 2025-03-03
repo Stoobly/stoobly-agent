@@ -291,7 +291,7 @@ def down(**kwargs):
   for command in commands:
     __print_header(f"SERVICE {command.service_name}")
 
-    exec_command = command.down(namespace=kwargs['namespace'], rmi=kwargs['rmi'])
+    exec_command = command.down(namespace=kwargs['namespace'], rmi=kwargs['rmi'], user_id=kwargs['user_id'])
     if not exec_command:
       continue
 

@@ -12,7 +12,7 @@ from stoobly_agent.lib.logger import Logger
 from .app import App
 from .constants import (
   APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 )
 from .docker.constants import DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
@@ -20,18 +20,19 @@ from .workflow_env import WorkflowEnv
 
 LOG_ID = 'WorkflowRunCommand'
 
-class BuildOptions(TypedDict):
+class ComposeOptions(TypedDict):
+  namespace: str
+  user_id: str
+
+class BuildOptions(ComposeOptions):
   user_id: str
   verbose: bool
 
-class DownOptions(TypedDict):
-  namespace: str
+class DownOptions(ComposeOptions):
   rmi: bool
 
-class UpOptions(TypedDict):
+class UpOptions(ComposeOptions):
   attached: bool
-  namespace: str
-  user_id: str
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -131,8 +132,7 @@ class WorkflowRunCommand(WorkflowCommand):
     if not os.path.exists(self.compose_path):
       return ''
 
-    user_id = options['user_id'] or os.getuid()
-    command = [f"USER_ID={user_id}", 'COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
+    command = ['COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
     command_options = []
 
     # Add docker compose file
@@ -189,7 +189,7 @@ class WorkflowRunCommand(WorkflowCommand):
       # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
       command.append(option)
 
-    self.write_env(options.get('namespace'))
+    self.write_env(**options)
 
     return ' '.join(command)
 
@@ -220,7 +220,7 @@ class WorkflowRunCommand(WorkflowCommand):
     if options.get('rmi'):
       command.append('--rmi local')
 
-    self.write_env(options.get('namespace'))
+    self.write_env(**options)
 
     return ' '.join(command)
 
@@ -245,12 +245,16 @@ class WorkflowRunCommand(WorkflowCommand):
       if nameservers:
         fp.write("\n".join(nameservers))
 
-  def write_env(self, namespace = None):
+  def write_env(self, **options: ComposeOptions):
+    namespace = options.get('namespace')
+    user_id = options.get('user_id')
+
     _config = {}
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
+    _config[USER_ID_ENV] = user_id or os.getuid()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
     
     if namespace:
