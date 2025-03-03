@@ -64,12 +64,12 @@ class Apply():
 
     for event in unprocessed_events:
       if self.__logger:
-        self.__logger(f"Processing event {event.uuid}")
+        self.__logger(f"{bcolors.OKBLUE}Processing Event{bcolors.ENDC} {event.uuid}")
 
       results = event.apply(**self.__handlers())
       if results:
         status = results[1]
-        if status == 0 or status >= 500:
+        if status == 0 or status >= 400:
           break
 
       last_processed_event = event
@@ -121,7 +121,7 @@ class Apply():
       return False
 
     if self.__logger:
-      self.__logger(f"Processing event {event.uuid}")
+      self.__logger(f"{bcolors.OKBLUE}Processing Event{bcolors.ENDC} {event.uuid}")
 
     event.apply(**self.__handlers())
 
@@ -139,7 +139,7 @@ class Apply():
     res, status = self.request_model.destroy(uuid, force=self.__force)
 
     if status == 200:
-      self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} request {uuid}") 
+      self.__logger(f"{bcolors.WARNING}Deleted Request{bcolors.ENDC} {uuid}") 
     else: 
       self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
@@ -160,7 +160,7 @@ class Apply():
     res, status = self.scenario_model.destroy(uuid, force=self.__force)
 
     if self.__logger and status == 200:
-      self.__logger(f"{bcolors.WARNING}Deleted{bcolors.ENDC} scenario {uuid}")
+      self.__logger(f"{bcolors.WARNING}Deleted Scenario{bcolors.ENDC} {uuid}")
     else: 
       self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
@@ -184,7 +184,7 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKGREEN}Created scenario{bcolors.ENDC} {res['name']}") 
+          self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}") 
         else: 
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     else:
@@ -195,7 +195,7 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKBLUE}Updated{bcolors.ENDC} scenario {res['name']}") 
+          self.__logger(f"{bcolors.OKBLUE}Updated Scenario{bcolors.ENDC} {res['name']}") 
         else:
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
@@ -242,15 +242,21 @@ class Apply():
     res, status = self.request_model.show(uuid)
 
     if status == 404:
+      request_params = build_params(raw_request)
+
+      if not request_params:
+          self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} failed to join request {uuid}")
+          return res, status
+
       params = {
-        **build_params(raw_request),
+        **request_params,
         **base_params,
       }
 
       res, status = self.request_model.create(**params)
 
       if self.__logger and status == 200:
-        self.__logger(f"{bcolors.OKGREEN}Created{bcolors.ENDC} {res['list'][0]['url']}")
+        self.__logger(f"{bcolors.OKGREEN}Created Request{bcolors.ENDC} {res['list'][0]['url']}")
       else: 
         self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     elif status == 200:
@@ -263,7 +269,7 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKBLUE}Updated{bcolors.ENDC} {res['url']}")
+          self.__logger(f"{bcolors.OKBLUE}Updated Request{bcolors.ENDC} {res['url']}")
         else: 
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
