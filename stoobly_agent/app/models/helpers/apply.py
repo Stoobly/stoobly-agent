@@ -195,7 +195,7 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKBLUE}Updated Scenario{bcolors.ENDC} {res['name']}") 
+          self.__logger(f"{bcolors.OKCYAN}Updated Scenario{bcolors.ENDC} {res['name']}") 
         else:
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
@@ -220,6 +220,9 @@ class Apply():
       control = RequestStringControl(toks[0])
       uuid = control.id
       res, status = self.__put_request(uuid, raw_request, scenario_id=scenario['id'])
+
+      if status != 200:
+        return res, status
 
       snapshot_requests[uuid] = res
 
@@ -269,7 +272,7 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKBLUE}Updated Request{bcolors.ENDC} {res['url']}")
+          self.__logger(f"{bcolors.OKCYAN}Updated Request{bcolors.ENDC} {res['url']}")
         else: 
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
