@@ -34,7 +34,9 @@ class ScenarioSnapshot(Snapshot):
       try:
         return json.loads(fp.read())
       except Exception:
-        return {}
+        return {
+          'name': self.uuid
+        }
 
   @property
   def metadata_backup(self):

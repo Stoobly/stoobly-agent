@@ -6,6 +6,9 @@ from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 
 from stoobly_agent.app.proxy.record.join_request_service import InterceptSettings, join_request, MitmproxyRequestFacade, MitmproxyResponseFacade
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.logger import Logger
+
+LOG_ID = 'CreateRequestParamsService'
 
 class MitmproxyFlowMock():
     def __init__(self, request, response):
@@ -16,6 +19,7 @@ def build_params(raw_requests: str, payloads_delimitter = None):
   try:
     joined_request = JoinedRequestAdapter(raw_requests, payloads_delimitter).adapt()
   except Exception as e:
+    Logger.instance(LOG_ID).error(e)
     return
 
   request_adapter = RawHttpRequestAdapter(joined_request.request_string.get())
