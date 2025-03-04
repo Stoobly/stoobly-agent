@@ -1,6 +1,7 @@
+import os
 import pdb
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
 
 class MockDecorator():
@@ -31,7 +32,7 @@ class MockDecorator():
 
     if config.scheme == 'https':
       command.append('--certs')
-      command.append(f"{SERVICE_HOSTNAME}-joined.pem")
+      command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))
 
     services = self.__workflow_builder.services
     proxy_name = self.__workflow_builder.proxy

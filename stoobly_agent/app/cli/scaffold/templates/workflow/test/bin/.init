@@ -4,7 +4,7 @@
 # Any changes made to this file will be overwritten.
 
 if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ]; then
-  stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME --certs-dir-path .
+  stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
 fi
 
 entrypoint=$(dirname -- "$0")/init
