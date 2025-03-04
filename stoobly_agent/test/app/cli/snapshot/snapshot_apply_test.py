@@ -1,3 +1,4 @@
+import os
 import pdb
 import pytest
 import time
@@ -12,6 +13,10 @@ from stoobly_agent.cli import record, request, scenario, snapshot
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
+
+def write_junk(path: str):
+  with open(path, 'w') as fp:
+    fp.write('junk')
 
 @pytest.fixture(scope='module')
 def runner():
@@ -387,3 +392,159 @@ class TestApply():
           assert apply_result.exit_code == 0
 
           assert log.version == expected_version
+
+    class TestWhenMalformedScenarioMetadata():
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        log = Log()
+        events = log.events
+        event = events[len(events) - 1]
+        metadata_path = event.snapshot().metadata_path
+        with open(metadata_path, 'w') as fp:
+          fp.write('junk')
+
+        return event
+
+      @pytest.fixture(scope='class', autouse=True)
+      def removed_scenario(self, created_scenario: Scenario):
+        created_scenario.delete()
+        assert Scenario.find(created_scenario.id) == None
+
+      def test_creates_scenario_with_uuid_name(self, runner: CliRunner, created_scenario: Scenario):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
+        assert recreated_scenario.name == created_scenario.uuid
+
+    class TestWhenMissingScenarioMetadata():
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        log = Log()
+        events = log.events
+        event = events[len(events) - 1]
+        metadata_path = event.snapshot().metadata_path
+        os.remove(metadata_path)
+
+        return event
+
+      @pytest.fixture(scope='class', autouse=True)
+      def removed_scenario(self, created_scenario: Scenario):
+        created_scenario.delete()
+        assert Scenario.find(created_scenario.id) == None
+
+      def test_skips_scenario(self, runner: CliRunner, created_scenario: Scenario):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
+        assert recreated_scenario == None
+  
+    class TestWhenMalformedRequest():
+
+      @pytest.fixture(scope='class')
+      def recorded_request(self, runner: CliRunner):
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(autouse=True, scope='class')
+      def put_event(self, runner: CliRunner, recorded_request: Request):
+        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        log = Log()
+        events = log.events
+        event = events[len(events) - 1]
+
+        with open(event.snapshot().path, 'w') as fp:
+          fp.write('junk')
+
+        return event
+
+      @pytest.fixture(scope='class', autouse=True)
+      def removed_request(self, recorded_request: Request):
+        recorded_request.delete()
+        assert Request.find(recorded_request.id) == None
+
+      def test_it_creates_request(self, runner: CliRunner, recorded_request: Request):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        assert Request.find_by(uuid=recorded_request.uuid) == None
+
+      def test_idempotent(self, runner: CliRunner, recorded_request: Request, put_event: LogEvent):
+        apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
+        assert apply_result.exit_code == 1
+
+        assert Request.find_by(uuid=recorded_request.uuid) == None
+
+    class TestWhenMalformedScenarioRequest():
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario.requests
+
+      @pytest.fixture(scope='class', autouse=True)
+      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        log = Log()
+        events = log.events
+        event = events[len(events) - 1]
+        event.snapshot().iter_request_snapshots(lambda snapshot: write_junk(snapshot.path))
+
+        return event
+
+      @pytest.fixture(scope='class', autouse=True)
+      def removed_scenario(self, created_scenario: Scenario):
+        created_scenario.delete()
+        assert Scenario.find(created_scenario.id) == None
+
+      def test_skips_scenario(self, runner: CliRunner, created_scenario: Scenario):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
+        assert recreated_scenario
+
+        assert len(recreated_scenario.requests) == 0
+
+      def test_idempotent(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
+        apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
+        assert apply_result.exit_code == 1
+
+        recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
+        assert recreated_scenario
+
+        assert len(recreated_scenario.requests) == 0

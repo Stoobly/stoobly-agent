@@ -61,6 +61,7 @@ class Apply():
       return
 
     last_processed_event = None
+    completed = True
 
     for event in unprocessed_events:
       if self.__logger:
@@ -70,6 +71,7 @@ class Apply():
       if results:
         status = results[1]
         if status == 0 or status >= 400:
+          completed = False
           break
 
       last_processed_event = event
@@ -85,6 +87,8 @@ class Apply():
         log.version = log.next_version(last_processed_event.uuid)
 
     log.lock()
+
+    return completed
 
   def request(self, uuid: str):
     result = self.__apply_put_request(uuid)
@@ -123,7 +127,11 @@ class Apply():
     if self.__logger:
       self.__logger(f"{bcolors.OKBLUE}Processing Event{bcolors.ENDC} {event.uuid}")
 
-    event.apply(**self.__handlers())
+    results = event.apply(**self.__handlers())
+    if results:
+      status = results[1]
+      if status == 0 or status >= 400:
+        return False
 
     return True
 
@@ -150,9 +158,9 @@ class Apply():
 
     raw_request = snapshot.request
     if not raw_request:
-      error = f"Snapshot for request {uuid} not found" 
-      self.__logger(f"{bcolors.FAIL}400{bcolors.ENDC} {error}")
-      return error, 400
+      error = f"snapshot for request {uuid} not found" 
+      self.__logger(f"{bcolors.WARNING}Skipping Request{bcolors.ENDC} {error}")
+      return error, 301
 
     return self.__put_request(uuid, raw_request)
 
@@ -171,9 +179,9 @@ class Apply():
     metadata = snapshot.metadata
 
     if not metadata:
-      error = f"Snapshot for scenario {uuid} not found"
-      self.__logger(f"{bcolors.FAIL}400{bcolors.ENDC} {error}")
-      return error, 400
+      error = f"snapshot for scenario {uuid} not found"
+      self.__logger(f"{bcolors.WARNING}Skipping Scenario{bcolors.ENDC} {error}")
+      return error, 301 
 
     res, status = self.scenario_model.show(uuid)
     if status == 404:
