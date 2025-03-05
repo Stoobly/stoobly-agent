@@ -427,9 +427,9 @@ def up(**kwargs):
 
     init_commands.append(command.create_network())
     joined_command = ' && '.join(init_commands)
+    command.write_nameservers()
 
     if not kwargs['dry_run']:
-      command.write_nameservers()
       exec_stream(joined_command)
     else:
       print(joined_command)

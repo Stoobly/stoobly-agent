@@ -9,7 +9,7 @@
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 EXEC_WORKFLOW_NAME := exec
-PULL_OPTION := $(if $(STOOBLY_DISABLE_PULL),,--pull)
+PULL_OPTION := $(if $(STOOBLY_IMAGE_USE_LOCAL),,--pull)
 USER_ID := $(shell id -u)
 
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)

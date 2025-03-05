@@ -101,5 +101,5 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
             
-          STOOBLY_DISABLE_PULL=1 make test/e2e
+          STOOBLY_IMAGE_USE_LOCAL=1 make test/e2e
 

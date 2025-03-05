@@ -33,6 +33,7 @@ class DownOptions(ComposeOptions):
 
 class UpOptions(ComposeOptions):
   attached: bool
+  pull: bool
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -100,7 +101,9 @@ class WorkflowRunCommand(WorkflowCommand):
     command.append(f"-f {dockerfile_path}")
     command.append(f"-t stoobly.{user_id}")
     command.append(f"--build-arg USER_ID={user_id}")
-    command.append('--pull')
+
+    if not os.environ.get('STOOBLY_IMAGE_USE_LOCAL'):
+      command.append('--pull')
 
     if not options.get('verbose'):
       command.append('--quiet')
