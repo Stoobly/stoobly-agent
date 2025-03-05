@@ -90,11 +90,16 @@ jobs:
           sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
           sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
 
+      - name: Build image
+        run: |
+          # e.g. stoobly/agent:1.3
+          docker build -t stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py) .
+
       - name: Test with pytest
         run: |
           python --version
           python -m pip install poetry && \
           python -m poetry install --with test
-
-          make test/e2e
+            
+          STOOBLY_IMAGE_USE_LOCAL=1 make test/e2e
 

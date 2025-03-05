@@ -7,6 +7,7 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
+    working_dir: /home/stoobly/.stoobly/docker/entrypoint/${WORKFLOW_NAME}
   entrypoint.init_base:
     command:
     - bin/.init
@@ -14,3 +15,4 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
+    working_dir: /home/stoobly/.stoobly/docker/entrypoint/${WORKFLOW_NAME}

@@ -36,11 +36,15 @@ def snapshot(ctx):
 @click.argument('uuid', required=False)
 def apply(**kwargs):
   apply = Apply(force=kwargs['force']).with_logger(print)
+  completed = True
 
   if kwargs.get('uuid'):
-    apply.single(kwargs['uuid'])
+    completed = apply.single(kwargs['uuid'])
   else:
-    apply.all()
+    completed = apply.all()
+
+  if not completed:
+    sys.exit(1)
 
 @snapshot.command(
   help="Copy snapshots to a different data directory."

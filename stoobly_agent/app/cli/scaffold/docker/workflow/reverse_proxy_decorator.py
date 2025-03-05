@@ -1,8 +1,9 @@
+import os
 import pdb
 
 from urllib.parse import urlparse
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
 
 class ReverseProxyDecorator():
@@ -22,13 +23,16 @@ class ReverseProxyDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"/etc/ssl/certs/{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', config.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
       '--ssl-insecure'
     ]
+
+    if config.scheme == 'https':
+      command.append('--certs')
+      command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))
 
     services = self.workflow_builder.services
     proxy_name = self.workflow_builder.proxy

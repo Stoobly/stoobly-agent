@@ -18,6 +18,12 @@ class JoinedRequestAdapter():
       payloads_delimitter = payloads_delimitter.encode()
       
     self.__split_joined_request_string = joined_request_string.split(payloads_delimitter)
+    if len(self.__split_joined_request_string) != 2:
+      self.__split_joined_request_string = joined_request_string.split(payloads_delimitter.replace(b"\n", b"\r\n"))
+
+    if len(self.__split_joined_request_string) != 2:
+      raise ValueError(f"Could not split by {payloads_delimitter}")
+
     self.__raw_request_string = None
     self.__raw_response_string = None
 

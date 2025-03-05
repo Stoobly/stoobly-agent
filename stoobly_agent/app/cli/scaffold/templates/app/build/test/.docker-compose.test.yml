@@ -1,22 +1,18 @@
 services:
   build.init:
-    build:
-      context: ./
-      dockerfile: ../../.Dockerfile.context
     extends:
       file: ../.docker-compose.base.yml
       service: build.init_base
+    image: stoobly.${USER_ID}
     profiles:
       - test
   build.configure:
-    build:
-      context: ./
-      dockerfile: ../../.Dockerfile.context
     depends_on:
       build.init:
         condition: service_completed_successfully
     extends:
       file: ../.docker-compose.base.yml
       service: build.configure_base
+    image: stoobly.${USER_ID}
     profiles:
       - test

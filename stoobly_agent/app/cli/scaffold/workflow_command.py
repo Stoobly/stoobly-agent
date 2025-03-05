@@ -26,7 +26,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def compose_path(self):
     return os.path.join(
-      self.scaffold_dir_path,
+      self.data_dir_path,
       self.compose_relative_path
     )
 
@@ -70,7 +70,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def custom_compose_path(self):
     return os.path.join(
-      self.scaffold_dir_path,
+      self.data_dir_path,
       self.custom_compose_relative_path
     )
 
@@ -114,7 +114,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def workflow_path(self):
     return os.path.join(
-      self.scaffold_dir_path,
+      self.data_dir_path,
       self.workflow_relative_path
     )
 

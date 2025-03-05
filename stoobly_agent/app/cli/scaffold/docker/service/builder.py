@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...app_config import AppConfig
-from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, STOOBLY_HOME_DIR
+from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME, STOOBLY_HOME_DIR, WORKFLOW_NAME
 from ...service_config import ServiceConfig
 from ..app_builder import AppBuilder
 from ..builder import Builder
@@ -45,16 +45,19 @@ class ServiceBuilder(Builder):
     return self.services.get(self.configure_base)
 
   @property
+  def extends_service(self):
+    if self.config.detached:
+      return self.app_builder.stoobly_base
+    else:
+      return self.app_builder.context_base
+
+  @property
   def proxy_base(self):
     return f"{self.service_name}.proxy_base"
 
   @property
   def proxy_base_service(self):
     return self.services.get(self.proxy_base)
-
-  @property
-  def service_mount(self):
-    return f".:{STOOBLY_HOME_DIR}"
 
   @property
   def service_name(self):
@@ -80,9 +83,8 @@ class ServiceBuilder(Builder):
       },
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.proxy_base
+        'service': self.extends_service
       },
-      'volumes': [self.service_mount]
     })
 
     args[SERVICE_HOSTNAME_ENV] = f"{SERVICE_HOSTNAME}"
@@ -90,13 +92,12 @@ class ServiceBuilder(Builder):
   def build_init_base(self):
     environment = {}
     self.with_service(self.init_base, {
-      'command': ['bin/.init', 'dist'],
+      'command': ['bin/.init'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.context_base
+        'service': self.extends_service
       },
-      'volumes': [self.service_mount]
     })
 
   def build_configure_base(self):
@@ -106,7 +107,7 @@ class ServiceBuilder(Builder):
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.app_builder.context_base
+        'service': self.extends_service
       }
     })
 

@@ -4,6 +4,7 @@ import shutil
 
 from stoobly_agent.config.constants.env_vars import ENV
 
+CERTS_DIR_NAME = 'certs'
 DATA_DIR_NAME = '.stoobly'
 DB_FILE_NAME = 'stoobly_agent.sqlite3'
 DB_VERSION_NAME = 'VERSION'
@@ -85,7 +86,7 @@ class DataDir:
 
     @property
     def certs_dir_path(self):
-        certs_dir_path = os.path.join(self.path, 'certs')
+        certs_dir_path = os.path.join(self.path, CERTS_DIR_NAME)
 
         if not os.path.exists(certs_dir_path):
             os.mkdir(certs_dir_path)

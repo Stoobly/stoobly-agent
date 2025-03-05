@@ -23,10 +23,6 @@ class CertificateAuthority():
 
     def __init__(self, certs_dir = DataDir.instance().mitmproxy_conf_dir_path, cn = MITMPROXY_CN):
         self.certs_dir = certs_dir
-
-        if not os.path.exists(certs_dir):
-            self.generate_certs()
-
         self.cn = cn
         self.key_size = 2048
 
@@ -201,5 +197,5 @@ class CertificateAuthority():
             return org_name, alt_names
 
         except Exception as e:
-            Logger.instance(LOG_ID).warn(f"Could not retrieve certificate for {domain}: {e}")
+            Logger.instance(LOG_ID).debug(f"Could not retrieve certificate for {domain}: {e}")
             return None, alt_names

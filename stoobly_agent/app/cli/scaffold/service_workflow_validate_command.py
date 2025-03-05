@@ -1,21 +1,17 @@
 import os
 import pdb
 import socket
-import ssl
 import time
+
 from collections import Counter
 from pathlib import Path
 
-import requests
 import yaml
 from docker.models.containers import Container
-from requests.adapters import HTTPAdapter
-from urllib3 import Retry
 
 from stoobly_agent.app.cli.scaffold.constants import (
   FIXTURES_FOLDER_NAME,
   STOOBLY_DATA_DIR,
-  STOOBLY_HOME_DIR,
   VIRTUAL_HOST_ENV,
   VIRTUAL_PORT_ENV,
   VIRTUAL_PROTO_ENV,
@@ -39,7 +35,9 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     self.workflow_name = kwargs['workflow_name']
     self.hostname = self.service_config.hostname
-    self.service_docker_compose = ServiceDockerCompose(app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname)
+    self.service_docker_compose = ServiceDockerCompose(
+      app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname
+    )
 
   @property
   def fixtures_dir_path(self):
@@ -48,7 +46,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   @property
   def workflow_path(self):
     return os.path.join(
-      self.scaffold_dir_path,
+      self.data_dir_path,
       self.workflow_relative_path
     )
   @property
@@ -151,7 +149,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       return
 
     # Check contents of fixtures folder to confirm it's shared
-    fixtures_folder_path = f"{STOOBLY_HOME_DIR}/{self.workflow_name}/{FIXTURES_FOLDER_NAME}"
+    fixtures_folder_path = f"{FIXTURES_FOLDER_NAME}"
     exec_result = container.exec_run(f"ls -A {fixtures_folder_path}")
     output = exec_result.output
 
