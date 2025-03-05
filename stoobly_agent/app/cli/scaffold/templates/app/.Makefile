@@ -9,6 +9,7 @@
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 EXEC_WORKFLOW_NAME := exec
+PULL_OPTION := $(if $(STOOBLY_DISABLE_PULL),,--pull)
 USER_ID := $(shell id -u)
 
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
@@ -43,7 +44,7 @@ source_env=set -a; [ -f .env ] && source .env; set +a
 
 # Build base image
 stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
-stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) --quiet
+stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
 stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) && $(exec_up)
