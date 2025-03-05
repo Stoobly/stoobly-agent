@@ -30,7 +30,6 @@ class HostsFileManager():
     ip_addr_hosts_split = line.split('#')[0].split()
     return ip_addr_hosts_split
 
-
   # Parses hosts file and returns a mapping of IP address to hostnames in a list.
   def get_hosts(self) -> list[IpAddressToHostnames]:
     hosts_file_path = self.__get_hosts_file_path()
@@ -75,6 +74,7 @@ class HostsFileManager():
 
     with open(hosts_file_path, 'a+') as f:
       if self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN not in f.read():
+        f.write("\n")
         f.write(self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN)
 
       for hostname in hostnames:
@@ -89,33 +89,27 @@ class HostsFileManager():
   def uninstall_hostnames(self, hostnames: list[str]) -> None:
     hosts_file_path = self.__get_hosts_file_path()
 
+    with open(hosts_file_path, 'r') as file:
+      lines = file.readlines()
+
+      delimitter_found = any(self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN in line for line in lines)
+      if not delimitter_found:
+        print(f"Skipping deleting hostnames from {hosts_file_path} since none were found")
+        return
+
     print(f"Deleting hostnames from {hosts_file_path}")
 
-    temp_file_path = ""
-    try:
-      # Create a temporary file in the system's temp directory
-      with tempfile.NamedTemporaryFile('w', delete=False) as temp:
-        temp_file_path = temp.name
+    with open(hosts_file_path, "w") as file:
+      write = True
+      for line in lines:
+        if self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN in line:
+          write = False
 
-        # Read the original hosts file and write filtered lines to the temp file
-        with open(hosts_file_path, 'r') as original:
-          for line in original:
-            for hostname in hostnames:
-              if (not line.startswith(f"0.0.0.0 {hostname}") and
-                not line.startswith(self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN) and
-                not line.startswith(self.SCAFFOLD_HOSTS_DELIMITTER_END)):
+        if self.SCAFFOLD_HOSTS_DELIMITTER_END in line:
+          write = True
+          continue
 
-                temp.write(line)
+        if write:
+          file.write(line)
 
-      # Atomically replace the original hosts file with the temp file
-      if temp_file_path:
-        os.replace(temp_file_path, hosts_file_path)
-        print(f"Successfully uninstalled hostnames from {hosts_file_path}")
-
-    finally:
-      # Clean up the temp file if it wasn't moved
-      if os.path.exists(temp_file_path):
-        os.remove(temp_file_path)
-
-    return None
-
+    print(f"Successfully uninstalled hostnames from {hosts_file_path}")
