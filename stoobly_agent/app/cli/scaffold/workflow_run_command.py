@@ -47,16 +47,10 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def ca_certs_dir_path(self):
-    if not os.path.exists(self.__ca_certs_dir_path):
-      os.makedirs(self.__ca_certs_dir_path)
-
     return self.__ca_certs_dir_path
 
   @property
   def certs_dir_path(self):
-    if not os.path.exists(self.__certs_dir_path):
-      os.makedirs(self.__certs_dir_path)
-
     return self.__certs_dir_path
 
   @property
