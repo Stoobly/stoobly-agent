@@ -100,7 +100,7 @@ def prune(**kwargs):
   log.prune(kwargs['dry_run'])
 
 @snapshot.command(
-  help="Update snapshot.",
+  help="Update a snapshot.",
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
