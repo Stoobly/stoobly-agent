@@ -3,12 +3,13 @@ import pdb
 
 from typing import List
 
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
+
 from ...constants import (
-  COMPOSE_TEMPLATE, STOOBLY_HOME_DIR, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, 
+  COMPOSE_TEMPLATE, DOCKER_NAMESPACE, STOOBLY_HOME_DIR, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, 
   SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME_ENV
 )
-from ...templates.constants import SERVICE_HOSTNAME_BUILD_ARG
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
 
@@ -21,13 +22,15 @@ class WorkflowBuilder(Builder):
 
     self.__context = '../'
     self.__profiles = [self.__workflow_name]
-    self.__workdir = os.path.join(STOOBLY_HOME_DIR, self.workflow_name)
 
     if not service_builder:
       service_path = os.path.dirname(workflow_path)
       service_builder = ServiceBuilder(service_path)
 
     self.__service_builder = service_builder
+    self.__working_dir = os.path.join(
+      STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, self.service_builder.service_name, self.workflow_name
+    )
 
     if self.config.hostname:
       self.with_public_network()
@@ -59,13 +62,6 @@ class WorkflowBuilder(Builder):
     return self.__context
 
   @property
-  def context_build(self):
-    return {
-      'context': self.context,
-      'dockerfile': self.context_docker_file_path,
-    }
-
-  @property
   def context_docker_file_path(self):
     return os.path.relpath(self.service_builder.app_builder.context_docker_file_path, self.service_path)
 
@@ -80,21 +76,6 @@ class WorkflowBuilder(Builder):
   @property
   def proxy(self):
     return WORKFLOW_CONTAINER_PROXY_TEMPLATE.format(service_name=self.namespace)
-
-  @property
-  def proxy_build(self):
-    args = {}
-    args[SERVICE_HOSTNAME_BUILD_ARG] = SERVICE_HOSTNAME
-
-    return {
-      'args': args,
-      'context': self.context,
-      'dockerfile': self.proxy_docker_file_path,
-    }
-
-  @property
-  def proxy_docker_file_path(self):
-    return os.path.relpath(self.service_builder.app_builder.proxy_docker_file_path, self.service_path)
 
   @property
   def service_builder(self):
@@ -128,19 +109,21 @@ class WorkflowBuilder(Builder):
     volumes = []
 
     service = {
-      'build': self.context_build,
       'environment': environment,
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,
       'volumes': volumes,
-      'working_dir': self.__workdir,
+      'working_dir': self.__working_dir,
     }
 
     if self.config.hostname:
       self.__with_url_environment(environment)
 
     if self.config.detached:
+      # Mount named volume
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
+      # Mount docker folder
+      volumes.append(f"../..:{STOOBLY_HOME_DIR}/.stoobly/docker")
 
     self.with_service(self.init, service)
 
@@ -154,13 +137,12 @@ class WorkflowBuilder(Builder):
     volumes = []
 
     service = {
-      'build': self.context_build,
       'depends_on': depends_on,
       'environment': environment,
       'extends': self.service_builder.build_extends_configure_base(self.dir_path),
       'profiles': self.profiles,
       'volumes': volumes,
-      'working_dir': self.__workdir,
+      'working_dir': self.__working_dir,
     }
 
     if self.config.hostname:
@@ -173,6 +155,7 @@ class WorkflowBuilder(Builder):
 
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
+      volumes.append(f"../..:{STOOBLY_HOME_DIR}/.stoobly/docker")
 
     self.with_service(self.configure, service)
 
@@ -187,14 +170,13 @@ class WorkflowBuilder(Builder):
     volumes = []
 
     service = {
-      'build': self.proxy_build, 
       'depends_on': depends_on,
       'environment': environment,
       'extends': self.service_builder.build_extends_proxy_base(self.dir_path),
       'networks': networks,
       'profiles': self.profiles,
       'volumes': volumes,
-      'working_dir': self.__workdir,
+      'working_dir': self.__working_dir,
     }
 
     if self.configure in self.services:
@@ -217,6 +199,7 @@ class WorkflowBuilder(Builder):
 
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
+      volumes.append(f"../..:{STOOBLY_HOME_DIR}/.stoobly/docker")
 
     self.with_service(self.proxy, service)
 

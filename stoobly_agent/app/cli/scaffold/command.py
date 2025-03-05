@@ -4,7 +4,7 @@ class Command():
 
   def __init__(self, app: App):
     self.__app = app
-    self.__namespace = app.namespace
+    self.__namespace = app.scaffold_namespace
 
   @property
   def app(self):

@@ -33,14 +33,15 @@ class Workflow():
 
   @property
   def service_paths(self):
-    return self.app.service_paths
+    all_service_paths = self.app.service_paths
+    return list(filter(lambda path: os.path.exists(os.path.join(path, self.workflow_name)), all_service_paths))
 
   # TODO: merge into 1 services property
 
   # Returns services that run in this specific workflow
   @property
   def services_ran(self) -> List[str]:
-    services_dir = os.path.join(self.app.scaffold_dir_path, self.app.namespace)
+    services_dir = os.path.join(self.app.data_dir_path, self.app.scaffold_namespace)
 
     services = []
     for filename in os.listdir(services_dir):
@@ -56,5 +57,5 @@ class Workflow():
     return services
 
   def service_paths_from_services(self, services: List[str]):
-    app_namespace_path = self.app.namespace_path
-    return list(map(lambda service: os.path.join(app_namespace_path, service), services))
+    scaffold_namespace_path = self.app.scaffold_namespace_path
+    return list(map(lambda service: os.path.join(scaffold_namespace_path, service), services))

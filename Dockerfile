@@ -38,10 +38,6 @@ COPY . /tmp/stoobly-agent
 RUN cd /tmp/stoobly-agent && pip install . && rm -rf /tmp/stoobly-agent
 
 WORKDIR /home/stoobly
-RUN mkdir .mitmproxy .stoobly && chown stoobly:stoobly .mitmproxy .stoobly
-
-VOLUME /home/stoobly/.stoobly
-VOLUME /home/stoobly/.mitmproxy
 
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]

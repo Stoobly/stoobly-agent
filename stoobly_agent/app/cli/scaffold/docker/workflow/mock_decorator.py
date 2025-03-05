@@ -1,6 +1,7 @@
+import os
 import pdb
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
 
 class MockDecorator():
@@ -20,7 +21,6 @@ class MockDecorator():
     config = self.service_builder.config
 
     command = [
-      '--certs', f"/etc/ssl/certs/{SERVICE_HOSTNAME}-joined.pem",
       '--headless',
       '--intercept',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
@@ -29,6 +29,10 @@ class MockDecorator():
       '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure'
     ]
+
+    if config.scheme == 'https':
+      command.append('--certs')
+      command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))
 
     services = self.__workflow_builder.services
     proxy_name = self.__workflow_builder.proxy

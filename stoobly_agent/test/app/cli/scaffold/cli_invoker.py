@@ -126,9 +126,9 @@ class ScaffoldCliInvoker():
       '--context-dir-path', app_dir_path,
       target_workflow_name,
     ]
+
     result = runner.invoke(scaffold, command)
 
     assert result.exit_code == 0
     output = result.stdout
     assert output
-

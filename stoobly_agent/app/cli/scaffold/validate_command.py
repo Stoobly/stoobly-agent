@@ -35,7 +35,7 @@ class ValidateCommand():
     if logs and re.search('error', str(logs), re.IGNORECASE):
       raise ScaffoldValidateException(f"Error logs potentially detected in: {init_container_name}")
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
-      raise ScaffoldValidateException(f"init container has not exited like expected: {init_container_name}")
+      raise ScaffoldValidateException(f"init container {init_container_name} exited with: {init_container.attrs['State']['ExitCode']}")
 
     configure_container = self.__get_container(configure_container_name)
 
@@ -43,7 +43,7 @@ class ValidateCommand():
     if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
       configure_container_ran = True
     if not configure_container_ran:
-      raise ScaffoldValidateException(f"Configure container has not ran as expected: {configure_container_name}")
+      raise ScaffoldValidateException(f"configure container {configure_container_name} exited with: {configure_container.attrs['State']['ExitCode']}")
   
   def validate_detached(self, container: Container) -> None:
     print(f"Validating detached for: {container.name}")

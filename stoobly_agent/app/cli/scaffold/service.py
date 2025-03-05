@@ -14,7 +14,7 @@ class Service():
 
   @property
   def dir_path(self):
-    return os.path.join(self.app.namespace_path, self.service_name)
+    return os.path.join(self.app.scaffold_namespace_path, self.service_name)
 
   @property
   def service_name(self):
