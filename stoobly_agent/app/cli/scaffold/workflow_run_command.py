@@ -29,10 +29,12 @@ class BuildOptions(ComposeOptions):
   verbose: bool
 
 class DownOptions(ComposeOptions):
+  extra_compose_path: str
   rmi: bool
 
 class UpOptions(ComposeOptions):
   attached: bool
+  extra_compose_path: str
   pull: bool
 
 class WorkflowRunCommand(WorkflowCommand):
@@ -43,7 +45,6 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
-    self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = kwargs.get('network') or self.app_config.network
 
   @property
@@ -69,10 +70,6 @@ class WorkflowRunCommand(WorkflowCommand):
   @current_working_dir.setter
   def current_working_dir(self, v):
     self.__current_working_dir = v
-
-  @property
-  def extra_compose_path(self):
-    return self.__extra_compose_path
 
   @property
   def nameservers(self):
@@ -153,8 +150,8 @@ class WorkflowRunCommand(WorkflowCommand):
 
       command_options.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
 
-    if self.extra_compose_path:
-      command_options.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
+    if options.get('extra_compose_path'):
+      command_options.append(f"-f {os.path.relpath(options['extra_compose_path'], self.__current_working_dir)}")
 
     command_options.append(f"--profile {self.workflow_name}") 
 
@@ -203,8 +200,8 @@ class WorkflowRunCommand(WorkflowCommand):
     if self.custom_services:
       command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
 
-    if self.extra_compose_path:
-      command.append(f"-f {os.path.relpath(self.extra_compose_path, self.__current_working_dir)}")
+    if options.get('extra_compose_path'):
+      command.append(f"-f {os.path.relpath(options['extra_compose_path'], self.__current_working_dir)}")
 
     command.append(f"--profile {self.workflow_name}") 
 

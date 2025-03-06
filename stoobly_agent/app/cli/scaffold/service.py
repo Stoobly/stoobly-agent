@@ -20,6 +20,5 @@ class Service():
   def service_name(self):
     return self.__service_name
 
-  @property
   def workflow_dir_path(self, workflow_name: str):
     return os.path.join(self.dir_path, workflow_name)

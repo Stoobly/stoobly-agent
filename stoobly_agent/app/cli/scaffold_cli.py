@@ -33,6 +33,9 @@ from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNIN
 
 LOG_ID = 'Scaffold'
 
+current_working_dir = os.getcwd()
+data_dir: DataDir = DataDir.instance()
+
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
     help="Manage scaffold"
@@ -60,7 +63,7 @@ def service(ctx):
 @app.command(
   help="Scaffold application"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
 @click.argument('app_name')
@@ -80,10 +83,10 @@ def create(**kwargs):
 @app.command(
   help="Scaffold app service certs"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 def mkcert(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
@@ -114,7 +117,7 @@ def mkcert(**kwargs):
 @service.command(
   help="Scaffold a service",
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--detached', is_flag=True)
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
@@ -144,7 +147,7 @@ def create(**kwargs):
 @service.command(
   help="Delete a service",
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
@@ -162,7 +165,7 @@ def delete(**kwargs):
 @service.command(
   help="Update a service config"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--priority', help='Determines the service run order.')
 @click.argument('service_name')
 def update(**kwargs):
@@ -191,7 +194,8 @@ def workflow(ctx):
 @workflow.command(
   help="Create workflow for service(s)"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
@@ -200,7 +204,7 @@ def workflow(ctx):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -212,19 +216,20 @@ def create(**kwargs):
 
     workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
     if kwargs['force'] or not os.path.exists(workflow_dir_path):
-      __workflow_build(app, **config)
+      __workflow_create(app, **config)
     else:
       print(f"{workflow_dir_path} already exists, use option '--force' to continue")
 
 @workflow.command(
   help="Copy a workflow for service(s)",
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Specify service(s) to add the workflow to.')
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -240,9 +245,10 @@ def copy(**kwargs):
     command.copy(kwargs['destination_workflow_name'])
 
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
+@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -279,10 +285,22 @@ def down(**kwargs):
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for command in commands:
+  for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
-    exec_command = command.down(namespace=kwargs['namespace'], rmi=kwargs['rmi'], user_id=kwargs['user_id'])
+    extra_compose_path = None
+
+    # By default, the entrypoint service should be last
+    # However, this can change if the user has configured a service's priority to be higher
+    if index == len(commands) - 1:
+      extra_compose_path = kwargs['extra_entrypoint_compose_path']
+
+    exec_command = command.down(
+      extra_compose_path=extra_compose_path,
+      namespace=kwargs['namespace'],
+      rmi=kwargs['rmi'],
+      user_id=kwargs['user_id']
+    )
     if not exec_command:
       continue
 
@@ -309,7 +327,7 @@ def down(**kwargs):
       print(remove_network_command)
 
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option(
   '--container', multiple=True, help=f"Select which containers to log. Defaults to '{WORKFLOW_CONTAINER_PROXY}'"
 )
@@ -368,14 +386,14 @@ def logs(**kwargs):
         exec_stream(shell_command)
  
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--build', is_flag=True, help='Build images before starting containers.')
-@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
-@click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--from-make', is_flag=True, help='Set if run from scaffolded Makefile.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -438,11 +456,22 @@ def up(**kwargs):
   for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
+    attached = False
+    extra_compose_path = None
+
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
-    attached = not kwargs['detached'] and index == len(commands) - 1
+    if index == len(commands) - 1:
+      attached = not kwargs['detached']
+      extra_compose_path = kwargs['extra_entrypoint_compose_path']
+
     exec_command = command.up(
-      attached=attached, build=kwargs['build'], namespace=kwargs['namespace'], pull=kwargs['pull'], user_id=kwargs['user_id']
+      attached=attached,
+      build=kwargs['build'],
+      extra_compose_path=extra_compose_path,
+      namespace=kwargs['namespace'],
+      pull=kwargs['pull'],
+      user_id=kwargs['user_id']
     )
     if not exec_command:
       continue
@@ -455,7 +484,7 @@ def up(**kwargs):
 @workflow.command(
   help="Validate a scaffold workflow"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
 @click.argument('workflow_name')
 def validate(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -527,13 +556,12 @@ def __validate_service_dir(service_dir_path):
     print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
     sys.exit(1)
 
-def __workflow_build(app, **kwargs):
+def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
   command.build(
-    headless=kwargs['headless'],
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
