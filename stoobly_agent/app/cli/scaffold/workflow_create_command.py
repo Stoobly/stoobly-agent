@@ -17,7 +17,6 @@ CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
 
 class BuildOptions(TypedDict):
   builder_class: type 
-  headless: bool
   service_builder: ServiceBuilder
   template: WORKFLOW_TEMPLATE
   workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]]
