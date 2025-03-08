@@ -6,13 +6,13 @@ cli:
 proxy:
   data: map(include('data_rules'), key=include('project_id'))
   firewall: map(list(include('firewall_rule')), key=include('project_id'))
-  match: map(list(include('match_rule')), key=include('project_id'))
+  match: map(list(include('match_rule')), key=include('project_id'), required=False)
   rewrite: map(list(include('rewrite_rule')), key=include('project_id'))
   intercept:
     active: bool()
     mode: include('mode')
     project_key: str()
-  url: str()
+  url: str(required=False)
 proxy_config_path: str(required=False)
 remote: 
   api_url: str()

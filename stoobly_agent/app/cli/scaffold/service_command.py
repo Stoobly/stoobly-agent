@@ -33,7 +33,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_path(self):
     return os.path.join(
-      self.scaffold_dir_path,
+      self.data_dir_path,
       self.service_relative_path
     )
 

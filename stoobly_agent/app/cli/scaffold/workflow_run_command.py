@@ -12,27 +12,36 @@ from stoobly_agent.lib.logger import Logger
 from .app import App
 from .constants import (
   APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 )
+from .docker.constants import DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 
 LOG_ID = 'WorkflowRunCommand'
 
-class UpOptions(TypedDict):
-  attached: bool
+class ComposeOptions(TypedDict):
   namespace: str
-  no_cache: bool
+  user_id: str
+
+class BuildOptions(ComposeOptions):
+  user_id: str
   verbose: bool
+
+class DownOptions(ComposeOptions):
+  rmi: bool
+
+class UpOptions(ComposeOptions):
+  attached: bool
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
     super().__init__(app, **kwargs)
 
     self.__current_working_dir = os.getcwd()
-    self.__ca_certs_dir_path = app.ca_certs_dir_path
-    self.__certs_dir_path = app.certs_dir_path
-    self.__context_dir_path = app.context_dir_path
+    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
+    self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
+    self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__extra_compose_path = kwargs.get('extra_compose_path')
     self.__network = kwargs.get('network') or self.app_config.network
 
@@ -88,17 +97,41 @@ class WorkflowRunCommand(WorkflowCommand):
   def network(self):
     return self.__network
 
+  def create_image(self, **options: BuildOptions):
+    relative_namespace_path = os.path.relpath(self.scaffold_namespace_path, self.__current_working_dir)
+    dockerfile_path = os.path.join(relative_namespace_path, DOCKERFILE_CONTEXT)
+    user_id = options['user_id'] or os.getuid()
+    
+    command = ['docker', 'build']
+    command.append(f"-f {dockerfile_path}")
+    command.append(f"-t stoobly.{user_id}")
+    command.append(f"--build-arg USER_ID={user_id}")
+    command.append('--pull')
+
+    if not options.get('verbose'):
+      command.append('--quiet')
+
+    # To avoid large context transfer times, should be a folder with relatively low number of files
+    command.append(relative_namespace_path) 
+
+    return ' '.join(command)
+
+  def remove_image(self, user_id: str = None):
+    user_id = user_id or os.getuid()
+    command = ['docker', 'rmi', f"stoobly.{user_id}", '&>', '/dev/null']
+    command.append('|| true')
+    return ' '.join(command)
+
   def create_network(self):
-    return f"docker network create {self.network} 2> /dev/null"
+    return f"docker network create {self.network} &> /dev/null"
 
   def remove_network(self):
-    return f"docker network rm {self.network} > /dev/null"
+    return f"docker network rm {self.network} &> /dev/null || true"
 
   def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
       return ''
 
-    build_command = ['docker', 'compose']
     command = ['COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
     command_options = []
 
@@ -128,21 +161,18 @@ class WorkflowRunCommand(WorkflowCommand):
 
     command_options.append(f"--profile {self.workflow_name}") 
 
-    if options.get('namespace'):
-      command_options.append(f"-p {options['namespace']}")
-
-    build_command += command_options
-    build_command.append('build')
-    build_command.append('--pull')
-
-    if not options.get('verbose'):
-      build_command.append('--quiet')
-
-    if options.get('no_cache'):
-      build_command.append('--no-cache')
+    if not options.get('namespace'):
+      options['namespace'] = self.workflow_name
+    command_options.append(f"-p {options['namespace']}")
 
     command += command_options
     command.append('up')
+
+    if options.get('build'):
+      command.append('--build')
+
+    if options.get('pull'):
+      command.append('--pull missing')
 
     if not options.get('attached'):
       command.append('-d')
@@ -159,11 +189,11 @@ class WorkflowRunCommand(WorkflowCommand):
       # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
       command.append(option)
 
-    self.write_env()
+    self.write_env(**options)
 
-    return ' && '.join([' '.join(build_command), ' '.join(command)]) 
+    return ' '.join(command)
 
-  def down(self, **options):
+  def down(self, **options: DownOptions):
     if not os.path.exists(self.compose_path):
       return ''
   
@@ -181,13 +211,16 @@ class WorkflowRunCommand(WorkflowCommand):
 
     command.append(f"--profile {self.workflow_name}") 
 
-    if options.get('namespace'):
-      command.append(f"-p {options['namespace']}")
+    if not options.get('namespace'):
+      options['namespace'] = self.workflow_name
+    command.append(f"-p {options['namespace']}")
 
     command.append('down')
 
     if options.get('rmi'):
-      command.append(f"--rmi local")
+      command.append('--rmi local')
+
+    self.write_env(**options)
 
     return ' '.join(command)
 
@@ -212,14 +245,20 @@ class WorkflowRunCommand(WorkflowCommand):
       if nameservers:
         fp.write("\n".join(nameservers))
 
-  def write_env(self):
+  def write_env(self, **options: ComposeOptions):
+    namespace = options.get('namespace')
+    user_id = options.get('user_id')
+
     _config = {}
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
-    _config[USER_ID_ENV] = os.getuid()
+    _config[USER_ID_ENV] = user_id or os.getuid()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
+    
+    if namespace:
+      _config[WORKFLOW_NAMESPACE_ENV] = namespace
 
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
