@@ -180,7 +180,7 @@ def rewrite(ctx):
 @click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
-    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
+    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM, request_component.RESPONSE_HEADER, request_component.RESPONSE_PARAM]), 
     help='Request component type.'
 )
 @click.option(

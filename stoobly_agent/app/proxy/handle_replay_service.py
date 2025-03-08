@@ -24,6 +24,8 @@ def handle_request_replay(replay_context: ReplayContext):
 def handle_response_replay(replay_context: ReplayContext):
     __replay_hook(lifecycle_hooks.AFTER_REPLAY, replay_context)
 
+    # TODO: rewrite response, see #332
+
 def __replay_request(replay_context: ReplayContext):
     """
     Before replaying a request, see if the request needs to be rewritten
