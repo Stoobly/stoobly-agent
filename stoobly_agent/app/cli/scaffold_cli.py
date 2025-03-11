@@ -592,9 +592,10 @@ scaffold.add_command(hostname)
 
 def __elevate_sudo():
   import subprocess
+
   if os.geteuid() != 0:
-        subprocess.run(["sudo", sys.executable] + sys.argv)
-        sys.exit(0)
+    subprocess.run(["sudo", sys.executable] + sys.argv)
+    sys.exit(0)
 
 def __get_services(services: List[str], **kwargs) -> List[str]:
   selected_services = list(kwargs['service'])
