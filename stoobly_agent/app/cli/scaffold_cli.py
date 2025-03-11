@@ -542,21 +542,26 @@ def validate(**kwargs):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--service', multiple=True, help='Select specific services.')
-@click.option('--workflow', multiple=True, help='Specify specifics by workflow(s).')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s).')
 def install(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
+  services = __get_workflow_services(app, **kwargs)
+
   hostnames = []
-  for service_name in __get_workflow_services(app.services, **kwargs): 
+  for service_name in services: 
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
-    service_config = ServiceConfig(service.dir_path)
-    hostnames.append(service_config.hostname)
 
-  hosts_file_manager = HostsFileManager()
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  __elevate_sudo()
 
   try:
+    hosts_file_manager = HostsFileManager()
     hosts_file_manager.install_hostnames(hostnames)
   except PermissionError:
     print("Permission denied. Please run this command with sudo.", file=sys.stderr)
@@ -565,33 +570,31 @@ def install(**kwargs):
   help="Delete from the system hosts file all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--service', multiple=True, help='Select specific services.')
-@click.option('--workflow', multiple=True, help='Specify specifics by workflow(s).')
 def uninstall(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  hostnames = []
-  for service_name in __get_workflow_services(app.services, **kwargs):
-    service = Service(service_name, app)
-    service_config = ServiceConfig(service.dir_path)
-    hostnames.append(service_config.hostname)
-
-  hosts_file_manager = HostsFileManager()
+  __elevate_sudo()
 
   try:
-    hosts_file_manager.uninstall_hostnames(hostnames)
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.uninstall_hostnames()
   except OSError as e:
     if e.errno == errno.EACCES or e.errno == errno.EPERM:
       print("Permission denied. Please run this command with sudo.", file=sys.stderr)
     else:
       print(f"An unexpected error occurred: {e}", file=sys.stderr)
 
-
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
+
+def __elevate_sudo():
+  import subprocess
+  if os.geteuid() != 0:
+        subprocess.run(["sudo", sys.executable] + sys.argv)
+        sys.exit(0)
 
 def __get_services(services: List[str], **kwargs) -> List[str]:
   selected_services = list(kwargs['service'])
@@ -617,15 +620,15 @@ def __get_services(services: List[str], **kwargs) -> List[str]:
  
   return services_index.keys()
 
-def __get_workflow_services(services: List[str], **kwargs):
-  services = []
+def __get_workflow_services(app: App, **kwargs):
+  selected_services = []
   if not kwargs['workflow']:
-    services += __get_services(services, service=kwargs['service'], without_core=True)
+    selected_services += __get_services(app.services, service=kwargs['service'], without_core=True)
   else:
     for workflow_name in kwargs['workflow']:
       workflow = Workflow(workflow_name, app)
-      services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
-  return set(services)
+      selected_services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
+  return set(selected_services)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")

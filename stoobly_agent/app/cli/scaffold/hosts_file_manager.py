@@ -5,6 +5,8 @@ import platform
 from dataclasses import dataclass
 from typing import Union
 
+SCAFFOLD_HOSTS_DELIMITTER_BEGIN = "##### STOOBLY SCAFFOLD HOSTS BEGIN #####\n"
+SCAFFOLD_HOSTS_DELIMITTER_END = "##### STOOBLY SCAFFOLD HOSTS END #####\n"
 
 class HostsFileManager():
 
@@ -12,9 +14,6 @@ class HostsFileManager():
   class IpAddressToHostnames:
     ip_address: str
     hostnames: list[str]
-
-  SCAFFOLD_HOSTS_DELIMITTER_BEGIN = "##### STOOBLY SCAFFOLD HOSTS BEGIN #####\n"
-  SCAFFOLD_HOSTS_DELIMITTER_END = "##### STOOBLY SCAFFOLD HOSTS END #####\n"
 
   def __get_hosts_file_path(self) -> str:
     system = platform.system()
@@ -67,49 +66,49 @@ class HostsFileManager():
     return None
 
   def install_hostnames(self, hostnames: list[str]) -> None:
-    # Remove the scaffold service hostnames to prevent duplicates
-    self.uninstall_hostnames(hostnames)
-
     hosts_file_path = self.__get_hosts_file_path()
+
+    self.remove_lines_between_markers(
+      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END
+    )
 
     with open(hosts_file_path, 'a+') as f:
-      if self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN not in f.read():
-        f.write("\n")
-        f.write(self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN)
+      if SCAFFOLD_HOSTS_DELIMITTER_BEGIN not in f.read():
+        f.write(SCAFFOLD_HOSTS_DELIMITTER_BEGIN)
 
       for hostname in hostnames:
-        print(f"Writing hostname {hostname} to {hosts_file_path}")
-        f.write(f"0.0.0.0 {hostname}\n")
+        print(f"Installing hostname {hostname} to {hosts_file_path}")
+        f.write(f"127.0.0.1 {hostname}\n")
+        f.write(f"::1       {hostname}\n")
 
-      if self.SCAFFOLD_HOSTS_DELIMITTER_END not in f.read():
-        f.write(self.SCAFFOLD_HOSTS_DELIMITTER_END)
+      if SCAFFOLD_HOSTS_DELIMITTER_END not in f.read():
+        f.write(SCAFFOLD_HOSTS_DELIMITTER_END)
 
-    print(f"Successfully installed hostnames to {hosts_file_path}")
-
-  def uninstall_hostnames(self, hostnames: list[str]) -> None:
+  def uninstall_hostnames(self) -> None:
     hosts_file_path = self.__get_hosts_file_path()
 
-    with open(hosts_file_path, 'r') as file:
+    self.remove_lines_between_markers(
+      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END
+    ) 
+
+    print(f"Uninstalled hostnames from {hosts_file_path}")
+
+  def remove_lines_between_markers(self, file_path, start_marker, end_marker):
+    with open(file_path, "r") as file:
       lines = file.readlines()
+    
+    inside_block = False
+    filtered_lines = []
 
-      delimitter_found = any(self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN in line for line in lines)
-      if not delimitter_found:
-        print(f"Skipping deleting hostnames from {hosts_file_path} since none were found")
-        return
+    for line in lines:
+      if start_marker in line:
+        inside_block = True
+        continue  # Skip the start marker line
+      if end_marker in line:
+        inside_block = False
+        continue  # Skip the end marker line
+      if not inside_block:
+        filtered_lines.append(line)
 
-    print(f"Deleting hostnames from {hosts_file_path}")
-
-    with open(hosts_file_path, "w") as file:
-      write = True
-      for line in lines:
-        if self.SCAFFOLD_HOSTS_DELIMITTER_BEGIN in line:
-          write = False
-
-        if self.SCAFFOLD_HOSTS_DELIMITTER_END in line:
-          write = True
-          continue
-
-        if write:
-          file.write(line)
-
-    print(f"Successfully uninstalled hostnames from {hosts_file_path}")
+    with open(file_path, "w") as file:
+      file.writelines(filtered_lines)
