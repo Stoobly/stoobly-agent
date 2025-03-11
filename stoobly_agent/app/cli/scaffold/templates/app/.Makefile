@@ -78,14 +78,6 @@ nameservers: tmpdir
 		echo "/etc/resolv.conf not found." >&2; \
 		exit 1; \
 	fi
-hostname/install:
-	@export EXEC_COMMAND=bin/.hostname_install && \
-	export EXEC_OPTIONS="$(options)" && \
-	$(stoobly_exec)
-hostname/uninstall:
-	@export EXEC_COMMAND=bin/.hostname_uninstall && \
-	export EXEC_OPTIONS="$(options)" && \
-	$(stoobly_exec)
 intercept/disable:
 	@export EXEC_COMMAND=bin/.disable && \
 	$(stoobly_exec)
@@ -93,7 +85,7 @@ intercept/enable:
 	@export EXEC_COMMAND=bin/.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: workflow/mock nameservers workflow/hostname/install workflow/up
+mock: workflow/mock workflow/hostname/install nameservers workflow/up
 mock/services: workflow/mock workflow/services
 mock/logs: workflow/mock workflow/logs
 mock/down: workflow/mock workflow/down workflow/hostname/uninstall
@@ -107,7 +99,7 @@ python/validate:
 		echo "Error: Python 3.10, 3.11, or 3.12 is required."; \
 		exit 1; \
 	fi
-record: workflow/record nameservers workflow/hostname/install workflow/up
+record: workflow/record workflow/hostname/install nameservers workflow/up
 record/down: workflow/record workflow/down workflow/hostname/uninstall
 record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
@@ -157,15 +149,24 @@ workflow/down:
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-workflow/hostname/install: stoobly/install
+workflow/hostname/validate:
+	@CURRENT_VERSION=$$(stoobly-agent --version); \
+	REQUIRED_VERSION="1.4.0"; \
+	if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | tail -n 1)" = "$$CURRENT_VERSION" ]; then \
+		echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
+		exit 1; \
+	fi
+workflow/hostname/install: stoobly/install workflow/hostname/validate
 	@read -p "Do you want to install hostname(s) in /etc/hosts? (y/N) " confirm && \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo "Running stoobly-agent scaffold hostname install..."; \
+		sudo stoobly-agent scaffold hostname install --workflow $(WORKFLOW); \
 	fi
-workflow/hostname/uninstall: stoobly/install
+workflow/hostname/uninstall: stoobly/install workflow/hostname/validate
 	@read -p "Do you want to uninstall hostname(s) in /etc/hosts? (y/N) " confirm && \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo "Running stoobly-agent scaffold hostname uninstall..."; \
+		sudo stoobly-agent scaffold hostname uninstall --workflow $(WORKFLOW); \
 	fi
 workflow/logs:
 	@export EXEC_COMMAND=bin/.logs && \
