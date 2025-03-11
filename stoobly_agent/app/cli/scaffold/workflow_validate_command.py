@@ -119,7 +119,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     # NOTE: we should check the correct workflow mode is enabled one day
     # That's not currently queryable
 
-    print(f"{bcolors.OKGREEN}Done validating core components for workflow: {self.workflow_name}, success!\n{bcolors.ENDC}")
+    print(f"{bcolors.OKGREEN}✔ Done validating core components for workflow: {self.workflow_name}, success!\n{bcolors.ENDC}")
 
     return True
 

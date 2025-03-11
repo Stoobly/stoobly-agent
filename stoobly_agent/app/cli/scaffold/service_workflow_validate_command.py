@@ -267,7 +267,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if self.service_config.detached:
       self.validate_detached(service_container)
 
-    print(f"{bcolors.OKGREEN}Done validating service: {self.service_name}, success!{bcolors.ENDC}\n")
+    print(f"{bcolors.OKGREEN}✔ Done validating service: {self.service_name}, success!{bcolors.ENDC}\n")
 
     return True
 

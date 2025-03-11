@@ -511,7 +511,7 @@ def validate(**kwargs):
     print(f"{bcolors.FAIL}\nFatal scaffold validation exception:{bcolors.ENDC}\n{sve}", file=sys.stderr)
     sys.exit(1)
 
-  print(f"{bcolors.OKCYAN}Done validating Stoobly scaffold and services, success!{bcolors.ENDC}")
+  print(f"{bcolors.OKCYAN}✔ Done validating Stoobly scaffold and services, success!{bcolors.ENDC}")
 
 scaffold.add_command(app)
 scaffold.add_command(service)
