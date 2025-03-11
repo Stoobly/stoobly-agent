@@ -71,6 +71,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         context.with_response(res)
 
         if handle_success:
+            # TODO: rewrite response, see #332
             res = handle_success(context) or res
     elif policy == mock_policy.FOUND:
         res = eval_request_with_retry(context, eval_request, **options) 
@@ -86,6 +87,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
                     pass
         else:
             if handle_success:
+                # TODO: rewrite response, see #332
                 res = handle_success(context) or res
     else:
         return bad_request(
