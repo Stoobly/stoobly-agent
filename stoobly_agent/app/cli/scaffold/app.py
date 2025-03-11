@@ -54,8 +54,8 @@ class App():
     return os.path.join(self.context_dir_path, DATA_DIR_NAME)
 
   @property
-  def exists(self):
-    return os.path.exists(self.dir_path)
+  def valid(self):
+    return os.path.exists(self.scaffold_namespace_path)
 
   @property
   def scaffold_namespace(self):
