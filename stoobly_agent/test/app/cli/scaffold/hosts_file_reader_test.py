@@ -11,7 +11,7 @@ class TestHostsFileReader():
     yield HostsFileReader()
 
   def test_get_hosts_file_path(self, hosts_file_reader):
-    hosts_file_path = hosts_file_reader._HostsFileReader__get_hosts_file_path()
+    hosts_file_path = hosts_file_reader.get_hosts_file_path()
 
     # Test runners are all Linux distros for now
     assert hosts_file_path == '/etc/hosts'

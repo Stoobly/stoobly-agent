@@ -11,7 +11,7 @@ class HostsFileReader():
     ip_address: str
     hostnames: list[str]
 
-  def __get_hosts_file_path(self) -> str:
+  def get_hosts_file_path(self) -> str:
     system = platform.system()
     if system == 'Linux' or system == 'Darwin':
       return '/etc/hosts'
@@ -28,7 +28,7 @@ class HostsFileReader():
 
   # Parses hosts file and returns a mapping of IP address to hostnames in a list.
   def get_hosts(self) -> list[IpAddressToHostnames]:
-    hosts_file_path = self.__get_hosts_file_path()
+    hosts_file_path = self.get_hosts_file_path()
 
     if not hosts_file_path:
       return []
