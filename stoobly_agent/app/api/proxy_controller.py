@@ -3,7 +3,8 @@ import requests
 from http.cookies import SimpleCookie
 from urllib3.exceptions import InsecureRequestWarning
 
-from stoobly_agent.config.constants import headers
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
+from stoobly_agent.config.constants import custom_headers, headers
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 from stoobly_agent.lib.logger import Logger
 
@@ -46,7 +47,7 @@ class ProxyController:
     def do_PUT(self, context):
         self.__proxy(context, requests.put)
 
-    def __proxy(self, context, method):
+    def __proxy(self, context: SimpleHTTPRequestHandler, method):
         url = self.__get_url(context)
 
         if url:
@@ -110,7 +111,7 @@ class ProxyController:
                 status = status,
             )
 
-    def __get_headers(self, context):
+    def __get_headers(self, context: SimpleHTTPRequestHandler):
         request_headers = dict(context.headers)
 
         headers_white_list = []
@@ -125,12 +126,12 @@ class ProxyController:
 
         return white_listed_headers
 
-    def __get_url(self, context):
-        service_url = context.headers.get(headers.SERVICE_URL)
+    def __get_url(self, context: SimpleHTTPRequestHandler):
+        service_url = context.headers.get(custom_headers.SERVICE_URL)
 
         if not service_url:
             context.render(
-                plain = f"Invalid {headers.SERVICE_URL} header {service_url}",
+                plain = f"Invalid {custom_headers.SERVICE_URL} header {service_url}",
                 status = 400
             )
             return None
@@ -146,7 +147,7 @@ class ProxyController:
 
         return f"{service_url}{request_path}"
 
-    def __get_cookies(self, context):
+    def __get_cookies(self, context: SimpleHTTPRequestHandler):
         return SimpleCookie(context.headers.get('Cookie'))
 
     def __get_body(self, context):

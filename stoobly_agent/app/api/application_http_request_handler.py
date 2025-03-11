@@ -7,7 +7,7 @@ from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse, parse_qs
 
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
-from stoobly_agent.config.constants import headers
+from stoobly_agent.config.constants import custom_headers, headers
 
 from .routes import ROUTES
 from .simple_http_request_handler import SimpleHTTPRequestHandler
@@ -102,11 +102,11 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
                 'Content-Type',
                 headers.ACCESS_TOKEN.title(),
                 headers.CLIENT.title(),
-                headers.DO_PROXY.title(),
+                custom_headers.DO_PROXY.title(),
                 headers.EXPIRY.title(),
                 headers.PROXY_HEADERS.title(),
                 headers.REQUEST_PATH.title(),
-                headers.SERVICE_URL.title(),
+                custom_headers.SERVICE_URL.title(),
                 headers.TOKEN_TYPE.title(),
                 headers.UID.title(),
             ])
