@@ -60,6 +60,9 @@ stoobly_exec_run_env=$(source_env) && $(exec_env) && export CONTEXT_DIR="$(app_d
 # Workflow run
 workflow_run=$(source_env) && bash "$(workflow_run_script)"
 
+ca-cert/install: stoobly/install
+	@echo "Running stoobly-agent ca-cert install..."; \
+	stoobly-agent ca-cert install
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \
 	$(stoobly_exec)
@@ -129,9 +132,6 @@ scenario/snapshot:
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
-stoobly/ca-cert/install: stoobly/install
-	@echo "Running stoobly-agent ca-cert install..."; \
-	stoobly-agent ca-cert install
 stoobly/install: python/validate pipx/install 
 	@if ! pipx list | grep -q 'stoobly-agent'; then \
 		echo "stoobly-agent not found. Installing..."; \

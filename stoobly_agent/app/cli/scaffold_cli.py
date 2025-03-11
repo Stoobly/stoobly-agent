@@ -439,7 +439,7 @@ def up(**kwargs):
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
-  pdb.set_trace()
+
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
