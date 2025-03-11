@@ -33,7 +33,12 @@ from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
+from .helpers.print_service import FORMATS, print_services, select_print_options
+
 LOG_ID = 'Scaffold'
+
+current_working_dir = os.getcwd()
+data_dir: DataDir = DataDir.instance()
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -62,7 +67,7 @@ def service(ctx):
 @app.command(
   help="Scaffold application"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
 @click.argument('app_name')
@@ -82,17 +87,14 @@ def create(**kwargs):
 @app.command(
   help="Scaffold app service certs"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 def mkcert(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
+  __validate_app(app)
 
   services = __get_services(app.services, service=kwargs['service'])
 
@@ -116,7 +118,7 @@ def mkcert(**kwargs):
 @service.command(
   help="Scaffold a service",
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--detached', is_flag=True)
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
@@ -144,9 +146,43 @@ def create(**kwargs):
     print(f"{service.dir_path} already exists, use option '--force' to continue")
 
 @service.command(
-  help="Delete a service",
+  help="List services",
+  name="list"
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--service', multiple=True, help='Select specific services.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by.')
+def _list(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  services = []
+
+  if not kwargs['workflow']:
+    services += __get_services(app.services, service=kwargs['service'], without_core=True)
+  else:
+    for workflow_name in kwargs['workflow']:
+      workflow = Workflow(workflow_name, app)
+      services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
+
+  rows = []
+  for service_name in set(services): 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+    service_config = ServiceConfig(service.dir_path)
+    rows.append(service_config.to_dict())
+
+  print_services(rows, **select_print_options(kwargs))
+
+@service.command(
+  help="Delete a service",
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
@@ -164,7 +200,7 @@ def delete(**kwargs):
 @service.command(
   help="Update a service config"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--priority', help='Determines the service run order.')
 @click.argument('service_name')
 def update(**kwargs):
@@ -193,7 +229,8 @@ def workflow(ctx):
 @workflow.command(
   help="Create workflow for service(s)"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
@@ -202,7 +239,7 @@ def workflow(ctx):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -214,19 +251,20 @@ def create(**kwargs):
 
     workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
     if kwargs['force'] or not os.path.exists(workflow_dir_path):
-      __workflow_build(app, **config)
+      __workflow_create(app, **config)
     else:
       print(f"{workflow_dir_path} already exists, use option '--force' to continue")
 
 @workflow.command(
   help="Copy a workflow for service(s)",
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Specify service(s) to add the workflow to.')
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -242,9 +280,10 @@ def copy(**kwargs):
     command.copy(kwargs['destination_workflow_name'])
 
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
+@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -260,14 +299,11 @@ def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  __validate_app(app)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'])
@@ -281,10 +317,22 @@ def down(**kwargs):
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for command in commands:
+  for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
-    exec_command = command.down(namespace=kwargs['namespace'], rmi=kwargs['rmi'], user_id=kwargs['user_id'])
+    extra_compose_path = None
+
+    # By default, the entrypoint service should be last
+    # However, this can change if the user has configured a service's priority to be higher
+    if index == len(commands) - 1:
+      extra_compose_path = kwargs['extra_entrypoint_compose_path']
+
+    exec_command = command.down(
+      extra_compose_path=extra_compose_path,
+      namespace=kwargs['namespace'],
+      rmi=kwargs['rmi'],
+      user_id=kwargs['user_id']
+    )
     if not exec_command:
       continue
 
@@ -311,7 +359,7 @@ def down(**kwargs):
       print(remove_network_command)
 
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option(
   '--container', multiple=True, help=f"Select which containers to log. Defaults to '{WORKFLOW_CONTAINER_PROXY}'"
 )
@@ -326,14 +374,11 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
-
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'], without_core=True)
@@ -368,16 +413,16 @@ def logs(**kwargs):
 
       if not kwargs['dry_run']:
         exec_stream(shell_command)
- 
+
 @workflow.command()
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--build', is_flag=True, help='Build images before starting containers.')
-@click.option('--ca-certs-dir-path', default=DataDir.instance().mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--context-dir-path', default=DataDir.instance().context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
-@click.option('--extra-compose-path', help='Path to extra compose configuration files.')
+@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--from-make', is_flag=True, help='Set if run from scaffolded Makefile.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -395,14 +440,11 @@ def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  __validate_app(app)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'])
@@ -429,9 +471,9 @@ def up(**kwargs):
 
     init_commands.append(command.create_network())
     joined_command = ' && '.join(init_commands)
-    command.write_nameservers()
 
     if not kwargs['dry_run']:
+      command.write_nameservers()
       exec_stream(joined_command)
     else:
       print(joined_command)
@@ -440,11 +482,22 @@ def up(**kwargs):
   for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
 
+    attached = False
+    extra_compose_path = None
+
     # By default, the entrypoint service should be last
     # However, this can change if the user has configured a service's priority to be higher
-    attached = not kwargs['detached'] and index == len(commands) - 1
+    if index == len(commands) - 1:
+      attached = not kwargs['detached']
+      extra_compose_path = kwargs['extra_entrypoint_compose_path']
+
     exec_command = command.up(
-      attached=attached, build=kwargs['build'], namespace=kwargs['namespace'], pull=kwargs['pull'], user_id=kwargs['user_id']
+      attached=attached,
+      build=kwargs['build'],
+      extra_compose_path=extra_compose_path,
+      namespace=kwargs['namespace'],
+      pull=kwargs['pull'],
+      user_id=kwargs['user_id']
     )
     if not exec_command:
       continue
@@ -457,10 +510,12 @@ def up(**kwargs):
 @workflow.command(
   help="Validate a scaffold workflow"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to validate the app scaffold.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
 @click.argument('workflow_name')
 def validate(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   workflow = Workflow(kwargs['workflow_name'], app)
   
   config = { **kwargs }
@@ -544,24 +599,29 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
-def __get_services(services: List[str], **kwargs):
-  # Log services that don't exist
-  missing_services = [service for service in kwargs['service'] if service not in services]
-  if missing_services:
-    Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
+def __get_services(services: List[str], **kwargs) -> List[str]:
+  selected_services = list(kwargs['service'])
 
-  if kwargs['service']:
-    # If service is specified, run only those services
-    services = list(kwargs['service'])
+  # If service is specified, run only those services
+  if selected_services:
+    missing_services = [service for service in selected_services if service not in services]
 
-    if not kwargs.get('without_core'):
-      services += CORE_SERVICES
-  else:
-    # If set, filter out core services
-    if kwargs.get('without_core'):
-      services = list(filter(lambda service: service not in CORE_SERVICES, services))
-    
-  return list(set(services))
+    # Remove services that don't exist
+    if missing_services:
+      Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
+      selected_services = list(set(selected_services) - set(missing_services))
+
+    services = selected_services
+
+  services += CORE_SERVICES
+
+  services_index = {}
+  for service in services:
+    if kwargs.get('without_core') and service in CORE_SERVICES:
+        continue
+    services_index[service] = True
+ 
+  return services_index.keys()
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
@@ -576,6 +636,11 @@ def __scaffold_delete(app, **kwargs):
 
   command.delete()
 
+def __validate_app(app: App):
+  if not app.valid:
+    print(f"Error: {app.dir_path} is not a valid scaffold app", file=sys.stderr)
+    sys.exit(1)
+
 def __validate_app_dir(app_dir_path):
   if not os.path.exists(app_dir_path):
     print(f"Error: {app_dir_path} does not exist", file=sys.stderr)
@@ -586,13 +651,12 @@ def __validate_service_dir(service_dir_path):
     print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
     sys.exit(1)
 
-def __workflow_build(app, **kwargs):
+def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
   command.build(
-    headless=kwargs['headless'],
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
