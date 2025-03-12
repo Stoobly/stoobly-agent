@@ -1,5 +1,6 @@
+import os
 import pdb
-import platform
+import sys
 
 from dataclasses import dataclass
 from typing import Union
@@ -15,13 +16,10 @@ class HostsFileManager():
     hostnames: list[str]
 
   def __get_hosts_file_path(self) -> str:
-    system = platform.system()
-    if system == 'Linux' or system == 'Darwin':
-      return '/etc/hosts'
-    else:
-      print(f"Unsupported system: {system}, for hosts file validation, skipping")
-
-    return ''
+    file_path = '/etc/hosts'
+    if not os.path.exists(file_path):
+      print(f"Error: File {file_path} not found.", file=sys.stderr)
+      sys.exit(1)
 
   # Split IP address and hostnames. Don't include inline comments
   def __split_hosts_line(self, line: str) -> list[str]:
