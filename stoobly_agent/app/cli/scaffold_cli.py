@@ -1,4 +1,5 @@
 import click
+import errno
 import os
 import pdb
 import sys
@@ -14,6 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
+from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
@@ -60,6 +62,22 @@ def app(ctx):
 )
 @click.pass_context
 def service(ctx):
+    pass
+
+@click.group(
+  epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
+  help="Manage workflow scaffold"
+)
+@click.pass_context
+def workflow(ctx):
+    pass
+
+@click.group(
+  epilog="Run 'stoobly-agent scaffold hostname COMMAND --help' for more information on a command.",
+  help="Manage scaffold service hostnames"
+)
+@click.pass_context
+def hostname(ctx):
     pass
 
 @app.command(
@@ -159,17 +177,8 @@ def _list(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  services = []
-
-  if not kwargs['workflow']:
-    services += __get_services(app.services, service=kwargs['service'], without_core=True)
-  else:
-    for workflow_name in kwargs['workflow']:
-      workflow = Workflow(workflow_name, app)
-      services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
-
   rows = []
-  for service_name in set(services): 
+  for service_name in __get_workflow_services(app, **kwargs): 
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
     service_config = ServiceConfig(service.dir_path)
@@ -215,14 +224,6 @@ def update(**kwargs):
     service_config.priority = kwargs['priority']
 
   service_config.write()
-
-@click.group(
-  epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
-  help="Manage service scaffold"
-)
-@click.pass_context
-def workflow(ctx):
-    pass
 
 @workflow.command(
   help="Create workflow for service(s)"
@@ -536,9 +537,65 @@ def validate(**kwargs):
     print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
     sys.exit(1)
 
+@hostname.command(
+  help="Update the system hosts file for all scaffold service hostnames"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--service', multiple=True, help='Select specific services.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s).')
+def install(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_workflow_services(app, **kwargs)
+
+  hostnames = []
+  for service_name in services: 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.install_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+
+@hostname.command(
+  help="Delete from the system hosts file all scaffold service hostnames"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+def uninstall(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.uninstall_hostnames()
+  except OSError as e:
+    if e.errno == errno.EACCES or e.errno == errno.EPERM:
+      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    else:
+      print(f"An unexpected error occurred: {e}", file=sys.stderr)
+
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
+scaffold.add_command(hostname)
+
+def __elevate_sudo():
+  import subprocess
+
+  if os.geteuid() != 0:
+    subprocess.run(["sudo", sys.executable] + sys.argv)
+    sys.exit(0)
 
 def __get_services(services: List[str], **kwargs) -> List[str]:
   selected_services = list(kwargs['service'])
@@ -563,6 +620,16 @@ def __get_services(services: List[str], **kwargs) -> List[str]:
     services_index[service] = True
  
   return services_index.keys()
+
+def __get_workflow_services(app: App, **kwargs):
+  selected_services = []
+  if not kwargs['workflow']:
+    selected_services += __get_services(app.services, service=kwargs['service'], without_core=True)
+  else:
+    for workflow_name in kwargs['workflow']:
+      workflow = Workflow(workflow_name, app)
+      selected_services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
+  return set(selected_services)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")

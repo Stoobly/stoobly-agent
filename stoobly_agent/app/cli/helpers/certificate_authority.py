@@ -94,6 +94,9 @@ class CertificateAuthority():
         subprocess.run("sudo update-ca-trust extract".split(), check=True)
 
     def install(self):
+        if not self.certs_generated:
+            self.generate_certs()
+
         distro_name = distro.name(pretty=True)
 
         # Ubuntu or other Debian based
@@ -105,7 +108,9 @@ class CertificateAuthority():
         # elif distro.id() == 'rhel':
         #     return
         else:
-            raise TypeError(f"{distro_name} is not supported yet for automatic CA cert installation.")
+            raise TypeError(
+                f"{distro_name} is not supported yet for automatic installation. For manual installation, see https://docs.mitmproxy.org/stable/concepts-certificates/"
+            )
 
     def sign(self, hostname: str, dest = None, port = 443):
         dest = dest or self.certs_dir
