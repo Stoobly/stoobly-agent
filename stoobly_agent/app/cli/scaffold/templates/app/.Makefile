@@ -66,6 +66,10 @@ ca-cert/install: stoobly/install
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \
 	$(stoobly_exec)
+command/install:
+	$(eval COMMAND=install)
+command/uninstall:
+	$(eval COMMAND=uninstall)
 nameservers: tmpdir
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
@@ -149,25 +153,20 @@ workflow/down:
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
-workflow/hostname/validate:
-	@CURRENT_VERSION=$$(stoobly-agent --version); \
-	REQUIRED_VERSION="1.4.0"; \
-	if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | tail -n 1)" = "$$CURRENT_VERSION" ]; then \
-		echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
-		exit 1; \
-	fi
-workflow/hostname/install: stoobly/install workflow/hostname/validate
-	@read -p "Do you want to install hostname(s) in /etc/hosts? (y/N) " confirm && \
+workflow/hostname: stoobly/install
+	@read -p "Do you want to $(COMMAND) hostname(s) in /etc/hosts? (y/N) " confirm && \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		echo "Running stoobly-agent scaffold hostname install..."; \
-		sudo stoobly-agent scaffold hostname install --workflow $(WORKFLOW); \
+		CURRENT_VERSION=$$(stoobly-agent --version); \
+		REQUIRED_VERSION="1.4.0"; \
+		if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | tail -n 1)" = "$$CURRENT_VERSION" ]; then \
+			echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
+			exit 1; \
+		fi; \
+		echo "Running stoobly-agent scaffold hostname $(COMMAND)..."; \
+		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(WORKFLOW); \
 	fi
-workflow/hostname/uninstall: stoobly/install workflow/hostname/validate
-	@read -p "Do you want to uninstall hostname(s) in /etc/hosts? (y/N) " confirm && \
-	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		echo "Running stoobly-agent scaffold hostname uninstall..."; \
-		sudo stoobly-agent scaffold hostname uninstall --workflow $(WORKFLOW); \
-	fi
+workflow/hostname/install: command/install workflow/hostname
+workflow/hostname/uninstall: command/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=bin/.logs && \
 	export EXEC_OPTIONS="$(workflow_service_options) $(options)" && \
