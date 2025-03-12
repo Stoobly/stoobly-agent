@@ -20,6 +20,7 @@ class HostsFileManager():
     if not os.path.exists(file_path):
       print(f"Error: File {file_path} not found.", file=sys.stderr)
       sys.exit(1)
+    return file_path
 
   # Split IP address and hostnames. Don't include inline comments
   def __split_hosts_line(self, line: str) -> list[str]:
