@@ -137,7 +137,7 @@ scenario/snapshot:
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 stoobly/install: python/validate pipx/install 
-	@if ! pipx list | grep -q 'stoobly-agent'; then \
+	@if ! pipx list 2> /dev/null | grep -q 'stoobly-agent'; then \
 		echo "stoobly-agent not found. Installing..."; \
 		pipx install stoobly-agent; \
 	fi
