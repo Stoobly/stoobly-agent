@@ -11,7 +11,7 @@ class TestHostsFileManager():
     yield HostsFileManager()
 
   def test_get_hosts_file_path(self, hosts_file_manager):
-    hosts_file_path = hosts_file_manager._HostsFileManager__get_hosts_file_path()
+    hosts_file_path = hosts_file_manager.get_hosts_file_path()
 
     # Test runners are all Linux distros for now
     assert hosts_file_path == '/etc/hosts'

@@ -15,21 +15,21 @@ class HostsFileManager():
     ip_address: str
     hostnames: list[str]
 
-  def __get_hosts_file_path(self) -> str:
+  # Split IP address and hostnames. Don't include inline comments
+  def __split_hosts_line(self, line: str) -> list[str]:
+    ip_addr_hosts_split = line.split('#')[0].split()
+    return ip_addr_hosts_split
+
+  def get_hosts_file_path(self) -> str:
     file_path = '/etc/hosts'
     if not os.path.exists(file_path):
       print(f"Error: File {file_path} not found.", file=sys.stderr)
       sys.exit(1)
     return file_path
 
-  # Split IP address and hostnames. Don't include inline comments
-  def __split_hosts_line(self, line: str) -> list[str]:
-    ip_addr_hosts_split = line.split('#')[0].split()
-    return ip_addr_hosts_split
-
   # Parses hosts file and returns a mapping of IP address to hostnames in a list.
   def get_hosts(self) -> list[IpAddressToHostnames]:
-    hosts_file_path = self.__get_hosts_file_path()
+    hosts_file_path = self.get_hosts_file_path()
 
     if not hosts_file_path:
       return []
@@ -64,7 +64,7 @@ class HostsFileManager():
     return None
 
   def install_hostnames(self, hostnames: list[str]) -> None:
-    hosts_file_path = self.__get_hosts_file_path()
+    hosts_file_path = self.get_hosts_file_path()
 
     self.remove_lines_between_markers(
       hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END
@@ -83,7 +83,7 @@ class HostsFileManager():
         f.write(SCAFFOLD_HOSTS_DELIMITTER_END)
 
   def uninstall_hostnames(self) -> None:
-    hosts_file_path = self.__get_hosts_file_path()
+    hosts_file_path = self.get_hosts_file_path()
 
     self.remove_lines_between_markers(
       hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END

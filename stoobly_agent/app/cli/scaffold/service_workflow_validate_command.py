@@ -100,7 +100,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       print(f"Correct hosts mapping found for {hostname}")
       return True
 
-    hosts_file_path = hosts_file_reader.get_hosts_file_path()
+    hosts_file_path = hosts_file_manager.get_hosts_file_path()
 
     missing_host_message = f"{bcolors.FAIL}Missing hosts mapping for {hostname}{bcolors.ENDC}"
     suggestion_message = f"{bcolors.BOLD}Confirm hostname '{hostname}' is in your hosts file at '{hosts_file_path}'. If not there, please add it{bcolors.ENDC}"
