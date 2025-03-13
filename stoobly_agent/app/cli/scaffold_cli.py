@@ -1,4 +1,5 @@
 import click
+import errno
 import os
 import pdb
 import sys
@@ -14,6 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
+from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
@@ -30,6 +32,8 @@ from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowVal
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
+
+from .helpers.print_service import FORMATS, print_services, select_print_options
 
 LOG_ID = 'Scaffold'
 
@@ -58,6 +62,22 @@ def app(ctx):
 )
 @click.pass_context
 def service(ctx):
+    pass
+
+@click.group(
+  epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
+  help="Manage workflow scaffold"
+)
+@click.pass_context
+def workflow(ctx):
+    pass
+
+@click.group(
+  epilog="Run 'stoobly-agent scaffold hostname COMMAND --help' for more information on a command.",
+  help="Manage scaffold service hostnames"
+)
+@click.pass_context
+def hostname(ctx):
     pass
 
 @app.command(
@@ -90,10 +110,7 @@ def create(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 def mkcert(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
+  __validate_app(app)
 
   services = __get_services(app.services, service=kwargs['service'])
 
@@ -145,6 +162,31 @@ def create(**kwargs):
     print(f"{service.dir_path} already exists, use option '--force' to continue")
 
 @service.command(
+  help="List services",
+  name="list"
+)
+@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--service', multiple=True, help='Select specific services.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by.')
+def _list(**kwargs):
+  __validate_app_dir(kwargs['app_dir_path'])
+
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  rows = []
+  for service_name in __get_workflow_services(app, **kwargs): 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+    service_config = ServiceConfig(service.dir_path)
+    rows.append(service_config.to_dict())
+
+  print_services(rows, **select_print_options(kwargs))
+
+@service.command(
   help="Delete a service",
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -182,14 +224,6 @@ def update(**kwargs):
     service_config.priority = kwargs['priority']
 
   service_config.write()
-
-@click.group(
-  epilog="Run 'stoobly-agent request response COMMAND --help' for more information on a command.",
-  help="Manage service scaffold"
-)
-@click.pass_context
-def workflow(ctx):
-    pass
 
 @workflow.command(
   help="Create workflow for service(s)"
@@ -264,14 +298,11 @@ def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  __validate_app(app)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'])
@@ -342,14 +373,11 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
-
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'], without_core=True)
@@ -384,7 +412,7 @@ def logs(**kwargs):
 
       if not kwargs['dry_run']:
         exec_stream(shell_command)
- 
+
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--build', is_flag=True, help='Build images before starting containers.')
@@ -411,14 +439,11 @@ def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  __validate_app(app)
 
   # If namespace is set, default network to namespace
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
-
-  if not app.exists:
-    print(f"Error: {app.dir_path} does not exist", file=sys.stderr)
-    sys.exit(1)
 
   workflow = Workflow(kwargs['workflow_name'], app)
   services = __get_services(workflow.services, service=kwargs['service'])
@@ -445,9 +470,9 @@ def up(**kwargs):
 
     init_commands.append(command.create_network())
     joined_command = ' && '.join(init_commands)
-    command.write_nameservers()
 
     if not kwargs['dry_run']:
+      command.write_nameservers()
       exec_stream(joined_command)
     else:
       print(joined_command)
@@ -489,6 +514,8 @@ def up(**kwargs):
 @click.argument('workflow_name')
 def validate(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   workflow = Workflow(kwargs['workflow_name'], app)
   
   config = { **kwargs }
@@ -513,28 +540,99 @@ def validate(**kwargs):
 
   print(f"{bcolors.OKCYAN}✔ Done validating Stoobly scaffold and services, success!{bcolors.ENDC}")
 
+@hostname.command(
+  help="Update the system hosts file for all scaffold service hostnames"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--service', multiple=True, help='Select specific services.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s).')
+def install(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_workflow_services(app, **kwargs)
+
+  hostnames = []
+  for service_name in services: 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.install_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+
+@hostname.command(
+  help="Delete from the system hosts file all scaffold service hostnames"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+def uninstall(**kwargs):
+  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.uninstall_hostnames()
+  except OSError as e:
+    if e.errno == errno.EACCES or e.errno == errno.EPERM:
+      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    else:
+      print(f"An unexpected error occurred: {e}", file=sys.stderr)
+
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
+scaffold.add_command(hostname)
 
-def __get_services(services: List[str], **kwargs):
-  # Log services that don't exist
-  missing_services = [service for service in kwargs['service'] if service not in services]
-  if missing_services:
-    Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
+def __elevate_sudo():
+  import subprocess
 
-  if kwargs['service']:
-    # If service is specified, run only those services
-    services = list(kwargs['service'])
+  if os.geteuid() != 0:
+    subprocess.run(["sudo", sys.executable] + sys.argv)
+    sys.exit(0)
 
-    if not kwargs.get('without_core'):
-      services += CORE_SERVICES
+def __get_services(services: List[str], **kwargs) -> List[str]:
+  selected_services = list(kwargs['service'])
+
+  # If service is specified, run only those services
+  if selected_services:
+    missing_services = [service for service in selected_services if service not in services]
+
+    # Remove services that don't exist
+    if missing_services:
+      Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
+      selected_services = list(set(selected_services) - set(missing_services))
+
+    services = selected_services
+
+  services += CORE_SERVICES
+
+  services_index = {}
+  for service in services:
+    if kwargs.get('without_core') and service in CORE_SERVICES:
+        continue
+    services_index[service] = True
+ 
+  return services_index.keys()
+
+def __get_workflow_services(app: App, **kwargs):
+  selected_services = []
+  if not kwargs['workflow']:
+    selected_services += __get_services(app.services, service=kwargs['service'], without_core=True)
   else:
-    # If set, filter out core services
-    if kwargs.get('without_core'):
-      services = list(filter(lambda service: service not in CORE_SERVICES, services))
-    
-  return list(set(services))
+    for workflow_name in kwargs['workflow']:
+      workflow = Workflow(workflow_name, app)
+      selected_services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
+  return set(selected_services)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
@@ -548,6 +646,11 @@ def __scaffold_delete(app, **kwargs):
   command = ServiceDeleteCommand(app, **kwargs)
 
   command.delete()
+
+def __validate_app(app: App):
+  if not app.valid:
+    print(f"Error: {app.dir_path} is not a valid scaffold app", file=sys.stderr)
+    sys.exit(1)
 
 def __validate_app_dir(app_dir_path):
   if not os.path.exists(app_dir_path):

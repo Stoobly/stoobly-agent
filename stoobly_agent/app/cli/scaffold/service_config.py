@@ -4,7 +4,6 @@ import pdb
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
-  SERVICE_DOCKER_COMPOSE_PATH_ENV,
   SERVICE_HOSTNAME_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
@@ -18,7 +17,6 @@ class ServiceConfig(Config):
     super().__init__(dir)
 
     self.__detached = None
-    self.__docker_compose_path = None
     self.__hostname = None
     self.__port = None
     self.__priority = None
@@ -52,14 +50,6 @@ class ServiceConfig(Config):
   @detached.setter
   def detached(self, v):
     self.__detached = v
-
-  @property
-  def docker_compose_path(self):
-    return self.__docker_compose_path
-
-  @docker_compose_path.setter
-  def docker_compose_path(self, v):
-    self.__docker_compose_path = v
 
   @property
   def hostname(self):
@@ -120,18 +110,24 @@ class ServiceConfig(Config):
     config = config or self.read()
 
     self.detached = config.get(SERVICE_DETACHED_ENV)
-    self.docker_compose_path = config.get(SERVICE_DOCKER_COMPOSE_PATH_ENV)
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
     self.proxy_mode = config.get(SERVICE_PROXY_MODE_ENV)
     self.scheme = config.get(SERVICE_SCHEME_ENV)
 
+  def to_dict(self):
+    return {
+      'detached': self.detached,
+      'hostname': self.hostname,
+      'port': self.port,
+      'priority': self.priority,
+      'proxy_mode': self.proxy_mode,
+      'scheme': self.scheme,
+    }
+
   def write(self):
     config = {}
-
-    if self.docker_compose_path:
-      config[SERVICE_DOCKER_COMPOSE_PATH_ENV] = self.docker_compose_path
 
     if self.hostname:
       config[SERVICE_HOSTNAME_ENV] = self.hostname

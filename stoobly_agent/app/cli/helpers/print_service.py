@@ -89,6 +89,23 @@ def print_scenarios(scenarios, **kwargs: TabulatePrintOptions):
             select=kwargs.get('select') or []
         )
 
+def print_services(services, **kwargs: TabulatePrintOptions):
+    filter = []
+    format = kwargs.get('format')
+
+    if format == JSON_FORMAT:
+        json_print(services, **{
+            'filter': filter,
+            **kwargs
+        })
+    else:
+        tabulate_print(
+            services, 
+            filter=filter,
+            headers=not kwargs.get('without_headers'),
+            select=kwargs.get('select') or []
+        )
+
 def print_snapshots(snapshots, **kwargs: TabulatePrintOptions):
     filter = ['resource_uuid']
     format = kwargs.get('format')

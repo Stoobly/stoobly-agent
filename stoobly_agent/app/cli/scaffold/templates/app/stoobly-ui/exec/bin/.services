@@ -1,0 +1,9 @@
+#!/bin/bash
+
+extra_options=$EXEC_OPTIONS
+workflow=$1
+
+stoobly-agent scaffold service list \
+  --app-dir-path "$(pwd)" \
+  --workflow $workflow \
+  $extra_options
