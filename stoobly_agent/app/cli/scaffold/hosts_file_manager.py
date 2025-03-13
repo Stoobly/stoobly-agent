@@ -66,47 +66,120 @@ class HostsFileManager():
   def install_hostnames(self, hostnames: list[str]) -> None:
     hosts_file_path = self.__get_hosts_file_path()
 
-    self.remove_lines_between_markers(
-      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END
+    self.__add_lines_between_markers(
+      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END, hostnames
     )
 
-    with open(hosts_file_path, 'a+') as f:
-      if SCAFFOLD_HOSTS_DELIMITTER_BEGIN not in f.read():
-        f.write(SCAFFOLD_HOSTS_DELIMITTER_BEGIN)
-
-      for hostname in hostnames:
-        print(f"Installing hostname {hostname} to {hosts_file_path}")
-        f.write(f"127.0.0.1 {hostname}\n")
-        f.write(f"::1       {hostname}\n")
-
-      if SCAFFOLD_HOSTS_DELIMITTER_END not in f.read():
-        f.write(SCAFFOLD_HOSTS_DELIMITTER_END)
-
-  def uninstall_hostnames(self) -> None:
+  def uninstall_hostnames(self, hostnames: list[str] = []) -> None:
     hosts_file_path = self.__get_hosts_file_path()
 
-    self.remove_lines_between_markers(
-      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END
+    self.__remove_lines_between_markers(
+      hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END, hostnames
     ) 
 
-    print(f"Uninstalled hostnames from {hosts_file_path}")
-
-  def remove_lines_between_markers(self, file_path, start_marker, end_marker):
+  def __remove_lines_between_markers(self, file_path, start_marker, end_marker, hostnames = []):
     with open(file_path, "r") as file:
       lines = file.readlines()
-    
-    inside_block = False
-    filtered_lines = []
 
+    filtered_lines = []
+    index = 0
+
+    # Continue until we reach start_marker
     for line in lines:
+      index += 1
+
       if start_marker in line:
-        inside_block = True
-        continue  # Skip the start marker line
+        break
+
+      filtered_lines.append(line)
+
+    # Continue until we reach end_marker
+    found_hostnames = {}
+    section = []
+    for line in lines[index:]:
+      index += 1
+
       if end_marker in line:
-        inside_block = False
-        continue  # Skip the end marker line
-      if not inside_block:
+        break
+        
+      found = False
+      for hostname in hostnames:
+        if hostname in line:
+          if hostname not in found_hostnames:
+            print(f"Removing hostname {hostname}")
+
+          found_hostnames[hostname] = True
+          found = True
+
+      if not found: 
+        section.append(line)
+
+    # If there are still lines in the section
+    if len(section):
+      filtered_lines.append(start_marker)
+      section.append(end_marker)    
+      filtered_lines += section
+
+    for line in lines[index:]:
+      filtered_lines.append(line)
+
+    with open(file_path, "w") as file:
+      file.writelines(filtered_lines)
+
+  def __add_lines_between_markers(self, file_path, start_marker, end_marker, hostnames = []):
+    with open(file_path, "r") as file:
+      lines = file.readlines()
+
+    filtered_lines = []
+    index = 0
+
+    # Continue until we reach start_marker
+    for line in lines:
+      index += 1
+      if start_marker in line:
+        break
+
+      filtered_lines.append(line)
+
+    # If no empty line before start_marker, add one
+    if len(filtered_lines):
+      last_line = filtered_lines[-1]
+
+      if last_line != "\n":
+        filtered_lines.append("\n")
+
+    filtered_lines.append(start_marker)
+
+    # Continue until we reach end_marker
+    found_hostnames = {}
+    for line in lines[index:]:
+      index += 1
+
+      if end_marker in line:
+        break
+        
+      found = False
+      for hostname in hostnames:
+        if hostname in line:
+          filtered_lines.append(line)
+          found_hostnames[hostname] = True
+          found = True
+
+      if not found:
         filtered_lines.append(line)
+      
+    for hostname in hostnames:
+      if hostname in found_hostnames:
+        continue
+
+      print(f"Installing hostname {hostname}")
+      filtered_lines.append(f"127.0.0.1 {hostname}\n")
+      filtered_lines.append(f"::1       {hostname}\n")
+
+    filtered_lines.append(end_marker)    
+
+    for line in lines[index:]:
+      filtered_lines.append(line)
 
     with open(file_path, "w") as file:
       file.writelines(filtered_lines)

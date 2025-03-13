@@ -158,12 +158,12 @@ workflow/hostname: stoobly/install
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		CURRENT_VERSION=$$(stoobly-agent --version); \
 		REQUIRED_VERSION="1.4.0"; \
-		if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | tail -n 1)" = "$$CURRENT_VERSION" ]; then \
+		if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | head -n 1)" != "$$REQUIRED_VERSION" ]; then \
 			echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
 			exit 1; \
 		fi; \
-		echo "Running stoobly-agent scaffold hostname $(COMMAND)..."; \
-		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(WORKFLOW); \
+		echo "Running stoobly-agent scaffold hostname $(COMMAND) $(workflow_service_options)"; \
+		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(WORKFLOW) $(workflow_service_options); \
 	fi
 workflow/hostname/install: command/install workflow/hostname
 workflow/hostname/uninstall: command/uninstall workflow/hostname  

@@ -565,25 +565,37 @@ def install(**kwargs):
     hosts_file_manager.install_hostnames(hostnames)
   except PermissionError:
     print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--service', multiple=True, help='Select specific services.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s).')
 def uninstall(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
+
+  services = __get_workflow_services(app, **kwargs)
+
+  hostnames = []
+  for service_name in services: 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
 
   __elevate_sudo()
 
   try:
     hosts_file_manager = HostsFileManager()
-    hosts_file_manager.uninstall_hostnames()
-  except OSError as e:
-    if e.errno == errno.EACCES or e.errno == errno.EPERM:
-      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    else:
-      print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    hosts_file_manager.uninstall_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 scaffold.add_command(app)
 scaffold.add_command(service)
