@@ -102,7 +102,10 @@ class ServiceConfig(Config):
     if self.__proxy_mode:
       return (self.__proxy_mode or '').strip()
 
-    return f"reverse:{self.scheme}://{self.hostname}"
+    if not self.port or (self.scheme == 'http' and self.port == '80') or (self.scheme == 'https' and self.port == '443'):
+      return f"reverse:{self.scheme}://{self.hostname}"
+    else:
+      return f"reverse:{self.scheme}://{self.hostname}:{self.port}"
 
   @proxy_mode.setter
   def proxy_mode(self, v):
