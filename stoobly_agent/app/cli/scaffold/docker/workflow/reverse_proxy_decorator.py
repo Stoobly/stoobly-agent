@@ -3,7 +3,7 @@ import pdb
 
 from urllib.parse import urlparse
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, SERVICE_PROXY_MODE, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
 
 class ReverseProxyDecorator():
@@ -25,7 +25,7 @@ class ReverseProxyDecorator():
     command = [
       '--headless',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
-      '--proxy-mode', config.proxy_mode,
+      '--proxy-mode', SERVICE_PROXY_MODE,
       '--proxy-port', f"{SERVICE_PORT}",
       '--ssl-insecure'
     ]
