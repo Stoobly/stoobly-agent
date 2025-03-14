@@ -71,7 +71,7 @@ class HostsFileManager():
     )
 
   def uninstall_hostnames(self, hostnames: list[str] = []) -> None:
-    hosts_file_path = self.__get_hosts_file_path()
+    hosts_file_path = self.get_hosts_file_path()
 
     self.__remove_lines_between_markers(
       hosts_file_path, SCAFFOLD_HOSTS_DELIMITTER_BEGIN, SCAFFOLD_HOSTS_DELIMITTER_END, hostnames
