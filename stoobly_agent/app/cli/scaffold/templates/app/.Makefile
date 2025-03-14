@@ -61,8 +61,15 @@ stoobly_exec_run_env=$(source_env) && $(exec_env) && export CONTEXT_DIR="$(app_d
 workflow_run=$(source_env) && bash "$(workflow_run_script)"
 
 ca-cert/install: stoobly/install
-	@echo "Running stoobly-agent ca-cert install..."; \
-	stoobly-agent ca-cert install
+	@if [ ! -d "$$HOME/.mitmproxy" ]; then \
+		read -p "Installing CA certificate is required for $(WORKFLOW)ing requests, continue? (y/N) " confirm && \
+		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+			echo "Running stoobly-agent ca-cert install..."; \
+			stoobly-agent ca-cert install; \
+		else \
+			echo "You can install the CA certificate later by running: stoobly-agent ca-cert install"; \
+		fi \
+	fi
 certs:
 	@export EXEC_COMMAND=bin/.mkcert && \
 	$(stoobly_exec)
@@ -89,7 +96,7 @@ intercept/enable:
 	@export EXEC_COMMAND=bin/.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: workflow/mock workflow/hostname/install nameservers workflow/up
+mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
 mock/services: workflow/mock workflow/services
 mock/logs: workflow/mock workflow/logs
 mock/down: workflow/mock workflow/down workflow/hostname/uninstall
@@ -103,7 +110,7 @@ python/validate:
 		echo "Error: Python 3.10, 3.11, or 3.12 is required."; \
 		exit 1; \
 	fi
-record: workflow/record workflow/hostname/install nameservers workflow/up
+record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
 record/down: workflow/record workflow/down workflow/hostname/uninstall
 record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
@@ -139,7 +146,7 @@ scenario/snapshot:
 stoobly/install: python/validate pipx/install 
 	@if ! pipx list 2> /dev/null | grep -q 'stoobly-agent'; then \
 		echo "stoobly-agent not found. Installing..."; \
-		pipx install stoobly-agent; \
+		pipx install stoobly-agent || { echo "Failed to install stoobly-agent"; exit 1; }; \
 	fi
 test: workflow/test workflow/up
 test/services: workflow/test workflow/services
