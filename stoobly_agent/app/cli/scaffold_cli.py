@@ -108,14 +108,19 @@ def create(**kwargs):
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def mkcert(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
-  services = __get_services(app.services, service=kwargs['service'])
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
 
   for service_name in services:
     service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
     service_config = ServiceConfig(service.dir_path)
 
     if service_config.scheme != 'https':
@@ -170,19 +175,23 @@ def create(**kwargs):
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
-@click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by.')
+@click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
-  __validate_app_dir(kwargs['app_dir_path'])
-
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
+  services = __get_services(app, service=kwargs['service'], workflow=kwargs['workflow'])
+
   rows = []
-  for service_name in __get_workflow_services(app, **kwargs): 
+  for service_name in services: 
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
+
     service_config = ServiceConfig(service.dir_path)
-    rows.append(service_config.to_dict())
+    rows.append({
+      'name': service_name,
+      **service_config.to_dict()
+    })
 
   print_services(rows, **select_print_options(kwargs))
 
@@ -192,9 +201,9 @@ def _list(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
-  __validate_app_dir(kwargs['app_dir_path'])
-
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   service = Service(kwargs['service_name'], app)
 
   if not os.path.exists(service.dir_path):
@@ -211,9 +220,9 @@ def delete(**kwargs):
 @click.option('--priority', help='Determines the service run order.')
 @click.argument('service_name')
 def update(**kwargs):
-  __validate_app_dir(kwargs['app_dir_path'])
-
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  __validate_app(app)
+
   service = Service(kwargs['service_name'], app)
 
   __validate_service_dir(service.dir_path)
@@ -304,8 +313,9 @@ def down(**kwargs):
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
 
-  workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, service=kwargs['service'])
+  services = __get_services(
+    app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
+  )
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -379,8 +389,9 @@ def logs(**kwargs):
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
 
-  workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, service=kwargs['service'], without_core=True)
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+  )
 
   commands: List[WorkflowLogCommand] = []
   for service in services:
@@ -445,10 +456,12 @@ def up(**kwargs):
   if kwargs['namespace'] and not kwargs['network']:
     kwargs['network'] = kwargs['namespace']
 
-  workflow = Workflow(kwargs['workflow_name'], app)
-  services = __get_services(workflow.services, service=kwargs['service'])
+  services = __get_services(
+    app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
+  )
 
   # Gateway ports are dynamically set depending on the workflow run
+  workflow = Workflow(kwargs['workflow_name'], app)
   set_gateway_ports(workflow.service_paths_from_services(services))
 
   commands: List[WorkflowRunCommand] = []
@@ -544,13 +557,15 @@ def validate(**kwargs):
   help="Update the system hosts file for all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--service', multiple=True, help='Select specific services.')
-@click.option('--workflow', multiple=True, help='Specify services by workflow(s).')
+@click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  services = __get_workflow_services(app, **kwargs)
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
 
   hostnames = []
   for service_name in services: 
@@ -568,25 +583,39 @@ def install(**kwargs):
     hosts_file_manager.install_hostnames(hostnames)
   except PermissionError:
     print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
+
+  hostnames = []
+  for service_name in services: 
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
 
   __elevate_sudo()
 
   try:
     hosts_file_manager = HostsFileManager()
-    hosts_file_manager.uninstall_hostnames()
-  except OSError as e:
-    if e.errno == errno.EACCES or e.errno == errno.EPERM:
-      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    else:
-      print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    hosts_file_manager.uninstall_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 scaffold.add_command(app)
 scaffold.add_command(service)
@@ -600,39 +629,37 @@ def __elevate_sudo():
     subprocess.run(["sudo", sys.executable] + sys.argv)
     sys.exit(0)
 
-def __get_services(services: List[str], **kwargs) -> List[str]:
+def __get_services(app: App, **kwargs):
   selected_services = list(kwargs['service'])
 
-  # If service is specified, run only those services
-  if selected_services:
-    missing_services = [service for service in selected_services if service not in services]
+  if not selected_services:
+    selected_services = app.services
+  else:
+    selected_services += CORE_SERVICES
+    missing_services = [service for service in selected_services if service not in app.services]
+
+    if missing_services:
+      # Warn if an invalid service is provided
+      Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
 
     # Remove services that don't exist
-    if missing_services:
-      Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
       selected_services = list(set(selected_services) - set(missing_services))
 
-    services = selected_services
+  # If without_score is set, filter out CORE_SERVICES
+  if kwargs.get('without_core'):
+    selected_services = list(set(selected_services) - set(CORE_SERVICES))
 
-  services += CORE_SERVICES
-
-  services_index = {}
-  for service in services:
-    if kwargs.get('without_core') and service in CORE_SERVICES:
-        continue
-    services_index[service] = True
- 
-  return services_index.keys()
-
-def __get_workflow_services(app: App, **kwargs):
-  selected_services = []
-  if not kwargs['workflow']:
-    selected_services += __get_services(app.services, service=kwargs['service'], without_core=True)
-  else:
+  # If workflow is set, keep only services in the workflow
+  if kwargs.get('workflow'):
+    workflow_services = []
     for workflow_name in kwargs['workflow']:
       workflow = Workflow(workflow_name, app)
-      selected_services += __get_services(workflow.services, service=kwargs['service'], without_core=True)
-  return set(selected_services)
+      workflow_services += workflow.services
+
+    # Intersection
+    selected_services = list(filter(lambda x: x in workflow_services, selected_services))
+  
+  return list(set(selected_services))
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
