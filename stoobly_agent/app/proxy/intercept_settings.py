@@ -200,19 +200,27 @@ class InterceptSettings:
 
   @property
   def record_rewrite_rules(self) -> List[RewriteRule]:
-    return self.__select_rewrite_rules(mode.RECORD)
+    if not self._record_rewrite_rules:
+      self._record_rewrite_rules = self.__select_rewrite_rules(mode.RECORD)
+    return self._record_rewrite_rules
 
   @property
   def mock_rewrite_rules(self) -> List[RewriteRule]:
-    return self.__select_rewrite_rules(mode.MOCK)
+    if not self._mock_rewrite_rules:
+      self._mock_rewrite_rules = self.__select_rewrite_rules(mode.MOCK)
+    return self._mock_rewrite_rules
 
   @property
   def replay_rewrite_rules(self) -> List[RewriteRule]:
-    return self.__select_rewrite_rules(mode.REPLAY)
+    if not self._replay_rewrite_rules:
+      self._replay_rewrite_rules = self.__select_rewrite_rules(mode.REPLAY)
+    return self._replay_rewrite_rules
 
   @property
   def test_rewrite_rules(self) -> List[RewriteRule]:
-    return self.__select_rewrite_rules(mode.TEST)
+    if not self._test_rewrite_rules:
+      self._test_rewrite_rules = self.__select_rewrite_rules(mode.TEST)
+    return self._test_rewrite_rules
 
   @property
   def upstream_url(self):
