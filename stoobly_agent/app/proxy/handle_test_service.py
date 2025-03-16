@@ -1,7 +1,9 @@
 import pdb
 
+from copy import deepcopy
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
@@ -12,18 +14,20 @@ from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.logger import Logger
 
-from .handle_mock_service import handle_request_mock_generic
-from .handle_replay_service import handle_request_replay
+from .handle_mock_service import handle_request_mock_generic_without_rewrite
+from .handle_replay_service import handle_request_replay_without_rewrite
 from .mock.context import MockContext
 from .test.helpers.test_results_builder import TestResultsBuilder
 from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
+from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'HandleTest'
 
 def handle_request_test(context: ReplayContext) -> None:
-    handle_request_replay(context)
+    __rewrite_request(context)
+    handle_request_replay_without_rewrite(context)
 
 ###
 #
@@ -32,15 +36,15 @@ def handle_request_test(context: ReplayContext) -> None:
 def handle_response_test(context: ReplayContext) -> None:
     from .test.context import TestContext
 
+    __rewrite_response(context)
+
     flow: MitmproxyHTTPFlow = context.flow
     intercept_settings = context.intercept_settings
 
     disable_transfer_encoding(flow.response)
 
-    # At this point, the request may already been rewritten during replay
-    # Request will be rewritten again for mocking purposes
-
-    handle_request_mock_generic(
+    # At this point, the request may already been rewritten during replay, do not rewrite again
+    handle_request_mock_generic_without_rewrite(
         MockContext(flow, intercept_settings),
         failure=lambda mock_context: __handle_mock_failure(TestContext(context, mock_context)),
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
@@ -53,7 +57,7 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
 
 def __handle_mock_success(test_context: TestContext) -> None:
     flow: MitmproxyHTTPFlow = test_context.flow
-    settings = Settings.instance()
+    settings: Settings = Settings.instance()
 
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
@@ -84,13 +88,8 @@ def __handle_mock_success(test_context: TestContext) -> None:
         if not is_cli or test_context.save:
             # Re-serialize expected response since it was rewritten
             upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
-            upload_test = inject_upload_test(None, intercept_settings)
 
-            # Commit test to API
-            res = upload_test(
-                flow,
-                **upload_test_data
-            )
+            res = __record_handler(test_context, upload_test_data) 
 
             if is_cli:
                 # If the origin was from a CLI, send test ID in response header
@@ -135,6 +134,43 @@ def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
     flow.response.headers = headers
     flow.response.set_content(content)
     flow.response.status_code = 200
+
+def __record_handler(context: TestContext, upload_test_data):
+    flow = context.flow
+    intercept_settings = context.intercept_settings
+
+    flow_copy = deepcopy(flow)
+    context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
+    __test_hook(lifecycle_hooks.BEFORE_RECORD, context)
+
+    # Commit test to API
+    upload_test = inject_upload_test(None, intercept_settings)
+    res = upload_test(
+        flow, **upload_test_data
+    )
+
+    __test_hook(lifecycle_hooks.AFTER_RECORD, context)
+    context.flow = flow
+
+    return res
+
+def __rewrite_request(replay_context: ReplayContext):
+    """
+    Before replaying a request, see if the request needs to be rewritten
+    """
+    intercept_settings: InterceptSettings = replay_context.intercept_settings
+    rewrite_rules = intercept_settings.test_rewrite_rules
+
+    if len(rewrite_rules) > 0:
+        rewrite_request(replay_context.flow, rewrite_rules)
+
+def __rewrite_response(replay_context: ReplayContext):
+    # Rewrite response with replay rewrite rules
+    intercept_settings: InterceptSettings = replay_context.intercept_settings
+    rewrite_rules = intercept_settings.test_rewrite_rules
+
+    if len(rewrite_rules) > 0:
+        rewrite_response(replay_context.flow, rewrite_rules)
 
 def __test_hook(hook: str, context: TestContext):
     intercept_settings = context.intercept_settings

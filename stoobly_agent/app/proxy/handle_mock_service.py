@@ -19,6 +19,7 @@ from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, pass_on
+from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'Mock'
 
@@ -28,26 +29,22 @@ class MockOptions(TypedDict):
     infer: bool
     success: Callable
 
+def handle_request_mock_generic(context: MockContext, **options: MockOptions):
+    __rewrite_request(context)
+    handle_request_mock_generic_without_rewrite(context, **options)
+
 ###
 #
 # @param request [mitmproxy.http.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic(context: MockContext, **options: MockOptions):
-    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
-
+def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
-    request_model = RequestModel(intercept_settings.settings)
 
     policy = get_active_mode_policy(request, intercept_settings)
-
-    rewrite_rules = intercept_settings.mock_rewrite_rules
-    if len(rewrite_rules) > 0:
-        # Rewrite request with paramter rules for mock
-        request: MitmproxyRequest = context.flow.request
-        request_facade = MitmproxyRequestFacade(request)
-        request_facade.with_parameter_rules(rewrite_rules).with_url_rules(rewrite_rules).rewrite()
+    if policy != mock_policy.NONE:
+        __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
     # If ignore rules are set, then ignore specified request parameters
     ignore_rules = intercept_settings.ignore_rules
@@ -60,6 +57,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     
+    request_model = RequestModel(intercept_settings.settings)
     eval_request = inject_eval_request(request_model, intercept_settings)
  
     if policy == mock_policy.NONE:
@@ -138,6 +136,8 @@ def handle_response_mock(context: MockContext):
         request = context.flow.request
         Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
 
+    __rewrite_response(context)
+
 def __handle_mock_success(context: MockContext) -> None:
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         response = context.response
@@ -159,6 +159,24 @@ def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance(LOG_ID).debug(f"UpstreamUrl: {upstream_url}")
 
     reverse_proxy(req, upstream_url, {})
+
+def __rewrite_request(context: MockContext):
+    # Rewrite request with paramter rules for mock
+
+    intercept_settings = context.intercept_settings
+    rewrite_rules = intercept_settings.mock_rewrite_rules
+
+    if len(rewrite_rules) > 0:
+        rewrite_request(context.flow, rewrite_rules) 
+
+def __rewrite_response(context: MockContext):
+    # Rewrite request with paramter rules for mock
+
+    intercept_settings = context.intercept_settings
+    rewrite_rules = intercept_settings.mock_rewrite_rules
+
+    if len(rewrite_rules) > 0:
+        rewrite_response(context.flow, rewrite_rules) 
 
 ###
 #

@@ -50,7 +50,8 @@ def upload_request(
 ):
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
-    joined_request = join_rewritten_request(flow, intercept_settings)
+    rewrite_rules = intercept_settings.record_rewrite_rules
+    joined_request = join_rewritten_request(flow, intercept_settings, rewrite_rules)
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
