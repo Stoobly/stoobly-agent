@@ -67,11 +67,11 @@ class WorkflowCreateCommand(WorkflowCommand):
       return
 
     # Maintained files are files that will always be overwritten
-    maintained_workflow_files = maintained_files(self.workflow_name, workflow_builder)
+    maintained_workflow_files = maintained_files(template or self.workflow_name, workflow_builder)
     self.copy_files(templates_path, maintained_workflow_files, self.workflow_path)
 
     # Custom files are files that may be modified by the user
-    custom_workflow_files = custom_files(self.workflow_name, workflow_builder)
+    custom_workflow_files = custom_files(template or self.workflow_name, workflow_builder)
     self.copy_files_no_replace(templates_path, custom_workflow_files, self.workflow_path)
 
   def __write_docker_compose_file(self, **kwargs: BuildOptions):
