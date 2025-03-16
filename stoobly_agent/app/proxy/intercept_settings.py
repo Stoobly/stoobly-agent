@@ -41,6 +41,11 @@ class InterceptSettings:
     self.__response_fixtures = None
     self.__initialize_response_fixtures()
 
+    self._mock_rewrite_rules = None
+    self._record_rewrite_rules = None
+    self._replay_rewrite_rules = None
+    self._test_rewrite_rules = None
+
   @property
   def settings(self):
     return self.__settings
