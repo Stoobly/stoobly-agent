@@ -95,10 +95,9 @@ class MitmproxyResponseFacade(Response):
         content_type = self.content_type
         parsed_content = self.__body.get(content_type)
 
-        if not isinstance(parsed_content, dict) and not isinstance(parsed_content, multidict.MultiDictView):
-            content_type = 'application/json'
-            self.response.headers['content-type'] = content_type
-            parsed_content = {}
+        # If content is str or bytes, do not rewrite
+        if isinstance(parsed_content, str) or isinstance(parsed_content, bytes):
+            return 
 
         self.__apply_rewrites(parsed_content, rewrites, handler)
         self.__body.set(parsed_content, content_type)

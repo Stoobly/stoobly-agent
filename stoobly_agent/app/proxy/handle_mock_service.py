@@ -30,16 +30,20 @@ class MockOptions(TypedDict):
     no_rewrite: bool
     success: Callable
 
-def handle_request_mock_generic(context: MockContext, **options: MockOptions):
+def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
     options['no_rewrite'] = True
-    handle_request_mock_generic_without_rewrite(context, **options)
+    handle_request_mock_generic(context, **options)
 
 ###
+#
+# 1. Rewrites mock request by default
+# 2. BEFORE_MOCK gets triggered
+# 3. AFTER_MOCK gets triggered
 #
 # @param request [mitmproxy.http.Request]
 # @param settings [Dict]
 #
-def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
+def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
@@ -72,7 +76,6 @@ def handle_request_mock_generic_without_rewrite(context: MockContext, **options:
             context.with_response(res)
 
             if handle_success:
-                # TODO: rewrite response, see #332
                 res = handle_success(context) or res
         elif policy == mock_policy.FOUND:
             res = eval_request_with_retry(context, eval_request, **options) 
@@ -88,7 +91,6 @@ def handle_request_mock_generic_without_rewrite(context: MockContext, **options:
                         pass
             else:
                 if handle_success:
-                    # TODO: rewrite response, see #332
                     res = handle_success(context) or res
         else:
             return bad_request(
@@ -96,8 +98,6 @@ def handle_request_mock_generic_without_rewrite(context: MockContext, **options:
                 "Valid env MOCK_POLICY: %s, Got: %s" %
                 ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
             )
-
-    __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
     return pass_on(context.flow, res)
 
@@ -131,6 +131,11 @@ def handle_request_mock(context: MockContext):
         success=lambda context: __handle_mock_success(context)
     )
 
+###
+#
+# 1. Rewrites mock response (if mock found)
+# 2. AFTER_MOCK gets triggered (if mock found)
+#
 def handle_response_mock(context: MockContext):
     response = context.flow.response
     request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
@@ -139,7 +144,8 @@ def handle_response_mock(context: MockContext):
         request = context.flow.request
         Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
 
-    __rewrite_response(context)
+        __rewrite_response(context)
+        __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
 def __handle_mock_success(context: MockContext) -> None:
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):

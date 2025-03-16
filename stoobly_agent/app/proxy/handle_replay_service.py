@@ -15,6 +15,15 @@ LOG_ID = 'HandleReplay'
 class ReplayOptions(TypedDict):
     no_rewrite: bool
 
+###
+#
+# 1. Rewrites replay request by default
+# 2. BEFORE_REPLAY gets triggered
+#
+def handle_request_replay_without_rewrite(replay_context: ReplayContext):
+    options = { 'no_rewrite': True }
+    handle_request_replay(replay_context, **options)
+
 def handle_request_replay(replay_context: ReplayContext, **options: ReplayOptions):
     request: MitmproxyRequest = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
@@ -26,13 +35,14 @@ def handle_request_replay(replay_context: ReplayContext, **options: ReplayOption
 
         __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
 
-def handle_request_replay_without_rewrite(replay_context: ReplayContext):
-    options = { 'no_rewrite': True }
-    handle_request_replay(replay_context, **options)
-
+###
+#
+# 1. Rewrites replay response
+# 2. AFTER_REPLAY gets triggered
+#
 def handle_response_replay(replay_context: ReplayContext):
-    __replay_hook(lifecycle_hooks.AFTER_REPLAY, replay_context)
     __rewrite_response(replay_context)
+    __replay_hook(lifecycle_hooks.AFTER_REPLAY, replay_context)
 
 def __replay_hook(hook: str, replay_context: ReplayContext):
     intercept_settings: InterceptSettings = replay_context.intercept_settings

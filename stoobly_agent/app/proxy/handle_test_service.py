@@ -21,27 +21,43 @@ from .test.helpers.test_results_builder import TestResultsBuilder
 from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
-from .utils.rewrite import rewrite_request, rewrite_response
+from .utils.rewrite import rewrite_request, rewrite_response, rewrite_request_response
 
 LOG_ID = 'HandleTest'
 
+###
+#
+# 1. Rewrites test request
+# 2. BEFORE_REPLAY gets triggered
+#
 def handle_request_test(context: ReplayContext) -> None:
     __rewrite_request(context)
     handle_request_replay_without_rewrite(context)
 
 ###
 #
-# Mock and Test modes share the same policies
+# 1.  Rewrites test response (response from live service)
+# 2.  AFTER_REPLAY gets triggered
+# 3.  Uses rewritten test request to obtain mock response
+# 4.  BEFORE_MOCK gets triggered
+# 5.  AFTER_MOCK gets triggered
+# 6.  BEFORE_TEST gets triggered
+# 7.  Tests against rewritten test response and mock response (expected response)
+# 8.  BEFORE_RECORD gets triggered
+# 9.  Rewrites a copy of request and response
+# 10. AFTER_RECORD gets triggered
+# 11. AFTER_TEST gets triggered
 #
 def handle_response_test(context: ReplayContext) -> None:
     from .test.context import TestContext
 
-    __rewrite_response(context)
-
     flow: MitmproxyHTTPFlow = context.flow
-    intercept_settings = context.intercept_settings
-
     disable_transfer_encoding(flow.response)
+
+    __rewrite_response(context)
+    __test_hook(lifecycle_hooks.AFTER_REPLAY, context)
+
+    intercept_settings = context.intercept_settings
 
     # At this point, the request may already been rewritten during replay, do not rewrite again
     handle_request_mock_generic_without_rewrite(
@@ -57,8 +73,10 @@ def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse)
 
 def __handle_mock_success(test_context: TestContext) -> None:
     flow: MitmproxyHTTPFlow = test_context.flow
-    settings: Settings = Settings.instance()
 
+    __test_hook(lifecycle_hooks.AFTER_MOCK, test_context.mock_context)
+
+    settings: Settings = Settings.instance()
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
     __test_hook(lifecycle_hooks.BEFORE_TEST, test_context)
@@ -137,10 +155,11 @@ def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
 
 def __record_handler(context: TestContext, upload_test_data):
     flow = context.flow
+    flow_copy = deepcopy(flow)
     intercept_settings = context.intercept_settings
 
-    flow_copy = deepcopy(flow)
     context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules)
     __test_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
     # Commit test to API

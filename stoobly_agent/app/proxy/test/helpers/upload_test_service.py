@@ -11,7 +11,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ...intercept_settings import InterceptSettings
-from ...record.join_request_service import join_rewritten_request
+from ...record.join_request_service import join_request
 
 LOG_ID = 'Test'
 
@@ -45,7 +45,7 @@ def upload_test(
 ) -> Response:
     # Since we are "uploading" the request, use record_write_rules
     rewrite_rules = intercept_settings.record_rewrite_rules
-    joined_request = join_rewritten_request(flow, intercept_settings, rewrite_rules)
+    joined_request = join_request(flow, intercept_settings, rewrite_rules)
 
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 
