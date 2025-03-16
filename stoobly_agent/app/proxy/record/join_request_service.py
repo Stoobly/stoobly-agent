@@ -22,9 +22,10 @@ def join_request(
     # Create JoinedRequest
     return JoinedRequest(proxy_request).with_response(adapted_response)
 
-def join_rewritten_request(
-    flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings, rewrite_rules: List[RewriteRule]
+def join_request_from_flow(
+    flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings
 ) -> JoinedRequest:
-    request, response = rewrite_request_response(flow, rewrite_rules) 
+    request = MitmproxyRequestFacade(flow.request)
+    response = MitmproxyResponseFacade(flow.response)
 
     return join_request(request, response, intercept_settings)

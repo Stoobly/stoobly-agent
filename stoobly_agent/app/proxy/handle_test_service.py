@@ -155,10 +155,12 @@ def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
 
 def __record_handler(context: TestContext, upload_test_data):
     flow = context.flow
-    flow_copy = deepcopy(flow)
+    flow_copy = deepcopy(flow) # Deep copy flow to prevent response modifications from persisting
     intercept_settings = context.intercept_settings
 
-    context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
+    context.flow = flow_copy 
+
+    # Since we are "uploading" the request, use record_write_rules
     rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules)
     __test_hook(lifecycle_hooks.BEFORE_RECORD, context)
 

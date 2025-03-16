@@ -239,8 +239,7 @@ class MitmproxyRequestFacade(Request):
         content_type = self.content_type
         parsed_content = self.__body.get(content_type)
 
-        # If content is str or bytes, change content type
-        if isinstance(parsed_content, str) or isinstance(parsed_content, bytes):
+        if not self.__is_iterable(parsed_content):
             content_type = 'application/json'
             self.request.headers['content-type'] = content_type
             parsed_content = {}
@@ -267,3 +266,6 @@ class MitmproxyRequestFacade(Request):
             _request_headers.pop(name)
 
         return _request_headers
+
+    def __is_iterable(self, v):
+        return isinstance(v, dict) or isinstance(v, multidict.MultiDictView) or isinstance(v, list)

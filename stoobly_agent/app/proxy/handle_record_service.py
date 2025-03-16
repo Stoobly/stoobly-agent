@@ -70,7 +70,7 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     intercept_settings = context.intercept_settings
 
     context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
-    rewrite_request_response(flow, intercept_settings.record_rewrite_rules) 
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules) 
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
     inject_upload_request(request_model, intercept_settings)(flow_copy)
