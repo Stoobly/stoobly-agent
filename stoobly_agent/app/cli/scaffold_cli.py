@@ -140,19 +140,19 @@ def mkcert(**kwargs):
   help="Scaffold a service",
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--detached', is_flag=True)
+@click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
-@click.option('--hostname')
-@click.option('--port')
-@click.option('--priority', default='5.0', help='Determines the service run order.')
+@click.option('--hostname', help='Service hostname.')
+@click.option('--port', help='Service port.')
+@click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
   upstream proxy modes, SPEC is host specification in
   the form of "http[s]://host[:port]".
 ''')
-@click.option('--scheme', type=click.Choice(['http', 'https']))
+@click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name')
 def create(**kwargs):
