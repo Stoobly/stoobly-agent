@@ -1,6 +1,7 @@
 import pdb
 
 from mitmproxy.http import Request as MitmproxyRequest
+from typing import TypedDict
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.context import ReplayContext
@@ -11,16 +12,23 @@ from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'HandleReplay'
 
-def handle_request_replay(replay_context: ReplayContext):
+class ReplayOptions(TypedDict):
+    no_rewrite: bool
+
+def handle_request_replay(replay_context: ReplayContext, **options: ReplayOptions):
     request: MitmproxyRequest = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
     policy = get_active_mode_policy(request, intercept_settings)
     if policy != replay_policy.NONE:
-        __rewrite_request(replay_context)
+        if not options.get('no_rewrite'):
+            __rewrite_request(replay_context)
+
+        __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
 
 def handle_request_replay_without_rewrite(replay_context: ReplayContext):
-  __replay_hook(lifecycle_hooks.BEFORE_REPLAY, replay_context)
+    options = { 'no_rewrite': True }
+    handle_request_replay(replay_context, **options)
 
 def handle_response_replay(replay_context: ReplayContext):
     __replay_hook(lifecycle_hooks.AFTER_REPLAY, replay_context)

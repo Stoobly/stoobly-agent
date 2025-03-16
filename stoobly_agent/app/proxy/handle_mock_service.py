@@ -27,10 +27,11 @@ class MockOptions(TypedDict):
     failure: Callable
     ignored_components: list 
     infer: bool
+    no_rewrite: bool
     success: Callable
 
 def handle_request_mock_generic(context: MockContext, **options: MockOptions):
-    __rewrite_request(context)
+    options['no_rewrite'] = True
     handle_request_mock_generic_without_rewrite(context, **options)
 
 ###
@@ -41,58 +42,60 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
-
-    policy = get_active_mode_policy(request, intercept_settings)
-    if policy != mock_policy.NONE:
-        __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
-
-    # If ignore rules are set, then ignore specified request parameters
-    ignore_rules = intercept_settings.ignore_rules
-    if len(ignore_rules) > 0:
-        request_facade = MitmproxyRequestFacade(request)
-        _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
-        ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
-        options['ignored_components'] += ignored_components  if 'ignored_components' in options else ignored_components
-
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
-    
-    request_model = RequestModel(intercept_settings.settings)
-    eval_request = inject_eval_request(request_model, intercept_settings)
- 
+
+    policy = get_active_mode_policy(request, intercept_settings)
     if policy == mock_policy.NONE:
         if handle_failure:
             res = handle_failure(context)
-    elif policy == mock_policy.ALL:
-        res = eval_request_with_retry(context, eval_request, **options) 
+    else:
+        if not options.get('no_rewrite'):
+            __rewrite_request(context)
 
-        context.with_response(res)
+        __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
 
-        if handle_success:
-            # TODO: rewrite response, see #332
-            res = handle_success(context) or res
-    elif policy == mock_policy.FOUND:
-        res = eval_request_with_retry(context, eval_request, **options) 
+        # If ignore rules are set, then ignore specified request parameters
+        ignore_rules = intercept_settings.ignore_rules
+        if len(ignore_rules) > 0:
+            request_facade = MitmproxyRequestFacade(request)
+            _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
+            ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
+            options['ignored_components'] += ignored_components if 'ignored_components' in options else ignored_components 
+ 
+        request_model = RequestModel(intercept_settings.settings)
+        eval_request = inject_eval_request(request_model, intercept_settings)
 
-        context.with_response(res)
+        if policy == mock_policy.ALL:
+            res = eval_request_with_retry(context, eval_request, **options) 
 
-        if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
-            if handle_failure:
-                try:
-                    res = handle_failure(context)
-                except RuntimeError:
-                    # Do nothing, return custom error response
-                    pass
-        else:
+            context.with_response(res)
+
             if handle_success:
                 # TODO: rewrite response, see #332
                 res = handle_success(context) or res
-    else:
-        return bad_request(
-            context.flow,
-            "Valid env MOCK_POLICY: %s, Got: %s" %
-            ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
-        )
+        elif policy == mock_policy.FOUND:
+            res = eval_request_with_retry(context, eval_request, **options) 
+
+            context.with_response(res)
+
+            if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
+                if handle_failure:
+                    try:
+                        res = handle_failure(context)
+                    except RuntimeError:
+                        # Do nothing, return custom error response
+                        pass
+            else:
+                if handle_success:
+                    # TODO: rewrite response, see #332
+                    res = handle_success(context) or res
+        else:
+            return bad_request(
+                context.flow,
+                "Valid env MOCK_POLICY: %s, Got: %s" %
+                ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
+            )
 
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
