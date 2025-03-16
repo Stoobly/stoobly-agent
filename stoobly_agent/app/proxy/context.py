@@ -12,6 +12,10 @@ class InterceptContext():
   def flow(self):
     return self.__flow
 
+  @flow.setter
+  def flow(self, v: MitmproxyHTTPFlow):
+    self.__flow = v
+
   @property
   def intercept_settings(self):
     return self.__intercept_settings
