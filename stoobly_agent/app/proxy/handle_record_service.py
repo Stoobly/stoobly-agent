@@ -25,8 +25,8 @@ LOG_ID = 'Record'
 
 ###
 #
-# 1. BEFORE_RECORD gets triggered
-# 2. Rewrites a copy of request and response
+# 1. Rewrites a copy of request and response
+# 2. BEFORE_RECORD gets triggered
 # 3. AFTER_RECORD gets triggered
 #
 def handle_response_record(context: RecordContext):

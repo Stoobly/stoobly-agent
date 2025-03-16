@@ -43,8 +43,8 @@ def handle_request_test(context: ReplayContext) -> None:
 # 5.  AFTER_MOCK gets triggered
 # 6.  BEFORE_TEST gets triggered
 # 7.  Tests against rewritten test response and mock response (expected response)
-# 8.  BEFORE_RECORD gets triggered
-# 9.  Rewrites a copy of request and response
+# 8.  Rewrites a copy of request and response
+# 9.  BEFORE_RECORD gets triggered
 # 10. AFTER_RECORD gets triggered
 # 11. AFTER_TEST gets triggered
 #
