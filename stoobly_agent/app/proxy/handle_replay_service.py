@@ -52,7 +52,9 @@ def __rewrite_request(replay_context: ReplayContext):
         rewrite_request(replay_context.flow, rewrite_rules)
 
 def __rewrite_response(replay_context: ReplayContext):
-    # Rewrite response with replay rewrite rules
+    """
+    After replaying a request, see if the request needs to be rewritten
+    """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
     rewrite_rules = intercept_settings.replay_rewrite_rules
 

@@ -146,7 +146,7 @@ def __record_handler(context: TestContext, upload_test_data):
     # Commit test to API
     upload_test = inject_upload_test(None, intercept_settings)
     res = upload_test(
-        flow, **upload_test_data
+        flow_copy, **upload_test_data
     )
 
     __test_hook(lifecycle_hooks.AFTER_RECORD, context)
@@ -165,7 +165,9 @@ def __rewrite_request(replay_context: ReplayContext):
         rewrite_request(replay_context.flow, rewrite_rules)
 
 def __rewrite_response(replay_context: ReplayContext):
-    # Rewrite response with replay rewrite rules
+    """
+    After replaying a request, see if the request needs to be rewritten
+    """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
     rewrite_rules = intercept_settings.test_rewrite_rules
 
