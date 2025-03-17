@@ -149,9 +149,9 @@ def __filter_by_match_rules(request: MitmproxyRequest, match_rules: List[MatchRu
     method = request.method.upper()
 
     keep = {
-        request_component.BODY_PARAM: True,
+        request_component.BODY_PARAM: False,
         request_component.HEADER: False,
-        request_component.QUERY_PARAM: True,
+        request_component.QUERY_PARAM: False,
     }
 
     match_rules = list(filter(lambda rule: method in rule.methods, match_rules))

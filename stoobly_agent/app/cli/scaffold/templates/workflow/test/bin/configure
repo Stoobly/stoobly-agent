@@ -11,10 +11,3 @@ url="$scheme://$hostname"
 if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
   url="$url:$port"
 fi
-
-# Match
-echo "Configuring match rules"
-stoobly-agent config match set \
-  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
-  --mode mock \
-  --pattern ".*?"
