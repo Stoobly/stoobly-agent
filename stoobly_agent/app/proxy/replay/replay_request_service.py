@@ -32,6 +32,7 @@ class ReplayRequestOptions(TypedDict):
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
   response_fixtures_path: str
+  response_mode: Union[mode.RECORD, None]
   scenario_key: Union[str, None] 
   scheme: str
   test_filter: test_filter.TestFilter
@@ -82,6 +83,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
   if options.get('response_fixtures_path'):
     __handle_path_header(custom_headers.RESPONSE_FIXTURES_PATH, options['response_fixtures_path'], headers)
+
+  if options.get('response_mode'):
+    headers[custom_headers.RESPONSE_PROXY_MODE] = options['response_mode']
 
   if options.get('scenario_key'):
     headers[custom_headers.SCENARIO_KEY] = options['scenario_key']
@@ -173,10 +177,6 @@ def __handle_mode_option(_mode, request: Request, headers):
       headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
 
     headers[custom_headers.MOCK_POLICY] = mock_policy.ALL
-  elif _mode == mode.RECORD:
-    # If recording, then it's actually a replay and record
-    headers[custom_headers.PROXY_MODE] = mode.REPLAY
-    headers[custom_headers.RESPONSE_PROXY_MODE] = mode.RECORD
 
 def __create_replayed_response(request_id: int, res: requests.Response, latency: int):   
   replayed_response_model = ReplayedResponseModel(Settings.instance())
