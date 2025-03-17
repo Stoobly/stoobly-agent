@@ -44,9 +44,9 @@ def handle_request_test(context: ReplayContext) -> None:
 # 6.  BEFORE_TEST gets triggered
 # 7.  Tests against rewritten test response and mock response (expected response)
 # 8.  Rewrites a copy of request and response
-# 9.  BEFORE_RECORD gets triggered
-# 10. AFTER_RECORD gets triggered
-# 11. AFTER_TEST gets triggered
+# 9.  BEFORE_RECORD gets triggered (if not from CLI)
+# 10. AFTER_RECORD gets triggered (if not from CLI)
+# 11. AFTER_TEST gets triggered 
 #
 def handle_response_test(context: ReplayContext) -> None:
     from .test.context import TestContext
