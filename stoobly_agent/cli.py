@@ -159,6 +159,7 @@ def run(**kwargs):
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
@@ -169,16 +170,7 @@ def mock(**kwargs):
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
 
-  if kwargs.get('scenario_key'):
-    validate_scenario_key(kwargs['scenario_key'])
-
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.MOCK,
-  })
+  response = __replay(mode.MOCK, **kwargs)
 
   if response.status_code == custom_response_codes.NOT_FOUND:
     content = response.content
@@ -186,10 +178,15 @@ def mock(**kwargs):
     sys.exit(1)
 
   if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
+    print_raw_response(response, kwargs['output'])
   else:
     content = response.content
-    print(decode(content), end='')
+
+    if not kwargs['output']:
+      print(decode(content), end='')
+    else:
+      with open(kwargs['output'], 'w') as fp:
+        fp.write(decode(content)) 
 
 @main.command(
   help="Record request"
@@ -197,30 +194,28 @@ def mock(**kwargs):
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
-  if kwargs.get('scenario_key'):
-    validate_scenario_key(kwargs['scenario_key'])
-
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.RECORD,
-  })
+  response = __replay(mode.RECORD, **kwargs) 
 
   if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
+    print_raw_response(response, kwargs['output'])
   else:
-    try:
-      content = response.raw.data
-      print(content.decode(json.detect_encoding(content)), end='')
-    except UnicodeDecodeError:
-      print('Warning: Binary output can mess up your terminal.')
+    content: bytes = response.raw.data
+
+    if not kwargs['output']:
+      try:
+        print(content.decode(json.detect_encoding(content)), end='')
+      except UnicodeDecodeError:
+        print('Warning: Binary output can mess up your terminal.')
+    else:
+      with open(kwargs['output'], 'w') as fp:
+        fp.write(content.decode(json.detect_encoding(content))) 
 
 def __build_request_from_curl(**kwargs):
   headers = {}
@@ -238,3 +233,15 @@ def __build_request_from_curl(**kwargs):
     method=kwargs['request'],
     url=kwargs['url']
   )
+
+def __replay(mode, **kwargs):
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
+  request = __build_request_from_curl(**kwargs)
+
+  context = ReplayContext.from_python_request(request)
+  return replay_request(context, {
+    **kwargs,
+    'mode': mode,
+  })
