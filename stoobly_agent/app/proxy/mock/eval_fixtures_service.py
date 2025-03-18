@@ -22,6 +22,7 @@ class Options():
 def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Response, None]:
   fixture_path = None
   headers = CaseInsensitiveDict()
+  status_code = 200
 
   response_fixtures = options.get('response_fixtures')
   fixture: dict = __eval_response_fixtures(request, response_fixtures)
@@ -32,9 +33,15 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
     if not public_directory_path:
       return
 
-    fixture_path = os.path.join(public_directory_path, request.path.lstrip('/'))
-    if not os.path.isfile(fixture_path):
-      return
+    request_path = 'index' if request.path == '/' else request.path
+    _fixture_path = os.path.join(public_directory_path, request_path.lstrip('/'))
+    if request.headers.get('accept'):
+      fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
+
+    if not fixture_path:
+      fixture_path = _fixture_path
+      if not os.path.isfile(fixture_path):
+        return
   else:
     fixture_path = fixture.get('path')
     if not fixture_path or not os.path.isfile(fixture_path):
@@ -43,10 +50,13 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
     _headers = fixture.get('headers')
     headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
 
+    if fixture.get('status_code'):
+      status_code = fixture.get('status_code')
+
   with open(fixture_path, 'rb') as fp:
     response = Response()
 
-    response.status_code = 200
+    response.status_code = status_code
     response.raw = BytesIO(fp.read()) 
     response.headers = headers
 
@@ -64,6 +74,26 @@ def __guess_content_type(file_path):
   if not file_extension:
     return
   return mimetypes.types_map.get(file_extension)
+
+def __guess_file_path(file_path, content_type):
+  file_extension = os.path.splitext(file_path)[1]
+  if file_extension:
+    return file_path
+
+  if not content_type:
+    return
+
+  content_types = __parse_accept_header(content_type)
+
+  for content_type in content_types:
+    file_extension = mimetypes.guess_extension(content_type)
+
+    if not file_extension:
+      continue
+
+    _file_path = f"{file_path}{file_extension}"
+    if os.path.isfile(_file_path):
+      return _file_path
 
 def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtures):
   if not isinstance(response_fixtures, dict):
@@ -87,3 +117,19 @@ def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtu
 
     if path:
       return fixture
+
+def __parse_accept_header(accept_header):
+    types = []
+    for item in accept_header.split(","):
+        parts = item.split(";")
+        content_type = parts[0].strip()
+        q_value = 1.0  # Default quality value
+        if len(parts) > 1 and parts[1].strip().startswith("q="):
+            try:
+                q_value = float(parts[1].strip()[2:])
+            except ValueError:
+                pass  # Keep default q_value if parsing fails
+        types.append((content_type, q_value))
+
+    # Sort by quality factor in descending order
+    return [content_type for content_type, _ in sorted(types, key=lambda x: x[1], reverse=True)]
