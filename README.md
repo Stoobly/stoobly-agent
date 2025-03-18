@@ -46,11 +46,9 @@ stoobly-agent --help
 
 ## Next steps
 
-Configure the proxy settings by [following this guide](https://docs.stoobly.com/getting-started/proxy-configuration)
+Easily start creating mock APIs [with this guide](https://docs.stoobly.com/guides/how-to-record-requests)
 
-Start easily recording requests [with this guide](https://docs.stoobly.com/getting-started/record-requests)
-
-Then, try mocking your requests [with this guide!](https://docs.stoobly.com/guides/mocking-apis)
+Or integrate E2E testing [with this guide!](https://docs.stoobly.com/guides/how-to-integrate-e2e-testing)
 
 
 ## Having trouble?
