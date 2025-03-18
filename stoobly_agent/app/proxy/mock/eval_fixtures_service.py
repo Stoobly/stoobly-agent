@@ -1,3 +1,4 @@
+import mimetypes
 import os
 import pdb
 import re
@@ -5,6 +6,7 @@ import re
 from io import BytesIO
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
+from requests.structures import CaseInsensitiveDict
 from typing import Union
 
 from stoobly_agent.lib.logger import bcolors, Logger
@@ -19,25 +21,27 @@ class Options():
 
 def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Response, None]:
   fixture_path = None
-  headers = {}
+  headers = CaseInsensitiveDict()
 
   response_fixtures = options.get('response_fixtures')
-  fixture = __eval_response_fixtures(request, response_fixtures)
+  fixture: dict = __eval_response_fixtures(request, response_fixtures)
 
   if not fixture:
     public_directory_path = options.get('public_directory_path')
 
-    if public_directory_path and os.path.exists(public_directory_path):
-      static_file_path = os.path.join(public_directory_path, request.path.lstrip('/'))
+    if not public_directory_path:
+      return
 
-      if os.path.exists(static_file_path):
-        fixture_path = static_file_path
+    fixture_path = os.path.join(public_directory_path, request.path.lstrip('/'))
+    if not os.path.isfile(fixture_path):
+      return
   else:
     fixture_path = fixture.get('path')
-    headers = fixture.get('headers') or {}
+    if not fixture_path or not os.path.isfile(fixture_path):
+      return
 
-  if not fixture_path:
-    return
+    _headers = fixture.get('headers')
+    headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
 
   with open(fixture_path, 'rb') as fp:
     response = Response()
@@ -46,18 +50,29 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
     response.raw = BytesIO(fp.read()) 
     response.headers = headers
 
+    if not response.headers.get('content-type'):
+      content_type = __guess_content_type(fixture_path)
+      if content_type:
+        response.headers['content-type'] = content_type
+
     Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Resolved{bcolors.ENDC} fixture {fixture_path}")
 
     return response
 
+def __guess_content_type(file_path):
+  file_extension = os.path.splitext(file_path)[1]
+  if not file_extension:
+    return
+  return mimetypes.types_map.get(file_extension)
+
 def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtures):
-  if not response_fixtures:
+  if not isinstance(response_fixtures, dict):
     return
 
   method = request.method
   routes = response_fixtures.get(method)
 
-  if not routes:
+  if not isinstance(routes, dict):
     return
 
   for path_pattern in routes:
@@ -65,7 +80,10 @@ def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtu
       continue
       
     fixture = routes[path_pattern]
+    if not isinstance(fixture, dict):
+      continue
+
     path = fixture.get('path')
 
-    if path and os.path.exists(path):
+    if path:
       return fixture

@@ -72,7 +72,7 @@ class TestEvalFixturesService():
     fixtures[request_method] = {
       '/index.html': {
         'headers': {
-          'Content-Length': '1',
+          'test': '1',
         },
         'path': index_file_path,
       }
@@ -83,17 +83,31 @@ class TestEvalFixturesService():
   def mitmproxy_request(self, created_request: Request) -> MitmproxyRequest:
     return MitmproxyRequestAdapter(created_request).adapt()
 
-  def test_it_evaluates_response_fixture(
-    self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures, index_file_contents: str
-  ):
+  @pytest.fixture()
+  def fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
     res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
     assert res
-    assert res.raw.read() == index_file_contents
-    assert res.headers['Content-Length'] == '1'
+    return res
 
-  def test_it_evaluates_public_directory(
-    self, mitmproxy_request: MitmproxyRequest, public_directory: str, index_file_contents: str
-  ):
+  @pytest.fixture()
+  def public_directory_response(self, mitmproxy_request: MitmproxyRequest, public_directory: str):
     res: requests.Response = eval_fixtures(mitmproxy_request, public_directory_path=public_directory)
     assert res
-    assert res.raw.read() == index_file_contents
+    return res
+
+  def test_it_evaluates_response_fixture(
+    self, fixtures_response: requests.Response, index_file_contents: str
+  ):
+    assert fixtures_response.raw.read() == index_file_contents
+
+  def test_it_evaluates_response_fixture_headers(self, fixtures_response: requests.Response):
+    assert fixtures_response.headers['test'] == '1'
+    assert fixtures_response.headers['Content-Type'] == 'text/html'
+
+  def test_it_evaluates_public_directory(
+    self, public_directory_response: requests.Response, index_file_contents: str
+  ):
+    assert public_directory_response.raw.read() == index_file_contents
+
+  def test_it_evaluates_public_directory_headers(self, public_directory_response: requests.Response):
+    assert public_directory_response.headers['Content-Type'] == 'text/html'
