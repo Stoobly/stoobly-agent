@@ -18,7 +18,7 @@ CUSTOM_FIXTURES = 'fixtures.yml'
 CUSTOM_LIFECYCLE_HOOKS = os.path.join('lifecycle_hooks.py')
 MAINTAINED_CONFIGURE = os.path.join('bin', '.configure')
 MAINTAINED_INIT = os.path.join('bin', '.init')
-MAINTAINED_PUBLIC = os.path.join('public', '.keep')
+MAINTAINED_PUBLIC = os.path.join('public', '.gitignore')
 
 MOCK_WORKFLOW_MAINTAINED_FILES = [
   MAINTAINED_CONFIGURE,
