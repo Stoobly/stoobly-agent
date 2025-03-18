@@ -11,7 +11,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from ...intercept_settings import InterceptSettings
-from ...record.join_request_service import join_rewritten_request
+from ...record.join_request_service import join_request_from_flow
 
 LOG_ID = 'Test'
 
@@ -43,7 +43,7 @@ def upload_test(
   flow: MitmproxyHTTPFlow, 
   **kwargs: UploadTestData
 ) -> Response:
-    joined_request = join_rewritten_request(flow, intercept_settings)
+    joined_request = join_request_from_flow(flow, intercept_settings)
 
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 

@@ -6,7 +6,7 @@ from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
-from stoobly_agent.config.constants import mock_policy, request_origin
+from stoobly_agent.config.constants import intercept_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 
 LOG_ID = 'Firewall'
@@ -18,8 +18,8 @@ def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: Interc
     if allowed_request(request, intercept_settings):
         return intercept_settings.policy
     else:
-        # If the request path does not match accepted paths, do not mock
-        return mock_policy.NONE
+        # If the request path does not match accepted paths, do not intercept
+        return intercept_policy.NONE
 
 def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed

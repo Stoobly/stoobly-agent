@@ -36,8 +36,6 @@ def bad_request(flow: MitmproxyHTTPFlow, message: str):
         {'Content-Type': 'text/plain'}  # (optional) headers
     )
 
-    return False
-
 # Without deleting this header, causes parsing issues when reading response
 def disable_transfer_encoding(response: MitmproxyResponse) -> None:
     header_name = 'Transfer-Encoding'

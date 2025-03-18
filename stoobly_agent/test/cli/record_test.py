@@ -9,11 +9,13 @@ from urllib.parse import parse_qs
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.config.constants import custom_headers, mode, record_policy, request_origin
 from stoobly_agent.cli import config, intercept, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.utils.decode import decode
 
@@ -129,6 +131,71 @@ class TestRecording():
 
         body = decode(python_request.data)
         assert json.loads(body).get(body_param) == body_param_value
+
+    class TestWhenResponseHeaders():
+
+      def test_it_rewrites(self, runner: CliRunner):
+        header_name = 'foo'
+        header_value = 'bar'
+
+        rewrite_result = runner.invoke(config, [
+            'rewrite', 'set', 
+            '--method', 'GET', '--mode', mode.RECORD, '--name', header_name, '--value', header_value, '--pattern', '.*?', '--type', request_component.RESPONSE_HEADER
+          ]
+        )
+        assert rewrite_result.exit_code == 0
+
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        _response = Response.last()
+        python_response = RawHttpResponseAdapter(_response.raw).to_response()
+
+        assert python_response.headers.get(header_name.title()) == header_value
+
+    class TestWhenResponseParams():
+
+      def test_it_rewrites(self, runner: CliRunner):
+        body_param = 'foo'
+        body_param_value = 'bar'
+
+        rewrite_result = runner.invoke(config, [
+            'rewrite', 'set', 
+            '--method', 'GET', '--mode', mode.RECORD, '--name', body_param, '--value', body_param_value, '--pattern', '.*?', '--type', request_component.RESPONSE_PARAM
+          ]
+        )
+        assert rewrite_result.exit_code == 0
+
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        _response = Response.last()
+        python_response = RawHttpResponseAdapter(_response.raw).to_response()
+
+        body = decode(python_response.content)
+        assert json.loads(body).get(body_param) == body_param_value
+
+      def test_it_does_not_rewrite(self, runner: CliRunner):
+        body_param = 'foo'
+        body_param_value = 'bar'
+
+        rewrite_result = runner.invoke(config, [
+            'rewrite', 'set', 
+            '--method', 'GET', '--mode', mode.RECORD, '--name', body_param, '--value', body_param_value, '--pattern', '.*?', '--type', request_component.RESPONSE_PARAM
+          ]
+        )
+        assert rewrite_result.exit_code == 0
+
+        record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        _response = Response.last()
+        python_response = RawHttpResponseAdapter(_response.raw).to_response()
+
+        body = decode(python_response.content)
+        # For non iterable resposne content, do not rewrite
+        with pytest.raises(json.decoder.JSONDecodeError):
+          json.loads(body)
 
   class TestFirewall():
     @pytest.fixture(scope='function', autouse=True)
