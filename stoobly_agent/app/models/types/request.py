@@ -30,4 +30,3 @@ class RequestShowParams(TypedDict):
   project_id: str
   query_params: bool
   response: bool
-
