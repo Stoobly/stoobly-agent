@@ -8,8 +8,7 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.config.constants import mode
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.cli import config, mock, record, scenario
-from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+from stoobly_agent.cli import config, mock, record
 from stoobly_agent.lib.orm.request import Request
 
 @pytest.fixture(scope='module')
@@ -143,10 +142,3 @@ class TestMocking():
         mock_result = runner.invoke(mock, [self.url])
         assert mock_result.exit_code == 0
 
-  class TestScenario():
-
-    @pytest.fixture
-    def scenario_key(self, runner: CliRunner):
-      res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
-      assert res.exit_code == 0
-      return ScenarioKey(res.stdout.strip())
