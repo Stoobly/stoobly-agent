@@ -20,7 +20,7 @@ def generate_session_id(query: dict):
 
   return hashlib.md5(b'.'.join(toks)).hexdigest()
 
-def reset():
+def reset_sessions():
   Cache.instance().clear(f".+\.{PREFIX}")
 
 def tiebreak_scenario_request(session_id: str, requests: List[Request]):

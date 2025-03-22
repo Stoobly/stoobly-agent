@@ -5,16 +5,17 @@ import re
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
 from typing import List, TypedDict, Union
-from stoobly_agent.config.constants import custom_headers
 
-from stoobly_agent.lib.api.param_builder import ParamBuilder
-from stoobly_agent.lib.api.interfaces.requests import RequestResponseShowQueryParams
-from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.match_rule import MatchRule
+from stoobly_agent.config.constants import custom_headers, query_params as request_query_params
+from stoobly_agent.lib.api.param_builder import ParamBuilder
+from stoobly_agent.lib.api.interfaces.requests import RequestResponseShowQueryParams
+from stoobly_agent.lib.logger import Logger
 
 from .hashed_request_decorator import HashedRequestDecorator
 from .search_endpoint import inject_search_endpoint
@@ -40,10 +41,6 @@ def inject_eval_request(
         request_model, intercept_settings, request, ignored_components or [], **options 
     )
 
-###
-#
-# @param settings [Settings.mode.mock | Settings.mode.record]
-#
 def eval_request(
     request_model: RequestModel,
     intercept_settings: InterceptSettings,
@@ -52,9 +49,14 @@ def eval_request(
     **options: EvalRequestOptions
 ) -> Response:
     query_params_builder = ParamBuilder({})
-    query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
 
-    # Tease out API returning ignored components on not found
+    try:
+        query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
+    except:
+        # If project_key or scenario_key are invalid, assume custom not found
+        return CustomNotFoundResponseBuilder().build()
+
+    # Tease out API returning ignored components on custom not found
     if request_model.is_local and not options.get('retry'):
         remote_project_key = intercept_settings.parsed_remote_project_key
 
@@ -63,7 +65,7 @@ def eval_request(
             remote_project_id = remote_project_key.id
             endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
 
-            query_params_builder.with_param('endpoint_promise', endpoint_promise)
+            query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params_builder.with_params(__build_request_params(request, ignored_components))
@@ -141,6 +143,9 @@ def __build_optional_params(request: MitmproxyRequest, options: EvalRequestOptio
     headers = request.headers
     if custom_headers.MOCK_REQUEST_ID in headers:
         optional_params['request_id'] = headers[custom_headers.MOCK_REQUEST_ID]
+
+    if custom_headers.SESSION_ID in headers:
+        optional_params[request_query_params.SESSION_ID] = headers[custom_headers.SESSION_ID]
 
     return optional_params
 

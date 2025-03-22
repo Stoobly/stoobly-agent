@@ -36,6 +36,17 @@ def bad_request(flow: MitmproxyHTTPFlow, message: str):
         {'Content-Type': 'text/plain'}  # (optional) headers
     )
 
+def enable_cors(flow: MitmproxyHTTPFlow):
+    flow.response = MitmproxyResponse.make(
+        200,
+        '',
+        {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS, POST, PATCH, PUT, DELETE',
+            'Access-Control-Allow-Headers': '*'
+        }
+    )
+
 # Without deleting this header, causes parsing issues when reading response
 def disable_transfer_encoding(response: MitmproxyResponse) -> None:
     header_name = 'Transfer-Encoding'

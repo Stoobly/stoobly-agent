@@ -3,7 +3,7 @@ import pdb
 import requests
 import time
 
-from mitmproxy.http import Request as MitmproxyRequest
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -18,7 +18,7 @@ from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
-from .utils.response_handler import bad_request, pass_on
+from .utils.response_handler import bad_request, enable_cors, pass_on
 from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'Mock'
@@ -130,6 +130,20 @@ def handle_request_mock(context: MockContext):
         failure=lambda context: __handle_mock_failure(context),
         success=lambda context: __handle_mock_success(context)
     )
+
+# Default OPTIONS request to allow CORS
+def handle_mock_not_found(flow: MitmproxyHTTPFlow):
+    request = flow.request
+    if request.method != 'OPTIONS':
+        return False
+
+    response = flow.response
+    if response.status_code != custom_response_codes.NOT_FOUND:
+        return False
+        
+    enable_cors(flow)
+
+    return True
 
 ###
 #
