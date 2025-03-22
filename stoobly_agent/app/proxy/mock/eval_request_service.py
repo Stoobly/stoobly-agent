@@ -8,6 +8,7 @@ from typing import List, TypedDict, Union
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.match_rule import MatchRule
@@ -40,10 +41,6 @@ def inject_eval_request(
         request_model, intercept_settings, request, ignored_components or [], **options 
     )
 
-###
-#
-# @param settings [Settings.mode.mock | Settings.mode.record]
-#
 def eval_request(
     request_model: RequestModel,
     intercept_settings: InterceptSettings,
@@ -52,9 +49,14 @@ def eval_request(
     **options: EvalRequestOptions
 ) -> Response:
     query_params_builder = ParamBuilder({})
-    query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
 
-    # Tease out API returning ignored components on not found
+    try:
+        query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
+    except:
+        # If project_key or scenario_key are invalid, assume custom not found
+        return CustomNotFoundResponseBuilder().build()
+
+    # Tease out API returning ignored components on custom not found
     if request_model.is_local and not options.get('retry'):
         remote_project_key = intercept_settings.parsed_remote_project_key
 
