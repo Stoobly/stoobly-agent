@@ -40,8 +40,9 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
 
     if not fixture_path:
       fixture_path = _fixture_path
-      if not os.path.isfile(fixture_path):
-        return
+
+    if not os.path.isfile(fixture_path):
+      return
   else:
     fixture_path = fixture.get('path')
     if not fixture_path or not os.path.isfile(fixture_path):
