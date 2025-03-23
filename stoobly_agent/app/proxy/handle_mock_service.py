@@ -95,11 +95,11 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
         if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
             try:
-                res = __handle_found_policy(context)
+                return __handle_found_policy(context) # Continue proxying the request
             except RuntimeError:
                 # Do nothing, return custom error response
                 pass
-        
+    
     if res.status_code == custom_response_codes.NOT_FOUND:
         if handle_failure:
             res = handle_failure(context) or res
@@ -150,7 +150,7 @@ def handle_response_mock(context: MockContext):
 
     if request_key:
         request = context.flow.request
-        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
 
         __rewrite_response(context)
         __mock_hook(lifecycle_hooks.AFTER_MOCK, context)

@@ -138,8 +138,9 @@ class MitmproxyRequestFacade(Request):
         rewrites = self.__url_rules
 
         if len(rewrites):
+            url_before = self.url
             self.__rewrite_url(rewrites)
-            Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE} Rewritten URL{bcolors.ENDC} {self.url}")
+            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN} Rewriting URL{bcolors.ENDC} {url_before} => {self.url}")
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
