@@ -3,7 +3,7 @@ import pdb
 import requests
 import time
 
-from mitmproxy.http import Request as MitmproxyRequest
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -18,7 +18,7 @@ from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.request_handler import reverse_proxy
-from .utils.response_handler import bad_request, pass_on
+from .utils.response_handler import bad_request, enable_cors, pass_on
 from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'Mock'
@@ -44,60 +44,68 @@ def handle_request_mock_generic_without_rewrite(context: MockContext, **options:
 # @param settings [Dict]
 #
 def handle_request_mock_generic(context: MockContext, **options: MockOptions):
+    handle_error = options['error'] if 'error' in options and callable(options['error']) else None
+    handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
+    handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     intercept_settings = context.intercept_settings
     request: MitmproxyRequest = context.flow.request
-    handle_success = options['success'] if 'success' in options and callable(options['success']) else None
-    handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
+    res = None
 
     policy = get_active_mode_policy(request, intercept_settings)
     if policy == mock_policy.NONE:
+        if handle_error:
+            res = handle_error(context)
+
+        return pass_on(context.flow, res)
+
+    if policy not in [mock_policy.ALL, mock_policy.FOUND]:
+        if handle_error:
+            res = handle_error(context)
+
+        return bad_request(
+            context.flow,
+            "Valid env MOCK_POLICY: %s, Got: %s" %
+            ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
+        )
+
+    if not options.get('no_rewrite'):
+        __rewrite_request(context)
+
+    __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
+
+    # If ignore rules are set, then ignore specified request parameters
+    ignore_rules = intercept_settings.ignore_rules
+    if len(ignore_rules) > 0:
+        request_facade = MitmproxyRequestFacade(request)
+        _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
+        ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
+        options['ignored_components'] += ignored_components if 'ignored_components' in options else ignored_components 
+
+    request_model = RequestModel(intercept_settings.settings)
+    eval_request = inject_eval_request(request_model, intercept_settings)
+
+    if policy == mock_policy.ALL:
+        res = eval_request_with_retry(context, eval_request, **options) 
+
+        context.with_response(res)
+    elif policy == mock_policy.FOUND:
+        res = eval_request_with_retry(context, eval_request, **options) 
+
+        context.with_response(res)
+
+        if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
+            try:
+                res = __handle_found_policy(context)
+            except RuntimeError:
+                # Do nothing, return custom error response
+                pass
+        
+    if res.status_code == custom_response_codes.NOT_FOUND:
         if handle_failure:
-            res = handle_failure(context)
+            res = handle_failure(context) or res
     else:
-        if not options.get('no_rewrite'):
-            __rewrite_request(context)
-
-        __mock_hook(lifecycle_hooks.BEFORE_MOCK, context)
-
-        # If ignore rules are set, then ignore specified request parameters
-        ignore_rules = intercept_settings.ignore_rules
-        if len(ignore_rules) > 0:
-            request_facade = MitmproxyRequestFacade(request)
-            _ignore_rules = request_facade.select_parameter_rules(ignore_rules)
-            ignored_components = rewrite_rules_to_ignored_components(_ignore_rules)
-            options['ignored_components'] += ignored_components if 'ignored_components' in options else ignored_components 
- 
-        request_model = RequestModel(intercept_settings.settings)
-        eval_request = inject_eval_request(request_model, intercept_settings)
-
-        if policy == mock_policy.ALL:
-            res = eval_request_with_retry(context, eval_request, **options) 
-
-            context.with_response(res)
-
-            if handle_success:
-                res = handle_success(context) or res
-        elif policy == mock_policy.FOUND:
-            res = eval_request_with_retry(context, eval_request, **options) 
-
-            context.with_response(res)
-
-            if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
-                if handle_failure:
-                    try:
-                        res = handle_failure(context)
-                    except RuntimeError:
-                        # Do nothing, return custom error response
-                        pass
-            else:
-                if handle_success:
-                    res = handle_success(context) or res
-        else:
-            return bad_request(
-                context.flow,
-                "Valid env MOCK_POLICY: %s, Got: %s" %
-                ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
-            )
+        if handle_success:
+            res = handle_success(context) or res
 
     return pass_on(context.flow, res)
 
@@ -147,13 +155,19 @@ def handle_response_mock(context: MockContext):
         __rewrite_response(context)
         __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
-def __handle_mock_success(context: MockContext) -> None:
-    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
-        response = context.response
-        start_time = context.start_time
-        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
-
 def __handle_mock_failure(context: MockContext) -> None:
+    flow = context.flow
+    request = flow.request
+
+    if request.method.upper() != 'OPTIONS':
+        return False
+        
+    # Default OPTIONS request to allow CORS
+    enable_cors(flow)
+
+    return True
+
+def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request
     intercept_settings = context.intercept_settings
     upstream_url = intercept_settings.upstream_url
@@ -168,6 +182,12 @@ def __handle_mock_failure(context: MockContext) -> None:
     Logger.instance(LOG_ID).debug(f"UpstreamUrl: {upstream_url}")
 
     reverse_proxy(req, upstream_url, {})
+
+def __handle_mock_success(context: MockContext) -> None:
+    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
+        response = context.response
+        start_time = context.start_time
+        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __rewrite_request(context: MockContext):
     # Rewrite request with paramter rules for mock

@@ -62,6 +62,7 @@ def handle_response_test(context: ReplayContext) -> None:
     # At this point, the request may already been rewritten during replay, do not rewrite again
     handle_request_mock_generic_without_rewrite(
         MockContext(flow, intercept_settings),
+        error=lambda mock_context: __handle_mock_error(TestContext(context, mock_context)),
         failure=lambda mock_context: __handle_mock_failure(TestContext(context, mock_context)),
         #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         success=lambda mock_context: __handle_mock_success(TestContext(context, mock_context))
@@ -70,6 +71,22 @@ def handle_response_test(context: ReplayContext) -> None:
 def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse):
     if test_response.get('id'):
         flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
+
+def __handle_mock_error(test_context: TestContext):
+    Logger.instance().warn(f"{LOG_ID}:TestStatus: Mock not enabled")
+
+    intercept_settings = test_context.intercept_settings
+
+    if intercept_settings.request_origin == request_origin.CLI:
+        return build_response(False, 'No test found')
+
+def __handle_mock_failure(test_context: TestContext) -> None:
+    Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
+
+    intercept_settings = test_context.intercept_settings
+
+    if intercept_settings.request_origin == request_origin.CLI:
+        return build_response(False, 'No test found')
 
 def __handle_mock_success(test_context: TestContext) -> None:
     flow: MitmproxyHTTPFlow = test_context.flow
@@ -137,14 +154,6 @@ def __handle_mock_success(test_context: TestContext) -> None:
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
     
     return flow.response
-
-def __handle_mock_failure(test_context: TestContext) -> None:
-    Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
-
-    intercept_settings = test_context.intercept_settings
-
-    if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found')
 
 def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
     headers = { 'Content-Type': 'text/plain' }

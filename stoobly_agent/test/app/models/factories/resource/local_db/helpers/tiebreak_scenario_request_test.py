@@ -5,7 +5,7 @@ import time
 from typing import List
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.tiebreak_scenario_request import (
-  access_request, generate_session_id, reset as reset_tiebreak, tiebreak_scenario_request
+  access_request, generate_session_id, reset_sessions, tiebreak_scenario_request
 )
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.orm.request import Request
@@ -92,7 +92,7 @@ class TestTiebreakScenarioRequest():
       request = tiebreak_scenario_request(session_id, requests)
       assert request.id == 2
 
-  class TestWhenReset():
+  class TestWhenResetSessions():
     @pytest.fixture(scope='class')
     def created_request_one(self):
       return RequestMock(1)
@@ -105,7 +105,7 @@ class TestTiebreakScenarioRequest():
     def test_it_resets(self, cache: Cache, created_request_one: Request):
       cache.write('persists', 1)
       access_request('1', created_request_one.id)
-      reset_tiebreak()
+      reset_sessions()
 
       assert cache.read('persists') != None
       assert len(cache.read_all()) == 1
