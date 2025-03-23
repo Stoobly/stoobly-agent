@@ -170,7 +170,7 @@ def create(**kwargs):
   help="List services",
   name="list"
 )
-@click.option('--app-dir-path', default=os.getcwd(), help='Path to application directory.')
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
@@ -302,8 +302,6 @@ def copy(**kwargs):
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
 def down(**kwargs):  
-  cwd = os.getcwd()
-
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
@@ -322,7 +320,7 @@ def down(**kwargs):
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
-    command.current_working_dir = cwd
+    command.current_working_dir = current_working_dir
     commands.append(command)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
@@ -445,11 +443,14 @@ def logs(**kwargs):
 @click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
 def up(**kwargs):
-  cwd = os.getcwd()
-
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  from_make = kwargs['from_make']
+
+  # Because we are running a docker-compose command which depends on APP_DIR env var
+  # when we are running this command through make, the host's app_dir_path will likely differ
+  app_dir_path = current_working_dir if from_make else kwargs['app_dir_path']
+  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
   # If namespace is set, default network to namespace
@@ -469,7 +470,7 @@ def up(**kwargs):
     config = { **kwargs }
     config['service_name'] = service
     command = WorkflowRunCommand(app, **config)
-    command.current_working_dir = cwd
+    command.current_working_dir = current_working_dir
     commands.append(command)
 
   # Before services can be started, their image and network needs to be created
@@ -477,7 +478,7 @@ def up(**kwargs):
     command: WorkflowRunCommand = commands[0]
 
     init_commands = []
-    if not kwargs['from_make']:
+    if not from_make:
       create_image_command = command.create_image(user_id=kwargs['user_id'], verbose=kwargs['verbose'])
       init_commands.append(create_image_command)
 

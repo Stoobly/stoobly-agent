@@ -4,6 +4,7 @@ from typing import Literal
 
 from stoobly_agent.config.data_dir import CERTS_DIR_NAME, DATA_DIR_NAME
 
+APP_DIR_ENV = 'APP_DIR'
 APP_NETWORK_ENV = 'APP_NETWORK'
 APP_NAME_ENV = 'APP_NAME'
 BIN_FOLDER_NAME = 'bin'
