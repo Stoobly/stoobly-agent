@@ -5,7 +5,7 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.context import InterceptContext
-from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_mock_not_found, handle_response_mock
+from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.proxy.handle_record_service import handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
@@ -71,7 +71,6 @@ def response(flow: MitmproxyHTTPFlow):
     if active_mode == mode.MOCK:
         context = MockContext(flow, intercept_settings)
         handle_response_mock(context)
-        handle_mock_not_found(flow)
     elif active_mode == mode.RECORD:
         context = RecordContext(flow, intercept_settings)
         handle_response_record(context)
@@ -81,7 +80,6 @@ def response(flow: MitmproxyHTTPFlow):
     elif active_mode == mode.TEST:
         context = ReplayContext(flow, intercept_settings)
         handle_response_test(context)
-        handle_mock_not_found(flow)
 
     __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
 
