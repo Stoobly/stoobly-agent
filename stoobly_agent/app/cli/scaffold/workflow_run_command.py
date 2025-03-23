@@ -11,7 +11,7 @@ from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .constants import (
-  APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
+  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 )
 from .docker.constants import DOCKERFILE_CONTEXT
@@ -41,11 +41,16 @@ class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
     super().__init__(app, **kwargs)
 
+    self.__app_dir_path = os.path.abspath(kwargs.get('app_dir_path') or app.dir_path)
     self.__current_working_dir = os.getcwd()
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__network = kwargs.get('network') or self.app_config.network
+
+  @property
+  def app_dir_path(self):
+    return self.__app_dir_path
 
   @property
   def ca_certs_dir_path(self):
@@ -244,6 +249,7 @@ class WorkflowRunCommand(WorkflowCommand):
     user_id = options.get('user_id')
 
     _config = {}
+    _config[APP_DIR_ENV] = self.app_dir_path
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path

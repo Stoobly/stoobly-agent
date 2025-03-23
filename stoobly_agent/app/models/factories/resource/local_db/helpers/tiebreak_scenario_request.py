@@ -5,7 +5,7 @@ from typing import List
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.orm.request import Request
 
-PREFIX = 'last_request_id'
+SUFFIX = 'last_request_id'
 
 def access_request(session_id: str, request_id: int, timeout = None):
   cache = Cache.instance()
@@ -21,7 +21,7 @@ def generate_session_id(query: dict):
   return hashlib.md5(b'.'.join(toks)).hexdigest()
 
 def reset_sessions():
-  Cache.instance().clear(f".+\.{PREFIX}")
+  Cache.instance().clear(f".+\\.{SUFFIX}")
 
 def tiebreak_scenario_request(session_id: str, requests: List[Request]):
   if len(requests) == 0:
@@ -48,4 +48,4 @@ def tiebreak_scenario_request(session_id: str, requests: List[Request]):
 
 def __last_request_id_key(_key = None):
   _key = _key or generate_session_id()
-  return f"{_key}.{PREFIX}"
+  return f"{_key}.{SUFFIX}"
