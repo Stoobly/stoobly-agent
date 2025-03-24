@@ -16,7 +16,7 @@ def select_request_rewrite_rules(rewrite_rules: List[RewriteRule]):
       rewrite_rule.parameter_rules or []
     ))
 
-    if len(parameter_rules) > 0:
+    if len(parameter_rules) > 0 or len(rewrite_rule.url_rules) > 0:
       rewrite_rule = RewriteRule(rewrite_rule.to_dict())
       rewrite_rule.url_rules = rewrite_rule.url_rules
       rewrite_rule.parameter_rules = parameter_rules
