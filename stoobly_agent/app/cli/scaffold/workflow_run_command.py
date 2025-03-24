@@ -215,6 +215,7 @@ class WorkflowRunCommand(WorkflowCommand):
     command.append(f"-p {options['namespace']}")
 
     command.append('down')
+    command.append('--volumes')
 
     if options.get('rmi'):
       command.append('--rmi local')
