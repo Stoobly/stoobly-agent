@@ -520,6 +520,7 @@ def up(**kwargs):
     else:
       print(exec_command)
 
+
 @workflow.command(
   help="Validate a scaffold workflow"
 )
@@ -538,7 +539,7 @@ def validate(**kwargs):
     command = WorkflowValidateCommand(app, **config)
     command.validate()
   except ScaffoldValidateException as sve:
-    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
+    print(f"{bcolors.FAIL}\nFatal scaffold validation exception:{bcolors.ENDC}\n{sve}", file=sys.stderr)
     sys.exit(1)
 
   try:
@@ -548,8 +549,10 @@ def validate(**kwargs):
         command = ServiceWorkflowValidateCommand(app, **config)
         command.validate()
   except ScaffoldValidateException as sve:
-    print(f"\nFatal Scaffold Validation Exception: {sve}", file=sys.stderr)
+    print(f"{bcolors.FAIL}\nFatal scaffold validation exception:{bcolors.ENDC}\n{sve}", file=sys.stderr)
     sys.exit(1)
+
+  print(f"{bcolors.OKCYAN}✔ Done validating Stoobly scaffold and services, success!{bcolors.ENDC}")
 
 @hostname.command(
   help="Update the system hosts file for all scaffold service hostnames"
