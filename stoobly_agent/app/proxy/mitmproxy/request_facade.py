@@ -138,8 +138,9 @@ class MitmproxyRequestFacade(Request):
         rewrites = self.__url_rules
 
         if len(rewrites):
+            url_before = self.url
             self.__rewrite_url(rewrites)
-            Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE} Rewritten URL{bcolors.ENDC} {self.url}")
+            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN} Rewriting URL{bcolors.ENDC} {url_before} => {self.url}")
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
@@ -239,7 +240,7 @@ class MitmproxyRequestFacade(Request):
         content_type = self.content_type
         parsed_content = self.__body.get(content_type)
 
-        if not isinstance(parsed_content, dict) and not isinstance(parsed_content, multidict.MultiDictView):
+        if not self.__is_iterable(parsed_content):
             content_type = 'application/json'
             self.request.headers['content-type'] = content_type
             parsed_content = {}
@@ -266,3 +267,6 @@ class MitmproxyRequestFacade(Request):
             _request_headers.pop(name)
 
         return _request_headers
+
+    def __is_iterable(self, v):
+        return isinstance(v, dict) or isinstance(v, multidict.MultiDictView) or isinstance(v, list)

@@ -4,6 +4,7 @@ services:
       service: stoobly_base
     volumes:
       - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
+      - ${APP_DIR}/.stoobly/docker:/home/stoobly/.stoobly/docker
   stoobly_base:
     image: stoobly.${USER_ID}
   ui_base:

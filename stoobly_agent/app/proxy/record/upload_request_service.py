@@ -17,7 +17,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.orm.request import Request
 
 from ..utils.publish_change_service import publish_requests_modified
-from .join_request_service import join_rewritten_request
+from .join_request_service import join_request_from_flow
 
 AGENT_STATUSES = {
     'REQUESTS_MODIFIED': 'requests-modified'
@@ -50,7 +50,7 @@ def upload_request(
 ):
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
-    joined_request = join_rewritten_request(flow, intercept_settings)
+    joined_request = join_request_from_flow(flow, intercept_settings)
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key

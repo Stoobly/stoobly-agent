@@ -11,7 +11,7 @@ import yaml
 from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.constants import (
-  FIXTURES_FOLDER_NAME,
+  PUBLIC_FOLDER_NAME,
   STOOBLY_DATA_DIR,
   VIRTUAL_HOST_ENV,
   VIRTUAL_PORT_ENV,
@@ -42,8 +42,8 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     )
 
   @property
-  def fixtures_dir_path(self):
-    return os.path.join(self.workflow_path, FIXTURES_FOLDER_NAME)
+  def public_dir_path(self):
+    return os.path.join(self.workflow_path, PUBLIC_FOLDER_NAME)
   
   @property
   def workflow_path(self):
@@ -134,14 +134,14 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if ('200 OK' not in logs) and ('499' not in logs):
       raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network")
 
-  # Check fixtures folder mounted into container
-  def validate_fixtures_folder(self, container: Container):
+  # Check public folder exists in container
+  def validate_public_folder(self, container: Container):
     
     if self.workflow_name == WORKFLOW_RECORD_TYPE:
-      print(f"Skipping validating fixtures folder in workflow: {self.workflow_name}, container: {container.name}")
+      print(f"Skipping validating public folder in workflow: {self.workflow_name}, container: {container.name}")
       return
 
-    print(f"Validating fixtures folder in container: {container.name}")
+    print(f"Validating public folder in container: {container.name}")
 
     data_dir_mounted = False
     volume_mounts = container.attrs['Mounts']
@@ -155,21 +155,21 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     # Only the running proxy containers will be checkable
     if container.status == 'exited':
-      print(f"Skipping validating fixtures folder contents because container is exited: {container.name}")
+      print(f"Skipping validating public folder contents because container is exited: {container.name}")
       return
 
-    # Check contents of fixtures folder to confirm it's shared
-    fixtures_folder_path = f"{FIXTURES_FOLDER_NAME}"
-    exec_result = container.exec_run(f"ls -A {fixtures_folder_path}")
+    # Check contents of public folder to confirm it's shared
+    public_folder_path = f"{PUBLIC_FOLDER_NAME}"
+    exec_result = container.exec_run(f"ls -A {public_folder_path}")
     output = exec_result.output
 
-    fixtures_folder_contents_container = output.decode('ascii').split('\n')
-    if fixtures_folder_contents_container[-1] == '':
-      fixtures_folder_contents_container.pop()
-    fixtures_folder_contents_scaffold = os.listdir(self.fixtures_dir_path)
+    public_folder_contents_container = output.decode('ascii').split('\n')
+    if public_folder_contents_container[-1] == '':
+      public_folder_contents_container.pop()
+    public_folder_contents_scaffold = os.listdir(self.public_dir_path)
 
-    if Counter(fixtures_folder_contents_container) != Counter(fixtures_folder_contents_scaffold):
-      raise ScaffoldValidateException(f"Fixtures was not mounted properly, expected {self.fixtures_dir_path} to exist in container path {fixtures_folder_path}")
+    if Counter(public_folder_contents_container) != Counter(public_folder_contents_scaffold):
+      raise ScaffoldValidateException(f"public folder was not mounted properly, expected {self.public_dir_path} to exist in container path {public_folder_path}")
 
   # Note: might not need this if the hostname is reachable and working
   def proxy_environment_variables_exist(self, container: Container) -> None:
@@ -201,7 +201,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       raise ScaffoldValidateException(f"Container attributes are missing for: {service_proxy_container.name}")
 
     if not self.service_config.detached:
-      self.validate_fixtures_folder(service_proxy_container)
+      self.validate_public_folder(service_proxy_container)
 
     self.proxy_environment_variables_exist(service_proxy_container)
 
@@ -225,7 +225,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     # Service init containers have a mounted dist folder unlike the core init container
     init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
-    self.validate_fixtures_folder(init_container)
+    self.validate_public_folder(init_container)
 
     if self.service_config.hostname:
       service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)

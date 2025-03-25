@@ -6,16 +6,13 @@
 [![CI](https://github.com/Stoobly/stoobly-agent/actions/workflows/tests.yaml/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/tests.yaml)
 [![CodeQL](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Stoobly/stoobly-agent/actions/workflows/github-code-scanning/codeql)
 
+⚡ Easily create realistic API mocks by recording HTTP(S) requests.
 
-🌐 Stoobly is a feature-rich man-in-the-middle proxy tool to **record and mock HTTP/HTTPS requests and responses.**
+💡 Maintaining mocks gets expensive. Streamline maintenance with stale mock detection and automated regeneration.
 
-🚀 Easily create scalable API mocks with little setup time. 
+🔨 Minimize regressions of customer workflows with fast and reliable E2E tests.
 
-⚡ Maintaining hard-coded inputs and responses is expensive. De-clutter your codebase and **streamline maintenance with replay and record.**
-
-💡 Upon request interception, mocking is configurable to match against all request components.
-
-🔨 Need advanced configuration? Take advantage of features like scenarios, filters, rewriting, match rules, and lifecycle hooks.
+🚀 Supercharge CI setup with ready-to-go tooling. Reduce CI setup time from two weeks to one day.
 
 See our docs for more detailed information! https://docs.stoobly.com
 
@@ -49,11 +46,9 @@ stoobly-agent --help
 
 ## Next steps
 
-Configure the proxy settings by [following this guide](https://docs.stoobly.com/getting-started/proxy-configuration)
+Easily start creating mock APIs [with this guide](https://docs.stoobly.com/guides/how-to-record-requests)
 
-Start easily recording requests [with this guide](https://docs.stoobly.com/getting-started/record-requests)
-
-Then, try mocking your requests [with this guide!](https://docs.stoobly.com/guides/mocking-apis)
+Or integrate E2E testing [with this guide!](https://docs.stoobly.com/guides/how-to-integrate-e2e-testing)
 
 
 ## Having trouble?

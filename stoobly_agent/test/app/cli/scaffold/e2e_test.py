@@ -124,7 +124,7 @@ class TestScaffoldE2e():
       # Add user defined Docker Compose file for the local service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
 
-      # Record workflow doesn't have a fixtures folder
+      # Record workflow doesn't have a public folder
 
       # Generate certs
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
@@ -249,7 +249,7 @@ class TestScaffoldE2e():
         'service_name': external_service_docker_compose.service_name 
       }
       command = ServiceWorkflowValidateCommand(app, **config)
-      with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
+      with open(f"{command.public_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
 
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name=target_workflow_name)

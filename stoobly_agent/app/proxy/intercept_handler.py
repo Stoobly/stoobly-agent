@@ -33,6 +33,7 @@ def request(flow: MitmproxyHTTPFlow):
     if not intercept_settings.active:
         return
 
+    __disable_web_cache(request)
     __intercept_hook(lifecycle_hooks.BEFORE_REQUEST, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
@@ -42,7 +43,7 @@ def request(flow: MitmproxyHTTPFlow):
         context = MockContext(flow, intercept_settings)
         handle_request_mock(context)
     elif active_mode == mode.RECORD:
-        __disable_web_cache(request)
+        pass
     elif active_mode == mode.REPLAY:
         context = ReplayContext(flow, intercept_settings)
         handle_request_replay(context)
@@ -65,35 +66,29 @@ def response(flow: MitmproxyHTTPFlow):
     if not intercept_settings.active:
         return
 
-    __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
-
     active_mode = intercept_settings.mode
 
     if active_mode == mode.MOCK:
         context = MockContext(flow, intercept_settings)
-        return handle_response_mock(context)
+        handle_response_mock(context)
     elif active_mode == mode.RECORD:
         context = RecordContext(flow, intercept_settings)
-        return handle_response_record(context)
+        handle_response_record(context)
     elif active_mode == mode.REPLAY:
         context = ReplayContext(flow, intercept_settings)
-        return handle_response_replay(context)
+        handle_response_replay(context)
     elif active_mode == mode.TEST:
         context = ReplayContext(flow, intercept_settings)
-        return handle_response_test(context)
+        handle_response_test(context)
+
+    __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
 
 ### PRIVATE
 
+# Prevent 304 status
+# Because this header will get recorded, should add during mocking as well in the case where headers are used for matching
 def __disable_web_cache(request: MitmproxyRequest) -> None:
-    request.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    request.headers['Expires'] = '0'
-    request.headers['Pragma'] = 'no-cache'
-
-    if 'IF-NONE-MATCH' in request.headers:
-        del request.headers['IF-NONE-MATCH']
-
-    if 'IF-MODIFIED-SINCE' in request.headers:
-        del request.headers['IF-MODIFIED-SINCE']
+    request.headers['Cache-Control'] = 'no-cache, no-store'
 
 # Fix issue where multi-value cookies become comma separated
 def __patch_cookie(request: MitmproxyRequest):
