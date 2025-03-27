@@ -16,14 +16,14 @@ CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
 
 # Configuration
 app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$$(realpath ~)/.mitmproxy}")
+ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$(app_data_dir)/ca_certs}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 user_id_option=--user-id $(USER_ID)
 stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
-workflow_down_options=$(user_id_option)
-workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
+workflow_down_options=--from-make $(user_id_option)
 workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) --from-make $(user_id_option)
 
 app_data_dir=$(app_dir)/.stoobly
@@ -58,11 +58,11 @@ stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
 workflow_run=$(source_env) && bash "$(workflow_run_script)"
 
 ca-cert/install: stoobly/install
-	@if [ ! -d "$$HOME/.mitmproxy" ]; then \
+	@if [ -z "$$(ls $(ca_certs_dir) 2> /dev/null)" ]; then \
 		read -p "Installing CA certificate is required for $(WORKFLOW)ing requests, continue? (y/N) " confirm && \
 		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 			echo "Running stoobly-agent ca-cert install..."; \
-			stoobly-agent ca-cert install; \
+			stoobly-agent ca-cert install --ca-certs-dir-path $(ca_certs_dir); \
 		else \
 			echo "You can install the CA certificate later by running: stoobly-agent ca-cert install"; \
 		fi \

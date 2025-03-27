@@ -24,17 +24,7 @@ class DataDir:
                 self.__data_dir_path = os.path.join(path, DATA_DIR_NAME)
             else:
                 cwd = os.getcwd()
-                self.__data_dir_path = os.path.join(cwd, DATA_DIR_NAME)
-
-                # If the current working directory does not contain a .stoobly folder,
-                # then search in the parent directories until the home directory.
-                if not os.path.exists(self.__data_dir_path):
-                    data_dir = self.find_data_dir(cwd)
-
-                    if not data_dir:
-                        self.__data_dir_path = os.path.join(os.path.expanduser('~'), DATA_DIR_NAME)
-                    else:
-                        self.__data_dir_path = data_dir
+                self.__data_dir_path = self.find_data_dir(cwd)
 
             if not os.path.exists(self.__data_dir_path):
                 self.create(os.path.dirname(self.__data_dir_path))
@@ -115,29 +105,13 @@ class DataDir:
         return os.path.join(self.tmp_dir_path, MITMPROXY_OPTIONS_FILE_NAME)
 
     @property
-    def mitmproxy_conf_dir_path(self):
-        from stoobly_agent.config.constants.mitmproxy import DEFAULT_CONF_DIR_PATH
+    def ca_certs_dir_path(self):
+        path = os.path.join(self.path, 'ca_certs')
 
-        conf_dir = DEFAULT_CONF_DIR_PATH
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-        options_json = self.mitmproxy_options_json_path
-        if os.path.exists(options_json):
-            try:
-                with open(options_json, 'r') as fp:
-                    import json
-                    contents = fp.read()
-                    options = json.loads(contents)
-                    _conf_dir = options.get('confdir')
-
-                    if _conf_dir and os.path.exists(_conf_dir):
-                        conf_dir = _conf_dir
-            except Exception:
-                pass
-        else:
-            if not os.path.exists(conf_dir):
-                os.makedirs(conf_dir)
-
-        return conf_dir
+        return path
 
     @property
     def settings_file_path(self):
@@ -227,6 +201,7 @@ class DataDir:
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
                     "\n".join([
+                        'ca_certs',
                         'certs',
                         'db',
                         'settings.yml',
@@ -236,28 +211,21 @@ class DataDir:
                     ])
                 )
 
-
+    # If the current working directory does not contain a .stoobly folder,
+    # then search in the parent directories until the home directory.
     def find_data_dir(self, start_path: str) -> str:
-        # Note: these paths won't work for Windows
         root_dir = os.path.abspath(os.sep)
-        home_dir = os.path.expanduser("~")
-        root_reached = False
 
-        while start_path != home_dir:
+        while True:
             data_dir_path = os.path.join(start_path, DATA_DIR_NAME)
-
-            if os.path.exists(data_dir_path):
+            if os.path.exists(data_dir_path) and os.stat(data_dir_path).st_uid == os.getuid():
                 return data_dir_path
 
-            if root_reached:
-              break
-
+            # Root reached
             if start_path == root_dir:
-                root_reached = True
-                start_path = home_dir
+                break
 
             # Move up one directory
             start_path = os.path.dirname(start_path)
 
-        return ""
-
+        return os.path.join(os.path.expanduser('~'), DATA_DIR_NAME)
