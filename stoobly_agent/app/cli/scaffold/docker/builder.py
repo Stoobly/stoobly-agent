@@ -3,7 +3,7 @@ import pathlib
 import pdb
 import yaml
 
-from .constants import APP_NETWORK, DOCKER_COMPOSE_CUSTOM, GATEWAY_NETWORK
+from .constants import APP_NETWORK, APP_NETWORK_NAME, DOCKER_COMPOSE_CUSTOM 
 
 class Builder():
 
@@ -36,11 +36,11 @@ class Builder():
 
   @property
   def public_network(self):
-    return self.__networks.get(GATEWAY_NETWORK)
+    return self.__networks.get(APP_NETWORK_NAME)
 
   @property
   def public_network_name(self):
-    return GATEWAY_NETWORK
+    return APP_NETWORK_NAME
 
   @property
   def networks(self):
@@ -91,7 +91,7 @@ class Builder():
     return self
 
   def with_public_network(self, network = APP_NETWORK):
-    self.__networks[GATEWAY_NETWORK] = {
+    self.__networks[APP_NETWORK_NAME] = {
       'external': True,
       'name': network,
     }
