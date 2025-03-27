@@ -3,7 +3,6 @@ import pytest
 
 from stoobly_agent.test.test_helper import reset
 
-from stoobly_agent.config.constants.mitmproxy import DEFAULT_CONF_DIR_PATH
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 
@@ -33,7 +32,7 @@ class TestCertificateAuthority():
       return CertificateAuthority()
 
     def test_defaults_to_mitmproxy_confdir(self, certificate_authority: CertificateAuthority):
-      assert certificate_authority.certs_dir == DEFAULT_CONF_DIR_PATH
+      assert certificate_authority.certs_dir == DataDir.instance().ca_certs_dir_path
 
   class TestSign():
 

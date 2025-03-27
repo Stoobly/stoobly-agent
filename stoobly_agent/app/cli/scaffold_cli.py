@@ -104,7 +104,7 @@ def create(**kwargs):
   help="Scaffold app service certs"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
@@ -292,6 +292,7 @@ def copy(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
+@click.option('--from-make', is_flag=True, help='Set if run from scaffolded Makefile.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -365,6 +366,10 @@ def down(**kwargs):
     else:
       print(remove_network_command)
 
+  # Options are no longer valid
+  if kwargs['from_make'] and os.path.exists(data_dir.mitmproxy_options_json_path):
+    os.remove(data_dir.mitmproxy_options_json_path)
+
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option(
@@ -425,7 +430,7 @@ def logs(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--build', is_flag=True, help='Build images before starting containers.')
-@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
