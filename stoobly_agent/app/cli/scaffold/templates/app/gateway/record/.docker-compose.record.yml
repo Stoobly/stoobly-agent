@@ -4,10 +4,10 @@ services:
       file: ../.docker-compose.base.yml
       service: gateway_base
     networks:
-      - gateway
+      - app
     profiles:
       - record
 networks:
-  gateway:
+  app:
     name: ${APP_NETWORK}
     external: true

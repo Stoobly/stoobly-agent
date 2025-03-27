@@ -1,12 +1,9 @@
 import json
-import os
 import pdb
 
 from stoobly_agent.config.data_dir import DataDir
 
 class MitmproxyConfig():
-  MITMPROXY_DIR_NAME = '.mitmproxy'
-
   __instance = None
   __master = None
 
@@ -16,26 +13,12 @@ class MitmproxyConfig():
     else:
         self.__master = master 
 
-        self.__mitmproxy_dir_path = DataDir.instance().mitmproxy_conf_dir_path
-
-        if not os.path.exists(self.__mitmproxy_dir_path):
-            os.mkdir(self.__mitmproxy_dir_path)
-
   @classmethod
   def instance(cls, master = None):
       if cls.__instance is None:
         cls.__instance = cls(master)
 
       return cls.__instance
-
-  @property
-  def ca_cert_pem_path(self):
-      path = os.path.join(self.__mitmproxy_dir_path, 'mitmproxy-ca-cert.pem')
-
-      if not os.path.exists(path):
-          return ''
-
-      return path
 
   def with_master(self, master):
     from mitmproxy.tools.dump import DumpMaster

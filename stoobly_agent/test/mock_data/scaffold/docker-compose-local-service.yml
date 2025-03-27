@@ -1,7 +1,7 @@
 # Define services here
 
 networks:
-  gateway:
+  app:
     external: true
     name: ${APP_NETWORK}
 
@@ -10,7 +10,7 @@ services:
     image: kennethreitz/httpbin:latest
     hostname: my-httpbin.com
     networks:
-      - gateway
+      - app
     profiles: &id001
       - record
 

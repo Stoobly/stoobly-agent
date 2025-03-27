@@ -101,12 +101,16 @@ def __filter_options(options):
     Filter out non-mitmproxy options
     '''
 
+    options['confdir'] = options['ca_certs_dir_path']
     options['listen_host'] = options['proxy_host']
     options['listen_port'] = options['proxy_port']
     options['mode'] = options['proxy_mode']
 
     if 'api_url' in options:
         del options['api_url']
+
+    if 'ca_certs_dir_path' in options:
+        del options['ca_certs_dir_path']
 
     if 'certs' in options and not options['certs']:
         del options['certs']
