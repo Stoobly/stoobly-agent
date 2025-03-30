@@ -23,15 +23,15 @@ workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 user_id_option=--user-id $(USER_ID)
 stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
-workflow_down_options=--from-make $(user_id_option)
-workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) --from-make $(user_id_option)
+workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
+workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option)
 
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
-workflow_run_script=$(app_data_dir)/tmp/run.sh
+workflow_script=.stoobly/tmp/$(WORKFLOW).sh
 
 # Commands
 docker_command=docker
@@ -55,7 +55,7 @@ stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
 stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
 
 # Workflow run
-workflow_run=$(source_env) && bash "$(workflow_run_script)"
+workflow_run=$(source_env) && bash "$(app_dir)/$(workflow_script)"
 
 ca-cert/install: stoobly/install
 	@if [ -z "$$(ls $(ca_certs_dir) 2> /dev/null)" ]; then \
@@ -153,7 +153,7 @@ tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:
 	@export EXEC_COMMAND=bin/.down && \
-	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_service_options) $(options)" && \
+	export EXEC_OPTIONS="$(user_id_option) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -173,7 +173,7 @@ workflow/hostname/install: command/install workflow/hostname
 workflow/hostname/uninstall: command/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=bin/.logs && \
-	export EXEC_OPTIONS="$(workflow_service_options) $(options)" && \
+	export EXEC_OPTIONS="$(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -190,7 +190,7 @@ workflow/test:
 	$(eval WORKFLOW=test)
 workflow/up:
 	@export EXEC_COMMAND=bin/.up && \
-	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_service_options) $(options)" && \
+	export EXEC_OPTIONS="$(user_id_option) $(workflow_up_options) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
