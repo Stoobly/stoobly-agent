@@ -13,7 +13,7 @@ if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port"
 fi
 
 # Firewall
-echo "Configuring firewall rules"
+echo "Configuring firewall rules..."
 stoobly-agent config firewall set \
   --action include \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
@@ -21,7 +21,7 @@ stoobly-agent config firewall set \
   --pattern "$url/.*?"
 
 # Rewrite
-echo "Configuring rewrite rules"
+echo "Configuring rewrite rules..."
 stoobly-agent config rewrite set \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
   --mode record \

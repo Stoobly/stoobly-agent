@@ -1,9 +1,9 @@
 #!/bin/bash
 
-echo "Configuring intercept mode"
+echo "Configuring intercept..."
 stoobly-agent intercept configure --mode mock --policy all
 
-echo "Enabling intercept"
+echo "Enabling intercept..."
 stoobly-agent intercept enable
 
 entrypoint=$(dirname -- "$0")/configure
