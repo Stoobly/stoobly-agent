@@ -22,7 +22,7 @@ context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 user_id_option=--user-id $(USER_ID)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(EXEC_WORKFLOW_NAME)
+stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p "$(shell echo $(context_dir) | md5sum | awk '{print $$1}')"
 workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
 workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option)
 
@@ -30,14 +30,15 @@ app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
-docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
+exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
 workflow_script=.stoobly/tmp/$(WORKFLOW).sh
 
 # Commands
 docker_command=docker
 docker_compose_command=$(docker_command) compose
+exec_down=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) down
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
-exec_up=$(docker_compose_command) -f "$(docker_compose_file_path)" $(stoobly_exec_options) up --remove-orphans
+exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --remove-orphans
 source_env=set -a; [ -f .env ] && source .env; set +a
 
 # Build base image
@@ -74,6 +75,8 @@ command/install:
 	$(eval COMMAND=install)
 command/uninstall:
 	$(eval COMMAND=uninstall)
+exec/down:
+	@$(stoobly_exec_env) EXEC_COMMAND=- EXEC_ARGS=- EXEC_OPTIONS=- $(exec_down)
 nameservers: tmpdir
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
@@ -96,7 +99,7 @@ intercept/enable:
 mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
 mock/services: workflow/mock workflow/services
 mock/logs: workflow/mock workflow/logs
-mock/down: workflow/mock workflow/down workflow/hostname/uninstall
+mock/down: workflow/mock workflow/down workflow/hostname/uninstall exec/down
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -108,7 +111,7 @@ python/validate:
 		exit 1; \
 	fi
 record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
-record/down: workflow/record workflow/down workflow/hostname/uninstall
+record/down: workflow/record workflow/down workflow/hostname/uninstall exec/down
 record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
 scenario/create:
@@ -148,7 +151,7 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up
 test/services: workflow/test workflow/services
 test/logs: workflow/test workflow/logs
-test/down: workflow/test workflow/down
+test/down: workflow/test workflow/down exec/down
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:
