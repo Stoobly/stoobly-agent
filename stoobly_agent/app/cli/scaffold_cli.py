@@ -619,6 +619,10 @@ def __build_script(**kwargs):
   if not script_path:
     script_file_name = f"{kwargs['workflow_name']}.sh"
     script_path = os.path.join(data_dir.tmp_dir_path, script_file_name)
+  else:
+    script_dir = os.path.dirname(script_path)
+    if not os.path.exists(script_dir):
+      os.makedirs(script_dir, exist_ok=True)
 
   # Truncate
   with open(script_path, 'w'):
