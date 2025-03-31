@@ -7,8 +7,3 @@ services:
       - ${APP_DIR}/.stoobly/docker:/home/stoobly/.stoobly/docker
   stoobly_base:
     image: stoobly.${USER_ID}
-  ui_base:
-    extends:
-      service: context_base 
-    volumes:
-      - ${CA_CERTS_DIR}:/home/stoobly/.mitmproxy

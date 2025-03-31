@@ -10,7 +10,7 @@ class App():
     data_dir: DataDir = DataDir.instance(path) 
 
     self.__data_dir_path = data_dir.path
-    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.mitmproxy_conf_dir_path
+    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or data_dir.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or data_dir.context_dir_path
     self.__data_dir = data_dir

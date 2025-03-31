@@ -1,9 +1,9 @@
 import click
-import errno
 import os
 import pdb
 import sys
 
+from io import TextIOWrapper
 from typing import List
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
+from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
@@ -104,7 +105,7 @@ def create(**kwargs):
   help="Scaffold app service certs"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
@@ -117,24 +118,7 @@ def mkcert(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
   )
 
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-
-    if service_config.scheme != 'https':
-      continue
-
-    hostname = service_config.hostname
-    
-    if not hostname:
-      continue
-
-    ca = CertificateAuthority(app.ca_certs_dir_path)
-    if not ca.signed(hostname, app.certs_dir_path):
-      Logger.instance(LOG_ID).info(f"Creating cert for {hostname}")
-      ca.sign(hostname, app.certs_dir_path)
+  __services_mkcert(app, services)
 
 @service.command(
   help="Scaffold a service",
@@ -290,6 +274,7 @@ def copy(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -298,6 +283,7 @@ def copy(**kwargs):
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
+@click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
@@ -323,6 +309,8 @@ def down(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
+  script = __build_script(**kwargs)
+
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
@@ -342,11 +330,8 @@ def down(**kwargs):
     )
     if not exec_command:
       continue
-
-    if not kwargs['dry_run']:
-      exec_stream(exec_command)
-    else:
-      print(exec_command)
+    
+    print(exec_command, file=script)
 
   # After services are stopped, their network needs to be removed
   if len(commands) > 0:
@@ -354,16 +339,16 @@ def down(**kwargs):
 
     if kwargs['rmi']:
       remove_image_command = command.remove_image(kwargs['user_id'])
-      if not kwargs['dry_run']:
-        exec_stream(remove_image_command)
-      else:
-        print(remove_image_command)
+      print(remove_image_command, file=script)
 
     remove_network_command = command.remove_network()
-    if not kwargs['dry_run']:
-      exec_stream(remove_network_command)
-    else:
-      print(remove_network_command)
+    print(remove_network_command, file=script)
+
+  __run_script(script, kwargs['dry_run'])
+
+  # Options are no longer valid
+  if kwargs['containerized'] and os.path.exists(data_dir.mitmproxy_options_json_path):
+    os.remove(data_dir.mitmproxy_options_json_path)
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -376,6 +361,7 @@ def down(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', help='Workflow namespace.')
+@click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
@@ -407,6 +393,8 @@ def logs(**kwargs):
     command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
+  script = __build_script(**kwargs)
+
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
     __print_header(f"SERVICE {command.service_name}")
@@ -417,39 +405,41 @@ def logs(**kwargs):
     )
 
     for shell_command in shell_commands:
-      print(shell_command)
+      print(shell_command, file=script)
 
-      if not kwargs['dry_run']:
-        exec_stream(shell_command)
+  __run_script(script, kwargs['dry_run'])
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--build', is_flag=True, help='Build images before starting containers.')
-@click.option('--ca-certs-dir-path', default=data_dir.mitmproxy_conf_dir_path, help='Path to ca certs directory used to sign SSL certs. Defaults to ~/.mitmproxy')
+@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
-@click.option('--from-make', is_flag=True, help='Set if run from scaffolded Makefile.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
+@click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--pull', is_flag=True, help='Pull image before running.')
+@click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
+@click.option('--without-base', is_flag=True, help='Disable building Stoobly base image.')
 @click.argument('workflow_name')
 def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  from_make = kwargs['from_make']
+  containerized = kwargs['containerized']
 
   # Because we are running a docker-compose command which depends on APP_DIR env var
-  # when we are running this command through make, the host's app_dir_path will likely differ
-  app_dir_path = current_working_dir if from_make else kwargs['app_dir_path']
+  # when we are running this command within a container, the host's app_dir_path will likely differ
+  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
   app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
@@ -460,6 +450,10 @@ def up(**kwargs):
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
+
+  if kwargs['mkcert']:
+    _app = ContainerizedApp(app_dir_path, DOCKER_NAMESPACE) if containerized else app
+    __services_mkcert(_app, services)
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
@@ -473,23 +467,24 @@ def up(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
+  script = __build_script(**kwargs)
+
   # Before services can be started, their image and network needs to be created
   if len(commands) > 0:
     command: WorkflowRunCommand = commands[0]
 
     init_commands = []
-    if not from_make:
+    if not kwargs['without_base']:
       create_image_command = command.create_image(user_id=kwargs['user_id'], verbose=kwargs['verbose'])
       init_commands.append(create_image_command)
 
     init_commands.append(command.create_network())
     joined_command = ' && '.join(init_commands)
 
-    if not kwargs['dry_run']:
+    if not containerized:
       command.write_nameservers()
-      exec_stream(joined_command)
-    else:
-      print(joined_command)
+
+    print(joined_command, file=script)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -515,10 +510,9 @@ def up(**kwargs):
     if not exec_command:
       continue
 
-    if not kwargs['dry_run']:
-      exec_stream(exec_command)
-    else:
-      print(exec_command)
+    print(exec_command, file=script)
+
+  __run_script(script, kwargs['dry_run'])
 
 
 @workflow.command(
@@ -623,6 +617,18 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
+def __build_script(**kwargs):
+  script_path = kwargs['script_path']
+  if not script_path:
+    script_file_name = f"{kwargs['workflow_name']}.sh"
+    script_path = os.path.join(data_dir.tmp_dir_path, script_file_name)
+
+  # Truncate
+  with open(script_path, 'w'):
+    pass
+
+  return open(script_path, 'a')
+
 def __elevate_sudo():
   import subprocess
 
@@ -665,6 +671,16 @@ def __get_services(app: App, **kwargs):
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
 
+def __run_script(script: TextIOWrapper, dry_run = False):
+  script.close()
+
+  with open(script.name, 'r') as fp:
+    for line in fp:
+      if not dry_run:
+        exec_stream(line.strip())
+      else:
+        print(line.strip())
+
 def __scaffold_build(app, **kwargs):
   command = ServiceCreateCommand(app, **kwargs)
 
@@ -674,6 +690,26 @@ def __scaffold_delete(app, **kwargs):
   command = ServiceDeleteCommand(app, **kwargs)
 
   command.delete()
+
+def __services_mkcert(app: App, services):
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+
+    if service_config.scheme != 'https':
+      continue
+
+    hostname = service_config.hostname
+    
+    if not hostname:
+      continue
+
+    ca = CertificateAuthority(app.ca_certs_dir_path)
+    if not ca.signed(hostname, app.certs_dir_path):
+      Logger.instance(LOG_ID).info(f"Creating cert for {hostname}")
+      ca.sign(hostname, app.certs_dir_path)
 
 def __validate_app(app: App):
   if not app.valid:

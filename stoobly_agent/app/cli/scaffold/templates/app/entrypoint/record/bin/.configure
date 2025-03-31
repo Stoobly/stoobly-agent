@@ -1,9 +1,9 @@
 #!/bin/bash
 
-echo "Configuring intercept mode"
+echo "Configuring intercept..."
 stoobly-agent intercept configure --mode record --policy all
 
-echo "Disabling intercept"
+echo "Disabling intercept..."
 stoobly-agent intercept disable
 
 entrypoint=$(dirname -- "$0")/configure

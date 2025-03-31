@@ -1,15 +1,12 @@
 #!/bin/bash
 
 extra_options=$EXEC_OPTIONS
-workflow=$1
-
-mkdir -p .stoobly/tmp
-
-stoobly-agent scaffold app mkcert
 
 stoobly-agent scaffold workflow up \
   --app-dir-path "$(pwd)" \
+  --containerized \
   --dry-run \
   --log-level warning \
-  $extra_options \
-  $workflow > .stoobly/tmp/run.sh
+  --mkcert \
+  --without-base \
+  $extra_options $1 > /dev/null

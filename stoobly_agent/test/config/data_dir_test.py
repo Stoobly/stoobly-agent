@@ -5,7 +5,6 @@ import pytest
 
 from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.constants.mode import NONE
-from stoobly_agent.config.constants.mitmproxy import DEFAULT_CONF_DIR_PATH
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
@@ -84,11 +83,3 @@ class TestDataDir():
     finally:
       shutil.rmtree(temp_dir)
       os.chdir(original_cwd)
-
-  class TestMitmproxyConfDirPath():
-    @pytest.fixture(autouse=True, scope='class')
-    def settings(self):
-      return reset()
-
-    def test_default_path(self):
-      assert DataDir.instance().mitmproxy_conf_dir_path == DEFAULT_CONF_DIR_PATH
