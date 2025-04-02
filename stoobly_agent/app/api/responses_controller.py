@@ -1,6 +1,7 @@
 import pdb
 import requests
 
+
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.response_model import ResponseModel
 from stoobly_agent.app.settings import Settings
@@ -45,9 +46,9 @@ class ResponsesController:
             'requestId': 1,
             'responseId': 3,
         })
-
+ 
         response_model = self.__response_model(context) 
-        response, status = response_model.update(context.params.get('requestId'), **context.params)
+        response, status = response_model.update(context.params.get('responseId'), **context.params)
 
         if context.filter_response(response, status):
             return
@@ -84,9 +85,7 @@ class ResponsesController:
             )
 
         # Extract specific headers
-        headers = {
-            'Access-Control-Expose-Headers': custom_headers.RESPONSE_ID,
-        }
+        headers = {}
 
         accepted_headers = ['content-type', custom_headers.RESPONSE_ID.lower()]
         for header, val in response.headers.items():
@@ -96,6 +95,12 @@ class ResponsesController:
                 continue 
 
             headers[decoded_header] = val
+
+        expose_headers = 'Access-Control-Expose-Headers'
+        if expose_headers in headers:
+            headers[expose_headers] = ','.join([headers[expose_headers], custom_headers.RESPONSE_ID])
+        else:
+            headers[expose_headers] = custom_headers.RESPONSE_ID
 
         context.render(
             data = response.content,

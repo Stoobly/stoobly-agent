@@ -233,7 +233,6 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         response_params['status'] = params['status']
 
       if request.update(params):
-
         if len(response_params.keys()) != 0:
           response = request.response
           LocalDBResponseAdapter(self.__request_orm).update(response.id, **response_params)

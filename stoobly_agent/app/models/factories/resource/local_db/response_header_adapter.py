@@ -39,7 +39,7 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     headers = python_response.headers
     headers[name] = value
 
-    LocalDBResponseAdapter(self.__request_orm).update(request_id, headers=headers)
+    LocalDBResponseAdapter(self.__request_orm).update(response.id, headers=headers)
 
     return self.success({
       'name': name,

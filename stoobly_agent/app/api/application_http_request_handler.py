@@ -117,14 +117,6 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.send_header(header, _headers.get(header) or '7200')
             rendered_headers.append(header)
 
-        if self.command == 'GET':
-            header = 'Access-Control-Expose-Headers'
-            exposed_headers = ', '.join([
-                'Content-Disposition',
-            ])
-            self.send_header(header, exposed_headers)
-            rendered_headers.append(header)
-
         return rendered_headers
 
     def preprocess(self):
