@@ -266,6 +266,9 @@ class RequestsController:
             context.render(
                 download = text,
                 filename = filename,
+                headers = {
+                    'Access-Control-Expose-Headers': 'Content-Disposition'
+                },
                 status = 200
             )
         else:
