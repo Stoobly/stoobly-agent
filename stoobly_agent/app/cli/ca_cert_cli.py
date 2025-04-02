@@ -32,7 +32,6 @@ def mkcert(**kwargs):
 @ca_cert.command()
 @click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory.')
 def install(**kwargs):
-    pdb.set_trace()
     ca_certs_dir_path = kwargs['ca_certs_dir_path']
     installer = CertificateAuthority(ca_certs_dir_path)
 

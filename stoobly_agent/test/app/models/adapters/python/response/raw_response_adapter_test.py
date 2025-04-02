@@ -28,6 +28,6 @@ class TestRawResponseAdapter():
     assert _response.status_code == response.status_code
 
     for key, val in response.headers.items():
-      assert val == _response.headers.get(key)
+      assert val == _response.headers.get(key), key
 
 
