@@ -21,8 +21,9 @@ certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
+exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 user_id_option=--user-id $(USER_ID)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p "$(shell echo $(context_dir) | md5sum | awk '{print $$1}')"
+stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
 workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
 workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option)
 
