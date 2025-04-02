@@ -59,7 +59,7 @@ class BodiesController:
         # Extract specific headers
         headers = {}
 
-        accepted_headers = ['content-encoding', 'content-length', 'content-type']
+        accepted_headers = ['content-encoding', 'content-type']
         for header, val in request.headers.items():
             decoded_header = header.lower()
 

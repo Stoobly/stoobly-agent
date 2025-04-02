@@ -46,9 +46,11 @@ class MitmproxyResponseAdapter():
     return self.__timestamp_start + self.__latency
 
   def adapt(self):
+    content = self.__response.content
+
     res = MitmproxyResponse.make(
       self.status_code,
-      self.__response.content,
+      content,
       self.headers,
     )
 
