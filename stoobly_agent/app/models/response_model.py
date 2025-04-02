@@ -30,8 +30,8 @@ class ResponseModel(Model):
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
 
-  def update(self, request_id: str, **params):
+  def update(self, response_id: str, **params):
     try:
-      return self.adapter.update(request_id, **params)
+      return self.adapter.update(response_id, **params)
     except requests.exceptions.RequestException as e:
       return self.handle_request_error(e)
