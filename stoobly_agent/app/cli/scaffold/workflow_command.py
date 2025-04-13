@@ -5,10 +5,10 @@ import yaml
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
-from .config import Config
 from .constants import BIN_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, ENV_FILE, PUBLIC_FOLDER_NAME
 from .docker.constants import DOCKER_COMPOSE_CUSTOM
 from .service_command import ServiceCommand
+from .workflow_config import WorkflowConfig
 
 LOG_ID = 'WorkflowCommand'
 
@@ -18,6 +18,7 @@ class WorkflowCommand(ServiceCommand):
     super().__init__(app, **kwargs)
 
     self.__workflow_name = kwargs['workflow_name']
+    self.__config = WorkflowConfig(self.workflow_path, **kwargs)
 
   @property
   def bin_dir_path(self):
@@ -93,7 +94,7 @@ class WorkflowCommand(ServiceCommand):
 
   @property
   def workflow_config(self):
-    return Config(self.workflow_config_path).read()
+    return self.__config
 
   @property
   def workflow_config_path(self):
