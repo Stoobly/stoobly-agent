@@ -70,7 +70,7 @@ ca-cert/install: stoobly/install
 		fi \
 	fi
 certs:
-	@export EXEC_COMMAND=bin/.mkcert && \
+	@export EXEC_COMMAND=.mkcert && \
 	$(stoobly_exec)
 command/install:
 	$(eval COMMAND=install)
@@ -91,10 +91,10 @@ nameservers: tmpdir
 		exit 1; \
 	fi
 intercept/disable:
-	@export EXEC_COMMAND=bin/.disable && \
+	@export EXEC_COMMAND=.disable && \
 	$(stoobly_exec)
 intercept/enable:
-	@export EXEC_COMMAND=bin/.enable && \
+	@export EXEC_COMMAND=.enable && \
 	export EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
 mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
@@ -117,30 +117,30 @@ record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
 scenario/create:
 # Create a scenario
-	@export EXEC_COMMAND=bin/.create && \
+	@export EXEC_COMMAND=.create && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(name)" && \
 	$(stoobly_exec)
 scenario/delete:
 # Delete a scenario
-	@export EXEC_COMMAND=bin/.delete && \
+	@export EXEC_COMMAND=.delete && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/list:
 # List scenarios
-	@export EXEC_COMMAND=bin/.list && \
+	@export EXEC_COMMAND=.list && \
 	export EXEC_OPTIONS="$(options)" && \
 	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
-	@export EXEC_COMMAND=bin/.reset && \:
+	@export EXEC_COMMAND=.reset && \:
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
-	@export EXEC_COMMAND=bin/.snapshot && \
+	@export EXEC_COMMAND=.snapshot && \
 	export EXEC_OPTIONS="$(options)" && \
 	export EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
@@ -156,7 +156,7 @@ test/down: workflow/test workflow/down exec/down
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:
-	@export EXEC_COMMAND=bin/.down && \
+	@export EXEC_COMMAND=.down && \
 	export EXEC_OPTIONS="$(user_id_option) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
@@ -176,7 +176,7 @@ workflow/hostname: stoobly/install
 workflow/hostname/install: command/install workflow/hostname
 workflow/hostname/uninstall: command/uninstall workflow/hostname  
 workflow/logs:
-	@export EXEC_COMMAND=bin/.logs && \
+	@export EXEC_COMMAND=.logs && \
 	export EXEC_OPTIONS="$(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
@@ -186,14 +186,14 @@ workflow/mock:
 workflow/record:
 	$(eval WORKFLOW=record)
 workflow/services:
-	@export EXEC_COMMAND=bin/.services && \
+	@export EXEC_COMMAND=.services && \
 	export EXEC_OPTIONS="$(workflow_service_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run)
 workflow/test:
 	$(eval WORKFLOW=test)
 workflow/up:
-	@export EXEC_COMMAND=bin/.up && \
+	@export EXEC_COMMAND=.up && \
 	export EXEC_OPTIONS="$(user_id_option) $(workflow_up_options) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \

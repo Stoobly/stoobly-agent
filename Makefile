@@ -28,7 +28,7 @@ test/build:
 
 test/e2e:
 	poetry install --only test
-	poetry run pytest -m e2e stoobly_agent/test/
+	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest -m e2e stoobly_agent/test/
 
 test/python: test/build
 	docker exec -it ${TEST_CONTAINER_NAME} sh -c "cd ${TEST_DIR} && pip3 install poetry && poetry install && make test"

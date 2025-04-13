@@ -1,6 +1,6 @@
 services:
   stoobly_ui.command:
-    command: ['.stoobly/docker/stoobly-ui/exec/${EXEC_COMMAND}', '${EXEC_ARGS}']
+    command: ['/usr/local/bin/workflows/exec/${EXEC_COMMAND}', '${EXEC_ARGS}']
     environment:
       EXEC_OPTIONS: ${EXEC_OPTIONS}
     extends:

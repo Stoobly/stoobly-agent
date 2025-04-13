@@ -5,7 +5,7 @@ import shutil
 from typing import List, TypedDict, Union
 
 from .app import App
-from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_TEMPLATE
+from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_TEMPLATE_OPTION
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
 from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
@@ -18,7 +18,7 @@ CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
 class BuildOptions(TypedDict):
   builder_class: type 
   service_builder: ServiceBuilder
-  template: WORKFLOW_TEMPLATE
+  template: WORKFLOW_TEMPLATE_OPTION
   workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]]
 
 class WorkflowCreateCommand(WorkflowCommand):
@@ -54,10 +54,13 @@ class WorkflowCreateCommand(WorkflowCommand):
     workflow_builder = self.__write_docker_compose_file(**kwargs)
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
+    if not self.workflow_config.empty:
+      self.workflow_config.write()
+
   def build_workflow_templates_path(self, workflow_name: str):
     return os.path.join(self.workflow_templates_root_dir, workflow_name)
 
-  def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE = None):
+  def __copy_templates(self, workflow_builder: WorkflowBuilder, template: WORKFLOW_TEMPLATE_OPTION = None):
     if not template:
       templates_path = self.workflow_templates_path
     else:
