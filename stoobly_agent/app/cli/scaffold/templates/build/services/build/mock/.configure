@@ -3,7 +3,9 @@
 # This file was automatically generated. DO NOT EDIT.
 # Any changes made to this file will be overwritten.
 
-entrypoint=$(dirname -- "$0")/configure
+stoobly-agent config reset
+
+entrypoint=$1
 
 if [ -e "$entrypoint" ]; then
   "$entrypoint"
