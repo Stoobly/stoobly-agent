@@ -3,6 +3,7 @@ import os
 import pdb
 import subprocess
 import re
+import yaml
 
 from typing import TypedDict
 
@@ -137,9 +138,10 @@ class WorkflowRunCommand(WorkflowCommand):
     # Add docker compose file
     command_options.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
 
+    can_build = False
+
     # Add custom docker compose file
     custom_services = self.custom_services
-  
     if custom_services:
       uses_profile = False
       for service_name in custom_services:
@@ -153,10 +155,18 @@ class WorkflowRunCommand(WorkflowCommand):
         # TODO: looking into why warning does not print in docker
         Logger.instance(LOG_ID).error(f"Missing {self.workflow_name} profile in custom compose file")
 
-      command_options.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
+      compose_file_path = os.path.relpath(self.custom_compose_path, self.__current_working_dir)
+      command_options.append(f"-f {compose_file_path}")
+
+      if self.__can_build(compose_file_path):
+        can_build = True
 
     if options.get('extra_compose_path'):
-      command_options.append(f"-f {os.path.relpath(options['extra_compose_path'], self.__current_working_dir)}")
+      compose_file_path = os.path.relpath(options['extra_compose_path'], self.__current_working_dir)
+      command_options.append(f"-f {compose_file_path}")
+
+      if self.__can_build(compose_file_path):
+        can_build = True
 
     command_options.append(f"--profile {self.workflow_name}") 
 
@@ -167,7 +177,7 @@ class WorkflowRunCommand(WorkflowCommand):
     command += command_options
     command.append('up')
 
-    if options.get('build'):
+    if options.get('build') and can_build:
       command.append('--build')
 
     if options.get('pull'):
@@ -272,6 +282,20 @@ class WorkflowRunCommand(WorkflowCommand):
     env_vars = self.config(_config)
     WorkflowEnv(self.workflow_path).write(env_vars)
     return env_vars
+
+  def __can_build(self, compose_path: str) -> bool:
+    if not os.path.exists(compose_path):
+        return False
+
+    with open(compose_path, 'r') as f:
+        compose = yaml.safe_load(f)
+
+    services = compose.get('services', {})
+    for service_name, service in services.items():
+        if 'build' in service:
+            # Either build is a string (context) or dict (with context/Dockerfile)
+            return True
+    return False
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
     nameservers = dns_resolver.nameservers
