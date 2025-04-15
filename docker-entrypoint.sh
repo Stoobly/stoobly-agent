@@ -13,8 +13,8 @@ fi
 
 # If the current current user UID == 0
 if [ "$(id -u)" = '0' ]; then
-    # If the first argument is $cli OR bin/*
-    if [ "$1" = $cli ] || [[ "$1" == bin/* ]] || [[ "$1" == .stoobly/* ]]; then
+    # If the first argument is $cli OR /usr/local/bin/*
+    if [ "$1" = $cli ] || [[ "$1" == /usr/local/bin/* ]] || [[ "$1" == .stoobly/* ]]; then
         # changes any file that is not already $user to be owned by $user
 
         if [ -d "$data_dir" ]; then

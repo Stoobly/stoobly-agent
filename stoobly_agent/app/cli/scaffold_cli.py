@@ -226,7 +226,7 @@ def update(**kwargs):
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
-@click.option('--template', type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
+@click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])

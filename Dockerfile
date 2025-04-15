@@ -39,6 +39,7 @@ RUN cd /tmp/stoobly-agent && pip install . && rm -rf /tmp/stoobly-agent
 
 WORKDIR /home/stoobly
 
+COPY stoobly_agent/app/cli/scaffold/templates/build /usr/local/bin/
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]
 

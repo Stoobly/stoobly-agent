@@ -2,7 +2,8 @@ networks: {}
 services:
   entrypoint.configure_base:
     command:
-    - bin/.configure
+    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
+    - bin/configure
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
@@ -10,7 +11,8 @@ services:
     working_dir: /home/stoobly/.stoobly/docker/entrypoint/${WORKFLOW_NAME}
   entrypoint.init_base:
     command:
-    - bin/.init
+    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
+    - bin/init
     environment: {}
     extends:
       file: ../.docker-compose.base.yml
