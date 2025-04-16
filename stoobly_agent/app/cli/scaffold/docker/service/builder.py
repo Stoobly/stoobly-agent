@@ -76,18 +76,12 @@ class ServiceBuilder(Builder):
     if not self.config.hostname:
       return
 
-    args = {}
     self.with_service(self.proxy_base, {
-      'build': {
-        'args': args,
-      },
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.extends_service
       },
     })
-
-    args[SERVICE_HOSTNAME_ENV] = f"{SERVICE_HOSTNAME}"
 
   def build_init_base(self):
     environment = {}
