@@ -411,7 +411,6 @@ def logs(**kwargs):
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--build', is_flag=True, help='Build images before starting containers.')
 @click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
@@ -425,6 +424,7 @@ def logs(**kwargs):
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
+@click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--pull', is_flag=True, help='Pull image before running.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
@@ -501,9 +501,9 @@ def up(**kwargs):
 
     exec_command = command.up(
       attached=attached,
-      build=kwargs['build'],
       extra_compose_path=extra_compose_path,
       namespace=kwargs['namespace'],
+      no_build=kwargs['no_build'],
       pull=kwargs['pull'],
       user_id=kwargs['user_id']
     )
