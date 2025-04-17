@@ -1,6 +1,5 @@
 import pdb
 
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
