@@ -267,9 +267,12 @@ class WorkflowRunCommand(WorkflowCommand):
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
 
+    # Specified DNS should prioritized, otherwise defaults to internal DNS
     nameservers = self.nameservers
     if nameservers:
       _config[SERVICE_DNS_ENV] = nameservers[0]
+    else:
+      _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
     WorkflowEnv(self.workflow_path).write(env_vars)

@@ -88,7 +88,6 @@ nameservers: tmpdir
 		echo "$$nameserver" > $(app_tmp_dir)/.nameservers; \
 	else \
 		echo "/etc/resolv.conf not found." >&2; \
-		exit 1; \
 	fi
 intercept/disable:
 	@export EXEC_COMMAND=.disable && \
@@ -149,7 +148,7 @@ stoobly/install: python/validate pipx/install
 		echo "stoobly-agent not found. Installing..."; \
 		pipx install stoobly-agent || { echo "Failed to install stoobly-agent"; exit 1; }; \
 	fi
-test: workflow/test workflow/up
+test: workflow/test nameservers workflow/up
 test/services: workflow/test workflow/services
 test/logs: workflow/test workflow/logs
 test/down: workflow/test workflow/down exec/down
