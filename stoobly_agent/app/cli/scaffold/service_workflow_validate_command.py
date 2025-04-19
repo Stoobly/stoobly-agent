@@ -18,6 +18,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
@@ -113,7 +114,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     output = self.docker_client.containers.run(
       image='curlimages/curl:8.11.0',
       command=f"curl --max-time {timeout_seconds} {url} --verbose",
-      network=self.app_config.network,
+      network=APP_EGRESS_NETWORK_TEMPLATE.format(network=self.app_config.network),
       stderr=True,
       remove=True,
     )

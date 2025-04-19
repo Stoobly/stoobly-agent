@@ -19,6 +19,5 @@ def get_workflow_decorators(workflow: str, service_config: ServiceConfig):
   else:
     if service_config.hostname:
       workflow_decorators.append(ReverseProxyDecorator if service_config.detached else MockDecorator) 
-      workflow_decorators.append(DnsDecorator)
 
   return workflow_decorators

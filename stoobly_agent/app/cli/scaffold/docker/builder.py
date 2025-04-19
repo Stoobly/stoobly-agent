@@ -3,7 +3,7 @@ import pathlib
 import pdb
 import yaml
 
-from .constants import APP_NETWORK, APP_NETWORK_NAME, DOCKER_COMPOSE_CUSTOM 
+from .constants import APP_EGRESS_NETWORK, APP_EGRESS_NETWORK_NAME, APP_INGRESS_NETWORK, APP_INGRESS_NETWORK_NAME, DOCKER_COMPOSE_CUSTOM 
 
 class Builder():
 
@@ -35,12 +35,12 @@ class Builder():
     return self.__dir_path
 
   @property
-  def public_network(self):
-    return self.__networks.get(APP_NETWORK_NAME)
+  def egress_network(self):
+    return self.__networks.get(APP_EGRESS_NETWORK_NAME)
 
   @property
-  def public_network_name(self):
-    return APP_NETWORK_NAME
+  def egress_network_name(self):
+    return APP_EGRESS_NETWORK_NAME
 
   @property
   def networks(self):
@@ -86,12 +86,19 @@ class Builder():
 
   def with_network(self, network):
     self.__networks[network] = {
-      'name': f"{APP_NETWORK}.{network}"
+      'name': f"{APP_EGRESS_NETWORK}.{network}"
     }
     return self
 
-  def with_public_network(self, network = APP_NETWORK):
-    self.__networks[APP_NETWORK_NAME] = {
+  def with_egress_network(self, network = APP_EGRESS_NETWORK):
+    self.__networks[APP_EGRESS_NETWORK_NAME] = {
+      'external': True,
+      'name': network,
+    }
+    return self
+
+  def with_ingress_network(self, network = APP_INGRESS_NETWORK):
+    self.__networks[APP_INGRESS_NETWORK_NAME] = {
       'external': True,
       'name': network,
     }

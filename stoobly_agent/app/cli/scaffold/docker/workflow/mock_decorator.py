@@ -41,5 +41,5 @@ class MockDecorator():
 
     services[proxy_name] = { 
       **proxy_service,
-      **{ 'command': command, 'hostname': f"{SERVICE_HOSTNAME}" },
+      **{ 'command': command },
     }

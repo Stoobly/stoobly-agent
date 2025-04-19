@@ -292,7 +292,6 @@ class TestScaffoldE2e():
       pass
 
     def test_assets(self, app_dir_path, target_workflow_name):
-
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
@@ -301,4 +300,3 @@ class TestScaffoldE2e():
 
       command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
-

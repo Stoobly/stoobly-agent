@@ -1,0 +1,7 @@
+networks:
+  app.egress:
+    external: true
+    name: ${APP_NETWORK}.egress
+  app.ingress:
+    external: true
+    name: ${APP_NETWORK}.ingress

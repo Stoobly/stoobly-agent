@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...app_config import AppConfig
-from ...constants import SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, WORKFLOW_TEMPLATE
+from ...constants import WORKFLOW_TEMPLATE
 from ...service_config import ServiceConfig
 from ..app_builder import AppBuilder
 from ..builder import Builder
@@ -21,8 +21,6 @@ class ServiceBuilder(Builder):
 
     self.__config = config
     self.__service_name = os.path.basename(service_path)
-
-    self.load()
 
   @property
   def app_base(self):
@@ -112,7 +110,11 @@ class ServiceBuilder(Builder):
     if self.config.hostname:
       self.build_proxy_base()
 
-    super().write({
-      'networks': self.networks,
+    compose = {
       'services': self.services,
-    })
+    }
+
+    if self.networks:
+      compose['networks'] = self.networks
+
+    super().write(compose)

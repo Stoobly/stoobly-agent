@@ -14,7 +14,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
-from stoobly_agent.app.cli.scaffold.docker.service.set_gateway_ports import set_gateway_ports
+from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
@@ -341,8 +341,11 @@ def down(**kwargs):
       remove_image_command = command.remove_image(kwargs['user_id'])
       print(remove_image_command, file=script)
 
-    remove_network_command = command.remove_network()
-    print(remove_network_command, file=script)
+    remove_egress_network_command = command.remove_egress_network()
+    print(remove_egress_network_command, file=script)
+
+    remove_ingress_network_command = command.remove_ingress_network()
+    print(remove_ingress_network_command, file=script)
 
   __run_script(script, kwargs['dry_run'])
 
@@ -425,6 +428,7 @@ def logs(**kwargs):
 @click.option('--namespace', help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
+@click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--pull', is_flag=True, help='Pull image before running.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
@@ -457,7 +461,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  set_gateway_ports(workflow.service_paths_from_services(services))
+  configure_gateway(workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -478,7 +482,8 @@ def up(**kwargs):
       create_image_command = command.create_image(user_id=kwargs['user_id'], verbose=kwargs['verbose'])
       init_commands.append(create_image_command)
 
-    init_commands.append(command.create_network())
+    init_commands.append(command.create_egress_network())
+    init_commands.append(command.create_ingress_network())
     joined_command = ' && '.join(init_commands)
 
     if not containerized:

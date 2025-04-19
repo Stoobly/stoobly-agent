@@ -15,7 +15,7 @@ from .constants import (
   APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_TEMPLATE_ENV
 )
-from .docker.constants import DOCKERFILE_CONTEXT
+from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 
@@ -122,11 +122,17 @@ class WorkflowRunCommand(WorkflowCommand):
     command.append('|| true')
     return ' '.join(command)
 
-  def create_network(self):
-    return f"docker network create {self.network} &> /dev/null"
+  def create_egress_network(self):
+    return f"docker network create {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
 
-  def remove_network(self):
-    return f"docker network rm {self.network} &> /dev/null || true"
+  def create_ingress_network(self):
+    return f"docker network create {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
+
+  def remove_egress_network(self):
+    return f"docker network rm {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
+
+  def remove_ingress_network(self):
+    return f"docker network rm {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
 
   def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
@@ -137,6 +143,9 @@ class WorkflowRunCommand(WorkflowCommand):
 
     # Add docker compose file
     command_options.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
+
+    # Add docker compose networks file
+    command_options.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
 
     # Add custom docker compose file
     custom_services = self.custom_services
@@ -202,6 +211,9 @@ class WorkflowRunCommand(WorkflowCommand):
 
     # Add docker compose file
     command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
+
+    # Add docker compose networks file
+    command.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
 
     # Add custom docker compose file
     if self.custom_services:
