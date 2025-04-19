@@ -1,7 +1,7 @@
 services:
   build.configure_base:
     command: 
-    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
+    - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
     - bin/configure
     extends:
       file: ../.docker-compose.base.yml
@@ -9,7 +9,7 @@ services:
     working_dir: /home/stoobly/.stoobly/docker/build/${WORKFLOW_NAME}
   build.init_base:
     command: 
-    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
+    - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
     - bin/init
     extends:
       file: ../.docker-compose.base.yml

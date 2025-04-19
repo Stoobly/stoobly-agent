@@ -32,11 +32,6 @@ class WorkflowBuilder(Builder):
       STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, self.service_builder.service_name, self.workflow_name
     )
 
-    if self.config.hostname:
-      self.with_public_network()
-
-    self.load()
-  
   @property
   def app(self):
     return f"{self.namespace}.app"
@@ -91,8 +86,6 @@ class WorkflowBuilder(Builder):
 
   def build_all(self):
     # Resources
-    self.with_network(self.service_builder.service_name)
-    
     if self.config.detached:
       self.with_volume(self.service_builder.service_name)
 
@@ -101,7 +94,6 @@ class WorkflowBuilder(Builder):
     self.build_configure()
 
     if self.config.hostname:
-      self.with_public_network()
       self.build_proxy() # Depends on configure, must call build_configure first
 
   def build_init(self):
@@ -166,7 +158,7 @@ class WorkflowBuilder(Builder):
 
     depends_on = {}
     environment = { **self.env_dict() }
-    networks = [self.service_builder.service_name]
+    networks = {}
     volumes = []
 
     service = {
@@ -188,14 +180,13 @@ class WorkflowBuilder(Builder):
         'condition': 'service_completed_successfully',
       }
 
-    if self.config.hostname:
-      environment['VIRTUAL_HOST'] = SERVICE_HOSTNAME
-      environment['VIRTUAL_PORT'] = SERVICE_PORT
-      environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
+    environment['VIRTUAL_HOST'] = SERVICE_HOSTNAME
+    environment['VIRTUAL_PORT'] = SERVICE_PORT
+    environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
 
-      # Expose this container service to the public network 
-      # so that it is accessible to other Stoobly services
-      networks.append(self.public_network_name)
+    # Expose this container service to the public network 
+    # so that it is accessible to other Stoobly services
+    networks[self.egress_network_name] = {}
 
     if self.config.detached:
       volumes.append(f"{self.service_builder.service_name}:{STOOBLY_HOME_DIR}/.stoobly")
@@ -213,10 +204,14 @@ class WorkflowBuilder(Builder):
     dest = self.custom_compose_file_path
 
     if not os.path.exists(dest):
-      super().write({
-        'networks': self.networks,
+      compose = {
         'services': {}
-      }, dest)
+      }
+
+      if self.networks:
+        compose['networks'] = self.networks
+
+      super().write(compose, dest)
 
   def with_env(self, v: List[str]): 
     if not isinstance(v, list):
@@ -225,11 +220,17 @@ class WorkflowBuilder(Builder):
     return self
 
   def write(self):
-    super().write({
-      'networks': self.networks,
+    compose = {
       'services': self.services,
-      'volumes': self.volumes,
-    })
+    }
+
+    if self.networks:
+      compose['networks'] = self.networks
+
+    if self.volumes:
+      compose['volumes'] = self.volumes
+
+    super().write(compose)
 
   def __with_url_environment(self, environment):
     environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME

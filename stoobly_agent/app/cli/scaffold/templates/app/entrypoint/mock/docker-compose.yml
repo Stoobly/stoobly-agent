@@ -1,14 +1,18 @@
-# Define networks and services here
+# Define custom services here
 #
-# If a container service needs access to a Stoobly defined service, 
-# then the container service needs to add the service name to the 'networks' property
-# e.g. If we have defined a 'upstream' service, then the following should be added
+# Container services that need to make request(s) to a Stoobly defined service 
+# need to have either 'app.ingress' or 'app.egress' added to the 'networks' property
+#
+# e.g. If we want to make a request by hostname, then the following should be added
 # networks:
-#   - upstream
+#   - app.ingress
+#
+# e.g. If we want to make a request by container service name, then the following should be added
+# networks:
+#   - app.egress
 # 
 # Container services that are intended to be run as part of a workflow need to have the workflow name added to the 'profiles' property
 # e.g. If we want to run a service as part of the 'mock' workflow, then the following should be added
 # profiles:
 #   - mock
-networks: {}
 services: {}

@@ -5,6 +5,7 @@ import shutil
 from .app import App
 from .app_config import AppConfig
 from .command import Command
+from .docker.constants import DOCKER_COMPOSE_NETWORKS
 
 class AppCommand(Command):
 
@@ -28,6 +29,20 @@ class AppCommand(Command):
   @property
   def app_config_path(self):
     return self.__config.path
+
+  @property
+  def networks_compose_path(self):
+    return os.path.join(
+      self.data_dir_path,
+      self.networks_compose_relative_path
+    )
+
+  @property
+  def networks_compose_relative_path(self):
+    return os.path.join(
+      self.namespace,
+      DOCKER_COMPOSE_NETWORKS
+    )
 
   @property
   def scaffold_namespace_path(self):

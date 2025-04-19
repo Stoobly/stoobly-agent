@@ -15,11 +15,15 @@ from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.config.constants import custom_headers, query_params as request_query_params
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.api.interfaces.requests import RequestResponseShowQueryParams
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey
+from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey
+from stoobly_agent.lib.logger import bcolors, Logger
 
 from .hashed_request_decorator import HashedRequestDecorator
 from .search_endpoint import inject_search_endpoint
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
+
+LOG_ID = 'EvalRequest'
 
 class EvalRequestOptions(TypedDict):
     infer: bool
@@ -49,10 +53,19 @@ def eval_request(
     **options: EvalRequestOptions
 ) -> Response:
     query_params_builder = ParamBuilder({})
+    scenario_key = intercept_settings.scenario_key
+
+    if not scenario_key:
+        Logger.instance(LOG_ID).info(f"{bcolors.WARNING}Missing{bcolors.ENDC} scenario key, defaulting to all requests for mocking")
 
     try:
-        query_params_builder.with_resource_scoping(intercept_settings.project_key, intercept_settings.scenario_key)
-    except:
+        query_params_builder.with_resource_scoping(intercept_settings.project_key, scenario_key)
+    except InvalidScenarioKey:
+        Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} scenario key ${scenario_key}")
+        # If project_key or scenario_key are invalid, assume custom not found
+        return CustomNotFoundResponseBuilder().build()
+    except InvalidProjectKey:
+        Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} project key ${intercept_settings.project_key}")
         # If project_key or scenario_key are invalid, assume custom not found
         return CustomNotFoundResponseBuilder().build()
 

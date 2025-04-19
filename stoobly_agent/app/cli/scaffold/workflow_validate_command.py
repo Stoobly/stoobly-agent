@@ -40,13 +40,6 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
   def validate_no_core_components(self):
     try:
-      core_gateway_container = self.docker_client.containers.get(self.managed_services_docker_compose.gateway_container_name)
-      if core_gateway_container:
-        raise ScaffoldValidateException(f"Gateway container is running when it shouldn't: {core_gateway_container.name}")
-    except docker_errors.NotFound:
-      pass
-    
-    try:
       core_mock_ui_container_name = self.docker_client.containers.get(self.managed_services_docker_compose.mock_ui_container_name)
       if core_mock_ui_container_name:
         raise ScaffoldValidateException(f"Stoobly UI container is running when it shouldn't: {core_mock_ui_container_name.name}")

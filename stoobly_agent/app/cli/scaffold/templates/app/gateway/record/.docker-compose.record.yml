@@ -3,11 +3,5 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: gateway_base
-    networks:
-      - app
     profiles:
       - record
-networks:
-  app:
-    name: ${APP_NETWORK}
-    external: true

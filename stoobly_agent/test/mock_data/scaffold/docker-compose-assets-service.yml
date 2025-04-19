@@ -1,15 +1,10 @@
 # Define services here
-networks:
-  app:
-    external: true
-    name: ${APP_NETWORK}
-
 services:
   assets:
     hostname: assets
     image: nginx:1.27
     networks:
-      - app
+      - app.egress
     volumes:
       - ./index.html:/usr/share/nginx/html/index.html
     profiles: &id001
