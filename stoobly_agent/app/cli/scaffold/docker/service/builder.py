@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...app_config import AppConfig
-from ...constants import WORKFLOW_TEMPLATE
+from ...constants import WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 from ...service_config import ServiceConfig
 from ..app_builder import AppBuilder
 from ..builder import Builder
@@ -84,7 +84,7 @@ class ServiceBuilder(Builder):
   def build_init_base(self):
     environment = {}
     self.with_service(self.init_base, {
-      'command': [f"/usr/local/bin/workflows/{WORKFLOW_TEMPLATE}/.init", 'bin/init'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'bin/init'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
@@ -95,7 +95,7 @@ class ServiceBuilder(Builder):
   def build_configure_base(self):
     environment = {}
     self.with_service(self.configure_base, {
-      'command': [f"/usr/local/bin/workflows/{WORKFLOW_TEMPLATE}/.configure", 'bin/configure'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'bin/configure'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),

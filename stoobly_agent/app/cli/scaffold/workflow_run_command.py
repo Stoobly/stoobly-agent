@@ -13,7 +13,8 @@ from stoobly_agent.lib.logger import Logger
 from .app import App
 from .constants import (
   APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_TEMPLATE_ENV
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, 
+  WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
@@ -269,8 +270,10 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
+    _config[SERVICE_SCRIPTS_ENV] = SERVICE_SCRIPTS_DIR
     _config[USER_ID_ENV] = user_id or os.getuid()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
+    _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name
     
     if namespace:
