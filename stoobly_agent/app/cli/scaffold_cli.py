@@ -671,8 +671,11 @@ def __get_services(app: App, **kwargs):
 
     # Intersection
     selected_services = list(filter(lambda x: x in workflow_services, selected_services))
+
+  services = list(set(selected_services))
+  services.sort()
   
-  return list(set(selected_services))
+  return services
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")

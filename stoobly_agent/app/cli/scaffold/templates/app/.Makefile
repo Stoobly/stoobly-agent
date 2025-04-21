@@ -25,7 +25,7 @@ exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/n
 user_id_option=--user-id $(USER_ID)
 stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
 workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
-workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option) $(WORKFLOW_UP_OPTIONS)
+workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option)
 
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
@@ -190,7 +190,7 @@ workflow/services:
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run)
 workflow/test:
-	$(eval WORKFLOW=test) $(eval WORKFLOW_UP_OPTIONS=--no-publish)
+	$(eval WORKFLOW=test) $(eval options=$(options) --no-publish)
 workflow/up:
 	@export EXEC_COMMAND=.up && \
 	export EXEC_OPTIONS="$(user_id_option) $(workflow_up_options) $(workflow_run_options) $(options)" && \
