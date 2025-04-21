@@ -8,9 +8,9 @@
 
 # Overridable Options
 #
-# workflow_down_extra_options: e.g. $(eval workflow_down_extra_options=$(workflow_down_extra_options) <OPTIONS>)
-# workflow_log_extra_options: e.g. $(eval workflow_log_extra_options=$(workflow_log_extra_options) <OPTIONS>)
-# workflow_up_extra_options: e.g. $(eval workflow_up_extra_options=$(workflow_up_extra_options) <OPTIONS>)
+# workflow_down_extra_options: e.g. $(eval workflow_down_extra_options=<OPTIONS>)
+# workflow_log_extra_options: e.g. $(eval workflow_log_extra_options=<OPTIONS>)
+# workflow_up_extra_options: e.g. $(eval workflow_up_extra_options=<OPTIONS>)
 
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
