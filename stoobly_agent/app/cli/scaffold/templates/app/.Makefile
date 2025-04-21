@@ -6,6 +6,12 @@
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
 # STOOBLY_WORKFLOW_SERVICE_OPTIONS: extra --service options to pass  'stoobly-agent scaffold workflow' commands
 
+# Overridable Options
+#
+# workflow_down_extra_options: e.g. $(eval workflow_down_extra_options=<OPTIONS>)
+# workflow_log_extra_options: e.g. $(eval workflow_log_extra_options=<OPTIONS>)
+# workflow_up_extra_options: e.g. $(eval workflow_up_extra_options=<OPTIONS>)
+
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 EXEC_WORKFLOW_NAME := exec
@@ -21,18 +27,23 @@ certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
-exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
-user_id_option=--user-id $(USER_ID)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
-workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
-workflow_up_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir) --ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir) $(user_id_option)
-
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
+exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 workflow_script=.stoobly/tmp/$(WORKFLOW).sh
+
+# Options
+certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
+stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
+working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
+
+workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
+workflow_log_options=$(workflow_log_extra_options)
+workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
+workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
 
 # Commands
 docker_command=docker
@@ -51,7 +62,7 @@ stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
 stoobly_exec_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(context_dir)" 
 
 # Exec workflow run
-# Because scaffold is stored in the application source code directory, 
+# Scaffold is stored in the application source code directory, 
 # when running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
 stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
 stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
@@ -156,7 +167,7 @@ tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:
 	@export EXEC_COMMAND=.down && \
-	export EXEC_OPTIONS="$(user_id_option) $(workflow_run_options) $(options)" && \
+	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -176,7 +187,7 @@ workflow/hostname/install: command/install workflow/hostname
 workflow/hostname/uninstall: command/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=.logs && \
-	export EXEC_OPTIONS="$(workflow_run_options) $(options)" && \
+	export EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -190,10 +201,10 @@ workflow/services:
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run)
 workflow/test:
-	$(eval WORKFLOW=test) $(eval options=$(options) --no-publish)
+	$(eval WORKFLOW=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
 workflow/up:
 	@export EXEC_COMMAND=.up && \
-	export EXEC_OPTIONS="$(user_id_option) $(workflow_up_options) $(workflow_run_options) $(options)" && \
+	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" && \
 	export EXEC_ARGS="$(WORKFLOW)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
