@@ -2,7 +2,7 @@ networks: {}
 services:
   entrypoint.configure_base:
     command:
-    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
+    - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
     - bin/configure
     environment: {}
     extends:
@@ -11,7 +11,7 @@ services:
     working_dir: /home/stoobly/.stoobly/docker/entrypoint/${WORKFLOW_NAME}
   entrypoint.init_base:
     command:
-    - /usr/local/bin/services/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
+    - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
     - bin/init
     environment: {}
     extends:

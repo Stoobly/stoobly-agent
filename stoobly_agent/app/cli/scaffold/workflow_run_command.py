@@ -13,9 +13,10 @@ from stoobly_agent.lib.logger import Logger
 from .app import App
 from .constants import (
   APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, USER_ID_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_TEMPLATE_ENV
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, 
+  WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
-from .docker.constants import DOCKERFILE_CONTEXT
+from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 
@@ -122,11 +123,17 @@ class WorkflowRunCommand(WorkflowCommand):
     command.append('|| true')
     return ' '.join(command)
 
-  def create_network(self):
-    return f"docker network create {self.network} &> /dev/null"
+  def create_egress_network(self):
+    return f"docker network create {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
 
-  def remove_network(self):
-    return f"docker network rm {self.network} &> /dev/null || true"
+  def create_ingress_network(self):
+    return f"docker network create {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
+
+  def remove_egress_network(self):
+    return f"docker network rm {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
+
+  def remove_ingress_network(self):
+    return f"docker network rm {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
 
   def up(self, **options: UpOptions):
     if not os.path.exists(self.compose_path):
@@ -137,6 +144,9 @@ class WorkflowRunCommand(WorkflowCommand):
 
     # Add docker compose file
     command_options.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
+
+    # Add docker compose networks file
+    command_options.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
 
     # Add custom docker compose file
     custom_services = self.custom_services
@@ -203,6 +213,9 @@ class WorkflowRunCommand(WorkflowCommand):
     # Add docker compose file
     command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
 
+    # Add docker compose networks file
+    command.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
+
     # Add custom docker compose file
     if self.custom_services:
       command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
@@ -257,8 +270,10 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
+    _config[SERVICE_SCRIPTS_ENV] = SERVICE_SCRIPTS_DIR
     _config[USER_ID_ENV] = user_id or os.getuid()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
+    _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name
     
     if namespace:
@@ -267,9 +282,12 @@ class WorkflowRunCommand(WorkflowCommand):
     if self.network:
       _config[APP_NETWORK_ENV] = self.network
 
+    # Specified DNS should prioritized, otherwise defaults to internal DNS
     nameservers = self.nameservers
     if nameservers:
       _config[SERVICE_DNS_ENV] = nameservers[0]
+    else:
+      _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
     WorkflowEnv(self.workflow_path).write(env_vars)

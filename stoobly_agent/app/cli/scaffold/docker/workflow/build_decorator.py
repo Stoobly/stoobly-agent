@@ -22,7 +22,6 @@ class BuildDecorator():
       **app_service,
       **{ 
           'extends': service_builder.build_extends_proxy_base(self.workflow_builder.dir_path),
-          'hostname': service_builder.config.hostname,
           'profiles': self.workflow_builder.profiles,
         } 
     }
