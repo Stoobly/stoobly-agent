@@ -26,8 +26,9 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     ValidateCommand.__init__(self)
     self.managed_services_docker_compose = ManagedServicesDockerCompose(target_workflow_name=self.workflow_name)
 
-  def validate_core_components(self):
-    print(f"Validating core component: {CORE_GATEWAY_SERVICE_NAME}")
+  # Gateway core service runs in all workflows
+  def validate_gateway_service(self):
+    print(f"Validating core service: {CORE_GATEWAY_SERVICE_NAME}")
     gateway_container_name = self.managed_services_docker_compose.gateway_container_name
 
     container_missing_message = f"{bcolors.FAIL}Container '{gateway_container_name}' not found for service '{CORE_GATEWAY_SERVICE_NAME}'{bcolors.ENDC}"
@@ -41,13 +42,28 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     except docker_errors.NotFound:
       raise ScaffoldValidateException(error_message)
 
-
-    print(f"Validating core component: {CORE_MOCK_UI_SERVICE_NAME}")
+  def validate_mock_ui_service(self):
     mock_ui_container_name = self.managed_services_docker_compose.mock_ui_container_name
 
+    # The stoobly-ui service does not run in test workflows
+    if self.workflow_name == WORKFLOW_TEST_TYPE:
+      try:
+        mock_ui_container = self.docker_client.containers.get(mock_ui_container_name)
+
+        if mock_ui_container:
+          ui_found_message = f"{bcolors.FAIL}Stoobly UI container is running when it shouldn't: {mock_ui_container_name}{bcolors.ENDC}"
+          suggestion_message = f"{bcolors.BOLD}Run 'docker ps | grep stoobly_ui'. If the UI is running during your test workflow, then report a bug at https://github.com/Stoobly/stoobly-agent/issues'{bcolors.ENDC}"
+          error_message = f"{ui_found_message}\n\n{suggestion_message}"
+          raise ScaffoldValidateException(error_message)
+      except docker_errors.NotFound:
+        return
+
+      print(f"Skipping validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
+      return
+
+    print(f"Validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
     container_missing_message = f"{bcolors.FAIL}Container '{mock_ui_container_name}' not found for service '{CORE_MOCK_UI_SERVICE_NAME}'{bcolors.ENDC}"
     suggestion_message = f"{bcolors.BOLD}Stoobly UI is not running. Check if the container is up with 'docker ps -a | grep stoobly_ui'. If not found, then report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
-
     mock_ui_missing_error_message = f"{container_missing_message}\n\n{suggestion_message}"
 
     try:
@@ -57,44 +73,8 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     except docker_errors.NotFound:
       raise ScaffoldValidateException(mock_ui_missing_error_message)
 
-  def validate_no_core_components(self):
-    try:
-      core_gateway_container = self.docker_client.containers.get(self.managed_services_docker_compose.gateway_container_name)
-      if core_gateway_container:
-        gateway_found_message = f"{bcolors.FAIL}Gateway container is running when it shouldn't: {core_gateway_container.name}{bcolors.ENDC}"
-        suggestion_message = f"{bcolors.BOLD}Run 'docker ps | grep gateway'. If the gateway is running during your test workflow, then report a bug at https://github.com/Stoobly/stoobly-agent/issues'{bcolors.ENDC}"
-        error_message = f"{gateway_found_message}\n\n{suggestion_message}"
-        raise ScaffoldValidateException(error_message)
-    except docker_errors.NotFound:
-      pass
-    
-    try:
-      core_mock_ui_container_name = self.docker_client.containers.get(self.managed_services_docker_compose.mock_ui_container_name)
-      if core_mock_ui_container_name:
-        ui_found_message = f"{bcolors.FAIL}Stoobly UI container is running when it shouldn't: {core_mock_ui_container_name.name}{bcolors.ENDC}"
-        suggestion_message = f"{bcolors.BOLD}Run 'docker ps | grep stoobly_ui'. If the UI is running during your test workflow, then report a bug at https://github.com/Stoobly/stoobly-agent/issues'{bcolors.ENDC}"
-        error_message = f"{ui_found_message}\n\n{suggestion_message}"
-        raise ScaffoldValidateException(error_message)
-    except docker_errors.NotFound:
-      pass
-    
-    print(f"Skipping validating core component: {CORE_GATEWAY_SERVICE_NAME}")
-    print(f"Skipping validating core component: {CORE_MOCK_UI_SERVICE_NAME}")
-
-  
-  def validate(self) -> bool:
-    print(f"Validating workflow: {self.workflow_name}\n")
-    print(f"Validating core components: {CORE_SERVICES}")
-
-    if self.workflow_name == WORKFLOW_TEST_TYPE:
-      # Don't validate the gateway and mock_ui core components in the "test" workflow 
-      self.validate_no_core_components()
-    else:
-      self.validate_core_components()
-
-    self.validate_init_containers(self.managed_services_docker_compose.init_container_name, self.managed_services_docker_compose.configure_container_name)
-
-    print(f"Validating core component: {CORE_ENTRYPOINT_SERVICE_NAME}")
+  def validate_entrypoint_service(self):
+    print(f"Validating core service: {CORE_ENTRYPOINT_SERVICE_NAME}")
 
     core_entrypoint_init_container_name = None
     try:
@@ -119,7 +99,18 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     # NOTE: we should check the correct workflow mode is enabled one day
     # That's not currently queryable
 
-    print(f"{bcolors.OKGREEN}✔ Done validating core components for workflow: {self.workflow_name}, success!\n{bcolors.ENDC}")
+    print(f"{bcolors.OKGREEN}✔ Done validating core services for workflow: {self.workflow_name}, success!\n{bcolors.ENDC}")
+
+  def validate_core_services(self):
+    self.validate_gateway_service()
+    self.validate_mock_ui_service()
+    self.validate_init_containers(self.managed_services_docker_compose.init_container_name, self.managed_services_docker_compose.configure_container_name)
+
+  def validate(self) -> bool:
+    print(f"Validating workflow: {self.workflow_name}\n")
+    print(f"Validating core services: {CORE_SERVICES}")
+
+    self.validate_core_services()
 
     return True
 
