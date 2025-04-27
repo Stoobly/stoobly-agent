@@ -198,6 +198,11 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   
   def validate_proxy_container(self, service_proxy_container: Container):
     print(f"Validating proxy container: {service_proxy_container.name}")
+
+    if service_proxy_container.status == 'exited' or service_proxy_container.attrs['State']['ExitCode'] != 0:
+      raise ScaffoldValidateException(f"Proxy container is exited: {service_proxy_container.name}")
+    if service_proxy_container.status != 'running':
+      raise ScaffoldValidateException(f"Proxy container is not running: {service_proxy_container.name}")
     if not service_proxy_container.attrs:
       raise ScaffoldValidateException(f"Container attributes are missing for: {service_proxy_container.name}")
 
@@ -229,7 +234,12 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     self.validate_public_folder(init_container)
 
     if self.service_config.hostname:
-      service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
+      try:
+        service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
+      except docker_errors.NotFound:
+        error_message = self.__generate_container_not_found_error(self.service_docker_compose.proxy_container_name)
+        raise ScaffoldValidateException(error_message)
+
       self.validate_proxy_container(service_proxy_container)
 
     # External services won't have a container to check
@@ -240,8 +250,10 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       except docker_errors.NotFound:
         error_message = self.__generate_container_not_found_error(container_name)
         raise ScaffoldValidateException(error_message)
-      if service_container.status == 'exited':
-        return False
+      if service_container.status == 'exited' or service_container.attrs['State']['ExitCode'] != 0:
+        raise ScaffoldValidateException(f"Custom container is exited: {service_container.name}")
+      if service_container.status != 'running':
+        raise ScaffoldValidateException(f"Custom container is not running: {service_container.name}")
     
     if self.is_local():
       print(f"Validating local user defined service: {self.service_name}")

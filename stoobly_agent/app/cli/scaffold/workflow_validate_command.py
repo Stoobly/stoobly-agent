@@ -56,10 +56,8 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
           error_message = f"{ui_found_message}\n\n{suggestion_message}"
           raise ScaffoldValidateException(error_message)
       except docker_errors.NotFound:
+        print(f"Skipping validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
         return
-
-      print(f"Skipping validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
-      return
 
     print(f"Validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
     container_missing_message = f"{bcolors.FAIL}Container '{mock_ui_container_name}' not found for service '{CORE_MOCK_UI_SERVICE_NAME}'{bcolors.ENDC}"
@@ -105,6 +103,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     self.validate_gateway_service()
     self.validate_mock_ui_service()
     self.validate_init_containers(self.managed_services_docker_compose.init_container_name, self.managed_services_docker_compose.configure_container_name)
+    self.validate_entrypoint_service()
 
   def validate(self) -> bool:
     print(f"Validating workflow: {self.workflow_name}\n")

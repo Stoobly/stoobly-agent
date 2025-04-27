@@ -24,7 +24,7 @@ class ValidateCommand():
     return error_message
 
   # Some containers like init and configure can take longer than expected to finish so retry
-  def __get_container(self, container_name: str) -> Container:
+  def __get_container_with_retries(self, container_name: str) -> Container:
     tries = 30
     for _ in range(tries):
       try:
@@ -39,7 +39,7 @@ class ValidateCommand():
   def validate_init_containers(self, init_container_name, configure_container_name) -> None:
     print(f"Validating setup containers: {init_container_name}, {configure_container_name}")
 
-    init_container = self.__get_container(init_container_name)
+    init_container = self.__get_container_with_retries(init_container_name)
     logs = init_container.logs()
 
     if logs and re.search('error', str(logs), re.IGNORECASE):
@@ -54,7 +54,7 @@ class ValidateCommand():
       error_message = f"{init_exit_message}\n\n{suggestion_message}"
       raise ScaffoldValidateException(error_message)
 
-    configure_container = self.__get_container(configure_container_name)
+    configure_container = self.__get_container_with_retries(configure_container_name)
 
     configure_container_ran = False
     if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
