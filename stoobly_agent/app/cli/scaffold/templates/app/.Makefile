@@ -25,6 +25,7 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$(app_data_dir)/ca_certs}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+workflow=record
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 app_data_dir=$(app_dir)/.stoobly
@@ -33,7 +34,7 @@ app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
 exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
-workflow_script=.stoobly/tmp/$(WORKFLOW).sh
+workflow_script=.stoobly/tmp/$(workflow).sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
@@ -72,7 +73,7 @@ workflow_run=$(source_env) && bash "$(app_dir)/$(workflow_script)"
 
 ca-cert/install: stoobly/install
 	@if [ -z "$$(ls $(ca_certs_dir) 2> /dev/null)" ]; then \
-		read -p "Installing CA certificate is required for $(WORKFLOW)ing requests, continue? (y/N) " confirm && \
+		read -p "Installing CA certificate is required for $(workflow)ing requests, continue? (y/N) " confirm && \
 		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 			echo "Running stoobly-agent ca-cert install..."; \
 			stoobly-agent ca-cert install --ca-certs-dir-path $(ca_certs_dir); \
@@ -168,7 +169,7 @@ tmpdir:
 workflow/down:
 	@export EXEC_COMMAND=.down && \
 	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(WORKFLOW)" && \
+	export EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/hostname: stoobly/install
@@ -181,30 +182,30 @@ workflow/hostname: stoobly/install
 			exit 1; \
 		fi; \
 		echo "Running stoobly-agent scaffold hostname $(COMMAND) $(workflow_service_options)"; \
-		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(WORKFLOW) $(workflow_service_options); \
+		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options); \
 	fi
 workflow/hostname/install: command/install workflow/hostname
 workflow/hostname/uninstall: command/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=.logs && \
 	export EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(WORKFLOW)" && \
+	export EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/mock:
-	$(eval WORKFLOW=mock)
+	$(eval workflow=mock)
 workflow/record:
-	$(eval WORKFLOW=record)
+	$(eval workflow=record)
 workflow/services:
 	@export EXEC_COMMAND=.services && \
 	export EXEC_OPTIONS="$(workflow_service_options) $(options)" && \
-	export EXEC_ARGS="$(WORKFLOW)" && \
+	export EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/test:
-	$(eval WORKFLOW=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
+	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
 workflow/up:
 	@export EXEC_COMMAND=.up && \
 	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(WORKFLOW)" && \
+	export EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
