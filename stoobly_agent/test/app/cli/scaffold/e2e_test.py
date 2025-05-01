@@ -121,7 +121,7 @@ class TestScaffoldE2e():
       # Validate docker-compose path exists
       destination_path = Path(local_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
-      # Add user defined Docker Compose file for the local service
+      # Add user defined Docker Compose file for the custom container service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
 
       # Record workflow doesn't have a public folder

@@ -52,7 +52,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
         if mock_ui_container:
           ui_found_message = f"{bcolors.FAIL}Stoobly UI container is running when it shouldn't: {mock_ui_container_name}{bcolors.ENDC}"
-          suggestion_message = f"{bcolors.BOLD}Run 'docker ps | grep stoobly_ui'. If the UI is running during your test workflow, then report a bug at https://github.com/Stoobly/stoobly-agent/issues'{bcolors.ENDC}"
+          suggestion_message = f"{bcolors.BOLD}Run 'docker ps | grep stoobly_ui' to check if the Stoobly UI is running during the test workflow. Did you stop the record or mock workflow yet?{bcolors.ENDC}"
           error_message = f"{ui_found_message}\n\n{suggestion_message}"
           raise ScaffoldValidateException(error_message)
       except docker_errors.NotFound:
@@ -61,7 +61,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
     print(f"Validating core service: {CORE_MOCK_UI_SERVICE_NAME}")
     container_missing_message = f"{bcolors.FAIL}Container '{mock_ui_container_name}' not found for service '{CORE_MOCK_UI_SERVICE_NAME}'{bcolors.ENDC}"
-    suggestion_message = f"{bcolors.BOLD}Stoobly UI is not running. Check if the container is up with 'docker ps -a | grep stoobly_ui'. If not found, then report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+    suggestion_message = f"{bcolors.BOLD}Stoobly UI is not running. Check if the container is up with 'docker ps -a | grep {mock_ui_container_name}'{bcolors.ENDC}"
     mock_ui_missing_error_message = f"{container_missing_message}\n\n{suggestion_message}"
 
     try:
@@ -79,19 +79,15 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
       core_entrypoint_init_container_name = self.managed_services_docker_compose.entrypoint_init_container_name
       entrypoint_init_container = self.docker_client.containers.get(core_entrypoint_init_container_name)
     except docker_errors.NotFound:
-      container_missing_message = f"{bcolors.FAIL}Container not found: {core_entrypoint_init_container_name}{bcolors.ENDC}"
-      suggestion_message = f"{bcolors.BOLD}Run 'docker ps -a' and report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
-      error_message = f"{container_missing_message}\n\n{suggestion_message}"
-      raise ScaffoldValidateException()
+      error_message = self._ValidateCommand__generate_container_not_found_error(core_entrypoint_init_container_name)
+      raise ScaffoldValidateException(error_message)
     
     core_entrypoint_configure_container_name = None
     try:
       core_entrypoint_configure_container_name = self.managed_services_docker_compose.entrypoint_configure_container_name
       entrypoint_configure_container = self.docker_client.containers.get(core_entrypoint_configure_container_name)
     except docker_errors.NotFound:
-      container_missing_message = f"{bcolors.FAIL}Container not found: {core_entrypoint_configure_container_name}{bcolors.ENDC}"
-      suggestion_message = f"{bcolors.BOLD}Run 'docker ps -a' and report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
-      error_message = f"{container_missing_message}\n\n{suggestion_message}"
+      error_message = self._ValidateCommand__generate_container_not_found_error(core_entrypoint_configure_container_name)
       raise ScaffoldValidateException(error_message)
 
     # NOTE: we should check the correct workflow mode is enabled one day

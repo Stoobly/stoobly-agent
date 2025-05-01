@@ -18,7 +18,7 @@ class ValidateCommand():
 
   def __generate_container_not_found_error(self, container_name: Union[str, None]) -> str:
     not_found_error_message = f"{bcolors.FAIL}Container not found: {container_name}{bcolors.ENDC}"
-    suggestion_message = f"{bcolors.BOLD}Run 'docker ps -a | grep {container_name}'. If found, then inspect the logs with 'docker logs {container_name}'. Finally report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+    suggestion_message = f"{bcolors.BOLD}Run 'docker ps -a | grep {container_name}'. If found, then inspect the logs with 'docker logs {container_name}'{bcolors.ENDC}"
     error_message = f"{not_found_error_message}\n\n{suggestion_message}"
 
     return error_message
@@ -44,13 +44,13 @@ class ValidateCommand():
 
     if logs and re.search('error', str(logs), re.IGNORECASE):
       error_found_message = f"{bcolors.FAIL}Error logs potentially detected in: {init_container_name}{bcolors.ENDC}"
-      suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'. Report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+      suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'{bcolors.ENDC}"
       error_message = f"{error_found_message}\n\n{suggestion_message}"
       raise ScaffoldValidateException(error_message)
 
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
       init_exit_message = f"{bcolors.FAIL}init container {init_container_name} exited with: {init_container.attrs['State']['ExitCode']}{bcolors.ENDC}"
-      suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'. Report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+      suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'{bcolors.ENDC}"
       error_message = f"{init_exit_message}\n\n{suggestion_message}"
       raise ScaffoldValidateException(error_message)
 
@@ -75,7 +75,7 @@ class ValidateCommand():
         return
     
     message = f"{bcolors.FAIL}Data directory is missing from container: {container.name}{bcolors.ENDC}"
-    suggestion_message = f"{bcolors.BOLD}Data directory might have failed to mount. Report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+    suggestion_message = f"{bcolors.BOLD}Data directory might have failed to mount{bcolors.ENDC}"
     error_message = f"{message}\n\n{suggestion_message}"
 
     raise ScaffoldValidateException(error_message)

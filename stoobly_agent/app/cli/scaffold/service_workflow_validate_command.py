@@ -87,7 +87,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
           time.sleep(delay)
 
     hostname_not_reachable_message = f"{bcolors.FAIL}Connection failed to hostname: {hostname}, port: {port}, num_retries: {retries}{bcolors.ENDC}"
-    suggestion_message = f"{bcolors.BOLD}Try confirming that {hostname} is reachable from your machine or environment. Report a bug at https://github.com/Stoobly/stoobly-agent/issues{bcolors.ENDC}"
+    suggestion_message = f"{bcolors.BOLD}Try confirming that {hostname} is reachable from your machine or environment.{bcolors.ENDC}"
     error_message = f"{hostname_not_reachable_message}\n\n{suggestion_message}"
     raise ScaffoldValidateException(error_message)
 
@@ -237,7 +237,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       try:
         service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
       except docker_errors.NotFound:
-        error_message = self.__generate_container_not_found_error(self.service_docker_compose.proxy_container_name)
+        error_message = self._ValidateCommand__generate_container_not_found_error(self.service_docker_compose.proxy_container_name)
         raise ScaffoldValidateException(error_message)
 
       self.validate_proxy_container(service_proxy_container)
@@ -248,7 +248,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       try:
         service_container = self.docker_client.containers.get(container_name)
       except docker_errors.NotFound:
-        error_message = self.__generate_container_not_found_error(container_name)
+        error_message = self._ValidateCommand__generate_container_not_found_error(container_name)
         raise ScaffoldValidateException(error_message)
       if service_container.status == 'exited' or service_container.attrs['State']['ExitCode'] != 0:
         raise ScaffoldValidateException(f"Custom container is exited: {service_container.name}")
@@ -272,7 +272,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       # Validate docker-compose.yml file has the service defined
       with open(destination_path) as f:
         if self.service_name not in f.read():
-          message = f"{bcolors.FAIL}Local service is not defined in Docker Compose file: {destination_path}{bcolors.ENDC}"
+          message = f"{bcolors.FAIL}Custom container service is not defined in Docker Compose file: {destination_path}{bcolors.ENDC}"
           suggestion_message = f"{bcolors.BOLD}Please add your service definition. See https://docs.docker.com/reference/compose-file/services {bcolors.ENDC}"
           error_message = f"{message}\n\n{suggestion_message}"
           raise ScaffoldValidateException(error_message)
