@@ -263,7 +263,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
       if not destination_path.exists():
         message = f"{bcolors.FAIL}Docker Compose file does not exist: {destination_path}{bcolors.ENDC}"
-        suggestion_message = f"{bcolors.BOLD}A missing Docker Compose often means it got deleted by accident. Please restore from backup or recreate the scaffold service.{bcolors.ENDC}"
+        suggestion_message = f"{bcolors.BOLD}A missing Docker Compose file often means it got deleted by accident. Please restore from backup or rerun the scaffold service create command.{bcolors.ENDC}"
         error_message = f"{message}\n\n{suggestion_message}"
         raise ScaffoldValidateException(error_message)
       if not destination_path.is_file():
