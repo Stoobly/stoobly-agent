@@ -39,6 +39,10 @@ class ServiceBuilder(Builder):
     return f"{self.service_name}.configure_base"
 
   @property
+  def copy_base(self):
+    return f"{self.service_name}.copy_base"
+
+  @property
   def configure_base_service(self):
     return self.services.get(self.configure_base)
 
@@ -66,6 +70,9 @@ class ServiceBuilder(Builder):
 
   def build_extends_configure_base(self, source_dir: str):
     return self.build_extends(self.configure_base, source_dir)
+
+  def build_extends_copy_base(self, source_dir: str):
+    return self.build_extends(self.copy_base, source_dir)
 
   def build_extends_proxy_base(self, source_dir: str):
     return self.build_extends(self.proxy_base, source_dir)
@@ -103,9 +110,19 @@ class ServiceBuilder(Builder):
       }
     })
 
+  def build_copy_base(self):
+    self.with_service(self.copy_base, {
+      'command': ['cp', '-r', '/tmp/dist/.', 'public/'],
+      'extends': {
+        'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
+        'service': self.extends_service
+      }
+    })
+
   def write(self):
     self.build_init_base()
     self.build_configure_base()
+    self.build_copy_base()
 
     if self.config.hostname:
       self.build_proxy_base()

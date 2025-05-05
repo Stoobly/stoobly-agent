@@ -8,7 +8,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from ...constants import (
   COMPOSE_TEMPLATE, DOCKER_NAMESPACE, STOOBLY_HOME_DIR, SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, 
   SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
-  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME_ENV
+  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_COPY_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME_ENV
 )
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
@@ -41,10 +41,6 @@ class WorkflowBuilder(Builder):
     return os.path.relpath(self.service_builder.compose_file_path, self.dir_path)
 
   @property
-  def init(self):
-    return WORKFLOW_CONTAINER_INIT_TEMPLATE.format(service_name=self.namespace)
-
-  @property
   def config(self):
     return self.service_builder.config
 
@@ -59,6 +55,14 @@ class WorkflowBuilder(Builder):
   @property
   def context_docker_file_path(self):
     return os.path.relpath(self.service_builder.app_builder.context_docker_file_path, self.service_path)
+
+  @property
+  def copy(self):
+    return WORKFLOW_CONTAINER_COPY_TEMPLATE.format(service_name=self.namespace)
+
+  @property
+  def init(self):
+    return WORKFLOW_CONTAINER_INIT_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def namespace(self):
@@ -92,9 +96,18 @@ class WorkflowBuilder(Builder):
     # Services
     self.build_init()
     self.build_configure()
+    self.build_copy()
 
     if self.config.hostname:
       self.build_proxy() # Depends on configure, must call build_configure first
+
+  def build_copy(self):
+    service = {
+      'extends': self.service_builder.build_extends_copy_base(self.dir_path),
+      'working_dir': self.__working_dir,
+    }
+
+    self.with_service(self.copy, service)
 
   def build_init(self):
     environment = { **self.env_dict() }
