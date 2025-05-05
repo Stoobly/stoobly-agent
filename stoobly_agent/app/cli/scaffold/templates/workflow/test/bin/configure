@@ -6,8 +6,8 @@ scheme=$SERVICE_SCHEME
 hostname=$SERVICE_HOSTNAME
 port=$SERVICE_PORT
 
-url="$scheme://$hostname"
+origin="$scheme://$hostname"
 
 if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
-  url="$url:$port"
+  origin="$origin:$port"
 fi
