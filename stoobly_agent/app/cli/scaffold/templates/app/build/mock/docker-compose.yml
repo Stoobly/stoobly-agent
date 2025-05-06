@@ -1,0 +1,7 @@
+# Define services here
+#
+# Container services that are intended to be run as part of a workflow need to have the workflow name added to the 'profiles' property
+# e.g. If we want to run a service as part of the 'mock' workflow, then the following should be added
+# profiles:
+#   - mock
+services: {}

@@ -223,7 +223,6 @@ def update(**kwargs):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
-@click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
@@ -740,6 +739,7 @@ def __workflow_create(app, **kwargs):
 
   service_config = command.service_config
   workflow_decorators = get_workflow_decorators(kwargs['template'], service_config)
+
   command.build(
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
