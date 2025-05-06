@@ -1,3 +1,5 @@
 #! /bin/bash
 
 # Add custom initialization here
+
+app_path=$1 # Path to application source files

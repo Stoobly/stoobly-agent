@@ -5,7 +5,7 @@ services:
       service: build.init_base
     image: stoobly.${USER_ID}
     profiles:
-      - mock
+      - ${WORKFLOW_NAME}
   build.configure:
     depends_on:
       build.init:
@@ -15,4 +15,4 @@ services:
       service: build.configure_base
     image: stoobly.${USER_ID}
     profiles:
-      - mock
+      - ${WORKFLOW_NAME}
