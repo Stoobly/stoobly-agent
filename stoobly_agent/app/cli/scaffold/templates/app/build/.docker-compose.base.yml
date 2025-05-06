@@ -6,7 +6,7 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
-    working_dir: /home/stoobly/.stoobly/docker/build/${WORKFLOW_NAME}
+    working_dir: /home/stoobly/.stoobly/docker/${SERVICE_NAME}/${WORKFLOW_NAME}
   build.init_base:
     command: 
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
@@ -14,4 +14,6 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
-    working_dir: /home/stoobly/.stoobly/docker/build/${WORKFLOW_NAME}
+    volumes:
+    - ${APP_DIR}:/app
+    working_dir: /home/stoobly/.stoobly/docker/${SERVICE_NAME}/${WORKFLOW_NAME}

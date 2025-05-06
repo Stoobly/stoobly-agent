@@ -6,10 +6,10 @@ scheme=$SERVICE_SCHEME
 hostname=$SERVICE_HOSTNAME
 port=$SERVICE_PORT
 
-url="$scheme://$hostname"
+origin="$scheme://$hostname"
 
 if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
-  url="$url:$port"
+  origin="$origin:$port"
 fi
 
 # Firewall
@@ -18,7 +18,7 @@ stoobly-agent config firewall set \
   --action include \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
   --mode record \
-  --pattern "$url/.*?"
+  --pattern "$origin/?.*?"
 
 # Rewrite
 echo "Configuring rewrite rules..."
@@ -26,6 +26,6 @@ stoobly-agent config rewrite set \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
   --mode record \
   --name cookie \
-  --pattern "$host/?.*?" \
+  --pattern "$origin/?.*?" \
   --type Header \
   --value '' \

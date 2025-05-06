@@ -1,25 +1,19 @@
-networks:
-  entrypoint:
-    name: entrypoint
 services:
   entrypoint.configure:
     depends_on:
       entrypoint.init:
         condition: service_completed_successfully
-    environment: {}
     extends:
       file: ../.docker-compose.base.yml
       service: entrypoint.configure_base
     image: stoobly.${USER_ID}
     profiles:
-      - mock
+      - ${WORKFLOW_NAME}
     volumes: []
   entrypoint.init:
-    environment: {}
     extends:
       file: ../.docker-compose.base.yml
       service: entrypoint.init_base
     image: stoobly.${USER_ID}
     profiles:
-      - mock
-volumes: {}
+      - ${WORKFLOW_NAME}

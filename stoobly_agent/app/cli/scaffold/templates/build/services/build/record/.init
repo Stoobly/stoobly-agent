@@ -8,5 +8,5 @@ stoobly-agent snapshot apply
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then
-  "$entrypoint"
+  "$entrypoint" /app
 fi

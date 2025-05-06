@@ -27,6 +27,7 @@ class ServiceCreateCommand(ServiceCommand):
 
   def build(self):
     service_builder = ServiceBuilder(self.service_config)
+    service_builder.with_env(list(self.env_vars))
     service_decorators = []
 
     for service_decorator in service_decorators:
@@ -36,7 +37,6 @@ class ServiceCreateCommand(ServiceCommand):
 
     workflow_kwargs = {
       'app_dir_path': self.app_dir_path,
-      'env': self.env_vars,
       'namespace': self.namespace, 
       'service_name': self.service_name,
     }

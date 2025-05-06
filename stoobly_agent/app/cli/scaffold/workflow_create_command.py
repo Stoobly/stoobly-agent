@@ -79,11 +79,13 @@ class WorkflowCreateCommand(WorkflowCommand):
 
   def __write_docker_compose_file(self, **kwargs: BuildOptions):
     builder_class = kwargs.get('builder_class') or WorkflowBuilder
-    service_builder = kwargs.get('service_builder') or ServiceBuilder(self.service_config)
+    service_builder = kwargs.get('service_builder') 
+    if not service_builder:
+      service_builder = ServiceBuilder(self.service_config)
+      service_builder.load()
     workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = kwargs.get('workflow_decorators')
 
     workflow_builder = builder_class(self.workflow_path, service_builder)
-    workflow_builder.with_env(list(self.env_vars))
     workflow_builder.build_all()
 
     if isinstance(workflow_decorators, list):
