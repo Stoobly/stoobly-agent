@@ -40,6 +40,36 @@
 {{- $_ := set $config "log_format" $globals.Env.LOG_FORMAT }}
 {{- $_ := set $config "log_format_escape" $globals.Env.LOG_FORMAT_ESCAPE }}
 
+{{- /* Process CUSTOM_ORIGINS environment variable for hostname-specific port configuration */}}
+{{- $custom_port_hosts := dict }}
+{{- if $globals.Env.CUSTOM_ORIGINS }}
+    {{- /* Format is scheme://hostname:port,scheme2://hostname2:port2 */}}
+    {{- /* where scheme is either 'http' or 'https' */}}
+    {{- range $origin := split $globals.Env.CUSTOM_ORIGINS "," }}
+        {{- $origin = trim $origin }}
+        {{- /* Split on :// to get scheme and the rest */}}
+        {{- $scheme_parts := split $origin "://" }}
+        {{- if eq (len $scheme_parts) 2 }}
+            {{- $scheme := index $scheme_parts 0 | trim | lower }}
+            {{- $host_port := index $scheme_parts 1 | trim }}
+            
+            {{- /* Split host:port */}}
+            {{- $host_port_parts := split $host_port ":" }}
+            {{- if eq (len $host_port_parts) 2 }}
+                {{- $hostname := index $host_port_parts 0 | trim }}
+                {{- $port := index $host_port_parts 1 | trim }}
+                
+                {{- /* Validate scheme is either http or https */}}
+                {{- if or (eq $scheme "http") (eq $scheme "https") }}
+                    {{- $host_config := dict "port" $port "scheme" $scheme }}
+                    {{- $_ := set $custom_port_hosts $hostname $host_config }}
+                {{- end }}
+            {{- end }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{- $_ := set $config "custom_port_hosts" $custom_port_hosts }}
+
 {{- $_ := set $globals "config" $config }}
 
 {{- $_ := set $globals "vhosts" (dict) }}
@@ -804,6 +834,17 @@ proxy_set_header Proxy "";
     {{- $default_http_exists := false }}
     {{- $default_https_exists := false }}
     {{- $http3_enabled := false }}
+    {{- $custom_ports := dict }}
+    
+    {{- /* Add all hostname-specific custom ports to the list of ports to listen on */}}
+    {{- range $hostname, $host_config := $globals.config.custom_port_hosts }}
+        {{- $port := get $host_config "port" }}
+        {{- $scheme := get $host_config "scheme" }}
+        {{- if $port }}
+            {{- $_ := set $custom_ports $port (dict "scheme" $scheme) }}
+        {{- end }}
+    {{- end }}
+    
     {{- range $vhost := $globals.vhosts }}
         {{- $http := ne $vhost.https_method "nohttp" }}
         {{- $https := ne $vhost.https_method "nohttps" }}
@@ -813,6 +854,11 @@ proxy_set_header Proxy "";
         {{- $default_https_exists = or $default_https_exists (and $https $vhost.default) }}
         {{- $http3_enabled = or $http3_enabled $vhost.http3_enabled }}
     {{- end }}
+    
+    {{- /* Always include default ports */}}
+    {{- $_ := set $custom_ports $globals.config.external_http_port (dict "scheme" "http") }}
+    {{- $_ := set $custom_ports $globals.config.external_https_port (dict "scheme" "https") }}
+    
     {{- $fallback_http := not $default_http_exists }}
     {{- $fallback_https := not $default_https_exists }}
     {{- /*
@@ -829,27 +875,37 @@ server {
     server_tokens off;
     {{ template "access_log" (dict "Enable" $globals.config.enable_access_log) }}
     http2 on;
-        {{- if $fallback_http }}
-    listen {{ $globals.config.external_http_port }}; {{- /* Do not add `default_server` (see comment above). */}}
+    
+        {{- range $port, $port_config := $custom_ports }}
+            {{- $scheme := get $port_config "scheme" }}
+            
+            {{- if and $fallback_http (eq $scheme "http") }}
+    # HTTP Fallback for port {{ $port }}
+    listen {{ $port }}; {{- /* Do not add `default_server` (see comment above). */}}
                 {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_http_port }}; {{- /* Do not add `default_server` (see comment above). */}}
+    listen [::]:{{ $port }}; {{- /* Do not add `default_server` (see comment above). */}}
                 {{- end }}
-        {{- end }}
-        {{- if $fallback_https }}
-    listen {{ $globals.config.external_https_port }} ssl; {{- /* Do not add `default_server` (see comment above). */}}
-            {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} ssl; {{- /* Do not add `default_server` (see comment above). */}}
             {{- end }}
-            {{- if $http3_enabled }}
+            
+            {{- if and $fallback_https (eq $scheme "https") }}
+    # HTTPS Fallback for port {{ $port }}
+    listen {{ $port }} ssl; {{- /* Do not add `default_server` (see comment above). */}}
+                {{- if $globals.config.enable_ipv6 }}
+    listen [::]:{{ $port }} ssl; {{- /* Do not add `default_server` (see comment above). */}}
+                {{- end }}
+                
+                {{- if $http3_enabled }}
     http3 on;
-    listen {{ $globals.config.external_https_port }} quic reuseport; {{- /* Do not add `default_server` (see comment above). */}}
-                {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} quic reuseport; {{- /* Do not add `default_server` (see comment above). */}}
+    listen {{ $port }} quic reuseport; {{- /* Do not add `default_server` (see comment above). */}}
+                    {{- if $globals.config.enable_ipv6 }}
+    listen [::]:{{ $port }} quic reuseport; {{- /* Do not add `default_server` (see comment above). */}}
+                    {{- end }}
                 {{- end }}
             {{- end }}
+        {{- end }}
+        
     ssl_session_cache shared:SSL:50m;
     ssl_session_tickets off;
-        {{- end }}
         {{- if $globals.config.default_cert_ok }}
     ssl_certificate /etc/nginx/certs/default.crt;
     ssl_certificate_key /etc/nginx/certs/default.key;
@@ -874,22 +930,51 @@ server {
 
 {{- range $hostname, $vhost := $globals.vhosts }}
     {{- $default_server := when $vhost.default "default_server" "" }}
+    {{- /* Check if there's a hostname-specific custom port configuration */}}
+    {{- $custom_host_config := get $globals.config.custom_port_hosts $hostname }}
+    {{- $use_custom_config := false }}
+    {{- $use_http := false }}
+    {{- $use_https := false }}
+    {{- $listen_port := "" }}
+    
+    {{- if $custom_host_config }}
+        {{- $use_custom_config = true }}
+        {{- $listen_port = get $custom_host_config "port" }}
+        {{- $scheme := get $custom_host_config "scheme" }}
+        {{- $use_http = eq $scheme "http" }}
+        {{- $use_https = eq $scheme "https" }}
+    {{- else }}
+        {{- /* Use default behavior if no custom config */}}
+        {{- $http_disabled := eq $vhost.https_method "nohttp" }}
+        {{- $https_disabled := eq $vhost.https_method "nohttps" }}
+        {{- $use_http = not $http_disabled }}
+        {{- $use_https = not $https_disabled }}
+        {{- $listen_port = "" }}
+    {{- end }}
+    
+    {{- /* Set ports based on configuration */}}
+    {{- $http_port := $listen_port }}
+    {{- $https_port := $listen_port }}
+    {{- if not $listen_port }}
+        {{- $http_port = $globals.config.external_http_port }}
+        {{- $https_port = $globals.config.external_https_port }}
+    {{- end }}
 
     {{- range $path, $vpath := $vhost.paths }}
-# {{ $hostname }}{{ $path }}
+# {{ $hostname }}{{ $path }} (Port:{{ $listen_port }}, Scheme:{{ if $use_http }}http{{ else if $use_https }}https{{ else }}both{{ end }})
         {{ template "upstream" (dict "globals" $globals "Path" $path "VPath" $vpath) }}
     {{- end }}
 
-    {{- if (eq $vhost.https_method "redirect") }}
+    {{- if and $use_http (eq $vhost.https_method "redirect") }}
 server {
     server_name {{ $hostname }};
         {{- if $vhost.server_tokens }}
     server_tokens {{ $vhost.server_tokens }};
         {{- end }}
     {{ template "access_log" (dict "Enable" $globals.config.enable_access_log) }}
-    listen {{ $globals.config.external_http_port }} {{ $default_server }};
+    listen {{ $http_port }} {{ $default_server }};
         {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_http_port }} {{ $default_server }};
+    listen [::]:{{ $http_port }} {{ $default_server }};
         {{- end }}
 
         {{- if (or $vhost.acme_http_challenge_legacy $vhost.acme_http_challenge_enabled) }}
@@ -910,8 +995,8 @@ server {
 
     location / {
         {{- $redirect_uri := "https://$host$request_uri" }}
-        {{- if ne $globals.config.external_https_port "443" }}
-            {{- $redirect_uri = printf "https://$host:%s$request_uri" $globals.config.external_https_port }}
+        {{- if ne $https_port "443" }}
+            {{- $redirect_uri = printf "https://$host:%s$request_uri" $https_port }}
         {{- end}}
         if ($request_method ~ (OPTIONS|POST|PUT|PATCH|DELETE)) {
             return {{ $vhost.non_get_redirect }} {{ $redirect_uri }};
@@ -947,10 +1032,10 @@ server {
     {{- if $vhost.http2_enabled }}
     http2 on;
     {{- end }}
-    {{- if or (eq $vhost.https_method "nohttps") (eq $vhost.https_method "noredirect") }}
-    listen {{ $globals.config.external_http_port }} {{ $default_server }};
+    {{- if and $use_http (or (eq $vhost.https_method "nohttps") (eq $vhost.https_method "noredirect")) }}
+    listen {{ $http_port }} {{ $default_server }};
         {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_http_port }} {{ $default_server }};
+    listen [::]:{{ $http_port }} {{ $default_server }};
         {{- end }}
 
         {{- if (and (eq $vhost.https_method "noredirect") $vhost.acme_http_challenge_enabled) }}
@@ -963,18 +1048,18 @@ server {
     }
         {{- end }}
     {{- end }}
-    {{- if ne $vhost.https_method "nohttps" }}
-    listen {{ $globals.config.external_https_port }} ssl {{ $default_server }};
+    {{- if and $use_https (ne $vhost.https_method "nohttps") }}
+    listen {{ $https_port }} ssl {{ $default_server }};
         {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} ssl {{ $default_server }};
+    listen [::]:{{ $https_port }} ssl {{ $default_server }};
         {{- end }}
 
         {{- if $vhost.http3_enabled }}
     http3 on;
-    add_header alt-svc 'h3=":{{ $globals.config.external_https_port }}"; ma=86400;';
-    listen {{ $globals.config.external_https_port }} quic {{ $default_server }};
+    add_header alt-svc 'h3=":{{ $https_port }}"; ma=86400;';
+    listen {{ $https_port }} quic {{ $default_server }};
             {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} quic {{ $default_server }};
+    listen [::]:{{ $https_port }} quic {{ $default_server }};
             {{- end }}
         {{- end }}
 
