@@ -66,6 +66,18 @@
 #              <https://github.com/nginx-proxy/docker-gen/issues/458>.
 {{- end }}
 
+{{- define "parseHost" -}}
+    {{- $vhost_data := get $.globals.vhosts $.hostname | default (dict) }}
+    {{- $paths := $vhost_data.paths | default (dict) }}
+    {{- $config := (index $paths "/") | default (dict) }}
+
+    {{- $_ := set $ "scheme" $config.proto }}
+    {{- range $k, $v := $config.ports }}
+        {{- $_ := set $ "port" $k }}
+        {{- break }}
+    {{- end }}
+{{- end }}
+
 {{- /*
      * Template used as a function to get a container's IP address.  This
      * template only outputs debug comments; the IP address is "returned" by
@@ -947,10 +959,13 @@ server {
     {{- if $vhost.http2_enabled }}
     http2 on;
     {{- end }}
-    {{- if or (eq $vhost.https_method "nohttps") (eq $vhost.https_method "noredirect") }}
-    listen {{ $globals.config.external_http_port }} {{ $default_server }};
+
+    {{- $args := dict "globals" $globals "hostname" $hostname }}
+    {{ template "parseHost" $args }}
+    {{- if eq ($args.scheme) "http" }}
+    listen {{ $args.port }} {{ $default_server }};
         {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_http_port }} {{ $default_server }};
+    listen [::]:{{ $args.port }} {{ $default_server }};
         {{- end }}
 
         {{- if (and (eq $vhost.https_method "noredirect") $vhost.acme_http_challenge_enabled) }}
@@ -963,18 +978,18 @@ server {
     }
         {{- end }}
     {{- end }}
-    {{- if ne $vhost.https_method "nohttps" }}
-    listen {{ $globals.config.external_https_port }} ssl {{ $default_server }};
+    {{- if eq ($args.scheme) "https" }}
+    listen {{ $args.port }} ssl {{ $default_server }};
         {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} ssl {{ $default_server }};
+    listen [::]:{{ $args.port }} ssl {{ $default_server }};
         {{- end }}
 
         {{- if $vhost.http3_enabled }}
     http3 on;
     add_header alt-svc 'h3=":{{ $globals.config.external_https_port }}"; ma=86400;';
-    listen {{ $globals.config.external_https_port }} quic {{ $default_server }};
+    listen {{ $args.port }} quic {{ $default_server }};
             {{- if $globals.config.enable_ipv6 }}
-    listen [::]:{{ $globals.config.external_https_port }} quic {{ $default_server }};
+    listen [::]:{{ $args.port }} quic {{ $default_server }};
             {{- end }}
         {{- end }}
 
