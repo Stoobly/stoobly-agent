@@ -99,8 +99,7 @@ class ServiceBuilder(Builder):
     environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
 
     if self.config.detached:
-      volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
-      volumes.append(f"../..:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+      self.__with_detached_volumes(volumes)
 
     base = {
       'environment': environment,
@@ -124,11 +123,7 @@ class ServiceBuilder(Builder):
       self.__with_url_environment(environment)
 
     if self.config.detached:
-      # Mount named volume
-      volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
-
-      # Mount docker folder
-      volumes.append(f"../..:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+      self.__with_detached_volumes(volumes)
 
     self.with_service(self.init_base, {
       'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'bin/init'],
@@ -149,8 +144,7 @@ class ServiceBuilder(Builder):
       self.__with_url_environment(environment)
 
     if self.config.detached:
-      volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/${DATA_DIR_NAME}")
-      volumes.append(f"../..:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+      self.__with_detached_volumes(volumes)
 
     base = {
       'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'bin/configure'],
@@ -194,6 +188,13 @@ class ServiceBuilder(Builder):
       compose['networks'] = self.networks
 
     super().write(compose)
+
+  def __with_detached_volumes(self, volumes: list):
+    # Mount named volume
+    volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
+
+    # Mount docker folder
+    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
 
   def __with_url_environment(self, environment):
     environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
