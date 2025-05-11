@@ -34,12 +34,11 @@ def configure_gateway(service_paths: List[str], no_publish = False):
     gateway_base = services.get('gateway_base')
 
     if gateway_base:
-      if no_publish:
-        app_dir_path = os.path.dirname(os.path.dirname(service_dir_path))
-        __with_no_publish(gateway_base, app_dir_path)
-      else:
+      if not no_publish:
         gateway_base['ports'] = ports
 
+      app_dir_path = os.path.dirname(os.path.dirname(service_dir_path))
+      __with_no_publish(gateway_base, app_dir_path)
       __with_networks(gateway_base, hostnames) 
 
   with open(docker_compose_dest_path, 'w') as fp:
@@ -61,6 +60,10 @@ def __with_no_publish(config: dict, app_dir_path: str):
   nginx_template_src_path = os.path.join(run_template_path(), GATEWAY_NGINX_TEMPLATE)
   nginx_template_relative_path = os.path.join(DATA_DIR_NAME, TMP_DIR_NAME, GATEWAY_NGINX_TEMPLATE)
   nginx_template_dest_path = os.path.join(app_dir_path, nginx_template_relative_path)
+
+  if not os.path.exists(os.path.dirname(nginx_template_dest_path)):
+    os.makedirs(os.path.dirname(nginx_template_dest_path), exist_ok=True)
+
   shutil.copy(nginx_template_src_path, nginx_template_dest_path)
 
   config['volumes'].append(
@@ -89,7 +92,7 @@ def __find_hosts(service_paths):
     except Exception:
       continue
     
-    port_mapping = f"{port}:{443 if config.scheme == 'https' else 80}"
+    port_mapping = f"{port}:{port}"
     if port > 0 and port <= 65535 and port_mapping not in ports:
       ports.append(port_mapping)
 
