@@ -9,6 +9,7 @@ DATA_DIR_NAME = '.stoobly'
 DB_FILE_NAME = 'stoobly_agent.sqlite3'
 DB_VERSION_NAME = 'VERSION'
 MITMPROXY_OPTIONS_FILE_NAME = 'options.json'
+TMP_DIR_NAME = 'tmp'
 
 class DataDir:
 
@@ -56,7 +57,7 @@ class DataDir:
     @property
     def path(self):
         if not self.__path and os.environ.get(ENV) == 'test':
-            test_path = os.path.join(self.__data_dir_path, 'tmp', DATA_DIR_NAME)
+            test_path = os.path.join(self.__data_dir_path, TMP_DIR_NAME, DATA_DIR_NAME)
 
             if not os.path.exists(test_path):
                 os.makedirs(test_path, exist_ok=True)
@@ -67,7 +68,7 @@ class DataDir:
 
     @property
     def tmp_dir_path(self):
-        tmp_dir_path = os.path.join(self.path, 'tmp')
+        tmp_dir_path = os.path.join(self.path, TMP_DIR_NAME)
 
         if not os.path.exists(tmp_dir_path):
             os.mkdir(tmp_dir_path)
@@ -196,7 +197,7 @@ class DataDir:
             # Create the certs_dir_path if it doesn't exist
             self.certs_dir_path
             # Create tmp folder
-            os.makedirs(os.path.join(self.__data_dir_path, 'tmp'), exist_ok=True)
+            os.makedirs(os.path.join(self.__data_dir_path, TMP_DIR_NAME), exist_ok=True)
 
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
@@ -207,7 +208,7 @@ class DataDir:
                         'settings.yml',
                         os.path.join('snapshots', 'log'),
                         os.path.join('snapshots', 'VERSION'),
-                        'tmp'
+                        TMP_DIR_NAME
                     ])
                 )
 

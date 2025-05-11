@@ -2,7 +2,7 @@ services:
   gateway_base:
     environment:
       TRUST_DOWNSTREAM_PROXY: true
-    image: nginxproxy/nginx-proxy:1.5
+    image: nginxproxy/nginx-proxy:1.7
     profiles:
       - gateway_base
     volumes:

@@ -10,6 +10,7 @@ DOCKER_COMPOSE_CUSTOM = 'docker-compose.yml'
 DOCKER_COMPOSE_NETWORKS = '.docker-compose.networks.yml'
 DOCKERFILE_CONTEXT = '.Dockerfile.context'
 DOCKERFILE_SERVICE = 'Dockerfile.source'
+GATEWAY_NGINX_TEMPLATE = 'nginx.tmpl'
 
 # TODO: add scaffold container name templates here
 
