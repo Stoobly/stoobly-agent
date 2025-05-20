@@ -13,9 +13,6 @@ from docker.models.containers import Container
 from stoobly_agent.app.cli.scaffold.constants import (
   PUBLIC_FOLDER_NAME,
   STOOBLY_DATA_DIR,
-  VIRTUAL_HOST_ENV,
-  VIRTUAL_PORT_ENV,
-  VIRTUAL_PROTO_ENV,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -172,30 +169,6 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if Counter(public_folder_contents_container) != Counter(public_folder_contents_scaffold):
       raise ScaffoldValidateException(f"public folder was not mounted properly, expected {self.public_dir_path} to exist in container path {public_folder_path}")
 
-  # Note: might not need this if the hostname is reachable and working
-  def proxy_environment_variables_exist(self, container: Container) -> None:
-    environment_variables = container.attrs['Config']['Env']
-    virtual_host_exists = False
-    virtual_port_exists = False
-    virtual_proto_exists = False
-
-    for environment_variable in environment_variables:
-      environment_variable_name, environment_variable_value = environment_variable.split('=')
-      if environment_variable_name == VIRTUAL_HOST_ENV:
-        virtual_host_exists = True
-      elif environment_variable_name == VIRTUAL_PORT_ENV:
-        virtual_port_exists = True
-      elif environment_variable_name == VIRTUAL_PROTO_ENV:
-        virtual_proto_exists = True
-
-    if not virtual_host_exists:
-      raise ScaffoldValidateException(f"VIRTUAL_HOST environment variable is missing from container: {container.name}")
-    if not virtual_port_exists:
-      raise ScaffoldValidateException(f"VIRTUAL_POST environment variable is missing from container: {container.name}")
-    if not virtual_proto_exists:
-      raise ScaffoldValidateException(f"VIRTUAL_PROTO environment variable is missing from container: {container.name}")
-
-  
   def validate_proxy_container(self, service_proxy_container: Container):
     print(f"Validating proxy container: {service_proxy_container.name}")
 
@@ -208,8 +181,6 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     if not self.service_config.detached:
       self.validate_public_folder(service_proxy_container)
-
-    self.proxy_environment_variables_exist(service_proxy_container)
 
   def validate_service_container(self):
     pass
