@@ -91,15 +91,20 @@ class ServiceBuilder(Builder):
     if not self.config.hostname:
       return
 
+    service_id = self.config.id
     environment = { **self.env_dict() }
+    labels = [
+      'traefik.enable=true',
+      f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)",
+      f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}"
+    ]
     volumes = []
-
-    environment['VIRTUAL_HOST'] = SERVICE_HOSTNAME
-    environment['VIRTUAL_PORT'] = SERVICE_PORT
-    environment['VIRTUAL_PROTO'] = SERVICE_SCHEME
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
+
+    if self.config.tls:
+      labels.append(f"traefik.http.routers.{service_id}.tls=true")
 
     base = {
       'environment': environment,
@@ -107,6 +112,7 @@ class ServiceBuilder(Builder):
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.extends_service
       },
+      'labels': labels,
       'working_dir': self.__working_dir,
     }
 

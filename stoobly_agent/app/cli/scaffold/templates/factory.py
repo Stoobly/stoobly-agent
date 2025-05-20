@@ -1,7 +1,9 @@
+import pdb
+
 from ..constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from ..docker.workflow.builder import WorkflowBuilder
 from .constants import (
-  CUSTOM_CONFIGURE, CUSTOM_INIT, MAINTAINED_CONFIGURE, MAINTAINED_PUBLIC, MOCK_WORKFLOW_CUSTOM_FILES, MOCK_WORKFLOW_MAINTAINED_FILES, RECORD_WORKFLOW_CUSTOM_FILES, RECORD_WORKFLOW_MAINTAINED_FILES, TEST_WORKFLOW_CUSTOM_FILES, TEST_WORKFLOW_MAINTAINED_FILES
+  CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_PUBLIC_GITIGNORE, MAINTAINED_CONFIGURE, MOCK_WORKFLOW_CUSTOM_FILES, MOCK_WORKFLOW_MAINTAINED_FILES, RECORD_WORKFLOW_CUSTOM_FILES, RECORD_WORKFLOW_MAINTAINED_FILES, TEST_WORKFLOW_CUSTOM_FILES, TEST_WORKFLOW_MAINTAINED_FILES
 )
 
 def custom_files(workflow: str, workflow_builder: WorkflowBuilder):
@@ -21,8 +23,8 @@ def custom_files(workflow: str, workflow_builder: WorkflowBuilder):
 
   # Fixtures are only relevant if the workflow is mock/test and if the service has a hostname
   if not workflow_builder.config.hostname:
-    if MAINTAINED_PUBLIC in files:
-      files.remove(MAINTAINED_PUBLIC)
+    if CUSTOM_PUBLIC_GITIGNORE in files:
+      files.remove(CUSTOM_PUBLIC_GITIGNORE)
 
   return files
 
@@ -38,9 +40,5 @@ def maintained_files(workflow: str, workflow_builder: WorkflowBuilder):
   else:
     if workflow_builder.configure in workflow_builder.services:
       files.append(MAINTAINED_CONFIGURE)
-
-  if not workflow_builder.config.hostname:
-    if MAINTAINED_PUBLIC in files:
-      files.remove(MAINTAINED_PUBLIC)
 
   return files

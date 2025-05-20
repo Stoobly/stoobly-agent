@@ -1,6 +1,7 @@
 import click
 import os
 import pdb
+import re
 import sys
 
 from io import TextIOWrapper
@@ -141,6 +142,16 @@ def mkcert(**kwargs):
 @click.argument('service_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
+
+  if '/' in kwargs['service_name']:
+    print(f"Error: {kwargs['service_name']} is invalid. It cannot container '/", file=sys.stderr)
+    sys.exit(1)
+
+  if kwargs.get('hostname'):
+    hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
+    if not re.search(hostname_regex, kwargs['hostname']):
+      print(f"Error: {kwargs['hostname']} is invalid.", file=sys.stderr)
+      sys.exit(1)
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
