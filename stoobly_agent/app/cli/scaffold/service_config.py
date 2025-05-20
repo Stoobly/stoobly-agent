@@ -1,4 +1,5 @@
 # Wraps the .config.yml file in the service folder
+import hashlib
 import os
 import pdb
 
@@ -54,7 +55,7 @@ class ServiceConfig(Config):
 
   @property
   def id(self):
-    return hashlib.md5(os.path.basename(self.dir)).hexdigest()
+    return hashlib.md5(os.path.basename(self.dir).encode()).hexdigest()
 
   @property
   def hostname(self):
