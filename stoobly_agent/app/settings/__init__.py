@@ -178,14 +178,18 @@ class Settings:
 
     def write(self, contents):
         if contents:
-            fp = open(self.__settings_file_path, 'w')
-            yaml.dump(contents, fp, allow_unicode=True)
-            fp.close()
+            with open(self.__settings_file_path, 'w') as fp:
+                yaml.dump(contents, fp, allow_unicode=True)
 
     ### Helpers
 
     def __create_default_file(self):
-        copyfile(SourceDir.instance().settings_template_file_path, self.__settings_file_path)
+        contents = ''
+        with open(SourceDir.instance().settings_template_file_path, 'r') as fp:
+            contents = fp.read()
+
+        with open(self.__settings_file_path, 'w') as fp:
+            fp.write(contents)
 
     def __detect_paths(self):
         self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or self.__data_dir.settings_file_path
