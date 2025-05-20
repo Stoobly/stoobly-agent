@@ -81,8 +81,7 @@ def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
     if not config.hostname:
       continue
 
-    service_name = os.path.basename(path)
-    entry_points[service_name] = {
+    entry_points[config.port] = {
       'address': f":{config.port}"
     }
 
