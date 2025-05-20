@@ -1,6 +1,7 @@
 import click
 import os
 import pdb
+import re
 import sys
 
 from io import TextIOWrapper
@@ -141,6 +142,11 @@ def mkcert(**kwargs):
 @click.argument('service_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
+
+  valid_name_pattern = re.compile(r'^[a-zA-Z0-9_-]+$')
+  if not bool(valid_name_pattern.fullmatch(kwargs['service_name'])):
+    print(f"Error: {kwargs['service_name']} is invalid. It must match [a-zA-Z0-9_-]+", file=sys.stderr)
+    sys.exit(1)
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 

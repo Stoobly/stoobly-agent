@@ -1,6 +1,5 @@
 import os
 import pdb
-import shutil
 import yaml
 
 from typing import List
@@ -8,9 +7,8 @@ from typing import List
 from stoobly_agent.config.data_dir import DATA_DIR_NAME, TMP_DIR_NAME
 from stoobly_agent.app.cli.scaffold.constants import APP_DIR
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
-from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE, GATEWAY_NGINX_TEMPLATE
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
-from stoobly_agent.app.cli.scaffold.templates import run_template_path
 
 def configure_gateway(service_paths: List[str], no_publish = False):
   if len(service_paths) == 0:
@@ -38,7 +36,7 @@ def configure_gateway(service_paths: List[str], no_publish = False):
         gateway_base['ports'] = ports
 
       app_dir_path = os.path.dirname(os.path.dirname(service_dir_path))
-      __with_no_publish(gateway_base, app_dir_path)
+      __with_traefik_config(service_paths, gateway_base, app_dir_path)
       __with_networks(gateway_base, hostnames) 
 
   with open(docker_compose_dest_path, 'w') as fp:
@@ -52,31 +50,61 @@ def __with_networks(config: dict, hostnames: List[str]):
     'aliases': hostnames
   }
 
-def __with_no_publish(config: dict, app_dir_path: str):
-  if not config['volumes']:
-    config['volumes'] = []
+def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
+  if not compose['volumes']:
+    compose['volumes'] = []
 
-  # Copy nginx.tmpl to .stoobly/tmp
-  nginx_template_src_path = os.path.join(run_template_path(), GATEWAY_NGINX_TEMPLATE)
-  nginx_template_relative_path = os.path.join(DATA_DIR_NAME, TMP_DIR_NAME, GATEWAY_NGINX_TEMPLATE)
-  nginx_template_dest_path = os.path.join(app_dir_path, nginx_template_relative_path)
+  entry_points = {}
+  certificates = []
+  traefik_config = {
+    'accessLog': {
+      'format': 'common',
+    },
+    'entryPoints': entry_points,
+    'log': {
+      'format': 'common',
+      'level': 'INFO',
+    },
+    'providers': {
+      'docker': {
+        'exposedByDefault': False
+      }
+    },
+    'tls': {
+      'certificates': certificates
+    }
+  }
 
-  if not os.path.exists(os.path.dirname(nginx_template_dest_path)):
-    os.makedirs(os.path.dirname(nginx_template_dest_path), exist_ok=True)
+  for path in service_paths:
+    config = ServiceConfig(path)
 
-  shutil.copy(nginx_template_src_path, nginx_template_dest_path)
+    if not config.hostname:
+      continue
 
-  config['volumes'].append(
-    f"{os.path.join(APP_DIR, nginx_template_relative_path)}:/app/nginx.tmpl:ro"
+    service_name = os.path.basename(path)
+    entry_points[service_name] = {
+      'address': f":{config.port}"
+    }
+
+    if config.scheme == 'https':
+      certificates.append({
+        'certFile': f"/certs/{config.hostname}.crt",
+        'keyFile': f"/certs/{config.hostname}.key"
+      })
+
+  # Create traefik.yml in .stoobly/tmp
+  traefik_template_relative_path = os.path.join(DATA_DIR_NAME, TMP_DIR_NAME, 'traefik.yml')
+  traefik_template_dest_path = os.path.join(app_dir_path, traefik_template_relative_path)
+
+  if not os.path.exists(os.path.dirname(traefik_template_dest_path)):
+    os.makedirs(os.path.dirname(traefik_template_dest_path), exist_ok=True)
+
+  with open(traefik_template_dest_path, 'w') as fp:
+    fp.write(yaml.dump(traefik_config))
+
+  compose['volumes'].append(
+    f"{os.path.join(APP_DIR, traefik_template_relative_path)}:/etc/traefik/traefik.yml:ro"
   )
-
-  environment = {}
-  if not config['environment']:
-    config['environment'] = environment
-  else:
-    environment = config['environment']
-
-  environment['HTTPS_METHOD'] = 'noredirect'
 
 def __find_hosts(service_paths):
   hostnames = []
