@@ -1,4 +1,5 @@
 # Wraps the .config.yml file in the service folder
+import os
 import pdb
 
 from .config import Config
@@ -50,6 +51,10 @@ class ServiceConfig(Config):
   @detached.setter
   def detached(self, v):
     self.__detached = v
+
+  @property
+  def id(self):
+    return hashlib.md5(os.path.basename(self.dir)).hexdigest()
 
   @property
   def hostname(self):
@@ -119,6 +124,10 @@ class ServiceConfig(Config):
   @scheme.setter
   def scheme(self, v):
     self.__scheme = v
+
+  @property
+  def tls(self) -> bool:
+    return self.__scheme == 'https'
 
   def load(self, config = None):
     config = config or self.read()
