@@ -5,6 +5,8 @@ import signal
 
 from mitmproxy.net import tls
 
+from stoobly_agent.app.cli.scaffold.constants import SERVICE_NAME_ENV
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_MOCK_UI_SERVICE_NAME
 from stoobly_agent.config.mitmproxy import MitmproxyConfig
 
 # Monkey patch for OpenSSL unsafe legacy renegotiation disabled
@@ -85,16 +87,29 @@ def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
     config.set(tuple(options))
 
 def __commit_options(options: dict):
+    changed = False
+    service_name = os.environ.get(SERVICE_NAME_ENV)
     settings = Settings.instance()
 
-    settings.proxy.intercept.active = not not options.get('intercept')
+    if not service_name or options.get('intercept'):
+        # In the case when service name is set,
+        # only update if intercept is explicitly enabled
+        intercept = not not options.get('intercept')
+        changed = settings.proxy.intercept.active != intercept
+        settings.proxy.intercept.active = intercept
 
-    if options.get('proxy_host') and options.get('proxy_port'):
-        settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
+    if not service_name or service_name == CORE_MOCK_UI_SERVICE_NAME:
+        # Causes potentially unintended side effects when run as part of scaffold
+        # Defer to ui service for configuration in this case
+        if options.get('proxy_host') and options.get('proxy_port'):
+            settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
 
-    settings.ui.active = not options.get('headless')
+        settings.ui.active = not options.get('headless')
 
-    settings.commit()
+        changed = True
+
+    if changed:
+        settings.commit()
 
 def __filter_options(options):
     ''' 

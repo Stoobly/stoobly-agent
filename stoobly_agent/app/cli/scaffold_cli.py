@@ -129,7 +129,7 @@ def mkcert(**kwargs):
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
 @click.option('--hostname', help='Service hostname.')
-@click.option('--port', help='Service port.')
+@click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
