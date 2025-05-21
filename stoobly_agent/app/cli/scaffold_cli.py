@@ -212,7 +212,10 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--priority', help='Determines the service run order.')
+@click.option('--hostname', help='Service hostname.')
+@click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
+@click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
+@click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -224,8 +227,17 @@ def update(**kwargs):
 
   service_config = ServiceConfig(service.dir_path)
 
+  if kwargs['hostname']:
+    service_config.hostname = kwargs['hostname']
+
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
+
+  if kwargs['port']:
+    service_config.port = kwargs['port']
+
+  if kwargs['scheme']:
+    service_config.scheme = kwargs['scheme']
 
   service_config.write()
 
