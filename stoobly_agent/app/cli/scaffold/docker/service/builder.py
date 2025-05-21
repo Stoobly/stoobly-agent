@@ -96,6 +96,7 @@ class ServiceBuilder(Builder):
     labels = [
       'traefik.enable=true',
       f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)",
+      f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}",
       f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}"
     ]
     volumes = []
