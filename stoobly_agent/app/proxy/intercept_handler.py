@@ -29,11 +29,12 @@ def request(flow: MitmproxyHTTPFlow):
     __patch_cookie(request)
 
     intercept_settings = InterceptSettings(Settings.instance(), request)
-
     if not intercept_settings.active:
         return
 
     __disable_web_cache(request)
+    __disable_content_encoding(request)
+
     __intercept_hook(lifecycle_hooks.BEFORE_REQUEST, flow, intercept_settings)
 
     active_mode = intercept_settings.mode
@@ -86,9 +87,12 @@ def response(flow: MitmproxyHTTPFlow):
 ### PRIVATE
 
 # Prevent 304 status
-# Because this header will get recorded, should add during mocking as well in the case where headers are used for matching
 def __disable_web_cache(request: MitmproxyRequest) -> None:
     request.headers['Cache-Control'] = 'no-cache, no-store'
+
+# Disable response body returning as encoded e.g. gzip
+def __disable_content_encoding(request: MitmproxyRequest) -> None:
+    request.headers['Accept-Encoding'] = 'identity'
 
 # Fix issue where multi-value cookies become comma separated
 def __patch_cookie(request: MitmproxyRequest):
