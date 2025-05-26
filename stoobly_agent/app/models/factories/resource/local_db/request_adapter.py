@@ -193,12 +193,31 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         }):
           return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
     else:
-      if params.get('method'):
-        transformer.with_method(params['method'])
-
       if params.get('url'):
         transformer.with_url(params['url'])
         del params['url']
+
+      try:
+        if params.get('method'):
+          transformer.with_method(params['method'])
+
+        if params.get('scheme'):
+          transformer.with_scheme(params['scheme'])
+          # Do not delete scheme
+
+        if params.get('host'):
+          transformer.with_host(params['host'])
+          # Do not delete host
+
+        if params.get('port'):
+          transformer.with_port(params['port'])
+          # Do not delete port
+
+        if params.get('path'):
+          transformer.with_path(params['path'])
+          # Do not delete path
+      except ValueError as e:
+        return self.bad_request(str(e))
 
       if params.get('headers'):
         transformer.with_headers(params['headers'])
