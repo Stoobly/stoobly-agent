@@ -4,6 +4,7 @@ import pdb
 import time
 import tempfile
 
+from copy import deepcopy
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
 
@@ -50,7 +51,8 @@ def upload_request(
 ):
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
-    joined_request = join_rewritten_request(flow, intercept_settings)
+    flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
+    joined_request = join_rewritten_request(flow_copy, intercept_settings)
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
