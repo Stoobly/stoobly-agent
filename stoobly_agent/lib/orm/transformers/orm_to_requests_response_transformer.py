@@ -44,7 +44,7 @@ class ORMToRequestsResponseTransformer():
     self.__with_response_id = True
     return self
 
-  def with_body(self, body: str):
+  def with_body(self, body: bytes):
     self.__body = body
     self.__dirty = True
 

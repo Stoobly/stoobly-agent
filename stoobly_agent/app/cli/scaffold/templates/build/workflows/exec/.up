@@ -1,0 +1,12 @@
+#!/bin/bash
+
+extra_options=$EXEC_OPTIONS
+
+stoobly-agent scaffold workflow up \
+  --app-dir-path "$(pwd)" \
+  --containerized \
+  --dry-run \
+  --log-level warning \
+  --mkcert \
+  --without-base \
+  $extra_options $1 > /dev/null

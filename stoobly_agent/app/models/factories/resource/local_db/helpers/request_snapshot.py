@@ -35,6 +35,16 @@ class RequestSnapshot(Snapshot):
       return fp.read()
 
   @property
+  def python_request(self):
+    from stoobly_agent.app.models.adapters.raw_joined.request.python_adapter import PythonRequestAdapter
+    return PythonRequestAdapter(self.request).adapt()
+
+  @property
+  def python_response(self):
+    from stoobly_agent.app.models.adapters.raw_joined.response.python_adapter import PythonResponseAdapter
+    return PythonResponseAdapter(self.request).adapt()
+
+  @property
   def path(self):
     dir_path = os.path.join(self.__requests_dir_path, self.uuid[0:2])
 

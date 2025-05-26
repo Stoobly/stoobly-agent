@@ -1,10 +1,10 @@
 services:
   gateway_base:
-    environment:
-      TRUST_DOWNSTREAM_PROXY: true
-    image: nginxproxy/nginx-proxy:1.5
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    image: traefik:v3
     profiles:
       - gateway_base
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ${CERTS_DIR}:/etc/nginx/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${CERTS_DIR}:/certs:ro

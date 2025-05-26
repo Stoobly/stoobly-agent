@@ -11,7 +11,7 @@ from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
-from stoobly_agent.config.constants import env_vars, mitmproxy, mode
+from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -79,6 +79,7 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
+@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -87,7 +88,6 @@ def init(**kwargs):
   Passphrase for decrypting the private key provided in the --cert option. Note that passing cert_passphrase on the command line makes your passphrase visible in your system's process list. Specify it in
   config.yaml to avoid this.
 ''')
-@click.option('--confdir', default=mitmproxy.DEFAULT_CONF_DIR_PATH, help='Location of the default mitmproxy configuration files.')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
 @click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
@@ -159,6 +159,7 @@ def run(**kwargs):
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
@@ -169,16 +170,7 @@ def mock(**kwargs):
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
 
-  if kwargs.get('scenario_key'):
-    validate_scenario_key(kwargs['scenario_key'])
-
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.MOCK,
-  })
+  response = __replay(mode.MOCK, **kwargs)
 
   if response.status_code == custom_response_codes.NOT_FOUND:
     content = response.content
@@ -186,10 +178,15 @@ def mock(**kwargs):
     sys.exit(1)
 
   if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
+    print_raw_response(response, kwargs['output'])
   else:
     content = response.content
-    print(decode(content), end='')
+
+    if not kwargs['output']:
+      print(decode(content), end='')
+    else:
+      with open(kwargs['output'], 'w') as fp:
+        fp.write(decode(content)) 
 
 @main.command(
   help="Record request"
@@ -197,30 +194,28 @@ def mock(**kwargs):
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
-  if kwargs.get('scenario_key'):
-    validate_scenario_key(kwargs['scenario_key'])
-
-  request = __build_request_from_curl(**kwargs)
-
-  context = ReplayContext.from_python_request(request)
-  response: requests.Response = replay_request(context, {
-    **kwargs,
-    'mode': mode.RECORD,
-  })
+  response = __replay(mode.RECORD, **kwargs) 
 
   if kwargs['format'] == RAW_FORMAT:
-    print_raw_response(response)
+    print_raw_response(response, kwargs['output'])
   else:
-    try:
-      content = response.raw.data
-      print(content.decode(json.detect_encoding(content)), end='')
-    except UnicodeDecodeError:
-      print('Warning: Binary output can mess up your terminal.')
+    content: bytes = response.raw.data
+
+    if not kwargs['output']:
+      try:
+        print(content.decode(json.detect_encoding(content)), end='')
+      except UnicodeDecodeError:
+        print('Warning: Binary output can mess up your terminal.')
+    else:
+      with open(kwargs['output'], 'w') as fp:
+        fp.write(content.decode(json.detect_encoding(content))) 
 
 def __build_request_from_curl(**kwargs):
   headers = {}
@@ -238,3 +233,15 @@ def __build_request_from_curl(**kwargs):
     method=kwargs['request'],
     url=kwargs['url']
   )
+
+def __replay(mode, **kwargs):
+  if kwargs.get('scenario_key'):
+    validate_scenario_key(kwargs['scenario_key'])
+
+  request = __build_request_from_curl(**kwargs)
+
+  context = ReplayContext.from_python_request(request)
+  return replay_request(context, {
+    **kwargs,
+    'mode': mode,
+  })

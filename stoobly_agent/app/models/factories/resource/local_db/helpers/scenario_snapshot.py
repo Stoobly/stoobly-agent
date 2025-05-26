@@ -47,6 +47,13 @@ class ScenarioSnapshot(Snapshot):
     return os.path.join(self.__scenarios_dir_path, self.uuid)
 
   @property
+  def request_snapshots(self):
+    snapshots = []
+    handler = lambda request_snapshot: snapshots.append(request_snapshot)
+    self.iter_request_snapshots(handler)
+    return snapshots
+
+  @property
   def requests(self):
     requests_file_path = self.requests_path
 

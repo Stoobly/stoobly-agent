@@ -26,6 +26,7 @@ class MockDecorator():
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', SERVICE_PROXY_MODE,
       '--proxy-port', f"{SERVICE_PORT}",
+      '--public-directory-path', 'public',
       '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure'
     ]
@@ -40,5 +41,5 @@ class MockDecorator():
 
     services[proxy_name] = { 
       **proxy_service,
-      **{ 'command': command, 'hostname': f"{SERVICE_HOSTNAME}" },
+      **{ 'command': command },
     }

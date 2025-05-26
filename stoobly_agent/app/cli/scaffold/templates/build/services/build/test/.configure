@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# This file was automatically generated. DO NOT EDIT.
+# Any changes made to this file will be overwritten.
+
+echo "Configuring intercept..."
+stoobly-agent intercept configure --mode mock --policy all
+
+echo "Enabling intercept..."
+stoobly-agent intercept enable
+
+entrypoint=$1
+
+if [ -e "$entrypoint" ]; then
+  "$entrypoint"
+fi

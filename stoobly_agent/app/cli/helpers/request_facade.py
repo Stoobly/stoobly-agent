@@ -53,10 +53,14 @@ class RequestFacade(ReplayFacade):
   def replay(self, request_key: str, cli_options: ReplayCliOptions):
     replay_context = self.__build_replay_context(request_key)
     replay_options = {
-      'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
+      'mode': mode.REPLAY,
       **self.__common_replay_options(request_key),
       **self.common_replay_cli_options(cli_options)
     }
+
+    if cli_options.get('record'):
+      replay_options['response_mode'] = mode.RECORD
+
     trace_context = replay_options.get('trace_context')
 
     return self.__replay(replay_context, trace_context, replay_options)

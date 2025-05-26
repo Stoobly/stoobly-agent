@@ -83,6 +83,13 @@ class Log():
     return self.remove_processed_events(events, version_uuids)
 
   @property
+  def resource_events(self) -> List[LogEvent]:
+    events = self.target_events
+    events = self.remove_dangling_events(events, events)
+
+    return list(filter(lambda e: e.action != DELETE_ACTION, events))
+
+  @property
   def version(self):
     version_file_path = DataDir.instance().snapshosts_version_path
     version = ''

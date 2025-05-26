@@ -47,18 +47,28 @@ class LocalDBResponseAdapter(LocalDBAdapter):
 
     request_params = {}
 
-    if params.get('headers'):
-      transformer.with_headers(params['headers'])
-      request_params['response_headers_hash'] = RequestHasher.instance().hash_params(params['headers'])
-
     if params.get('status'):
       transformer.with_status(params['status'])
 
+    headers = params.get('headers') or {}
+    if params.get('headers'):
+      transformer.with_headers(headers)
+      request_params['response_headers_hash'] = RequestHasher.instance().hash_params(headers)
+ 
+    # If text not set and content-encoding changed 
+    current_python_response = ORMToRequestsResponseTransformer(response).transform()
+    if not params.get('text'):
+      if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
+        params['text'] = current_python_response.content
+
     if params.get('text'):
-      encoded_text = params['text'].encode()
+      text: str = params['text'] # This will be given in decoded format
+      content_encoding = self.content_encoding_header(headers, current_python_response.headers)
+      encoded_text = self.encode_body(text, content_encoding)
+
       transformer.with_body(encoded_text)
       request_params['response_hash'] = RequestHasher.instance().hash_text(encoded_text)
-
+      
     if params.get('latency'):
       control = response.control
       control = ResponseStringControl(control)
@@ -75,7 +85,6 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       }
 
     if response.update(params):
-
       if len(request_params.keys()) != 0:
         request = self.__request_orm.find(response.request_id)
 
@@ -88,11 +97,12 @@ class LocalDBResponseAdapter(LocalDBAdapter):
 
   def __to_show_response(self, response: Response):
     python_response = ORMToRequestsResponseTransformer(response).transform()
+    headers = python_response.headers
     content = python_response.content
 
     return {
       'id': response.id,
-      'mime_type': python_response.headers.get('content-type'),
+      'mime_type': headers.get('content-type'),
       'text': decode(content),
     }
 

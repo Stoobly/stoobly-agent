@@ -20,6 +20,7 @@ from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.print_service import FORMATS, print_snapshots, select_print_options
 from .helpers.verify_raw_request_service import verify_raw_request
+from .types.snapshot_migration import SnapshotMigration
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -90,6 +91,49 @@ def _list(**kwargs):
 
     if len(formatted_events):
       print_snapshots(formatted_events, **print_options)
+
+@snapshot.command(
+  help="Migrate snapshots."
+)
+@click.option('--scenario-key', multiple=True, help='Apply migration to specific scenarios.')
+@click.argument('lifecycle_hooks_path')
+def migrate(**kwargs):
+  from runpy import run_path
+  from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
+
+  try:
+    lifecycle_hooks = run_path(kwargs['lifecycle_hooks_path'])
+  except Exception as e:
+    lifecycle_hooks = {}
+
+  before_migrate_hook = None
+  if BEFORE_MIGRATE not in lifecycle_hooks:
+    sys.exit(1)
+  else:
+    before_migrate_hook = lifecycle_hooks[BEFORE_MIGRATE]
+
+  log = Log()
+
+  snapshot_migrations = {}
+  for event in log.resource_events:
+    if event.is_scenario():
+      scenario_snapshot: ScenarioSnapshot = event.snapshot()
+      request_snapshots = scenario_snapshot.request_snapshots
+      for request_snapshot in request_snapshots:
+        snapshot_migration = SnapshotMigration(request_snapshot)
+
+        if request_snapshot.uuid not in snapshot_migrations:
+          snapshot_migrations[request_snapshot.uuid] = snapshot_migration
+
+          if before_migrate_hook(snapshot_migration):
+            pass
+    elif event.is_request():
+      request_snapshot: RequestSnapshot = event.snapshot()
+      if request_snapshot.uuid not in snapshot_migrations:
+        snapshot_migrations[request_snapshot.uuid] = snapshot_migration
+
+        if before_migrate_hook(snapshot_migration):
+          pass
 
 @snapshot.command(
   help="Prune deleted snapshots."

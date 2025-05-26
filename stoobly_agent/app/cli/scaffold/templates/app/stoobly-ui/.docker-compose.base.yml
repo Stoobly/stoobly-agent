@@ -1,5 +1,8 @@
 services:
   stoobly_ui.base:
+    environment:
+      SERVICE_NAME: ${SERVICE_NAME}
+      WORKFLOW_NAME: ${WORKFLOW_NAME}
     extends:
       file: ../.docker-compose.base.yml
-      service: ui_base 
+      service: context_base 

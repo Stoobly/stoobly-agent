@@ -121,10 +121,10 @@ class TestScaffoldE2e():
       # Validate docker-compose path exists
       destination_path = Path(local_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
-      # Add user defined Docker Compose file for the local service
+      # Add user defined Docker Compose file for the custom container service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
 
-      # Record workflow doesn't have a fixtures folder
+      # Record workflow doesn't have a public folder
 
       # Generate certs
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
@@ -137,7 +137,7 @@ class TestScaffoldE2e():
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
       shutil.rmtree(app_dir_path)
 
-    def test_core_components(self, app_dir_path, target_workflow_name):
+    def test_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
@@ -249,7 +249,7 @@ class TestScaffoldE2e():
         'service_name': external_service_docker_compose.service_name 
       }
       command = ServiceWorkflowValidateCommand(app, **config)
-      with open(f"{command.fixtures_dir_path}/shared_file.txt", 'w') as file:
+      with open(f"{command.public_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
 
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name=target_workflow_name)
@@ -260,7 +260,7 @@ class TestScaffoldE2e():
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
       shutil.rmtree(app_dir_path)
 
-    def test_no_core_components(self, app_dir_path, target_workflow_name):
+    def test_no_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
@@ -292,7 +292,6 @@ class TestScaffoldE2e():
       pass
 
     def test_assets(self, app_dir_path, target_workflow_name):
-
       app = App(app_dir_path, DOCKER_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
@@ -301,4 +300,3 @@ class TestScaffoldE2e():
 
       command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
-

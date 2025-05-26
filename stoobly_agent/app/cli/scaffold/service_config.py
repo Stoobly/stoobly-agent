@@ -1,4 +1,6 @@
 # Wraps the .config.yml file in the service folder
+import hashlib
+import os
 import pdb
 
 from .config import Config
@@ -52,6 +54,10 @@ class ServiceConfig(Config):
     self.__detached = v
 
   @property
+  def id(self):
+    return hashlib.md5(os.path.basename(self.dir).encode()).hexdigest()
+
+  @property
   def hostname(self):
     return (self.__hostname or '').strip()
 
@@ -60,18 +66,23 @@ class ServiceConfig(Config):
     self.__hostname = v
 
   @property
-  def port(self):
+  def port(self) -> int:
     if not self.__port:
       if self.scheme == 'https':
-        return '443' 
+        return 443
       elif self.scheme == 'http':
-        return '80'
+        return 80
 
     return self.__port
 
   @port.setter
-  def port(self, v):
-    self.__port = v
+  def port(self, v: int):
+    if v == None:
+      self.__port = v
+    else:
+      v = int(v)
+      if v > 0 and v <= 65535:
+        self.__port = v
 
   @property
   def priority(self):
@@ -100,10 +111,10 @@ class ServiceConfig(Config):
     if not self.port:
       return _proxy_mode
 
-    if self.scheme == 'http' and self.port == '80': 
+    if self.scheme == 'http' and self.port == 80: 
       return _proxy_mode
 
-    if self.scheme == 'https' and self.port == '443':
+    if self.scheme == 'https' and self.port == 443:
       return _proxy_mode
 
     return f"{_proxy_mode}:{self.port}"
@@ -119,6 +130,10 @@ class ServiceConfig(Config):
   @scheme.setter
   def scheme(self, v):
     self.__scheme = v
+
+  @property
+  def tls(self) -> bool:
+    return self.__scheme == 'https'
 
   def load(self, config = None):
     config = config or self.read()

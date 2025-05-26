@@ -3,11 +3,5 @@ services:
     extends:
       file: ../.docker-compose.base.yml
       service: gateway_base
-    networks:
-      - gateway
     profiles:
       - mock
-networks:
-  gateway:
-    name: ${APP_NETWORK}
-    external: true

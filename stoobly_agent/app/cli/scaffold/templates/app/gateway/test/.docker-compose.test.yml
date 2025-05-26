@@ -1,0 +1,7 @@
+services:
+  gateway.service:
+    extends:
+      file: ../.docker-compose.base.yml
+      service: gateway_base
+    profiles:
+      - test

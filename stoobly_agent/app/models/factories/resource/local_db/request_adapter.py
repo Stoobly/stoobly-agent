@@ -10,7 +10,7 @@ from stoobly_agent.app.models.types import RequestCreateParams, RequestDestroyPa
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
 from stoobly_agent.app.proxy.mock.ignored_components_response_builder import IgnoreComponentsResponseBuilder
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants import custom_headers, query_params as request_query_params
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -73,7 +73,6 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   def response(self, **query_params: RequestColumns) -> requests.Response:
     self.__adapt_scenario_id(query_params)
 
-    endpoint_promise = query_params.get('endpoint_promise')
     request = None
 
     if not query_params.get('request_id'):
@@ -85,16 +84,19 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       requests = self.__request_orm.where_for(**request_columns).get()
 
       if 'scenario_id' in query_params:
-        # TODO: Would need an additional ID to distinguish different scenario sessions
-        session_id = generate_session_id(request_columns) 
-
         if len(requests) > 1:
-          request = tiebreak_scenario_request(session_id, requests)
+          session_id = query_params.get(request_query_params.SESSION_ID)
+          request_session_id_components = { **request_columns }
+
+          if session_id:
+            request_session_id_components[request_query_params.SESSION_ID] = session_id
+
+          # When multiple requests are matched for a scenario, return them in sequence
+          request_session_id = generate_session_id(request_session_id_components)
+          request = tiebreak_scenario_request(request_session_id, requests)
+          access_request(request_session_id, request.id)
         else:
           request = requests.last()
-
-        if request:
-          access_request(session_id, request.id)
       else:
         request = requests.last()
     else:
@@ -104,6 +106,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
+      endpoint_promise = query_params.get(request_query_params.ENDPOINT_PROMISE)
       return self.__handle_request_not_found(endpoint_promise) 
 
     response_record = request.response
@@ -190,12 +193,31 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         }):
           return self.success(ORMToStooblyRequestTransformer(request, {}).transform())
     else:
-      if params.get('method'):
-        transformer.with_method(params['method'])
-
       if params.get('url'):
         transformer.with_url(params['url'])
         del params['url']
+
+      try:
+        if params.get('method'):
+          transformer.with_method(params['method'])
+
+        if params.get('scheme'):
+          transformer.with_scheme(params['scheme'])
+          # Do not delete scheme
+
+        if params.get('host'):
+          transformer.with_host(params['host'])
+          # Do not delete host
+
+        if params.get('port'):
+          transformer.with_port(params['port'])
+          # Do not delete port
+
+        if params.get('path'):
+          transformer.with_path(params['path'])
+          # Do not delete path
+      except ValueError as e:
+        return self.bad_request(str(e))
 
       if params.get('headers'):
         transformer.with_headers(params['headers'])
@@ -230,7 +252,6 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         response_params['status'] = params['status']
 
       if request.update(params):
-
         if len(response_params.keys()) != 0:
           response = request.response
           LocalDBResponseAdapter(self.__request_orm).update(response.id, **response_params)
@@ -315,8 +336,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     return candidates.get()
 
   def __filter_request_response_columns(self, request_columns: RequestCreateParams):
-    if request_columns.get('endpoint_promise'):
-      del request_columns['endpoint_promise']
+    if request_columns.get(request_query_params.ENDPOINT_PROMISE):
+      del request_columns[request_query_params.ENDPOINT_PROMISE]
 
     if request_columns.get('infer'):
       del request_columns['infer']
@@ -326,6 +347,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     if request_columns.get('retry'):
       del request_columns['retry']
+
+    if request_columns.get(request_query_params.SESSION_ID):
+      del request_columns[request_query_params.SESSION_ID]
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):

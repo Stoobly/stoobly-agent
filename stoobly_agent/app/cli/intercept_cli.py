@@ -41,6 +41,8 @@ def intercept(ctx):
     help="Enable intercept"
 )
 def enable(**kwargs):
+    settings = Settings.instance()
+
     settings.proxy.intercept.active = True
 
     handle_intercept_active_update(settings)
