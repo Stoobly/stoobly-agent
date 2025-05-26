@@ -36,6 +36,9 @@ class LocalDBAdapter():
   def not_found(self, d = 'Not Found'):
     return d, 404
 
+  def conflict(self, d = ''):
+    return d, 409
+
   def internal_error(self, d = 'Internal Error'):
     return d, 500
 

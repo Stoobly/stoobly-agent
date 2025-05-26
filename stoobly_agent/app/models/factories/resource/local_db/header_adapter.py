@@ -19,19 +19,29 @@ class LocalDBHeaderAdapter(LocalDBAdapter):
     self.__request_orm = request_orm
 
   def create(self, request_id, **header: Header):
-    return self.update(request_id, **header)
+    name: str = header['name']
+    value = header['value']
+
+    headers = self.__headers(request_id)
+
+    for header in headers:
+      if header.lower() == name.lower(): 
+        return self.conflict(f"{name} already exists.")
+
+    headers[name] = value
+
+    LocalDBRequestAdapter(self.__request_orm).update(request_id, headers=headers)
+
+    return self.success({
+      'name': name,
+      'value': value,
+    })
 
   def update(self, request_id, **header: Header):
-    request = self.__request_orm.find(request_id)
-    
-    if not request:
-      return self.__request_not_found()
-
     name = header['name']
     value = header['value']
 
-    request: requests.Request = RawHttpRequestAdapter(request.raw).to_request()
-    headers = request.headers
+    headers = self.__headers(request_id)
     headers[name] = value
 
     LocalDBRequestAdapter(self.__request_orm).update(request_id, headers=headers)
@@ -98,6 +108,16 @@ class LocalDBHeaderAdapter(LocalDBAdapter):
       return None
 
     return id
+
+  def __headers(self, request_id):
+    request = self.__request_orm.find(request_id)
+    
+    if not request:
+      return self.__request_not_found()
+
+    request: requests.Request = RawHttpRequestAdapter(request.raw).to_request()
+    headers = request.headers
+    return headers
 
   def __request_not_found(self):
     return self.not_found('Request not found')

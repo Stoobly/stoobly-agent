@@ -63,11 +63,15 @@ class TestTraceContext():
 
         @pytest.fixture(scope='class')
         def accept_encodings(self):
-          return ['gzip; deflate', 'br']
+          return ['identity'] # Overriden by intercept handler
 
         @pytest.fixture(scope='class')
         def access_token(self):
           return 'abc123'
+
+        @pytest.fixture(scope='class')
+        def cache_controls(self):
+          return ['no-cache', 'no-store'] # Overriden by intercept handler
 
         @pytest.fixture(scope='class')
         def aliases(self):
@@ -79,6 +83,10 @@ class TestTraceContext():
             {
               'id': 2,
               'name': ':accessToken'
+            },
+            {
+              'id': 3,
+              'name': ':cacheControl'
             }
           ]
 
@@ -86,6 +94,7 @@ class TestTraceContext():
         def header_names(self, aliases):
           accept_encoding_alias = aliases[0]
           access_token_alias = aliases[1]
+          cache_control_alias = aliases[2]
           return [
             {
               'alias_id': accept_encoding_alias['id'],
@@ -96,6 +105,11 @@ class TestTraceContext():
               'alias_id': access_token_alias['id'],
               'id': 2,
               'name': 'Access-Token'
+            },
+            {
+              'alias_id': cache_control_alias['id'],
+              'id': 3,
+              'name': 'Cache-Control'
             }
           ]
 
@@ -106,11 +120,12 @@ class TestTraceContext():
           return endpoint_show_response
 
         @pytest.fixture(scope='class')
-        def decorated_request_schema(self, request_schema: RequestSchema, accept_encodings, access_token):
+        def decorated_request_schema(self, request_schema: RequestSchema, accept_encodings: list, access_token: str, cache_controls: list):
           headers = request_schema.headers
           headers.add('Accept-Encoding', accept_encodings[0])
-          headers.add('Accept-Encoding', accept_encodings[1])
           headers.add('Access-Token', access_token)
+          headers.add('Cache-Control', cache_controls[0])
+          headers.add('Cache-Control', cache_controls[1])
           request_schema.headers = headers
           return request_schema
 
@@ -123,6 +138,11 @@ class TestTraceContext():
         def access_token_trace_alias(self, trace_context: TraceContext, aliases):
           access_token_alias = aliases[1]
           return trace_context.create_trace_alias(access_token_alias['name'], '1')
+
+        @pytest.fixture(scope='class')
+        def cache_control_trace_alias(self, trace_context: TraceContext, aliases):
+          cache_control_alias = aliases[2]
+          return trace_context.create_trace_alias(cache_control_alias['name'], '1')
 
         def test_it_resolves_accept_encoding(
           self, 
@@ -149,6 +169,19 @@ class TestTraceContext():
           trace_alias = TraceAlias.find_by(id=access_token_trace_alias.id)
 
           assert trace_alias.assigned_to == access_token
+
+        def test_it_resolves_access_token(
+          self, 
+          trace_context: TraceContext,
+          decorated_request_schema: RequestSchema,
+          decorated_endpoint_show_response,
+          cache_control_trace_alias: TraceAlias,
+          cache_controls,
+        ):
+          trace_context.rewrite_request(decorated_request_schema, decorated_endpoint_show_response)
+          trace_alias = TraceAlias.find_by(id=cache_control_trace_alias.id)
+
+          assert trace_alias.assigned_to == ', '.join(cache_controls)
 
       class TestWhenQueryParam():
 
