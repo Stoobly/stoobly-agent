@@ -12,9 +12,10 @@ from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  COMPOSE_TEMPLATE, DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_BASE
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
@@ -22,6 +23,8 @@ from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
+from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
+from stoobly_agent.app.cli.scaffold.service_workflow import ServiceWorkflow
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -216,6 +219,7 @@ def delete(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--rename-to', type=click.STRING, help='New name of the service to update to.')
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -238,6 +242,19 @@ def update(**kwargs):
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['rename_to']:
+    old_service_name = service.service_name
+    new_service_name = kwargs['rename_to']
+
+    print(f"Renaming service from: {old_service_name}, to: {new_service_name}")
+
+    kwargs['service_path'] = service.dir_path
+    command = ServiceUpdateCommand(app, **kwargs)
+    service = command.rename(new_service_name)
+
+    service_config = ServiceConfig(service.dir_path)
+    print(f"Successfully renamed service to: {new_service_name}")
 
   service_config.write()
 
