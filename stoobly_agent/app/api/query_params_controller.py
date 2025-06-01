@@ -105,7 +105,7 @@ class QueryParamsController:
             return
         
         context.render(
-            plain = query_param,
+            plain = '',
             status = status
         )
 
