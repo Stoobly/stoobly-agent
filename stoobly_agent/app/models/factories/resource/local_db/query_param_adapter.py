@@ -122,10 +122,10 @@ class LocalDBQueryParamAdapter(LocalDBAdapter):
     parsed_url = parsed_url._replace(query=urlencode(_query_params, True))
     request = LocalDBRequestAdapter(self.__request_orm).update(request_id, url=parsed_url.geturl())
 
-    return {
+    return self.success({
       'name': name,
       'value': value,
-    }
+    }) 
 
   def __decode_id(self, id: str):
     id = base64.b64decode(id)
