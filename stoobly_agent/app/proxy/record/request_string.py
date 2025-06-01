@@ -15,6 +15,7 @@ class RequestString:
     ENCODING = 'utf-8'
 
     __current_time = None
+    request_id = None
 
     def __init__(self, proxy_request: ProxyRequest):
         self.__current_time = self.__get_current_time()
@@ -29,7 +30,9 @@ class RequestString:
             self.__headers()
             self.__body()
 
-        self.request_id = self.__generate_request_id()
+            self.request_id = proxy_request.id
+
+        self.request_id = self.request_id or self.__generate_request_id()
 
     def get(self, **kwargs):
         if kwargs.get('control'):
