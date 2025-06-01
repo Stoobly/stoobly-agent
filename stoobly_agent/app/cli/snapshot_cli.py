@@ -95,11 +95,15 @@ def _list(**kwargs):
 @snapshot.command(
   help="Migrate snapshots."
 )
-@click.option('--scenario-key', multiple=True, help='Apply migration to specific scenarios.')
+@click.option('--scenario-key', help='Apply migration to specific scenario.')
 @click.argument('lifecycle_hooks_path')
 def migrate(**kwargs):
   from runpy import run_path
   from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
+
+  scenario_key = None
+  if kwargs['scenario_key']:
+    scenario_key = ScenarioKey(kwargs['scenario_key'])
 
   try:
     lifecycle_hooks = run_path(kwargs['lifecycle_hooks_path'])
@@ -114,26 +118,35 @@ def migrate(**kwargs):
 
   log = Log()
 
-  snapshot_migrations = {}
+  request_snapshots = []
   for event in log.resource_events:
     if event.is_scenario():
+      # If scenario_key is set, only consider that scenario
+      if scenario_key and event.resource_uuid != scenario_key.id:
+        continue
+
       scenario_snapshot: ScenarioSnapshot = event.snapshot()
-      request_snapshots = scenario_snapshot.request_snapshots
-      for request_snapshot in request_snapshots:
-        snapshot_migration = SnapshotMigration(request_snapshot)
+      _request_snapshots = scenario_snapshot.request_snapshots
 
-        if request_snapshot.uuid not in snapshot_migrations:
-          snapshot_migrations[request_snapshot.uuid] = snapshot_migration
-
-          if before_migrate_hook(snapshot_migration):
-            pass
+      for request_snapshot in _request_snapshots:
+        # Scenario requests will have the same log event
+        request_snapshots.append((request_snapshot, event))
     elif event.is_request():
-      request_snapshot: RequestSnapshot = event.snapshot()
-      if request_snapshot.uuid not in snapshot_migrations:
-        snapshot_migrations[request_snapshot.uuid] = snapshot_migration
+      # If scenario_key is set, only consider that scenario
+      if scenario_key:
+        continue
 
-        if before_migrate_hook(snapshot_migration):
-          pass
+      request_snapshot: RequestSnapshot = event.snapshot()
+      request_snapshots.append((request_snapshot, event))
+
+  snapshot_migrations = {}
+  for request_snapshot, event in request_snapshots:
+    if request_snapshot.uuid not in snapshot_migrations:
+      snapshot_migration = SnapshotMigration(request_snapshot, event)
+      snapshot_migrations[request_snapshot.uuid] = snapshot_migration
+      
+      if before_migrate_hook(snapshot_migration):
+        break
 
 @snapshot.command(
   help="Prune deleted snapshots."

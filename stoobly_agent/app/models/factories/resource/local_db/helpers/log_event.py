@@ -88,6 +88,16 @@ class LogEvent():
     toks[4] = str(int(time.time() * 1000))
     return LogEvent(COLUMN_DELIMITTER.join(toks))
 
+  def duplicate_as_delete(self):
+    event = self.duplicate()
+    event.action = DELETE_ACTION
+    return event
+
+  def duplicate_as_put(self):
+    event = self.duplicate()
+    event.action = PUT_ACTION
+    return event
+
   def is_request(self):
     return self.resource == REQUEST_RESOURCE
 
