@@ -52,7 +52,7 @@ def upload_request(
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
     flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
-    joined_request = join_request_from_flow(flow_copy, intercept_settings)
+    joined_request = join_request_from_flow(flow_copy, intercept_settings=intercept_settings)
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
