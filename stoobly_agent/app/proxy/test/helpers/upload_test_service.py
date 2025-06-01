@@ -43,7 +43,7 @@ def upload_test(
   flow: MitmproxyHTTPFlow, 
   **kwargs: UploadTestData
 ) -> Response:
-    joined_request = join_request_from_flow(flow, intercept_settings)
+    joined_request = join_request_from_flow(flow, intercept_settings=intercept_settings)
 
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")
 

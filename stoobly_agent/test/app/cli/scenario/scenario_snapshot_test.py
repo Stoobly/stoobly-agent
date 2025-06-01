@@ -17,7 +17,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 def runner():
     return CliRunner()
 
-class TestRequest():
+class TestScenario():
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
       return reset()

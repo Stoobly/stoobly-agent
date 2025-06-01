@@ -218,15 +218,16 @@ class Apply():
 
     snapshot_requests = {}
 
-    raw_requests = snapshot.requests
-    for raw_request in raw_requests:
+    request_snapshots = snapshot.request_snapshots
+    for request_snapshot in request_snapshots:
+      raw_request = request_snapshot.request
+      
       toks = raw_request.split(REQUEST_STRING_CLRF.encode(), 1)
 
       if len(toks) != 2:
         return f"{snapshot.requests_path} contains an invalid request", 400
 
-      control = RequestStringControl(toks[0])
-      uuid = control.id
+      uuid = request_snapshot.uuid
       res, status = self.__put_request(uuid, raw_request, scenario_id=scenario['id'])
 
       if status != 200:

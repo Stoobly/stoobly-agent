@@ -1,31 +1,43 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import List
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest, Response as MitmproxyResponse
+from typing import TypedDict
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 
 from ..mitmproxy.request_facade import MitmproxyRequestFacade
 from ..mitmproxy.response_facade import MitmproxyResponseFacade
-from ..utils.rewrite import rewrite_request_response
 from .joined_request import JoinedRequest
 from .proxy_request import ProxyRequest
 
+class JoinRequestOptions(TypedDict):
+    id: str
+    intercept_settings: InterceptSettings
+
 def join_request(
-    adapted_request: MitmproxyRequestFacade, adapted_response: MitmproxyResponseFacade, intercept_settings: InterceptSettings
+    adapted_request: MitmproxyRequestFacade, adapted_response: MitmproxyResponseFacade, **options: JoinRequestOptions
 ) -> JoinedRequest:
+    intercept_settings: InterceptSettings = options.get('intercept_settings')
+
     # Decorate request with service_url
-    upstream_url = intercept_settings.upstream_url
+    upstream_url = intercept_settings.upstream_url if intercept_settings else None
     proxy_request = ProxyRequest(adapted_request, upstream_url)
+
+    if options.get('id'):
+        proxy_request.id = options['id']
 
     # Create JoinedRequest
     return JoinedRequest(proxy_request).with_response(adapted_response)
 
 def join_request_from_flow(
-    flow: MitmproxyHTTPFlow, intercept_settings: InterceptSettings
+    flow: MitmproxyHTTPFlow, **options: JoinRequestOptions
 ) -> JoinedRequest:
-    request = MitmproxyRequestFacade(flow.request)
-    response = MitmproxyResponseFacade(flow.response)
+    return join_request_from_request_response(flow.request, flow.response, **options)
 
-    return join_request(request, response, intercept_settings)
+def join_request_from_request_response(
+    request: MitmproxyRequest, response: MitmproxyResponse, **options: JoinRequestOptions
+):
+    request = MitmproxyRequestFacade(request)
+    response = MitmproxyResponseFacade(response)
+
+    return join_request(request, response, **options)
