@@ -59,10 +59,6 @@ class LogEvent():
     return cls.serialize(resource_name, resource.uuid, action)
 
   @property
-  def deleted(self):
-    return self.action == DELETE_ACTION
-
-  @property
   def key(self):
     return f"{self.resource_uuid}.{self.resource}"
 
