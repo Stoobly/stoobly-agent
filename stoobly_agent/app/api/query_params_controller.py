@@ -103,10 +103,10 @@ class QueryParamsController:
 
         if context.filter_response(query_param, status):
             return
-        
+
         context.render(
             plain = '',
-            status = status
+            status = 204
         )
 
     def __query_param_model(self, context: SimpleHTTPRequestHandler):
