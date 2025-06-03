@@ -35,6 +35,7 @@ class ServiceUpdateCommand(ServiceCommand):
     return service
 
   def __update_internal_container_specs(self, service_path: str, old_service_name: str, new_service_name: str):
+    # TODO: update to include custom workflows
     CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
     workflows = CORE_WORKFLOWS
 
