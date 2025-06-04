@@ -4,6 +4,7 @@ import pdb
 import time
 import tempfile
 
+from copy import deepcopy
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request as MitmproxyRequest
 
@@ -50,22 +51,23 @@ def upload_request(
 ):
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
 
-    joined_request = join_request_from_flow(flow, intercept_settings)
+    flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
+    joined_request = join_request_from_flow(flow_copy, intercept_settings=intercept_settings)
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
     body_params = __build_body_params(
         project_key,
-        joined_request, 
+        joined_request,
         flow=flow,
         scenario_key=scenario_key
     )
 
     # If request_origin is WEB, then we are in proxy
     # This means that we have access to Cache singleton and do not need send a request to update the status
-    sync = intercept_settings.request_origin == request_origin.WEB 
+    sync = intercept_settings.request_origin == request_origin.WEB
     res = __upload_request_with_body_params(request_model, body_params, sync)
- 
+
     if intercept_settings.settings.is_debug():
         file_path = __debug_request(flow.request, joined_request.build())
         Logger.instance(LOG_ID).debug(f"Writing request to {file_path}")

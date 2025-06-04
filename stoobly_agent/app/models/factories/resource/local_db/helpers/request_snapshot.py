@@ -35,6 +35,26 @@ class RequestSnapshot(Snapshot):
       return fp.read()
 
   @property
+  def mitmproxy_request(self):
+    from stoobly_agent.app.models.adapters.python.request.mitmproxy_adapter import MitmproxyRequestAdapter
+    return MitmproxyRequestAdapter(self.python_request).adapt()
+
+  @property
+  def mitmproxy_response(self):
+    from stoobly_agent.app.models.adapters.python.response.mitmproxy_adapter import MitmproxyResponseAdapter
+    return MitmproxyResponseAdapter(self.python_response).adapt()
+
+  @property
+  def python_request(self):
+    from stoobly_agent.app.models.adapters.raw_joined.request.python_adapter import PythonRequestAdapter
+    return PythonRequestAdapter(self.request).adapt()
+
+  @property
+  def python_response(self):
+    from stoobly_agent.app.models.adapters.raw_joined.response.python_adapter import PythonResponseAdapter
+    return PythonResponseAdapter(self.request).adapt()
+
+  @property
   def path(self):
     dir_path = os.path.join(self.__requests_dir_path, self.uuid[0:2])
 

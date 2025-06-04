@@ -8,7 +8,7 @@ from stoobly_agent.lib.utils.decode import decode
 
 class MitmproxyRequestAdapter():
 
-  def __init__(self, http_version: str, request: requests.Request):
+  def __init__(self, request: requests.Request, http_version: str = 'HTTP/1.1'):
     self.__http_version = http_version
     self.__request = request
 

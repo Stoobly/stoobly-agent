@@ -86,7 +86,7 @@ class HeadersController:
 
         context.render(
             plain = '',
-            status = 200
+            status = 204
         )
 
     def __header_model(self, context: SimpleHTTPRequestHandler):

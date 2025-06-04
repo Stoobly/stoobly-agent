@@ -9,12 +9,12 @@ from .mitmproxy_adapter import MitmproxyRequestAdapter
 
 class RawRequestAdapter():
 
-  def __init__(self, http_version: str, request: requests.Request):
+  def __init__(self, request: requests.Request, http_version: str):
     self.__http_version = http_version
     self.__request = request
 
   def adapt(self):
-    mitmproxy_request = MitmproxyRequestAdapter(self.__http_version, self.__request).adapt()
+    mitmproxy_request = MitmproxyRequestAdapter(self.__request, self.__http_version).adapt()
     adapted_request = MitmproxyRequestFacade(mitmproxy_request)
     proxy_request = ProxyRequest(adapted_request)
     request_string = RequestString(proxy_request) 

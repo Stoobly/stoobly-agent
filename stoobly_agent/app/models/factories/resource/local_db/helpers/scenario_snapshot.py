@@ -3,7 +3,7 @@ import os
 import pdb
 import shutil
 
-from typing import Callable
+from typing import Callable, List
 
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -45,6 +45,13 @@ class ScenarioSnapshot(Snapshot):
   @property
   def metadata_path(self):
     return os.path.join(self.__scenarios_dir_path, self.uuid)
+
+  @property
+  def request_snapshots(self) -> List[RequestSnapshot]:
+    snapshots = []
+    handler = lambda request_snapshot: snapshots.append(request_snapshot)
+    self.iter_request_snapshots(handler)
+    return snapshots
 
   @property
   def requests(self):
