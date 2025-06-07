@@ -15,8 +15,8 @@ from stoobly_agent.lib.logger import Logger
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
-from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
+from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
@@ -42,6 +42,13 @@ def handle_response_record(context: RecordContext):
 
     if active_record_policy == record_policy.ALL:
         __record_request(context, request_model)
+    elif active_record_policy == record_policy.API:
+        response = flow.response
+        content_type: str = response.headers.get('content-type')
+
+        if content_type:
+            if is_json(content_type) or is_xml(content_type) or content_type.startswith('text/plain'):
+                __record_request(context, request_model)
     elif active_record_policy == record_policy.FOUND:
         res = inject_eval_request(request_model, intercept_settings)(request, [])
 
@@ -52,16 +59,12 @@ def handle_response_record(context: RecordContext):
 
         if res.status_code == custom_response_codes.NOT_FOUND:
             __record_request(context, request_model)
-    elif active_record_policy == record_policy.OVERWRITE:
-        overwrite_scenario(intercept_settings.scenario_key)
-
-        __record_request(context, request_model)
     else:
         if active_record_policy != record_policy.NONE:
             return bad_request(
                 flow,
-                "Valid env RECORD_POLICY: %s, Got: %s" %
-                ([record_policy.ALL, record_policy.FOUND, record_policy.NOT_FOUND], active_record_policy)
+                "Valid record policies: %s, Got: %s" %
+                ([record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND], active_record_policy)
             )
 
 def __record_handler(context: RecordContext, request_model: RequestModel):

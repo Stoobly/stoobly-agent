@@ -3,7 +3,7 @@ import pdb
 import requests
 import time
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
+from mitmproxy.http import Request as MitmproxyRequest
 from typing import Callable, TypedDict
 
 from stoobly_agent.app.models.request_model import RequestModel
@@ -88,18 +88,20 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         res = eval_request_with_retry(context, eval_request, **options) 
 
         context.with_response(res)
+        res = __after_mock_not_found(context)
     elif policy == mock_policy.FOUND:
         res = eval_request_with_retry(context, eval_request, **options) 
 
         context.with_response(res)
+        res = __after_mock_not_found(context)
 
-        if res.status_code in [custom_response_codes.NOT_FOUND, custom_response_codes.IGNORE_COMPONENTS]:
+        if res.status_code == custom_response_codes.NOT_FOUND:
             try:
                 return __handle_found_policy(context) # Continue proxying the request
             except RuntimeError:
                 # Do nothing, return custom error response
-                pass
-    
+                pass 
+
     if res.status_code == custom_response_codes.NOT_FOUND:
         if handle_failure:
             res = handle_failure(context) or res
@@ -242,3 +244,14 @@ def __mock_hook(hook: str, context: MockContext):
 
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](context)
+
+def __after_mock_not_found(context: MockContext):
+    res = context.response
+
+    if res.status_code == custom_response_codes.NOT_FOUND:
+        __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
+
+        # context.response may have been modified by the hook
+        res = context.response
+
+    return res
