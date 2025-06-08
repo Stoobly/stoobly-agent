@@ -11,7 +11,7 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DE
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.settings.constants import firewall_action, request_component
-from stoobly_agent.config.constants import custom_headers, mode, record_policy, request_origin
+from stoobly_agent.config.constants import custom_headers, mode, record_order, record_policy, request_origin
 from stoobly_agent.cli import config, intercept, mock, record, scenario
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
@@ -355,7 +355,7 @@ class TestRecording():
 
       assert Request.count() == 2
 
-  class TestOverwritePolicy():
+  class TestOverwriteOrder():
 
     @pytest.fixture(scope='class', autouse=True)
     def created_scenario(self, runner: CliRunner):
@@ -377,7 +377,7 @@ class TestRecording():
       _created_scenario = Scenario.find(created_scenario.id)
       assert _created_scenario.requests_count == len(recorded_requests)
 
-      config_results = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.OVERWRITE])
+      config_results = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--order', record_order.OVERWRITE])
       assert config_results.exit_code == 0
 
       set_results = runner.invoke(config, ['scenario', 'set', created_scenario.key()])
