@@ -9,12 +9,13 @@ from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants.env_vars import ENV
-from stoobly_agent.config.constants import lifecycle_hooks, record_policy
+from stoobly_agent.config.constants import lifecycle_hooks, record_order, record_policy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
+from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
 from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy
@@ -82,6 +83,11 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     context.flow = flow # Reset flow
 
 def __record_request(context: RecordContext, request_model: RequestModel):
+    intercept_settings = context.intercept_settings
+
+    if intercept_settings.order == record_order.OVERWRITE:
+        overwrite_scenario(intercept_settings.scenario_key)
+
     if os.environ.get(ENV) == TEST:
         __record_handler(context, request_model)
     else:

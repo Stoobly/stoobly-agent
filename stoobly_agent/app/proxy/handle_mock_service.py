@@ -64,7 +64,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
         return bad_request(
             context.flow,
-            "Valid env MOCK_POLICY: %s, Got: %s" %
+            "Valid mock policies: %s, Got: %s" %
             ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
         )
 
