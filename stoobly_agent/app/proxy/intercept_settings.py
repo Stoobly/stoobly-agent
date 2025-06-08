@@ -167,6 +167,10 @@ class InterceptSettings:
       return self.__headers[custom_headers.REPORT_KEY]
 
   @property
+  def order(self):
+    return self.__order(self.mode)
+
+  @property
   def policy(self):
     return self.__policy(self.mode)
 
@@ -339,7 +343,11 @@ class InterceptSettings:
             self.__response_fixtures = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             Logger.instance().error(exc)
-        
+
+  def __order(self, mode):
+    if mode == intercept_mode.RECORD:
+      return self.__data_rules.record_order
+    
   def __policy(self, mode):
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
@@ -352,6 +360,9 @@ class InterceptSettings:
 
       return self.__data_rules.record_policy
     elif mode == intercept_mode.TEST:
+      if self.__headers and custom_headers.TEST_POLICY in self.__headers:
+        return self.__headers[custom_headers.TEST_POLICY]
+
       return self.__data_rules.test_policy
     elif mode == intercept_mode.REPLAY:
       return self.__data_rules.replay_policy
