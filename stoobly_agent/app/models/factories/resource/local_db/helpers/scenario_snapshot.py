@@ -1,7 +1,6 @@
 import json
 import os
 import pdb
-import shutil
 
 from typing import Callable, List
 
@@ -128,12 +127,12 @@ class ScenarioSnapshot(Snapshot):
     if os.path.exists(metadata_file_path):
       os.remove(metadata_file_path)
 
-  def remove_requests(self):
+  def remove_requests(self, handle_remove_request_snapshot = None):
     requests_file_path = self.requests_path
 
     if os.path.exists(requests_file_path):
       # A request only every belongs to one scenario
-      self.iter_request_snapshots(self.__handle_remove_requests)
+      self.iter_request_snapshots(handle_remove_request_snapshot or self.__handle_remove_requests)
 
       os.remove(requests_file_path)
 
