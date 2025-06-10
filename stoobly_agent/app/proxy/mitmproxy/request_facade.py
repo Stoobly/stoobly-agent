@@ -72,7 +72,7 @@ class MitmproxyRequestFacade(Request):
     def body(self):
         content = self.request.raw_content or b''
 
-        return decode(content)
+        return content
 
     @property
     def parsed_body(self):

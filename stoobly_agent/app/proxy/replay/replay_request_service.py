@@ -150,6 +150,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
     if options.get('save') or options.get('overwrite'):
       replayed_response, status = __create_replayed_response(context.request.id, res, latency)
 
+      # TODO: allow overwriting if status is the same
       if status < 400 and options.get('overwrite'):
         __overwrite_response(replayed_response.get('id'))
 

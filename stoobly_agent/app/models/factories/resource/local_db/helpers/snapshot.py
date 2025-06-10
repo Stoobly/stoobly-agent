@@ -7,7 +7,7 @@ class Snapshot():
 
   def __init__(self, uuid: str):
     self.__uuid = uuid
-    self.__data_dir = DataDir.instance()
+    self.__data_dir: DataDir = DataDir.instance()
 
   @property
   def uuid(self):

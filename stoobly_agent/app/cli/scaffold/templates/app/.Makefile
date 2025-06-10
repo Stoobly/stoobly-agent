@@ -143,6 +143,12 @@ scenario/list:
 	@export EXEC_COMMAND=.list && \
 	export EXEC_OPTIONS="$(options)" && \
 	$(stoobly_exec)
+scenario/overwrite:
+# Overwrite a scenario
+	@export EXEC_COMMAND=.overwrite && \
+	export EXEC_OPTIONS="$(options)" && \
+	export EXEC_ARGS="$(key)" && \
+	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
 	@export EXEC_COMMAND=.reset && \:

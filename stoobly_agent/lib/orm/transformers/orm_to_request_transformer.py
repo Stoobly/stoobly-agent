@@ -94,7 +94,7 @@ class ORMToRequestTransformer():
     return self
 
   def with_scheme(self, scheme: str):
-    if scheme != 'https' or 'http':
+    if scheme != 'https' and scheme != 'http':
       raise ValueError('Scheme must be https or http')
 
     self.__scheme = scheme

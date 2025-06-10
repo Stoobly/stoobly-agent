@@ -5,7 +5,7 @@ from typing import List
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.app.proxy.record import REQUEST_STRING_CLRF, RequestStringControl
+from stoobly_agent.app.proxy.record import REQUEST_STRING_CLRF
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
 
@@ -221,6 +221,7 @@ class Apply():
 
     snapshot_requests = {}
 
+<<<<<<< HEAD
     request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
     for request_snapshot in request_snapshots:
       raw_request = request_snapshot.request
@@ -229,12 +230,18 @@ class Apply():
         return f"{request_snapshot.path} is missing", 400
         
       toks = raw_request.split(REQUEST_STRING_CLRF.encode(), 1)
+=======
+    request_snapshots = snapshot.request_snapshots
+    for request_snapshot in request_snapshots:
+      raw_request = request_snapshot.request
+      
+      toks = raw_request.split(REQUEST_STRING_CLRF, 1)
+>>>>>>> a118be9d5c92dd3fc5867f4e1aa3117f0ed01426
 
       if len(toks) != 2:
         return f"{request_snapshot.path} contains an invalid request", 400
 
-      control = RequestStringControl(toks[0])
-      uuid = control.id
+      uuid = request_snapshot.uuid
       res, status = self.__put_request(uuid, raw_request, scenario_id=scenario['id'])
 
       if status != 200:

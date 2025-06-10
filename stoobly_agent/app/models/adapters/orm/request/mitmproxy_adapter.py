@@ -15,4 +15,4 @@ class MitmproxyRequestAdapter():
     protocol = raw_http_request_adapter.protocol
     http_version = protocol.split('/')[1]
 
-    return PythonRequestMitmproxyRequestAdapter(http_version, python_request).adapt()
+    return PythonRequestMitmproxyRequestAdapter(python_request, http_version).adapt()
