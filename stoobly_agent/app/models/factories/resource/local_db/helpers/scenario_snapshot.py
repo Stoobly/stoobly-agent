@@ -66,13 +66,6 @@ class ScenarioSnapshot(Snapshot):
     return raw_requests
 
   @property
-  def request_snapshots(self):
-    snapshots = []
-    handler = lambda request_snapshot: snapshots.append(request_snapshot)
-    self.iter_request_snapshots(handler)
-    return snapshots
-
-  @property
   def requests_backup(self):
     return self.__requests_backup
 

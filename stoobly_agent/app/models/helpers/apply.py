@@ -221,7 +221,6 @@ class Apply():
 
     snapshot_requests = {}
 
-<<<<<<< HEAD
     request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
     for request_snapshot in request_snapshots:
       raw_request = request_snapshot.request
@@ -229,15 +228,7 @@ class Apply():
       if not raw_request:
         return f"{request_snapshot.path} is missing", 400
         
-      toks = raw_request.split(REQUEST_STRING_CLRF.encode(), 1)
-=======
-    request_snapshots = snapshot.request_snapshots
-    for request_snapshot in request_snapshots:
-      raw_request = request_snapshot.request
-      
       toks = raw_request.split(REQUEST_STRING_CLRF, 1)
->>>>>>> a118be9d5c92dd3fc5867f4e1aa3117f0ed01426
-
       if len(toks) != 2:
         return f"{request_snapshot.path} contains an invalid request", 400
 
