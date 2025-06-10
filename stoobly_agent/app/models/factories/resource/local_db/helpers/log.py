@@ -8,6 +8,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, Logger
 
 from .log_event import LogEvent
+from .request_snapshot import RequestSnapshot
 from .snapshot_types import DELETE_ACTION, PUT_ACTION, Resource
 
 EVENT_DELIMITTER = "\n"
@@ -66,6 +67,25 @@ class Log():
   def raw_events(self):
     contents = self.read()
     return self.build_raw_events(contents) 
+
+  @property
+  def scenario_inverted_index(self):
+    index = {}
+
+    def handle_snapshot(snapshot: RequestSnapshot):
+      request_uuid = snapshot.uuid
+      if not request_uuid in index:
+        index[request_uuid] = []
+
+      index[request_uuid].append(event.resource_uuid)
+
+    for event in self.target_events:
+      if not event.is_scenario():
+        continue 
+
+      event.snapshot().iter_request_snapshots(handle_snapshot)
+
+    return index
 
   @property
   def unprocessed_events(self) -> List[LogEvent]:
@@ -190,12 +210,18 @@ class Log():
 
       resource_index[event.resource_uuid].append(event)
 
+    scenario_inverted_index = self.scenario_inverted_index
+
     pruned_events = self.collapse(events)
     for event in pruned_events:
       snapshot = event.snapshot()
       snapshot_exists = snapshot.exists
 
       if event.action == DELETE_ACTION or not snapshot_exists:
+        if event.is_request() and event.resource_uuid in scenario_inverted_index:
+          # If a request is deleted, only prune if it's not also a part of a scenario
+          continue
+
         Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Removing{bcolors.ENDC} {event.resource} {event.resource_uuid}")
 
         resource_events: List[LogEvent] = resource_index[event.resource_uuid]
@@ -211,8 +237,16 @@ class Log():
           removed_events[event.uuid] = True
 
         if event.action == DELETE_ACTION and snapshot_exists: 
-          if not dry_run:
+          if dry_run:
+            continue
+
+          if event.is_scenario():
+            # We still need to check each request in a scenario to make sure another scenario does not depend on it
+            snapshot.remove(lambda snapshot: self.remove_request_snapshot(snapshot, scenario_inverted_index))
+          elif event.is_request():
+            # We have already checked that a scenario does not depend on the request above
             snapshot.remove()
+
           Logger.instance(LOG_ID).info(f"Removing {event.resource} snapshot")
 
   def build_raw_events(self, contents: str) -> List[str]:
@@ -235,6 +269,8 @@ class Log():
     '''
     Remove DELETE events where the last processed event was a PUT
     '''
+
+    # Build an index such that if the last event is DELETE_ACTION, then it will NOT exist in the index
     index = {}
     for event in processed_events:
       if event.action == PUT_ACTION:
@@ -242,10 +278,18 @@ class Log():
       elif event.action == DELETE_ACTION:
         if event.resource_uuid in index:
           del index[event.resource_uuid]
+
+    scenario_inverted_index = self.scenario_inverted_index
+
+    def keep(e: LogEvent):
+      if e.action != DELETE_ACTION:
+        return True
+      
+      return e.action == DELETE_ACTION and e.is_request() and e.resource_uuid in scenario_inverted_index
     
     return list(
       filter(
-        lambda e: e.action != DELETE_ACTION or (e.action == DELETE_ACTION and e.resource_uuid in index), 
+        keep,
         unprocessed_events
       )
     )
@@ -281,6 +325,12 @@ class Log():
 
     remaining_events = self.remove_dangling_events(processed_events, unprocessed_events)
     return list(filter(lambda e: e.uuid not in remaining_version_uuids, remaining_events))
+
+  def remove_request_snapshot(self, snapshot: RequestSnapshot, scenario_inverted_index: dict = None):
+    scenario_inverted_index = scenario_inverted_index or self.scenario_inverted_index
+
+    if snapshot.uuid not in scenario_inverted_index:
+      snapshot.remove()
 
   # Rotate log to history
   def rotate(self):

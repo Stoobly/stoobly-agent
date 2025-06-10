@@ -1,5 +1,7 @@
 import pdb
 
+from typing import List
+
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
@@ -71,6 +73,7 @@ class Apply():
       if results:
         status = results[1]
         if status == 0 or status >= 400:
+          self.__logger(f"{bcolors.FAIL}Error{bcolors.ENDC} {results[0]}")
           completed = False
           break
 
@@ -218,12 +221,17 @@ class Apply():
 
     snapshot_requests = {}
 
-    raw_requests = snapshot.requests
-    for raw_request in raw_requests:
+    request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
+    for request_snapshot in request_snapshots:
+      raw_request = request_snapshot.request
+
+      if not raw_request:
+        return f"{request_snapshot.path} is missing", 400
+        
       toks = raw_request.split(REQUEST_STRING_CLRF.encode(), 1)
 
       if len(toks) != 2:
-        return f"{snapshot.requests_path} contains an invalid request", 400
+        return f"{request_snapshot.path} contains an invalid request", 400
 
       control = RequestStringControl(toks[0])
       uuid = control.id

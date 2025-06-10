@@ -14,15 +14,17 @@ def snapshot_request(request: Request, **options: RequestSnapshotOptions):
     return
 
   snapshot = RequestSnapshot(request.uuid)
-
   snapshot.backup()
+
+  log = Log()
 
   if action == PUT_ACTION:
     snapshot.write(request, **options)
   elif action == DELETE_ACTION:
-    snapshot.remove()
+    inverted_scenario_index = log.scenario_inverted_index
 
-  log = Log()
+    # If a scenario currently depends on this request, we can't remove the snapshot until the scenario is also removed
+    log.remove_request_snapshot(snapshot, inverted_scenario_index) 
 
   try:
     if action == PUT_ACTION:
@@ -40,7 +42,6 @@ def snapshot_scenario(scenario: Scenario, **options):
     return
 
   snapshot = ScenarioSnapshot(scenario.uuid)
-
   snapshot.backup_metadata()
 
   if action == PUT_ACTION:
@@ -50,13 +51,13 @@ def snapshot_scenario(scenario: Scenario, **options):
 
   snapshot.backup_requests()
 
+  log = Log()
+  inverted_scenario_index = log.scenario_inverted_index
   if action == PUT_ACTION:
-    snapshot.remove_requests()
+    snapshot.remove_requests(lambda snapshot: log.remove_request_snapshot(snapshot, inverted_scenario_index))
     snapshot.write_requests(scenario, **options)
   elif action == DELETE_ACTION:
-    snapshot.remove_requests()
-
-  log = Log()
+    snapshot.remove_requests(lambda snapshot: log.remove_request_snapshot(snapshot, inverted_scenario_index))
 
   if action == PUT_ACTION:
     log.put(scenario)

@@ -1,5 +1,4 @@
 import os
-import shutil
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.lib.orm.request import Request
