@@ -139,9 +139,7 @@ class Log():
   def build_log_events(self, raw_events) -> List[LogEvent]:
     return list(map(lambda raw_event: LogEvent(raw_event), raw_events))
   
-  def build_scenario_inverted_index(self, events: List[LogEvent]):
-    index = {}
-
+  def build_scenario_inverted_index(self, events: List[LogEvent], index = {}):
     def handle_snapshot(snapshot: RequestSnapshot):
       request_uuid = snapshot.uuid
       if not request_uuid in index:
@@ -289,7 +287,7 @@ class Log():
         if event.resource_uuid in index:
           del index[event.resource_uuid]
 
-    scenario_inverted_index = self.scenario_inverted_index
+    scenario_inverted_index = self.build_scenario_inverted_index(processed_events)
     
     def keep(e: LogEvent):
       # Keep the event if it's a PUT, it may have been updated
@@ -303,6 +301,9 @@ class Log():
           # or if it doesn't exist in a scenario, there was a previous delete event
           return referenced or (e.resource_uuid in index and not referenced)
         elif e.is_scenario():
+          # Update scenario_inverted_index with unprocessed event
+          self.build_scenario_inverted_index([e], scenario_inverted_index)
+
           # Keep DELETE scenario event only if previous event for the resource was PUT
           return e.resource_uuid in index
         else:
