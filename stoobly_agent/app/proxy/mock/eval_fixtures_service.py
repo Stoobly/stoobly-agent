@@ -10,6 +10,7 @@ from requests.structures import CaseInsensitiveDict
 from typing import Union
 
 from stoobly_agent.lib.logger import bcolors, Logger
+from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
 from .types import Fixtures
 
@@ -20,45 +21,50 @@ class Options():
   response_fixtures: Fixtures
 
 def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Response, None]:
-  fixture_path = None
+  fixture_path = request.headers.get(MOCK_FIXTURE_PATH)
   headers = CaseInsensitiveDict()
   status_code = 200
 
-  response_fixtures = options.get('response_fixtures')
-  fixture: dict = __eval_response_fixtures(request, response_fixtures)
-
-  if not fixture:
-    public_directory_path = options.get('public_directory_path')
-
-    if not public_directory_path:
-      return
-
-    request_path = 'index' if request.path == '/' else request.path
-    _fixture_path = os.path.join(public_directory_path, request_path.lstrip('/'))
-    if request.headers.get('accept'):
-      fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
-
-    if not fixture_path:
-      fixture_path = _fixture_path
-
-    if not os.path.isfile(fixture_path):
+  if fixture_path:
+    if not os.path.exists(fixture_path):
       return
   else:
-    fixture_path = fixture.get('path')
-    if not fixture_path or not os.path.isfile(fixture_path):
-      return
+    response_fixtures = options.get('response_fixtures')
+    fixture: dict = __eval_response_fixtures(request, response_fixtures)
 
-    _headers = fixture.get('headers')
-    headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
+    if not fixture:
+      public_directory_path = options.get('public_directory_path')
 
-    if fixture.get('status_code'):
-      status_code = fixture.get('status_code')
+      if not public_directory_path:
+        return
 
+      request_path = 'index' if request.path == '/' else request.path
+      _fixture_path = os.path.join(public_directory_path, request_path.lstrip('/'))
+      if request.headers.get('accept'):
+        fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
+
+      if not fixture_path:
+        fixture_path = _fixture_path
+
+      if not os.path.isfile(fixture_path):
+        return
+    else:
+      fixture_path = fixture.get('path')
+      if not fixture_path or not os.path.isfile(fixture_path):
+        return
+
+      _headers = fixture.get('headers')
+      headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
+
+      if fixture.get('status_code'):
+        status_code = fixture.get('status_code')
+    
   with open(fixture_path, 'rb') as fp:
     response = Response()
 
     response.status_code = status_code
     response.raw = BytesIO(fp.read()) 
+    headers[MOCK_FIXTURE_PATH] = fixture_path
     response.headers = headers
 
     if not response.headers.get('content-type'):
