@@ -116,10 +116,10 @@ class TestPrune():
       1. Create scenario
       2. Add 2 requests to it
       3. Snapshot scenario
-      4. Snapshot request with action DELETE_ACTION
-      5. Prune, but because scenario depends on the request, should not be able to prune
+      4. Snapshot second request with action DELETE_ACTION
+      5. Prune
       6. Apply
-      7. Expect scenario to have 1 request
+      7. Expect scenario to have 1 request, because scenario depends on the request, should not be able to prune
       '''
 
       @pytest.fixture(scope='class')
