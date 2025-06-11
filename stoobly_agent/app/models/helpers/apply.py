@@ -1,9 +1,11 @@
 import pdb
 
+from typing import List
+
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.app.proxy.record import REQUEST_STRING_CLRF, RequestStringControl
+from stoobly_agent.app.proxy.record import REQUEST_STRING_CLRF
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
 
@@ -71,6 +73,7 @@ class Apply():
       if results:
         status = results[1]
         if status == 0 or status >= 400:
+          self.__logger(f"{bcolors.FAIL}Error{bcolors.ENDC} {results[0]}")
           completed = False
           break
 
@@ -218,14 +221,16 @@ class Apply():
 
     snapshot_requests = {}
 
-    request_snapshots = snapshot.request_snapshots
+    request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
     for request_snapshot in request_snapshots:
       raw_request = request_snapshot.request
-      
-      toks = raw_request.split(REQUEST_STRING_CLRF.encode(), 1)
 
+      if not raw_request:
+        return f"{request_snapshot.path} is missing", 400
+        
+      toks = raw_request.split(REQUEST_STRING_CLRF, 1)
       if len(toks) != 2:
-        return f"{snapshot.requests_path} contains an invalid request", 400
+        return f"{request_snapshot.path} contains an invalid request", 400
 
       uuid = request_snapshot.uuid
       res, status = self.__put_request(uuid, raw_request, scenario_id=scenario['id'])

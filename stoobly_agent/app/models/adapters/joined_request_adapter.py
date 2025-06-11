@@ -46,7 +46,7 @@ class JoinedRequestAdapter():
   def build_request_string(self):
     request_string = RequestString(None)
 
-    delimitter = RequestStringCLRF.encode()
+    delimitter = RequestStringCLRF
     request_string_toks = self.__split_joined_request_string[0].split(delimitter)
     request_string.set(self.raw_request_string or delimitter.join(request_string_toks[1:]))
     request_string.control = request_string_toks[0]
