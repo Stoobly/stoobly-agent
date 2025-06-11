@@ -25,7 +25,23 @@ echo "Configuring rewrite rules..."
 stoobly-agent config rewrite set \
   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
   --mode record \
+  --name authorization \
+  --pattern "$origin/?.*?" \
+  --type Header \
+  --value '' \
+
+stoobly-agent config rewrite set \
+  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --mode record \
   --name cookie \
   --pattern "$origin/?.*?" \
   --type Header \
+  --value '' \
+
+stoobly-agent config rewrite set \
+  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --mode record \
+  --name set-cookie \
+  --pattern "$origin/?.*?" \
+  --type 'Response Header' \
   --value '' \

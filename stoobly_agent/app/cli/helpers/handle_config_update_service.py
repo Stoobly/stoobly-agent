@@ -6,7 +6,7 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.app.settings.constants.intercept_mode import Mode
 from stoobly_agent.app.settings import ProxySettings, Settings
-from stoobly_agent.config.constants import record_policy
+from stoobly_agent.config.constants import record_order
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -28,15 +28,15 @@ def handle_intercept_active_update(new_settings: Settings, context: Context = No
 
   if not was_active and is_active:
     if _mode == intercept_mode.RECORD:
-      new_policy = data_rule.record_policy
+      new_order = data_rule.record_order
       scenario_key = data_rule.scenario_key
       _scenario_key = __parse_scenario_key(scenario_key)
 
       if _scenario_key:
         scenario_model = ScenarioModel(new_settings)
 
-        if new_policy == record_policy.OVERWRITE:
-          # If policy is overwrite when recording, whenever intercept is enabled,
+        if new_order == record_order.OVERWRITE:
+          # If order is overwrite when recording, whenever intercept is enabled,
           # set active scenario to be overwritable
           scenario_model.update(_scenario_key.id, **{ 'overwritable': True })[1]
         else:
@@ -44,16 +44,16 @@ def handle_intercept_active_update(new_settings: Settings, context: Context = No
   elif was_active and not is_active:
     if _mode == intercept_mode.RECORD:
       old_proxy_settings = __current_proxy_settings(context)
-      old_policy = __data_rule(old_proxy_settings).record_policy
+      old_order = __data_rule(old_proxy_settings).record_order
 
-      if old_policy == record_policy.OVERWRITE:
+      if old_order == record_order.OVERWRITE:
         scenario_key = data_rule.scenario_key
         _scenario_key = __parse_scenario_key(scenario_key)
 
         if _scenario_key:
           scenario_model = ScenarioModel(new_settings)
 
-          # If policy is overwrite when recording, whenever intercept is disabled,
+          # If order is overwrite when recording, whenever intercept is disabled,
           # set active scenario to not be overwritable
           scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
     elif _mode == intercept_mode.MOCK:
@@ -73,7 +73,7 @@ def handle_scenario_update(new_settings: Settings, context = None):
   if old_scenario_key != new_scenario_key:
     data_rule = __data_rule(new_settings.proxy)
 
-    if data_rule.record_policy == record_policy.OVERWRITE:
+    if data_rule.record_order == record_order.OVERWRITE:
       scenario_model = ScenarioModel(new_settings)
 
       _old_scenario_key = __parse_scenario_key(old_scenario_key)
@@ -108,7 +108,7 @@ def handle_project_update(new_settings: Settings, context: Context = None):
     if _project_key.id != _new_scenario_key.project_id:
       data_rule.scenario_key = None
 
-def handle_policy_update(new_settings: Settings, context: Context = None):
+def handle_order_update(new_settings: Settings, context: Context = None):
   data_rule = __data_rule(new_settings.proxy)
   _mode = context['mode'] if context and context.get('mode') else new_settings.proxy.intercept.mode
 
@@ -116,10 +116,10 @@ def handle_policy_update(new_settings: Settings, context: Context = None):
   old_data_rule = __data_rule(old_proxy_settings)
 
   if _mode == intercept_mode.RECORD:
-    new_policy = data_rule.record_policy
-    old_policy = old_data_rule.record_policy
+    new_order = data_rule.record_order
+    old_order = old_data_rule.record_order
 
-    if new_policy != old_policy and old_policy == record_policy.OVERWRITE:
+    if new_order != old_order and old_order == record_order.OVERWRITE:
       scenario_key = data_rule.scenario_key
       _scenario_key = __parse_scenario_key(scenario_key)
 

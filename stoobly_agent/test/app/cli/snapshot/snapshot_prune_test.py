@@ -3,12 +3,14 @@ import pytest
 import time
 
 from click.testing import CliRunner
+from typing import List
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
-from stoobly_agent.cli import record, request, snapshot
+from stoobly_agent.cli import record, request, scenario, snapshot
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 @pytest.fixture(scope='module')
 def runner():
@@ -108,3 +110,70 @@ class TestPrune():
         apply_result = runner.invoke(snapshot, ['prune'])
         assert apply_result.exit_code == 0
         assert len(log.events) == 0
+
+    class TestWhenRemoveScenarioRequest():
+      '''
+      1. Create scenario
+      2. Add 2 requests to it
+      3. Snapshot scenario
+      4. Snapshot request with action DELETE_ACTION
+      5. Prune, but because scenario depends on the request, should not be able to prune
+      6. Apply
+      7. Expect scenario to have 1 request
+      '''
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self, runner: CliRunner):
+        create_result = runner.invoke(scenario, ['create', 'test'])
+        assert create_result.exit_code == 0
+        return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+
+        return created_scenario.requests
+
+      @pytest.fixture(scope='class', autouse=True)
+      def delete_event(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        time.sleep(0.5) # So events do not have the same uuid
+
+        created_request = created_scenario_requests[1]
+        snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+        assert snapshot_result.exit_code == 0
+
+        log = Log()
+        events = log.events
+        return events[len(events) - 1]
+
+      @pytest.fixture(scope='class')
+      def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+        prune_result = runner.invoke(snapshot, ['prune'])
+        assert prune_result.exit_code == 0
+
+        created_scenario = Scenario.find(created_scenario.id)
+        assert created_scenario.requests_count == 2
+        apply_result = runner.invoke(snapshot, ['apply'])
+
+        return apply_result
+
+      def test_it_updates_scenario(self, created_scenario: Scenario, apply_result):
+        assert apply_result.exit_code == 0
+
+        created_scenario = Scenario.find(created_scenario.id)
+        assert created_scenario.requests_count == 1
+
+      def test_it_maintains_requests(self, created_scenario: Scenario, created_scenario_requests: List[Request]):
+        created_scenario = Scenario.find(created_scenario.id)
+        assert len(created_scenario.requests) == 1
+
+        requests = created_scenario.requests
+
+        assert_orm_request_equivalent(requests[0], created_scenario_requests[0])

@@ -6,11 +6,9 @@ from click.testing import CliRunner
 from stoobly_agent.test.test_helper import reset
 
 from stoobly_agent.cli import config, intercept, scenario
-from stoobly_agent.lib.api.keys import ScenarioKey
 from stoobly_agent.lib.orm.scenario import Scenario
 
-
-from stoobly_agent.config.constants import mode, record_policy
+from stoobly_agent.config.constants import mode, record_order
 
 @pytest.fixture(scope='module')
 def runner():
@@ -22,7 +20,7 @@ def settings():
 
 class TestInterceptEnable():
 
-  class TestRecordPolicy():
+  class TestRecordOrder():
 
     class TestScenario():
       @pytest.fixture(scope='class')
@@ -41,7 +39,7 @@ class TestInterceptEnable():
         configure_result = runner.invoke(config, ['scenario', 'set', scenario.key()])
         assert configure_result.exit_code == 0
 
-        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD ,'--policy', record_policy.OVERWRITE])
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD ,'--order', record_order.OVERWRITE])
 
       def test_enabling_sets_overwritable(self, runner: CliRunner, scenario: Scenario):
         enable_result = runner.invoke(intercept, ['enable'])

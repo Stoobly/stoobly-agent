@@ -548,3 +548,145 @@ class TestApply():
         assert recreated_scenario
 
         assert len(recreated_scenario.requests) == 0
+
+    class TestWhenDeletingRequestWhileReferenced():
+
+      class TestWhenRemoveScenarioRequest():
+        '''
+        1. Create scenario
+        2. Add 2 requests to it
+        3. Snapshot scenario
+        4. Snapshot requests with action DELETE_ACTION
+        5. Apply
+        6. Expect scenario to have 1 request
+        '''
+
+        @pytest.fixture(scope='class')
+        def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario.requests
+
+        @pytest.fixture(scope='class', autouse=True)
+        def delete_event(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          time.sleep(0.5) # So events do not have the same uuid
+
+          created_request = created_scenario_requests[1]
+          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          assert snapshot_result.exit_code == 0
+
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
+
+        @pytest.fixture(scope='class')
+        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 2
+          apply_result = runner.invoke(snapshot, ['apply'])
+
+          return apply_result
+
+        def test_it_updates_scenario(self, created_scenario: Scenario, apply_result):
+          assert apply_result.exit_code == 0
+
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 1
+
+        def test_it_maintains_requests(self, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          created_scenario = Scenario.find(created_scenario.id)
+          assert len(created_scenario.requests) == 1
+
+          requests = created_scenario.requests
+
+          assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
+      
+      class TestWhenMovingScenarioRequest():
+        '''
+        1. Create scenario one and scenario two
+        2. Add 1 request to scenario one
+        3. Snapshot scenario one
+        4. Move scenario one request to scenario two
+        5. Snapshot scenario two
+        5. Apply
+        6. Expect scenario one to have 0 requests
+        7. Expect scenario two to have 1 request
+        '''
+
+        @pytest.fixture(scope='class')
+        def created_scenario_one(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test1'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class')
+        def created_scenario_two(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test2'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_request(self, runner: CliRunner, created_scenario_one: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario_one.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario_one.requests[0]
+
+        @pytest.fixture(scope='class', autouse=True)
+        def put_event_one(self, runner: CliRunner, created_scenario_one: Scenario, created_scenario_request: Request):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario_one.key()])
+          assert snapshot_result.exit_code == 0
+
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
+
+        @pytest.fixture(scope='class', autouse=True)
+        def put_event_two(self, runner: CliRunner, created_scenario_two: Scenario, created_scenario_request: Request):
+          created_scenario_request.update(scenario_id=created_scenario_two.id)
+
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario_two.key()])
+          assert snapshot_result.exit_code == 0
+
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
+
+        @pytest.fixture(scope='class')
+        def apply_result(self, runner: CliRunner):
+          apply_result = runner.invoke(snapshot, ['apply'])
+
+          return apply_result
+
+        def test_it_removes_request_from_scenario_one(self, created_scenario_one: Scenario, apply_result):
+          assert apply_result.exit_code == 0
+
+          created_scenario_one = Scenario.find(created_scenario_one.id)
+          assert created_scenario_one.requests_count == 0
+
+        def test_it_adds_request_to_scenario_two(self, created_scenario_two: Scenario, apply_result):
+          assert apply_result.exit_code == 0
+
+          created_scenario_two = Scenario.find(created_scenario_two.id)
+          assert created_scenario_two.requests_count == 1
+
+        def test_it_maintains_requests(self, created_scenario_two: Scenario, created_scenario_request):
+          created_scenario_two = Scenario.find(created_scenario_two.id)
+          assert len(created_scenario_two.requests) == 1
+
+          requests = created_scenario_two.requests
+
+          assert_orm_request_equivalent(requests[0], created_scenario_request)

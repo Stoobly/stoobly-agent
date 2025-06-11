@@ -6,11 +6,9 @@ from click.testing import CliRunner
 from stoobly_agent.test.test_helper import reset
 
 from stoobly_agent.cli import config, intercept, scenario
-from stoobly_agent.lib.api.keys import ScenarioKey
 from stoobly_agent.lib.orm.scenario import Scenario
 
-
-from stoobly_agent.config.constants import mode, record_policy
+from stoobly_agent.config.constants import mode, record_order
 
 @pytest.fixture(scope='module')
 def runner():
@@ -22,7 +20,7 @@ def settings():
 
 class TestInterceptConfigure():
 
-  class TestRecordPolicy():
+  class TestRecordOrder():
 
     class TestScenario():
       @pytest.fixture(scope='class')
@@ -41,15 +39,15 @@ class TestInterceptConfigure():
         configure_result = runner.invoke(config, ['scenario', 'set', scenario.key()])
         assert configure_result.exit_code == 0
 
-        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD ,'--policy', record_policy.OVERWRITE])
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD ,'--order', record_order.OVERWRITE])
         assert configure_result.exit_code == 0
 
-      class TestChangingPolicy():
+      class TestChangingOrder():
 
         def test_scenario_not_overwritable(self, runner: CliRunner, scenario: Scenario):
           Scenario.find(scenario.id).update(overwritable=True)
 
-          configure_result = runner.invoke(intercept, ['configure', '--policy', record_policy.ALL])
+          configure_result = runner.invoke(intercept, ['configure', '--order', record_order.APPEND])
           assert configure_result.exit_code == 0
 
           assert not Scenario.find(scenario.id).overwritable

@@ -14,6 +14,7 @@ from .multipart import decode as multipart_decode, encode as multipart_encode
 JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
 WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
+XML = 'application/xml'
 
 def compress(body: Union[bytes, str], content_encoding: Union[None, str]) -> Union[bytes, str]:
     if content_encoding:
@@ -113,14 +114,24 @@ def normalize_header(header):
 def is_traversable(content):
     return isinstance(content, list) or isinstance(content, dict) or isinstance(content, MultiDict)
 
-def is_json(content_type):
-   _content_type = content_type.lower()
-   return _content_type == JSON or _content_type.startswith('application/x-amz-json') 
+def is_json(content_type: str):
+    if not content_type:
+        return False
 
+    _content_type = content_type.lower().split(';')[0]
+    # e.g. custom json content-type: application/x-amz-json
+    return _content_type == JSON or (_content_type.startswith('application/') and _content_type.endswith('json'))
+
+def is_xml(content_type: str):
+    if not content_type:
+        return False
+
+    _content_type = content_type.lower().split(';')[0]
+    # e.g. custom json content-type: application/x-amz-json
+    return _content_type == XML or (_content_type.startswith('application/') and _content_type.endswith('xml'))
 
 def __parse_separated_header(header: str):
     # Adapted from https://peps.python.org/pep-0594/#cgi
     message = Message()
     message['content-type'] = header 
     return message.get_content_type()
-

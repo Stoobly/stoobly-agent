@@ -1,4 +1,5 @@
 AFTER_MOCK = 'handle_after_mock'
+AFTER_MOCK_NOT_FOUND = 'handle_after_mock_not_found'
 AFTER_RECORD = 'handle_after_record'
 AFTER_REPLAY = 'handle_after_replay'
 AFTER_TEST = 'handle_after_test'

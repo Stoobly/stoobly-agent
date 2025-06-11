@@ -9,7 +9,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.cli import config, record, scenario
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
-from stoobly_agent.config.constants import record_policy
+from stoobly_agent.config.constants import record_order
 
 from stoobly_agent.lib.api.keys import ProjectKey
 
@@ -23,7 +23,7 @@ class TestConfigScenarioSet():
   def settings(self):
     return reset()
 
-  class TestWhenRecordPolicyOverwrite():
+  class TestWhenRecordOrderOverwrite():
     @pytest.fixture(scope='class')
     def created_scenario(self, runner: CliRunner):
       scenario_create_result = runner.invoke(scenario, ['create', 'test'])
@@ -52,7 +52,7 @@ class TestConfigScenarioSet():
 
       data_rule = settings.proxy.data.data_rules(_project_key.id)
       data_rule.scenario_key = created_scenario.key()
-      data_rule.record_policy = record_policy.OVERWRITE
+      data_rule.record_order = record_order.OVERWRITE
       settings.commit()
 
       set_results = runner.invoke(config, ['scenario', 'set', new_scenario.key()])
