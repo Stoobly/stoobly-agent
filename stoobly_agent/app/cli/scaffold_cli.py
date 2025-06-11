@@ -148,10 +148,7 @@ def create(**kwargs):
     sys.exit(1)
 
   if kwargs.get('hostname'):
-    hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-    if not re.search(hostname_regex, kwargs['hostname']):
-      print(f"Error: {kwargs['hostname']} is invalid.", file=sys.stderr)
-      sys.exit(1)
+    __validate_hostname(kwargs.get('hostname'))
 
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
@@ -238,12 +235,16 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
-    old_hostname = service_config.hostname
-    service_config.hostname = kwargs['hostname']
+    __validate_hostname(kwargs['hostname'])
 
-    # If this is the default proxy_mode, assume it is safe to update to match the new hostname
-    if service_config.proxy_mode.startswith("reverse:"):
-      service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
+    old_hostname = service_config.hostname
+
+    if old_hostname != kwargs['hostname']:
+      service_config.hostname = kwargs['hostname']
+
+      # If this is the default proxy_mode, assume it is safe to update to match the new hostname
+      if service_config.proxy_mode.startswith("reverse:"):
+        service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
@@ -809,6 +810,12 @@ def __validate_proxy_mode(proxy_mode: str) -> None:
     sys.exit(1)
 
   # TODO: validate SPEC
+
+def __validate_hostname(hostname: str) -> None:
+  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
+  if not re.search(hostname_regex, hostname):
+    print(f"Error: {hostname} is invalid.", file=sys.stderr)
+    sys.exit(1)
 
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
