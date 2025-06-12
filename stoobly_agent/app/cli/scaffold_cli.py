@@ -22,6 +22,8 @@ from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
+from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
+from stoobly_agent.app.cli.scaffold.service_workflow import ServiceWorkflow
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -143,15 +145,10 @@ def mkcert(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  if '/' in kwargs['service_name']:
-    print(f"Error: {kwargs['service_name']} is invalid. It cannot container '/", file=sys.stderr)
-    sys.exit(1)
+  __validate_service_name(kwargs['service_name'])
 
   if kwargs.get('hostname'):
-    hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-    if not re.search(hostname_regex, kwargs['hostname']):
-      print(f"Error: {kwargs['hostname']} is invalid.", file=sys.stderr)
-      sys.exit(1)
+    __validate_hostname(kwargs.get('hostname'))
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
@@ -216,6 +213,7 @@ def delete(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--name', type=click.STRING, help='New name of the service to update to.')
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -228,6 +226,7 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
+    __validate_hostname(kwargs['hostname'])
     service_config.hostname = kwargs['hostname']
 
   if kwargs['priority']:
@@ -238,6 +237,20 @@ def update(**kwargs):
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['name']:
+    old_service_name = service.service_name
+    new_service_name = kwargs['name']
+    __validate_service_name(new_service_name)
+
+    print(f"Renaming service from: {old_service_name}, to: {new_service_name}")
+
+    kwargs['service_path'] = service.dir_path
+    command = ServiceUpdateCommand(app, **kwargs)
+    service = command.rename(new_service_name)
+    service_config = command.service_config
+
+    print(f"Successfully renamed service to: {new_service_name}")
 
   service_config.write()
 
@@ -760,6 +773,17 @@ def __validate_app_dir(app_dir_path):
 def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
     print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
+    sys.exit(1)
+
+def __validate_service_name(service_name: str) -> None:
+  if '/' in 'service_name':
+    print(f"Error: {service_name} is invalid. It cannot container '/", file=sys.stderr)
+    sys.exit(1)
+
+def __validate_hostname(hostname: str) -> None:
+  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
+  if not re.search(hostname_regex, hostname):
+    print(f"Error: {hostname} is invalid.", file=sys.stderr)
     sys.exit(1)
 
 def __workflow_create(app, **kwargs):
