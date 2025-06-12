@@ -248,8 +248,8 @@ def update(**kwargs):
     kwargs['service_path'] = service.dir_path
     command = ServiceUpdateCommand(app, **kwargs)
     service = command.rename(new_service_name)
+    service_config = command.service_config
 
-    service_config = ServiceConfig(service.dir_path)
     print(f"Successfully renamed service to: {new_service_name}")
 
   service_config.write()
