@@ -6,6 +6,7 @@ import sys
 
 from io import TextIOWrapper
 from typing import List
+from urllib.parse import urlparse
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.shell import exec_stream
@@ -242,9 +243,13 @@ def update(**kwargs):
     if old_hostname != kwargs['hostname']:
       service_config.hostname = kwargs['hostname']
 
-      # If this is the default proxy_mode, assume it is safe to update to match the new hostname
+      # If this is the default proxy_mode and the origin matches the original hostname, assume it is safe to update with the new hostname
       if service_config.proxy_mode.startswith("reverse:"):
-        service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
+        old_origin = service_config.proxy_mode.split("reverse:")[1]
+        parsed_origin_url = urlparse(old_origin)
+
+        if old_hostname == parsed_origin_url.hostname:
+          service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
