@@ -150,12 +150,9 @@ def create(**kwargs):
 
   if kwargs.get('hostname'):
     __validate_hostname(kwargs.get('hostname'))
-<<<<<<< 404-add-a-service-rename-command
-=======
 
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
->>>>>>> master
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
@@ -221,15 +218,12 @@ def delete(**kwargs):
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--name', type=click.STRING, help='New name of the service to update to.')
-<<<<<<< 404-add-a-service-rename-command
-=======
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
   upstream proxy modes, SPEC is host specification in
   the form of "http[s]://host[:port]".
 ''')
->>>>>>> master
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -243,9 +237,7 @@ def update(**kwargs):
 
   if kwargs['hostname']:
     __validate_hostname(kwargs['hostname'])
-<<<<<<< 404-add-a-service-rename-command
     service_config.hostname = kwargs['hostname']
-=======
 
     old_hostname = service_config.hostname
 
@@ -259,7 +251,6 @@ def update(**kwargs):
 
         if old_hostname == parsed_origin_url.hostname:
           service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
->>>>>>> master
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
@@ -270,8 +261,6 @@ def update(**kwargs):
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
 
-<<<<<<< 404-add-a-service-rename-command
-  if kwargs['name']:
     old_service_name = service.service_name
     new_service_name = kwargs['name']
     __validate_service_name(new_service_name)
@@ -284,11 +273,10 @@ def update(**kwargs):
     service_config = command.service_config
 
     print(f"Successfully renamed service to: {new_service_name}")
-=======
+
   if kwargs['proxy_mode']:
     __validate_proxy_mode(kwargs['proxy_mode'])
     service_config.proxy_mode = kwargs['proxy_mode']
->>>>>>> master
 
   service_config.write()
 
