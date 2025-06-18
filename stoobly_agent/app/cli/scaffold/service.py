@@ -20,5 +20,11 @@ class Service():
   def service_name(self):
     return self.__service_name
 
+  @property
+  def workflows(self):
+    # Each directory in the service directory path is a workflow
+    workflows = [ f.name for f in os.scandir(self.dir_path) if f.is_dir() ]
+    return workflows
+
   def workflow_dir_path(self, workflow_name: str):
     return os.path.join(self.dir_path, workflow_name)
