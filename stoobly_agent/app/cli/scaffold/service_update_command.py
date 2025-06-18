@@ -22,30 +22,25 @@ class ServiceUpdateCommand(ServiceCommand):
     super().__init__(app, **kwargs)
 
   def rename(self, new_service_name: str) -> Service:
-    service = self.__rename_service_dir(self.service_path, new_service_name)
+    self.__rename_service_dir(self.service_path, new_service_name)
 
-    self.service_config = ServiceConfig(service.dir_path)
-    self.service_name = new_service_name
+    self.service = Service(new_service_name, self.app)
+    self.service_config = ServiceConfig(self.service.dir_path)
 
-    self.__update_internal_container_specs(service.dir_path, self.service_name, new_service_name)
+    self.__update_internal_container_specs(new_service_name)
 
-    return service
+    return self.service
 
-  def __rename_service_dir(self, dir_path: str, new_name: str) -> Service:
+  def __rename_service_dir(self, dir_path: str, new_name: str) -> None:
     new_dir_path = os.path.join(self.app.scaffold_namespace_path, new_name)
     os.rename(dir_path, new_dir_path)
 
-    service = Service(new_name, self.app)
-    return service
-
-  def __update_internal_container_specs(self, service_path: str, old_service_name: str, new_service_name: str):
-    # TODO: update to include custom workflows
-    CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
-    workflows = CORE_WORKFLOWS
+  def __update_internal_container_specs(self, new_service_name: str) -> None:
+    workflows = self.service.workflows
 
     kwargs = {}
     kwargs['app_dir_path'] = self.app.dir_path
-    kwargs['service_name'] = self.service_name
-    kwargs['workflow'] = CORE_WORKFLOWS
+    kwargs['service_name'] = new_service_name
+    kwargs['workflow'] = workflows
     command = ServiceCreateCommand(self.app, **kwargs)
     command.build()

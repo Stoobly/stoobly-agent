@@ -260,6 +260,7 @@ def update(**kwargs):
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
 
+  if kwargs['name']:
     old_service_name = service.service_name
     new_service_name = kwargs['name']
     __validate_service_name(new_service_name)
