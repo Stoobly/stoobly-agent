@@ -237,7 +237,6 @@ def update(**kwargs):
 
   if kwargs['hostname']:
     __validate_hostname(kwargs['hostname'])
-    service_config.hostname = kwargs['hostname']
 
     old_hostname = service_config.hostname
 
@@ -839,12 +838,6 @@ def __validate_hostname(hostname: str) -> None:
 def __validate_service_name(service_name: str) -> None:
   if '/' in 'service_name':
     print(f"Error: {service_name} is invalid. It cannot container '/", file=sys.stderr)
-    sys.exit(1)
-
-def __validate_hostname(hostname: str) -> None:
-  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-  if not re.search(hostname_regex, hostname):
-    print(f"Error: {hostname} is invalid.", file=sys.stderr)
     sys.exit(1)
 
 def __workflow_create(app, **kwargs):
