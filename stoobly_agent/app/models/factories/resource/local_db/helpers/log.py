@@ -70,22 +70,7 @@ class Log():
 
   @property
   def scenario_inverted_index(self):
-    index = {}
-
-    def handle_snapshot(snapshot: RequestSnapshot):
-      request_uuid = snapshot.uuid
-      if not request_uuid in index:
-        index[request_uuid] = []
-
-      index[request_uuid].append(event.resource_uuid)
-
-    for event in self.target_events:
-      if not event.is_scenario():
-        continue 
-
-      event.snapshot().iter_request_snapshots(handle_snapshot)
-
-    return index
+    return self.build_scenario_inverted_index(self.target_events)
 
   @property
   def unprocessed_events(self) -> List[LogEvent]:
@@ -153,6 +138,22 @@ class Log():
 
   def build_log_events(self, raw_events) -> List[LogEvent]:
     return list(map(lambda raw_event: LogEvent(raw_event), raw_events))
+  
+  def build_scenario_inverted_index(self, events: List[LogEvent], index = {}):
+    def handle_snapshot(snapshot: RequestSnapshot):
+      request_uuid = snapshot.uuid
+      if not request_uuid in index:
+        index[request_uuid] = []
+
+      index[request_uuid].append(event.resource_uuid)
+
+    for event in events:
+      if not event.is_scenario():
+        continue 
+
+      event.snapshot().iter_request_snapshots(handle_snapshot)
+
+    return index
 
   def next_version(self, last_processed_uuid: str = None):
     uuids = self.uuids()
@@ -169,7 +170,7 @@ class Log():
   def collapse(self, events: List[LogEvent]) -> List[LogEvent]:
     events_count = {}
 
-    # More recent events take precedence over earlier ones, keep only the most recent event 
+    # More recent events take precedence over earlier ones, only the most recent event 
     for event in events:
       event_key = event.key
 
@@ -274,10 +275,10 @@ class Log():
   
   def remove_dangling_events(self, processed_events: List[LogEvent], unprocessed_events: List[LogEvent]):
     '''
-    Remove DELETE events where the last processed event was a PUT
+    Remove DELETE events unless the last processed event was a PUT
     '''
 
-    # Build an index such that if the last event is DELETE_ACTION, then it will NOT exist in the index
+    # Build an index to keep track of the last action that occurred for a resource
     index = {}
     for event in processed_events:
       if event.action == PUT_ACTION:
@@ -286,13 +287,27 @@ class Log():
         if event.resource_uuid in index:
           del index[event.resource_uuid]
 
-    scenario_inverted_index = self.scenario_inverted_index
-
+    scenario_inverted_index = self.build_scenario_inverted_index(processed_events)
+    
     def keep(e: LogEvent):
-      if e.action != DELETE_ACTION:
+      # Keep the event if it's a PUT, it may have been updated
+      if e.action == PUT_ACTION:
         return True
-      
-      return e.action == DELETE_ACTION and e.is_request() and e.resource_uuid in scenario_inverted_index
+
+      if e.action == DELETE_ACTION:
+        if e.is_request():
+          referenced = e.resource_uuid in scenario_inverted_index
+          # Keep the DELETE event if the requests exists in a scenario
+          # or if it doesn't exist in a scenario, there was a previous delete event
+          return referenced or (e.resource_uuid in index and not referenced)
+        elif e.is_scenario():
+          # Update scenario_inverted_index with unprocessed event
+          self.build_scenario_inverted_index([e], scenario_inverted_index)
+
+          # Keep DELETE scenario event only if previous event for the resource was PUT
+          return e.resource_uuid in index
+        else:
+          return True
     
     return list(
       filter(

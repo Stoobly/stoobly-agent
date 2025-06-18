@@ -556,7 +556,7 @@ class TestApply():
         1. Create scenario
         2. Add 2 requests to it
         3. Snapshot scenario
-        4. Snapshot requests with action DELETE_ACTION
+        4. Snapshot second request with action DELETE_ACTION
         5. Apply
         6. Expect scenario to have 1 request
         '''
@@ -690,3 +690,123 @@ class TestApply():
           requests = created_scenario_two.requests
 
           assert_orm_request_equivalent(requests[0], created_scenario_request)
+    
+    class TestApply():
+
+      class TestWhenNoApply():
+        '''
+        1. Create scenario
+        2. Add 2 requests to it
+        3. Snapshot scenario
+        4. Apply scenario
+        5. Snapshot second request with action DELETE_ACTION
+        6. Prune
+        7. Apply
+        8. Expect scenario to have 1 request, because scenario depends on the request, should not be able to prune
+        '''
+
+        @pytest.fixture(scope='class')
+        def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario.requests
+
+        @pytest.fixture(scope='class', autouse=True)
+        def snapshots(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          created_request = created_scenario_requests[1]
+          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          assert snapshot_result.exit_code == 0
+
+        def test_events(self):
+          log = Log()
+
+          events = log.events
+          assert len(events) == 2
+
+        def test_collapsed_events(self):
+          log = Log()
+
+          collapsed_events = log.collapse(log.events)
+          assert len(collapsed_events) == 2
+
+        def test_unprocessed_events(self):
+          log = Log()
+
+          unprocessed_events = log.unprocessed_events
+          assert len(unprocessed_events) == 2
+
+      class TestWhenRemoveScenarioRequest():
+        '''
+        1. Create scenario
+        2. Add 2 requests to it
+        3. Snapshot scenario
+        4. Apply scenario
+        5. Snapshot second request with action DELETE_ACTION
+        6. Prune
+        7. Apply
+        8. Expect scenario to have 1 request, because scenario depends on the request, should not be able to prune
+        '''
+
+        @pytest.fixture(scope='class')
+        def created_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
+          assert record_result.exit_code == 0
+
+          return created_scenario.requests
+
+        @pytest.fixture(scope='class', autouse=True)
+        def apply_result(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          created_scenario = Scenario.find(created_scenario.id)
+          assert created_scenario.requests_count == 2
+          apply_result = runner.invoke(snapshot, ['apply'])
+          assert apply_result.exit_code == 0
+
+          created_request = created_scenario_requests[1]
+          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          assert snapshot_result.exit_code == 0
+
+          return apply_result
+
+        def test_events(self):
+          log = Log()
+
+          events = log.events
+          assert len(events) == 2
+
+        def test_collapsed_events(self):
+          log = Log()
+
+          collapsed_events = log.collapse(log.events)
+          assert len(collapsed_events) == 2
+
+        def test_unprocessed_events(self):
+          log = Log()
+
+          unprocessed_events = log.unprocessed_events
+          assert len(unprocessed_events) == 1
+          assert unprocessed_events[0].action == DELETE_ACTION

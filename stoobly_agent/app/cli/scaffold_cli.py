@@ -6,6 +6,7 @@ import sys
 
 from io import TextIOWrapper
 from typing import List
+from urllib.parse import urlparse
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.shell import exec_stream
@@ -149,6 +150,12 @@ def create(**kwargs):
 
   if kwargs.get('hostname'):
     __validate_hostname(kwargs.get('hostname'))
+<<<<<<< 404-add-a-service-rename-command
+=======
+
+  if kwargs.get("proxy_mode"):
+    __validate_proxy_mode(kwargs.get("proxy_mode"))
+>>>>>>> master
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
@@ -214,6 +221,15 @@ def delete(**kwargs):
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--name', type=click.STRING, help='New name of the service to update to.')
+<<<<<<< 404-add-a-service-rename-command
+=======
+@click.option('--proxy-mode', help='''
+  Proxy mode can be "regular", "transparent", "socks5",
+  "reverse:SPEC", or "upstream:SPEC". For reverse and
+  upstream proxy modes, SPEC is host specification in
+  the form of "http[s]://host[:port]".
+''')
+>>>>>>> master
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -227,7 +243,23 @@ def update(**kwargs):
 
   if kwargs['hostname']:
     __validate_hostname(kwargs['hostname'])
+<<<<<<< 404-add-a-service-rename-command
     service_config.hostname = kwargs['hostname']
+=======
+
+    old_hostname = service_config.hostname
+
+    if old_hostname != kwargs['hostname']:
+      service_config.hostname = kwargs['hostname']
+
+      # If this is the default proxy_mode and the origin matches the original hostname, assume it is safe to update with the new hostname
+      if service_config.proxy_mode.startswith("reverse:"):
+        old_origin = service_config.proxy_mode.split("reverse:")[1]
+        parsed_origin_url = urlparse(old_origin)
+
+        if old_hostname == parsed_origin_url.hostname:
+          service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
+>>>>>>> master
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
@@ -238,6 +270,7 @@ def update(**kwargs):
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
 
+<<<<<<< 404-add-a-service-rename-command
   if kwargs['name']:
     old_service_name = service.service_name
     new_service_name = kwargs['name']
@@ -251,6 +284,11 @@ def update(**kwargs):
     service_config = command.service_config
 
     print(f"Successfully renamed service to: {new_service_name}")
+=======
+  if kwargs['proxy_mode']:
+    __validate_proxy_mode(kwargs['proxy_mode'])
+    service_config.proxy_mode = kwargs['proxy_mode']
+>>>>>>> master
 
   service_config.write()
 
@@ -772,7 +810,42 @@ def __validate_app_dir(app_dir_path):
 
 def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
-    print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
+    print(f"Error: '{service_dir_path}' does not exist, please scaffold this service", file=sys.stderr)
+    sys.exit(1)
+
+def __validate_proxy_mode(proxy_mode: str) -> None:
+  valid_exact_matches = {
+    "regular": None,
+    "transparent": None,
+    "socks5": None,
+  }
+
+  valid_prefixes = {
+    "reverse": None,
+    "upstream": None
+  }
+
+  if proxy_mode in valid_exact_matches:
+    return
+
+  split_str = proxy_mode.split(":", 1)
+  if len(split_str) != 2:
+    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
+    sys.exit(1)
+
+  prefix = split_str[0]
+  spec = split_str[1]
+
+  if prefix not in valid_prefixes:
+    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
+    sys.exit(1)
+
+  # TODO: validate SPEC
+
+def __validate_hostname(hostname: str) -> None:
+  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
+  if not re.search(hostname_regex, hostname):
+    print(f"Error: {hostname} is invalid.", file=sys.stderr)
     sys.exit(1)
 
 def __validate_service_name(service_name: str) -> None:

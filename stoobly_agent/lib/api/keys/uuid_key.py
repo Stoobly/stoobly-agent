@@ -28,6 +28,10 @@ class UuidKey(ResourceKey):
     toks = key.split(DELIMITTER)
 
     d = {}
+
+    if len(toks) == 0:
+      return d
+
     for tok in toks:
       d[tok[0]] = tok[1:]
 

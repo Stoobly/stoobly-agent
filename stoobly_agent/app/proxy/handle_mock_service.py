@@ -147,15 +147,8 @@ def handle_request_mock(context: MockContext):
 # 2. AFTER_MOCK gets triggered (if mock found)
 #
 def handle_response_mock(context: MockContext):
-    response = context.flow.response
-    request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
-
-    if request_key:
-        request = context.flow.request
-        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
-
-        __rewrite_response(context)
-        __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
+    __rewrite_response(context)
+    __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
 def __handle_mock_failure(context: MockContext) -> None:
     flow = context.flow
@@ -186,6 +179,19 @@ def __handle_found_policy(context: MockContext) -> None:
     reverse_proxy(req, upstream_url, {})
 
 def __handle_mock_success(context: MockContext) -> None:
+    response = context.response
+
+    if response:
+        request = context.flow.request
+
+        request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
+        if request_key:
+            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+
+        fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
+        if fixture_path:
+            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
+
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         response = context.response
         start_time = context.start_time
