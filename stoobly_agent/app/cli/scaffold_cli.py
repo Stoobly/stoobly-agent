@@ -23,6 +23,8 @@ from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
+from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
+from stoobly_agent.app.cli.scaffold.service_workflow import ServiceWorkflow
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -144,9 +146,7 @@ def mkcert(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  if '/' in kwargs['service_name']:
-    print(f"Error: {kwargs['service_name']} is invalid. It cannot container '/", file=sys.stderr)
-    sys.exit(1)
+  __validate_service_name(kwargs['service_name'])
 
   if kwargs.get('hostname'):
     __validate_hostname(kwargs.get('hostname'))
@@ -259,6 +259,20 @@ def update(**kwargs):
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['name']:
+    old_service_name = service.service_name
+    new_service_name = kwargs['name']
+    __validate_service_name(new_service_name)
+
+    print(f"Renaming service from: {old_service_name}, to: {new_service_name}")
+
+    kwargs['service_path'] = service.dir_path
+    command = ServiceUpdateCommand(app, **kwargs)
+    service = command.rename(new_service_name)
+    service_config = command.service_config
+
+    print(f"Successfully renamed service to: {new_service_name}")
 
   if kwargs['proxy_mode']:
     __validate_proxy_mode(kwargs['proxy_mode'])
@@ -820,6 +834,11 @@ def __validate_hostname(hostname: str) -> None:
   hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
   if not re.search(hostname_regex, hostname):
     print(f"Error: {hostname} is invalid.", file=sys.stderr)
+    sys.exit(1)
+
+def __validate_service_name(service_name: str) -> None:
+  if '/' in 'service_name':
+    print(f"Error: {service_name} is invalid. It cannot container '/", file=sys.stderr)
     sys.exit(1)
 
 def __workflow_create(app, **kwargs):
