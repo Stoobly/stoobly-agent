@@ -57,7 +57,7 @@ class JoinedRequestAdapter():
     response_string = ResponseString(None, None)
 
     delimitter = ResponseStringCLRF
-    response_string_toks = self.__repaired_string_toks(self.__split_joined_request_string[1], delimitter)
+    response_string_toks = self.repaired_string_toks(self.__split_joined_request_string[1], delimitter)
     response_string.set(self.raw_response_string or delimitter.join(response_string_toks[1:]))
     response_string.control = response_string_toks[0]
 
@@ -71,26 +71,24 @@ class JoinedRequestAdapter():
     return joined_request
 
   # If all CRLF characters have been replaced with LF e.g. visual studio code
-  # Then try to repair the raw string
-  def __repaired_string_toks(self, raw_string: bytes, delimitter: bytes):
-    _delimitter = delimitter
+  # Then try to repair the raw string, see https://github.com/Stoobly/stoobly-agent/issues/415
+  def repaired_string_toks(raw_string: bytes, delimitter: bytes):
     lf = b"\n"
     toks = raw_string.split(delimitter)
 
     if len(toks) == 1:
-      n1 = None
-      n2 = None
-      toks = []
+      toks = raw_string.split(lf)
 
       # See for request: https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html
       # See for response: https://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html 
-      for line in raw_string.split(lf):
+      i = 0
+      for line in toks:
+        i += 1
+
         # On two lf characters, then the following lines are the body
-        if n1 == b'' and n2 == b'':
-          _delimitter = lf
+        if line == b'':
+          break
 
-        toks.append(line + _delimitter)
+      toks = toks[:i] + [lf.join(toks[i:])]
 
-        n1 = n2
-        n2 = line
     return toks
