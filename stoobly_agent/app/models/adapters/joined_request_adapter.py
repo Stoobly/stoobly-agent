@@ -86,7 +86,7 @@ class JoinedRequestAdapter():
       # See for response: https://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html 
       for line in raw_string.split(lf):
         # On two lf characters, then the following lines are the body
-        if n1 == '' and n2 == '':
+        if n1 == b'' and n2 == b'':
           _delimitter = lf
 
         toks.append(line + _delimitter)
