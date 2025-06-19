@@ -72,6 +72,7 @@ class JoinedRequestAdapter():
 
   # If all CRLF characters have been replaced with LF e.g. visual studio code
   # Then try to repair the raw string, see https://github.com/Stoobly/stoobly-agent/issues/415
+  @staticmethod
   def repaired_string_toks(raw_string: bytes, delimitter: bytes):
     lf = b"\n"
     toks = raw_string.split(delimitter)
