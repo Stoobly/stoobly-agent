@@ -3,3 +3,7 @@
 # Add custom initialization here
 
 app_path=$1 # Path to application source files
+
+# For example, the below commands copies files inside a dist folder into the public folder. 
+# The public folder is used when no recorded mocks are found.
+#cp -r $app_path/dist/. public
