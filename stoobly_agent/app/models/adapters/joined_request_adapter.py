@@ -17,9 +17,7 @@ class JoinedRequestAdapter():
     if isinstance(payloads_delimitter, str):
       payloads_delimitter = payloads_delimitter.encode()
       
-    self.__split_joined_request_string = joined_request_string.split(payloads_delimitter)
-    if len(self.__split_joined_request_string) != 2:
-      self.__split_joined_request_string = joined_request_string.split(payloads_delimitter.replace(b"\n", b"\r\n"))
+    self.__split_joined_request_string = self.raw_request_split(joined_request_string, payloads_delimitter) 
 
     if len(self.__split_joined_request_string) != 2:
       raise ValueError(f"Could not split by {payloads_delimitter}")
@@ -74,10 +72,10 @@ class JoinedRequestAdapter():
   # Then try to repair the raw string, see https://github.com/Stoobly/stoobly-agent/issues/415
   @staticmethod
   def repaired_string_toks(raw_string: bytes, delimitter: bytes):
-    lf = b"\n"
     toks = raw_string.split(delimitter)
 
     if len(toks) == 1:
+      lf = b"\n"
       toks = raw_string.split(lf)
 
       # See for request: https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html
@@ -92,4 +90,14 @@ class JoinedRequestAdapter():
 
       toks = toks[:i] + [lf.join(toks[i:])]
 
+    if len(toks) == 1:
+      raise ValueError(f"Could not split request by {delimitter}")
+
+    return toks
+
+  @staticmethod
+  def raw_request_split(raw_string: bytes, payloads_delimitter = REQUEST_DELIMITTER):
+    toks = raw_string.split(payloads_delimitter)
+    if len(toks) != 2:
+      toks = raw_string.split(payloads_delimitter.replace(b"\n", b"\r\n"))
     return toks
