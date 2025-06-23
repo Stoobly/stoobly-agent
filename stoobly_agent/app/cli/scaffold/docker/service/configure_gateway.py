@@ -51,6 +51,8 @@ def __with_networks(config: dict, hostnames: List[str]):
   }
 
 def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
+  config_dest = '/etc/traefik/traefik.yml'
+
   if not compose['volumes']:
     compose['volumes'] = []
 
@@ -68,11 +70,15 @@ def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
     'providers': {
       'docker': {
         'exposedByDefault': False
+      },
+      'file': {
+        'fileName': config_dest,
+        'watch': False
       }
     },
     'tls': {
-      'certificates': certificates
-    }
+      'certificates': certificates,
+    },
   }
 
   for path in service_paths:
@@ -88,7 +94,7 @@ def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
     if config.scheme == 'https':
       certificates.append({
         'certFile': f"/certs/{config.hostname}.crt",
-        'keyFile': f"/certs/{config.hostname}.key"
+        'keyFile': f"/certs/{config.hostname}.key",
       })
 
   # Create traefik.yml in .stoobly/tmp
@@ -102,7 +108,7 @@ def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
     fp.write(yaml.dump(traefik_config))
 
   compose['volumes'].append(
-    f"{os.path.join(APP_DIR, traefik_template_relative_path)}:/etc/traefik/traefik.yml:ro"
+    f"{os.path.join(APP_DIR, traefik_template_relative_path)}:{config_dest}:ro"
   )
 
 def __find_hosts(service_paths):
