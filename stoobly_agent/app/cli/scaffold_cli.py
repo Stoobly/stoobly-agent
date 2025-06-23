@@ -89,6 +89,7 @@ def hostname(ctx):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
+@click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])

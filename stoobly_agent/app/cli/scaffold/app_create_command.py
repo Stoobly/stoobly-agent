@@ -9,6 +9,7 @@ from .app_command import AppCommand
 class AppCreateOptions(TypedDict):
   name: str
   network: str
+  ui_port: int
 
 class AppCreateCommand(AppCommand):
 
@@ -21,6 +22,9 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('network'):
             self.app_config.network = kwargs['network']
 
+        if kwargs.get('ui_port'):
+            self.app_config.ui_port = kwargs['ui_port']
+
     @property
     def app_name(self):
         return self.app_config.name
@@ -28,6 +32,10 @@ class AppCreateCommand(AppCommand):
     @property
     def app_network(self):
         return self.app_config.network
+
+    @property
+    def app_ui_port(self):
+        return self.app_config.ui_port
 
     def build(self):
         dest = self.scaffold_namespace_path

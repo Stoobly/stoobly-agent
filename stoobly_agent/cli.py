@@ -115,12 +115,12 @@ def init(**kwargs):
   upstream proxy modes, SPEC is host specification in
   the form of "http[s]://host[:port]".
 ''')
-@click.option('--proxy-port', default=8080, help='Proxy service port.')
+@click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
-@click.option('--ui-port', default=4200, help='UI service port.')
+@click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
