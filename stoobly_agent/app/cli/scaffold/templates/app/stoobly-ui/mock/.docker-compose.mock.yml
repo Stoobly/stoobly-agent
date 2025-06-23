@@ -6,6 +6,6 @@ services:
       service: stoobly_ui.base
     image: stoobly.${USER_ID}
     ports:
-      - '4200:4200'
+      - '${APP_UI_PORT}:4200'
     profiles:
       - mock

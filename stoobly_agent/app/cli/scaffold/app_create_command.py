@@ -14,6 +14,7 @@ from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERV
 class AppCreateOptions(TypedDict):
   name: str
   network: str
+  ui_port: int
 
 class AppCreateCommand(AppCommand):
 
@@ -29,6 +30,9 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
 
+        if kwargs.get('ui_port'):
+            self.app_config.ui_port = kwargs['ui_port']
+
     @property
     def app_name(self):
         return self.app_config.name
@@ -40,6 +44,9 @@ class AppCreateCommand(AppCommand):
     @property
     def app_plugins(self):
         return self.app_config.plugins
+
+    def app_ui_port(self):
+        return self.app_config.ui_port
 
     def build(self):
         dest = self.scaffold_namespace_path
@@ -63,8 +70,8 @@ class AppCreateCommand(AppCommand):
         if not os.path.exists(dockerfile_dest_path):
             dockerfile_src_path = os.path.join(self.templates_root_dir, 'plugins', plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
             shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
-        
-        # Merge template into dest 
+
+        # Merge template into dest
         compose_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
         self.__plugin_compose(compose_dest_path, PLUGIN_CYPRESS)
 
@@ -86,5 +93,5 @@ class AppCreateCommand(AppCommand):
             return
 
         with open(dest_path, 'w') as out:
-            merged = { **data1, **data2 } 
+            merged = { **data1, **data2 }
             yaml.dump(merged, out, default_flow_style=False)

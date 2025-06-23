@@ -1,7 +1,7 @@
 import os
 
 from .config import Config
-from .constants import APP_NAME_ENV, APP_NETWORK_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV
+from .constants import APP_NAME_ENV, APP_NETWORK_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_UI_PORT_ENV
 
 class AppConfig(Config):
 
@@ -38,16 +38,24 @@ class AppConfig(Config):
   def plugins(self, v: list):
     self.__plugins = v
 
+  def ui_port(self):
+    return self.__ui_port
+
+  @ui_port.setter
+  def ui_port(self, v):
+    self.__ui_port = v
+
   def load(self, config = None):
     config = config or self.read()
 
     self.name = config.get(APP_NAME_ENV)
     self.network = config.get(APP_NETWORK_ENV)
+    self.ui_port = config.get(APP_UI_PORT_ENV)
 
     if config.get(APP_PLUGINS_ENV):
       plugins: str = config.get(APP_PLUGINS_ENV)
       self.plugins = plugins.split(APP_PLUGINS_DELMITTER)
-    
+
   def write(self):
     config = {}
 
@@ -59,5 +67,8 @@ class AppConfig(Config):
 
     if self.plugins:
       config[APP_PLUGINS_ENV] = APP_PLUGINS_DELMITTER.join(self.plugins)
+
+    if self.ui_port:
+      config[APP_UI_PORT_ENV] = self.ui_port
 
     super().write(config)

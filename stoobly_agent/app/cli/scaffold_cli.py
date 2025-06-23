@@ -6,6 +6,7 @@ import sys
 
 from io import TextIOWrapper
 from typing import List
+from urllib.parse import urlparse
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.shell import exec_stream
@@ -90,6 +91,7 @@ def hostname(ctx):
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS]), help='Scaffold integrations.')
+@click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
@@ -150,10 +152,10 @@ def create(**kwargs):
     sys.exit(1)
 
   if kwargs.get('hostname'):
-    hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-    if not re.search(hostname_regex, kwargs['hostname']):
-      print(f"Error: {kwargs['hostname']} is invalid.", file=sys.stderr)
-      sys.exit(1)
+    __validate_hostname(kwargs.get('hostname'))
+
+  if kwargs.get("proxy_mode"):
+    __validate_proxy_mode(kwargs.get("proxy_mode"))
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
@@ -180,7 +182,7 @@ def _list(**kwargs):
   services = __get_services(app, service=kwargs['service'], workflow=kwargs['workflow'])
 
   rows = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -218,6 +220,13 @@ def delete(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--name', type=click.STRING, help='New name of the service to update to.')
+@click.option('--proxy-mode', help='''
+  Proxy mode can be "regular", "transparent", "socks5",
+  "reverse:SPEC", or "upstream:SPEC". For reverse and
+  upstream proxy modes, SPEC is host specification in
+  the form of "http[s]://host[:port]".
+''')
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -230,7 +239,20 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
-    service_config.hostname = kwargs['hostname']
+    __validate_hostname(kwargs['hostname'])
+
+    old_hostname = service_config.hostname
+
+    if old_hostname != kwargs['hostname']:
+      service_config.hostname = kwargs['hostname']
+
+      # If this is the default proxy_mode and the origin matches the original hostname, assume it is safe to update with the new hostname
+      if service_config.proxy_mode.startswith("reverse:"):
+        old_origin = service_config.proxy_mode.split("reverse:")[1]
+        parsed_origin_url = urlparse(old_origin)
+
+        if old_hostname == parsed_origin_url.hostname:
+          service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
@@ -240,6 +262,10 @@ def update(**kwargs):
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['proxy_mode']:
+    __validate_proxy_mode(kwargs['proxy_mode'])
+    service_config.proxy_mode = kwargs['proxy_mode']
 
   service_config.write()
 
@@ -286,7 +312,7 @@ def copy(**kwargs):
     config = { **kwargs }
     del config['service']
     config['service_name'] = service_name
-      
+
     command = WorkflowCopyCommand(app, **config)
 
     if not command.app_dir_exists:
@@ -311,7 +337,7 @@ def copy(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
-def down(**kwargs):  
+def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
@@ -354,7 +380,7 @@ def down(**kwargs):
     )
     if not exec_command:
       continue
-    
+
     print(exec_command, file=script)
 
   # After services are stopped, their network needs to be removed
@@ -416,7 +442,7 @@ def logs(**kwargs):
         continue
 
     config = { **kwargs }
-    config['service_name'] = service 
+    config['service_name'] = service
     command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
@@ -554,7 +580,7 @@ def validate(**kwargs):
   __validate_app(app)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  
+
   config = { **kwargs }
   config['service_name'] = 'build'
 
@@ -594,7 +620,7 @@ def install(**kwargs):
   )
 
   hostnames = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -626,7 +652,7 @@ def uninstall(**kwargs):
   )
 
   hostnames = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -703,7 +729,7 @@ def __get_services(app: App, **kwargs):
 
   services = list(set(selected_services))
   services.sort()
-  
+
   return services
 
 def __print_header(text: str):
@@ -740,7 +766,7 @@ def __services_mkcert(app: App, services):
       continue
 
     hostname = service_config.hostname
-    
+
     if not hostname:
       continue
 
@@ -764,7 +790,42 @@ def __validate_dir(dir_path):
 
 def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
-    print(f"Error: {service_dir_path} does not exist, please scaffold this service", file=sys.stderr)
+    print(f"Error: '{service_dir_path}' does not exist, please scaffold this service", file=sys.stderr)
+    sys.exit(1)
+
+def __validate_proxy_mode(proxy_mode: str) -> None:
+  valid_exact_matches = {
+    "regular": None,
+    "transparent": None,
+    "socks5": None,
+  }
+
+  valid_prefixes = {
+    "reverse": None,
+    "upstream": None
+  }
+
+  if proxy_mode in valid_exact_matches:
+    return
+
+  split_str = proxy_mode.split(":", 1)
+  if len(split_str) != 2:
+    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
+    sys.exit(1)
+
+  prefix = split_str[0]
+  spec = split_str[1]
+
+  if prefix not in valid_prefixes:
+    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
+    sys.exit(1)
+
+  # TODO: validate SPEC
+
+def __validate_hostname(hostname: str) -> None:
+  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
+  if not re.search(hostname_regex, hostname):
+    print(f"Error: {hostname} is invalid.", file=sys.stderr)
     sys.exit(1)
 
 def __workflow_create(app, **kwargs):
