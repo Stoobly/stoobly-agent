@@ -1,0 +1,4 @@
+FROM cypress/browsers:22.11.0
+
+USER node
+WORKDIR /home/node

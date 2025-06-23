@@ -14,6 +14,7 @@ from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
+from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -88,6 +89,7 @@ def hostname(ctx):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
+@click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS]), help='Scaffold integrations.')
 @click.argument('app_name')
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
@@ -753,8 +755,11 @@ def __validate_app(app: App):
     sys.exit(1)
 
 def __validate_app_dir(app_dir_path):
-  if not os.path.exists(app_dir_path):
-    print(f"Error: {app_dir_path} does not exist", file=sys.stderr)
+  __validate_dir(app_dir_path)
+
+def __validate_dir(dir_path):
+  if not os.path.exists(dir_path):
+    print(f"Error: {dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
 def __validate_service_dir(service_dir_path):

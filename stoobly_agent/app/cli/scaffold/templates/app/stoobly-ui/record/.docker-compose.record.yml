@@ -9,4 +9,3 @@ services:
       - '4200:4200'
     profiles:
       - record
-

@@ -1,0 +1,19 @@
+services:
+  entrypoint.cypress:
+    build:
+      args:
+        CONTEXT_DIR: ${CONTEXT_DIR}
+      context: ./
+      dockerfile: ./Dockerfile.cypress
+    command: npx cypress run --project .
+    depends_on:
+      entrypoint.configure:
+        condition: service_completed_successfully
+    networks:
+      - "app.ingress"
+    profiles:
+      - "test"
+    user: node
+    # Mount Cypress test files for e2e testing
+    volumes:
+      - ${CONTEXT_DIR}:/home/node
