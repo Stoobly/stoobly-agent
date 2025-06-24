@@ -2,10 +2,10 @@ import pdb
 
 from typing import List
 
+from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.app.proxy.record import REQUEST_STRING_CLRF
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
 
@@ -165,7 +165,12 @@ class Apply():
       self.__logger(f"{bcolors.WARNING}Skipping Request{bcolors.ENDC} {error}")
       return error, 301
 
-    return self.__put_request(uuid, raw_request)
+    res, status = self.__put_request(uuid, raw_request)
+
+    if status != 200:
+      return f"{res} {snapshot.path}", status
+
+    return res, status
 
   def __apply_delete_scenario(self, uuid: str):
     res, status = self.scenario_model.destroy(uuid, force=self.__force)
@@ -227,8 +232,8 @@ class Apply():
 
       if not raw_request:
         return f"{request_snapshot.path} is missing", 400
-        
-      toks = raw_request.split(REQUEST_STRING_CLRF, 1)
+
+      toks = JoinedRequestAdapter.raw_request_split(raw_request)
       if len(toks) != 2:
         return f"{request_snapshot.path} contains an invalid request", 400
 
@@ -236,7 +241,7 @@ class Apply():
       res, status = self.__put_request(uuid, raw_request, scenario_id=scenario['id'])
 
       if status != 200:
-        return res, status
+        return f"{res} {request_snapshot.path}", status
 
       snapshot_requests[uuid] = res
 
@@ -274,8 +279,6 @@ class Apply():
 
       if self.__logger and status == 200:
         self.__logger(f"{bcolors.OKGREEN}Created Request{bcolors.ENDC} {res['list'][0]['url']}")
-      else: 
-        self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     elif status == 200:
       params = {
         'is_deleted': False,
@@ -287,7 +290,5 @@ class Apply():
       if self.__logger:
         if status == 200:
           self.__logger(f"{bcolors.OKCYAN}Updated Request{bcolors.ENDC} {res['url']}")
-        else: 
-          self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
 
     return res, status
