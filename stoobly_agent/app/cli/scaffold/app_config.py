@@ -38,6 +38,7 @@ class AppConfig(Config):
   def plugins(self, v: list):
     self.__plugins = v
 
+  @property
   def ui_port(self):
     return self.__ui_port
 
