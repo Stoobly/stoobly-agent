@@ -842,6 +842,10 @@ def __validate_service_name(service_name: str) -> None:
     print(f"Error: {service_name} is invalid. It cannot container '/", file=sys.stderr)
     sys.exit(1)
 
+  if service_name in CORE_SERVICES:
+    print(f"Error: {service_name} is a core service", file=sys.stderr)
+    sys.exit(1)
+
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
 
