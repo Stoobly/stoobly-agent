@@ -509,7 +509,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(workflow.service_paths_from_services(services), kwargs['no_publish'])
+  configure_gateway(workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -675,12 +675,12 @@ scaffold.add_command(hostname)
 def __build_script(**kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    script_file_name = f"{kwargs['workflow_name']}.sh"
-    script_path = os.path.join(data_dir.tmp_dir_path, script_file_name)
-  else:
-    script_dir = os.path.dirname(script_path)
-    if not os.path.exists(script_dir):
-      os.makedirs(script_dir, exist_ok=True)
+    script_file_name = 'run.sh'
+    script_path = os.path.join(data_dir.tmp_dir_path, kwargs['workflow_name'], script_file_name)
+  
+  script_dir = os.path.dirname(script_path)
+  if not os.path.exists(script_dir):
+    os.makedirs(script_dir, exist_ok=True)
 
   # Truncate
   with open(script_path, 'w'):
