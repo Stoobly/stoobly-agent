@@ -4,7 +4,7 @@ RUN useradd -mU stoobly
 
 # Install gosu for easy step-down from root: https://github.com/tianon/gosu/releases
 # See: https://github.com/tianon/gosu/blob/master/INSTALL.md
-ENV GOSU_VERSION 1.17
+ENV GOSU_VERSION=1.17
 RUN set -eux; \
 # Save list of currently installed packages for later so we can clean up
 	savedAptMark="$(apt-mark showmanual)"; \
