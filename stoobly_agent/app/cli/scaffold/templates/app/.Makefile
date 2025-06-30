@@ -33,12 +33,13 @@ app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
+exec_namespace=$(shell echo "$(workflow_namespace).$(context_dir)" | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
 workflow_script=.stoobly/tmp/$(workflow)/run.sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(workflow_namespace)
+stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
 working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
 workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
