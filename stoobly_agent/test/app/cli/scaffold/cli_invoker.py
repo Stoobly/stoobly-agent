@@ -15,6 +15,7 @@ class ScaffoldCliInvoker():
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
+      '--quiet',
       app_name
     ])
 
@@ -47,6 +48,7 @@ class ScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
+      '--quiet',
       '--workflow', 'mock',
       '--workflow', 'record',
       '--workflow', 'test',
@@ -73,6 +75,7 @@ class ScaffoldCliInvoker():
       '--port', port,
       '--proxy-mode', proxy_mode_reverse_spec,
       '--detached',
+      '--quiet',
       '--workflow', 'test',
       service_name
     ])
