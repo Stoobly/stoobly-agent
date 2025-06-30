@@ -35,7 +35,7 @@ dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
 exec_namespace=$(shell echo "$(workflow_namespace).$(context_dir)" | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
-workflow_script=.stoobly/tmp/$(workflow)/run.sh
+workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
@@ -52,8 +52,8 @@ docker_command=docker
 docker_compose_command=$(docker_command) compose
 exec_down=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) down
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
-exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --remove-orphans
-source_env=set -a; [ -f .env ] && source .env; set +a
+exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --abort-on-container-exit --remove-orphans
+source_env=(set -a; [ -f .env ] && source .env; set +a)
 
 # Build base image
 stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)

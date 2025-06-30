@@ -1,7 +1,6 @@
 import click
 import os
 import pdb
-import re
 import sys
 
 from io import TextIOWrapper
@@ -37,6 +36,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
+from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -90,7 +90,7 @@ def hostname(ctx):
 @click.option('--network', help='App default network name. Defaults to app name.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
-@click.argument('app_name')
+@click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
@@ -129,7 +129,7 @@ def mkcert(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--proxy-mode', help='''
@@ -141,16 +141,13 @@ def mkcert(**kwargs):
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
-@click.argument('service_name')
+@click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
   if '/' in kwargs['service_name']:
     print(f"Error: {kwargs['service_name']} is invalid. It cannot container '/", file=sys.stderr)
     sys.exit(1)
-
-  if kwargs.get('hostname'):
-    __validate_hostname(kwargs.get('hostname'))
 
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
@@ -214,7 +211,7 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
@@ -237,8 +234,6 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
-    __validate_hostname(kwargs['hostname'])
-
     old_hostname = service_config.hostname
 
     if old_hostname != kwargs['hostname']:
@@ -329,7 +324,7 @@ def copy(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--script-path', help='Path to intermediate script path.')
@@ -412,7 +407,7 @@ def down(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
@@ -474,7 +469,7 @@ def logs(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
@@ -677,7 +672,7 @@ def __build_script(**kwargs):
   script_path = kwargs['script_path']
   if not script_path:
     script_file_name = 'run.sh'
-    script_path = os.path.join(data_dir.tmp_dir_path, kwargs['workflow_name'], script_file_name)
+    script_path = os.path.join(data_dir.tmp_dir_path, kwargs.get('namespace') or kwargs['workflow_name'] or '', script_file_name)
   
   script_dir = os.path.dirname(script_path)
   if not os.path.exists(script_dir):
@@ -817,12 +812,6 @@ def __validate_proxy_mode(proxy_mode: str) -> None:
     sys.exit(1)
 
   # TODO: validate SPEC
-
-def __validate_hostname(hostname: str) -> None:
-  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-  if not re.search(hostname_regex, hostname):
-    print(f"Error: {hostname} is invalid.", file=sys.stderr)
-    sys.exit(1)
 
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
