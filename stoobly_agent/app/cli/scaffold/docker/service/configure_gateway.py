@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
 
-def configure_gateway(service_paths: List[str], no_publish = False):
+def configure_gateway(workflow_name, service_paths: List[str], no_publish = False):
   if len(service_paths) == 0:
     return
 
@@ -36,7 +36,7 @@ def configure_gateway(service_paths: List[str], no_publish = False):
         gateway_base['ports'] = ports
 
       app_dir_path = os.path.dirname(os.path.dirname(service_dir_path))
-      __with_traefik_config(service_paths, gateway_base, app_dir_path)
+      __with_traefik_config(workflow_name, service_paths, app_dir_path, gateway_base)
       __with_networks(gateway_base, hostnames) 
 
   with open(docker_compose_dest_path, 'w') as fp:
@@ -50,7 +50,7 @@ def __with_networks(config: dict, hostnames: List[str]):
     'aliases': hostnames
   }
 
-def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
+def __with_traefik_config(workflow_name: str, service_paths: List[str], app_dir_path: str, compose: dict):
   config_dest = '/etc/traefik/traefik.yml'
 
   if not compose['volumes']:
@@ -98,7 +98,7 @@ def __with_traefik_config(service_paths: str, compose: dict, app_dir_path: str):
       })
 
   # Create traefik.yml in .stoobly/tmp
-  traefik_template_relative_path = os.path.join(DATA_DIR_NAME, TMP_DIR_NAME, 'traefik.yml')
+  traefik_template_relative_path = os.path.join(DATA_DIR_NAME, TMP_DIR_NAME, workflow_name, 'traefik.yml')
   traefik_template_dest_path = os.path.join(app_dir_path, traefik_template_relative_path)
 
   if not os.path.exists(os.path.dirname(traefik_template_dest_path)):
