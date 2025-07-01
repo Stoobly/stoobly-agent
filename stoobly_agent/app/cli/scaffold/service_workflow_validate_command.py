@@ -116,12 +116,13 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
   def validate_internal_hostname(self, url: str) -> None:
     print(f"Validating hostname inside Docker network, url: {url}")
-    
+
+    network = f"{self.workflow_name}.{self.app_config.network}" 
     timeout_seconds = 1
     output = self.docker_client.containers.run(
       image='curlimages/curl:8.11.0',
       command=f"curl --max-time {timeout_seconds} {url} --verbose",
-      network=APP_EGRESS_NETWORK_TEMPLATE.format(network=self.app_config.network),
+      network=APP_EGRESS_NETWORK_TEMPLATE.format(network=network),
       stderr=True,
       remove=True,
     )
