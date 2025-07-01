@@ -14,7 +14,7 @@
 
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-EXEC_WORKFLOW_NAME := exec
+DOCKER_BIN := docker
 PULL_OPTION := $(if $(STOOBLY_IMAGE_USE_LOCAL),,--pull)
 USER_ID := $(shell id -u)
 
@@ -33,13 +33,11 @@ app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
-exec_namespace=$(shell echo "$(workflow_namespace).$(context_dir)" | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
 workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
 working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
 workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
@@ -48,15 +46,12 @@ workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
 
 # Commands
-docker_command=docker
-docker_compose_command=$(docker_command) compose
-exec_down=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) down
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
-exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --abort-on-container-exit --remove-orphans
+exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm stoobly_ui.command
 source_env=(set -a; [ -f .env ] && source .env; set +a)
 
 # Build base image
-stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
+stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
@@ -89,8 +84,6 @@ ca-cert/install: stoobly/install
 certs:
 	@export EXEC_COMMAND=.mkcert && \
 	$(stoobly_exec)
-exec/down:
-	@$(stoobly_exec_env) EXEC_COMMAND=- EXEC_ARGS=- EXEC_OPTIONS=- $(exec_down)
 nameservers: tmpdir
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
@@ -112,7 +105,7 @@ intercept/enable:
 mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
 mock/services: workflow/mock workflow/services
 mock/logs: workflow/mock workflow/logs
-mock/down: workflow/mock workflow/down workflow/hostname/uninstall exec/down
+mock/down: workflow/mock workflow/down workflow/hostname/uninstall
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -124,7 +117,7 @@ python/validate:
 		exit 1; \
 	fi
 record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
-record/down: workflow/record workflow/down workflow/hostname/uninstall exec/down
+record/down: workflow/record workflow/down workflow/hostname/uninstall
 record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
 scenario/create:
@@ -170,7 +163,7 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up
 test/services: workflow/test workflow/services
 test/logs: workflow/test workflow/logs
-test/down: workflow/test workflow/down exec/down
+test/down: workflow/test workflow/down
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:

@@ -7,5 +7,6 @@ services:
       file: ../.docker-compose.base.yml
       service: stoobly_ui.base
     image: stoobly.${USER_ID}
+    network_mode: none
     profiles:
       - exec
