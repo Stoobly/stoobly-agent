@@ -3,11 +3,10 @@ import pdb
 import shutil
 
 from .app import App
-from .constants import COMPOSE_TEMPLATE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from .constants import COMPOSE_TEMPLATE
 from .service_workflow import ServiceWorkflow
 from .workflow_command import WorkflowCommand
 
-CORE_WORKFLOWS = [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]
 
 class WorkflowCopyCommand(WorkflowCommand):
 
