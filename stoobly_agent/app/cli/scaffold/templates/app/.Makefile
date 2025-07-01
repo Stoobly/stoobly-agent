@@ -1,20 +1,23 @@
 # Overridable Environment Variables
 #
-# STOOBLY_APP_DIR: path to the application source code directory
-# STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored
-# STOOBLY_CERTS_DIR: path to a folder to store certs
-# STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder
-# STOOBLY_WORKFLOW_SERVICE_OPTIONS: extra --service options to pass  'stoobly-agent scaffold workflow' commands
+# STOOBLY_APP_DIR: path to the application source code directory, defaults to $(pwd)
+# STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored, defaults to $(pwd)/.stoobly/ca_certs
+# STOOBLY_CERTS_DIR: path to a folder to store certs, defaults to $(pwd)/.stoobly/certs
+# STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder, defaults to $(pwd)
+# STOOBLY_ENV_FILE: path to dotenv file, defaults to $(pwd)/.env
+# STOOBLY_WORKFLOW_SERVICE_OPTIONS: extra --service options to pass 'stoobly-agent scaffold workflow' commands
 
 # Overridable Options
 #
-# workflow_down_extra_options: e.g. $(eval workflow_down_extra_options=<OPTIONS>)
-# workflow_log_extra_options: e.g. $(eval workflow_log_extra_options=<OPTIONS>)
-# workflow_up_extra_options: e.g. $(eval workflow_up_extra_options=<OPTIONS>)
+# workflow_down_extra_options e.g. $(eval workflow_down_extra_options=<OPTIONS>)
+# workflow_log_extra_options e.g. $(eval workflow_log_extra_options=<OPTIONS>)
+# workflow_up_extra_options e.g. $(eval workflow_up_extra_options=<OPTIONS>)
+# 
+# For full list, see targets with EXEC_OPTIONS
 
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-EXEC_WORKFLOW_NAME := exec
+DOCKER_BIN := docker
 PULL_OPTION := $(if $(STOOBLY_IMAGE_USE_LOCAL),,--pull)
 USER_ID := $(shell id -u)
 
@@ -25,6 +28,7 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$(app_data_dir)/ca_certs}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
+env_file=$$(realpath "$${STOOBLY_ENV_FILE:-.env}")
 workflow=record
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
@@ -33,13 +37,11 @@ app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
-exec_namespace=$(shell echo "$(workflow_namespace).$(context_dir)" | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
 workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
-stoobly_exec_options=--profile $(EXEC_WORKFLOW_NAME) -p $(exec_namespace)
 working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
 workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
@@ -48,15 +50,12 @@ workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
 
 # Commands
-docker_command=docker
-docker_compose_command=$(docker_command) compose
-exec_down=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) down
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
-exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --abort-on-container-exit --remove-orphans
-source_env=(set -a; [ -f .env ] && source .env; set +a)
+exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm stoobly_ui.command
+source_env=[ -f "$(env_file)" ] && . "$(env_file)"
 
 # Build base image
-stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
+stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
@@ -64,8 +63,8 @@ stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
 stoobly_exec_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(context_dir)" 
 
 # Exec workflow run
-# Scaffold is stored in the application source code directory, 
-# when running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
+# Scaffold is stored in the application source code directory. 
+# When running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
 stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
 stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
 
@@ -87,10 +86,8 @@ ca-cert/install: stoobly/install
 		fi \
 	fi
 certs:
-	@export EXEC_COMMAND=.mkcert && \
+	@export EXEC_COMMAND=scaffold/.mkcert EXEC_OPTIONS="" EXEC_ARGS="" && \
 	$(stoobly_exec)
-exec/down:
-	@$(stoobly_exec_env) EXEC_COMMAND=- EXEC_ARGS=- EXEC_OPTIONS=- $(exec_down)
 nameservers: tmpdir
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
@@ -103,16 +100,15 @@ nameservers: tmpdir
 		echo "/etc/resolv.conf not found." >&2; \
 	fi
 intercept/disable:
-	@export EXEC_COMMAND=.disable && \
+	@export EXEC_COMMAND=intercept/.disable EXEC_OPTIONS="" EXEC_ARGS="" && \
 	$(stoobly_exec)
 intercept/enable:
-	@export EXEC_COMMAND=.enable && \
-	export EXEC_ARGS=$(scenario_key) && \
+	@export EXEC_COMMAND=intercept/.enable EXEC_OPTIONS="" EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
 mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
 mock/services: workflow/mock workflow/services
 mock/logs: workflow/mock workflow/logs
-mock/down: workflow/mock workflow/down workflow/hostname/uninstall exec/down
+mock/down: workflow/mock workflow/down workflow/hostname/uninstall
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -124,43 +120,32 @@ python/validate:
 		exit 1; \
 	fi
 record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
-record/down: workflow/record workflow/down workflow/hostname/uninstall exec/down
+record/down: workflow/record workflow/down workflow/hostname/uninstall
 record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
 scenario/create:
 # Create a scenario
-	@export EXEC_COMMAND=.create && \
-	export EXEC_OPTIONS="$(options)" && \
-	export EXEC_ARGS="$(name)" && \
+	@export EXEC_COMMAND=scenario/.create EXEC_OPTIONS="$(options)" EXEC_ARGS="$(name)" && \
 	$(stoobly_exec)
 scenario/delete:
 # Delete a scenario
-	@export EXEC_COMMAND=.delete && \
-	export EXEC_OPTIONS="$(options)" && \
-	export EXEC_ARGS="$(key)" && \
+	@export EXEC_COMMAND=scenario/.delete EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/list:
 # List scenarios
-	@export EXEC_COMMAND=.list && \
-	export EXEC_OPTIONS="$(options)" && \
+	@export EXEC_COMMAND=scenario/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
 scenario/overwrite:
 # Overwrite a scenario
-	@export EXEC_COMMAND=.overwrite && \
-	export EXEC_OPTIONS="$(options)" && \
-	export EXEC_ARGS="$(key)" && \
+	@export EXEC_COMMAND=scenario/.overwrite EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/reset:
 # Resets a scenario to its last snapshot
-	@export EXEC_COMMAND=.reset && \:
-	export EXEC_OPTIONS="$(options)" && \
-	export EXEC_ARGS="$(key)" && \
+	@export EXEC_COMMAND=scenario/.reset EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 scenario/snapshot:
 # Create committable files for a scenario
-	@export EXEC_COMMAND=.snapshot && \
-	export EXEC_OPTIONS="$(options)" && \
-	export EXEC_ARGS="$(key)" && \
+	@export EXEC_COMMAND=scenario/.snapshot EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
 stoobly/install: python/validate pipx/install 
 	@if ! pipx list 2> /dev/null | grep -q 'stoobly-agent'; then \
@@ -170,13 +155,11 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up
 test/services: workflow/test workflow/services
 test/logs: workflow/test workflow/logs
-test/down: workflow/test workflow/down exec/down
+test/down: workflow/test workflow/down
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down:
-	@export EXEC_COMMAND=.down && \
-	export EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(workflow)" && \
+	@export EXEC_COMMAND=scaffold/.down EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/hostname: stoobly/install
@@ -194,9 +177,7 @@ workflow/hostname: stoobly/install
 workflow/hostname/install: action/install workflow/hostname
 workflow/hostname/uninstall: action/uninstall workflow/hostname  
 workflow/logs:
-	@export EXEC_COMMAND=.logs && \
-	export EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(workflow)" && \
+	@export EXEC_COMMAND=scaffold/.logs EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/mock:
@@ -204,15 +185,11 @@ workflow/mock:
 workflow/record:
 	$(eval workflow=record)
 workflow/services:
-	@export EXEC_COMMAND=.services && \
-	export EXEC_OPTIONS="$(workflow_service_options) $(options)" && \
-	export EXEC_ARGS="$(workflow)" && \
+	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/test:
 	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
 workflow/up:
-	@export EXEC_COMMAND=.up && \
-	export EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" && \
-	export EXEC_ARGS="$(workflow)" && \
+	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
