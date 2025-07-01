@@ -23,7 +23,6 @@ from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
 from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
-from stoobly_agent.app.cli.scaffold.service_workflow import ServiceWorkflow
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -147,8 +146,6 @@ def mkcert(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  __validate_service_name(kwargs['service_name'])
-
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
 
@@ -215,7 +212,7 @@ def delete(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
-@click.option('--name', type=click.STRING, help='New name of the service to update to.')
+@click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
@@ -259,7 +256,6 @@ def update(**kwargs):
   if kwargs['name']:
     old_service_name = service.service_name
     new_service_name = kwargs['name']
-    __validate_service_name(new_service_name)
 
     print(f"Renaming service from: {old_service_name}, to: {new_service_name}")
 
@@ -351,9 +347,7 @@ def down(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
-  # If namespace is set, default network to namespace
-  if kwargs['namespace'] and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
+  __with_namespace_defaults(kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -431,6 +425,8 @@ def logs(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
+  __with_namespace_defaults(kwargs)
+
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
 
@@ -505,9 +501,7 @@ def up(**kwargs):
   app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
-  # If namespace is set, default network to namespace
-  if kwargs['namespace'] and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
+  __with_namespace_defaults(kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -827,20 +821,13 @@ def __validate_proxy_mode(proxy_mode: str) -> None:
 
   # TODO: validate SPEC
 
-def __validate_hostname(hostname: str) -> None:
-  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-  if not re.search(hostname_regex, hostname):
-    print(f"Error: {hostname} is invalid.", file=sys.stderr)
-    sys.exit(1)
+def __with_namespace_defaults(kwargs):
+  if not kwargs.get('namespace'):
+    kwargs['namespace'] = kwargs.get('workflow_name')
 
-def __validate_service_name(service_name: str) -> None:
-  if '/' in 'service_name':
-    print(f"Error: {service_name} is invalid. It cannot container '/", file=sys.stderr)
-    sys.exit(1)
-
-  if service_name in CORE_SERVICES:
-    print(f"Error: {service_name} is a core service", file=sys.stderr)
-    sys.exit(1)
+  # If network there was a network option, but it is not set, default network to namespace
+  if 'network' in kwargs and not kwargs['network']:
+    kwargs['network'] = kwargs['namespace']
 
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
