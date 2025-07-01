@@ -33,8 +33,9 @@ app_namespace_dir=$(app_data_dir)/docker
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
-exec_namespace=$(shell echo $(context_dir) | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
-workflow_script=.stoobly/tmp/$(workflow).sh
+exec_namespace=$(shell echo "$(workflow_namespace).$(context_dir)" | (md5 2>/dev/null || md5sum 2>/dev/null || shasum 2>/dev/null) | awk '{print $$1}')
+workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
+workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 
 # Options
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
@@ -43,7 +44,7 @@ working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
 workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
 workflow_log_options=$(workflow_log_extra_options)
-workflow_run_options=--script-path $(workflow_script) $(workflow_service_options)
+workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
 
 # Commands
@@ -51,8 +52,8 @@ docker_command=docker
 docker_compose_command=$(docker_command) compose
 exec_down=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) down
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
-exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --remove-orphans
-source_env=set -a; [ -f .env ] && source .env; set +a
+exec_up=$(docker_compose_command) -f "$(exec_docker_compose_file_path)" $(stoobly_exec_options) up --abort-on-container-exit --remove-orphans
+source_env=(set -a; [ -f .env ] && source .env; set +a)
 
 # Build base image
 stoobly_exec_build=$(docker_command) build $(stoobly_exec_build_args) $(app_namespace_dir)
@@ -71,6 +72,10 @@ stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
 # Workflow run
 workflow_run=$(source_env) && bash "$(app_dir)/$(workflow_script)"
 
+action/install:
+	$(eval action=install)
+action/uninstall:
+	$(eval action=uninstall)
 ca-cert/install: stoobly/install
 	@if [ -z "$$(ls $(ca_certs_dir) 2> /dev/null)" ]; then \
 		read -p "Installing CA certificate is required for $(workflow)ing requests, continue? (y/N) " confirm && \
@@ -84,10 +89,6 @@ ca-cert/install: stoobly/install
 certs:
 	@export EXEC_COMMAND=.mkcert && \
 	$(stoobly_exec)
-command/install:
-	$(eval COMMAND=install)
-command/uninstall:
-	$(eval COMMAND=uninstall)
 exec/down:
 	@$(stoobly_exec_env) EXEC_COMMAND=- EXEC_ARGS=- EXEC_OPTIONS=- $(exec_down)
 nameservers: tmpdir
@@ -179,7 +180,7 @@ workflow/down:
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/hostname: stoobly/install
-	@read -p "Do you want to $(COMMAND) hostname(s) in /etc/hosts? (y/N) " confirm && \
+	@read -p "Do you want to $(action) hostname(s) in /etc/hosts? (y/N) " confirm && \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		CURRENT_VERSION=$$(stoobly-agent --version); \
 		REQUIRED_VERSION="1.4.0"; \
@@ -187,11 +188,11 @@ workflow/hostname: stoobly/install
 			echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
 			exit 1; \
 		fi; \
-		echo "Running stoobly-agent scaffold hostname $(COMMAND) $(workflow_service_options)"; \
-		stoobly-agent scaffold hostname $(COMMAND) --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options); \
+		echo "Running stoobly-agent scaffold hostname $(action) $(workflow_service_options)"; \
+		stoobly-agent scaffold hostname $(action) --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options); \
 	fi
-workflow/hostname/install: command/install workflow/hostname
-workflow/hostname/uninstall: command/uninstall workflow/hostname  
+workflow/hostname/install: action/install workflow/hostname
+workflow/hostname/uninstall: action/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=.logs && \
 	export EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" && \

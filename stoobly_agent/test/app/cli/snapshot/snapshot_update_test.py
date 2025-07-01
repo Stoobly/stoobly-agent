@@ -94,7 +94,7 @@ class TestUpdate():
     def updated_event(self, runner: CliRunner, put_event: LogEvent):
       time.sleep(1) # Simulate update at different time
 
-      apply_result = runner.invoke(snapshot, ['update', '--verify', put_event.uuid])
+      apply_result = runner.invoke(snapshot, ['update', put_event.uuid])
       assert apply_result.exit_code == 0
       log = Log()
       events = log.events

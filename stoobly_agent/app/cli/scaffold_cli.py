@@ -1,7 +1,6 @@
 import click
 import os
 import pdb
-import re
 import sys
 
 from io import TextIOWrapper
@@ -39,6 +38,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
+from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -89,22 +89,22 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded app files.')
 @click.option('--network', help='App default network name. Defaults to app name.')
+@click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
-@click.argument('app_name')
+@click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
 
-  if kwargs['force'] or not os.path.exists(app.scaffold_namespace_path):
-    if not kwargs['network']:
-      kwargs['network'] = kwargs['app_name']
+  if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
+    print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
 
-    AppCreateCommand(app, **kwargs).build()
-  else:
-    print(f"{kwargs['app_dir_path']} already exists, use option '--force' to continue ")
+  if not kwargs['network']:
+    kwargs['network'] = kwargs['app_name']
+
+  AppCreateCommand(app, **kwargs).build()
 
 @app.command(
   help="Scaffold app service certs"
@@ -131,8 +131,7 @@ def mkcert(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
-@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded service files.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--proxy-mode', help='''
@@ -141,27 +140,25 @@ def mkcert(**kwargs):
   upstream proxy modes, SPEC is host specification in
   the form of "http[s]://host[:port]".
 ''')
+@click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
-@click.argument('service_name')
+@click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
   __validate_service_name(kwargs['service_name'])
 
-  if kwargs.get('hostname'):
-    __validate_hostname(kwargs.get('hostname'))
-
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
-
   service = Service(kwargs['service_name'], app)
-  if kwargs['force'] or not os.path.exists(service.dir_path):
-    __scaffold_build(app, **kwargs)
-  else:
-    print(f"{service.dir_path} already exists, use option '--force' to continue")
+
+  if not kwargs['quiet'] and os.path.exists(service.dir_path):
+    print(f"{service.dir_path} already exists, updating scaffold maintained files...")
+
+  __scaffold_build(app, **kwargs)
 
 @service.command(
   help="List services",
@@ -214,7 +211,7 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
@@ -237,8 +234,6 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
-    __validate_hostname(kwargs['hostname'])
-
     old_hostname = service_config.hostname
 
     if old_hostname != kwargs['hostname']:
@@ -286,7 +281,7 @@ def update(**kwargs):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
-@click.option('--force', is_flag=True, help='Overwrite maintained scaffolded workflow files.')
+@click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
@@ -304,10 +299,11 @@ def create(**kwargs):
     __validate_service_dir(service.dir_path)
 
     workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
-    if kwargs['force'] or not os.path.exists(workflow_dir_path):
-      __workflow_create(app, **config)
-    else:
-      print(f"{workflow_dir_path} already exists, use option '--force' to continue")
+
+    if not kwargs['quiet'] and os.path.exists(workflow_dir_path):
+      print(f"{workflow_dir_path} already exists, updating scaffold maintained files...")
+
+    __workflow_create(app, **config)
 
 @workflow.command(
   help="Copy a workflow for service(s)",
@@ -342,7 +338,7 @@ def copy(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--script-path', help='Path to intermediate script path.')
@@ -425,7 +421,7 @@ def down(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
@@ -487,7 +483,7 @@ def logs(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--network', help='Workflow network name.')
 @click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
@@ -523,7 +519,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(workflow.service_paths_from_services(services), kwargs['no_publish'])
+  configure_gateway(workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -689,12 +685,12 @@ scaffold.add_command(hostname)
 def __build_script(**kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    script_file_name = f"{kwargs['workflow_name']}.sh"
-    script_path = os.path.join(data_dir.tmp_dir_path, script_file_name)
-  else:
-    script_dir = os.path.dirname(script_path)
-    if not os.path.exists(script_dir):
-      os.makedirs(script_dir, exist_ok=True)
+    script_file_name = 'run.sh'
+    script_path = os.path.join(data_dir.tmp_dir_path, kwargs.get('namespace') or kwargs['workflow_name'] or '', script_file_name)
+  
+  script_dir = os.path.dirname(script_path)
+  if not os.path.exists(script_dir):
+    os.makedirs(script_dir, exist_ok=True)
 
   # Truncate
   with open(script_path, 'w'):

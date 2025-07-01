@@ -161,7 +161,7 @@ def prune(**kwargs):
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
-@click.option('--verify', is_flag=True, default=False)
+@click.option('--no-verify', is_flag=True, default=False)
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('uuid')
 def update(**kwargs):
@@ -179,7 +179,7 @@ def update(**kwargs):
     print(f"Error: {kwargs['uuid']} not found", file=sys.stderr)
     sys.exit(1)
 
-  if kwargs['verify']:
+  if not kwargs['no_verify']:
     if event.is_request(): 
       snapshot: RequestSnapshot = event.snapshot()
       __verify_request(snapshot)

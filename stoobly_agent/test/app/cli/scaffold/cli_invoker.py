@@ -15,7 +15,7 @@ class ScaffoldCliInvoker():
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
-      '--force',
+      '--quiet',
       app_name
     ])
 
@@ -45,10 +45,10 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--env', 'TEST',
-      '--force',
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
+      '--quiet',
       '--workflow', 'mock',
       '--workflow', 'record',
       '--workflow', 'test',
@@ -70,12 +70,12 @@ class ScaffoldCliInvoker():
 
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
-      '--force',
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
       '--proxy-mode', proxy_mode_reverse_spec,
       '--detached',
+      '--quiet',
       '--workflow', 'test',
       service_name
     ])
