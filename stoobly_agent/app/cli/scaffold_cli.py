@@ -513,7 +513,9 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish'])
+  configure_gateway(
+    kwargs['namespace'] or workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish']
+  )
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
