@@ -19,6 +19,15 @@ def validate_hostname(ctx, param, hostname: str) -> str:
     sys.exit(1)
   return hostname
 
+def validate_network(ctx, param, network: str) -> str:
+  if not network:
+    return
+  network_regex = re.compile(r'^[a-zA-Z0-9._-]+$')
+  if not re.search(network_regex, network):
+    print(f"Error: network {network} is invalid.", file=sys.stderr)
+    sys.exit(1)
+  return network
+
 def validate_namespace(ctx, param, namespace: str) -> str:
   if not namespace:
     return
