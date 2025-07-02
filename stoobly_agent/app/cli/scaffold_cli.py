@@ -37,7 +37,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
-from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
+from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_network, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -88,7 +88,7 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--network', help='App default network name. Defaults to app name.')
+@click.option('--network', callback=validate_network, help='App default network name. Defaults to app name.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -335,7 +335,7 @@ def copy(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
-@click.option('--network', help='Workflow network name.')
+@click.option('--network', callback=validate_network, help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
@@ -480,7 +480,7 @@ def logs(**kwargs):
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
-@click.option('--network', help='Workflow network name.')
+@click.option('--network', callback=validate_network, help='Workflow network name.')
 @click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--pull', is_flag=True, help='Pull image before running.')
