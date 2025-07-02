@@ -28,7 +28,7 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$(app_data_dir)/ca_certs}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-env_file=$$(realpath "$${STOOBLY_ENV_FILE:-.env}")
+env_file=$$(realpath "$${STOOBLY_ENV_FILE:-.env}" 2> /dev/null || echo '')
 workflow=record
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
@@ -52,24 +52,24 @@ workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER
 # Commands
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
 exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm stoobly_ui.command
-source_env=[ -f "$(env_file)" ] && . "$(env_file)"
+source_env=set -a; [ -f "$(env_file)" ] && . "$(env_file)"; set +a
 
 # Build base image
 stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
-stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
-stoobly_exec_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(context_dir)" 
+stoobly_exec=$(source_env); $(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
+stoobly_exec_env=$(exec_env) CONTEXT_DIR="$(context_dir)" 
 
 # Exec workflow run
 # Scaffold is stored in the application source code directory. 
 # When running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
-stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
-stoobly_exec_run_env=$(source_env) && $(exec_env) CONTEXT_DIR="$(app_dir)"
+stoobly_exec_run=$(source_env); $(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
+stoobly_exec_run_env=$(exec_env) CONTEXT_DIR="$(app_dir)"
 
 # Workflow run
-workflow_run=$(source_env) && bash "$(app_dir)/$(workflow_script)"
+workflow_run=bash "$(app_dir)/$(workflow_script)"
 
 action/install:
 	$(eval action=install)
