@@ -7,6 +7,7 @@ from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
   SERVICE_HOSTNAME_ENV,
+  SERVICE_ID_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
   SERVICE_PROXY_MODE_ENV,
@@ -55,7 +56,7 @@ class ServiceConfig(Config):
 
   @property
   def id(self):
-    return hashlib.md5(os.path.basename(self.dir).encode()).hexdigest()
+    return hashlib.md5(self.dir.encode()).hexdigest()
 
   @property
   def hostname(self):
@@ -171,7 +172,7 @@ class ServiceConfig(Config):
       config[SERVICE_SCHEME_ENV] = self.scheme
 
     config[SERVICE_DETACHED_ENV] = bool(self.detached)
-
+    config[SERVICE_ID_ENV] = self.id
     config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)
