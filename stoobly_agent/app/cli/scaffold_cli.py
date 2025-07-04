@@ -88,7 +88,6 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--network', callback=validate_network, help='App default network name. Defaults to app name.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -99,9 +98,6 @@ def create(**kwargs):
 
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
-
-  if not kwargs['network']:
-    kwargs['network'] = kwargs['app_name']
 
   AppCreateCommand(app, **kwargs).build()
 
@@ -344,7 +340,10 @@ def copy(**kwargs):
 def down(**kwargs):  
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  containerized = kwargs['containerized']
+
+  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
+  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -826,10 +825,6 @@ def __validate_proxy_mode(proxy_mode: str) -> None:
 def __with_namespace_defaults(kwargs):
   if not kwargs.get('namespace'):
     kwargs['namespace'] = kwargs.get('workflow_name')
-
-  # If network there was a network option, but it is not set, default network to namespace
-  if 'network' in kwargs and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
 
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)

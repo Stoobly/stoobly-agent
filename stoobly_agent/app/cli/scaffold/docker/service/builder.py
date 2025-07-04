@@ -7,8 +7,12 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, DOCKER_NAMESPACE, SERVICE_NAME, SERVICE_NAME_ENV, 
-  SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
+  APP_DIR, DOCKER_NAMESPACE, 
+  SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
+  SERVICE_NAME, SERVICE_NAME_ENV, 
+  SERVICE_ID,
+  SERVICE_PORT, SERVICE_PORT_ENV, 
+  SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   STOOBLY_HOME_DIR, STOOBLY_HOME_DIR, 
   WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 )
@@ -91,7 +95,7 @@ class ServiceBuilder(Builder):
     if not self.config.hostname:
       return
 
-    service_id = self.config.id
+    service_id = SERVICE_ID
     environment = { **self.env_dict() }
     labels = [
       'traefik.enable=true',
