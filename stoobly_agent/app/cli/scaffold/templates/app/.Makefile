@@ -44,7 +44,7 @@ workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_dir)
 working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
-workflow_down_options=--user-id $(USER_ID) $(workflow_down_extra_options)
+workflow_down_options=$(working_dir_options) --user-id $(USER_ID) $(workflow_down_extra_options)
 workflow_log_options=$(workflow_log_extra_options)
 workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)

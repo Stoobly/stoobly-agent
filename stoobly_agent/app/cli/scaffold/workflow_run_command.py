@@ -1,11 +1,9 @@
 import dns.resolver
+import hashlib
 import os
 import pdb
 import subprocess
 import re
-import yaml
-
-from typing import TypedDict
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
@@ -19,25 +17,9 @@ from .constants import (
 from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
+from ..types.workflow_run_command import BuildOptions, ComposeOptions, DownOptions, UpOptions
 
 LOG_ID = 'WorkflowRunCommand'
-
-class ComposeOptions(TypedDict):
-  namespace: str
-  user_id: str
-
-class BuildOptions(ComposeOptions):
-  user_id: str
-  verbose: bool
-
-class DownOptions(ComposeOptions):
-  extra_compose_path: str
-  rmi: bool
-
-class UpOptions(ComposeOptions):
-  attached: bool
-  extra_compose_path: str
-  pull: bool
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -48,7 +30,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
-    self.__network = f"{kwargs.get('network') or {self.workflow_name}}.{self.app_config.network}"
+    self.__network = f"{kwargs.get('namespace') or self.workflow_name}.{kwargs.get('network') or app.network}"
     
   @property
   def app_dir_path(self):
