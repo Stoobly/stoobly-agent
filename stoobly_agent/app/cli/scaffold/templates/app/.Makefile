@@ -4,7 +4,7 @@
 # STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored, defaults to $(pwd)/.stoobly/ca_certs
 # STOOBLY_CERTS_DIR: path to a folder to store certs, defaults to $(pwd)/.stoobly/certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder, defaults to $(pwd)
-# STOOBLY_ENV_FILE: path to dotenv file, defaults to $(pwd)/.env
+# STOOBLY_DOTENV_FILE: path to dotenv file, defaults to $(pwd)/.env
 # STOOBLY_WORKFLOW_SERVICE_OPTIONS: extra --service options to pass 'stoobly-agent scaffold workflow' commands
 
 # Overridable Options
@@ -28,7 +28,7 @@ app_dir=$$(realpath "$${STOOBLY_APP_DIR:-$(CONTEXT_DIR_DEFAULT)}")
 ca_certs_dir=$$(realpath "$${STOOBLY_CA_CERTS_DIR:-$(app_data_dir)/ca_certs}")
 certs_dir=$$(realpath "$${STOOBLY_CERTS_DIR:-$(app_data_dir)/certs}")
 context_dir=$$(realpath "$${STOOBLY_CONTEXT_DIR:-$(CONTEXT_DIR_DEFAULT)}")
-env_file=$$(realpath "$${STOOBLY_ENV_FILE:-.env}" 2> /dev/null || echo '')
+dotenv_file=$$(realpath "$${STOOBLY_DOTENV_FILE:-.env}" 2> /dev/null || echo '')
 workflow=record
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
@@ -38,6 +38,7 @@ app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
+workflow_namespace_dir=$(app_tmp_dir)/$(workflow_namespace)
 workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh
 
 # Options
@@ -48,24 +49,23 @@ workflow_down_options=$(working_dir_options) --user-id $(USER_ID) $(workflow_dow
 workflow_log_options=$(workflow_log_extra_options)
 workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
-
+ 
 # Commands
 exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)"
 exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm stoobly_ui.command
-source_env=set -a; [ -f "$(env_file)" ] && . "$(env_file)"; set +a
 
 # Build base image
 stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
-stoobly_exec=$(source_env); $(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
+stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
 stoobly_exec_env=$(exec_env) CONTEXT_DIR="$(context_dir)" 
 
 # Exec workflow run
 # Scaffold is stored in the application source code directory. 
 # When running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
-stoobly_exec_run=$(source_env); $(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
+stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
 stoobly_exec_run_env=$(exec_env) CONTEXT_DIR="$(app_dir)"
 
 # Workflow run
@@ -88,14 +88,16 @@ ca-cert/install: stoobly/install
 certs:
 	@export EXEC_COMMAND=scaffold/.mkcert EXEC_OPTIONS="" EXEC_ARGS="" && \
 	$(stoobly_exec)
-nameservers: tmpdir
+dotenv: workflow/namespace
+	@if [ -f "$(dotenv_file)" ]; then cp "$(dotenv_file)" $(workflow_namespace_dir)/.env; fi
+nameservers: workflow/namespace
 	@if [ -f /etc/resolv.conf ]; then \
 		nameserver=$$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' /etc/resolv.conf) && \
 		if [ "$$nameserver" = "127.0.0.53" ]; then \
 			echo "Nameserver is 127.0.0.53. Checking resolvectl status..."; \
 			nameserver=$$(resolvectl status | sed -n '/DNS Servers:/s/.*DNS Servers:\s*\([^ ]*\).*/\1/p' | head -n 1); \
 		fi; \
-		echo "$$nameserver" > $(app_tmp_dir)/.nameservers; \
+		echo "$$nameserver" > $(workflow_namespace_dir)/.nameservers; \
 	else \
 		echo "/etc/resolv.conf not found." >&2; \
 	fi
@@ -158,7 +160,7 @@ test/logs: workflow/test workflow/logs
 test/down: workflow/test workflow/down
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
-workflow/down:
+workflow/down: dotenv
 	@export EXEC_COMMAND=scaffold/.down EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)
@@ -182,6 +184,8 @@ workflow/logs:
 	$(workflow_run)
 workflow/mock:
 	$(eval workflow=mock)
+workflow/namespace: tmpdir
+	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
 workflow/services:
@@ -189,7 +193,7 @@ workflow/services:
 	$(stoobly_exec_run)
 workflow/test:
 	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
-workflow/up:
+workflow/up: dotenv
 	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run) && \
 	$(workflow_run)

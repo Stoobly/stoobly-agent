@@ -1,7 +1,5 @@
 import os
 
-from .constants import ENV_FILE
-
 DELIMITTER = "\n"
 
 class Env():
