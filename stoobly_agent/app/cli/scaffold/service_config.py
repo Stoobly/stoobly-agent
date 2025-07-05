@@ -56,7 +56,7 @@ class ServiceConfig(Config):
 
   @property
   def id(self):
-    return hashlib.md5(self.dir.encode()).hexdigest()
+    return hashlib.md5(self.url.encode()).hexdigest()
 
   @property
   def hostname(self):
@@ -107,18 +107,22 @@ class ServiceConfig(Config):
     if not self.hostname:
       return ''
 
-    _proxy_mode = f"reverse:{self.scheme}://{self.hostname}"
+    return f"reverse:{self.url}"
+
+  @property
+  def url(self):
+    _url = f"{self.scheme}://{self.hostname}"
 
     if not self.port:
-      return _proxy_mode
+      return _url
 
     if self.scheme == 'http' and self.port == 80: 
-      return _proxy_mode
+      return _url
 
     if self.scheme == 'https' and self.port == 443:
-      return _proxy_mode
+      return _url
 
-    return f"{_proxy_mode}:{self.port}"
+    return f"{_url}:{self.port}"
 
   @proxy_mode.setter
   def proxy_mode(self, v):
