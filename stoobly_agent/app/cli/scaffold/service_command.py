@@ -48,7 +48,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_relative_path(self):
     return os.path.join(
-      self.namespace,
+      self.scaffold_namespace,
       self.service_name,
     )
 
