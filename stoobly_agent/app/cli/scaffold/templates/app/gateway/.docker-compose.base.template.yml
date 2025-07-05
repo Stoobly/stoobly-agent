@@ -6,5 +6,5 @@ services:
     profiles:
       - gateway_base
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${APP_DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
       - ${CERTS_DIR}:/certs:ro
