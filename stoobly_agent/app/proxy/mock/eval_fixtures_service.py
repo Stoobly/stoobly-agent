@@ -62,7 +62,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
   with open(fixture_path, 'rb') as fp:
     response = Response()
 
-    response.status_code = status_code
+    response.status_code = int(status_code)
     response.raw = BytesIO(fp.read()) 
     headers[MOCK_FIXTURE_PATH] = fixture_path
     response.headers = headers
@@ -71,6 +71,14 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
       content_type = __guess_content_type(fixture_path)
       if content_type:
         response.headers['content-type'] = content_type
+      else:
+        # Default to first request accept header as the response content type
+        # TODO: select highest priority accept header i.e. q=1.0
+        accept_header: str = request.headers.get('accept')
+        if accept_header:
+          content_types = accept_header.split(',')
+          content_type = content_types[0].split(';')[0]
+          response.headers['content-type'] = content_type
 
     Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Resolved{bcolors.ENDC} fixture {fixture_path}")
 
