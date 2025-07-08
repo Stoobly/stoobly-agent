@@ -7,7 +7,7 @@ from io import BytesIO
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
 from requests.structures import CaseInsensitiveDict
-from typing import Union
+from typing import Optional, Union
 
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
@@ -72,12 +72,9 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
       if content_type:
         response.headers['content-type'] = content_type
       else:
-        # Default to first request accept header as the response content type
-        # TODO: select highest priority accept header i.e. q=1.0
-        accept_header: str = request.headers.get('accept')
-        if accept_header:
-          content_types = accept_header.split(',')
-          content_type = content_types[0].split(';')[0]
+        # Default to highest priority accept header
+        content_type = __choose_highest_priority_content_type(request.headers.get('accept'))
+        if content_type:
           response.headers['content-type'] = content_type
 
     Logger.instance(LOG_ID).debug(f"{bcolors.OKBLUE}Resolved{bcolors.ENDC} fixture {fixture_path}")
@@ -132,6 +129,32 @@ def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtu
 
     if path:
       return fixture
+
+def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
+    if not accept_header:
+        return None
+
+    types = []
+    for part in accept_header.split(","):
+        media_range = part.strip()
+        if ";" in media_range:
+            mime, *params = media_range.split(";")
+            q = 1.0  # default
+            for param in params:
+                param = param.strip()
+                if param.startswith("q="):
+                    try:
+                        q = float(param[2:])
+                    except ValueError:
+                        q = 0.0  # invalid q values treated as lowest
+        else:
+            mime = media_range
+            q = 1.0
+        types.append((mime.strip(), q))
+
+    # Sort by descending q
+    types.sort(key=lambda x: -x[1])
+    return types[0][0] if types else None
 
 def __parse_accept_header(accept_header):
     types = []

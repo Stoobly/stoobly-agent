@@ -177,4 +177,4 @@ class TestEvalFixturesService():
       assert public_directory_response.status_code == 200
 
     def test_default_it_headers(self, public_directory_default_response: requests.Response):
-      assert public_directory_default_response.headers['Content-Type'] == 'text/html'
+      assert public_directory_default_response.headers['Content-Type'] == 'application/json'
