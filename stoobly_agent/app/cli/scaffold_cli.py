@@ -89,7 +89,7 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--docker-socket-path', default='/var/run/docker.sock', help='Path to Docker socket.')
+@click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -339,7 +339,7 @@ def copy(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
-def down(**kwargs):  
+def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
@@ -349,6 +349,7 @@ def down(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
+  __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -503,6 +504,7 @@ def up(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
+  workflow_namespace = __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -514,11 +516,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(
-    WorkflowNamespace(app, kwargs['namespace'] or workflow.workflow_name), 
-    workflow.service_paths_from_services(services), 
-    kwargs['no_publish']
-  )
+  configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -840,3 +838,8 @@ def __workflow_create(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
+
+def __with_workflow_namespace(app: App, namespace: str):
+  workflow_namespace = WorkflowNamespace(app, namespace)
+  workflow_namespace.copy_dotenv()
+  return workflow_namespace
