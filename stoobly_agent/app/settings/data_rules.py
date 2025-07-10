@@ -1,4 +1,4 @@
-from stoobly_agent.config.constants import mock_policy, record_order, record_policy, replay_policy, test_strategy
+from stoobly_agent.config.constants import mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
 
 from .types.proxy_settings import DataRules as IDataRules
 
@@ -10,6 +10,7 @@ class DataRules:
     self.__mock_policy = self.__data_rules.get('mock_policy') or mock_policy.FOUND
     self.__record_order = self.__data_rules.get('record_order') or record_order.APPEND
     self.__record_policy = self.__data_rules.get('record_policy') or record_policy.ALL
+    self.__record_strategy = self.__data_rules.get('record_strategy') or record_strategy.FULL
     self.__replay_policy = self.__data_rules.get('replay_policy') or replay_policy.ALL
     self.__scenario_key = self.__data_rules.get('scenario_key')
     self.__test_policy = self.__data_rules.get('test_policy') or mock_policy.FOUND
@@ -44,6 +45,19 @@ class DataRules:
       raise TypeError(f"record_order has to be one of {valid_orders}, got {v}")
 
     self.__record_order = v
+    self.__data_rules['record_order'] = v
+
+  @property
+  def record_strategy(self):
+    return self.__record_strategy
+
+  @record_strategy.setter
+  def record_strategy(self, v):
+    valid_strategies = [record_strategy.FULL, record_strategy.MINIMAL]
+    if v not in valid_strategies:
+      raise TypeError(f"record_strategy has to be one of {valid_strategies}, got {v}")
+
+    self.__record_strategy = v
     self.__data_rules['record_order'] = v
 
   @property
@@ -84,6 +98,7 @@ class DataRules:
       'mock_policy': self.__mock_policy,
       'record_order': self.__record_order,
       'record_policy': self.__record_policy,
+      'record_strategy': self.__record_strategy,
       'replay_policy': self.__replay_policy,
       'scenario_key': self.__scenario_key,
       'test_policy': self.__test_policy,
