@@ -21,7 +21,7 @@ from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy, get_active_strategy_policy
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
-from .utils.minimize_headers import remove_headers
+from .utils.minimize_headers import minimize_headers
 
 LOG_ID = 'Record'
 
@@ -79,7 +79,7 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     active_record_strategy = get_active_strategy_policy(flow_copy.request, intercept_settings)
 
     if active_record_strategy == record_strategy.MINIMAL:
-        remove_headers(flow_copy)
+        minimize_headers(flow_copy)
 
     rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules)
 
