@@ -11,12 +11,22 @@ from stoobly_agent.lib.logger import bcolors, Logger
 
 LOG_ID = 'Firewall'
 
-def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
+def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
 
     if allowed_request(request, intercept_settings):
         return intercept_settings.policy
+    else:
+        # If the request path does not match accepted paths, do not intercept
+        return intercept_policy.NONE
+
+def get_active_strategy_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> str:
+    if intercept_settings.request_origin == request_origin.CLI:
+        return intercept_settings.strategy
+
+    if allowed_request(request, intercept_settings):
+        return intercept_settings.strategy
     else:
         # If the request path does not match accepted paths, do not intercept
         return intercept_policy.NONE
