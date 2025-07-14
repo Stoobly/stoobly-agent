@@ -50,6 +50,10 @@ class TestEvalFixturesService():
       return Request.last()
 
     @pytest.fixture(scope='class')
+    def default_file_contents(self):
+      return b'Default'
+
+    @pytest.fixture(scope='class')
     def not_found_file_contents(self):
       return b'Not Found'
 
@@ -62,14 +66,21 @@ class TestEvalFixturesService():
       return public_dir_path
 
     @pytest.fixture(autouse=True, scope='class')
-    def not_found_file_path(self, public_directory: str, not_found_file_contents: str):
+    def not_found_file_path(self, public_directory: str, not_found_file_contents: bytes):
       path = os.path.join(public_directory, '404.html')
       with open(path, 'wb') as fp:
         fp.write(not_found_file_contents)
       return path
 
+    @pytest.fixture(autouse=True, scope='class')
+    def default_file_path(self, public_directory: str, default_file_contents: bytes):
+      path = os.path.join(public_directory, 'default')
+      with open(path, 'wb') as fp:
+        fp.write(default_file_contents)
+      return path
+
     @pytest.fixture(scope='class')
-    def response_fixtures(self, request_method: str, not_found_file_path: str) -> Fixtures:
+    def response_fixtures(self, public_directory: str, request_method: str, not_found_file_path: str) -> Fixtures:
       fixtures = {}
       fixtures[request_method] = {
         '/404.html': {
@@ -78,6 +89,9 @@ class TestEvalFixturesService():
           },
           'path': not_found_file_path,
           'status_code': 404,
+        },
+        '/': {
+          'path': public_directory
         }
       }
       return fixtures
@@ -92,8 +106,15 @@ class TestEvalFixturesService():
       assert res != None
       return res
 
+    @pytest.fixture()
+    def default_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
+      mitmproxy_request.path = '/default'
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
+      assert res != None
+      return res
+
     def test_it_sets_response(
-      self, fixtures_response: requests.Response, not_found_file_contents: str
+      self, fixtures_response: requests.Response, not_found_file_contents: bytes
     ):
       assert fixtures_response.raw.read() == not_found_file_contents
 
@@ -103,6 +124,9 @@ class TestEvalFixturesService():
 
     def test_it_sets_status_code(self,  fixtures_response: requests.Response):
       assert fixtures_response.status_code == 404
+
+    def test_fixture_directory(self, default_fixtures_response: requests.Response, default_file_contents: bytes):
+      assert default_fixtures_response.raw.read() == default_file_contents
 
   class TestPublicDirectory():
     @pytest.fixture(scope='class')

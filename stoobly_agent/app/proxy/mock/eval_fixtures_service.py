@@ -50,15 +50,31 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
         return
     else:
       fixture_path = fixture.get('path')
-      if not fixture_path or not os.path.isfile(fixture_path):
+      if not fixture_path:
         return
 
+      if os.path.isdir(fixture_path):
+        request_path = request.path
+        match = re.match(fixture['path_pattern'], request_path)
+
+        # If request path length matches the fixture path, still maps to a directory
+        if not match or match.end() == len(request_path):
+          return
+
+        sub_path = request_path[match.end():]
+        if sub_path.startswith('/'):
+          sub_path = sub_path.lstrip('/')
+
+        fixture_path = os.path.join(fixture_path, sub_path)
+        if not os.path.isfile(fixture_path):
+          return
+        
       _headers = fixture.get('headers')
       headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
 
       if fixture.get('status_code'):
         status_code = fixture.get('status_code')
-    
+
   with open(fixture_path, 'rb') as fp:
     response = Response()
 
@@ -128,6 +144,7 @@ def __eval_response_fixtures(request: MitmproxyRequest, response_fixtures: Fixtu
     path = fixture.get('path')
 
     if path:
+      fixture['path_pattern'] = path_pattern
       return fixture
 
 def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
