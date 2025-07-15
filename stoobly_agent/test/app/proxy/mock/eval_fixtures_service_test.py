@@ -74,7 +74,7 @@ class TestEvalFixturesService():
 
     @pytest.fixture(autouse=True, scope='class')
     def default_file_path(self, public_directory: str, default_file_contents: bytes):
-      path = os.path.join(public_directory, 'default')
+      path = os.path.join(public_directory, 'index.html')
       with open(path, 'wb') as fp:
         fp.write(default_file_contents)
       return path
@@ -108,7 +108,9 @@ class TestEvalFixturesService():
 
     @pytest.fixture()
     def default_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
-      mitmproxy_request.path = '/default'
+      mitmproxy_request.path = '/'
+      mitmproxy_request.headers['accept'] = '*/*'
+      pdb.set_trace()
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
       assert res != None
       return res

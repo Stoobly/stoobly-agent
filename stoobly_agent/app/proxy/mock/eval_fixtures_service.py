@@ -57,15 +57,18 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
         request_path = request.path
         match = re.match(fixture['path_pattern'], request_path)
 
-        # If request path length matches the fixture path, still maps to a directory
         if not match or match.end() == len(request_path):
-          return
+          sub_path = 'index'
+        else:
+          sub_path = request_path[match.end():]
 
-        sub_path = request_path[match.end():]
-        if sub_path.startswith('/'):
-          sub_path = sub_path.lstrip('/')
+        _fixture_path = os.path.join(fixture_path, sub_path.lstrip('/'))
+        if request.headers.get('accept'):
+          fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
+        
+        if not fixture_path:
+          fixture_path = _fixture_path
 
-        fixture_path = os.path.join(fixture_path, sub_path)
         if not os.path.isfile(fixture_path):
           return
         
@@ -174,6 +177,9 @@ def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
     return types[0][0] if types else None
 
 def __parse_accept_header(accept_header):
+    if accept_header == '*/*':
+      return ['text/html', 'application/json']
+
     types = []
     for item in accept_header.split(","):
         parts = item.split(";")
