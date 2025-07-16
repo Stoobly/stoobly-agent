@@ -127,6 +127,21 @@ def handle_order_update(new_settings: Settings, context: Context = None):
         scenario_model = ScenarioModel(new_settings)
         scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
 
+def handle_strategy_update(new_settings: Settings, context: Context = None):
+  data_rule = __data_rule(new_settings.proxy)
+  _mode = context['mode'] if context and context.get('mode') else new_settings.proxy.intercept.mode
+
+  old_proxy_settings = __current_proxy_settings(context)
+  old_data_rule = __data_rule(old_proxy_settings)
+
+  if _mode == intercept_mode.RECORD:
+    new_strategy = data_rule.record_strategy
+    old_strategy = old_data_rule.record_strategy
+
+    if new_strategy != old_strategy:
+      data_rule.record_strategy = new_strategy
+      return
+
 def __current_proxy_settings(context: Context = None):
   if context and context.get('current_proxy_settings'):
     return context['current_proxy_settings']
