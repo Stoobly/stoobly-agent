@@ -8,6 +8,7 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.config.constants import lifecycle_hooks, replay_policy
 
 from .utils.allowed_request_service import get_active_mode_policy
+from .utils.minimize_headers import has_minimized_request_headers, minimize_response_headers
 from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'HandleReplay'
@@ -66,7 +67,14 @@ def __rewrite_response(replay_context: ReplayContext):
     After replaying a request, see if the request needs to be rewritten
     """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
+    flow = replay_context.flow
+    request = flow.request
+
+    has_minimized_headers = has_minimized_request_headers(request.headers)
+    if has_minimized_headers:
+        minimize_response_headers(flow)
+
     rewrite_rules = intercept_settings.replay_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(replay_context.flow, rewrite_rules)
+        rewrite_response(flow, rewrite_rules)
