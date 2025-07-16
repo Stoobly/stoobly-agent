@@ -30,6 +30,7 @@ from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
+from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
@@ -88,7 +89,7 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--network', callback=validate_network, help='App default network name. Defaults to app name.')
+@click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -99,9 +100,6 @@ def create(**kwargs):
 
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
-
-  if not kwargs['network']:
-    kwargs['network'] = kwargs['app_name']
 
   AppCreateCommand(app, **kwargs).build()
 
@@ -341,13 +339,17 @@ def copy(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
-def down(**kwargs):  
+def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  containerized = kwargs['containerized']
+
+  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
+  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
+  __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -361,7 +363,7 @@ def down(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -450,7 +452,7 @@ def logs(**kwargs):
     command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -502,6 +504,7 @@ def up(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
+  workflow_namespace = __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -513,9 +516,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(
-    kwargs['namespace'] or workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish']
-  )
+  configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -525,7 +526,7 @@ def up(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   # Before services can be started, their image and network needs to be created
   if len(commands) > 0:
@@ -678,11 +679,11 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
-def __build_script(**kwargs):
+def __build_script(app: App, **kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    script_file_name = 'run.sh'
-    script_path = os.path.join(data_dir.tmp_dir_path, kwargs.get('namespace') or kwargs['workflow_name'] or '', script_file_name)
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'])
+    script_path = workflow_namespace.run_script_path
   
   script_dir = os.path.dirname(script_path)
   if not os.path.exists(script_dir):
@@ -827,10 +828,6 @@ def __with_namespace_defaults(kwargs):
   if not kwargs.get('namespace'):
     kwargs['namespace'] = kwargs.get('workflow_name')
 
-  # If network there was a network option, but it is not set, default network to namespace
-  if 'network' in kwargs and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
-
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
 
@@ -841,3 +838,8 @@ def __workflow_create(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
+
+def __with_workflow_namespace(app: App, namespace: str):
+  workflow_namespace = WorkflowNamespace(app, namespace)
+  workflow_namespace.copy_dotenv()
+  return workflow_namespace
