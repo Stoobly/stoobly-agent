@@ -148,8 +148,8 @@ def configure(**kwargs):
 
     if kwargs['strategy']:
         active_mode = settings.proxy.intercept.mode
-
-        if active_mode == mode.RECORD:
+        
+        if active_mode == mode.RECORD or active_mode == mode.TEST:
             project_key = ProjectKey(settings.proxy.intercept.project_key)
             data_rule = settings.proxy.data.data_rules(project_key.id)
             data_rule.record_strategy = kwargs['strategy']
