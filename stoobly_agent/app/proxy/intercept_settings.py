@@ -183,8 +183,11 @@ class InterceptSettings:
     return self.policy
 
   @property
-  def strategy(self):
-    return self.__strategy(self.mode)
+  def record_strategy(self):
+    if self.__headers and custom_headers.RECORD_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.RECORD_STRATEGY]
+
+    return self.__data_rules.record_strategy
 
   @property
   def exclude_rules(self) -> List[FirewallRule]:
@@ -370,9 +373,3 @@ class InterceptSettings:
       return self.__data_rules.test_policy
     elif mode == intercept_mode.REPLAY:
       return self.__data_rules.replay_policy
-
-  def __strategy(self, mode):
-    if mode == intercept_mode.RECORD:
-      return self.__data_rules.record_strategy
-    elif mode == intercept_mode.TEST:
-      return self.__data_rules.test_strategy

@@ -26,12 +26,6 @@ RESPONSE_HEADERS_ALLOWLIST: Final[dict[str]] = {
   "Server",  # Sometimes required for HTTP/1.0, but not strictly mandatory
 }
 
-HEADERS_EXCEPTIONS_ALLOWED: Final[dict[str]] = {
-  "Cache-Control",            # Added during replay to prevent 304 status
-  "X-Stoobly-Proxy-Mode",     # Stoobly header
-  "X-Stoobly-Request-Origin", # Stoobly header
-}
-
 def minimize_headers(flow: MitmproxyHTTPFlow):
   minimize_request_headers(flow)
   minimize_response_headers(flow)
@@ -51,18 +45,3 @@ def remove_headers(headers: Headers, allowlist: dict[str]):
 
   for key in keys_to_remove:
     headers.pop(key)
-
-def has_minimized_request_headers(request_headers: Headers) -> bool:
-  allowlist = REQUEST_HEADERS_ALLOWLIST | HEADERS_EXCEPTIONS_ALLOWED
-  return has_minimized_headers(request_headers, allowlist)
-
-def has_minimized_headers(headers: Headers, allowlist: dict[str]) -> bool:
-  if not headers:
-    return False
-
-  allowed_headers = {allowed_header.lower() for allowed_header in allowlist}
-  for key in headers.keys():
-    if key.lower() not in allowed_headers:
-      return False
-
-  return True
