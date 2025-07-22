@@ -18,10 +18,12 @@ from .record.context import RecordContext
 from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
 from .replay.body_parser_service import is_json, is_xml
-from .utils.allowed_request_service import get_active_mode_policy, get_active_mode_strategy
+from .utils.allowed_request_service import get_active_mode_policy
+from .utils.minimize_headers import minimize_headers
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
-from .utils.minimize_headers import minimize_headers
+from .utils.strategy import get_active_mode_strategy
+
 
 LOG_ID = 'Record'
 
@@ -76,8 +78,7 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
 
     context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
 
-    active_record_strategy = get_active_mode_strategy(flow_copy.request, intercept_settings)
-
+    active_record_strategy = get_active_mode_strategy(intercept_settings)
     if active_record_strategy == record_strategy.MINIMAL:
         minimize_headers(flow_copy)
 

@@ -77,8 +77,6 @@ def __rewrite_response(replay_context: ReplayContext):
     if (request_proxy_mode_header == mode.REPLAY and response_proxy_mode_header == mode.RECORD) or \
         (request_proxy_mode_header == mode.REPLAY and response_proxy_mode_header == None):
 
-        pdb.set_trace()
-
         if intercept_settings.record_strategy == record_strategy.MINIMAL:
             minimize_response_headers(flow)
 

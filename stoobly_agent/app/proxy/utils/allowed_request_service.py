@@ -22,22 +22,6 @@ def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: Interc
         # If the request path does not match accepted paths, do not intercept
         return intercept_policy.NONE
 
-def get_active_mode_strategy(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> str:
-    strategy = ""
-    if intercept_settings.mode == intercept_mode.RECORD:
-        strategy = intercept_settings.record_strategy
-    elif intercept_settings.mode == intercept_mode.TEST:
-        strategy = intercept_settings.test_strategy
-
-    if intercept_settings.request_origin == request_origin.CLI:
-        return strategy
-
-    if allowed_request(request, intercept_settings):
-        return strategy
-    else:
-        # If the request path does not match accepted paths, do not intercept
-        return intercept_policy.NONE
-
 def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed
     exclude_rules = intercept_settings.exclude_rules
