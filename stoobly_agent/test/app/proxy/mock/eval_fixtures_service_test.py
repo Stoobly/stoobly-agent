@@ -2,6 +2,7 @@ import os
 import pdb
 import pytest
 import requests
+import shutil
 
 from click.testing import CliRunner
 from mitmproxy.http import Request as MitmproxyRequest
@@ -156,6 +157,14 @@ class TestEvalFixturesService():
       assert res != None
       return res
 
+    @pytest.fixture()
+    def public_directory_default_response(self, index_file_path: str, mitmproxy_request: MitmproxyRequest, public_directory: str):
+      path = os.path.join(public_directory, 'index')
+      shutil.move(index_file_path, path)
+      res: requests.Response = eval_fixtures(mitmproxy_request, public_directory_path=public_directory)
+      assert res != None
+      return res
+
     def test_it_sets_contents(
       self, public_directory_response: requests.Response, index_file_contents: str
     ):
@@ -164,5 +173,8 @@ class TestEvalFixturesService():
     def test_it_headers(self, public_directory_response: requests.Response):
       assert public_directory_response.headers['Content-Type'] == 'text/html'
     
-    def test_it_sets_status_code(self,  public_directory_response: requests.Response):
+    def test_it_sets_status_code(self, public_directory_response: requests.Response):
       assert public_directory_response.status_code == 200
+
+    def test_default_it_headers(self, public_directory_default_response: requests.Response):
+      assert public_directory_default_response.headers['Content-Type'] == 'application/json'

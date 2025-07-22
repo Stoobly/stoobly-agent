@@ -116,8 +116,9 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
   def validate_internal_hostname(self, url: str) -> None:
     print(f"Validating hostname inside Docker network, url: {url}")
-
-    network = f"{self.workflow_name}.{self.app_config.network}" 
+    
+    # See WorkflowRunCommand for how 'network' is generated
+    network = f"{self.workflow_name}.{self.app.network}" 
     timeout_seconds = 1
     output = self.docker_client.containers.run(
       image='curlimages/curl:8.11.0',

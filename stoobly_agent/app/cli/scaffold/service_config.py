@@ -7,6 +7,7 @@ from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
   SERVICE_HOSTNAME_ENV,
+  SERVICE_ID_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
   SERVICE_PROXY_MODE_ENV,
@@ -55,7 +56,7 @@ class ServiceConfig(Config):
 
   @property
   def id(self):
-    return hashlib.md5(os.path.basename(self.dir).encode()).hexdigest()
+    return hashlib.md5(self.url.encode()).hexdigest()
 
   @property
   def hostname(self):
@@ -106,18 +107,22 @@ class ServiceConfig(Config):
     if not self.hostname:
       return ''
 
-    _proxy_mode = f"reverse:{self.scheme}://{self.hostname}"
+    return f"reverse:{self.url}"
+
+  @property
+  def url(self):
+    _url = f"{self.scheme}://{self.hostname}"
 
     if not self.port:
-      return _proxy_mode
+      return _url
 
     if self.scheme == 'http' and self.port == 80: 
-      return _proxy_mode
+      return _url
 
     if self.scheme == 'https' and self.port == 443:
-      return _proxy_mode
+      return _url
 
-    return f"{_proxy_mode}:{self.port}"
+    return f"{_url}:{self.port}"
 
   @proxy_mode.setter
   def proxy_mode(self, v):
@@ -171,7 +176,7 @@ class ServiceConfig(Config):
       config[SERVICE_SCHEME_ENV] = self.scheme
 
     config[SERVICE_DETACHED_ENV] = bool(self.detached)
-
+    config[SERVICE_ID_ENV] = self.id
     config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)

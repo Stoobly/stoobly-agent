@@ -8,7 +8,7 @@ from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
 from .helpers.handle_config_update_service import handle_intercept_active_update, handle_order_update, handle_strategy_update
 
-settings = Settings.instance()
+settings: Settings = Settings.instance()
 
 mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
 

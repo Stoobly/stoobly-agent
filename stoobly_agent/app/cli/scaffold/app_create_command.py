@@ -7,8 +7,8 @@ from .app import App
 from .app_command import AppCommand
 
 class AppCreateOptions(TypedDict):
+  docker_socket_path: str
   name: str
-  network: str
   ui_port: int
 
 class AppCreateCommand(AppCommand):
@@ -19,19 +19,19 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
 
-        if kwargs.get('network'):
-            self.app_config.network = kwargs['network']
+        if kwargs.get('docker_socket_path'):
+            self.app_config.docker_socket_path = kwargs['docker_socket_path']
 
         if kwargs.get('ui_port'):
             self.app_config.ui_port = kwargs['ui_port']
 
     @property
-    def app_name(self):
-        return self.app_config.name
+    def docker_socket_path(self):
+        return self.app_config.docker_socket_path
 
     @property
-    def app_network(self):
-        return self.app_config.network
+    def app_name(self):
+        return self.app_config.name
 
     @property
     def app_ui_port(self):
