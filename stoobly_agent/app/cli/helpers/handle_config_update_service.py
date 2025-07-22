@@ -127,6 +127,10 @@ def handle_order_update(new_settings: Settings, context: Context = None):
         scenario_model = ScenarioModel(new_settings)
         scenario_model.update(_scenario_key.id, **{ 'overwritable': False })[1]
 
+def handle_strategy_update(new_settings: Settings, context: Context = None):
+  # Handle side effects here
+  pass
+
 def __current_proxy_settings(context: Context = None):
   if context and context.get('current_proxy_settings'):
     return context['current_proxy_settings']

@@ -5,13 +5,14 @@ from mitmproxy.http import Request as MitmproxyRequest
 from typing import List
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
-from stoobly_agent.config.constants import intercept_policy, request_origin
+from stoobly_agent.config.constants import mode, intercept_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 
 LOG_ID = 'Firewall'
 
-def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings):
+def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
 

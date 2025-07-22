@@ -183,6 +183,13 @@ class InterceptSettings:
     return self.policy
 
   @property
+  def record_strategy(self):
+    if self.__headers and custom_headers.RECORD_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.RECORD_STRATEGY]
+
+    return self.__data_rules.record_strategy
+
+  @property
   def exclude_rules(self) -> List[FirewallRule]:
     _mode = self.mode
     return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
