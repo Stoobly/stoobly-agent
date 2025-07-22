@@ -93,6 +93,15 @@ class DataRules:
   def test_strategy(self):
     return self.__test_strategy 
 
+  @test_strategy.setter
+  def test_strategy(self, v):
+    valid_strategies = [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    if v not in valid_strategies:
+      raise TypeError(f"test_strategy has to be one of {valid_strategies}, got {v}")
+
+    self.__test_strategy = v
+    self.__data_rules['test_strategy'] = v
+
   def to_dict(self) -> IDataRules:
     return {
       'mock_policy': self.__mock_policy,

@@ -10,20 +10,20 @@ from .helpers.handle_config_update_service import handle_intercept_active_update
 
 settings: Settings = Settings.instance()
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
+mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
 
 if settings.cli.features.remote:
     mode_options.append(mode.TEST)
 
 active_mode = settings.proxy.intercept.mode
 
-def __get_order_options(active_mode):
+def __get_order_options(active_mode) -> list[str]:
     if active_mode == mode.RECORD:
         return [record_order.APPEND, record_order.OVERWRITE]
     else:
         return []
 
-def __get_policy_options(active_mode):
+def __get_policy_options(active_mode) -> list[str]:
     if active_mode == mode.MOCK:
         return [mock_policy.ALL, mock_policy.FOUND]
     elif active_mode == mode.RECORD:
@@ -35,17 +35,14 @@ def __get_policy_options(active_mode):
     else:
         return []
 
-def __get_strategy_options(active_mode):
-    if active_mode == mode.RECORD:
-        return [record_strategy.FULL, record_strategy.MINIMAL]
-    if active_mode == mode.TEST:
-        return [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
-    else:
-        return []
+def __get_strategy_options() -> list[str]:
+    record_strategies = [record_strategy.FULL, record_strategy.MINIMAL]
+    test_strategies = [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    return record_strategies + test_strategies
 
 order_options = __get_order_options(active_mode)
 policy_options = __get_policy_options(active_mode)
-strategy_options = __get_strategy_options(active_mode)
+strategy_options = __get_strategy_options()
 
 @click.group(
     epilog="Run 'stoobly-agent intercept COMMAND --help' for more information on a command.",
@@ -93,7 +90,7 @@ def disable(**kwargs):
 def configure(**kwargs):
     settings: Settings = Settings.instance()
 
-    if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy']:
+    if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy'] and not kwargs['strategy']:
         print("Error: Missing an option")
         sys.exit(1)
 
@@ -148,11 +145,15 @@ def configure(**kwargs):
 
     if kwargs['strategy']:
         active_mode = settings.proxy.intercept.mode
-        
+
         if active_mode == mode.RECORD or active_mode == mode.TEST:
             project_key = ProjectKey(settings.proxy.intercept.project_key)
             data_rule = settings.proxy.data.data_rules(project_key.id)
-            data_rule.record_strategy = kwargs['strategy']
+
+            if active_mode == mode.RECORD:
+                data_rule.record_strategy = kwargs['strategy']
+            elif active_mode == mode.TEST:
+                data_rule.test_strategy = kwargs['strategy']
         else:
             print("Error: set --strategy to a intercept mode that supports the strategy option", file=sys.stderr)
             sys.exit(1)
