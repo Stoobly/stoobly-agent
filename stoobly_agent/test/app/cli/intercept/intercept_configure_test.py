@@ -10,7 +10,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from stoobly_agent.config.constants import mode, record_order, record_strategy, test_strategy
+from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
 
 @pytest.fixture(scope='module')
 def runner():
@@ -53,6 +53,154 @@ class TestInterceptConfigure():
           assert configure_result.exit_code == 0
 
           assert not Scenario.find(scenario.id).overwritable
+
+  class TestPolicy():
+
+    class TestMockPolicy():
+
+      def test_policy_mock_mode_all(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.MOCK, '--policy', mock_policy.ALL])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.mock_policy == mock_policy.ALL
+
+      def test_policy_mock_mode_found(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.MOCK, '--policy', mock_policy.FOUND])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.mock_policy == mock_policy.FOUND
+
+      def test_policy_without_mode_mock_existing(self, runner: CliRunner):
+        runner.invoke(intercept, ['configure', '--mode', mode.MOCK])
+        configure_result = runner.invoke(intercept, ['configure', '--policy', mock_policy.ALL])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.mock_policy == mock_policy.ALL
+
+    class TestRecordPolicy():
+
+      def test_policy_record_mode_all(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.ALL])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.record_policy == record_policy.ALL
+
+      def test_policy_record_mode_api(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.API])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.record_policy == record_policy.API
+
+      def test_policy_record_mode_found(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.FOUND])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.record_policy == record_policy.FOUND
+
+      def test_policy_record_mode_not_found(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--policy', record_policy.NOT_FOUND])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.record_policy == record_policy.NOT_FOUND
+
+      def test_policy_without_mode_record_existing(self, runner: CliRunner):
+        runner.invoke(intercept, ['configure', '--mode', mode.RECORD])
+        configure_result = runner.invoke(intercept, ['configure', '--policy', record_policy.API])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.record_policy == record_policy.API
+
+    class TestReplayPolicy():
+
+      def test_policy_replay_mode_all(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.REPLAY, '--policy', replay_policy.ALL])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.replay_policy == replay_policy.ALL
+
+      def test_policy_without_mode_replay_existing(self, runner: CliRunner):
+        runner.invoke(intercept, ['configure', '--mode', mode.REPLAY])
+        configure_result = runner.invoke(intercept, ['configure', '--policy', replay_policy.ALL])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.replay_policy == replay_policy.ALL
+
+    class TestTestPolicy():
+
+      def test_policy_test_mode_found(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.TEST, '--policy', mock_policy.FOUND])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.test_policy == mock_policy.FOUND
+
+      def test_policy_without_mode_test_existing(self, runner: CliRunner):
+        runner.invoke(intercept, ['configure', '--mode', mode.TEST])
+        configure_result = runner.invoke(intercept, ['configure', '--policy', mock_policy.FOUND])
+        assert configure_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.test_policy == mock_policy.FOUND
+
+    class TestInvalidPolicyInput():
+      # Since all modes use 'all', we need to check what's unique to each mode
+
+      def test_policy_invalid_for_mock_mode(self, runner: CliRunner):
+        # Use record_policy.API which is not valid for MOCK mode
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.MOCK, '--policy', record_policy.API])
+        assert configure_result.exit_code == 1
+        assert "Error: Valid policies for" in configure_result.output
+
+      def test_policy_invalid_for_record_mode(self, runner: CliRunner):
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.MOCK, '--policy', record_policy.NOT_FOUND])
+        assert configure_result.exit_code == 1
+        assert "Error: Valid policies for" in configure_result.output
+
+      def test_policy_invalid_for_replay_mode(self, runner: CliRunner):
+        # Use record_policy.API which is not valid for REPLAY mode
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.REPLAY, '--policy', record_policy.API])
+        assert configure_result.exit_code == 1
+        assert "Error: Valid policies for" in configure_result.output
+
+      def test_policy_invalid_for_test_mode(self, runner: CliRunner):
+        # Use record_policy.API which is not valid for TEST mode
+        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.TEST, '--policy', record_policy.API])
+        assert configure_result.exit_code == 1
+        assert "Error: Valid policies for" in configure_result.output
 
   class TestStrategy():
 
