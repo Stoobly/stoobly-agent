@@ -164,12 +164,14 @@ def create(**kwargs):
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  services = __get_services(app, service=kwargs['service'], workflow=kwargs['workflow'])
+  without_core = not kwargs['all']
+  services = __get_services(app, service=kwargs['service'],  without_core=without_core, workflow=kwargs['workflow'])
 
   rows = []
   for service_name in services: 
