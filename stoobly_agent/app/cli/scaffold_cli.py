@@ -187,6 +187,22 @@ def _list(**kwargs):
   print_services(rows, **select_print_options(kwargs))
 
 @service.command(
+  help="Show information about a service",
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('service_name')
+@click.pass_context
+def show(ctx, **kwargs):
+  service_name = kwargs['service_name']
+  del kwargs['service_name']
+  kwargs['service'] = [service_name]
+
+  # Invoke list with 1 service
+  ctx.invoke(_list, **kwargs)
+
+@service.command(
   help="Delete a service",
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
