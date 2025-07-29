@@ -9,7 +9,7 @@ from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants.env_vars import ENV
-from stoobly_agent.config.constants import lifecycle_hooks, record_order, record_policy
+from stoobly_agent.config.constants import lifecycle_hooks, record_order, record_policy, record_strategy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -19,8 +19,11 @@ from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
 from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy
+from .utils.minimize_headers import minimize_headers
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
+from .utils.strategy import get_active_mode_strategy
+
 
 LOG_ID = 'Record'
 
@@ -54,7 +57,7 @@ def handle_response_record(context: RecordContext):
         res = inject_eval_request(request_model, intercept_settings)(request, [])
 
         if res.status_code != custom_response_codes.NOT_FOUND:
-            __record_request(context , request_model)
+            __record_request(context, request_model)
     elif active_record_policy == record_policy.NOT_FOUND:
         res = inject_eval_request(request_model, intercept_settings)(request, [])
 
@@ -74,7 +77,13 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     intercept_settings = context.intercept_settings
 
     context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
-    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules) 
+
+    active_record_strategy = get_active_mode_strategy(intercept_settings)
+    if active_record_strategy == record_strategy.MINIMAL:
+        minimize_headers(flow_copy)
+
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules)
+
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
     inject_upload_request(request_model, intercept_settings)(flow_copy)
