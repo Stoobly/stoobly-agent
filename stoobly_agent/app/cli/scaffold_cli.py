@@ -164,12 +164,14 @@ def create(**kwargs):
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  services = __get_services(app, service=kwargs['service'], workflow=kwargs['workflow'])
+  without_core = not kwargs['all']
+  services = __get_services(app, service=kwargs['service'],  without_core=without_core, workflow=kwargs['workflow'])
 
   rows = []
   for service_name in services: 
@@ -183,6 +185,22 @@ def _list(**kwargs):
     })
 
   print_services(rows, **select_print_options(kwargs))
+
+@service.command(
+  help="Show information about a service",
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('service_name')
+@click.pass_context
+def show(ctx, **kwargs):
+  service_name = kwargs['service_name']
+  del kwargs['service_name']
+  kwargs['service'] = [service_name]
+
+  # Invoke list with 1 service
+  ctx.invoke(_list, **kwargs)
 
 @service.command(
   help="Delete a service",
