@@ -58,7 +58,7 @@ class DataRules:
       raise TypeError(f"record_strategy has to be one of {valid_strategies}, got {v}")
 
     self.__record_strategy = v
-    self.__data_rules['record_order'] = v
+    self.__data_rules['record_strategy'] = v
 
   @property
   def replay_policy(self):
