@@ -17,13 +17,13 @@ if settings.cli.features.remote:
 
 active_mode = settings.proxy.intercept.mode
 
-def __get_order_options(active_mode) -> list[str]:
+def __get_order_options(active_mode: str) -> list[str]:
     if active_mode == mode.RECORD:
         return [record_order.APPEND, record_order.OVERWRITE]
     else:
         return []
 
-def __get_policy_options(active_mode) -> list[str]:
+def __get_policy_options(active_mode: str) -> list[str]:
     if active_mode == mode.MOCK:
         return [mock_policy.ALL, mock_policy.FOUND]
     elif active_mode == mode.RECORD:
@@ -35,14 +35,17 @@ def __get_policy_options(active_mode) -> list[str]:
     else:
         return []
 
-def __get_strategy_options() -> list[str]:
-    record_strategies = [record_strategy.FULL, record_strategy.MINIMAL]
-    test_strategies = [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
-    return record_strategies + test_strategies
+def __get_strategy_options(active_mode: str) -> list[str]:
+    if active_mode == mode.RECORD:
+        return [record_strategy.FULL, record_strategy.MINIMAL]
+    elif active_mode == mode.TEST:
+        return [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    else:
+        return []
 
 order_options = __get_order_options(active_mode)
 policy_options = __get_policy_options(active_mode)
-strategy_options = __get_strategy_options()
+strategy_options = __get_strategy_options(active_mode)
 
 @click.group(
     epilog="Run 'stoobly-agent intercept COMMAND --help' for more information on a command.",
