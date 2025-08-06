@@ -3,27 +3,27 @@ import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, replay_policy
+from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from .helpers.handle_config_update_service import handle_intercept_active_update, handle_order_update
+from .helpers.handle_config_update_service import handle_intercept_active_update, handle_order_update, handle_strategy_update
 
 settings: Settings = Settings.instance()
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
+mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
 
 if settings.cli.features.remote:
     mode_options.append(mode.TEST)
 
 active_mode = settings.proxy.intercept.mode
 
-def __get_order_options(active_mode):
+def __get_order_options(active_mode: str) -> list[str]:
     if active_mode == mode.RECORD:
         return [record_order.APPEND, record_order.OVERWRITE]
     else:
         return []
 
-def __get_policy_options(active_mode):
+def __get_policy_options(active_mode: str) -> list[str]:
     if active_mode == mode.MOCK:
         return [mock_policy.ALL, mock_policy.FOUND]
     elif active_mode == mode.RECORD:
@@ -35,8 +35,17 @@ def __get_policy_options(active_mode):
     else:
         return []
 
+def __get_strategy_options(active_mode: str) -> list[str]:
+    if active_mode == mode.RECORD:
+        return [record_strategy.FULL, record_strategy.MINIMAL]
+    elif active_mode == mode.TEST:
+        return [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
+    else:
+        return []
+
 order_options = __get_order_options(active_mode)
 policy_options = __get_policy_options(active_mode)
+strategy_options = __get_strategy_options(active_mode)
 
 @click.group(
     epilog="Run 'stoobly-agent intercept COMMAND --help' for more information on a command.",
@@ -80,10 +89,11 @@ def disable(**kwargs):
 @click.option('--mode', type=click.Choice(mode_options))
 @click.option('--order', type=click.Choice(order_options))
 @click.option('--policy', type=click.Choice(policy_options))
+@click.option('--strategy', type=click.Choice(strategy_options))
 def configure(**kwargs):
     settings: Settings = Settings.instance()
 
-    if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy']:
+    if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy'] and not kwargs['strategy']:
         print("Error: Missing an option")
         sys.exit(1)
 
@@ -136,6 +146,26 @@ def configure(**kwargs):
 
         print(f"Updating {_mode} policy to {kwargs['policy']}")
 
+    if kwargs['strategy']:
+        active_mode = settings.proxy.intercept.mode
+
+        if active_mode == mode.RECORD or active_mode == mode.TEST:
+            project_key = ProjectKey(settings.proxy.intercept.project_key)
+            data_rule = settings.proxy.data.data_rules(project_key.id)
+
+            if active_mode == mode.RECORD:
+                data_rule.record_strategy = kwargs['strategy']
+            elif active_mode == mode.TEST:
+                data_rule.test_strategy = kwargs['strategy']
+        else:
+            print("Error: set --strategy to a intercept mode that supports the strategy option", file=sys.stderr)
+            sys.exit(1)
+
+        handle_strategy_update(settings)
+
+        print(f"Updating {_mode} policy to {kwargs['strategy']}")
+
+
     settings.commit()
 
 @intercept.command(
@@ -148,17 +178,20 @@ def show(**kwargs):
     project_key = ProjectKey(settings.proxy.intercept.project_key)
     data_rule = settings.proxy.data.data_rules(project_key.id)
     policy = None
+    strategy = None
 
     if active_mode == mode.MOCK:
         policy = data_rule.mock_policy
     elif active_mode == mode.RECORD:
         policy = data_rule.record_policy
+        strategy = data_rule.record_strategy
     elif active_mode == mode.REPLAY:
         policy = data_rule.replay_policy
     elif active_mode == mode.TEST:
         policy = data_rule.test_policy
+        strategy = data_rule.test_strategy
 
     if not _mode:
         print('No intercept mode set')
     else:
-        print(f"{_mode.capitalize()} with policy {policy} {'enabled' if settings.proxy.intercept.active else 'disabled'}")
+        print(f"{_mode.capitalize()} with policy: '{policy}', strategy: '{strategy}', {'enabled' if settings.proxy.intercept.active else 'disabled'}")
