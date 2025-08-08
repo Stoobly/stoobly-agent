@@ -40,7 +40,7 @@ class AppCommand(Command):
   @property
   def networks_compose_relative_path(self):
     return os.path.join(
-      self.namespace,
+      self.scaffold_namespace,
       DOCKER_COMPOSE_NETWORKS
     )
 

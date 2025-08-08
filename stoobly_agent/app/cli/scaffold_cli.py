@@ -1,7 +1,6 @@
 import click
 import os
 import pdb
-import re
 import sys
 
 from io import TextIOWrapper
@@ -24,6 +23,7 @@ from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
+from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
@@ -31,6 +31,7 @@ from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
+from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
@@ -38,6 +39,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
+from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_network, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -88,11 +90,12 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
+@click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--network', help='App default network name. Defaults to app name.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS]), help='Scaffold integrations.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
-@click.argument('app_name')
+@click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
@@ -100,9 +103,6 @@ def create(**kwargs):
 
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
-
-  if not kwargs['network']:
-    kwargs['network'] = kwargs['app_name']
 
   AppCreateCommand(app, **kwargs).build()
 
@@ -131,7 +131,7 @@ def mkcert(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--proxy-mode', help='''
@@ -143,16 +143,9 @@ def mkcert(**kwargs):
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
-@click.argument('service_name')
+@click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
-
-  if '/' in kwargs['service_name']:
-    print(f"Error: {kwargs['service_name']} is invalid. It cannot container '/", file=sys.stderr)
-    sys.exit(1)
-
-  if kwargs.get('hostname'):
-    __validate_hostname(kwargs.get('hostname'))
 
   if kwargs.get("proxy_mode"):
     __validate_proxy_mode(kwargs.get("proxy_mode"))
@@ -174,12 +167,14 @@ def create(**kwargs):
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
 
-  services = __get_services(app, service=kwargs['service'], workflow=kwargs['workflow'])
+  without_core = not kwargs['all']
+  services = __get_services(app, service=kwargs['service'],  without_core=without_core, workflow=kwargs['workflow'])
 
   rows = []
   for service_name in services:
@@ -193,6 +188,22 @@ def _list(**kwargs):
     })
 
   print_services(rows, **select_print_options(kwargs))
+
+@service.command(
+  help="Show information about a service",
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('service_name')
+@click.pass_context
+def show(ctx, **kwargs):
+  service_name = kwargs['service_name']
+  del kwargs['service_name']
+  kwargs['service'] = [service_name]
+
+  # Invoke list with 1 service
+  ctx.invoke(_list, **kwargs)
 
 @service.command(
   help="Delete a service",
@@ -216,11 +227,11 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--hostname', help='Service hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
-@click.option('--name', type=click.STRING, help='New name of the service to update to.')
+@click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
 @click.option('--proxy-mode', help='''
   Proxy mode can be "regular", "transparent", "socks5",
   "reverse:SPEC", or "upstream:SPEC". For reverse and
@@ -239,8 +250,6 @@ def update(**kwargs):
   service_config = ServiceConfig(service.dir_path)
 
   if kwargs['hostname']:
-    __validate_hostname(kwargs['hostname'])
-
     old_hostname = service_config.hostname
 
     if old_hostname != kwargs['hostname']:
@@ -262,6 +271,19 @@ def update(**kwargs):
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['name']:
+    old_service_name = service.service_name
+    new_service_name = kwargs['name']
+
+    print(f"Renaming service from: {old_service_name}, to: {new_service_name}")
+
+    kwargs['service_path'] = service.dir_path
+    command = ServiceUpdateCommand(app, **kwargs)
+    service = command.rename(new_service_name)
+    service_config = command.service_config
+
+    print(f"Successfully renamed service to: {new_service_name}")
 
   if kwargs['proxy_mode']:
     __validate_proxy_mode(kwargs['proxy_mode'])
@@ -331,8 +353,8 @@ def copy(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
-@click.option('--network', help='Workflow network name.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
+@click.option('--network', callback=validate_network, help='Workflow network name.')
 @click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
@@ -341,12 +363,14 @@ def copy(**kwargs):
 def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  containerized = kwargs['containerized']
+
+  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
+  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
-  # If namespace is set, default network to namespace
-  if kwargs['namespace'] and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
+  __with_namespace_defaults(kwargs)
+  __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -360,7 +384,7 @@ def down(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -414,7 +438,7 @@ def down(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--namespace', help='Workflow namespace.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
@@ -423,6 +447,8 @@ def logs(**kwargs):
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   __validate_app(app)
+
+  __with_namespace_defaults(kwargs)
 
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
@@ -447,7 +473,7 @@ def logs(**kwargs):
     command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   commands = sorted(commands, key=lambda command: command.service_config.priority)
   for index, command in enumerate(commands):
@@ -476,8 +502,8 @@ def logs(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
-@click.option('--namespace', help='Workflow namespace.')
-@click.option('--network', help='Workflow network name.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
+@click.option('--network', callback=validate_network, help='Workflow network name.')
 @click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--pull', is_flag=True, help='Pull image before running.')
@@ -498,9 +524,8 @@ def up(**kwargs):
   app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
   __validate_app(app)
 
-  # If namespace is set, default network to namespace
-  if kwargs['namespace'] and not kwargs['network']:
-    kwargs['network'] = kwargs['namespace']
+  __with_namespace_defaults(kwargs)
+  workflow_namespace = __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -512,7 +537,7 @@ def up(**kwargs):
 
   # Gateway ports are dynamically set depending on the workflow run
   workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(workflow.workflow_name, workflow.service_paths_from_services(services), kwargs['no_publish'])
+  configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), kwargs['no_publish'])
 
   commands: List[WorkflowRunCommand] = []
   for service in services:
@@ -522,7 +547,7 @@ def up(**kwargs):
     command.current_working_dir = current_working_dir
     commands.append(command)
 
-  script = __build_script(**kwargs)
+  script = __build_script(app, **kwargs)
 
   # Before services can be started, their image and network needs to be created
   if len(commands) > 0:
@@ -675,12 +700,12 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
-def __build_script(**kwargs):
+def __build_script(app: App, **kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    script_file_name = 'run.sh'
-    script_path = os.path.join(data_dir.tmp_dir_path, kwargs['workflow_name'], script_file_name)
-
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'])
+    script_path = workflow_namespace.run_script_path
+  
   script_dir = os.path.dirname(script_path)
   if not os.path.exists(script_dir):
     os.makedirs(script_dir, exist_ok=True)
@@ -823,11 +848,9 @@ def __validate_proxy_mode(proxy_mode: str) -> None:
 
   # TODO: validate SPEC
 
-def __validate_hostname(hostname: str) -> None:
-  hostname_regex = re.compile(r'^[a-zA-Z0-9.-]+$')
-  if not re.search(hostname_regex, hostname):
-    print(f"Error: {hostname} is invalid.", file=sys.stderr)
-    sys.exit(1)
+def __with_namespace_defaults(kwargs):
+  if not kwargs.get('namespace'):
+    kwargs['namespace'] = kwargs.get('workflow_name')
 
 def __workflow_create(app, **kwargs):
   command = WorkflowCreateCommand(app, **kwargs)
@@ -839,3 +862,11 @@ def __workflow_create(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
+<<<<<<< HEAD
+=======
+
+def __with_workflow_namespace(app: App, namespace: str):
+  workflow_namespace = WorkflowNamespace(app, namespace)
+  workflow_namespace.copy_dotenv()
+  return workflow_namespace
+>>>>>>> 54991ec3964a79a2d13b65ab5883a4779f32229e

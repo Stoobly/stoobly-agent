@@ -37,7 +37,7 @@ class ServiceCreateCommand(ServiceCommand):
 
     workflow_kwargs = {
       'app_dir_path': self.app_dir_path,
-      'namespace': self.namespace, 
+      'namespace': self.scaffold_namespace, 
       'service_name': self.service_name,
     }
 

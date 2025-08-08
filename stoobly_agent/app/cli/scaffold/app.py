@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 
@@ -72,6 +73,11 @@ class App():
   @property
   def data_dir_path(self):
     return self.__data_dir_path
+
+  @property
+  def network(self):
+    # An app may contain one or more context dirs from which services will derive their mocks from
+    return hashlib.md5(self.context_dir_path.encode()).hexdigest()
 
   @property
   def scaffold_namespace_path(self):

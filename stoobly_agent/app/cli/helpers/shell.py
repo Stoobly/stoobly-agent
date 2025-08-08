@@ -1,11 +1,9 @@
 import subprocess
 import sys
 
-from dotenv import load_dotenv
+DOTENV_PATH = 'STOOBLY_DOTENV_PATH'
 
 def exec_stream(command):
-  load_dotenv()
-
   # Start the process
   process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
   

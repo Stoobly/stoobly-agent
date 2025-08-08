@@ -3,41 +3,24 @@ import os
 import pdb
 import subprocess
 import re
-import yaml
 
-from typing import TypedDict
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, APP_PLUGINS_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESERVERS_FILE, 
+  APP_DIR_ENV, APP_NETWORK_ENV, APP_PLUGINS_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, 
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, 
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
+from .workflow_namesapce import WorkflowNamespace
+from ..types.workflow_run_command import BuildOptions, ComposeOptions, DownOptions, UpOptions
 
 LOG_ID = 'WorkflowRunCommand'
-
-class ComposeOptions(TypedDict):
-  namespace: str
-  user_id: str
-
-class BuildOptions(ComposeOptions):
-  user_id: str
-  verbose: bool
-
-class DownOptions(ComposeOptions):
-  extra_compose_path: str
-  rmi: bool
-
-class UpOptions(ComposeOptions):
-  attached: bool
-  extra_compose_path: str
-  pull: bool
 
 class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
@@ -48,8 +31,9 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
-    self.__network = kwargs.get('network') or self.app_config.network
-
+    self.__namespace = kwargs.get('namespace') or self.workflow_name
+    self.__network = f"{self.__namespace}.{kwargs.get('network') or app.network}"
+    
   @property
   def app_dir_path(self):
     return self.__app_dir_path
@@ -79,6 +63,10 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__current_working_dir = v
 
   @property
+  def dotenv_path(self):
+    return WorkflowNamespace(self.app, self.namespace).dotenv_path
+
+  @property
   def nameservers(self):
     path = self.nameservers_path
     if not os.path.exists(path):
@@ -90,7 +78,11 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def nameservers_path(self):
-    return os.path.join(self.app.data_dir.tmp_dir_path, NAMESERVERS_FILE)
+    return WorkflowNamespace(self.app, self.namespace).nameservers_path
+
+  @property
+  def namespace(self):
+    return self.__namespace
 
   @property
   def network(self):
@@ -290,7 +282,7 @@ class WorkflowRunCommand(WorkflowCommand):
       _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
-    WorkflowEnv(self.workflow_path).write(env_vars)
+    WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):

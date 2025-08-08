@@ -18,6 +18,10 @@ class ServiceCommand(AppCommand):
   def service_config(self):
     return self.__config
 
+  @service_config.setter
+  def service_config(self, value):
+    self.__config = value
+
   @property
   def service_config_path(self):
     return self.__config.path
@@ -25,6 +29,10 @@ class ServiceCommand(AppCommand):
   @property
   def service_name(self):
     return self.__service_name
+
+  @service_name.setter
+  def service_name(self, value):
+    self.__service_name = value
 
   @property
   def service_exists(self):
@@ -40,7 +48,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_relative_path(self):
     return os.path.join(
-      self.namespace,
+      self.scaffold_namespace,
       self.service_name,
     )
 
