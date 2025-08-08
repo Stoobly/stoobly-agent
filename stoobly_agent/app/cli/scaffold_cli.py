@@ -862,11 +862,8 @@ def __workflow_create(app, **kwargs):
     template=kwargs['template'],
     workflow_decorators=workflow_decorators
   )
-<<<<<<< HEAD
-=======
 
 def __with_workflow_namespace(app: App, namespace: str):
   workflow_namespace = WorkflowNamespace(app, namespace)
   workflow_namespace.copy_dotenv()
   return workflow_namespace
->>>>>>> 54991ec3964a79a2d13b65ab5883a4779f32229e
