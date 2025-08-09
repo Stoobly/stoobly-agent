@@ -7,7 +7,7 @@ from typing import TypedDict
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, WORKFLOW_TEST_TYPE
+from .constants import PLUGIN_CYPRESS, PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
 from .docker.constants import DOCKER_COMPOSE_CUSTOM, PLUGIN_CONTAINER_SERVICE, PLUGIN_DOCKERFILE
 from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME
 
@@ -60,8 +60,9 @@ class AppCreateCommand(AppCommand):
 
         self.app_config.write()
 
+        # Provide plugins
         if PLUGIN_CYPRESS in self.app_plugins:
-            self.__plugin_with_docker(dest, PLUGIN_CYPRESS)
+            self.__plugin_cypress(dest, PLUGIN_CYPRESS)
 
             if not self.__cypress_initialized(self.app):
                 raise FileNotFoundError(f"ERROR: missing cypress.config.(js|ts), in {self.app.context_dir_path} please run: npx cypress open")
@@ -75,20 +76,21 @@ class AppCreateCommand(AppCommand):
 
         return False
 
-    def __plugin_with_docker(self, dest: str, plugin: str):
+    def __plugin_cypress(self, dest: str, plugin: str):
         dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
         dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
 
+        # Copy Dockerfile to workflow
         if not os.path.exists(dockerfile_dest_path):
-            dockerfile_src_path = os.path.join(self.templates_root_dir, 'plugins', plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
+            dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
             shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
 
-        # Merge template into dest
+        # Merge template into dest compose yml
         compose_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
-        self.__plugin_compose(compose_dest_path, PLUGIN_CYPRESS)
+        self.__merge_compose_plugin(compose_dest_path, plugin)
 
-    def __plugin_compose(self, dest_path: str, plugin: str):
-        template_path = os.path.join(self.templates_root_dir, 'plugins', plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
+    def __merge_compose_plugin(self, dest_path: str, plugin: str):
+        template_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
 
         if not os.path.exists(dest_path):
             open(dest_path, 'a').close()
