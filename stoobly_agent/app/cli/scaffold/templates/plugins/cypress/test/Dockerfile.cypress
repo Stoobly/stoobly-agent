@@ -1,4 +1,5 @@
 FROM cypress/browsers:22.11.0
 
-USER node
-WORKDIR /home/node
+WORKDIR /opt/app
+
+RUN npx cypress install # Install Cypress binary into image

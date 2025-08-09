@@ -104,7 +104,11 @@ def create(**kwargs):
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
 
-  AppCreateCommand(app, **kwargs).build()
+  try:
+    AppCreateCommand(app, **kwargs).build()
+  except FileNotFoundError as e:
+    print(e, file=sys.stderr)
+    sys.exit(1)
 
 @app.command(
   help="Scaffold app service certs"

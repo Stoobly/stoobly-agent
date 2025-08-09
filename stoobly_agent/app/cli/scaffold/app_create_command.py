@@ -56,12 +56,24 @@ class AppCreateCommand(AppCommand):
         if PLUGIN_CYPRESS in self.app_plugins:
             self.__plugin_with_docker(dest, PLUGIN_CYPRESS)
 
+            if not self.__cypress_initialized(self.app):
+                raise FileNotFoundError(f"ERROR: missing cypress.config.(js|ts), in {self.app.context_dir_path} please run: npx cypress open")
+
         with open(os.path.join(dest, '.gitignore'), 'w') as fp:
             fp.write("\n".join(
                 [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
             ))
 
         self.app_config.write()
+
+    def __cypress_initialized(self, app: App):
+        if os.path.exists(os.path.join(app.context_dir_path, 'cypress.config.js')):
+            return True
+            
+        if os.path.exists(os.path.join(app.context_dir_path, 'cypress.config.ts')):
+            return True
+
+        return False
 
     def __plugin_with_docker(self, dest: str, plugin: str):
         dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
