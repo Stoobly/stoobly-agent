@@ -10,6 +10,8 @@ DOCKER_COMPOSE_CUSTOM = 'docker-compose.yml'
 DOCKER_COMPOSE_NETWORKS = '.docker-compose.networks.yml'
 DOCKERFILE_CONTEXT = '.Dockerfile.context'
 DOCKERFILE_SERVICE = 'Dockerfile.source'
+PLUGIN_CONTAINER_SERVICE = '{service}.{plugin}'
+PLUGIN_DOCKERFILE = 'Dockerfile.{plugin}'
 
 # TODO: add scaffold container name templates here
 

@@ -9,4 +9,3 @@ services:
       - '${APP_UI_PORT}:4200'
     profiles:
       - record
-

@@ -1,5 +1,7 @@
+import os
+
 from .config import Config
-from .constants import APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_UI_PORT_ENV
+from .constants import APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_NETWORK_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_UI_PORT_ENV
 
 class AppConfig(Config):
 
@@ -8,6 +10,7 @@ class AppConfig(Config):
 
     self.__docker_socket_path = '/var/run/docker.sock'
     self.__name = None
+    self.__plugins = None
     self.__ui_port = None
 
     self.load()
@@ -29,6 +32,14 @@ class AppConfig(Config):
     self.__name = v
 
   @property
+  def plugins(self):
+    return self.__plugins or []
+
+  @plugins.setter
+  def plugins(self, v: list):
+    self.__plugins = v
+
+  @property
   def ui_port(self):
     return self.__ui_port
 
@@ -41,7 +52,11 @@ class AppConfig(Config):
 
     self.name = config.get(APP_NAME_ENV)
     self.ui_port = config.get(APP_UI_PORT_ENV)
-    
+
+    if config.get(APP_PLUGINS_ENV):
+      plugins: str = config.get(APP_PLUGINS_ENV)
+      self.plugins = plugins.split(APP_PLUGINS_DELMITTER)
+
   def write(self):
     config = {}
 
@@ -50,6 +65,9 @@ class AppConfig(Config):
 
     if self.name:
       config[APP_NAME_ENV] = self.name
+
+    if self.plugins:
+      config[APP_PLUGINS_ENV] = APP_PLUGINS_DELMITTER.join(self.plugins)
 
     if self.ui_port:
       config[APP_UI_PORT_ENV] = self.ui_port

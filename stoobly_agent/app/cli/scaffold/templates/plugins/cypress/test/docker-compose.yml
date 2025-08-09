@@ -1,0 +1,16 @@
+services:
+  entrypoint.cypress:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile.cypress
+    command: npx cypress run --project .
+    depends_on:
+      entrypoint.configure:
+        condition: service_completed_successfully
+    networks:
+      - "app.ingress"
+    profiles:
+      - "test"
+    user: node
+    volumes:
+      - ${CONTEXT_DIR}:/opt/app

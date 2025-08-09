@@ -14,6 +14,7 @@ from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
+from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -90,6 +91,7 @@ def hostname(ctx):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
+@click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS]), help='Scaffold integrations.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -101,7 +103,11 @@ def create(**kwargs):
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
 
-  AppCreateCommand(app, **kwargs).build()
+  try:
+    AppCreateCommand(app, **kwargs).build()
+  except FileNotFoundError as e:
+    print(e, file=sys.stderr)
+    sys.exit(1)
 
 @app.command(
   help="Scaffold app service certs"
@@ -174,7 +180,7 @@ def _list(**kwargs):
   services = __get_services(app, service=kwargs['service'],  without_core=without_core, workflow=kwargs['workflow'])
 
   rows = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -332,7 +338,7 @@ def copy(**kwargs):
     config = { **kwargs }
     del config['service']
     config['service_name'] = service_name
-      
+
     command = WorkflowCopyCommand(app, **config)
 
     if not command.app_dir_exists:
@@ -402,7 +408,7 @@ def down(**kwargs):
     )
     if not exec_command:
       continue
-    
+
     print(exec_command, file=script)
 
   # After services are stopped, their network needs to be removed
@@ -466,7 +472,7 @@ def logs(**kwargs):
         continue
 
     config = { **kwargs }
-    config['service_name'] = service 
+    config['service_name'] = service
     command = WorkflowLogCommand(app, **config)
     commands.append(command)
 
@@ -603,7 +609,7 @@ def validate(**kwargs):
   __validate_app(app)
 
   workflow = Workflow(kwargs['workflow_name'], app)
-  
+
   config = { **kwargs }
   config['service_name'] = 'build'
 
@@ -643,7 +649,7 @@ def install(**kwargs):
   )
 
   hostnames = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -675,7 +681,7 @@ def uninstall(**kwargs):
   )
 
   hostnames = []
-  for service_name in services: 
+  for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
@@ -752,7 +758,7 @@ def __get_services(app: App, **kwargs):
 
   services = list(set(selected_services))
   services.sort()
-  
+
   return services
 
 def __print_header(text: str):
@@ -789,7 +795,7 @@ def __services_mkcert(app: App, services):
       continue
 
     hostname = service_config.hostname
-    
+
     if not hostname:
       continue
 
@@ -804,8 +810,11 @@ def __validate_app(app: App):
     sys.exit(1)
 
 def __validate_app_dir(app_dir_path):
-  if not os.path.exists(app_dir_path):
-    print(f"Error: {app_dir_path} does not exist", file=sys.stderr)
+  __validate_dir(app_dir_path)
+
+def __validate_dir(dir_path):
+  if not os.path.exists(dir_path):
+    print(f"Error: {dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
 def __validate_service_dir(service_dir_path):
