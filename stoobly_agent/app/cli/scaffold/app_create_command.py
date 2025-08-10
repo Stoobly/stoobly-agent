@@ -9,7 +9,7 @@ from typing import TypedDict
 from .app import App
 from .app_command import AppCommand
 from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
-from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW_TEMPLATE, PLUGIN_CONTAINER_SERVICE, PLUGIN_DOCKERFILE
+from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW_TEMPLATE, PLUGIN_CONTAINER_SERVICE_TEMPLATE, PLUGIN_DOCKER_ENTRYPOINT, PLUGIN_DOCKERFILE_TEMPLATE
 from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME
 
 class AppCreateOptions(TypedDict):
@@ -105,7 +105,7 @@ class AppCreateCommand(AppCommand):
         data2 = load_yaml(template_path)
 
         services = data1.get('services') or {}
-        if services.get(PLUGIN_CONTAINER_SERVICE.format(plugin=plugin, service=CORE_ENTRYPOINT_SERVICE_NAME)):
+        if services.get(PLUGIN_CONTAINER_SERVICE_TEMPLATE.format(plugin=plugin, service=CORE_ENTRYPOINT_SERVICE_NAME)):
             return
 
         with open(dest_path, 'w') as out:
@@ -122,7 +122,7 @@ class AppCreateCommand(AppCommand):
         return False
 
     def __plugin_cypress(self, dest: str, plugin: str):
-        dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
+        dockerfile_name = PLUGIN_DOCKERFILE_TEMPLATE.format(plugin=plugin)
         dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
 
         # Copy Dockerfile to workflow
@@ -136,12 +136,15 @@ class AppCreateCommand(AppCommand):
         self.__merge_compose_plugin(compose_dest_path, plugin)
 
     def __plugin_playwright(self, dest: str, plugin: str):
-        dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
-        dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
-
         # Copy Dockerfile to workflow
+        dockerfile_name = PLUGIN_DOCKERFILE_TEMPLATE.format(plugin=plugin)
         dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
+        dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
         shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
+
+        entrypoint_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, PLUGIN_DOCKER_ENTRYPOINT)
+        entrypoint_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, PLUGIN_DOCKER_ENTRYPOINT)
+        shutil.copyfile(entrypoint_src_path, entrypoint_dest_path)
 
         # Merge template into dest compose yml
         compose_dest_path = os.path.join(

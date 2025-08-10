@@ -16,7 +16,6 @@ RUN set -eux; \
         useradd -u "${USER_ID}" -m "${USER_NAME}"; \
     fi
 
-
 USER stoobly
 WORKDIR /home/stoobly
 

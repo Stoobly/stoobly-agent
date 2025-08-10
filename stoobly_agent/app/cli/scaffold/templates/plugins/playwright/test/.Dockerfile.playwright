@@ -1,6 +1,14 @@
 ARG PLAYWRIGHT_IMAGE
-FROM ${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.46.1-jammy} 
+FROM ${PLAYWRIGHT_IMAGE} 
 
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates wget; \
+    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+    wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.16/gosu-$dpkgArch"; \
+    chmod +x /usr/local/bin/gosu; \
+    gosu --version;
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npx playwright install --with-deps
 
 # Change user id of stoobly user to that of host's user id
@@ -18,5 +26,8 @@ RUN set -eux; \
         useradd -u "${USER_ID}" -m "${USER_NAME}"; \
     fi
 
-USER stoobly
 WORKDIR /home/stoobly
+
+COPY .entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -13,7 +13,7 @@ services:
     networks:
       - "app.ingress"
     profiles:
-      - "test"
+      - ${WORKFLOW_NAME}
     user: stoobly
     volumes:
       - ${CONTEXT_DIR}:/home/stoobly

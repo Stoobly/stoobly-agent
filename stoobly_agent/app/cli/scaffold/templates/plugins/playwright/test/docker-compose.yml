@@ -6,14 +6,13 @@ services:
         USER_ID: ${USER_ID}
       context: ./
       dockerfile: ./.Dockerfile.playwright
-    command: npx playwright test
+    command: npx playwright test --reporter dot
     depends_on:
       entrypoint.configure:
         condition: service_completed_successfully
     networks:
       - "app.ingress"
     profiles:
-      - "test"
-    user: stoobly
+      - ${WORKFLOW_NAME}
     volumes:
       - ${CONTEXT_DIR}:/home/stoobly
