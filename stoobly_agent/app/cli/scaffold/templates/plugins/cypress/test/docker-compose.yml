@@ -1,8 +1,11 @@
 services:
   entrypoint.cypress:
     build:
+      args:
+        CYPRESS_IMAGE: ${CYPRESS_IMAGE:-cypress/browsers:22.11.0}
+        USER_ID: ${USER_ID}
       context: ./
-      dockerfile: ./Dockerfile.cypress
+      dockerfile: ./.Dockerfile.cypress
     command: npx cypress run --project .
     depends_on:
       entrypoint.configure:
@@ -11,6 +14,6 @@ services:
       - "app.ingress"
     profiles:
       - "test"
-    user: node
+    user: stoobly
     volumes:
-      - ${CONTEXT_DIR}:/opt/app
+      - ${CONTEXT_DIR}:/home/stoobly
