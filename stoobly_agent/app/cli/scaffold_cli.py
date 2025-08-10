@@ -14,7 +14,7 @@ from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
   DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
-from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS
+from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -91,7 +91,7 @@ def hostname(ctx):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
-@click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS]), help='Scaffold integrations.')
+@click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
@@ -103,11 +103,10 @@ def create(**kwargs):
   if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
     print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
 
-  try:
-    AppCreateCommand(app, **kwargs).build()
-  except FileNotFoundError as e:
-    print(e, file=sys.stderr)
-    sys.exit(1)
+  res = AppCreateCommand(app, **kwargs).build()
+
+  for warning in res['warnings']:
+    print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
 
 @app.command(
   help="Scaffold app service certs"

@@ -3,12 +3,13 @@ import pdb
 import shutil
 import yaml
 
+from mergedeep import merge
 from typing import TypedDict
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
-from .docker.constants import DOCKER_COMPOSE_CUSTOM, PLUGIN_CONTAINER_SERVICE, PLUGIN_DOCKERFILE
+from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
+from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW_TEMPLATE, PLUGIN_CONTAINER_SERVICE, PLUGIN_DOCKERFILE
 from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME
 
 class AppCreateOptions(TypedDict):
@@ -61,11 +62,23 @@ class AppCreateCommand(AppCommand):
         self.app_config.write()
 
         # Provide plugins
+        warnings = []
         if PLUGIN_CYPRESS in self.app_plugins:
             self.__plugin_cypress(dest, PLUGIN_CYPRESS)
 
             if not self.__cypress_initialized(self.app):
-                raise FileNotFoundError(f"ERROR: missing cypress.config.(js|ts), in {self.app.context_dir_path} please run: npx cypress open")
+                warnings.append(f"missing cypress.config.(js|ts), please run `npx cypress open` in {self.app.context_dir_path}")
+
+
+        if PLUGIN_PLAYWRIGHT in self.app_plugins:
+            self.__plugin_playwright(dest, PLUGIN_PLAYWRIGHT)
+
+            if not self.__playwright_initialized(self.app):
+                warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
+
+        return {
+            'warnings': warnings
+        }
 
     def __cypress_initialized(self, app: App):
         if os.path.exists(os.path.join(app.context_dir_path, 'cypress.config.js')):
@@ -76,21 +89,10 @@ class AppCreateCommand(AppCommand):
 
         return False
 
-    def __plugin_cypress(self, dest: str, plugin: str):
-        dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
-        dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
-
-        # Copy Dockerfile to workflow
-        if not os.path.exists(dockerfile_dest_path):
-            dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
-            shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
-
-        # Merge template into dest compose yml
-        compose_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
-        self.__merge_compose_plugin(compose_dest_path, plugin)
-
     def __merge_compose_plugin(self, dest_path: str, plugin: str):
-        template_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM)
+        template_path = os.path.join(
+            self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM
+        )
 
         if not os.path.exists(dest_path):
             open(dest_path, 'a').close()
@@ -107,5 +109,42 @@ class AppCreateCommand(AppCommand):
             return
 
         with open(dest_path, 'w') as out:
-            merged = { **data1, **data2 }
+            merged = merge(data1, data2)
             yaml.dump(merged, out, default_flow_style=False)
+
+    def __playwright_initialized(self, app: App):
+        if os.path.exists(os.path.join(app.context_dir_path, 'playwright.config.js')):
+            return True
+            
+        if os.path.exists(os.path.join(app.context_dir_path, 'playwright.config.ts')):
+            return True
+
+        return False
+
+    def __plugin_cypress(self, dest: str, plugin: str):
+        dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
+        dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
+
+        # Copy Dockerfile to workflow
+        dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
+        shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
+
+        # Merge template into dest compose yml
+        compose_dest_path = os.path.join(
+            dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+        )
+        self.__merge_compose_plugin(compose_dest_path, plugin)
+
+    def __plugin_playwright(self, dest: str, plugin: str):
+        dockerfile_name = PLUGIN_DOCKERFILE.format(plugin=plugin)
+        dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
+
+        # Copy Dockerfile to workflow
+        dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
+        shutil.copyfile(dockerfile_src_path, dockerfile_dest_path)
+
+        # Merge template into dest compose yml
+        compose_dest_path = os.path.join(
+            dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+        )
+        self.__merge_compose_plugin(compose_dest_path, plugin)
