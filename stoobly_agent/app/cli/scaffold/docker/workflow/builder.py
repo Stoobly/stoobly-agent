@@ -138,10 +138,6 @@ class WorkflowBuilder(Builder):
     }
 
     if self.configure in self.services:
-      depends_on[self.init] = {
-        'condition': 'service_completed_successfully',
-      }
-
       depends_on[self.configure] = {
         'condition': 'service_completed_successfully',
       }
@@ -157,19 +153,6 @@ class WorkflowBuilder(Builder):
     for e in self._env:
       env[e] = '${' + e + '}'
     return env
-
-  def initialize_custom_file(self):
-    dest = self.custom_compose_file_path
-
-    if not os.path.exists(dest):
-      compose = {
-        'services': {}
-      }
-
-      if self.networks:
-        compose['networks'] = self.networks
-
-      super().write(compose, dest)
 
   def write(self):
     compose = {

@@ -92,6 +92,5 @@ class WorkflowCreateCommand(WorkflowCommand):
         workflow_decorator(workflow_builder).decorate()
 
     workflow_builder.write()
-    workflow_builder.initialize_custom_file()
 
     return workflow_builder
