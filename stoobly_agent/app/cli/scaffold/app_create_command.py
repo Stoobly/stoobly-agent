@@ -9,7 +9,7 @@ from typing import TypedDict
 from .app import App
 from .app_command import AppCommand
 from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
-from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW_TEMPLATE, PLUGIN_CONTAINER_SERVICE_TEMPLATE, PLUGIN_DOCKER_ENTRYPOINT, PLUGIN_DOCKERFILE_TEMPLATE
+from .docker.constants import DOCKER_COMPOSE_WORKFLOW_TEMPLATE, PLUGIN_CONTAINER_SERVICE_TEMPLATE, PLUGIN_DOCKER_ENTRYPOINT, PLUGIN_DOCKERFILE_TEMPLATE
 from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME
 
 class AppCreateOptions(TypedDict):
@@ -89,11 +89,7 @@ class AppCreateCommand(AppCommand):
 
         return False
 
-    def __merge_compose_plugin(self, dest_path: str, plugin: str):
-        template_path = os.path.join(
-            self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_CUSTOM
-        )
-
+    def __merge_compose_plugin(self, dest_path: str, template_path: str, plugin: str):
         if not os.path.exists(dest_path):
             open(dest_path, 'a').close()
 
@@ -133,7 +129,10 @@ class AppCreateCommand(AppCommand):
         compose_dest_path = os.path.join(
             dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
         )
-        self.__merge_compose_plugin(compose_dest_path, plugin)
+        template_path = os.path.join(
+            self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+        )
+        self.__merge_compose_plugin(compose_dest_path, template_path, plugin)
 
     def __plugin_playwright(self, dest: str, plugin: str):
         # Copy Dockerfile to workflow
@@ -150,4 +149,7 @@ class AppCreateCommand(AppCommand):
         compose_dest_path = os.path.join(
             dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
         )
-        self.__merge_compose_plugin(compose_dest_path, plugin)
+        template_path = os.path.join(
+            self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+        )
+        self.__merge_compose_plugin(compose_dest_path, template_path, plugin)
