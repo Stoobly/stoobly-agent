@@ -15,7 +15,7 @@ class ServiceCreateCommand(ServiceCommand):
     super().__init__(app, **kwargs)
 
     self.__env_vars = kwargs.get('env') or []
-    self.__workflows = kwargs.get('workflow') or []
+    self.__workflows = kwargs.get('workflow') or [WORKFLOW_RECORD_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_TEST_TYPE]
 
   @property
   def env_vars(self):
