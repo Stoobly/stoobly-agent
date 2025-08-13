@@ -11,7 +11,7 @@ from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFac
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
-
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_fixtures_service import eval_fixtures
@@ -153,6 +153,9 @@ def handle_response_mock(context: MockContext):
 def __handle_mock_failure(context: MockContext) -> None:
     flow = context.flow
     request = flow.request
+    response = context.response
+
+    InterceptedRequestsLogger.log_error(request, response)
 
     if request.method.upper() != 'OPTIONS':
         return False

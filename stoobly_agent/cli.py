@@ -13,10 +13,11 @@ from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import initialize as initialize_api, run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
+from .app.cli import ca_cert, config, endpoint, feature, intercept, log, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
@@ -49,6 +50,7 @@ main.add_command(config)
 main.add_command(endpoint)
 main.add_command(feature)
 main.add_command(intercept)
+main.add_command(log)
 main.add_command(request)
 main.add_command(scaffold)
 main.add_command(scenario)
@@ -121,6 +123,8 @@ def init(**kwargs):
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
+@click.option('--enable-requests-log', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
+@click.option('--requests-log-path', required=False, help='Path to the intercepted requests log. Will only be used if --enable-log is set')
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
@@ -139,17 +143,28 @@ def run(**kwargs):
     Settings.instance().watch()
 
     if not os.getenv(env_vars.LOG_LEVEL):
-        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+      os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
     if 'api_url' in kwargs and kwargs['api_url']:
-        os.environ[env_vars.API_URL] = kwargs['api_url']
+      os.environ[env_vars.API_URL] = kwargs['api_url']
 
     url = initialize_api(**kwargs)
     if 'headless' in kwargs and not kwargs['headless']:
-        run_api(url)
+      run_api(url)
+
+    if kwargs.get('enable_requests_log'):
+      requests_log_path = kwargs.get('requests_log_path')
+      if requests_log_path:
+        InterceptedRequestsLogger.set_file_path(requests_log_path)
+
+      InterceptedRequestsLogger.enable_logger_file()
+
+    # Remove the custom options otherwise it gets passed into run_proxy() and errors out
+    kwargs.pop('enable_requests_log')
+    kwargs.pop('requests_log_path')
 
     if 'proxyless' in kwargs and not kwargs['proxyless']:
-        run_proxy(**kwargs)
+      run_proxy(**kwargs)
 
 @main.command(
   help="Mock request"
