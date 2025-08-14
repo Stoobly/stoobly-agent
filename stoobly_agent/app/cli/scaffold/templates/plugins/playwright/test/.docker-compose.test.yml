@@ -1,0 +1,18 @@
+services:
+  entrypoint.playwright:
+    build:
+      args:
+        PLAYWRIGHT_IMAGE: ${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.46.1-jammy}
+        USER_ID: ${USER_ID}
+      context: ./
+      dockerfile: ./.Dockerfile.playwright
+    command: npx playwright test --reporter dot
+    depends_on:
+      entrypoint.configure:
+        condition: service_completed_successfully
+    networks:
+      - "app.ingress"
+    profiles:
+      - ${WORKFLOW_NAME}
+    volumes:
+      - ${CONTEXT_DIR}:/home/stoobly

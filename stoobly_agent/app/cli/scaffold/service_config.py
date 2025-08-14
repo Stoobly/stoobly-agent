@@ -1,13 +1,14 @@
 # Wraps the .config.yml file in the service folder
 import hashlib
-import os
 import pdb
+import re
 
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
   SERVICE_HOSTNAME_ENV,
   SERVICE_ID_ENV,
+  SERVICE_NAME_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
   SERVICE_PROXY_MODE_ENV,
@@ -21,6 +22,7 @@ class ServiceConfig(Config):
 
     self.__detached = None
     self.__hostname = None
+    self.__name = None
     self.__port = None
     self.__priority = None
     self.__proxy_mode = None
@@ -33,6 +35,11 @@ class ServiceConfig(Config):
     
     if 'hostname' in kwargs:
       self.__hostname = kwargs.get('hostname')
+
+    if 'name' in kwargs:
+      self.__name = kwargs.get('name')
+    elif 'service_name' in kwargs:
+      self.__name = kwargs.get('service_name')
 
     if 'port' in kwargs:
       self.__port = kwargs.get('port')
@@ -65,6 +72,22 @@ class ServiceConfig(Config):
   @hostname.setter
   def hostname(self, v):
     self.__hostname = v
+
+  @property
+  def name(self):
+    return self.__name
+
+  @name.setter
+  def name(self, v: str):
+    if not v:
+      return
+
+    SERVICE_NAME_PATTERN = re.compile(r'^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$')
+
+    if not bool(SERVICE_NAME_PATTERN.fullmatch(v)):
+      raise ValueError(f"{v} must match {SERVICE_NAME_PATTERN}")
+
+    self.__name = v
 
   @property
   def port(self) -> int:
@@ -109,21 +132,6 @@ class ServiceConfig(Config):
 
     return f"reverse:{self.url}"
 
-  @property
-  def url(self):
-    _url = f"{self.scheme}://{self.hostname}"
-
-    if not self.port:
-      return _url
-
-    if self.scheme == 'http' and self.port == 80: 
-      return _url
-
-    if self.scheme == 'https' and self.port == 443:
-      return _url
-
-    return f"{_url}:{self.port}"
-
   @proxy_mode.setter
   def proxy_mode(self, v):
     self.__proxy_mode = v
@@ -140,11 +148,27 @@ class ServiceConfig(Config):
   def tls(self) -> bool:
     return self.__scheme == 'https'
 
+  @property
+  def url(self):
+    _url = f"{self.scheme}://{self.hostname}"
+
+    if not self.port:
+      return _url
+
+    if self.scheme == 'http' and self.port == 80: 
+      return _url
+
+    if self.scheme == 'https' and self.port == 443:
+      return _url
+
+    return f"{_url}:{self.port}"
+
   def load(self, config = None):
     config = config or self.read()
 
     self.detached = config.get(SERVICE_DETACHED_ENV)
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
+    self.name = config.get(SERVICE_NAME_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
     self.proxy_mode = config.get(SERVICE_PROXY_MODE_ENV)
@@ -154,6 +178,7 @@ class ServiceConfig(Config):
     return {
       'detached': self.detached,
       'hostname': self.hostname,
+      'name': self.name,
       'port': self.port,
       'priority': self.priority,
       'proxy_mode': self.proxy_mode,
@@ -165,6 +190,9 @@ class ServiceConfig(Config):
 
     if self.hostname:
       config[SERVICE_HOSTNAME_ENV] = self.hostname
+
+    if self.name:
+      config[SERVICE_NAME_ENV] = self.name
 
     if self.port:
       config[SERVICE_PORT_ENV] = self.port
