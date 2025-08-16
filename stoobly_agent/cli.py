@@ -168,12 +168,12 @@ def run(**kwargs):
 
     if not kwargs.get('headless'):
       settings.commit()
-      run_api(ui_url)
+      run_api(**kwargs)
 
     if not kwargs.get('proxyless'):
       log_id = 'Proxy'
-      Logger.instance(log_id).info(f"{kwargs['proxy_mode']} listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
-      Logger.instance(log_id).info(f"starting in {settings.proxy.intercept.mode} mode {'active' if settings.proxy.intercept.active else 'not active'}")
+      Logger.instance(log_id).info(f"starting with mode {kwargs['proxy_mode']} and listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
+      Logger.instance(log_id).info(f"{'' if settings.proxy.intercept.active else 'not yet '}configured to {settings.proxy.intercept.mode}")
       run_proxy(**kwargs)
 
 @main.command(

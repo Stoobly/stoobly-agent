@@ -16,10 +16,7 @@ def start_server(host, port):
     httpd = HTTPServer((host, port), ApplicationHTTPRequestHandler)
     httpd.serve_forever()
 
-def run(url):
-    Logger.instance(LOG_ID).info(f"Server listening at {url}\n")
-
-    parsed_url = urlparse(url)
-    thread = threading.Thread(target=start_server, args=(parsed_url.hostname, parsed_url.port))
-    thread.start()
-    return url
+def run(**kwargs):
+    Logger.instance(LOG_ID).info(f"starting and listening at {kwargs['ui_host']}:{kwargs['ui_port']}")
+    thread = threading.Thread(target=start_server, args=(kwargs['ui_host'], kwargs['ui_port']))
+    return thread.start()
