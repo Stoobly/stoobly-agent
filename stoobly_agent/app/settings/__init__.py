@@ -1,9 +1,9 @@
 import os
 import pdb
-import tempfile
 import time
 import yaml
 
+from filelock import FileLock
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -180,13 +180,12 @@ class Settings:
         if not contents:
             return
 
-        # Atomic write
         path = self.__settings_file_path
-        dir = os.path.dirname(path)
-        with tempfile.NamedTemporaryFile("w", dir=dir, delete=False) as tf:
-            yaml.dump(contents, tf, allow_unicode=True)
-            temp_name = tf.name
-        os.replace(temp_name, path) 
+        lock = FileLock(path + ".lock")  # lock file alongside the target
+
+        with lock:
+            with open(path, 'w') as fp:
+                yaml.dump(contents, fp, allow_unicode=True)
 
     ### Helpers
 
