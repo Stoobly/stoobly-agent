@@ -33,6 +33,7 @@ class ServiceBuilder(Builder):
     self.app_builder = app_builder
 
     self.__config = config
+    self.__upstream_port = None
     self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__service_name = os.path.basename(service_path)
     self.__working_dir = os.path.join(
@@ -54,6 +55,10 @@ class ServiceBuilder(Builder):
   @property
   def configure_base_service(self):
     return self.services.get(self.configure_base)
+
+  @property
+  def upstream_port(self) -> int:
+    return self.__upstream_port
 
   @property
   def extends_service(self):
@@ -99,9 +104,6 @@ class ServiceBuilder(Builder):
     environment = { **self.env_dict() }
     labels = [
       'traefik.enable=true',
-      f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)",
-      f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}",
-      f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}"
     ]
     volumes = []
 
@@ -109,7 +111,14 @@ class ServiceBuilder(Builder):
       self.__with_detached_volumes(volumes)
 
     if self.config.tls:
-      labels.append(f"traefik.http.routers.{service_id}.tls=true")
+      labels.append(f"traefik.tcp.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.tcp.routers.{service_id}.rule=HostSNI(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.tcp.routers.{service_id}.tls.passthrough=true")
+      labels.append(f"traefik.tcp.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
+    else:
+      labels.append(f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
 
     base = {
       'environment': environment,
@@ -177,6 +186,12 @@ class ServiceBuilder(Builder):
     for e in self.__env:
       env[e] = '${' + e + '}'
     return env
+
+  def with_upstream_port(self, v: int):
+    if not isinstance(v, int):
+      return self
+    self.__upstream_port = v
+    return self
 
   def with_env(self, v: List[str]): 
     if not isinstance(v, list):

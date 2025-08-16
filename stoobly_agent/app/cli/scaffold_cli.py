@@ -134,23 +134,19 @@ def mkcert(**kwargs):
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
+@click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
-@click.option('--proxy-mode', help='''
-  Proxy mode can be "regular", "transparent", "socks5",
-  "reverse:SPEC", or "upstream:SPEC". For reverse and
-  upstream proxy modes, SPEC is host specification in
-  the form of "http[s]://host[:port]".
-''')
+@click.option('--proxy-mode', type=click.Choice(['regular', 'reverse']), help='Proxy mode can be regular or reverse.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
+@click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
+@click.option('--upstream-scheme', type=click.Choice(['http', 'https']), help='Upstream service scheme.')
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
-
-  if kwargs.get("proxy_mode"):
-    __validate_proxy_mode(kwargs.get("proxy_mode"))
 
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
   service = Service(kwargs['service_name'], app)
@@ -230,16 +226,15 @@ def delete(**kwargs):
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
-@click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
-@click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
-@click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
-@click.option('--proxy-mode', help='''
-  Proxy mode can be "regular", "transparent", "socks5",
-  "reverse:SPEC", or "upstream:SPEC". For reverse and
-  upstream proxy modes, SPEC is host specification in
-  the form of "http[s]://host[:port]".
-''')
+@click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
+@click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
+@click.option('--proxy-mode', type=click.Choice(['regular', 'reverse']), help='Proxy mode can be regular or reverse.')
+@click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
+@click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
+@click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
+@click.option('--upstream-scheme', type=click.Choice(['http', 'https']), help='Upstream service scheme.')
 @click.argument('service_name')
 def update(**kwargs):
   app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
@@ -251,28 +246,31 @@ def update(**kwargs):
 
   service_config = ServiceConfig(service.dir_path)
 
+  service_config.local = kwargs['local']
+
   if kwargs['hostname']:
-    old_hostname = service_config.hostname
-
-    if old_hostname != kwargs['hostname']:
-      service_config.hostname = kwargs['hostname']
-
-      # If this is the default proxy_mode and the origin matches the original hostname, assume it is safe to update with the new hostname
-      if service_config.proxy_mode.startswith("reverse:"):
-        old_origin = service_config.proxy_mode.split("reverse:")[1]
-        parsed_origin_url = urlparse(old_origin)
-
-        if old_hostname == parsed_origin_url.hostname:
-          service_config.proxy_mode = service_config.proxy_mode.replace(old_hostname, service_config.hostname)
-
-  if kwargs['priority']:
-    service_config.priority = kwargs['priority']
+    service_config.hostname = kwargs['hostname']
 
   if kwargs['port']:
     service_config.port = kwargs['port']
 
+  if kwargs['priority']:
+    service_config.priority = kwargs['priority']
+
+  if kwargs['proxy_mode']:
+    service_config.proxy_mode = kwargs['proxy_mode']
+
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
+
+  if kwargs['upstream_hostname']:
+    service_config.upstream_hostname = kwargs['upstream_hostname']
+
+  if kwargs['upstream_port']:
+    service_config.upstream_port = kwargs['upstream_port']
+
+  if kwargs['upstream_scheme']:
+    service_config.upstream_scheme = kwargs['upstream_scheme']
 
   if kwargs['name']:
     old_service_name = service.service_name
@@ -286,10 +284,6 @@ def update(**kwargs):
     service_config = command.service_config
 
     print(f"Successfully renamed service to: {new_service_name}")
-
-  if kwargs['proxy_mode']:
-    __validate_proxy_mode(kwargs['proxy_mode'])
-    service_config.proxy_mode = kwargs['proxy_mode']
 
   service_config.write()
 
@@ -820,35 +814,6 @@ def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
     print(f"Error: '{service_dir_path}' does not exist, please scaffold this service", file=sys.stderr)
     sys.exit(1)
-
-def __validate_proxy_mode(proxy_mode: str) -> None:
-  valid_exact_matches = {
-    "regular": None,
-    "transparent": None,
-    "socks5": None,
-  }
-
-  valid_prefixes = {
-    "reverse": None,
-    "upstream": None
-  }
-
-  if proxy_mode in valid_exact_matches:
-    return
-
-  split_str = proxy_mode.split(":", 1)
-  if len(split_str) != 2:
-    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
-    sys.exit(1)
-
-  prefix = split_str[0]
-  spec = split_str[1]
-
-  if prefix not in valid_prefixes:
-    print(f"Error: {proxy_mode} is invalid.", file=sys.stderr)
-    sys.exit(1)
-
-  # TODO: validate SPEC
 
 def __with_namespace_defaults(kwargs):
   if not kwargs.get('namespace'):

@@ -7,11 +7,11 @@
 # To learn more, see https://docs.stoobly.com/core-concepts/scaffold
 
 #services:
-#  <SERVICE-NAME>.custom_base:
+#  <SERVICE-NAME>.<CUSTOM-SERVICE-NAME>:
 #    depends_on:
 #      <SERVICE-NAME>.configure:
 #        condition: service_completed_successfully
 #    networks:
-#      app.ingress: {}
+#      app.egress: {}
 #    profiles:
 #      - ${WORKFLOW_NAME}

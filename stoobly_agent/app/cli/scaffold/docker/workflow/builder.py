@@ -4,7 +4,7 @@ import pdb
 from ...constants import (
   COMPOSE_TEMPLATE, SERVICE_HOSTNAME, 
   SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
-  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
+  WORKFLOW_CONTAINER_BRIDGE_TEMPLATE, WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
@@ -89,12 +89,38 @@ class WorkflowBuilder(Builder):
     if self.config.hostname:
       self.build_proxy() # Depends on configure, must call build_configure first
 
+
+  def build_bridge(self):
+    depends_on = {}
+    networks = {}
+    service = {
+      'depends_on': depends_on,
+      'command': (
+          f"sh -c \"apk add --no-cache socat && "
+          f"socat TCP-LISTEN:{SERVICE_PORT},fork TCP:host.docker.internal:{SERVICE_UPSTREAM_PORT}\""
+      ),
+      'extra_hosts': ['host.docker.internal:host-gateway'],
+      'image': "alpine:latest",
+      'networks': networks,
+      'restart': "unless-stopped"
+    }
+
+    networks[self.egress_network_name] = {
+      'aliases': [SERVICE_HOSTNAME]
+    }
+
+    if self.configure in self.services:
+      depends_on[self.configure] = {
+        'condition': 'service_completed_successfully',
+      }
+
+    self.with_service(self.bridge, service)
+
   def build_init(self):
     # If the init_base service does not exist, we can't extend from it, return
     if not self.service_builder.init_base_service:
       return
 
-      return
     service = {
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,

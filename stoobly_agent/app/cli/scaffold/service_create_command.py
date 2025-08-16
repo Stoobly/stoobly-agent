@@ -2,6 +2,8 @@ import os
 import pdb
 import shutil
 
+from copy import deepcopy
+
 from .app import App
 from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from .docker.service.builder import ServiceBuilder
@@ -14,8 +16,13 @@ class ServiceCreateCommand(ServiceCommand):
   def __init__(self, app: App, **kwargs):
     super().__init__(app, **kwargs)
 
+    self.__upstream_port = kwargs.get('upstream_port') or []
     self.__env_vars = kwargs.get('env') or []
     self.__workflows = kwargs.get('workflow') or [WORKFLOW_RECORD_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_TEST_TYPE]
+
+  @property
+  def upstream_port(self):
+    return self.__upstream_port
 
   @property
   def env_vars(self):
@@ -45,7 +52,9 @@ class ServiceCreateCommand(ServiceCommand):
       self.__build_with_mock_workflow(service_builder, **workflow_kwargs)
 
     if WORKFLOW_RECORD_TYPE in self.workflows:
-      self.__build_with_record_workflow(service_builder, **workflow_kwargs)
+      service_builder_copy = deepcopy(service_builder)
+      service_builder_copy.with_upstream_port(self.upstream_port)
+      self.__build_with_record_workflow(service_builder_copy, **workflow_kwargs)
 
     if WORKFLOW_TEST_TYPE in self.workflows:
       self.__build_with_test_workflow(service_builder, **workflow_kwargs)
