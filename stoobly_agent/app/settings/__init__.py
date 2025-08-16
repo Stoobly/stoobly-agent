@@ -1,9 +1,9 @@
 import os
 import pdb
+import tempfile
 import time
 import yaml
 
-from shutil import copyfile
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -177,9 +177,16 @@ class Settings:
         self.__load_settings()
 
     def write(self, contents):
-        if contents:
-            with open(self.__settings_file_path, 'w') as fp:
-                yaml.dump(contents, fp, allow_unicode=True)
+        if not contents:
+            return
+
+        # Atomic write
+        path = self.__settings_file_path
+        dir = os.path.dirname(path)
+        with tempfile.NamedTemporaryFile("w", dir=dir, delete=False) as tf:
+            yaml.dump(contents, tf, allow_unicode=True)
+            temp_name = tf.name
+        os.replace(temp_name, path) 
 
     ### Helpers
 

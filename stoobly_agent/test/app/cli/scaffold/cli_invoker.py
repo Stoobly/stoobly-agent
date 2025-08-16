@@ -66,14 +66,15 @@ class ScaffoldCliInvoker():
     if https == True:
       scheme = 'https'
       port = '443'
-    proxy_mode_reverse_spec = f"reverse:{scheme}://{hostname}:8080"
 
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
-      '--proxy-mode', proxy_mode_reverse_spec,
+      '--proxy-mode', 'reverse',
+      '--upstream-hostname', hostname,
+      '--upstream-port', 8080,
       '--detached',
       '--quiet',
       '--workflow', 'test',
@@ -126,6 +127,7 @@ class ScaffoldCliInvoker():
       '--context-dir-path', app_dir_path,
       target_workflow_name,
     ]
+    pdb.set_trace()
     result = runner.invoke(scaffold, command)
 
     assert result.exit_code == 0
