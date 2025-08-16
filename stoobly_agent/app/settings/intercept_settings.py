@@ -19,6 +19,9 @@ class InterceptSettings:
 
   @property
   def active(self):
+    if os.environ.get(env_vars.AGENT_INTERCEPT_ACTIVE):
+      return os.environ[env_vars.AGENT_INTERCEPT_ACTIVE]
+
     return self.__active
 
   @active.setter
@@ -35,8 +38,8 @@ class InterceptSettings:
     if self.__mode != self.mode_before_change:
       return self.__mode
 
-    if os.environ.get(env_vars.AGENT_ACTIVE_MODE):
-        return os.environ[env_vars.AGENT_ACTIVE_MODE]
+    if os.environ.get(env_vars.AGENT_INTERCEPT_MODE):
+        return os.environ[env_vars.AGENT_INTERCEPT_MODE]
         
     return self.__mode
 

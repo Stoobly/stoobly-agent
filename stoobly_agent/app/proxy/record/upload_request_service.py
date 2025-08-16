@@ -49,7 +49,7 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
 ):
-    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {flow.request.url}")
 
     flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
     joined_request = join_request_from_flow(flow_copy, intercept_settings=intercept_settings)
@@ -80,7 +80,7 @@ def upload_request(
 def upload_staged_request(
     request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
 ):
-    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {request.url}")
 
     response = request.response
 

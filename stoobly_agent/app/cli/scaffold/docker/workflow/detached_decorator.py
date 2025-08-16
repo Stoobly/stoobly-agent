@@ -1,17 +1,14 @@
 import os
 import pdb
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, SERVICE_PROXY_MODE, STOOBLY_CERTS_DIR
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
+from .command_decorator import CommandDecorator
 
-class DetachedDecorator():
+class DetachedDecorator(CommandDecorator):
 
   def __init__(self, workflow_builder: WorkflowBuilder):
-    self.__workflow_builder = workflow_builder
-
-  @property
-  def workflow_builder(self):
-    return self.__workflow_builder
+    super().__init__(workflow_builder)
 
   @property
   def service_builder(self):
@@ -23,7 +20,7 @@ class DetachedDecorator():
     command = [
       '--headless',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
-      '--proxy-mode', SERVICE_PROXY_MODE,
+      '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
       '--public-directory-path', 'public',
       '--response-fixtures-path', 'fixtures.yml',
@@ -34,8 +31,8 @@ class DetachedDecorator():
       command.append('--certs')
       command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))
 
-    services = self.__workflow_builder.services
-    proxy_name = self.__workflow_builder.proxy
+    services = self.workflow_builder.services
+    proxy_name = self.workflow_builder.proxy
     proxy_service = services.get(proxy_name) or {}
 
     services[proxy_name] = { 

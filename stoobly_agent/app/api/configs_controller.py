@@ -61,7 +61,7 @@ class ConfigsController:
 
     # GET /configs/summary
     def summary(self, context):
-        settings = Settings.instance()
+        settings: Settings = Settings.instance()
         proxy = settings.proxy
         intercept_settings = InterceptSettings(settings)
 
@@ -94,7 +94,6 @@ class ConfigsController:
                 'mode': intercept_settings.mode,
                 'modes': modes,
                 'project_id': int(project_id) if project_id != None else None,
-                'proxy_url': proxy.url,
                 'remote_enabled': settings.cli.features.remote,
                 'remote_project_id': remote_project_id,
                 'scenario_id': int(scenario_id) if scenario_id != None else None,

@@ -94,7 +94,6 @@ class WorkflowBuilder(Builder):
     if not self.service_builder.init_base_service:
       return
 
-      return
     service = {
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,

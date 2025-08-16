@@ -3,7 +3,7 @@ import pdb
 import time
 import yaml
 
-from shutil import copyfile
+from filelock import FileLock
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
@@ -177,8 +177,14 @@ class Settings:
         self.__load_settings()
 
     def write(self, contents):
-        if contents:
-            with open(self.__settings_file_path, 'w') as fp:
+        if not contents:
+            return
+
+        path = self.__settings_file_path
+        lock = FileLock(path + ".lock")  # lock file alongside the target
+
+        with lock:
+            with open(path, 'w') as fp:
                 yaml.dump(contents, fp, allow_unicode=True)
 
     ### Helpers

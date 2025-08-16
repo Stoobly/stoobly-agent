@@ -84,7 +84,6 @@ class ISettings(TypedDict):
     api_url: str
     api_key: str
     mode: ISettingsMode
-    proxy_config_path: str
 
 Component = {
     'Header': 'Header',
