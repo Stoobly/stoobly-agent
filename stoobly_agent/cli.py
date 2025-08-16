@@ -13,9 +13,10 @@ from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from .app.api import initialize as initialize_api, run as run_api
+from .app.api import run as run_api
 from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
@@ -99,6 +100,7 @@ def init(**kwargs):
 ''')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
+@click.option('--intercept-mode', help='Set intercept mode.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -124,7 +126,19 @@ def init(**kwargs):
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
-    os.environ[env_vars.AGENT_PROXY_URL] = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
+    # Observe config for changes
+    settings: Settings = Settings.instance()
+    settings.watch()
+
+    if kwargs.get('headless'):
+      os.environ[env_vars.AGENT_HEADLESS] = '1'
+
+    if kwargs.get('intercept'):
+      os.environ[env_vars.AGENT_INTERCEPT_ACTIVE] = '1'
+
+    if kwargs.get('intercept_mode'):
+      os.environ[env_vars.AGENT_INTERCEPT_MODE] = kwargs['intercept_mode']
+      settings.proxy.intercept.mode = kwargs['intercept_mode']
 
     if kwargs.get('lifecycle_hooks_path'):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
@@ -135,21 +149,32 @@ def run(**kwargs):
     if kwargs.get('response_fixtures_path'):
       os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
 
-    # Observe config for changes
-    Settings.instance().watch()
-
     if not os.getenv(env_vars.LOG_LEVEL):
-        os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+      os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-    if 'api_url' in kwargs and kwargs['api_url']:
-        os.environ[env_vars.API_URL] = kwargs['api_url']
+    if kwargs.get('api_url'):
+      os.environ[env_vars.API_URL] = kwargs['api_url']
 
-    url = initialize_api(**kwargs)
-    if 'headless' in kwargs and not kwargs['headless']:
-        run_api(url)
+    if not kwargs.get('headless'):
+      ui_url = f"http://{kwargs['ui_host']}:{kwargs['ui_port']}"
+      os.environ[env_vars.AGENT_UI_URL] = ui_url
+      settings.ui.active = True
+      settings.ui.url = ui_url
 
-    if 'proxyless' in kwargs and not kwargs['proxyless']:
-        run_proxy(**kwargs)
+    if not kwargs.get('proxyless'):
+      proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
+      os.environ[env_vars.AGENT_PROXY_URL] = proxy_url
+      settings.proxy.url = proxy_url
+
+    if not kwargs.get('headless'):
+      settings.commit()
+      run_api(ui_url)
+
+    if not kwargs.get('proxyless'):
+      log_id = 'Proxy'
+      Logger.instance(log_id).info(f"{kwargs['proxy_mode']} listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
+      Logger.instance(log_id).info(f"starting in {settings.proxy.intercept.mode} mode {'active' if settings.proxy.intercept.active else 'not active'}")
+      run_proxy(**kwargs)
 
 @main.command(
   help="Mock request"

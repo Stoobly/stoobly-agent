@@ -16,8 +16,6 @@ tls.DEFAULT_OPTIONS |= 0x4
 from mitmproxy.options import Options
 from mitmproxy.tools.dump import DumpMaster
 
-from stoobly_agent.app.settings import Settings
-
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
 
 def run(**kwargs):
@@ -67,7 +65,6 @@ def __with_static_options(config: MitmproxyConfig, cli_options):
     config.set(options)
 
 def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
-    __commit_options(cli_options)
     __filter_options(cli_options)
 
     options = []
@@ -85,31 +82,6 @@ def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
             append_option(key, val)
 
     config.set(tuple(options))
-
-def __commit_options(options: dict):
-    changed = False
-    service_name = os.environ.get(SERVICE_NAME_ENV)
-    settings = Settings.instance()
-
-    if not service_name or options.get('intercept'):
-        # In the case when service name is set,
-        # only update if intercept is explicitly enabled
-        intercept = not not options.get('intercept')
-        changed = settings.proxy.intercept.active != intercept
-        settings.proxy.intercept.active = intercept
-
-    if not service_name or service_name == CORE_MOCK_UI_SERVICE_NAME:
-        # Causes potentially unintended side effects when run as part of scaffold
-        # Defer to ui service for configuration in this case
-        if options.get('proxy_host') and options.get('proxy_port'):
-            settings.proxy.url = f"http://{options.get('proxy_host')}:{options.get('proxy_port')}"
-
-        settings.ui.active = not options.get('headless')
-
-        changed = True
-
-    if changed:
-        settings.commit()
 
 def __filter_options(options):
     ''' 
@@ -138,6 +110,9 @@ def __filter_options(options):
 
     if 'intercept' in options:
         del options['intercept']
+
+    if 'intercept_mode' in options:
+        del options['intercept_mode']
 
     if 'lifecycle_hooks_path' in options:
         del options['lifecycle_hooks_path']

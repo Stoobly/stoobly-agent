@@ -1,8 +1,10 @@
+import os
 import pdb
 import threading
 
 from typing import TypedDict
 
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants.statuses import REQUESTS_MODIFIED
 from stoobly_agent.lib.api.agent_api import AgentApi
 from stoobly_agent.lib.cache import Cache
@@ -12,15 +14,14 @@ class Options(TypedDict):
   sync: bool
 
 # Announce that a new request has been created
-def publish_change(status: str, value: any, **options: Options):
+def publish_change(status: str, value, **options: Options):
   if options.get('sync'):
     return __publish_change_sync(status, value)
 
-  from stoobly_agent.app.settings import Settings
-  settings = Settings.instance()
+  settings: Settings = Settings.instance()
 
   # If ui is not active, return
-  if not settings.ui.active:
+  if  not settings.ui.active:
     return False
 
   ui_url = settings.ui.url
