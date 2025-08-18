@@ -104,11 +104,14 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
                 headers.CLIENT.title(),
                 custom_headers.DO_PROXY.title(),
                 headers.EXPIRY.title(),
+                custom_headers.REQUEST_ORIGIN.title(),
+                headers.TOKEN_TYPE.title(),
+                headers.UID.title(),
+
+                # ProxyController headers
                 headers.PROXY_HEADERS.title(),
                 headers.REQUEST_PATH.title(),
                 custom_headers.SERVICE_URL.title(),
-                headers.TOKEN_TYPE.title(),
-                headers.UID.title(),
             ])
             self.send_header(header, allowed_headers)
             rendered_headers.append(header)
