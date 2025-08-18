@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  DOCKER_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
@@ -98,10 +98,13 @@ def hostname(ctx):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
 
-  if not kwargs['quiet'] and os.path.exists(app.scaffold_namespace_path):
-    print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
+  if not kwargs['quiet']:
+    if os.path.exists(app.scaffold_namespace_path):
+      print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
+    else:
+      print(f"Creating scaffold in {kwargs['app_dir_path']}")
 
   res = AppCreateCommand(app, **kwargs).build()
 
@@ -118,7 +121,7 @@ def create(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def mkcert(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
   __validate_app(app)
 
   services = __get_services(
@@ -147,7 +150,7 @@ def mkcert(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   service = Service(kwargs['service_name'], app)
 
   if not kwargs['quiet'] and os.path.exists(service.dir_path):
@@ -167,7 +170,7 @@ def create(**kwargs):
 @click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   without_core = not kwargs['all']
@@ -208,7 +211,7 @@ def show(ctx, **kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   service = Service(kwargs['service_name'], app)
@@ -235,7 +238,7 @@ def delete(**kwargs):
 @click.option('--upstream-scheme', type=click.Choice(['http', 'https']), help='Upstream service scheme.')
 @click.argument('service_name')
 def update(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   service = Service(kwargs['service_name'], app)
@@ -294,7 +297,7 @@ def update(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -320,7 +323,7 @@ def create(**kwargs):
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE, **kwargs)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -357,7 +360,7 @@ def down(**kwargs):
   containerized = kwargs['containerized']
 
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
+  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -436,7 +439,7 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -512,7 +515,7 @@ def up(**kwargs):
   # Because we are running a docker-compose command which depends on APP_DIR env var
   # when we are running this command within a container, the host's app_dir_path will likely differ
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, DOCKER_NAMESPACE, **kwargs)
+  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -523,7 +526,7 @@ def up(**kwargs):
   )
 
   if kwargs['mkcert']:
-    _app = ContainerizedApp(app_dir_path, DOCKER_NAMESPACE) if containerized else app
+    _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
     __services_mkcert(_app, services)
 
   # Gateway ports are dynamically set depending on the workflow run
@@ -593,7 +596,7 @@ def up(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
 @click.argument('workflow_name')
 def validate(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   workflow = Workflow(kwargs['workflow_name'], app)
@@ -629,7 +632,7 @@ def validate(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   services = __get_services(
@@ -661,7 +664,7 @@ def install(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
-  app = App(kwargs['app_dir_path'], DOCKER_NAMESPACE)
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
   services = __get_services(

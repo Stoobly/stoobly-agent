@@ -7,7 +7,7 @@ import pytest
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
-  DOCKER_NAMESPACE,
+  SERVICES_NAMESPACE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -138,7 +138,7 @@ class TestScaffoldE2e():
       shutil.rmtree(app_dir_path)
 
     def test_core_services(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'build'
@@ -148,7 +148,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
@@ -158,7 +158,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': local_service_docker_compose.service_name 
@@ -243,7 +243,7 @@ class TestScaffoldE2e():
       shutil.copyfile(assets_mock_path, destination_path)
 
       # Created shared file in fixtures folder
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
@@ -261,7 +261,7 @@ class TestScaffoldE2e():
       shutil.rmtree(app_dir_path)
 
     def test_no_core_services(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'build'
@@ -271,7 +271,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_user_services(self, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
 
       config = {
         'workflow_name': target_workflow_name,
@@ -292,7 +292,7 @@ class TestScaffoldE2e():
       pass
 
     def test_assets(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, DOCKER_NAMESPACE)
+      app = App(app_dir_path, SERVICES_NAMESPACE)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'assets'
