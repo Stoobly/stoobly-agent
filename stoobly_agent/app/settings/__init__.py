@@ -8,7 +8,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from yamale import *
 
-from stoobly_agent.config.constants import env_vars, statuses
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir
 from stoobly_agent.lib.logger import Logger
@@ -19,6 +19,7 @@ from .remote_settings import RemoteSettings
 from .ui_settings import UISettings
 
 LOG_ID = 'Settings'
+SETTINGS_YML = 'settings.yml'
 
 class Settings:
     _instances = None
@@ -102,7 +103,7 @@ class Settings:
         if self.__watching:
             return False
 
-        patterns = ['settings.yml']
+        patterns = [SETTINGS_YML]
         ignore_patterns = None
         ignore_directories = False
         case_sensitive = True
@@ -180,11 +181,12 @@ class Settings:
         if not contents:
             return
 
-        path = self.__settings_file_path
-        lock = FileLock(path + ".lock")  # lock file alongside the target
+        lock_file = f".{SETTINGS_YML}.lock"
+        lock_file_path = os.path.join(os.path.dirname(self.__settings_file_path), lock_file)
+        lock = FileLock(lock_file_path)  # lock file alongside the target
 
         with lock:
-            with open(path, 'w') as fp:
+            with open(self.__settings_file_path, 'w') as fp:
                 yaml.dump(contents, fp, allow_unicode=True)
 
     ### Helpers
@@ -215,13 +217,14 @@ class Settings:
 
     def __reload_settings(self, event):
         if not self.__load_lock:
-            from stoobly_agent.app.proxy.utils.publish_change_service import publish_change
+            from stoobly_agent.app.proxy.utils.publish_change_service import publish_settings_modified
 
             self.__load_lock = True
 
             Logger.instance(LOG_ID).debug('Reloading settings')
             self.__load_settings()
 
-            publish_change(statuses.SETTINGS_MODIFIED, self.__settings, sync=True)
+            if self.__ui_settings.active:
+                publish_settings_modified(self.__settings)
 
         self.__load_lock = False
