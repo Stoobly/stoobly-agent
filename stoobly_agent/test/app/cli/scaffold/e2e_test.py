@@ -223,7 +223,7 @@ class TestScaffoldE2e():
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       # Create local user defined services
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
-      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, True)
 
       # Don't run the local user defined service in the 'test' workflow
       # So don't copy the Docker Compose file over
@@ -233,11 +233,11 @@ class TestScaffoldE2e():
       assert destination_path.is_file()
       shutil.copyfile(assets_service_mock_docker_compose_path, destination_path)
 
-      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create_assets(runner, app_dir_path, assets_service_docker_compose.hostname, assets_service_docker_compose.service_name, True)
 
       # Add assets for assets service
       data_dir_path = DataDir.instance().path
-      destination_assets_path = f"{data_dir_path}/docker/{assets_service_docker_compose.service_name}/{target_workflow_name}/index.html"
+      destination_assets_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{assets_service_docker_compose.service_name}/{target_workflow_name}/index.html"
       destination_path = Path(destination_assets_path)
       assets_mock_path = mock_data_directory_path / "scaffold" / "index.html"
       shutil.copyfile(assets_mock_path, destination_path)

@@ -12,11 +12,12 @@ from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.constants import (
   PUBLIC_FOLDER_NAME,
+  SERVICES_NAMESPACE,
   STOOBLY_DATA_DIR,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
-from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_TEMPLATE
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service_command import ServiceCommand
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
@@ -118,12 +119,14 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     print(f"Validating hostname inside Docker network, url: {url}")
     
     # See WorkflowRunCommand for how 'network' is generated
+    # Debug command=f"curl -k --max-time {timeout_seconds} {url} --verbose",
     network = f"{self.workflow_name}.{self.app.network}" 
     timeout_seconds = 1
+    http_code_format = '"%{http_code}"'
     output = self.docker_client.containers.run(
       image='curlimages/curl:8.11.0',
-      command=f"curl --max-time {timeout_seconds} {url} --verbose",
-      network=APP_EGRESS_NETWORK_TEMPLATE.format(network=network),
+      command=f"curl -k -s -o /dev/null -w {http_code_format} --max-time {timeout_seconds} {url}",
+      network=APP_INGRESS_NETWORK_TEMPLATE.format(network=network),
       stderr=True,
       remove=True,
     )
@@ -131,7 +134,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     # Note: 499 error could also mean success because it shows the proxy
     # connection is working, but we haven't recorded anything yet
     logs = output.decode('ascii')
-    if ('200 OK' not in logs) and ('499' not in logs):
+    if logs != '200' and  logs != '499':
       raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network")
 
   # Check public folder exists in container
@@ -190,14 +193,14 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def validate(self) -> bool:
     print(f"Validating service: {self.service_name}")
 
-    url = f"{self.service_config.scheme}://{self.hostname}"
+    url = self.service_config.url
 
     if self.service_config.hostname and self.workflow_name not in [WORKFLOW_TEST_TYPE]:
       self.validate_hostname(self.hostname, self.service_config.port)
     
     # Test workflow won't expose services that are detached and have a hostname to the host such as assets.
     # Need to test connection from inside the Docker network
-    if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE and self.service_config.detached:
+    if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE:
       self.validate_internal_hostname(url)
 
     self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
@@ -231,7 +234,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if self.is_local():
       print(f"Validating local user defined service: {self.service_name}")
       # Validate docker-compose path exists
-      docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/docker/{self.service_docker_compose.service_name}/{self.workflow_name}/docker-compose.yml"
+      docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/{SERVICES_NAMESPACE}/{self.service_docker_compose.service_name}/{self.workflow_name}/docker-compose.yml"
       destination_path = Path(docker_compose_path)
 
       if not destination_path.exists():

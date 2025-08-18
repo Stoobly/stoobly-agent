@@ -200,7 +200,7 @@ class ServiceConfig(Config):
 
   @upstream_scheme.setter
   def upstream_scheme(self, v): 
-    self.__scheme = v
+    self.__upstream_scheme = v
 
   @property
   def url(self):
