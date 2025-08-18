@@ -1,0 +1,98 @@
+# ai_rules.yaml
+# Rules file for AI-assisted coding (Cursor / Windsurf)
+# Purpose: Guide AI behavior, enforce coding standards, and manage safe operations
+
+# ---------------------------------------------
+# Allowed & Forbidden Actions
+# ---------------------------------------------
+allowed_actions:
+  - document_code
+  - generate_code
+  - refactor_code
+  - suggest_improvements
+  - write_tests
+
+forbidden_actions:
+  - access_external_api
+  - delete_files
+  - modify_secrets
+  - push_to_production
+
+# ---------------------------------------------
+# Coding Style Rules
+# ---------------------------------------------
+style_rules:
+  indentation: 2
+  line_length: 88
+  naming_convention:
+    classes: PascalCase
+    functions: snake_case
+    variables: snake_case
+  prefer_async: true
+  docstrings_required: true
+  type_hints_required: true
+
+# ---------------------------------------------
+# File Scope
+# ---------------------------------------------
+include_files:
+  - Dockerfile
+  - docker-entrypoint.sh
+  - stoobly_agent/**
+
+# ---------------------------------------------
+# Logging / Audit
+# ---------------------------------------------
+log_actions: true
+log_path: ./ai_logs/
+
+# ---------------------------------------------
+# Model / Resource Rules
+# ---------------------------------------------
+model_rules:
+  autocomplete: gpt-4o-mini
+  documentation: gpt-4o-mini
+  multi_file_analysis: gpt-4o
+  refactor: gpt-4o
+
+# ---------------------------------------------
+# Project Context / Knowledge
+# ---------------------------------------------
+project_context:
+  framework: click
+  key_modules: [stoobly_agent/app/cli, stoobly_agent/app/proxy]
+  language: python
+  main_files: [stoobly_agent/cli.py, stoobly_agent/app/cli/scaffold_cli.py, stoobly_agent/app/proxy/intercept_handler.py]
+  repo_name: stoobly/agent
+  test_files: [stoobly_agent/test/**/*.py]
+
+# ---------------------------------------------
+# Response Guidelines
+# ---------------------------------------------
+response_rules:
+  always_comment_changes: true
+  max_lines: 20
+  return_json_for_api: false
+  tone: professional
+
+# ---------------------------------------------
+# Safety / Compliance
+# ---------------------------------------------
+compliance_rules:
+  log_all_changes: true
+  no_personal_data_storage: true
+  sanitize_secrets: true
+
+# ---------------------------------------------
+# Task Priorities
+# ---------------------------------------------
+task_priority:
+  bug_fix: high
+  document_code: low
+  refactor: medium
+  write_tests: medium
+
+# ---------------------------------------------
+# Retry / Iteration Rules
+# ---------------------------------------------
+retries: 3
