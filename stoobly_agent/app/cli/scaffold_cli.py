@@ -137,7 +137,6 @@ def mkcert(**kwargs):
 @click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
-@click.option('--proxy-mode', type=click.Choice(['regular', 'reverse']), help='Proxy mode can be regular or reverse.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
@@ -230,7 +229,6 @@ def delete(**kwargs):
 @click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
-@click.option('--proxy-mode', type=click.Choice(['regular', 'reverse']), help='Proxy mode can be regular or reverse.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
@@ -256,9 +254,6 @@ def update(**kwargs):
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
-
-  if kwargs['proxy_mode']:
-    service_config.proxy_mode = kwargs['proxy_mode']
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']

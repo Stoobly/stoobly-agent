@@ -72,7 +72,6 @@ class ScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
-      '--proxy-mode', 'reverse',
       '--upstream-hostname', hostname,
       '--upstream-port', 8080,
       '--detached',
