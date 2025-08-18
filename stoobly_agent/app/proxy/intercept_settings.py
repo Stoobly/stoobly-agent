@@ -280,7 +280,7 @@ class InterceptSettings:
     if self.__headers and custom_headers.REQUEST_ORIGIN in self.__headers:
       return self.__headers[custom_headers.REQUEST_ORIGIN]
 
-    return request_origin.WEB
+    return request_origin.PROXY
 
   def for_response(self):
     self.__for_response = True
