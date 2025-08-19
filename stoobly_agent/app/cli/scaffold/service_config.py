@@ -12,7 +12,6 @@ from .constants import (
   SERVICE_NAME_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
-  SERVICE_PROXY_MODE_ENV,
   SERVICE_SCHEME_ENV,
   SERVICE_UPSTREAM_HOSTNAME_ENV,
   SERVICE_UPSTREAM_PORT_ENV,
@@ -30,7 +29,6 @@ class ServiceConfig(Config):
     self.__name = None
     self.__port = None
     self.__priority = None
-    self.__proxy_mode = None
     self.__scheme = None
     self.__upstream_hostname = None
     self.__upstream_port = None
@@ -57,9 +55,6 @@ class ServiceConfig(Config):
 
     if 'priority' in kwargs:
       self.__priority = kwargs.get('priority')
-
-    if 'proxy_mode' in kwargs:
-      self.__proxy_mode = kwargs.get('proxy_mode')
 
     if 'scheme' in kwargs:
       self.__scheme = kwargs.get('scheme')
@@ -153,22 +148,6 @@ class ServiceConfig(Config):
     self.__priority = v
 
   @property
-  def proxy_mode(self) -> str:
-    if self.__proxy_mode:
-      return (self.__proxy_mode or '').strip()
-
-    if not self.hostname:
-      return ''
-
-    return 'regular'
-
-  @proxy_mode.setter
-  def proxy_mode(self, v: str):
-    if v and v not in ['regular', 'reverse']:
-      v = 'reverse' 
-    self.__proxy_mode = v
-
-  @property
   def scheme(self):
     if not self.__scheme and self.__port:
       if self.port == 443:
@@ -221,7 +200,7 @@ class ServiceConfig(Config):
 
   @upstream_scheme.setter
   def upstream_scheme(self, v): 
-    self.__scheme = v
+    self.__upstream_scheme = v
 
   @property
   def url(self):
@@ -247,7 +226,6 @@ class ServiceConfig(Config):
     self.name = config.get(SERVICE_NAME_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
-    self.proxy_mode = config.get(SERVICE_PROXY_MODE_ENV)
     self.scheme = config.get(SERVICE_SCHEME_ENV)
     self.upstream_hostname = config.get(SERVICE_UPSTREAM_HOSTNAME_ENV)
     self.upstream_port = config.get(SERVICE_UPSTREAM_PORT_ENV)
@@ -261,7 +239,6 @@ class ServiceConfig(Config):
       'name': self.name,
       'port': self.port,
       'priority': self.priority,
-      'proxy_mode': self.proxy_mode,
       'scheme': self.scheme if self.hostname else '',
       'upstream_hostname': self.upstream_hostname,
       'upstream_port': self.upstream_port,
@@ -300,6 +277,5 @@ class ServiceConfig(Config):
 
     config[SERVICE_DETACHED_ENV] = bool(self.detached)
     config[SERVICE_ID_ENV] = self.id
-    config[SERVICE_PROXY_MODE_ENV] = self.proxy_mode
 
     super().write(config)

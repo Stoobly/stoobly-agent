@@ -165,12 +165,3 @@ class WorkflowBuilder(Builder):
       compose['volumes'] = self.volumes
 
     super().write(compose)
-
-  def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-
-    if self.config.scheme:
-      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
-
-    if self.config.port:
-      environment[SERVICE_PORT_ENV] = SERVICE_PORT

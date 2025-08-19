@@ -7,12 +7,13 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, DOCKER_NAMESPACE, 
+  APP_DIR, SERVICES_NAMESPACE, 
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_NAME, SERVICE_NAME_ENV, 
   SERVICE_ID,
   SERVICE_PORT, SERVICE_PORT_ENV, 
-  SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
+  SERVICE_SCHEME, SERVICE_SCHEME_ENV,
+  SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_HOSTNAME_ENV, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_PORT_ENV, SERVICE_UPSTREAM_SCHEME, SERVICE_UPSTREAM_SCHEME_ENV,
   STOOBLY_HOME_DIR, STOOBLY_HOME_DIR, 
   WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 )
@@ -37,7 +38,7 @@ class ServiceBuilder(Builder):
     self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__service_name = os.path.basename(service_path)
     self.__working_dir = os.path.join(
-      STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
+      STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
     )
 
   @property
@@ -220,13 +221,23 @@ class ServiceBuilder(Builder):
     volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
 
     # Mount docker folder
-    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{SERVICES_NAMESPACE}")
 
   def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
+    if self.config.hostname:
+      environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
 
     if self.config.scheme:
       environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
 
     if self.config.port:
       environment[SERVICE_PORT_ENV] = SERVICE_PORT
+
+    if self.config.upstream_hostname:
+      environment[SERVICE_UPSTREAM_HOSTNAME_ENV] = SERVICE_UPSTREAM_HOSTNAME
+
+    if self.config.upstream_port:
+      environment[SERVICE_UPSTREAM_PORT_ENV] = SERVICE_UPSTREAM_PORT
+
+    if self.config.upstream_scheme:
+      environment[SERVICE_UPSTREAM_SCHEME_ENV] = SERVICE_UPSTREAM_SCHEME

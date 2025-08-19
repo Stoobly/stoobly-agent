@@ -1,5 +1,5 @@
 from ...constants import (
-  SERVICE_PROXY_MODE, SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_SCHEME,
+  SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_SCHEME,
 )
 from .builder import WorkflowBuilder
 
@@ -15,6 +15,7 @@ class CommandDecorator():
   @property
   def proxy_mode(self):
     config = self.workflow_builder.config
+
     if config.upstream_hostname == 'host.docker.internal':
       return f"upstream:{SERVICE_UPSTREAM_SCHEME}://{SERVICE_UPSTREAM_HOSTNAME}:{SERVICE_UPSTREAM_PORT}"
 
