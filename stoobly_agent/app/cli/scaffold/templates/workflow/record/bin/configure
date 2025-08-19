@@ -4,7 +4,7 @@
 
 origin=$1 # e.g. https://docs.stoobly.com
 
-# Uncomment the following example to incldue or exclude requests
+# Uncomment the following example to include or exclude requests
 # stoobly-agent config firewall set \
 #   --action include \
 #   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
