@@ -1,13 +1,11 @@
 import os
 import pdb
 
-from urllib.parse import urlparse
-
 from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from .builder import WorkflowBuilder
 from .command_decorator import CommandDecorator
 
-class ReverseProxyDecorator(CommandDecorator):
+class DetachedDecorator(CommandDecorator):
 
   def __init__(self, workflow_builder: WorkflowBuilder):
     super().__init__(workflow_builder)
@@ -24,6 +22,8 @@ class ReverseProxyDecorator(CommandDecorator):
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
+      '--public-directory-path', 'public',
+      '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure'
     ]
 
@@ -35,12 +35,8 @@ class ReverseProxyDecorator(CommandDecorator):
     proxy_name = self.workflow_builder.proxy
     proxy_service = services.get(proxy_name) or {}
 
-    additional_properties = { 'command': command }
-
-    service = { 
+    services[proxy_name] = { 
       **proxy_service,
-      **additional_properties,
+      **{ 'command': command },
     }
-
-    services[proxy_name] = service 
 

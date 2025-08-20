@@ -19,7 +19,7 @@ class ExecDecorator():
         shell = kwargs['shell']
         file_path = kwargs['file_path']
 
-        settings = Settings.instance()
+        settings: Settings = Settings.instance()
         proxy_url = settings.proxy.url
 
         if not proxy_url:

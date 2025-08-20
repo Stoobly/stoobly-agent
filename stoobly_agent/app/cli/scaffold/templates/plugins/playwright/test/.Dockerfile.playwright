@@ -1,0 +1,33 @@
+ARG PLAYWRIGHT_IMAGE
+FROM ${PLAYWRIGHT_IMAGE} 
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates wget; \
+    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+    wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.16/gosu-$dpkgArch"; \
+    chmod +x /usr/local/bin/gosu; \
+    gosu --version;
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN npx playwright install --with-deps
+
+# Change user id of stoobly user to that of host's user id
+ARG USER_ID
+ARG USER_NAME=stoobly
+RUN set -eux; \
+    # Check if a user with this UID exists
+    if getent passwd "${USER_ID}" > /dev/null; then \
+        EXISTING_USER="$(getent passwd "${USER_ID}" | cut -d: -f1)"; \
+        if [ "$EXISTING_USER" != "${USER_NAME}" ]; then \
+            usermod -l "${USER_NAME}" "$EXISTING_USER"; \
+            usermod -d "/home/${USER_NAME}" -m "${USER_NAME}"; \
+        fi; \
+    else \
+        useradd -u "${USER_ID}" -m "${USER_NAME}"; \
+    fi
+
+WORKDIR /home/stoobly
+
+COPY .entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

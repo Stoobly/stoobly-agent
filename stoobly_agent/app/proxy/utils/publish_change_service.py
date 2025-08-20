@@ -1,40 +1,35 @@
 import pdb
+import requests
 import threading
 
-from typing import TypedDict
-
-from stoobly_agent.config.constants.statuses import REQUESTS_MODIFIED
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants.statuses import REQUESTS_MODIFIED, SETTINGS_MODIFIED
 from stoobly_agent.lib.api.agent_api import AgentApi
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
-class Options(TypedDict):
-  sync: bool
+LOG_ID = 'PublishChange'
 
-# Announce that a new request has been created
-def publish_change(status: str, value: any, **options: Options):
-  if options.get('sync'):
-    return __publish_change_sync(status, value)
+def publish_settings_modified(value):
+  return __publish_change_sync(SETTINGS_MODIFIED, value)
+ 
+def publish_requests_modified(value):
+  settings: Settings = Settings.instance()
 
-  from stoobly_agent.app.settings import Settings
-  settings = Settings.instance()
-
-  # If ui is not active, return
-  if not settings.ui.active:
-    return False
+  # If not headless...
+  if settings.ui.active:
+    return __publish_change_sync(REQUESTS_MODIFIED, value)
 
   ui_url = settings.ui.url
-
   if not ui_url:
-    Logger.instance().warn('Settings.ui.url not configured')
     return False
-  else:
-    thread = threading.Thread(target=__put_status, args=(ui_url, status, value))
-    thread.start()
-    return True
 
-def publish_requests_modified(value, **options: Options):
-  return publish_change(REQUESTS_MODIFIED, value, **options)
+  return __publish_change_async(REQUESTS_MODIFIED, value, ui_url)
+
+def __publish_change_async(status, value, ui_url: str):
+  thread = threading.Thread(target=__put_status, args=(ui_url, status, value))
+  thread.start()
+  return True
 
 def __publish_change_sync(status: str, value):
   cache = Cache.instance()
@@ -43,4 +38,7 @@ def __publish_change_sync(status: str, value):
 
 def __put_status(ui_url, status, value):
     api: AgentApi = AgentApi(ui_url)
-    api.update_status(status, value)
+    try:
+      api.update_status(status, value)
+    except requests.exceptions.ConnectionError:
+      Logger.instance(LOG_ID).error(f"could not connect to {ui_url}")

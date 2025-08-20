@@ -94,7 +94,6 @@ class WorkflowBuilder(Builder):
     if not self.service_builder.init_base_service:
       return
 
-      return
     service = {
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,
@@ -138,10 +137,6 @@ class WorkflowBuilder(Builder):
     }
 
     if self.configure in self.services:
-      depends_on[self.init] = {
-        'condition': 'service_completed_successfully',
-      }
-
       depends_on[self.configure] = {
         'condition': 'service_completed_successfully',
       }
@@ -158,19 +153,6 @@ class WorkflowBuilder(Builder):
       env[e] = '${' + e + '}'
     return env
 
-  def initialize_custom_file(self):
-    dest = self.custom_compose_file_path
-
-    if not os.path.exists(dest):
-      compose = {
-        'services': {}
-      }
-
-      if self.networks:
-        compose['networks'] = self.networks
-
-      super().write(compose, dest)
-
   def write(self):
     compose = {
       'services': self.services,
@@ -183,12 +165,3 @@ class WorkflowBuilder(Builder):
       compose['volumes'] = self.volumes
 
     super().write(compose)
-
-  def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-
-    if self.config.scheme:
-      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
-
-    if self.config.port:
-      environment[SERVICE_PORT_ENV] = SERVICE_PORT

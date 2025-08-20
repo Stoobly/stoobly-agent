@@ -19,7 +19,7 @@ clean:
 
 test:
 	poetry install --only test
-	poetry run pytest -m "not e2e" stoobly_agent/test/
+	poetry run pytest --maxfail=1 -m "not e2e" stoobly_agent/test/
 
 test/build:
 	docker rm -f ${TEST_CONTAINER_NAME}

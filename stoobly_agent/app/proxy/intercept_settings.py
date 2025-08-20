@@ -57,14 +57,11 @@ class InterceptSettings:
 
   @property
   def active(self):
-    if self.__intercept_settings.active:
-      return True
+    if self.__headers and custom_headers.PROXY_MODE in self.__headers:
+      return not not self.__headers[custom_headers.PROXY_MODE]
 
-    if not self.__headers:
-      return False
+    return self.__intercept_settings.active
     
-    return custom_headers.PROXY_MODE in self.__headers
-
   @property
   def lifecycle_hooks_path(self):
     if self.__headers and custom_headers.LIFECYCLE_HOOKS_PATH in self.__headers:
@@ -283,7 +280,7 @@ class InterceptSettings:
     if self.__headers and custom_headers.REQUEST_ORIGIN in self.__headers:
       return self.__headers[custom_headers.REQUEST_ORIGIN]
 
-    return request_origin.WEB
+    return request_origin.PROXY
 
   def for_response(self):
     self.__for_response = True

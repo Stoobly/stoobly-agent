@@ -7,12 +7,13 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, DOCKER_NAMESPACE, NAMESPACE_NAME_ENV,
+  APP_DIR, SERVICES_NAMESPACE, NAMESPACE_NAME_ENV,
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_NAME, SERVICE_NAME_ENV, 
   SERVICE_ID,
   SERVICE_PORT, SERVICE_PORT_ENV, 
-  SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
+  SERVICE_SCHEME, SERVICE_SCHEME_ENV,
+  SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_HOSTNAME_ENV, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_PORT_ENV, SERVICE_UPSTREAM_SCHEME, SERVICE_UPSTREAM_SCHEME_ENV,
   STOOBLY_HOME_DIR, STOOBLY_HOME_DIR, 
   WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 )
@@ -33,10 +34,11 @@ class ServiceBuilder(Builder):
     self.app_builder = app_builder
 
     self.__config = config
+    self.__upstream_port = None
     self.__env = [NAMESPACE_NAME_ENV, SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__service_name = os.path.basename(service_path)
     self.__working_dir = os.path.join(
-      STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
+      STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
     )
 
   @property
@@ -54,6 +56,10 @@ class ServiceBuilder(Builder):
   @property
   def configure_base_service(self):
     return self.services.get(self.configure_base)
+
+  @property
+  def upstream_port(self) -> int:
+    return self.__upstream_port
 
   @property
   def extends_service(self):
@@ -99,9 +105,6 @@ class ServiceBuilder(Builder):
     environment = { **self.env_dict() }
     labels = [
       'traefik.enable=true',
-      f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)",
-      f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}",
-      f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}"
     ]
     volumes = []
 
@@ -109,7 +112,14 @@ class ServiceBuilder(Builder):
       self.__with_detached_volumes(volumes)
 
     if self.config.tls:
-      labels.append(f"traefik.http.routers.{service_id}.tls=true")
+      labels.append(f"traefik.tcp.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.tcp.routers.{service_id}.rule=HostSNI(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.tcp.routers.{service_id}.tls.passthrough=true")
+      labels.append(f"traefik.tcp.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
+    else:
+      labels.append(f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
 
     base = {
       'environment': environment,
@@ -178,6 +188,12 @@ class ServiceBuilder(Builder):
       env[e] = '${' + e + '}'
     return env
 
+  def with_upstream_port(self, v: int):
+    if not isinstance(v, int):
+      return self
+    self.__upstream_port = v
+    return self
+
   def with_env(self, v: List[str]): 
     if not isinstance(v, list):
       return self
@@ -205,13 +221,23 @@ class ServiceBuilder(Builder):
     volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
 
     # Mount docker folder
-    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{SERVICES_NAMESPACE}")
 
   def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
+    if self.config.hostname:
+      environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
 
     if self.config.scheme:
       environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
 
     if self.config.port:
       environment[SERVICE_PORT_ENV] = SERVICE_PORT
+
+    if self.config.upstream_hostname:
+      environment[SERVICE_UPSTREAM_HOSTNAME_ENV] = SERVICE_UPSTREAM_HOSTNAME
+
+    if self.config.upstream_port:
+      environment[SERVICE_UPSTREAM_PORT_ENV] = SERVICE_UPSTREAM_PORT
+
+    if self.config.upstream_scheme:
+      environment[SERVICE_UPSTREAM_SCHEME_ENV] = SERVICE_UPSTREAM_SCHEME

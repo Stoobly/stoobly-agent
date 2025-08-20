@@ -27,6 +27,7 @@ LogLevel = Literal[DEBUG, ERROR, INFO, WARNING]
 
 class Logger:
     _instance = None
+    _instances = {}
 
     def __init__(self):
         raise RuntimeError('Call instance() instead')
@@ -34,14 +35,23 @@ class Logger:
     @classmethod
     def instance(cls, name = None):
         if cls._instance is None:
+            logging.getLogger("mitmproxy").setLevel(logging.ERROR)
             cls._instance = cls.__new__(cls)
-
-        cls._instance.load()
+            cls._instance.load()
 
         if not name:
-            return logging
-        else:
-            return logging.getLogger(name)
+            name = 'root'
+
+        logger = logging.getLogger(name)
+
+        if name not in cls._instances:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter(f"[%(levelname)s] {name} %(message)s"))
+            logger.addHandler(handler)
+            logger.propagate = False
+            cls._instances[name] = logger
+
+        return logger
 
     @classmethod
     def reload(cls):

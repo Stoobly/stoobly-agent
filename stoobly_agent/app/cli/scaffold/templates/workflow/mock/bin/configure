@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# Add custom Stoobly configuration here
+# Add custom Stoobly configuration here, to learn more: https://docs.stoobly.com/core-concepts/agent/proxy-settings
 
-scheme=$SERVICE_SCHEME
-hostname=$SERVICE_HOSTNAME
-port=$SERVICE_PORT
-
-origin="$scheme://$hostname"
-
-if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
-  origin="$origin:$port"
-fi
+origin=$1 # e.g. https://docs.stoobly.com
