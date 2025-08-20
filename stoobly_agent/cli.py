@@ -18,7 +18,7 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
+from .app.cli import ca_cert, config, endpoint, feature, intercept, log, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
