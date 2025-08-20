@@ -8,6 +8,7 @@ from typing import Final
 
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
+from stoobly_agent.app.cli.scaffold.constants import NAMESPACE_NAME_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -19,7 +20,6 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
-            "name": record.name,
             "level": record.levelname,
             "message": record.getMessage()
         }
@@ -30,10 +30,6 @@ class JSONFormatter(logging.Formatter):
             log_entry.update({
                 "method": request.method,
                 "url": request.pretty_url,
-                "port": request.port,
-                "scheme": request.scheme,
-                "path": request.path,
-                "http_version": request.http_version,
             })
 
         # Extract fields from response
@@ -50,12 +46,18 @@ class JSONFormatter(logging.Formatter):
             "scenario_key": scenario_key
         })
 
-        # Extract Scaffold fields
-        env_var_service_name = os.environ.get('SERVICE_NAME')
+        env_var_service_name = os.environ.get(SERVICE_NAME_ENV)
         if env_var_service_name:
             log_entry.update({
-                "scaffold_service_name": env_var_service_name
+                "service_name": env_var_service_name
             })
+        env_var_namespace_name = os.environ.get(NAMESPACE_NAME_ENV)
+        if env_var_namespace_name:
+            log_entry.update({
+                "namespace": env_var_namespace_name
+            })
+
+        # TODO: link to agent URL
 
         return json.dumps(log_entry)
 

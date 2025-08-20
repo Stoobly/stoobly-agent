@@ -7,7 +7,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, DOCKER_NAMESPACE, 
+  APP_DIR, DOCKER_NAMESPACE, NAMESPACE_NAME_ENV,
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_NAME, SERVICE_NAME_ENV, 
   SERVICE_ID,
@@ -33,7 +33,7 @@ class ServiceBuilder(Builder):
     self.app_builder = app_builder
 
     self.__config = config
-    self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
+    self.__env = [NAMESPACE_NAME_ENV, SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__service_name = os.path.basename(service_path)
     self.__working_dir = os.path.join(
       STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME

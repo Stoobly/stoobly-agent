@@ -124,7 +124,7 @@ def init(**kwargs):
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.option('--enable-requests-log', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
-@click.option('--requests-log-path', required=False, help='Path to the intercepted requests log. Will only be used if --enable-log is set')
+@click.option('--requests-log-path', required=False, help='Path to the intercepted requests log. Will only be used if --enable-requests-log is set')
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
