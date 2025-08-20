@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.scaffold.constants import NAMESPACE_NAME_ENV, SERVICE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
 
@@ -68,12 +68,19 @@ class InterceptedRequestsLogger():
 
     __settings: Settings = Settings.instance()
     __NAMESPACE: str = __settings.proxy.intercept.mode
-    __DEFAULT_FILE_PATH: Final[str] = f"{DATA_DIR_NAME}/tmp/{__NAMESPACE}/logs/requests.json"
-    __file_path: str = __DEFAULT_FILE_PATH
+    __file_path: str = None
 
     @classmethod
     def set_file_path(cls, file_path: str) -> None:
         cls.__file_path = file_path
+
+    @classmethod
+    def __get_file_path(cls) -> str:
+        if cls.__file_path is not None:
+            return cls.__file_path
+
+        data_dir_path = DataDir.instance().path
+        return f"{data_dir_path}/tmp/{cls.__NAMESPACE}/logs/requests.json"
 
     @classmethod
     def enable_logger_file(cls) -> None:
@@ -85,7 +92,7 @@ class InterceptedRequestsLogger():
             # Prevent propagation to parent loggers which may have console handlers
             cls.__logger.propagate = False
 
-            file_handler = logging.FileHandler(cls.__file_path)
+            file_handler = logging.FileHandler(cls.__get_file_path())
             json_formatter = JSONFormatter()
             file_handler.setFormatter(json_formatter)
             cls.__logger.addHandler(file_handler)
@@ -110,7 +117,7 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def dump_logs(cls):
-        file_path = cls.__file_path
+        file_path = cls.__get_file_path()
         if not os.path.exists(file_path):
             cls.__logger.error(f"Log file not found at: {file_path}")
             return
@@ -128,7 +135,7 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def clear(cls) -> None:
-        file_path = cls.__file_path
+        file_path = cls.__get_file_path()
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -139,7 +146,7 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def __ensure_directory(cls):
-        file_path = cls.__file_path
+        file_path = cls.__get_file_path()
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):
