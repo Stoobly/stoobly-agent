@@ -127,6 +127,8 @@ def init(**kwargs):
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.option('--enable-requests-log', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
 @click.option('--requests-log-path', required=False, help='Path to the intercepted requests log. Will only be used if --enable-requests-log is set')
+@click.option('--requests-log-level', default='error', type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
+@click.option('--truncate-requests-log', is_flag=True, default=False, required=False, help='Truncate the intercepted requests log')
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
@@ -177,9 +179,19 @@ def run(**kwargs):
 
       InterceptedRequestsLogger.enable_logger_file()
 
+    requests_log_level = kwargs.get('requests_log_level')
+    if requests_log_level:
+      InterceptedRequestsLogger.set_log_level(requests_log_level)
+
+    # Truncate the requests log on startup
+    if kwargs.get('truncate_requests_log'):
+      InterceptedRequestsLogger.truncate()
+
     # Remove the custom options otherwise it gets passed into run_proxy() and errors out
     kwargs.pop('enable_requests_log')
     kwargs.pop('requests_log_path')
+    kwargs.pop('requests_log_level')
+    kwargs.pop('truncate_requests_log')
 
     if not kwargs.get('headless'):
       settings.commit()

@@ -13,6 +13,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey, InvalidScenarioKey
+from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.logger import Logger
 
 
@@ -69,10 +71,31 @@ class InterceptedRequestsLogger():
     __settings: Settings = Settings.instance()
     __NAMESPACE: str = __settings.proxy.intercept.mode
     __file_path: str = None
+    __previous_scenario_key: str = None
 
     @classmethod
     def set_file_path(cls, file_path: str) -> None:
         cls.__file_path = file_path
+
+    @classmethod
+    def reset_scenario_key(cls) -> None:
+        cls.__previous_scenario_key = None
+
+    @classmethod
+    def set_log_level(cls, log_level: str) -> None:
+        cls.__logger.setLevel(log_level)
+
+    @classmethod
+    def __get_scenario_name(cls, scenario_key: str) -> str:
+        if not scenario_key:
+            return None
+
+        try:
+            parsed_key = ScenarioKey(scenario_key)
+            scenario = Scenario.find_by(uuid=parsed_key.id)
+            return scenario.name if scenario else None
+        except (InvalidScenarioKey, Exception):
+            return None
 
     @classmethod
     def __get_file_path(cls) -> str:
@@ -101,19 +124,69 @@ class InterceptedRequestsLogger():
             cls.__logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
-    def log_error(cls, request: MitmproxyRequest, response: Response) -> None:
+    def __log_delimiter(cls, previous_scenario_key: str, current_scenario_key: str) -> None:
         cls.__ensure_directory()
 
-        response_code = response.status_code
+        previous_name = cls.__get_scenario_name(previous_scenario_key)
+        current_name = cls.__get_scenario_name(current_scenario_key)
 
-        generic_message = "Log for intercepted request"
-        message = generic_message
+        delimiter_entry = {
+            "type": "----- Scenario change delimiter -----",
+            "timestamp": datetime.now().isoformat(),
+            "previous_scenario_key": previous_scenario_key,
+            "previous_scenario_name": previous_name,
+            "current_scenario_key": current_scenario_key,
+            "current_scenario_name": current_name,
+            "message": "Scenario changed",
+        }
 
-        if response_code == custom_response_codes.NOT_FOUND:
-            message += " 499 Mock Not Found"
+        file_path = cls.__get_file_path()
+        try:
+            with open(file_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(delimiter_entry) + '\n')
+        except IOError as e:
+            cls.__logger.error(f"Failed to write delimiter to log file: {e}")
 
-        # Create log record with request and response data
-        cls.__logger.error(message, extra={'request': request, 'response': response})
+    @classmethod
+    def __setup_logging(cls, request: MitmproxyRequest = None, response: Response = None) -> dict:
+        cls.__ensure_directory()
+        cls.__check_scenario_key_changes()
+        extra = {}
+        if request:
+            extra['request'] = request
+        if response:
+            extra['response'] = response
+        return extra
+
+    @classmethod
+    def __check_scenario_key_changes(cls) -> None:
+        settings = Settings.instance()
+        intercept_settings = InterceptSettings(settings)
+        current_scenario_key = intercept_settings.scenario_key
+
+        if cls.__previous_scenario_key != current_scenario_key:
+            cls.__log_delimiter(cls.__previous_scenario_key, current_scenario_key)
+            cls.__previous_scenario_key = current_scenario_key
+
+    @classmethod
+    def debug(cls, message: str, request: MitmproxyRequest = None, response: Response = None) -> None:
+        extra = cls.__setup_logging(request, response)
+        cls.__logger.debug(message, extra=extra if extra else None)
+
+    @classmethod
+    def info(cls, message: str, request: MitmproxyRequest = None, response: Response = None) -> None:
+        extra = cls.__setup_logging(request, response)
+        cls.__logger.info(message, extra=extra if extra else None)
+
+    @classmethod
+    def warning(cls, message: str, request: MitmproxyRequest = None, response: Response = None) -> None:
+        extra = cls.__setup_logging(request, response)
+        cls.__logger.warning(message, extra=extra if extra else None)
+
+    @classmethod
+    def error(cls, message: str, request: MitmproxyRequest = None, response: Response = None) -> None:
+        extra = cls.__setup_logging(request, response)
+        cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
     def dump_logs(cls):
@@ -134,13 +207,15 @@ class InterceptedRequestsLogger():
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def clear(cls) -> None:
+    def truncate(cls) -> None:
         file_path = cls.__get_file_path()
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write('')
             cls.__logger.info(f"Cleared log file: {file_path}")
+
+            cls.reset_scenario_key()
         except IOError as e:
             cls.__logger.error(f"Failed to clear log file: {e}")
 

@@ -24,5 +24,5 @@ def clear(**kwargs):
   if requests_log_path:
     InterceptedRequestsLogger.set_file_path(requests_log_path)
 
-  InterceptedRequestsLogger.clear()
+  InterceptedRequestsLogger.truncate()
 
