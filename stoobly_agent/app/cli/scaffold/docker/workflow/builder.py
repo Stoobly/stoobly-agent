@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...constants import (
-  COMPOSE_TEMPLATE, SERVICE_HOSTNAME, 
+  COMPOSE_TEMPLATE, NAMESPACE_NAME_ENV, SERVICE_HOSTNAME, 
   SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
@@ -12,7 +12,7 @@ from ..service.builder import ServiceBuilder
 class WorkflowBuilder(Builder):
 
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
-    self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
+    self._env = [NAMESPACE_NAME_ENV, SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self.__workflow_name = os.path.basename(workflow_path)
     super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
 
