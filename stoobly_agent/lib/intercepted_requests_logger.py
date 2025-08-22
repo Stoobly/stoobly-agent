@@ -15,7 +15,7 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey, InvalidScenarioKey
 from stoobly_agent.lib.orm.scenario import Scenario
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.logger import DEBUG, ERROR, INFO, WARNING, Logger
 
 
 class JSONFormatter(logging.Formatter):
@@ -83,7 +83,16 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def set_log_level(cls, log_level: str) -> None:
-        cls.__logger.setLevel(log_level)
+        # Convert string log level to Python standard logging constants
+        level_mapping = {
+            DEBUG: logging.DEBUG,
+            INFO: logging.INFO,
+            WARNING: logging.WARNING,
+            ERROR: logging.ERROR,
+        }
+
+        numeric_level = level_mapping.get(log_level.lower())
+        cls.__logger.setLevel(numeric_level)
 
     @classmethod
     def __get_scenario_name(cls, scenario_key: str) -> str:
