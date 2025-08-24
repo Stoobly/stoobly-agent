@@ -6,24 +6,18 @@ from ...constants import (
   SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
+from ...workflow_builder import WorkflowBuilder
 from ..builder import Builder
 from ..service.builder import ServiceBuilder
 
-class WorkflowBuilder(Builder):
+class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
-    self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
-    self.__workflow_name = os.path.basename(workflow_path)
-    super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
+    WorkflowBuilder.__init__(self, workflow_path, service_builder)
+    Builder.__init__(self, workflow_path, COMPOSE_TEMPLATE.format(workflow=self._workflow_name))
 
-    self.__context = '../'
-    self.__profiles = [WORKFLOW_NAME]
-
-    if not service_builder:
-      service_path = os.path.dirname(workflow_path)
-      service_builder = ServiceBuilder(service_path)
-
-    self.__service_builder = service_builder
+    self._context = '../'
+    self._profiles = [WORKFLOW_NAME]
 
   @property
   def app(self):
@@ -34,16 +28,12 @@ class WorkflowBuilder(Builder):
     return os.path.relpath(self.service_builder.compose_file_path, self.dir_path)
 
   @property
-  def config(self):
-    return self.service_builder.config
-
-  @property
   def configure(self):
     return WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def context(self):
-    return self.__context
+    return self._context
 
   @property
   def context_docker_file_path(self):
@@ -59,23 +49,11 @@ class WorkflowBuilder(Builder):
 
   @property
   def profiles(self):
-    return self.__profiles
+    return self._profiles
 
   @property
   def proxy(self):
     return WORKFLOW_CONTAINER_PROXY_TEMPLATE.format(service_name=self.namespace)
-
-  @property
-  def service_builder(self):
-    return self.__service_builder
-
-  @property
-  def service_path(self):
-    return self.__service_builder.dir_path
-
-  @property
-  def workflow_name(self):
-    return self.__workflow_name
 
   def build_all(self):
     # Resources
@@ -147,12 +125,6 @@ class WorkflowBuilder(Builder):
 
     self.with_service(self.proxy, service)
 
-  def env_dict(self):
-    env = {}
-    for e in self._env:
-      env[e] = '${' + e + '}'
-    return env
-
   def write(self):
     compose = {
       'services': self.services,
@@ -165,3 +137,4 @@ class WorkflowBuilder(Builder):
       compose['volumes'] = self.volumes
 
     super().write(compose)
+
