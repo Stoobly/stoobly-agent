@@ -15,6 +15,8 @@ from .templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERV
 class AppCreateOptions(TypedDict):
   docker_socket_path: str
   name: str
+  plugin: list
+  run_on: list
   ui_port: int
 
 class AppCreateCommand(AppCommand):
@@ -31,6 +33,9 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
 
+        if kwargs.get('run_on'):
+            self.app_config.run_on = kwargs['run_on']
+
         if kwargs.get('ui_port'):
             self.app_config.ui_port = kwargs['ui_port']
 
@@ -45,6 +50,10 @@ class AppCreateCommand(AppCommand):
     @property
     def app_plugins(self):
         return self.app_config.plugins
+
+    @property
+    def app_run_on(self):
+        return self.app_config.run_on
 
     def app_ui_port(self):
         return self.app_config.ui_port
@@ -135,7 +144,6 @@ class AppCreateCommand(AppCommand):
         self.__merge_compose_plugin(compose_dest_path, template_path, plugin)
 
     def __plugin_playwright(self, dest: str, plugin: str):
-        # Copy Dockerfile to workflow
         dockerfile_name = PLUGIN_DOCKERFILE_TEMPLATE.format(plugin=plugin)
         dockerfile_src_path = os.path.join(self.templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
         dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
