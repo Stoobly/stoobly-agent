@@ -5,7 +5,7 @@ import shutil
 from copy import deepcopy
 
 from .app import App
-from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from .constants import RUN_ON_DOCKER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
 from .service_command import ServiceCommand
@@ -31,6 +31,11 @@ class ServiceCreateCommand(ServiceCommand):
   @property
   def workflows(self):
     return self.__workflows
+
+  @property
+  def create_docker_files(self):
+    """Determine if Docker files should be created based on app config run-on setting."""
+    return RUN_ON_DOCKER in self.app_config.run_on
 
   def build(self):
     service_builder = ServiceBuilder(self.service_config)

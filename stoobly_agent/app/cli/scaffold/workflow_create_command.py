@@ -5,12 +5,13 @@ import shutil
 from typing import List, TypedDict, Union
 
 from .app import App
-from .constants import WORKFLOW_TEMPLATE_OPTION
+from .constants import RUN_ON_DOCKER, WORKFLOW_TEMPLATE_OPTION
 from .docker.service.builder import ServiceBuilder
 from .docker.workflow.mock_decorator import MockDecorator
 from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
-from .docker.workflow.builder import WorkflowBuilder
+from .docker.workflow.builder import DockerWorkflowBuilder
 from .templates.factory import custom_files, maintained_files
+from .workflow_builder import WorkflowBuilder
 from .workflow_command import WorkflowCommand
 
 
@@ -40,6 +41,11 @@ class WorkflowCreateCommand(WorkflowCommand):
   def force(self):
     return self.__force
 
+  @property
+  def create_docker_files(self):
+    """Determine if Docker files should be created based on app config run-on setting."""
+    return RUN_ON_DOCKER in self.app_config.run_on
+
   def build(self, **kwargs: BuildOptions):
     # Create workflow folder
     dest = os.path.join(self.workflow_path)
@@ -49,8 +55,11 @@ class WorkflowCreateCommand(WorkflowCommand):
     if not os.path.exists(dest):
       os.makedirs(dest) 
 
-    # Create workflow maintained compose file
-    workflow_builder = self.__write_docker_compose_file(**kwargs)
+    # Create workflow maintained compose file only if Docker files are enabled
+    workflow_builder = None
+    if self.create_docker_files:
+      workflow_builder = self.__write_docker_compose_file(**kwargs)
+    
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
     if not self.workflow_config.empty:
@@ -77,7 +86,7 @@ class WorkflowCreateCommand(WorkflowCommand):
     self.copy_files_no_replace(templates_path, custom_workflow_files, self.workflow_path)
 
   def __write_docker_compose_file(self, **kwargs: BuildOptions):
-    builder_class = kwargs.get('builder_class') or WorkflowBuilder
+    builder_class = kwargs.get('builder_class') or DockerWorkflowBuilder
     service_builder = kwargs.get('service_builder') 
     if not service_builder:
       service_builder = ServiceBuilder(self.service_config)
