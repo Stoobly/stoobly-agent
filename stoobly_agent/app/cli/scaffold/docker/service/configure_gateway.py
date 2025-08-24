@@ -21,6 +21,9 @@ def configure_gateway(workflow_namespace: WorkflowNamespace, service_paths: List
   docker_compose_src_path = os.path.join(gateway_service_path, DOCKER_COMPOSE_BASE_TEMPLATE)
   docker_compose_dest_path = os.path.join(gateway_service_path, DOCKER_COMPOSE_BASE)
 
+  if not os.path.exists(docker_compose_src_path):
+    return
+
   compose = {}
   with open(docker_compose_src_path, 'r') as fp:
     compose = yaml.safe_load(fp)
