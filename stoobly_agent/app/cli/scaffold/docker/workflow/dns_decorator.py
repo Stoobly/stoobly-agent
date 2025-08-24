@@ -1,8 +1,7 @@
 from ...constants import SERVICE_DNS
+from ...workflow_builder import WorkflowBuilder
 
-from .builder import WorkflowBuilder
-
-class DnsDecorator():
+class DnsDecorator:
 
   def __init__(self, workflow_builder: WorkflowBuilder):
     self.__workflow_builder = workflow_builder

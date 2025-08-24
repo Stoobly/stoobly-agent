@@ -3,8 +3,8 @@ import pdb
 
 from urllib.parse import urlparse
 
-from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
-from .builder import WorkflowBuilder
+from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, SERVICE_SCHEME, STOOBLY_CERTS_DIR
+from ...workflow_builder import WorkflowBuilder
 from .command_decorator import CommandDecorator
 
 class ReverseProxyDecorator(CommandDecorator):

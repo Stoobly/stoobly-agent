@@ -1,8 +1,8 @@
-from .builder import WorkflowBuilder
+from .builder import DockerWorkflowBuilder
 
 class LocalDecorator():
 
-  def __init__(self, workflow_builder: WorkflowBuilder):
+  def __init__(self, workflow_builder: DockerWorkflowBuilder):
     self.__workflow_builder = workflow_builder
 
   @property

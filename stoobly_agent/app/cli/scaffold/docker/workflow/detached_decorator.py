@@ -2,12 +2,12 @@ import os
 import pdb
 
 from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
-from .builder import WorkflowBuilder
+from .builder import DockerWorkflowBuilder
 from .command_decorator import CommandDecorator
 
 class DetachedDecorator(CommandDecorator):
 
-  def __init__(self, workflow_builder: WorkflowBuilder):
+  def __init__(self, workflow_builder: DockerWorkflowBuilder):
     super().__init__(workflow_builder)
 
   @property

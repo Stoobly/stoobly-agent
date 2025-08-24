@@ -1,11 +1,11 @@
 from ...constants import (
   SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_SCHEME,
 )
-from .builder import WorkflowBuilder
+from .builder import DockerWorkflowBuilder
 
 class CommandDecorator():
 
-  def __init__(self, workflow_builder: WorkflowBuilder):
+  def __init__(self, workflow_builder: DockerWorkflowBuilder):
     self.__workflow_builder = workflow_builder
 
   @property
