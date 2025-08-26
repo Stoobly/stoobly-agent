@@ -4,7 +4,7 @@ import pdb
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
 from stoobly_agent.lib.logger import Logger
 
-from typing import List
+from typing import List, TypedDict, Callable, Optional
 
 from ...workflow_run_command import WorkflowRunCommand
 from ....types.workflow_run_command import BuildOptions, DownOptions, UpOptions
@@ -13,6 +13,52 @@ from ..service.configure_gateway import configure_gateway
 from ...workflow import Workflow
 
 LOG_ID = 'DockerWorkflowRunCommand'
+
+class WorkflowDownOptions(TypedDict, total=False):
+  workflow_namespace: str
+  print_service_header: Optional[Callable[[str], None]]
+  extra_entrypoint_compose_path: Optional[str]
+  namespace: Optional[str]
+  rmi: bool
+  user_id: Optional[int]
+  # CLI-specific options that get passed through
+  containerized: bool
+  dry_run: bool
+  log_level: str
+  script_path: Optional[str]
+  service: List[str]
+
+class WorkflowUpOptions(TypedDict, total=False):
+  workflow_namespace: str
+  print_service_header: Optional[Callable[[str], None]]
+  extra_entrypoint_compose_path: Optional[str]
+  namespace: Optional[str]
+  no_build: bool
+  pull: bool
+  user_id: Optional[int]
+  detached: bool
+  # CLI-specific options that get passed through
+  containerized: bool
+  dry_run: bool
+  log_level: str
+  script_path: Optional[str]
+  service: List[str]
+  no_publish: bool
+  without_base: bool
+  verbose: bool
+  mkcert: bool
+
+class WorkflowLogsOptions(TypedDict, total=False):
+  print_service_header: Optional[Callable[[str], None]]
+  container: List[str]
+  follow: bool
+  namespace: Optional[str]
+  # CLI-specific options that get passed through
+  containerized: bool
+  dry_run: bool
+  log_level: str
+  script_path: Optional[str]
+  service: List[str]
 
 class DockerWorkflowRunCommand(WorkflowRunCommand):
   """Docker-specific workflow run command that handles Docker Compose operations."""
@@ -49,7 +95,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     return ' && '.join(init_commands) if init_commands else ''
 
-  def up(self, workflow_namespace, **options):
+  def up(self, workflow_namespace, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
     print_service_header = options.get('print_service_header')
     
@@ -102,6 +148,137 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       
       if exec_command and self.script:
         print(exec_command, file=self.script)
+
+  def down(self, **options: WorkflowDownOptions):
+    """Execute the complete Docker workflow down process."""
+    print_service_header = options.get('print_service_header')
+    
+    # Create individual service commands
+    commands: List[DockerWorkflowRunCommand] = []
+    for service in self.services:
+      config = { **options }
+      config['service_name'] = service
+      command = DockerWorkflowRunCommand(self.app, **config)
+      commands.append(command)
+    
+    # Sort commands by priority and execute
+    commands = sorted(commands, key=lambda command: command.service_config.priority)
+    for index, command in enumerate(commands):
+      if print_service_header:
+        print_service_header(command.service_name)
+      
+      extra_compose_path = None
+      
+      # By default, the entrypoint service should be last
+      # However, this can change if the user has configured a service's priority to be higher
+      if index == len(commands) - 1:
+        extra_compose_path = options.get('extra_entrypoint_compose_path')
+      
+      exec_command = command.service_down(
+        extra_compose_path=extra_compose_path,
+        namespace=options.get('namespace'),
+        rmi=options.get('rmi', False),
+        user_id=options.get('user_id')
+      )
+      
+      if exec_command and self.script:
+        print(exec_command, file=self.script)
+    
+    # After services are stopped, their network needs to be removed
+    if commands:
+      command = commands[0]
+      
+      if options.get('rmi'):
+        remove_image_command = command.remove_image(options.get('user_id'))
+        if remove_image_command and self.script:
+          print(remove_image_command, file=self.script)
+      
+      remove_egress_network_command = command.remove_egress_network()
+      if remove_egress_network_command and self.script:
+        print(remove_egress_network_command, file=self.script)
+      
+      remove_ingress_network_command = command.remove_ingress_network()
+      if remove_ingress_network_command and self.script:
+        print(remove_ingress_network_command, file=self.script)
+
+  def logs(self, **options: WorkflowLogsOptions):
+    """Execute the complete Docker workflow logs process."""
+    from ...templates.constants import CORE_SERVICES
+    
+    print_service_header = options.get('print_service_header')
+    
+    # Filter services based on options
+    filtered_services = []
+    for service in self.services:
+      if len(options.get('service', [])) == 0:
+        # If no filter is specified, ignore CORE_SERVICES  
+        if service in CORE_SERVICES:
+          continue
+      else:
+        # If a filter is specified, ignore all other services
+        if service not in options.get('service', []):
+          continue
+      filtered_services.append(service)
+    
+    # Create individual service commands and get their log commands
+    commands = []
+    for service in filtered_services:
+      config = dict(options)
+      config['service_name'] = service
+      command = DockerWorkflowRunCommand(self.app, **config)
+      commands.append((service, command))
+    
+    # Sort commands by priority and execute
+    commands = sorted(commands, key=lambda x: x[1].service_config.priority)
+    for index, (service, command) in enumerate(commands):
+      if print_service_header:
+        print_service_header(service)
+      
+      follow = options.get('follow', False) and index == len(commands) - 1
+      shell_commands = self._build_log_commands(
+        command, 
+        containers=options.get('container', []), 
+        follow=follow, 
+        namespace=options.get('namespace')
+      )
+      
+      for shell_command in shell_commands:
+        if self.script:
+          print(shell_command, file=self.script)
+
+  def _build_log_commands(self, command, containers=None, follow=False, namespace=None):
+    """Build Docker log commands for a service."""
+    from ...constants import WORKFLOW_CONTAINER_TEMPLATE
+    
+    log_commands = []
+    available_containers = command.containers
+    allowed_containers = list(
+      map(
+        lambda container: WORKFLOW_CONTAINER_TEMPLATE.format(
+          container=container, service_name=command.service_name
+        ), containers or []
+      )
+    )
+
+    for index, container in enumerate(available_containers):
+      if container not in allowed_containers:
+        continue
+
+      container_name = self._container_name(container, namespace or command.workflow_name)
+      log_commands.append(f"echo \"=== Logging {container_name}\"")
+      
+      if follow and index == len(available_containers) - 1:
+        docker_command = ['docker', 'logs', '--follow', container_name]
+      else:
+        docker_command = ['docker', 'logs', container_name]
+      
+      log_commands.append(' '.join(docker_command))
+
+    return log_commands
+
+  def _container_name(self, container, namespace):
+    """Generate container name based on namespace and container."""
+    return f"{namespace}-{container}-1"
 
   def create_image(self, **options: BuildOptions):
     """Build Docker image for the workflow."""
@@ -212,7 +389,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     return ' '.join(command)
 
-  def down(self, **options: DownOptions):
+  def service_down(self, **options: DownOptions):
     """Stop the workflow using Docker Compose."""
     if not os.path.exists(self.compose_path):
       return ''

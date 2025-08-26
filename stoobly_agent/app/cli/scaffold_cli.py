@@ -370,51 +370,22 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  commands: List[DockerWorkflowRunCommand] = []
-  for service in services:
-    config = { **kwargs }
-    config['service_name'] = service
-    command = DockerWorkflowRunCommand(app, **config)
-    command.current_working_dir = current_working_dir
-    commands.append(command)
-
   script = __build_script(app, **kwargs)
-
-  commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for index, command in enumerate(commands):
-    __print_header(f"SERVICE {command.service_name}")
-
-    extra_compose_path = None
-
-    # By default, the entrypoint service should be last
-    # However, this can change if the user has configured a service's priority to be higher
-    if index == len(commands) - 1:
-      extra_compose_path = kwargs['extra_entrypoint_compose_path']
-
-    exec_command = command.down(
-      extra_compose_path=extra_compose_path,
-      namespace=kwargs['namespace'],
-      rmi=kwargs['rmi'],
-      user_id=kwargs['user_id']
-    )
-    if not exec_command:
-      continue
-
-    print(exec_command, file=script)
-
-  # After services are stopped, their network needs to be removed
-  if len(commands) > 0:
-    command: DockerWorkflowRunCommand = commands[0]
-
-    if kwargs['rmi']:
-      remove_image_command = command.remove_image(kwargs['user_id'])
-      print(remove_image_command, file=script)
-
-    remove_egress_network_command = command.remove_egress_network()
-    print(remove_egress_network_command, file=script)
-
-    remove_ingress_network_command = command.remove_ingress_network()
-    print(remove_ingress_network_command, file=script)
+  
+  # Create Docker workflow command with services and script
+  workflow_command = DockerWorkflowRunCommand(
+    app, 
+    services=services, 
+    script=script,
+    workflow_name=kwargs['workflow_name']
+  )
+  
+  # Execute the workflow down
+  workflow_command.down(
+    workflow_namespace=__with_workflow_namespace(app, kwargs['namespace']),
+    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **kwargs
+  )
 
   __run_script(script, kwargs['dry_run'])
 
@@ -451,35 +422,21 @@ def logs(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
 
-  commands: List[WorkflowLogCommand] = []
-  for service in services:
-    if len(kwargs['service']) == 0:
-      # If no filter is specified, ignore CORE_SERVICES
-      if service in CORE_SERVICES:
-        continue
-    else:
-      # If a filter is specified, ignore all other services
-      if service not in kwargs['service']:
-        continue
-
-    config = { **kwargs }
-    config['service_name'] = service
-    command = WorkflowLogCommand(app, **config)
-    commands.append(command)
-
   script = __build_script(app, **kwargs)
-
-  commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for index, command in enumerate(commands):
-    __print_header(f"SERVICE {command.service_name}")
-
-    follow = kwargs['follow'] and index == len(commands) - 1
-    shell_commands = command.build(
-      containers=kwargs['container'], follow=follow, namespace=kwargs['namespace']
-    )
-
-    for shell_command in shell_commands:
-      print(shell_command, file=script)
+  
+  # Create Docker workflow command with services and script
+  workflow_command = DockerWorkflowRunCommand(
+    app, 
+    services=services, 
+    script=script,
+    workflow_name=kwargs['workflow_name']
+  )
+  
+  # Execute the workflow logs
+  workflow_command.logs(
+    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **kwargs
+  )
 
   __run_script(script, kwargs['dry_run'])
 
