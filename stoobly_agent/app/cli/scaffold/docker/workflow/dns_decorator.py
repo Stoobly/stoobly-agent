@@ -1,5 +1,5 @@
 from ...constants import SERVICE_DNS
-from ...workflow_builder import WorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 
 class DnsDecorator:
 

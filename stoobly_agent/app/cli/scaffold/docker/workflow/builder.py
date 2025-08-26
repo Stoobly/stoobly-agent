@@ -1,18 +1,22 @@
 import os
 import pdb
 
+from typing import List, Union
+
 from ...constants import (
   COMPOSE_TEMPLATE, SERVICE_HOSTNAME, 
   SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
-from ...workflow_builder import WorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 from ..builder import Builder
-from ..service.builder import ServiceBuilder
+from ..service.builder import DockerServiceBuilder
+from .mock_decorator import MockDecorator
+from .reverse_proxy_decorator import ReverseProxyDecorator
 
 class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
-  def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
+  def __init__(self, workflow_path: str, service_builder: DockerServiceBuilder):
     WorkflowBuilder.__init__(self, workflow_path, service_builder)
     Builder.__init__(self, workflow_path, COMPOSE_TEMPLATE.format(workflow=self._workflow_name))
 
@@ -124,6 +128,22 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
     networks[self.egress_network_name] = {}
 
     self.with_service(self.proxy, service)
+
+  def build(self, workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = None):
+    """Build the Docker workflow with all components and decorators."""
+
+    # Build all workflow components
+    self.build_all()
+
+    # Apply workflow decorators if provided
+    if isinstance(workflow_decorators, list):
+      for workflow_decorator in workflow_decorators:
+        workflow_decorator(self).decorate()
+
+    # Write the compose file
+    self.write()
+
+    return self
 
   def write(self):
     compose = {

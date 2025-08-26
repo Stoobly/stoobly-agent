@@ -4,12 +4,12 @@ import pdb
 from ...constants import (
   SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR,
 )
-from .builder import DockerWorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 from .command_decorator import CommandDecorator
 
 class MockDecorator(CommandDecorator):
 
-  def __init__(self, workflow_builder: DockerWorkflowBuilder):
+  def __init__(self, workflow_builder: WorkflowBuilder):
     super().__init__(workflow_builder)
 
   @property

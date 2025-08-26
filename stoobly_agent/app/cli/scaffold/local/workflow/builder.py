@@ -2,19 +2,15 @@ import os
 
 from typing import Union
 
-from .constants import SERVICE_NAME_ENV, WORKFLOW_NAME_ENV
-from .docker.service.builder import ServiceBuilder
+from ...constants import SERVICE_NAME_ENV, WORKFLOW_NAME_ENV
+from ..service.builder import ServiceBuilder
 
 class WorkflowBuilder():
 
-  def __init__(self, workflow_path: str, service_builder: Union[ServiceBuilder, None]):
+  def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
     self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
     self._service_builder = service_builder
     self._workflow_name = os.path.basename(workflow_path)
-
-    if not service_builder:
-        service_path = os.path.dirname(workflow_path)
-        service_builder = ServiceBuilder(service_path)
 
   @property
   def config(self):

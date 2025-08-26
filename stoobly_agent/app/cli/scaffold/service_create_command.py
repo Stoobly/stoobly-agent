@@ -3,10 +3,12 @@ import pdb
 import shutil
 
 from copy import deepcopy
+from typing import Union
 
 from .app import App
 from .constants import RUN_ON_DOCKER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
-from .docker.service.builder import ServiceBuilder
+from .local.service.builder import ServiceBuilder
+from .docker.service.builder import DockerServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
 from .service_command import ServiceCommand
 from .workflow_create_command import WorkflowCreateCommand
@@ -38,7 +40,12 @@ class ServiceCreateCommand(ServiceCommand):
     return RUN_ON_DOCKER in self.app_config.run_on
 
   def build(self):
-    service_builder = ServiceBuilder(self.service_config)
+    # Choose builder based on app run_on configuration
+    if RUN_ON_DOCKER in self.app_config.run_on:
+      service_builder = DockerServiceBuilder(self.service_config)
+    else:
+      service_builder = ServiceBuilder(self.service_config)
+    
     service_builder.with_env(list(self.env_vars))
     service_decorators = []
 
@@ -72,19 +79,19 @@ class ServiceCreateCommand(ServiceCommand):
     if os.path.exists(dest):
       shutil.rmtree(dest)
 
-  def __build_with_mock_workflow(self, service_builder: ServiceBuilder, **kwargs):
+  def __build_with_mock_workflow(self, service_builder: Union[ServiceBuilder, DockerServiceBuilder], **kwargs):
     mock_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': WORKFLOW_MOCK_TYPE }})
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_MOCK_TYPE, self.service_config)
     mock_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
 
-  def __build_with_record_workflow(self, service_builder: ServiceBuilder, **kwargs):
+  def __build_with_record_workflow(self, service_builder: Union[ServiceBuilder, DockerServiceBuilder], **kwargs):
     record_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': WORKFLOW_RECORD_TYPE }})
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_RECORD_TYPE, self.service_config)
     record_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
 
-  def __build_with_test_workflow(self, service_builder: ServiceBuilder, **kwargs):
+  def __build_with_test_workflow(self, service_builder: Union[ServiceBuilder, DockerServiceBuilder], **kwargs):
     mock_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': WORKFLOW_TEST_TYPE }})
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_TEST_TYPE, self.service_config)

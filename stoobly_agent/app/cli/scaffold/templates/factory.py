@@ -1,7 +1,7 @@
 import pdb
 
 from ..constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
-from ..workflow_builder import WorkflowBuilder
+from ..local.workflow.builder import WorkflowBuilder
 from ..docker.workflow.builder import DockerWorkflowBuilder
 from .constants import (
   CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_PUBLIC_GITIGNORE, MAINTAINED_CONFIGURE, 
