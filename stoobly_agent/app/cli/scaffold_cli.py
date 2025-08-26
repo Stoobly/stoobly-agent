@@ -15,7 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
-from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
+
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
@@ -31,7 +31,7 @@ from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreat
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
-from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
@@ -370,11 +370,11 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  commands: List[WorkflowRunCommand] = []
+  commands: List[DockerWorkflowRunCommand] = []
   for service in services:
     config = { **kwargs }
     config['service_name'] = service
-    command = WorkflowRunCommand(app, **config)
+    command = DockerWorkflowRunCommand(app, **config)
     command.current_working_dir = current_working_dir
     commands.append(command)
 
@@ -404,7 +404,7 @@ def down(**kwargs):
 
   # After services are stopped, their network needs to be removed
   if len(commands) > 0:
-    command: WorkflowRunCommand = commands[0]
+    command: DockerWorkflowRunCommand = commands[0]
 
     if kwargs['rmi']:
       remove_image_command = command.remove_image(kwargs['user_id'])
@@ -529,63 +529,23 @@ def up(**kwargs):
     _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
     __services_mkcert(_app, services)
 
-  # Gateway ports are dynamically set depending on the workflow run
-  workflow = Workflow(kwargs['workflow_name'], app)
-  configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), kwargs['no_publish'])
-
-  commands: List[WorkflowRunCommand] = []
-  for service in services:
-    config = { **kwargs }
-    config['service_name'] = service
-    command = WorkflowRunCommand(app, **config)
-    command.current_working_dir = current_working_dir
-    commands.append(command)
-
   script = __build_script(app, **kwargs)
-
-  # Before services can be started, their image and network needs to be created
-  if len(commands) > 0:
-    command: WorkflowRunCommand = commands[0]
-
-    init_commands = []
-    if not kwargs['without_base']:
-      create_image_command = command.create_image(user_id=kwargs['user_id'], verbose=kwargs['verbose'])
-      init_commands.append(create_image_command)
-
-    init_commands.append(command.create_egress_network())
-    init_commands.append(command.create_ingress_network())
-    joined_command = ' && '.join(init_commands)
-
-    if not containerized:
-      command.write_nameservers()
-
-    print(joined_command, file=script)
-
-  commands = sorted(commands, key=lambda command: command.service_config.priority)
-  for index, command in enumerate(commands):
-    __print_header(f"SERVICE {command.service_name}")
-
-    attached = False
-    extra_compose_path = None
-
-    # By default, the entrypoint service should be last
-    # However, this can change if the user has configured a service's priority to be higher
-    if index == len(commands) - 1:
-      attached = not kwargs['detached']
-      extra_compose_path = kwargs['extra_entrypoint_compose_path']
-
-    exec_command = command.up(
-      attached=attached,
-      extra_compose_path=extra_compose_path,
-      namespace=kwargs['namespace'],
-      no_build=kwargs['no_build'],
-      pull=kwargs['pull'],
-      user_id=kwargs['user_id']
-    )
-    if not exec_command:
-      continue
-
-    print(exec_command, file=script)
+  
+  # Create Docker workflow command with services and script
+  workflow_command = DockerWorkflowRunCommand(
+    app, 
+    services=services, 
+    script=script,
+    current_working_dir=current_working_dir,
+    workflow_name=kwargs['workflow_name']
+  )
+  
+  # Execute the workflow
+  workflow_command.up(
+    workflow_namespace=workflow_namespace,
+    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **kwargs
+  )
 
   __run_script(script, kwargs['dry_run'])
 
