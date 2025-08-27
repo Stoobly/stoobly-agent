@@ -33,8 +33,8 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
     Builder.__init__(self, service_path, DOCKER_COMPOSE_BASE)
 
     if not app_builder:
-      app_dir = os.path.dirname(service_path)
-      app_builder = AppBuilder(AppConfig(app_dir))
+      app_config = AppConfig(config.app_config_dir_path)
+      app_builder = AppBuilder(app_config)
     self.app_builder = app_builder
 
   @property
