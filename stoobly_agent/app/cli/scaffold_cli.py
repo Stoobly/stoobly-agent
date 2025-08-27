@@ -10,9 +10,10 @@ from urllib.parse import urlparse
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 
@@ -32,13 +33,14 @@ from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCom
 from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
+from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
-from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_network, validate_service_name
+from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -343,13 +345,10 @@ def copy(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
-@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
-@click.option('--network', callback=validate_network, help='Workflow network name.')
-@click.option('--rmi', is_flag=True, help='Remove images used by containers.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
@@ -372,13 +371,24 @@ def down(**kwargs):
 
   script = __build_script(app, **kwargs)
   
-  # Create Docker workflow command with services and script
-  workflow_command = DockerWorkflowRunCommand(
-    app, 
-    services=services, 
-    script=script,
-    workflow_name=kwargs['workflow_name']
-  )
+  # Determine which workflow command to use based on app configuration
+  app_config = AppConfig(app.scaffold_namespace_path)
+  if app_config.run_on_local:
+    # Use LocalWorkflowRunCommand for local execution
+    workflow_command = LocalWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      workflow_name=kwargs['workflow_name']
+    )
+  else:
+    # Use DockerWorkflowRunCommand for Docker execution
+    workflow_command = DockerWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      workflow_name=kwargs['workflow_name']
+    )
   
   # Execute the workflow down
   workflow_command.down(
@@ -424,13 +434,24 @@ def logs(**kwargs):
 
   script = __build_script(app, **kwargs)
   
-  # Create Docker workflow command with services and script
-  workflow_command = DockerWorkflowRunCommand(
-    app, 
-    services=services, 
-    script=script,
-    workflow_name=kwargs['workflow_name']
-  )
+  # Determine which workflow command to use based on app configuration
+  app_config = AppConfig(app.scaffold_namespace_path)
+  if app_config.run_on_local:
+    # Use LocalWorkflowRunCommand for local execution
+    workflow_command = LocalWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      workflow_name=kwargs['workflow_name']
+    )
+  else:
+    # Use DockerWorkflowRunCommand for Docker execution
+    workflow_command = DockerWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      workflow_name=kwargs['workflow_name']
+    )
   
   # Execute the workflow logs
   workflow_command.logs(
@@ -448,21 +469,16 @@ def logs(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
-@click.option('--extra-entrypoint-compose-path', help='Path to extra entrypoint compose file.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
-@click.option('--network', callback=validate_network, help='Workflow network name.')
-@click.option('--no-build', is_flag=True, help='Do not build images before starting containers.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
-@click.option('--pull', is_flag=True, help='Pull image before running.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
-@click.option('--without-base', is_flag=True, help='Disable building Stoobly base image.')
 @click.argument('workflow_name')
 def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -488,14 +504,25 @@ def up(**kwargs):
 
   script = __build_script(app, **kwargs)
   
-  # Create Docker workflow command with services and script
-  workflow_command = DockerWorkflowRunCommand(
-    app, 
-    services=services, 
-    script=script,
-    current_working_dir=current_working_dir,
-    workflow_name=kwargs['workflow_name']
-  )
+  # Determine which workflow command to use based on app configuration
+  app_config = AppConfig(app.scaffold_namespace_path)
+  if app_config.run_on_local:
+    # Use LocalWorkflowRunCommand for local execution
+    workflow_command = LocalWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      workflow_name=kwargs['workflow_name']
+    )
+  else:
+    # Use DockerWorkflowRunCommand for Docker execution
+    workflow_command = DockerWorkflowRunCommand(
+      app, 
+      services=services, 
+      script=script,
+      current_working_dir=current_working_dir,
+      workflow_name=kwargs['workflow_name']
+    )
   
   # Execute the workflow
   workflow_command.up(
