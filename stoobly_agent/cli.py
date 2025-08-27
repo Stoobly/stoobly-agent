@@ -80,7 +80,7 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-dir-path', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -90,6 +90,7 @@ def init(**kwargs):
   config.yaml to avoid this.
 ''')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
+@click.option('--detached', type=click.Path(), help='Run in detached mode and redirect output to the specified file path.')
 @click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
   0: no output
@@ -130,6 +131,9 @@ def run(**kwargs):
     settings: Settings = Settings.instance()
     settings.watch()
 
+    if not os.path.exists(kwargs.get('ca_certs_dir_path')):
+      kwargs['ca_certs_dir_path'] = DataDir.instance().ca_certs_dir_path
+
     if kwargs.get('headless'):
       os.environ[env_vars.AGENT_HEADLESS] = '1'
 
@@ -166,15 +170,46 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_PROXY_URL] = proxy_url
       settings.proxy.url = proxy_url
 
-    if not kwargs.get('headless'):
-      settings.commit()
-      run_api(**kwargs)
+    if kwargs.get('detached'):
+      # Run in detached mode with output redirection
+      import subprocess
+      import sys
+      
+      # Build the command to run in background
+      cmd = [sys.executable, '-m', 'stoobly_agent'] + sys.argv[1:]
+      # Remove the --detached flag and its value from the command
+      detached_index = None
+      for i, arg in enumerate(cmd):
+        if arg == '--detached':
+          detached_index = i
+          break
+      if detached_index is not None:
+        cmd.pop(detached_index)  # Remove --detached
+        if detached_index < len(cmd) and not cmd[detached_index].startswith('--'):
+          cmd.pop(detached_index)  # Remove the file path
+      
+      # Start the process in background with output redirection
+      with open(kwargs['detached'], 'w') as output_file:
+        process = subprocess.Popen(
+          cmd,
+          stdout=output_file,
+          stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+          preexec_fn=os.setsid  # Create new process group
+        )
+      
+      print(process.pid)
+      return
+    else:
+      # Run in foreground mode
+      if not kwargs.get('headless'):
+        settings.commit()
+        run_api(**kwargs)
 
-    if not kwargs.get('proxyless'):
-      log_id = 'Proxy'
-      Logger.instance(log_id).info(f"starting with mode {kwargs['proxy_mode']} and listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
-      Logger.instance(log_id).info(f"{'' if settings.proxy.intercept.active else 'not yet '}configured to {settings.proxy.intercept.mode}")
-      run_proxy(**kwargs)
+      if not kwargs.get('proxyless'):
+        log_id = 'Proxy'
+        Logger.instance(log_id).info(f"starting with mode {kwargs['proxy_mode']} and listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
+        Logger.instance(log_id).info(f"{'' if settings.proxy.intercept.active else 'not yet '}configured to {settings.proxy.intercept.mode}")
+        run_proxy(**kwargs)
 
 @main.command(
   help="Mock request"
