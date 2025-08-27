@@ -2,6 +2,7 @@ import os
 import pdb
 
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
+from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.lib.logger import Logger
 
 from typing import List, TypedDict, Callable, Optional
@@ -15,7 +16,7 @@ from ...workflow import Workflow
 LOG_ID = 'DockerWorkflowRunCommand'
 
 class WorkflowDownOptions(TypedDict, total=False):
-  workflow_namespace: str
+  workflow_namespace: WorkflowNamespace
   print_service_header: Optional[Callable[[str], None]]
   extra_entrypoint_compose_path: Optional[str]
   namespace: Optional[str]
@@ -33,7 +34,6 @@ class WorkflowUpOptions(TypedDict, total=False):
   print_service_header: Optional[Callable[[str], None]]
   extra_entrypoint_compose_path: Optional[str]
   namespace: Optional[str]
-  no_build: bool
   pull: bool
   user_id: Optional[int]
   detached: bool
@@ -44,7 +44,6 @@ class WorkflowUpOptions(TypedDict, total=False):
   script_path: Optional[str]
   service: List[str]
   no_publish: bool
-  without_base: bool
   verbose: bool
   mkcert: bool
 
@@ -72,7 +71,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.services = services or []
     self.script = script
 
-  def setup_docker_environment(self, services, workflow_namespace, no_publish=False, without_base=False, containerized=False, user_id=None, verbose=False):
+  def setup_docker_environment(self, services, workflow_namespace, no_publish=False, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
     init_commands = []
     
@@ -81,10 +80,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), no_publish)
     
     # Create base image if needed
-    if not without_base:
+    if not containerized:
       create_image_command = self.create_image(user_id=user_id, verbose=verbose)
       init_commands.append(create_image_command)
-    
+ 
     # Create networks
     init_commands.append(self.create_egress_network())
     init_commands.append(self.create_ingress_network())
@@ -113,7 +112,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         services=self.services,
         workflow_namespace=workflow_namespace,
         no_publish=options.get('no_publish', False),
-        without_base=options.get('without_base', False),
         containerized=options.get('containerized', False),
         user_id=options.get('user_id'),
         verbose=options.get('verbose', False)
@@ -129,19 +127,15 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         print_service_header(command.service_name)
       
       attached = False
-      extra_compose_path = None
       
       # By default, the entrypoint service should be last
       # However, this can change if the user has configured a service's priority to be higher
       if index == len(commands) - 1:
         attached = not options.get('detached', False)
-        extra_compose_path = options.get('extra_entrypoint_compose_path')
       
       exec_command = command.service_up(
         attached=attached,
-        extra_compose_path=extra_compose_path,
         namespace=options.get('namespace'),
-        no_build=options.get('no_build', False),
         pull=options.get('pull', False),
         user_id=options.get('user_id')
       )
@@ -357,10 +351,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       compose_file_path = os.path.relpath(self.custom_compose_path, self.current_working_dir)
       command_options.append(f"-f {compose_file_path}")
 
-    if options.get('extra_compose_path'):
-      compose_file_path = os.path.relpath(options['extra_compose_path'], self.current_working_dir)
-      command_options.append(f"-f {compose_file_path}")
-
     command_options.append(f"--profile {self.workflow_name}") 
 
     if not options.get('namespace'):
@@ -370,20 +360,11 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     command += command_options
     command.append('up')
 
-    if not options.get('no_build'):
-      command.append('--build')
-
-    if options.get('pull'):
-      command.append('--pull missing')
-
     if not options.get('attached'):
       command.append('-d')
 
-    # Fail fast option - makes docker compose return exit code 1 
-    # when one of the services exits with a non-zero exit code
-    for option in ['--abort-on-container-exit', '--exit-code-from']:
-      if options.get(option):
-        command.append(option)
+    # Add all remaining arguments
+    command.append('"$@"')
 
     self.write_env(**options)
 
@@ -406,9 +387,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if self.custom_services:
       command.append(f"-f {os.path.relpath(self.custom_compose_path, self.current_working_dir)}")
 
-    if options.get('extra_compose_path'):
-      command.append(f"-f {os.path.relpath(options['extra_compose_path'], self.current_working_dir)}")
-
     command.append(f"--profile {self.workflow_name}") 
 
     if not options.get('namespace'):
@@ -417,9 +395,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     command.append('down')
     command.append('--volumes')
+    command.append('--rmi local')
 
-    if options.get('rmi'):
-      command.append('--rmi local')
+    # Add all remaining arguments
+    command.append('"$@"')
 
     self.write_env(**options)
 
