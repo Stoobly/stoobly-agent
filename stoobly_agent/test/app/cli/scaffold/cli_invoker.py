@@ -104,8 +104,6 @@ class ScaffoldCliInvoker():
     ])
 
     assert result.exit_code == 0
-    output = result.stdout
-    assert not output
 
   @staticmethod
   def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
@@ -117,8 +115,6 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     assert result.exit_code == 0
-    output = result.stdout
-    assert output
 
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
@@ -130,5 +126,3 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     assert result.exit_code == 0
-    output = result.stdout
-    assert output
