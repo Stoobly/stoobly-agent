@@ -1,5 +1,6 @@
 # Wraps the .config.yml file in the service folder
 import hashlib
+import os
 import pdb
 import re
 
@@ -67,6 +68,10 @@ class ServiceConfig(Config):
 
     if 'upstream_scheme' in kwargs:
       self.__upstream_scheme = kwargs.get('upstream_scheme')
+
+  @property
+  def app_config_dir_path(self):
+    return os.path.dirname(self.dir)
 
   @property
   def detached(self) -> bool:

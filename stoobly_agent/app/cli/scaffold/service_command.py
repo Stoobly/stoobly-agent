@@ -12,10 +12,14 @@ class ServiceCommand(AppCommand):
     super().__init__(app)
     self.__service_name = kwargs.get('service_name')
 
-    self.__config = ServiceConfig(self.service_path, **kwargs)
+    if kwargs.get('service_name'):
+      self.__config = ServiceConfig(self.service_path, **kwargs)
 
   @property
   def service_config(self):
+    if not self.service_name:
+      raise Exception("Service name is required")
+
     return self.__config
 
   @service_config.setter

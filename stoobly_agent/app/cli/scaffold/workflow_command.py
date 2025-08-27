@@ -18,7 +18,9 @@ class WorkflowCommand(ServiceCommand):
     super().__init__(app, **kwargs)
 
     self.__workflow_name = kwargs['workflow_name']
-    self.__config = WorkflowConfig(self.workflow_path, **kwargs)
+
+    if kwargs.get('service_name'):
+      self.__config = WorkflowConfig(self.workflow_path, **kwargs)
 
   @property
   def bin_dir_path(self):
