@@ -14,5 +14,4 @@ class DownOptions(ComposeOptions):
 
 class UpOptions(ComposeOptions):
   attached: bool
-  extra_compose_path: str
   pull: bool
