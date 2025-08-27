@@ -1,7 +1,9 @@
 import os
 
 from .config import Config
-from .constants import APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_NETWORK_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, RUN_ON_DOCKER
+from .constants import (
+  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
+)
 
 class AppConfig(Config):
 
@@ -47,6 +49,10 @@ class AppConfig(Config):
   @run_on.setter
   def run_on(self, v: list):
     self.__run_on = v
+
+  @property
+  def run_on_local(self):
+    return RUN_ON_LOCAL in self.run_on
 
   @property
   def ui_port(self):
