@@ -32,7 +32,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__namespace = kwargs.get('namespace') or self.workflow_name
-    self.__network = f"{self.__namespace}.{kwargs.get('network') or app.network}"
+    self.__network = f"{self.__namespace}.{app.network}"
     
   @property
   def app_dir_path(self):
