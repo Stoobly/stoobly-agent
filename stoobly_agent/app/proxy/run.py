@@ -105,6 +105,9 @@ def __filter_options(options):
     if 'cert_passphrase' in options and not options['cert_passphrase']:
         del options['cert_passphrase']
 
+    if 'detached' in options:
+        del options['detached']
+
     if 'headless' in options:
         del options['headless']
 

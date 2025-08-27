@@ -8,5 +8,4 @@ stoobly-agent scaffold workflow up \
   --dry-run \
   --log-level warning \
   --mkcert \
-  --without-base \
   $extra_options $1 > /dev/null
