@@ -155,7 +155,7 @@ def __handle_mock_failure(context: MockContext) -> None:
     request = flow.request
     response = context.response
 
-    InterceptedRequestsLogger.error("Mock failure", request, response)
+    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
     if request.method.upper() != 'OPTIONS':
         return False
@@ -190,12 +190,12 @@ def __handle_mock_success(context: MockContext) -> None:
         request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
         if request_key:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
-            InterceptedRequestsLogger.debug(f"Mock success {request.url} -> {request_key}", request, response)
+            InterceptedRequestsLogger.debug("Mock success", request=request, response=response, request_key=request_key)
 
         fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
         if fixture_path:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
-            InterceptedRequestsLogger.debug(f"Mock Success {request.url} -> {fixture_path}", request, response)
+            InterceptedRequestsLogger.debug("Mock success", request=request, response=response, fixture_path=fixture_path)
 
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         response = context.response
