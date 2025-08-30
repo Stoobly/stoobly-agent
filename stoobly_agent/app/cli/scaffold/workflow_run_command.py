@@ -4,9 +4,7 @@ import pdb
 import subprocess
 import re
 
-
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .constants import (
@@ -33,6 +31,9 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.__network = f"{self.__namespace}.{app.network}"
+    self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
+
+    self.__workflow_namespace.copy_dotenv()
     
   @property
   def app_dir_path(self):
@@ -64,7 +65,7 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def dotenv_path(self):
-    return WorkflowNamespace(self.app, self.namespace).dotenv_path
+    return self.__workflow_namespace.dotenv_path
 
   @property
   def nameservers(self):
@@ -78,7 +79,7 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def nameservers_path(self):
-    return WorkflowNamespace(self.app, self.namespace).nameservers_path
+    return self.__workflow_namespace.nameservers_path
 
   @property
   def namespace(self):
@@ -108,6 +109,10 @@ class WorkflowRunCommand(WorkflowCommand):
       nameservers = [ip for ip in nameservers if ipv4_pattern.match(ip)]
       if nameservers:
         fp.write("\n".join(nameservers))
+
+  @property
+  def workflow_namespace(self):
+    return self.__workflow_namespace
 
   def write_env(self, **options: ComposeOptions):
     namespace = options.get('namespace')

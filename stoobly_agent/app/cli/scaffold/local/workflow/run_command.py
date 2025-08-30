@@ -1,56 +1,23 @@
 import os
 import pdb
-import subprocess
 import signal
+import subprocess
+import sys
 
-from typing import List, TypedDict, Callable, Optional
+from typing import Optional
 
-from ...workflow_run_command import WorkflowRunCommand
-from ...workflow_namesapce import WorkflowNamespace
-from ...constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 from stoobly_agent.lib.logger import Logger
+from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
 
 LOG_ID = 'LocalWorkflowRunCommand'
-
-class LocalWorkflowUpOptions(TypedDict, total=False):
-  workflow_namespace: str
-  print_service_header: Optional[Callable[[str], None]]
-  detached: bool
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
-
-class LocalWorkflowDownOptions(TypedDict, total=False):
-  workflow_namespace: str
-  print_service_header: Optional[Callable[[str], None]]
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
-
-class LocalWorkflowLogsOptions(TypedDict, total=False):
-  print_service_header: Optional[Callable[[str], None]]
-  follow: bool
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
-  workflow_namespace: str
 
 class LocalWorkflowRunCommand(WorkflowRunCommand):
   """Local workflow run command that executes stoobly-agent run directly."""
 
-  def __init__(self, app, services=None, script=None, **kwargs):
+  def __init__(self, app, script=None, **kwargs):
     super().__init__(app, **kwargs)
     
-    self.services = services or []
     self.script = script
 
     self._log_file_path = None
@@ -60,16 +27,14 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def log_file_path(self):
     """Get the path to the PID file for this workflow."""
     if not self._log_file_path:
-      namespace = WorkflowNamespace(self.app, self.workflow_name)
-      self._log_file_path = os.path.join(namespace.path, f"{self.workflow_name}.log")
+      self._log_file_path = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.log")
     return self._log_file_path
 
   @property
   def pid_file_path(self):
     """Get the path to the PID file for this workflow."""
     if not self._pid_file_path:
-      namespace = WorkflowNamespace(self.app, self.workflow_name)
-      self._pid_file_path = os.path.join(namespace.path, f"{self.workflow_name}.pid")
+      self._pid_file_path = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.pid")
     return self._pid_file_path
 
   def _write_pid(self, pid: int):
@@ -105,9 +70,20 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def up(self, **options: LocalWorkflowUpOptions):
+  def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
+    
+    # Check if PID file already exists
+    if os.path.exists(self.pid_file_path):
+      pid = self._read_pid()
+      if pid and self._is_process_running(pid):
+        Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is already running with PID: {pid}")
+        Logger.instance(LOG_ID).error(f"Use 'stoobly-agent scaffold workflow down {self.workflow_name}' to stop it first")
+        sys.exit(1)
+      else:
+        # PID file exists but process is not running, clean it up
+        os.remove(self.pid_file_path)
     
     # Build the stoobly-agent run command
     command = ['poetry', 'run', '--directory', '/home/jvlarble/github/stoobly-agent.2' ,'stoobly-agent', 'run']
@@ -131,8 +107,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
         script_lines = [
           f"# Start {self.workflow_name} in background using --detached",
           f"{command_str} > {self.pid_file_path}",
-          f"PID=$(cat {self.pid_file_path})",
-          f"echo \"Started {self.workflow_name} with PID: $PID\""
+          f"echo \"Started {self.workflow_name} with PID: $(cat {self.pid_file_path})\""
         ]
         for line in script_lines:
           print(line, file=self.script)
@@ -174,12 +149,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
           return None
 
-  def down(self, **options: LocalWorkflowDownOptions):
+  def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
-    print_service_header = options.get('print_service_header')
-    
-    if print_service_header:
-      print_service_header(self.workflow_name)
     
     pid = self._read_pid()
     if not pid:
@@ -197,21 +168,34 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if self.script:
       print(f"# Stop {self.workflow_name} (PID: {pid})", file=self.script)
       print(f"kill {pid} || true", file=self.script)
+      print("sleep 1", file=self.script)
+      print(f"kill -0 {pid} 2>/dev/null && kill {pid} || true", file=self.script)
       print(f"rm -f {self.pid_file_path}", file=self.script)
     else:
       try:
-        # Try graceful shutdown first
-        if self._kill_process(pid, signal.SIGTERM):
-          Logger.instance(LOG_ID).info(f"Sent SIGTERM to process {pid} for {self.workflow_name}")
+        # Try graceful shutdown first with SIGTERM
+        Logger.instance(LOG_ID).info(f"Sending SIGTERM to process {pid} for {self.workflow_name}")
+        self._kill_process(pid, signal.SIGTERM)
+        
+        # Wait a bit for graceful shutdown
+        import time
+        time.sleep(2)
+        
+        # Check if process still exists
+        if self._is_process_running(pid):
+          Logger.instance(LOG_ID).info(f"Process {pid} still running, sending SIGKILL")
+          self._kill_process(pid, signal.SIGKILL)
           
-          # Wait a bit for graceful shutdown
-          import time
-          time.sleep(2)
+          # Wait a bit more for SIGKILL to take effect
+          time.sleep(1)
           
-          # If still running, force kill
+          # Final check
           if self._is_process_running(pid):
-            if self._kill_process(pid, signal.SIGKILL):
-              Logger.instance(LOG_ID).info(f"Sent SIGKILL to process {pid} for {self.workflow_name}")
+            Logger.instance(LOG_ID).warning(f"Process {pid} may still be running after SIGKILL")
+          else:
+            Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
+        else:
+          Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
         
         # Clean up PID file
         if os.path.exists(self.pid_file_path):
@@ -220,13 +204,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       except Exception as e:
         Logger.instance(LOG_ID).error(f"Failed to stop {self.workflow_name}: {e}")
 
-  def logs(self, **options: LocalWorkflowLogsOptions):
+  def logs(self, **options: WorkflowLogsOptions):
     """Show logs for the local workflow process."""
-    print_service_header = options.get('print_service_header')
     follow = options.get('follow', False)
-    
-    if print_service_header:
-      print_service_header(self.workflow_name)
     
     pid = self._read_pid()
     if not pid:

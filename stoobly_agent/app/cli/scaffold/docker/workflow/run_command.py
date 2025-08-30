@@ -2,62 +2,17 @@ import os
 import pdb
 
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.lib.logger import Logger
 
-from typing import List, TypedDict, Callable, Optional
+from typing import List
 
-from ...workflow_run_command import WorkflowRunCommand
-from ....types.workflow_run_command import BuildOptions, DownOptions, UpOptions
-from ..constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
-from ..service.configure_gateway import configure_gateway
-from ...workflow import Workflow
+from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
+from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
+from stoobly_agent.app.cli.scaffold.workflow import Workflow
+from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
 
 LOG_ID = 'DockerWorkflowRunCommand'
-
-class WorkflowDownOptions(TypedDict, total=False):
-  workflow_namespace: WorkflowNamespace
-  print_service_header: Optional[Callable[[str], None]]
-  extra_entrypoint_compose_path: Optional[str]
-  namespace: Optional[str]
-  rmi: bool
-  user_id: Optional[int]
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
-
-class WorkflowUpOptions(TypedDict, total=False):
-  workflow_namespace: str
-  print_service_header: Optional[Callable[[str], None]]
-  extra_entrypoint_compose_path: Optional[str]
-  namespace: Optional[str]
-  pull: bool
-  user_id: Optional[int]
-  detached: bool
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
-  no_publish: bool
-  verbose: bool
-  mkcert: bool
-
-class WorkflowLogsOptions(TypedDict, total=False):
-  print_service_header: Optional[Callable[[str], None]]
-  container: List[str]
-  follow: bool
-  namespace: Optional[str]
-  # CLI-specific options that get passed through
-  containerized: bool
-  dry_run: bool
-  log_level: str
-  script_path: Optional[str]
-  service: List[str]
 
 class DockerWorkflowRunCommand(WorkflowRunCommand):
   """Docker-specific workflow run command that handles Docker Compose operations."""
@@ -71,13 +26,13 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.services = services or []
     self.script = script
 
-  def setup_docker_environment(self, services, workflow_namespace, no_publish=False, containerized=False, user_id=None, verbose=False):
+  def setup_docker_environment(self, services, no_publish=False, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
     init_commands = []
     
     # Configure gateway ports dynamically based on workflow run
     workflow = Workflow(self.workflow_name, self.app)
-    configure_gateway(workflow_namespace, workflow.service_paths_from_services(services), no_publish)
+    configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(services), no_publish)
     
     # Create base image if needed
     if not containerized:
@@ -94,7 +49,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     return ' && '.join(init_commands) if init_commands else ''
 
-  def up(self, workflow_namespace, **options: WorkflowUpOptions):
+  def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
     print_service_header = options.get('print_service_header')
     
@@ -110,7 +65,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if commands:
       init_command = self.setup_docker_environment(
         services=self.services,
-        workflow_namespace=workflow_namespace,
         no_publish=options.get('no_publish', False),
         containerized=options.get('containerized', False),
         user_id=options.get('user_id'),

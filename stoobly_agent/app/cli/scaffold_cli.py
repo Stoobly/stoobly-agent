@@ -13,10 +13,9 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
-
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
@@ -30,7 +29,6 @@ from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateE
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
-from stoobly_agent.app.cli.scaffold.workflow_log_command import WorkflowLogCommand
 from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
@@ -363,12 +361,12 @@ def down(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
-  __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
+  command_args = {}
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -377,7 +375,7 @@ def down(**kwargs):
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      services=services, 
+      namespace=kwargs['namespace'],
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -385,15 +383,16 @@ def down(**kwargs):
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
+      namespace=kwargs['namespace'],
       services=services, 
       script=script,
       workflow_name=kwargs['workflow_name']
     )
+    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
   
   # Execute the workflow down
   workflow_command.down(
-    workflow_namespace=__with_workflow_namespace(app, kwargs['namespace']),
-    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **command_args,
     **kwargs
   )
 
@@ -432,6 +431,7 @@ def logs(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
 
+  command_args = {}
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -440,7 +440,7 @@ def logs(**kwargs):
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      services=services, 
+      namespace=kwargs['namespace'],
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -448,14 +448,15 @@ def logs(**kwargs):
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
-      services=services, 
+      namespace=kwargs['namespace'],
       script=script,
       workflow_name=kwargs['workflow_name']
     )
-  
+    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
+
   # Execute the workflow logs
   workflow_command.logs(
-    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **command_args,
     **kwargs
   )
 
@@ -492,7 +493,6 @@ def up(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
-  workflow_namespace = __with_workflow_namespace(app, kwargs['namespace'])
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -502,15 +502,16 @@ def up(**kwargs):
     _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
     __services_mkcert(_app, services)
 
+  command_args = {}
   script = __build_script(app, **kwargs)
-  
+
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
   if app_config.run_on_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      services=services, 
+      namespace=kwargs['namespace'],
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -518,21 +519,21 @@ def up(**kwargs):
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
+      namespace=kwargs['namespace'],
       services=services, 
       script=script,
       current_working_dir=current_working_dir,
       workflow_name=kwargs['workflow_name']
     )
+    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
   
   # Execute the workflow
   workflow_command.up(
-    workflow_namespace=workflow_namespace,
-    print_service_header=lambda service_name: __print_header(f"SERVICE {service_name}"),
+    **command_args,
     **kwargs
   )
 
   __run_script(script, kwargs['dry_run'])
-
 
 @workflow.command(
   help="Validate a scaffold workflow"
@@ -705,7 +706,9 @@ def __run_script(script: TextIOWrapper, dry_run = False):
   with open(script.name, 'r') as fp:
     for line in fp:
       if not dry_run:
-        exec_stream(line.strip())
+        status_code = exec_stream(line.strip())
+        if status_code != 0:
+          sys.exit(status_code)
       else:
         print(line.strip())
 
