@@ -63,10 +63,6 @@ class App():
     return self.__scaffold_namespace
 
   @property
-  def scaffold_namespace_path(self):
-    return os.path.join(self.data_dir_path, self.scaffold_namespace)
-
-  @property
   def dir_path(self):
     return self.__dir_path
 

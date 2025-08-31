@@ -366,7 +366,7 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  command_args = {}
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -376,6 +376,7 @@ def down(**kwargs):
     workflow_command = LocalWorkflowRunCommand(
       app, 
       namespace=kwargs['namespace'],
+      services=services, 
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -388,7 +389,6 @@ def down(**kwargs):
       script=script,
       workflow_name=kwargs['workflow_name']
     )
-    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
   
   # Execute the workflow down
   workflow_command.down(
@@ -431,7 +431,7 @@ def logs(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
 
-  command_args = {}
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -441,6 +441,7 @@ def logs(**kwargs):
     workflow_command = LocalWorkflowRunCommand(
       app, 
       namespace=kwargs['namespace'],
+      services=services,
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -449,6 +450,7 @@ def logs(**kwargs):
     workflow_command = DockerWorkflowRunCommand(
       app, 
       namespace=kwargs['namespace'],
+      services=services,
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -502,7 +504,7 @@ def up(**kwargs):
     _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
     __services_mkcert(_app, services)
 
-  command_args = {}
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
 
   # Determine which workflow command to use based on app configuration
@@ -512,6 +514,7 @@ def up(**kwargs):
     workflow_command = LocalWorkflowRunCommand(
       app, 
       namespace=kwargs['namespace'],
+      services=services, 
       script=script,
       workflow_name=kwargs['workflow_name']
     )
@@ -525,7 +528,6 @@ def up(**kwargs):
       current_working_dir=current_working_dir,
       workflow_name=kwargs['workflow_name']
     )
-    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
   
   # Execute the workflow
   workflow_command.up(

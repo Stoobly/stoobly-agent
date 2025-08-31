@@ -1,5 +1,6 @@
 import os
 import pdb
+import shutil
 import signal
 import subprocess
 import sys
@@ -15,9 +16,10 @@ LOG_ID = 'LocalWorkflowRunCommand'
 class LocalWorkflowRunCommand(WorkflowRunCommand):
   """Local workflow run command that executes stoobly-agent run directly."""
 
-  def __init__(self, app, script=None, **kwargs):
+  def __init__(self, app, services=None, script=None, **kwargs):
     super().__init__(app, **kwargs)
     
+    self.services = services or []
     self.script = script
 
     self._log_file_path = None
@@ -70,9 +72,54 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
+  def exec_service_step(self, print_service_header: callable):
+    interpreter = 'echo'
+
+    if not shutil.which(interpreter):
+      Logger.instance(LOG_ID).error("bash is not available")
+      sys.exit(1)
+
+    # Save current working directory
+    cwd = os.getcwd()
+
+    # iterate through each service in the workflow
+    for service_name in self.services:
+      if print_service_header:
+        print_service_header(service_name)
+
+      workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
+
+      # Change directory to workflow path
+      os.chdir(workflow_path)
+
+      # Absolute path to workflow .init script
+      # stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
+      init_script_path = os.path.join(self.workflow_templates_root_dir, self.workflow_name, '.init')
+
+      # Execute the script
+      result = subprocess.run([interpreter, init_script_path], check=True)
+      if result.returncode != 0:
+        Logger.instance(LOG_ID).error(f"Failed to execute {init_script_path} for {service_name}")
+        sys.exit(1)
+
+      # Absolute path to workflow .configure script
+      # stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
+      configure_script_path = os.path.join(self.workflow_templates_root_dir, self.workflow_name, '.configure')
+
+      # Execute the script
+      result = subprocess.run([interpreter, configure_script_path], check=True)
+      if result.returncode != 0:
+        Logger.instance(LOG_ID).error(f"Failed to execute {configure_script_path} for {service_name}")
+        sys.exit(1)
+
+    # Change directory back to cwd
+    os.chdir(cwd)
+
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
+
+    self.exec_service_step(options.get('print_service_header'))
     
     # Check if PID file already exists
     if os.path.exists(self.pid_file_path):
