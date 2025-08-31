@@ -12,4 +12,4 @@ class ServiceDockerCompose():
 
     data_dir_path = DataDir.instance(app_dir_path).path
     self.docker_compose_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{target_workflow_name}/docker-compose.yml"
-    self.init_script_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{target_workflow_name}/bin/init"
+    self.init_script_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{target_workflow_name}/init"

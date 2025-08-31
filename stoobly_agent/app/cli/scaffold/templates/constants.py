@@ -12,14 +12,14 @@ CORE_MOCK_WORKFLOW = 'mock'
 CORE_RECORD_WORKFLOW = 'record'
 
 CUSTOM_BUILD = os.path.join('bin', 'build')
-CUSTOM_CONFIGURE = os.path.join('bin', 'configure')
+CUSTOM_CONFIGURE = 'configure'
 CUSTOM_DOCKER_COMPOSE = 'docker-compose.yml'
-CUSTOM_INIT = os.path.join('bin', 'init')
+CUSTOM_INIT = 'init'
 CUSTOM_FIXTURES = 'fixtures.yml'
 CUSTOM_LIFECYCLE_HOOKS = os.path.join('lifecycle_hooks.py')
 CUSTOM_PUBLIC_GITIGNORE = os.path.join('public', '.gitignore')
-MAINTAINED_CONFIGURE = os.path.join('bin', '.configure')
-MAINTAINED_INIT = os.path.join('bin', '.init')
+MAINTAINED_CONFIGURE = '.configure'
+MAINTAINED_INIT = '.init'
 
 MOCK_WORKFLOW_MAINTAINED_FILES = [
   MAINTAINED_CONFIGURE,

@@ -131,7 +131,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
       self.__with_detached_volumes(volumes)
 
     self.with_service(self.init_base, {
-      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'bin/init'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'init'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
@@ -152,7 +152,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
       self.__with_detached_volumes(volumes)
 
     base = {
-      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'bin/configure'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'configure'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),

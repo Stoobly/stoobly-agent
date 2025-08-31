@@ -9,5 +9,5 @@ stoobly-agent intercept configure --mode record --policy all
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then
-  "$entrypoint"
+  ./"$entrypoint"
 fi
