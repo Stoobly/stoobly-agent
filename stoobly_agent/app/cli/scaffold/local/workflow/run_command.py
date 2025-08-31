@@ -73,7 +73,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       return False
 
   def exec_service_step(self, print_service_header: callable):
-    interpreter = 'echo'
+    interpreter = 'bash'
 
     if not shutil.which(interpreter):
       Logger.instance(LOG_ID).error("bash is not available")
@@ -93,24 +93,30 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       os.chdir(workflow_path)
 
       # Absolute path to workflow .init script
-      # stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
-      init_script_path = os.path.join(self.workflow_templates_root_dir, self.workflow_name, '.init')
+      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
+      init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
 
-      # Execute the script
-      result = subprocess.run([interpreter, init_script_path], check=True)
-      if result.returncode != 0:
-        Logger.instance(LOG_ID).error(f"Failed to execute {init_script_path} for {service_name}")
-        sys.exit(1)
+      # Write the command to self.script_path
+      if self.script:
+        print(f"{interpreter} {init_script_path}", file=self.script)
+      else:
+        result = subprocess.run([interpreter, init_script_path], check=True)
+        if result.returncode != 0:
+          Logger.instance(LOG_ID).error(f"Failed to execute {init_script_path} for {service_name}")
+          sys.exit(1)
 
       # Absolute path to workflow .configure script
-      # stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
-      configure_script_path = os.path.join(self.workflow_templates_root_dir, self.workflow_name, '.configure')
+      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
+      configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
 
-      # Execute the script
-      result = subprocess.run([interpreter, configure_script_path], check=True)
-      if result.returncode != 0:
-        Logger.instance(LOG_ID).error(f"Failed to execute {configure_script_path} for {service_name}")
-        sys.exit(1)
+      # Write the command to self.script_path
+      if self.script:
+        print(f"{interpreter} {configure_script_path}", file=self.script)
+      else:
+        result = subprocess.run([interpreter, configure_script_path], check=True)
+        if result.returncode != 0:
+          Logger.instance(LOG_ID).error(f"Failed to execute {configure_script_path} for {service_name}")
+          sys.exit(1)
 
     # Change directory back to cwd
     os.chdir(cwd)
@@ -133,7 +139,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
         os.remove(self.pid_file_path)
     
     # Build the stoobly-agent run command
-    command = ['poetry', 'run', '--directory', '/home/jvlarble/github/stoobly-agent.2' ,'stoobly-agent', 'run']
+    command = ['stoobly-agent', 'run']
 
     # Add log level if provided
     if options.get('log_level'):
@@ -186,7 +192,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Run in foreground
       if self.script:
-        print(f"# Start {self.workflow_name} in foreground", file=self.script)
         print(command_str, file=self.script)
       else:
         # Execute directly
