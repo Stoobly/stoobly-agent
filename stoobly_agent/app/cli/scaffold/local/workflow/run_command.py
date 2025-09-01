@@ -89,18 +89,22 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
       workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
 
-      # Change directory to workflow path
-      os.chdir(workflow_path)
-
       # Absolute path to workflow .init script
       # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
       init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
 
+      # Change directory to workflow path
+      command = [interpreter, init_script_path, 'init']
+      if self.script:
+        command = [f"cd {workflow_path};"] + command
+      else:
+        os.chdir(workflow_path)
+
       # Write the command to self.script_path
       if self.script:
-        print(f"{interpreter} {init_script_path}", file=self.script)
+        print(' '.join(command), file=self.script)
       else:
-        result = subprocess.run([interpreter, init_script_path], check=True)
+        result = subprocess.run(command, check=True)
         if result.returncode != 0:
           Logger.instance(LOG_ID).error(f"Failed to execute {init_script_path} for {service_name}")
           sys.exit(1)
@@ -109,17 +113,27 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
       configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
 
+      # Change directory to workflow path
+      command = [f"cd {workflow_path};"]
+      if self.script:
+        command = [f"cd {workflow_path};"] + command
+      else:
+        os.chdir(workflow_path)
+
       # Write the command to self.script_path
       if self.script:
-        print(f"{interpreter} {configure_script_path}", file=self.script)
+        print(' '.join(command), file=self.script)
       else:
-        result = subprocess.run([interpreter, configure_script_path], check=True)
+        result = subprocess.run(command, check=True)
         if result.returncode != 0:
           Logger.instance(LOG_ID).error(f"Failed to execute {configure_script_path} for {service_name}")
           sys.exit(1)
 
     # Change directory back to cwd
-    os.chdir(cwd)
+    if self.script:
+      print(f"cd {cwd}", file=self.script)
+    else:
+      os.chdir(cwd)
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
