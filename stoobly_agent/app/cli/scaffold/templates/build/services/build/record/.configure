@@ -3,6 +3,10 @@
 # This file was automatically generated. DO NOT EDIT.
 # Any changes made to this file will be overwritten.
 
+if [ -f .env ]; then
+  set -a; . ./.env; set +a;
+fi
+
 echo "Configuring intercept..."
 stoobly-agent intercept configure --mode record --policy all
 

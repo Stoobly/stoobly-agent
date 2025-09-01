@@ -3,6 +3,10 @@
 # This file was automatically generated. DO NOT EDIT.
 # Any changes made to this file will be overwritten.
 
+if [ -f .env ]; then
+  set -a; . ./.env; set +a;
+fi
+
 if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ]; then
   stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
 fi

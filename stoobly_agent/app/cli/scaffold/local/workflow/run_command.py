@@ -72,12 +72,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_step(self, print_service_header: callable):
-    interpreter = 'bash'
-
-    if not shutil.which(interpreter):
-      Logger.instance(LOG_ID).error("bash is not available")
-      sys.exit(1)
+  def exec_service_step(self, **options: WorkflowUpOptions):
+    set_env = 'set -a; . ./.env; set +a;'
+    print_service_header = options.get('print_service_header')
 
     # Save current working directory
     cwd = os.getcwd()
@@ -87,6 +84,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       if print_service_header:
         print_service_header(service_name)
 
+      self.__write_service_env(service_name, **options)
+
       workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
 
       # Absolute path to workflow .init script
@@ -94,7 +93,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
 
       # Change directory to workflow path
-      command = [interpreter, init_script_path, 'init']
+      command = [set_env, init_script_path, 'init']
       if self.script:
         command = [f"cd {workflow_path};"] + command
       else:
@@ -114,7 +113,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
 
       # Change directory to workflow path
-      command = [f"cd {workflow_path};"]
+      command = [set_env, configure_script_path, 'configure']
       if self.script:
         command = [f"cd {workflow_path};"] + command
       else:
@@ -139,7 +138,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
 
-    self.exec_service_step(options.get('print_service_header'))
+    self.exec_service_step(**options)
     
     # Check if PID file already exists
     if os.path.exists(self.pid_file_path):
@@ -310,3 +309,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       return f"running (PID: {pid})"
     else:
       return "not running (stale PID file)"
+
+  def __write_service_env(self, service_name: str, **options: WorkflowUpOptions):
+      config = { **options }
+      config['service_name'] = service_name
+      command = LocalWorkflowRunCommand(self.app, **config)
+      command.write_env(**options)
