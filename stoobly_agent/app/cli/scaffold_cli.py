@@ -3,12 +3,8 @@ import os
 import pdb
 import sys
 
-from io import TextIOWrapper
-from typing import List
-from urllib.parse import urlparse
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
-from stoobly_agent.app.cli.helpers.shell import exec_stream
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -375,19 +371,17 @@ def down(**kwargs):
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services, 
       script=script,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services, 
       script=script,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
   
   # Execute the workflow down
@@ -395,8 +389,6 @@ def down(**kwargs):
     **command_args,
     **kwargs
   )
-
-  __run_script(script, kwargs['dry_run'])
 
   # Options are no longer valid
   if kwargs['containerized'] and os.path.exists(data_dir.mitmproxy_options_json_path):
@@ -440,19 +432,17 @@ def logs(**kwargs):
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services,
       script=script,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services,
       script=script,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
     command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
 
@@ -462,15 +452,13 @@ def logs(**kwargs):
     **kwargs
   )
 
-  __run_script(script, kwargs['dry_run'])
-
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
-@click.option('--detached', is_flag=True, help='If set, will not run the highest priority service in the foreground.')
+@click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -513,20 +501,17 @@ def up(**kwargs):
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services, 
       script=script,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
-      namespace=kwargs['namespace'],
       services=services, 
       script=script,
-      current_working_dir=current_working_dir,
-      workflow_name=kwargs['workflow_name']
+      **kwargs
     )
   
   # Execute the workflow
@@ -534,8 +519,6 @@ def up(**kwargs):
     **command_args,
     **kwargs
   )
-
-  __run_script(script, kwargs['dry_run'])
 
 @workflow.command(
   help="Validate a scaffold workflow"
@@ -701,18 +684,6 @@ def __get_services(app: App, **kwargs):
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
-
-def __run_script(script: TextIOWrapper, dry_run = False):
-  script.close()
-
-  with open(script.name, 'r') as fp:
-    for line in fp:
-      if not dry_run:
-        status_code = exec_stream(line.strip())
-        if status_code != 0:
-          sys.exit(status_code)
-      else:
-        print(line.strip())
 
 def __scaffold_build(app, **kwargs):
   command = ServiceCreateCommand(app, **kwargs)

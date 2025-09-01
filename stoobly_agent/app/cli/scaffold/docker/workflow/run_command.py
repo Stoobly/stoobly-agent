@@ -1,16 +1,17 @@
 import os
 import pdb
-
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
-from stoobly_agent.lib.logger import Logger
+import subprocess
+import sys
 
 from typing import List
 
-from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
+from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
+from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'DockerWorkflowRunCommand'
 
@@ -26,13 +27,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.services = services or []
     self.script = script
 
-  def setup_docker_environment(self, services, no_publish=False, containerized=False, user_id=None, verbose=False):
+  def exec_setup(self, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
     init_commands = []
-    
-    # Configure gateway ports dynamically based on workflow run
-    workflow = Workflow(self.workflow_name, self.app)
-    configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(services), no_publish)
     
     # Create base image if needed
     if not containerized:
@@ -43,14 +40,12 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     init_commands.append(self.create_egress_network())
     init_commands.append(self.create_ingress_network())
     
-    # Write nameservers if not running in container
-    if not containerized:
-      self.write_nameservers()
+    for command in init_commands:
+      self.exec(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
-    return ' && '.join(init_commands) if init_commands else ''
-
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
+    no_publish = options.get('no_publish', False)
     print_service_header = options.get('print_service_header')
     
     # Create individual service commands
@@ -60,20 +55,25 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       config['service_name'] = service
       command = DockerWorkflowRunCommand(self.app, **config)
       commands.append(command)
+
+    if not commands:
+      return
+
+    # Configure gateway ports dynamically based on workflow run
+    workflow = Workflow(self.workflow_name, self.app)
+    configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(self.services), no_publish)
+
+    # Write nameservers if not running in container
+    if not options.get('containerized'):
+      self.write_nameservers()
     
     # Setup Docker environment
-    if commands:
-      init_command = self.setup_docker_environment(
-        services=self.services,
-        no_publish=options.get('no_publish', False),
-        containerized=options.get('containerized', False),
-        user_id=options.get('user_id'),
-        verbose=options.get('verbose', False)
-      )
-      
-      if init_command and self.script:
-        print(init_command, file=self.script)
-    
+    self.exec_setup(
+      containerized=options.get('containerized', False),
+      user_id=options.get('user_id'),
+      verbose=options.get('verbose', False)
+    )
+
     # Sort commands by priority and execute
     commands = sorted(commands, key=lambda command: command.service_config.priority)
     for index, command in enumerate(commands):
@@ -95,7 +95,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       )
       
       if exec_command and self.script:
-        print(exec_command, file=self.script)
+        self.exec(exec_command)
 
   def down(self, **options: WorkflowDownOptions):
     """Execute the complete Docker workflow down process."""
@@ -130,7 +130,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       )
       
       if exec_command and self.script:
-        print(exec_command, file=self.script)
+        self.exec(exec_command)
     
     # After services are stopped, their network needs to be removed
     if commands:
@@ -138,16 +138,16 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       
       if options.get('rmi'):
         remove_image_command = command.remove_image(options.get('user_id'))
-        if remove_image_command and self.script:
-          print(remove_image_command, file=self.script)
+        if remove_image_command:
+          self.exec(remove_image_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
       
       remove_egress_network_command = command.remove_egress_network()
-      if remove_egress_network_command and self.script:
-        print(remove_egress_network_command, file=self.script)
+      if remove_egress_network_command:
+        self.exec(remove_egress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
       
       remove_ingress_network_command = command.remove_ingress_network()
-      if remove_ingress_network_command and self.script:
-        print(remove_ingress_network_command, file=self.script)
+      if remove_ingress_network_command:
+        self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
@@ -192,7 +192,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       
       for shell_command in shell_commands:
         if self.script:
-          print(shell_command, file=self.script)
+          self.exec(shell_command)
 
   def _build_log_commands(self, command, containers=None, follow=False, namespace=None):
     """Build Docker log commands for a service."""
@@ -357,3 +357,15 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.write_env(**options)
 
     return ' '.join(command)
+
+  def exec(self, command: List[str], **options):
+    if self.script:
+      print(command, file=self.script)
+
+    if self.dry_run:
+      print(command)
+    else:
+      result = subprocess.run(command, shell=True, **options)
+      if result.returncode != 0:
+        Logger.instance(LOG_ID).error(command)
+        sys.exit(1)

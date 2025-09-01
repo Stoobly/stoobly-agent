@@ -29,6 +29,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
+    self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.__network = f"{self.__namespace}.{app.network}"
     self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
@@ -66,6 +67,10 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def dotenv_path(self):
     return self.__workflow_namespace.dotenv_path
+
+  @property
+  def dry_run(self):
+    return self.__dry_run
 
   @property
   def nameservers(self):

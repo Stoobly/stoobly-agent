@@ -1,11 +1,10 @@
 import os
 import pdb
-import shutil
 import signal
 import subprocess
 import sys
 
-from typing import Optional
+from typing import Optional, List
 
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
@@ -38,6 +37,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if not self._pid_file_path:
       self._pid_file_path = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.pid")
     return self._pid_file_path
+
+  def workflow_service_commands(self, **options: WorkflowUpOptions):
+    commands = list(map(lambda service_name: LocalWorkflowRunCommand(self.app, service_name=service_name, **options), self.services))
+    commands.sort(key=lambda command: command.service_config.priority)
+    return commands
 
   def _write_pid(self, pid: int):
     """Write the process PID to the PID file."""
@@ -72,73 +76,55 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_step(self, **options: WorkflowUpOptions):
+  def exec_service_script(self, service_name: str, step_script_path: str, args: List[str]):
     set_env = 'set -a; . ./.env; set +a;'
-    print_service_header = options.get('print_service_header')
+    workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
 
-    # Save current working directory
-    cwd = os.getcwd()
-
-    # iterate through each service in the workflow
-    for service_name in self.services:
-      if print_service_header:
-        print_service_header(service_name)
-
-      self.__write_service_env(service_name, **options)
-
-      workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
-
-      # Absolute path to workflow .init script
-      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
-      init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
-
-      # Change directory to workflow path
-      command = [set_env, init_script_path, 'init']
-      if self.script:
-        command = [f"cd {workflow_path};"] + command
-      else:
-        os.chdir(workflow_path)
-
-      # Write the command to self.script_path
-      if self.script:
-        print(' '.join(command), file=self.script)
-      else:
-        result = subprocess.run(command, check=True)
-        if result.returncode != 0:
-          Logger.instance(LOG_ID).error(f"Failed to execute {init_script_path} for {service_name}")
-          sys.exit(1)
-
-      # Absolute path to workflow .configure script
-      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
-      configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
-
-      # Change directory to workflow path
-      command = [set_env, configure_script_path, 'configure']
-      if self.script:
-        command = [f"cd {workflow_path};"] + command
-      else:
-        os.chdir(workflow_path)
-
-      # Write the command to self.script_path
-      if self.script:
-        print(' '.join(command), file=self.script)
-      else:
-        result = subprocess.run(command, check=True)
-        if result.returncode != 0:
-          Logger.instance(LOG_ID).error(f"Failed to execute {configure_script_path} for {service_name}")
-          sys.exit(1)
-
-    # Change directory back to cwd
+    # Change directory to workflow path
+    command = [set_env, step_script_path] + args
     if self.script:
-      print(f"cd {cwd}", file=self.script)
+      command = [f"cd \"{workflow_path}\";"] + command
+
+    # Write the command to self.script_path
+    if self.script:
+      print(' '.join(command), file=self.script)
+
+    if self.dry_run:
+      print(' '.join(command))
     else:
-      os.chdir(cwd)
+      result = subprocess.run(['sh', '-c', ' '.join(command)], cwd=workflow_path)
+      if result.returncode != 0:
+        Logger.instance(LOG_ID).error(result.stderr)
+        sys.exit(1)
+
+  def service_up(self, **options: WorkflowUpOptions):
+    print_service_header = options.get('print_service_header')
+    service_name = self.service_name
+
+    if print_service_header:
+      print_service_header(service_name)
+
+    self.write_env(**options)
+
+    # Absolute path to workflow .init script
+    # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
+    init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
+    self.exec_service_script(service_name, init_script_path, ['init'])
+
+    # Absolute path to workflow .configure script
+    # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
+    configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
+    self.exec_service_script(service_name, configure_script_path, ['configure'])
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
 
-    self.exec_service_step(**options)
+    commands = self.workflow_service_commands(**options)
+
+    # iterate through each service in the workflow
+    for command in commands:
+      command.service_up(**options)
     
     # Check if PID file already exists
     if os.path.exists(self.pid_file_path):
@@ -309,9 +295,3 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       return f"running (PID: {pid})"
     else:
       return "not running (stale PID file)"
-
-  def __write_service_env(self, service_name: str, **options: WorkflowUpOptions):
-      config = { **options }
-      config['service_name'] = service_name
-      command = LocalWorkflowRunCommand(self.app, **config)
-      command.write_env(**options)
