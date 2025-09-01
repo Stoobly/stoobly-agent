@@ -16,5 +16,5 @@ stoobly-agent intercept enable
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then
-  "$entrypoint"
+  ./"$entrypoint"
 fi
