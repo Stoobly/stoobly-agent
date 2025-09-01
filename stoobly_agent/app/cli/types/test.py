@@ -15,7 +15,7 @@ class TestOptions(TypedDict):
   lifecycle_hooks_path: str
   log_level: logger.LogLevel
   output_level: test_output_level.TestOutputLevel
-  public_directory_path: str
+  public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix (e.g., "example.com:/path/to/files,/other/path")
   remote_project_key: str
   report_key: str
   response_fixtures_path: str

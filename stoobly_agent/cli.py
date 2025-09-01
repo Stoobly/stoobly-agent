@@ -119,7 +119,7 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
-@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form [<ORIGIN>:]<FOLDER-PATH>.')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
@@ -148,7 +148,12 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
 
     if kwargs.get('public_directory_path'):
-      os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = kwargs['public_directory_path']
+      # Join multiple paths with commas
+      public_dirs = kwargs['public_directory_path']
+      if isinstance(public_dirs, (list, tuple)):
+        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = ','.join(public_dirs)
+      else:
+        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = public_dirs
 
     if kwargs.get('response_fixtures_path'):
       os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
@@ -221,7 +226,7 @@ def run(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form [<ORIGIN>:]<FOLDER-PATH>.')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')

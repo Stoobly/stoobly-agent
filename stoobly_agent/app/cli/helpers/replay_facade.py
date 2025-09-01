@@ -17,7 +17,7 @@ class ReplayCliOptions(TypedDict):
   lifecycle_hooks_path: str
   on_response: Callable
   project_key: str
-  public_directory_path: str
+  public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix
   record: bool
   response_fixtures_path: str
   scenario_key: str

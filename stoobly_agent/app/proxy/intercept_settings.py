@@ -110,11 +110,12 @@ class InterceptSettings:
 
   @property
   def public_directory_path(self):
+    """Get raw public directory paths string from environment or headers."""
     if self.__headers and custom_headers.PUBLIC_DIRECTORY_PATH in self.__headers:
       return self.__headers[custom_headers.PUBLIC_DIRECTORY_PATH]
-
-    if os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
-      return os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] 
+    elif os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
+      return os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH]
+    return None
 
   @property
   def remote_project_key(self):

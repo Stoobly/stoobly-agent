@@ -126,7 +126,7 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
         intercept_settings = context.intercept_settings
         fixture = eval_fixtures(
             request,
-            public_directory_path=intercept_settings.public_directory_path,
+            public_directory_paths=intercept_settings.public_directory_path,
             response_fixtures=intercept_settings.response_fixtures
         )
         if fixture:

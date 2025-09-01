@@ -27,7 +27,7 @@ class ReplayRequestOptions(TypedDict):
   after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
   project_key: Union[str, None]
   proxies: dict
-  public_directory_path: str
+  public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix
   remote_project_key: str
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 

@@ -7,20 +7,35 @@ from io import BytesIO
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
 from requests.structures import CaseInsensitiveDict
-from typing import Optional, Union
+from typing import List, Optional, Union
+from urllib.parse import urlparse
 
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
-from .types import Fixtures
+from .types import Fixtures, MockOptions, PublicDirectoryPath
 
 LOG_ID = 'Fixture'
 
-class Options():
-  public_directory_path: str
-  response_fixtures: Fixtures
+def __parse_public_directory_paths(raw_paths: str) -> List[PublicDirectoryPath]:
+  """Parse public directory paths from comma-separated string."""
+  if not raw_paths:
+    return []
+  
+  paths = []
+  for path_item in raw_paths.split(','):
+    path_item = path_item.strip()
+    if ':' in path_item:
+      # Format: origin:path
+      origin, path = path_item.split(':', 1)
+      paths.append(PublicDirectoryPath(origin=origin.strip(), path=path.strip()))
+    else:
+      # Format: path (no origin specified)
+      paths.append(PublicDirectoryPath(origin=None, path=path_item))
+  
+  return paths
 
-def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Response, None]:
+def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Response, None]:
   fixture_path = request.headers.get(MOCK_FIXTURE_PATH)
   headers = CaseInsensitiveDict()
   status_code = 200
@@ -33,20 +48,39 @@ def eval_fixtures(request: MitmproxyRequest, **options: Options) -> Union[Respon
     fixture: dict = __eval_response_fixtures(request, response_fixtures)
 
     if not fixture:
-      public_directory_path = options.get('public_directory_path')
-
-      if not public_directory_path:
+      raw_paths = options.get('public_directory_path')
+      public_directory_paths = __parse_public_directory_paths(raw_paths)
+      
+      if not public_directory_paths:
         return
 
       request_path = 'index' if request.path == '/' else request.path
-      _fixture_path = os.path.join(public_directory_path, request_path.lstrip('/'))
-      if request.headers.get('accept'):
-        fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
-
+      # Extract origin from request URL (e.g., https://example.com/path -> example.com)
+      parsed_url = urlparse(request.url)
+      request_origin = parsed_url.netloc
+      
+      # Try to find a matching file in the public directory paths
+      fixture_path = None
+      for dir_path_config in public_directory_paths:
+        # Check if origin matches (if origin is specified)
+        if dir_path_config.get('origin') and request_origin:
+          if not __origin_matches(dir_path_config['origin'], request_origin):
+            continue
+        
+        # Try to find the file in this directory
+        _fixture_path = os.path.join(dir_path_config['path'], request_path.lstrip('/'))
+        if request.headers.get('accept'):
+          fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
+        
+        if not fixture_path:
+          fixture_path = _fixture_path
+        
+        if os.path.isfile(fixture_path):
+          break
+        else:
+          fixture_path = None
+      
       if not fixture_path:
-        fixture_path = _fixture_path
-
-      if not os.path.isfile(fixture_path):
         return
     else:
       fixture_path = fixture.get('path')
@@ -171,3 +205,23 @@ def __parse_accept_header(accept_header):
 
     # Sort by quality factor in descending order
     return [content_type for content_type, _ in sorted(types, key=lambda x: x[1], reverse=True)]
+
+def __origin_matches(pattern: str, request_origin: str) -> bool:
+    """Check if the request origin matches the specified pattern using regex."""
+    # Remove protocol if present
+    pattern = pattern.replace('https://', '').replace('http://', '')
+    request_origin = request_origin.replace('https://', '').replace('http://', '')
+    
+    # Convert pattern to regex
+    # Escape special regex characters except * and ?
+    regex_pattern = re.escape(pattern)
+    
+    # Convert wildcards to regex equivalents
+    regex_pattern = regex_pattern.replace('\\*', '.*')  # * matches any characters
+    regex_pattern = regex_pattern.replace('\\?', '.')   # ? matches any single character
+    
+    # Anchor the pattern to match the entire string
+    regex_pattern = f'^{regex_pattern}$'
+    
+    # Perform regex match
+    return bool(re.match(regex_pattern, request_origin))
