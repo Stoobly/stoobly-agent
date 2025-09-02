@@ -119,8 +119,8 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
-@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form [<ORIGIN>:]<FOLDER-PATH>.')
-@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
@@ -156,7 +156,10 @@ def run(**kwargs):
         os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = public_dirs
 
     if kwargs.get('response_fixtures_path'):
-      os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
+      response_fixtures_paths = kwargs.get('response_fixtures_path', ())
+      if response_fixtures_paths:
+        response_fixtures = ','.join(response_fixtures_paths)
+        os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = response_fixtures
 
     if not os.getenv(env_vars.LOG_LEVEL):
       os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -226,8 +229,8 @@ def run(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form [<ORIGIN>:]<FOLDER-PATH>.')
-@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
