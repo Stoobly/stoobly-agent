@@ -5,7 +5,7 @@ import yaml
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
-from .constants import BIN_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DOTENV_FILE, PUBLIC_FOLDER_NAME
+from .constants import BIN_FOLDER_NAME, COMPOSE_TEMPLATE, CONFIG_FILE, DOTENV_FILE, FIXTURES_FILE_NAME, PUBLIC_FOLDER_NAME
 from .docker.constants import DOCKER_COMPOSE_CUSTOM
 from .service_command import ServiceCommand
 from .workflow_config import WorkflowConfig
@@ -93,6 +93,10 @@ class WorkflowCommand(ServiceCommand):
   @property
   def public_dir_path(self):
     return os.path.join(self.workflow_path, PUBLIC_FOLDER_NAME)
+
+  @property
+  def response_fixtures_path(self):
+    return os.path.join(self.workflow_path, FIXTURES_FILE_NAME)
 
   @property
   def workflow_config(self):

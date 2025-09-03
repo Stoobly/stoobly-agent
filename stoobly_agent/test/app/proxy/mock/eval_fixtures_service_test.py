@@ -957,8 +957,6 @@ class TestEvalFixturesService():
     def tmp_dir_path(self):
       return DataDir.instance().tmp_dir_path
 
-
-
     def test_full_url_origin_parsing_response_fixtures(self, settings: Settings, tmp_dir_path: str):
       """Test parsing of full URL origins for response fixtures."""
       # Create test fixture files

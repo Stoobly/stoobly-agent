@@ -209,6 +209,9 @@ class ServiceConfig(Config):
 
   @property
   def url(self):
+    if not self.hostname:
+      return ''
+
     _url = f"{self.scheme}://{self.hostname}"
 
     if not self.port:

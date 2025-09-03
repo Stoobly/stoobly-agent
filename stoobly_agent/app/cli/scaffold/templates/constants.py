@@ -1,5 +1,7 @@
 import os
 
+from stoobly_agent.app.cli.scaffold.constants import FIXTURES_FILE_NAME, PUBLIC_FOLDER_NAME
+
 CORE_BUILD_SERVICE_NAME = 'build'
 CORE_ENTRYPOINT_SERVICE_NAME = 'entrypoint'
 CORE_GATEWAY_SERVICE_NAME = 'gateway'
@@ -15,9 +17,9 @@ CUSTOM_BUILD = os.path.join('bin', 'build')
 CUSTOM_CONFIGURE = 'configure'
 CUSTOM_DOCKER_COMPOSE = 'docker-compose.yml'
 CUSTOM_INIT = 'init'
-CUSTOM_FIXTURES = 'fixtures.yml'
+CUSTOM_FIXTURES = FIXTURES_FILE_NAME
 CUSTOM_LIFECYCLE_HOOKS = os.path.join('lifecycle_hooks.py')
-CUSTOM_PUBLIC_GITIGNORE = os.path.join('public', '.gitignore')
+CUSTOM_PUBLIC_GITIGNORE = os.path.join(PUBLIC_FOLDER_NAME, '.gitignore')
 MAINTAINED_CONFIGURE = '.configure'
 MAINTAINED_INIT = '.init'
 

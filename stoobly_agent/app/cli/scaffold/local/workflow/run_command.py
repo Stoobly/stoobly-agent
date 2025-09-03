@@ -77,11 +77,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       return False
 
   def exec_service_script(self, service_name: str, step_script_path: str, args: List[str]):
-    set_env = 'set -a; . ./.env; set +a;'
     workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
 
     # Change directory to workflow path
-    command = [set_env, step_script_path] + args
+    command = [step_script_path] + args
     if self.script:
       command = [f"cd \"{workflow_path}\";"] + command
 
@@ -123,8 +122,20 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     commands = self.workflow_service_commands(**options)
 
     # iterate through each service in the workflow
+    public_directory_paths = []
+    response_fixtures_paths = []
     for command in commands:
       command.service_up(**options)
+
+      url = command.service_config.url
+      if url:
+        if os.path.exists(command.public_dir_path):
+          public_directory_paths.append('--public-directory-path')
+          public_directory_paths.append(f"{command.public_dir_path}:{url}")
+
+        if os.path.exists(command.response_fixtures_path):
+          response_fixtures_paths.append('--response-fixtures-path')
+          response_fixtures_paths.append(f"{command.response_fixtures_path}:{url}")
     
     # Check if PID file already exists
     if os.path.exists(self.pid_file_path):
@@ -148,10 +159,16 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if detached:
       # Use the PID file path as the detached output file
       command.extend(['--detached', self.log_file_path])
+
+    if public_directory_paths:
+      command.extend(public_directory_paths)
+
+    if response_fixtures_paths:
+      command.extend(response_fixtures_paths)
     
     # Convert command to string
     command_str = ' '.join(command)
-    
+
     if detached:
       # Run in background using the main run command's --detached option
       if self.script:
@@ -163,6 +180,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
         ]
         for line in script_lines:
           print(line, file=self.script)
+
+      if self.dry_run:
+        print(command_str)
       else:
         # Execute directly
         try:
@@ -181,7 +201,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           self._write_pid(pid)
           
           Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
-          
         except subprocess.CalledProcessError as e:
           Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
           return None
@@ -192,6 +211,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # Run in foreground
       if self.script:
         print(command_str, file=self.script)
+
+      if self.dry_run:
+        print(command_str)
       else:
         # Execute directly
         try:
