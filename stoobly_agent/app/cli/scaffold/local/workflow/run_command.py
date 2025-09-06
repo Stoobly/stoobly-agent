@@ -239,17 +239,16 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     
     # Kill the process
     if self.script:
-      print(f"# Stop {self.workflow_name} (PID: {pid})", file=self.script)
-      print(f"kill {pid} || true", file=self.script)
-      print("sleep 1", file=self.script)
-      print(f"kill -0 {pid} 2>/dev/null && kill {pid} || true", file=self.script)
-      print(f"rm -f {self.pid_file_path}", file=self.script)
+      self.__dry_run_down(pid, self.script)
+
+    if self.dry_run:
+      self.__dry_run_down(pid, sys.stdout)
     else:
       try:
         # Try graceful shutdown first with SIGTERM
         Logger.instance(LOG_ID).info(f"Sending SIGTERM to process {pid} for {self.workflow_name}")
         self._kill_process(pid, signal.SIGTERM)
-        
+ 
         # Wait a bit for graceful shutdown
         import time
         time.sleep(2)
@@ -293,11 +292,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Build log command
     log_file = f"{self.log_file_path}"
     if self.script:
-      print(f"# Show logs for {self.workflow_name}", file=self.script)
-      if follow:
-        print(f"tail -f {log_file}", file=self.script)
-      else:
-        print(f"cat {log_file}", file=self.script)
+      self.__dry_run_logs(log_file, self.script, follow)
+
+    if self.dry_run:
+      self.__dry_run_logs(log_file, sys.stdout, follow)
     else:
       try:
         if follow:
@@ -317,3 +315,17 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       return f"running (PID: {pid})"
     else:
       return "not running (stale PID file)"
+
+  def __dry_run_down(self, pid: int, output_file: str):
+    print(f"# Stop {self.workflow_name} (PID: {pid})", file=output_file)
+    print(f"kill {pid} || true", file=output_file)
+    print("sleep 1", file=output_file)
+    print(f"kill -0 {pid} 2>/dev/null && kill {pid} || true", file=output_file)
+    print(f"rm -f {self.pid_file_path}", file=output_file)
+
+  def __dry_run_logs(self, log_file: str, output_file: str, follow: bool):
+    print(f"# Show logs for {self.workflow_name}", file=output_file)
+    if follow:
+      print(f"tail -f {log_file}", file=output_file)
+    else:
+      print(f"cat {log_file}", file=output_file)
