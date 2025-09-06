@@ -10,7 +10,7 @@ from .helpers.handle_config_update_service import handle_intercept_active_update
 
 settings: Settings = Settings.instance()
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
+mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
 
 if settings.cli.features.remote:
     mode_options.append(mode.TEST)

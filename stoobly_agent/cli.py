@@ -9,8 +9,10 @@ from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
+from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
+from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
@@ -101,7 +103,7 @@ def init(**kwargs):
 ''')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
-@click.option('--intercept-mode', help='Set intercept mode.')
+@click.option('--intercept-mode', type=click.Choice(mode_options), help='Set intercept mode.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')

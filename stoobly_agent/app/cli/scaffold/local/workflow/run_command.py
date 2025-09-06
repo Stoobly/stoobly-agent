@@ -125,8 +125,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     public_directory_paths = []
     response_fixtures_paths = []
     for command in commands:
-      command.service_up(**options)
-
       url = command.service_config.url
       if url:
         if os.path.exists(command.public_dir_path):
@@ -155,10 +153,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if options.get('log_level'):
       command.extend(['--log-level', options['log_level']])
     
-    # Add detached mode if requested
-    if detached:
-      # Use the PID file path as the detached output file
-      command.extend(['--detached', self.log_file_path])
+    # Use the PID file path as the detached output file
+    command.extend(['--detached', self.log_file_path])
 
     if public_directory_paths:
       command.extend(public_directory_paths)
@@ -169,58 +165,47 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Convert command to string
     command_str = ' '.join(command)
 
-    if detached:
-      # Run in background using the main run command's --detached option
-      if self.script:
-        # Write to script for detached execution
-        script_lines = [
-          f"# Start {self.workflow_name} in background using --detached",
-          f"{command_str} > {self.pid_file_path}",
-          f"echo \"Started {self.workflow_name} with PID: $(cat {self.pid_file_path})\""
-        ]
-        for line in script_lines:
-          print(line, file=self.script)
+    # Run in background using the main run command's --detached option
+    if self.script:
+      # Write to script for detached execution
+      script_lines = [
+        f"# Start {self.workflow_name} in background using --detached",
+        f"{command_str} > {self.pid_file_path}",
+        f"echo \"Started {self.workflow_name} with PID: $(cat {self.pid_file_path})\""
+      ]
+      for line in script_lines:
+        print(line, file=self.script)
 
-      if self.dry_run:
-        print(command_str)
-      else:
-        # Execute directly
-        try:
-          # Run the command with --detached option
-          result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=True
-          )
-          
-          # The --detached option prints the PID to stdout
-          pid = int(result.stdout.strip())
-          
-          # Write PID to file
-          self._write_pid(pid)
-          
-          Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
-        except subprocess.CalledProcessError as e:
-          Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
-          return None
-        except ValueError as e:
-          Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
-          return None
+    if self.dry_run:
+      print(command_str)
     else:
-      # Run in foreground
-      if self.script:
-        print(command_str, file=self.script)
+      # Execute directly
+      try:
+        # Run the command with --detached option
+        result = subprocess.run(
+          command,
+          capture_output=True,
+          text=True,
+          check=True
+        )
+        
+        # The --detached option prints the PID to stdout
+        pid = int(result.stdout.strip())
+        
+        # Write PID to file
+        self._write_pid(pid)
+        
+        Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
+      except subprocess.CalledProcessError as e:
+        Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
+        return None
+      except ValueError as e:
+        Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
+        return None
 
-      if self.dry_run:
-        print(command_str)
-      else:
-        # Execute directly
-        try:
-          subprocess.run(command, check=True)
-        except subprocess.CalledProcessError as e:
-          Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
-          return None
+    for command in commands:
+      command.service_up(**options)
+
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
