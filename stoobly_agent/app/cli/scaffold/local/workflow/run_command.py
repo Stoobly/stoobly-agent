@@ -142,7 +142,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       pid = self._read_pid()
       if pid and self._is_process_running(pid):
         Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is already running with PID: {pid}")
-        Logger.instance(LOG_ID).error(f"Use 'stoobly-agent scaffold workflow down {self.workflow_name}' to stop it first")
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {self.workflow_name}` to stop it first")
         sys.exit(1)
       else:
         # PID file exists but process is not running, clean it up

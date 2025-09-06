@@ -48,6 +48,14 @@ def mkcert(**kwargs):
 )
 def install(**kwargs):
     ca_certs_dir_path = kwargs['ca_certs_dir_path']
+
+    ca_cert_install(ca_certs_dir_path)
+
+@ca_cert.command()
+def uninstall():
+    print("Not yet implemented. Stay tuned!")
+
+def ca_cert_install(ca_certs_dir_path: str):
     installer = CertificateAuthority(ca_certs_dir_path)
 
     try:
@@ -55,7 +63,3 @@ def install(**kwargs):
     except Exception as e:
         print(e, file=sys.stderr)
         sys.exit(1)
-
-@ca_cert.command()
-def uninstall():
-    print("Not yet implemented. Stay tuned!")

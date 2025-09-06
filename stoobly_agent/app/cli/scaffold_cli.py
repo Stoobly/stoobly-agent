@@ -4,6 +4,7 @@ import pdb
 import sys
 
 
+from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
@@ -484,13 +485,20 @@ def up(**kwargs):
 
   __with_namespace_defaults(kwargs)
 
+  # First time if folder does not exist or is empty
+  first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
+  if first_time and not containerized:
+    # If ca certs dir path does not exist, run ca-cert install
+    confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
+    if confirm == "y" or confirm == "Y":
+      ca_cert_install(app.ca_certs_dir_path)
+    else:
+      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
+      sys.exit(1)
+
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
-
-  if kwargs['mkcert']:
-    _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
-    __services_mkcert(_app, services)
 
   command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
@@ -506,6 +514,10 @@ def up(**kwargs):
       **kwargs
     )
   else:
+    if kwargs['mkcert']:
+      _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
+      __services_mkcert(_app, services)
+
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
@@ -513,6 +525,21 @@ def up(**kwargs):
       script=script,
       **kwargs
     )
+
+  if first_time and not containerized:
+    options = {}
+
+    if os.getcwd() != app_dir_path:
+      options['app_dir_path'] = app_dir_path
+
+    if kwargs['namespace'] != kwargs['workflow_name']:
+      options['namespace'] = kwargs['namespace']
+
+    options_str = ' '.join([f"--{key} {value}" for key, value in options.items()])
+    if options_str:
+      options_str = f" {options_str}"
+
+    print(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
   workflow_command.up(
