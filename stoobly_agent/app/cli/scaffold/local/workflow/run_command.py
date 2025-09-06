@@ -6,9 +6,10 @@ import sys
 
 from typing import Optional, List
 
-from stoobly_agent.lib.logger import Logger
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
+from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'LocalWorkflowRunCommand'
 
@@ -37,11 +38,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if not self._pid_file_path:
       self._pid_file_path = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.pid")
     return self._pid_file_path
-
-  def workflow_service_commands(self, **options: WorkflowUpOptions):
-    commands = list(map(lambda service_name: LocalWorkflowRunCommand(self.app, service_name=service_name, **options), self.services))
-    commands.sort(key=lambda command: command.service_config.priority)
-    return commands
 
   def _write_pid(self, pid: int):
     """Write the process PID to the PID file."""
@@ -93,27 +89,37 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       result = subprocess.run(['sh', '-c', ' '.join(command)], cwd=workflow_path)
       if result.returncode != 0:
-        Logger.instance(LOG_ID).error(result.stderr)
         sys.exit(1)
 
   def service_up(self, **options: WorkflowUpOptions):
     print_service_header = options.get('print_service_header')
     service_name = self.service_name
+    workflow_template = self.workflow_template
 
     if print_service_header:
       print_service_header(service_name)
 
     self.write_env(**options)
 
-    # Absolute path to workflow .init script
-    # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
-    init_script_path = os.path.join(self.workflow_templates_build_dir, '.init')
-    self.exec_service_script(service_name, init_script_path, ['init'])
+    # If service is build or entrypoint, use path in templates/build/services/SERVICE_NAME/.init
+    if service_name in [CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME]:
+      init_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_INIT)
+      configure_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_CONFIGURE)
+      run_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_RUN)
+    else:
+      # Absolute path to workflow .init script
+      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
+      init_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_INIT)
 
-    # Absolute path to workflow .configure script
-    # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
-    configure_script_path = os.path.join(self.workflow_templates_build_dir, '.configure')
-    self.exec_service_script(service_name, configure_script_path, ['configure'])
+      # Absolute path to workflow .configure script
+      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
+      configure_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_CONFIGURE)
+
+      run_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_RUN)
+
+    self.exec_service_script(service_name, init_script_path, [CUSTOM_INIT])
+    self.exec_service_script(service_name, configure_script_path, [CUSTOM_CONFIGURE])
+    self.exec_service_script(service_name, run_script_path, [CUSTOM_RUN])
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
@@ -145,70 +151,13 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       else:
         # PID file exists but process is not running, clean it up
         os.remove(self.pid_file_path)
-    
-    # Build the stoobly-agent run command
-    command = ['stoobly-agent', 'run']
-
-    # Add log level if provided
-    if options.get('log_level'):
-      command.extend(['--log-level', options['log_level']])
-    
-    # Use the PID file path as the detached output file
-    command.extend(['--detached', self.log_file_path])
-
-    command.extend(['--proxy-port', f"{self.app_config.proxy_port}"])
-    command.extend(['--ui-port', f"{self.app_config.ui_port}"])
-
-    if public_directory_paths:
-      command.extend(public_directory_paths)
-
-    if response_fixtures_paths:
-      command.extend(response_fixtures_paths)
-    
-    # Convert command to string
-    command_str = ' '.join(command)
-
-    # Run in background using the main run command's --detached option
-    if self.script:
-      # Write to script for detached execution
-      script_lines = [
-        f"# Start {self.workflow_name} in background using --detached",
-        f"{command_str} > {self.pid_file_path}",
-        f"echo \"Started {self.workflow_name} with PID: $(cat {self.pid_file_path})\""
-      ]
-      for line in script_lines:
-        print(line, file=self.script)
-
-    if self.dry_run:
-      print(command_str)
-    else:
-      # Execute directly
-      try:
-        # Run the command with --detached option
-        result = subprocess.run(
-          command,
-          capture_output=True,
-          text=True,
-          check=True
-        )
-        
-        # The --detached option prints the PID to stdout
-        pid = int(result.stdout.strip())
-        
-        # Write PID to file
-        self._write_pid(pid)
-        
-        Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
-      except subprocess.CalledProcessError as e:
-        Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
-        return None
-      except ValueError as e:
-        Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
-        return None
 
     for command in commands:
       command.service_up(**options)
 
+      # If second from last command, run up_command i.e. right before entrypoint
+      if command == commands[-2]:
+        self.__up_command(public_directory_paths, response_fixtures_paths, **options)
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
@@ -273,10 +222,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       Logger.instance(LOG_ID).warning(f"No PID file found for {self.workflow_name}")
       return
     
-    if not self._is_process_running(pid):
-      Logger.instance(LOG_ID).warning(f"Process {pid} for {self.workflow_name} is not running")
-      return
-    
     # Build log command
     log_file = f"{self.log_file_path}"
     if self.script:
@@ -304,6 +249,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       return "not running (stale PID file)"
 
+  def workflow_service_commands(self, **options: WorkflowUpOptions):
+    commands = list(map(lambda service_name: LocalWorkflowRunCommand(self.app, service_name=service_name, **options), self.services))
+    commands.sort(key=lambda command: command.service_config.priority)
+    return commands
+
   def __dry_run_down(self, pid: int, output_file: str):
     print(f"# Stop {self.workflow_name} (PID: {pid})", file=output_file)
     print(f"kill {pid} || true", file=output_file)
@@ -317,3 +267,64 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       print(f"tail -f {log_file}", file=output_file)
     else:
       print(f"cat {log_file}", file=output_file)
+
+  def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
+    # Build the stoobly-agent run command
+    command = ['stoobly-agent', 'run']
+
+    # Add log level if provided
+    if options.get('log_level'):
+      command.extend(['--log-level', options['log_level']])
+    
+    # Use the PID file path as the detached output file
+    command.extend(['--detached', self.log_file_path])
+
+    command.extend(['--proxy-port', f"{self.app_config.proxy_port}"])
+    command.extend(['--ui-port', f"{self.app_config.ui_port}"])
+
+    if public_directory_paths:
+      command.extend(public_directory_paths)
+
+    if response_fixtures_paths:
+      command.extend(response_fixtures_paths)
+    
+    # Convert command to string
+    command_str = ' '.join(command)
+
+    # Run in background using the main run command's --detached option
+    if self.script:
+      # Write to script for detached execution
+      script_lines = [
+        f"# Start {self.workflow_name} in background using --detached",
+        f"{command_str} > {self.pid_file_path}",
+        f"echo \"Started {self.workflow_name} with PID: $(cat {self.pid_file_path})\""
+      ]
+      for line in script_lines:
+        print(line, file=self.script)
+
+    if self.dry_run:
+      print(command_str)
+    else:
+      # Execute directly
+      try:
+        # Run the command with --detached option
+        result = subprocess.run(
+          command,
+          capture_output=True,
+          text=True,
+          check=True
+        )
+        
+        # The --detached option prints the PID to stdout
+        pid = int(result.stdout.strip())
+        
+        # Write PID to file
+        self._write_pid(pid)
+        
+        Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
+      except subprocess.CalledProcessError as e:
+        Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
+        return None
+      except ValueError as e:
+        Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
+        return None

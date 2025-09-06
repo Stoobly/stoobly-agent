@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# This file was automatically generated. DO NOT EDIT.
+# Any changes made to this file will be overwritten.
+
+if [ -f .env ]; then
+  set -a; . ./.env; set +a;
+fi
+
+export HTTP_PROXY=http://localhost:$APP_PROXY_PORT
+export http_proxy=http://localhost:$APP_PROXY_PORT
+export HTTPS_PROXY=http://localhost:$APP_PROXY_PORT
+export https_proxy=http://localhost:$APP_PROXY_PORT
+
+entrypoint=$1
+
+if [ -e "$entrypoint" ]; then
+  ./"$entrypoint"
+fi

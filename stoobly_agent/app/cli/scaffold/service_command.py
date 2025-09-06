@@ -56,6 +56,10 @@ class ServiceCommand(AppCommand):
       self.service_name,
     )
 
+  @property
+  def service_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'build', 'services')
+
   def config(self, _c: dict):
     _config = self.app_config.read()
     _config.update(self.service_config.read())

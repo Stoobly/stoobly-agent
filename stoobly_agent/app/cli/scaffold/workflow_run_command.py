@@ -51,7 +51,7 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def context_dir_path(self):
     if not self.__context_dir_path:
-      data_dir = DataDir.instance()
+      data_dir: DataDir = DataDir.instance()
       return os.path.dirname(data_dir.path) 
 
     return self.__context_dir_path

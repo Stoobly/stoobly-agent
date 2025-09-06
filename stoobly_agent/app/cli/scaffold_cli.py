@@ -364,7 +364,7 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -477,6 +477,7 @@ def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
+  dry_run = kwargs['dry_run']
 
   # Because we are running a docker-compose command which depends on APP_DIR env var
   # when we are running this command within a container, the host's app_dir_path will likely differ
@@ -488,7 +489,7 @@ def up(**kwargs):
 
   # First time if folder does not exist or is empty
   first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
-  if first_time and not containerized:
+  if first_time and not containerized and not dry_run:
     # If ca certs dir path does not exist, run ca-cert install
     confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
     if confirm == "y" or confirm == "Y":
@@ -527,7 +528,7 @@ def up(**kwargs):
       **kwargs
     )
 
-  if first_time and not containerized:
+  if first_time and not containerized and not dry_run:
     options = {}
 
     if os.getcwd() != app_dir_path:

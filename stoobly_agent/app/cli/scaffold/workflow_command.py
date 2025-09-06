@@ -133,12 +133,16 @@ class WorkflowCommand(ServiceCommand):
     )
 
   @property
+  def workflow_template(self):
+    return self.workflow_config.template or self.workflow_name
+
+  @property
   def workflow_templates_root_dir(self):
     return os.path.join(self.templates_root_dir, 'workflow')
 
   @property
   def workflow_templates_build_dir(self):
-    return os.path.join(self.templates_root_dir, 'build', 'workflows', self.workflow_name)
+    return os.path.join(self.templates_root_dir, 'build', 'workflows', self.workflow_template)
   
   def env(self, _c: dict):
     _config = self.app_config.read()
