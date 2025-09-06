@@ -5,9 +5,9 @@ from typing import TypedDict
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER
+from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL
 from .docker.template_files import plugin_cypress, plugin_playwright, remove_app_docker_files, remove_service_docker_files
-from .templates.constants import CORE_GATEWAY_SERVICE_NAME
+from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME
 
 class AppCreateOptions(TypedDict):
   docker_socket_path: str
@@ -64,10 +64,15 @@ class AppCreateCommand(AppCommand):
 
     def build(self):
         dest = self.scaffold_namespace_path
+        ignore = []
         warnings = []
 
+        if RUN_ON_LOCAL in self.app_run_on:
+            ignore.append(f"{CORE_GATEWAY_SERVICE_NAME}/.*")
+            ignore.append(f"{CORE_MOCK_UI_SERVICE_NAME}/.*")
+
         # Copy all app templates
-        self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest)
+        self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest, ignore)
 
         # Remove Docker-specific files if not using Docker
         if RUN_ON_DOCKER not in self.app_run_on:

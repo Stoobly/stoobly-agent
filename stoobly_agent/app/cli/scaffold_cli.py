@@ -540,7 +540,7 @@ def up(**kwargs):
     if options_str:
       options_str = f" {options_str}"
 
-    print(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
+    Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
   workflow_command.up(
