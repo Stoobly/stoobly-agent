@@ -2,7 +2,7 @@ import os
 
 from .config import Config
 from .constants import (
-  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
+  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
 )
 
 class AppConfig(Config):
@@ -13,6 +13,7 @@ class AppConfig(Config):
     self.__docker_socket_path = '/var/run/docker.sock'
     self.__name = None
     self.__plugins = None
+    self.__proxy_port = None
     self.__run_on = None
     self.__ui_port = None
 
@@ -55,8 +56,16 @@ class AppConfig(Config):
     return RUN_ON_LOCAL in self.run_on
 
   @property
+  def proxy_port(self):
+    return self.__proxy_port or 8080
+
+  @proxy_port.setter
+  def proxy_port(self, v):
+    self.__proxy_port = v
+
+  @property
   def ui_port(self):
-    return self.__ui_port
+    return self.__ui_port or 4200
 
   @ui_port.setter
   def ui_port(self, v):
@@ -66,6 +75,7 @@ class AppConfig(Config):
     config = config or self.read()
 
     self.name = config.get(APP_NAME_ENV)
+    self.proxy_port = config.get(APP_PROXY_PORT_ENV)
     self.ui_port = config.get(APP_UI_PORT_ENV)
 
     if config.get(APP_PLUGINS_ENV):
@@ -90,6 +100,9 @@ class AppConfig(Config):
 
     if self.run_on:
       config[APP_RUN_ON_ENV] = APP_RUN_ON_DELIMITER.join(self.run_on)
+
+    if self.proxy_port:
+      config[APP_PROXY_PORT_ENV] = self.proxy_port
 
     if self.ui_port:
       config[APP_UI_PORT_ENV] = self.ui_port

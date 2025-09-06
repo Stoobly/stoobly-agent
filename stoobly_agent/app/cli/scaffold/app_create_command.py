@@ -13,6 +13,7 @@ class AppCreateOptions(TypedDict):
   docker_socket_path: str
   name: str
   plugin: list
+  proxy_port: int
   run_on: list
   ui_port: int
 
@@ -29,6 +30,9 @@ class AppCreateCommand(AppCommand):
 
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
+
+        if kwargs.get('proxy_port'):
+            self.app_config.proxy_port = kwargs['proxy_port']
 
         if kwargs.get('run_on'):
             self.app_config.run_on = kwargs['run_on']
@@ -51,6 +55,9 @@ class AppCreateCommand(AppCommand):
     @property
     def app_run_on(self):
         return self.app_config.run_on
+
+    def app_proxy_port(self):
+        return self.app_config.proxy_port
 
     def app_ui_port(self):
         return self.app_config.ui_port

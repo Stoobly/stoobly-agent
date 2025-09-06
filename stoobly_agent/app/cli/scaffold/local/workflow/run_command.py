@@ -156,6 +156,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Use the PID file path as the detached output file
     command.extend(['--detached', self.log_file_path])
 
+    command.extend(['--proxy-port', f"{self.app_config.proxy_port}"])
+    command.extend(['--ui-port', f"{self.app_config.ui_port}"])
+
     if public_directory_paths:
       command.extend(public_directory_paths)
 
