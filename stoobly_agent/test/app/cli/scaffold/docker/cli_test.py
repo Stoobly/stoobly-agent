@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.e2e_test import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.e2e_test import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
 

@@ -472,6 +472,7 @@ def logs(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
+@click.option('-y', '--yes', is_flag=True, help='Auto-confirm CA certificate installation prompt.')
 @click.argument('workflow_name')
 def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -491,12 +492,16 @@ def up(**kwargs):
   first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
   if first_time and not containerized and not dry_run:
     # If ca certs dir path does not exist, run ca-cert install
-    confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
-    if confirm == "y" or confirm == "Y":
+    if kwargs.get('yes'):
+      # Auto-confirm if -y/--yes option is provided
       ca_cert_install(app.ca_certs_dir_path)
     else:
-      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
-      sys.exit(1)
+      confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
+      if confirm == "y" or confirm == "Y":
+        ca_cert_install(app.ca_certs_dir_path)
+      else:
+        print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
+        sys.exit(1)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]

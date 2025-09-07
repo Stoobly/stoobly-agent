@@ -110,6 +110,7 @@ class ScaffoldCliInvoker():
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
+      '--yes',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)

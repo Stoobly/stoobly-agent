@@ -22,7 +22,7 @@ from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
 )
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
 
@@ -54,7 +54,7 @@ class TestScaffoldE2e():
 
   @pytest.fixture(scope='class')
   def mock_data_directory_path(self):
-    yield Path(__file__).parent.parent.parent.parent / 'mock_data'
+    yield Path(__file__).parent.parent.parent.parent.parent / 'mock_data'
   
   @pytest.fixture(scope='class')
   def local_service_mock_docker_compose_path(self, mock_data_directory_path):
