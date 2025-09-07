@@ -6,6 +6,8 @@ import sys
 
 from typing import Optional, List
 
+from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
+from stoobly_agent.app.cli.scaffold.docker.constants import PLUGIN_CONTAINER_SERVICE_TEMPLATE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
@@ -72,8 +74,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_script(self, service_name: str, step_script_path: str, args: List[str]):
-    workflow_path = os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
+  def exec_service_script(self, service_name: str, step_script_path: str, args: List[str], cwd = None):
+    workflow_path = cwd or os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
 
     # Change directory to workflow path
     command = [step_script_path] + args
@@ -105,7 +107,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if service_name in [CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME]:
       init_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_INIT)
       configure_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_CONFIGURE)
-      run_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_RUN)
+      run_script_path = os.path.join(self.workflow_path, MAINTAINED_RUN)
+      
+      if not os.path.exists(run_script_path):
+        run_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_RUN)
     else:
       # Absolute path to workflow .init script
       # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
@@ -119,7 +124,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     self.exec_service_script(service_name, init_script_path, [CUSTOM_INIT])
     self.exec_service_script(service_name, configure_script_path, [CUSTOM_CONFIGURE])
-    self.exec_service_script(service_name, run_script_path, [CUSTOM_RUN])
+    self.exec_service_script(service_name, run_script_path, [CUSTOM_RUN], cwd=os.getcwd())
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
@@ -314,6 +319,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           text=True,
           check=True
         )
+
+        if result.returncode != 0:
+          Logger.instance(LOG_ID).error(f"Failed to start agent, run `stoobly-agent workflow logs {self.workflow_name}` to see the error")
+          sys.exit(1)
         
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())

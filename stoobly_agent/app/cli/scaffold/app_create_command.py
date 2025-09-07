@@ -6,7 +6,7 @@ from typing import TypedDict
 from .app import App
 from .app_command import AppCommand
 from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL
-from .docker.template_files import plugin_cypress, plugin_playwright, remove_app_docker_files, remove_service_docker_files
+from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
@@ -98,11 +98,17 @@ class AppCreateCommand(AppCommand):
 
             # Provide plugins
             if PLUGIN_CYPRESS in self.app_plugins:
-                plugin_cypress(self.templates_root_dir, PLUGIN_CYPRESS, dest)
+                plugin_docker_cypress(self.templates_root_dir, PLUGIN_CYPRESS, dest)
 
             if PLUGIN_PLAYWRIGHT in self.app_plugins:
-                plugin_playwright(self.templates_root_dir, PLUGIN_PLAYWRIGHT, dest)
+                plugin_docker_playwright(self.templates_root_dir, PLUGIN_PLAYWRIGHT, dest)
         else:
+            if PLUGIN_CYPRESS in self.app_plugins:
+                plugin_local_cypress(self.templates_root_dir, PLUGIN_CYPRESS, dest)
+
+            if PLUGIN_PLAYWRIGHT in self.app_plugins:
+                plugin_local_playwright(self.templates_root_dir, PLUGIN_PLAYWRIGHT, dest)
+
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     ['**/.env']

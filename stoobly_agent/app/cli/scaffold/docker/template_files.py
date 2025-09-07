@@ -62,7 +62,7 @@ def remove_service_docker_files(service_path: str):
           if file in compose_files or file == DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=os.path.basename(root)):
               os.remove(os.path.join(root, file))
 
-def plugin_cypress(templates_root_dir: str, plugin: str, dest: str):
+def plugin_docker_cypress(templates_root_dir: str, plugin: str, dest: str):
   dockerfile_name = PLUGIN_DOCKERFILE_TEMPLATE.format(plugin=plugin)
   dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
 
@@ -79,7 +79,7 @@ def plugin_cypress(templates_root_dir: str, plugin: str, dest: str):
   )
   __merge_compose_plugin(compose_dest_path, template_path, plugin)
 
-def plugin_playwright(templates_root_dir: str, plugin: str, dest: str):
+def plugin_docker_playwright(templates_root_dir: str, plugin: str, dest: str):
   dockerfile_name = PLUGIN_DOCKERFILE_TEMPLATE.format(plugin=plugin)
   dockerfile_src_path = os.path.join(templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, dockerfile_name)
   dockerfile_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, dockerfile_name)
@@ -97,3 +97,16 @@ def plugin_playwright(templates_root_dir: str, plugin: str, dest: str):
       templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
   )
   __merge_compose_plugin(compose_dest_path, template_path, plugin)
+
+def plugin_local_cypress(templates_root_dir: str, plugin: str, dest: str):
+  # Copy run script
+  run_script_src_path = os.path.join(templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, '.run')
+  run_script_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, '.run')
+  # Use shutil.copy instead of shutil.copyfile to preserve permissions
+  shutil.copy(run_script_src_path, run_script_dest_path)
+
+def plugin_local_playwright(templates_root_dir: str, plugin: str, dest: str):
+  # Copy run script
+  run_script_src_path = os.path.join(templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, '.run')
+  run_script_dest_path = os.path.join(dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, '.run')
+  shutil.copy(run_script_src_path, run_script_dest_path)
