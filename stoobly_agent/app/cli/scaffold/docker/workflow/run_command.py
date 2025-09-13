@@ -27,6 +27,11 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.services = services or []
     self.script = script
 
+  @property
+  def timestamp_file_path(self):
+    """Get the path to the timestamp file for this workflow."""
+    return os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.timestamp")
+
   def exec_setup(self, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
     init_commands = []
@@ -45,7 +50,90 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
+    # Define timestamp file path
+    timestamp_file = self.timestamp_file_path
+    
+    # Create timestamp file to indicate workflow is starting
+    try:
+      with open(timestamp_file, 'w') as f:
+        import time
+        f.write(str(time.time()))
+      Logger.instance(LOG_ID).info(f"Created timestamp file: {timestamp_file}")
+    except Exception as e:
+      Logger.instance(LOG_ID).error(f"Failed to create timestamp file: {e}")
+      sys.exit(1)
+    
     no_publish = options.get('no_publish', False)
+    print_service_header = options.get('print_service_header')
+    
+    try:
+      # Create individual service commands
+      commands: List[DockerWorkflowRunCommand] = []
+      for service in self.services:
+        config = { **options }
+        config['service_name'] = service
+        command = DockerWorkflowRunCommand(self.app, **config)
+        commands.append(command)
+
+      if not commands:
+        return
+
+      # Configure gateway ports dynamically based on workflow run
+      workflow = Workflow(self.workflow_name, self.app)
+      configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(self.services), no_publish)
+
+      # Write nameservers if not running in container
+      if not options.get('containerized'):
+        self.write_nameservers()
+      
+      # Setup Docker environment
+      self.exec_setup(
+        containerized=options.get('containerized', False),
+        user_id=options.get('user_id'),
+        verbose=options.get('verbose', False)
+      )
+
+      # Sort commands by priority and execute
+      commands = sorted(commands, key=lambda command: command.service_config.priority)
+      for index, command in enumerate(commands):
+        if print_service_header:
+          print_service_header(command.service_name)
+        
+        attached = False
+        
+        # By default, the entrypoint service should be last
+        # However, this can change if the user has configured a service's priority to be higher
+        if index == len(commands) - 1:
+          attached = not options.get('detached', False)
+        
+        exec_command = command.service_up(
+          attached=attached,
+          namespace=options.get('namespace'),
+          pull=options.get('pull', False),
+          user_id=options.get('user_id')
+        )
+        
+        if exec_command and self.script:
+          self.exec(exec_command)
+    
+    except Exception as e:
+      # Clean up timestamp file on error
+      if os.path.exists(timestamp_file):
+        try:
+          os.remove(timestamp_file)
+          Logger.instance(LOG_ID).info(f"Removed timestamp file due to error: {timestamp_file}")
+        except Exception as cleanup_error:
+          Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file after error: {cleanup_error}")
+      raise e
+
+  def down(self, **options: WorkflowDownOptions):
+    """Execute the complete Docker workflow down process."""
+    # Check if workflow is running (timestamp file exists)
+    timestamp_file = self.timestamp_file_path
+    if not os.path.exists(timestamp_file):
+      Logger.instance(LOG_ID).info(f"Workflow '{self.workflow_name}' is not running. No timestamp file found: {timestamp_file}")
+      return
+    
     print_service_header = options.get('print_service_header')
     
     # Create individual service commands
@@ -58,56 +146,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     if not commands:
       return
-
-    # Configure gateway ports dynamically based on workflow run
-    workflow = Workflow(self.workflow_name, self.app)
-    configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(self.services), no_publish)
-
-    # Write nameservers if not running in container
-    if not options.get('containerized'):
-      self.write_nameservers()
-    
-    # Setup Docker environment
-    self.exec_setup(
-      containerized=options.get('containerized', False),
-      user_id=options.get('user_id'),
-      verbose=options.get('verbose', False)
-    )
-
-    # Sort commands by priority and execute
-    commands = sorted(commands, key=lambda command: command.service_config.priority)
-    for index, command in enumerate(commands):
-      if print_service_header:
-        print_service_header(command.service_name)
-      
-      attached = False
-      
-      # By default, the entrypoint service should be last
-      # However, this can change if the user has configured a service's priority to be higher
-      if index == len(commands) - 1:
-        attached = not options.get('detached', False)
-      
-      exec_command = command.service_up(
-        attached=attached,
-        namespace=options.get('namespace'),
-        pull=options.get('pull', False),
-        user_id=options.get('user_id')
-      )
-      
-      if exec_command and self.script:
-        self.exec(exec_command)
-
-  def down(self, **options: WorkflowDownOptions):
-    """Execute the complete Docker workflow down process."""
-    print_service_header = options.get('print_service_header')
-    
-    # Create individual service commands
-    commands: List[DockerWorkflowRunCommand] = []
-    for service in self.services:
-      config = { **options }
-      config['service_name'] = service
-      command = DockerWorkflowRunCommand(self.app, **config)
-      commands.append(command)
     
     # Sort commands by priority and execute
     commands = sorted(commands, key=lambda command: command.service_config.priority)
@@ -148,9 +186,23 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       remove_ingress_network_command = command.remove_ingress_network()
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    # Clean up timestamp file
+    timestamp_file = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.timestamp")
+    if os.path.exists(timestamp_file):
+      try:
+        os.remove(timestamp_file)
+      except Exception as e:
+        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
+    # Check if workflow is running (timestamp file exists)
+    timestamp_file = self.timestamp_file_path
+    if not os.path.exists(timestamp_file):
+      Logger.instance(LOG_ID).info(f"Workflow '{self.workflow_name}' is not running. No timestamp file found: {timestamp_file}")
+      return
+    
     from ...templates.constants import CORE_SERVICES
     
     print_service_header = options.get('print_service_header')

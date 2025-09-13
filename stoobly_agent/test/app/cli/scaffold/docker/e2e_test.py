@@ -25,7 +25,6 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
-
 @pytest.mark.e2e
 class TestScaffoldE2e():
 
@@ -135,7 +134,7 @@ class TestScaffoldE2e():
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      shutil.rmtree(app_dir_path)
+      #shutil.rmtree(app_dir_path)
 
     def test_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, SERVICES_NAMESPACE)
@@ -251,14 +250,14 @@ class TestScaffoldE2e():
       command = ServiceWorkflowValidateCommand(app, **config)
       with open(f"{command.public_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
-
+      pdb.set_trace()
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name=target_workflow_name)
     
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      shutil.rmtree(app_dir_path)
+      #shutil.rmtree(app_dir_path)
 
     def test_no_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, SERVICES_NAMESPACE)

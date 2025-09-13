@@ -81,13 +81,6 @@ class TestScaffoldCli():
 
       # Generate certs
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
-    
-    @pytest.fixture(scope="class", autouse=True)
-    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
-      yield
-      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      shutil.rmtree(app_dir_path)
-    
  
     def test_service_delete(self, runner, app_dir_path, external_service_docker_compose):
       app = App(app_dir_path, SERVICES_NAMESPACE)
