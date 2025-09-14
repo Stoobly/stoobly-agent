@@ -6,6 +6,7 @@ import time
 import shutil
 
 from click.testing import CliRunner
+import yaml
 
 from stoobly_agent.app.cli.config_cli import config
 from stoobly_agent.app.cli.intercept_cli import intercept
@@ -16,13 +17,15 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_TEST_TYPE,
   WORKFLOW_MOCK_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
-#@pytest.mark.e2e
+@pytest.mark.e2e
 class TestLocalScaffoldE2e():
 
   @pytest.fixture(scope='class', autouse=True)
@@ -77,7 +80,7 @@ class TestLocalScaffoldE2e():
       yield WORKFLOW_RECORD_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_dir_path, app_name, external_service_name, external_https_service_name, local_service_name, hostname, https_service_hostname, local_hostname):
+    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
       # Create app with local run-on
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -144,6 +147,17 @@ class TestLocalScaffoldE2e():
     def test_intercept_mode_not_active(self, settings: Settings):
       assert not settings.proxy.intercept.active
 
+    def test_records(self, settings: Settings, proxy_url: str):
+      _requests = Request.all()
+      assert len(_requests) == 0, "Expected 0 requests to be recorded"
+      settings.proxy.intercept.active = True
+      settings.commit()
+      time.sleep(1) # Wait for change to propagate
+      res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+      assert res.status_code == 200, "HTTP request with HTTP_PROXY and HTTPS_PROXY set to the local service should succeed"
+      _requests = Request.all()
+      assert len(_requests) == 1, "Expected 1 request to be recorded"
+
 
   class TestMockWorkflow():
     @pytest.fixture(scope='class', autouse=True)
@@ -206,6 +220,37 @@ class TestLocalScaffoldE2e():
       # Use http send request with proxy, do this in python, make the following not check ssl cert
       res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
       assert res.status_code == 499, "HTTP request with HTTP_PROXY and HTTPS_PROXY set to the local service should succeed"
+
+    def test_public_directory(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
+      """Test public directory is created"""
+      app = App(app_dir_path, SERVICES_NAMESPACE)
+      workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
+      assert os.path.exists(workflow_command.public_dir_path), "Public directory should be created"
+      # Create an index.html file in the public directory
+      with open(os.path.join(workflow_command.public_dir_path, 'index.html'), 'w') as f:
+        f.write('Hello World!')
+      res = requests.get(
+        workflow_command.service_config.url, 
+        headers={'Accept': 'text/html'},
+        proxies={'http': proxy_url, 'https': proxy_url}, verify=False
+      )
+      assert res.status_code == 200
+      assert res.text == 'Hello World!'
+
+    def test_response_fixtures(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
+      """Test response fixtures are created"""
+      app = App(app_dir_path, SERVICES_NAMESPACE)
+      workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
+      assert os.path.exists(workflow_command.response_fixtures_path), "Response fixtures should be created"
+      # Create a fixtures.yml file in the response fixtures directory
+      with open(os.path.join(workflow_command.response_fixtures_path), 'w') as f:
+        yaml.dump({'GET': {'/fixtures': {'path': os.path.basename(workflow_command.response_fixtures_path)}}}, f)
+
+      res = requests.get(
+        workflow_command.service_config.url + '/fixtures', 
+        proxies={'http': proxy_url, 'https': proxy_url}, verify=False
+      )
+      assert res.status_code == 200
 
     def test_workflow_logs(self, runner, app_dir_path, target_workflow_name):
       """Test workflow logs command for local execution"""
