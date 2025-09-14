@@ -242,15 +242,18 @@ class TestLocalScaffoldE2e():
       app = App(app_dir_path, SERVICES_NAMESPACE)
       workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
       assert os.path.exists(workflow_command.response_fixtures_path), "Response fixtures should be created"
+
+      contents = yaml.dump({'GET': {'/fixtures': {'path': os.path.basename(workflow_command.response_fixtures_path)}}})
       # Create a fixtures.yml file in the response fixtures directory
       with open(os.path.join(workflow_command.response_fixtures_path), 'w') as f:
-        yaml.dump({'GET': {'/fixtures': {'path': os.path.basename(workflow_command.response_fixtures_path)}}}, f)
+        f.write(contents)
 
       res = requests.get(
         workflow_command.service_config.url + '/fixtures', 
         proxies={'http': proxy_url, 'https': proxy_url}, verify=False
       )
       assert res.status_code == 200
+      assert res.text == contents
 
     def test_workflow_logs(self, runner, app_dir_path, target_workflow_name):
       """Test workflow logs command for local execution"""
