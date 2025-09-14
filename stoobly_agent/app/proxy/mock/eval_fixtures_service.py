@@ -34,7 +34,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
 
     if response_fixtures:
       fixture = __find_fixture_for_request(request, response_fixtures, request.method)
-    
+
     if options.get('response_fixtures_path'):
       fixture = __eval_response_fixtures_from_paths(request, options['response_fixtures_path'])
     
@@ -141,6 +141,9 @@ def __eval_response_fixtures_from_paths(request: MitmproxyRequest, fixtures_path
         # Try to find a matching fixture in this file
         fixture = __find_fixture_for_request(request, fixtures, method)
         if fixture:
+          # Convert fixture path to absolute path if it's a relative path and if 'path' exists in the fixture
+          if fixture.get('path') and not os.path.isabs(fixture['path']):
+            fixture['path'] = os.path.join(os.path.dirname(fixtures_path), fixture['path'])
           return fixture  # Return immediately on first match
           
     except yaml.YAMLError as exc:
