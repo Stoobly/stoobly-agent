@@ -1,9 +1,9 @@
-from pathlib import Path
 import pdb
+import pytest
 import shutil
 
 from click.testing import CliRunner
-import pytest
+from pathlib import Path
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
@@ -48,7 +48,7 @@ class TestScaffoldE2e():
     yield tmp_path
 
   @pytest.fixture(scope='class', autouse=True)
-  def app_dir_path(self, temp_dir, app_name):
+  def app_dir_path(self, temp_dir):
     yield temp_dir
 
   @pytest.fixture(scope='class')
@@ -84,7 +84,6 @@ class TestScaffoldE2e():
   def local_service_name(self):
     yield "my-httpbin"
 
-  
   class TestRecordWorkflow():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
@@ -134,7 +133,6 @@ class TestScaffoldE2e():
     def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
       yield
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      #shutil.rmtree(app_dir_path)
 
     def test_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, SERVICES_NAMESPACE)
@@ -196,15 +194,21 @@ class TestScaffoldE2e():
     
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(
+        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname
+      )
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+      yield ServiceDockerCompose(
+        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname
+      )
     
     @pytest.fixture(scope='class')
     def assets_service_docker_compose(self, app_dir_path, target_workflow_name, assets_service_name, assets_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname)
+      yield ServiceDockerCompose(
+        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname
+      )
 
     @pytest.fixture(scope='class', autouse=True)
     def setup_docker_composes(self, managed_services_docker_compose, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose):
@@ -214,7 +218,7 @@ class TestScaffoldE2e():
       self.assets_service_docker_compose = assets_service_docker_compose
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose, mock_data_directory_path, assets_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_name, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose, assets_service_docker_compose, mock_data_directory_path, assets_service_mock_docker_compose_path, workflow_up_method: str):
 
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -250,14 +254,26 @@ class TestScaffoldE2e():
       command = ServiceWorkflowValidateCommand(app, **config)
       with open(f"{command.public_dir_path}/shared_file.txt", 'w') as file:
         file.write('this is a shared file')
-      pdb.set_trace()
-      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name=target_workflow_name)
+
+      # Use parameterized workflow up method
+      if workflow_up_method == 'cli':
+        ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+      else:  # makefile
+        ScaffoldCliInvoker.makefile_workflow_up(runner, app_dir_path, target_workflow_name)
     
     @pytest.fixture(scope="class", autouse=True)
-    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name, workflow_up_method):
       yield
-      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      #shutil.rmtree(app_dir_path)
+      # Use the same method for down as was used for up
+      if workflow_up_method == 'cli':
+        ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+      else:  # makefile
+        ScaffoldCliInvoker.makefile_workflow_down(runner, app_dir_path, target_workflow_name)
+
+    @pytest.fixture(scope='class', params=['cli', 'makefile'])
+    def workflow_up_method(self, request):
+      """Parameterized fixture that alternates between CLI and Makefile workflow up methods."""
+      return request.param
 
     def test_no_core_services(self, app_dir_path, target_workflow_name):
       app = App(app_dir_path, SERVICES_NAMESPACE)

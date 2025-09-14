@@ -1,5 +1,7 @@
+import os
 import pathlib
 import pdb
+import subprocess
 
 from click.testing import CliRunner
 
@@ -137,3 +139,34 @@ class ScaffoldCliInvoker():
       print(f"Exception: {result.exception}")
 
     assert result.exit_code == 0
+
+  @staticmethod
+  def makefile_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+    command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
+      target_workflow_name,
+    ]
+
+    # Run the command using subprocess
+    # Instead of piping, print to stdout and stderr
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if result.returncode != 0:
+      print(f"Command failed with exit code {result.returncode}")
+      print(f"Output: {result.stdout}")
+      print(f"Exception: {result.stderr}")
+
+    assert result.returncode == 0
+
+  @staticmethod
+  def makefile_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+    command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
+      f"{target_workflow_name}/down"
+    ]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if result.returncode != 0:
+      print(f"Command failed with exit code {result.returncode}")
+      print(f"Output: {result.stdout}")
+      print(f"Exception: {result.stderr}")
+
+    assert result.returncode == 0
