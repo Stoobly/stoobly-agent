@@ -17,6 +17,7 @@ from stoobly_agent.lib.api.keys.request_key import RequestKey, InvalidRequestKey
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO, WARNING, Logger
+from stoobly_agent.config.constants import custom_headers
 
 
 class InterceptedRequestsLogger():
@@ -24,7 +25,7 @@ class InterceptedRequestsLogger():
     __logger: Logger = Logger.instance(__LOG_ID)
 
     __settings: Settings = Settings.instance()
-    __NAMESPACE: str = __settings.proxy.intercept.mode
+    __NAMESPACE: str = os.environ.get(NAMESPACE_NAME_ENV, __settings.proxy.intercept.mode)
     __file_path: str = None
     __previous_scenario_key: str = None
 
@@ -56,8 +57,7 @@ class InterceptedRequestsLogger():
                 })
 
             # Set scenario key
-            settings = Settings.instance()
-            intercept_settings = InterceptSettings(settings)
+            intercept_settings = InterceptSettings(self.outer_cls.__settings)
             scenario_key = intercept_settings.scenario_key
             log_entry.update({
                 "scenario_key": scenario_key
@@ -92,7 +92,8 @@ class InterceptedRequestsLogger():
             if scenario_key:
                 scenario_id = self.outer_cls._get_scenario_id(scenario_key)
                 if scenario_id:
-                    stoobly_ui_scenario_url = f"http://127.0.0.1:4200/agent/scenarios/{scenario_id}"
+                    base_url = self.outer_cls.__settings.ui.url
+                    stoobly_ui_scenario_url = f"{base_url}/agent/scenarios/{scenario_id}"
                 log_entry.update({
                     "stoobly_ui_scenario_url": stoobly_ui_scenario_url
                 })
@@ -115,7 +116,8 @@ class InterceptedRequestsLogger():
 
                 request_id = self.outer_cls._get_request_id(request_key)
                 if request_id:
-                    stoobly_ui_request_url = f"http://127.0.0.1:4200/agent/requests/{request_id}"
+                    base_url = self.outer_cls.__settings.ui.url
+                    stoobly_ui_request_url = f"{base_url}/agent/requests/{request_id}"
 
                     log_entry.update({
                         "stoobly_ui_request_url": stoobly_ui_request_url
@@ -126,6 +128,16 @@ class InterceptedRequestsLogger():
                 log_entry.update({
                     "fixture_path": record.fixture_path
                 })
+
+            # Set test name if available in request headers
+            if hasattr(record, 'request') and record.request is not None:
+                request: MitmproxyRequest = record.request
+                if hasattr(request, 'headers') and request.headers:
+                    test_name = request.headers.get(custom_headers.TEST_NAME, "")
+                    if test_name:
+                        log_entry.update({
+                            "test_name": test_name
+                        })
 
             return json.dumps(log_entry)
 
@@ -265,8 +277,7 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def __check_scenario_key_changes(cls) -> None:
-        settings = Settings.instance()
-        intercept_settings = InterceptSettings(settings)
+        intercept_settings = InterceptSettings(cls.__settings)
         current_scenario_key = intercept_settings.scenario_key
 
         if cls.__previous_scenario_key != current_scenario_key:
