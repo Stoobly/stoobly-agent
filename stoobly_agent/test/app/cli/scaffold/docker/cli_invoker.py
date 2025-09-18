@@ -21,6 +21,11 @@ class ScaffoldCliInvoker():
       app_name
     ])
 
+    if result.exit_code != 0:
+      print(f"Command failed with exit code {result.exit_code}")
+      print(f"Output: {result.output}")
+      print(f"Exception: {result.exception}")
+
     assert result.exit_code == 0
     output = result.stdout
     assert not output

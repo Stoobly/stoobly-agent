@@ -5,11 +5,11 @@ import yaml
 from mergedeep import merge
 
 from ..constants import PLUGINS_FOLDER, WORKFLOW_TEST_TYPE
-from ..templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME
+from ..templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
 from .constants import (
   DOCKER_COMPOSE_BASE_TEMPLATE,
   DOCKER_COMPOSE_CUSTOM,
-  DOCKER_COMPOSE_WORKFLOW_TEMPLATE,
+  DOCKER_COMPOSE_WORKFLOW,
   DOCKER_MAKEFILE,
   DOCKER_MAKEFILE_DOT,
   DOCKERFILE_CONTEXT,
@@ -59,7 +59,7 @@ def remove_service_docker_files(service_path: str):
   # For each file in dest_path recursively, check whether it is DOCKER_COMPOSE_BASE or DOCKER_COMPOSE_BASE_TEMPLATE, if so remove it
   for root, _, files in os.walk(service_path):
       for file in files:
-          if file in compose_files or file == DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=os.path.basename(root)):
+          if file in compose_files or file == DOCKER_COMPOSE_WORKFLOW:
               os.remove(os.path.join(root, file))
 
 def plugin_docker_cypress(templates_root_dir: str, plugin: str, dest: str):
@@ -72,10 +72,10 @@ def plugin_docker_cypress(templates_root_dir: str, plugin: str, dest: str):
 
   # Merge template into dest compose yml
   compose_dest_path = os.path.join(
-      dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+      dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW
   )
   template_path = os.path.join(
-      templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+      templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW
   )
   __merge_compose_plugin(compose_dest_path, template_path, plugin)
 
@@ -91,10 +91,10 @@ def plugin_docker_playwright(templates_root_dir: str, plugin: str, dest: str):
 
   # Merge template into dest compose yml
   compose_dest_path = os.path.join(
-      dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+      dest, CORE_ENTRYPOINT_SERVICE_NAME, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW
   )
   template_path = os.path.join(
-      templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW_TEMPLATE.format(workflow=WORKFLOW_TEST_TYPE)
+      templates_root_dir, PLUGINS_FOLDER, plugin, WORKFLOW_TEST_TYPE, DOCKER_COMPOSE_WORKFLOW
   )
   __merge_compose_plugin(compose_dest_path, template_path, plugin)
 

@@ -4,12 +4,11 @@ import pdb
 from typing import List, Union
 
 from ...constants import (
-  COMPOSE_TEMPLATE, SERVICE_HOSTNAME, 
-  SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
 from ...local.workflow.builder import WorkflowBuilder
 from ..builder import Builder
+from ..constants import DOCKER_COMPOSE_WORKFLOW
 from ..service.builder import DockerServiceBuilder
 from .mock_decorator import MockDecorator
 from .reverse_proxy_decorator import ReverseProxyDecorator
@@ -18,7 +17,7 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
   def __init__(self, workflow_path: str, service_builder: DockerServiceBuilder):
     WorkflowBuilder.__init__(self, workflow_path, service_builder)
-    Builder.__init__(self, workflow_path, COMPOSE_TEMPLATE.format(workflow=self._workflow_name))
+    Builder.__init__(self, workflow_path, DOCKER_COMPOSE_WORKFLOW)
 
     self._context = '../'
     self._profiles = [WORKFLOW_NAME]

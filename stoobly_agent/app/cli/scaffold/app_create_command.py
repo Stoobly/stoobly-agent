@@ -131,7 +131,7 @@ class AppCreateCommand(AppCommand):
             'warnings': warnings
         }
 
-    def __compare_versions(version1, version2):
+    def __compare_versions(self, version1, version2):
         """
         Compare two semantic versions.
         
@@ -165,6 +165,9 @@ class AppCreateCommand(AppCommand):
             return -1
 
     def __migrate(self):
+        if not os.path.exists(self.scaffold_namespace_path):
+            return
+
         if not self.app_version or self.__compare_versions(self.app_version, '1.10.0') < 0:
             new_scaffold_namespace_path = self.scaffold_namespace_path
             if not os.path.exists(new_scaffold_namespace_path):
@@ -172,7 +175,8 @@ class AppCreateCommand(AppCommand):
                 if os.path.exists(old_scaffold_namespace_path):
                     shutil.move(old_scaffold_namespace_path, new_scaffold_namespace_path)
 
-            # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>
+            # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin 
+            # move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>
             for service_name in os.listdir(self.scaffold_namespace_path):
                 service_path = os.path.join(self.scaffold_namespace_path, service_name)
                 if not os.path.isdir(service_path):
@@ -192,6 +196,9 @@ class AppCreateCommand(AppCommand):
 
                     # Remove the bin folder
                     shutil.rmtree(bin_path)
+
+            self.app_config.version = VERSION
+            self.app_config.write()
 
     def __cypress_initialized(self, app: App):
         if os.path.exists(os.path.join(app.context_dir_path, 'cypress.config.js')):
