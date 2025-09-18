@@ -1,3 +1,4 @@
+from math import e
 import os
 import pdb
 
@@ -5,6 +6,7 @@ import shutil
 from typing import TypedDict
 
 from stoobly_agent import VERSION
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_WORKFLOW
 
 from .app import App
 from .app_command import AppCommand
@@ -165,27 +167,30 @@ class AppCreateCommand(AppCommand):
             return -1
 
     def __migrate(self):
-        if not os.path.exists(self.scaffold_namespace_path):
-            return
-
         if not self.app_version or self.__compare_versions(self.app_version, '1.10.0') < 0:
             new_scaffold_namespace_path = self.scaffold_namespace_path
             if not os.path.exists(new_scaffold_namespace_path):
                 old_scaffold_namespace_path = os.path.join(self.data_dir_path, 'docker')
                 if os.path.exists(old_scaffold_namespace_path):
                     shutil.move(old_scaffold_namespace_path, new_scaffold_namespace_path)
+                else:
+                    os.makedirs(new_scaffold_namespace_path)
 
             # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin 
             # move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>
-            for service_name in os.listdir(self.scaffold_namespace_path):
-                service_path = os.path.join(self.scaffold_namespace_path, service_name)
+            for service_name in os.listdir(new_scaffold_namespace_path):
+                service_path = os.path.join(new_scaffold_namespace_path, service_name)
                 if not os.path.isdir(service_path):
                     continue
 
                 for workflow_name in os.listdir(service_path):
-                    workflow_path = os.path.join(self.scaffold_namespace_path, service_name, workflow_name)
+                    workflow_path = os.path.join(new_scaffold_namespace_path, service_name, workflow_name)
                     if not os.path.isdir(workflow_path):
                         continue
+                    
+                    docker_compose_workflow_path = os.path.join(workflow_path, f".docker-compose.{workflow_name}.yml")
+                    if os.path.exists(docker_compose_workflow_path):
+                        os.rename(docker_compose_workflow_path, DOCKER_COMPOSE_WORKFLOW)
 
                     bin_path = os.path.join(workflow_path, 'bin')
                     if not os.path.isdir(bin_path):
