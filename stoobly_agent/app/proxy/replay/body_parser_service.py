@@ -5,6 +5,7 @@ import urllib.parse
 from email.message import Message
 from mitmproxy.coretypes.multidict import MultiDict
 from mitmproxy.net import encoding
+from multipart import ParserError
 from typing import Dict, Union
 
 from stoobly_agent.lib.utils.decode import decode
@@ -69,13 +70,16 @@ def parse_json(content):
         return content
 
 def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
-    headers = {'content-type': content_type}
-    decoded_multipart = multipart_decode(headers, content)
+    try:
+        headers = {'content-type': content_type}
+        decoded_multipart = multipart_decode(headers, content)
 
-    if not decoded_multipart:
+        if not decoded_multipart:
+            return content
+    
+        return MultiDict(decoded_multipart)
+    except:
         return content
- 
-    return MultiDict(decoded_multipart)
 
 def parse_www_form_urlencoded(content):
     try:
