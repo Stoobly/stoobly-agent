@@ -8,7 +8,7 @@ from typing import Final
 
 from mitmproxy.http import Request as MitmproxyRequest
 from requests import Response
-from stoobly_agent.app.cli.scaffold.constants import NAMESPACE_NAME_ENV, SERVICE_NAME_ENV
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.data_dir import DataDir
@@ -25,7 +25,7 @@ class InterceptedRequestsLogger():
     __logger: Logger = Logger.instance(__LOG_ID)
 
     __settings: Settings = Settings.instance()
-    __NAMESPACE: str = os.environ.get(NAMESPACE_NAME_ENV, __settings.proxy.intercept.mode)
+    __NAMESPACE: str = os.environ.get(WORKFLOW_NAMESPACE_ENV, __settings.proxy.intercept.mode)
     __file_path: str = None
     __previous_scenario_key: str = None
 
@@ -81,7 +81,7 @@ class InterceptedRequestsLogger():
                 })
 
             # Set scaffold namespace name
-            env_var_namespace_name = os.environ.get(NAMESPACE_NAME_ENV)
+            env_var_namespace_name = os.environ.get(WORKFLOW_NAMESPACE_ENV)
             if env_var_namespace_name:
                 log_entry.update({
                     "namespace": env_var_namespace_name

@@ -18,7 +18,7 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .app.api import run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, log, MainGroup, request, scenario, scaffold, snapshot, trace
+from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
@@ -51,7 +51,6 @@ main.add_command(config)
 main.add_command(endpoint)
 main.add_command(feature)
 main.add_command(intercept)
-main.add_command(log)
 main.add_command(request)
 main.add_command(scaffold)
 main.add_command(scenario)
@@ -121,8 +120,8 @@ def init(**kwargs):
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
-@click.option('--request-log-enabled', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
-@click.option('--request-log-file-path', required=False, help='Path to the intercepted requests log. Will only be used if --request-log-enabled is set')
+@click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
+@click.option('--request-log-file-path', required=False, help='Path to the intercepted requests log. Will only be used if --request-log-enable is set')
 @click.option('--request-log-level', default='error', type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
@@ -172,7 +171,7 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_PROXY_URL] = proxy_url
       settings.proxy.url = proxy_url
 
-    if kwargs.get('request_log_enabled'):
+    if kwargs.get('request_log_enable'):
       request_log_file_path = kwargs.get('request_log_file_path')
       if request_log_file_path:
         InterceptedRequestsLogger.set_file_path(request_log_file_path)
@@ -188,7 +187,7 @@ def run(**kwargs):
       InterceptedRequestsLogger.truncate()
 
     # Remove the custom options otherwise it gets passed into run_proxy() and errors out
-    kwargs.pop('request_log_enabled')
+    kwargs.pop('request_log_enable')
     kwargs.pop('request_log_file_path')
     kwargs.pop('request_log_level')
     kwargs.pop('request_log_truncate')

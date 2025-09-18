@@ -10,8 +10,8 @@ from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, NAMESPACE_NAME_ENV,
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, 
+  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV,
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
@@ -267,14 +267,8 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
     _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name
-    
-    if namespace:
-      _config[WORKFLOW_NAMESPACE_ENV] = namespace
-      _config[NAMESPACE_NAME_ENV] = self.namespace
-    else:
-      # Default the NAMESPACE_NAME to WORKFLOW_NAME if none is set
-      _config[NAMESPACE_NAME_ENV] = _config[WORKFLOW_NAME_ENV]
-
+    # Default to the workflow name if a namespace isn't given
+    _config[WORKFLOW_NAMESPACE_ENV] = self.namespace if namespace else _config[WORKFLOW_NAME_ENV]
 
     if self.network:
       _config[APP_NETWORK_ENV] = self.network

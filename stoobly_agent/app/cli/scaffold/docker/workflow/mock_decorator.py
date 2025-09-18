@@ -34,7 +34,7 @@ class MockDecorator(CommandDecorator):
       command.append('--certs')
       command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))
 
-    command.append('--request-log-enabled')
+    command.append('--request-log-enable')
 
     services = self.workflow_builder.services
     proxy_name = self.workflow_builder.proxy
