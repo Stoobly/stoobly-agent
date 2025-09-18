@@ -1,7 +1,10 @@
 import os
 import pdb
 
+import shutil
 from typing import TypedDict
+
+from stoobly_agent import VERSION
 
 from .app import App
 from .app_command import AppCommand
@@ -56,13 +59,21 @@ class AppCreateCommand(AppCommand):
     def app_run_on(self):
         return self.app_config.run_on
 
+    @property
     def app_proxy_port(self):
         return self.app_config.proxy_port
 
+    @property
     def app_ui_port(self):
         return self.app_config.ui_port
 
+    @property
+    def app_version(self):
+        return self.app_config.version
+
     def build(self):
+        self.__migrate()
+
         dest = self.scaffold_namespace_path
         ignore = []
         warnings = []
@@ -119,6 +130,68 @@ class AppCreateCommand(AppCommand):
         return {
             'warnings': warnings
         }
+
+    def __compare_versions(version1, version2):
+        """
+        Compare two semantic versions.
+        
+        Args:
+            version1: First version string (e.g., '1.10.1')
+            version2: Second version string (e.g., '1.9.0')
+            
+        Returns:
+            -1 if version1 < version2
+            0 if version1 == version2
+            1 if version1 > version2
+        """
+        try:
+            v1_parts = [int(x) for x in version1.split('.')]
+            v2_parts = [int(x) for x in version2.split('.')]
+            
+            # Pad shorter version with zeros
+            max_len = max(len(v1_parts), len(v2_parts))
+            v1_parts.extend([0] * (max_len - len(v1_parts)))
+            v2_parts.extend([0] * (max_len - len(v2_parts)))
+            
+            for v1_part, v2_part in zip(v1_parts, v2_parts):
+                if v1_part < v2_part:
+                    return -1
+                elif v1_part > v2_part:
+                    return 1
+            
+            return 0
+        except (ValueError, AttributeError):
+            # If version parsing fails, treat as invalid and return -1 (version1 < version2)
+            return -1
+
+    def __migrate(self):
+        if not self.app_version or self.__compare_versions(self.app_version, '1.10.0') < 0:
+            new_scaffold_namespace_path = self.scaffold_namespace_path
+            if not os.path.exists(new_scaffold_namespace_path):
+                old_scaffold_namespace_path = os.path.join(self.data_dir_path, 'docker')
+                if os.path.exists(old_scaffold_namespace_path):
+                    shutil.move(old_scaffold_namespace_path, new_scaffold_namespace_path)
+
+            # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>
+            for service_name in os.listdir(self.scaffold_namespace_path):
+                service_path = os.path.join(self.scaffold_namespace_path, service_name)
+                if not os.path.isdir(service_path):
+                    continue
+
+                for workflow_name in os.listdir(service_path):
+                    workflow_path = os.path.join(self.scaffold_namespace_path, service_name, workflow_name)
+                    if not os.path.isdir(workflow_path):
+                        continue
+
+                    bin_path = os.path.join(workflow_path, 'bin')
+                    if not os.path.isdir(bin_path):
+                        continue
+
+                    for file in os.listdir(bin_path):
+                        shutil.move(os.path.join(bin_path, file), os.path.join(workflow_path, file))
+
+                    # Remove the bin folder
+                    shutil.rmtree(bin_path)
 
     def __cypress_initialized(self, app: App):
         if os.path.exists(os.path.join(app.context_dir_path, 'cypress.config.js')):

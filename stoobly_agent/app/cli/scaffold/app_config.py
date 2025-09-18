@@ -2,7 +2,7 @@ import os
 
 from .config import Config
 from .constants import (
-  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
+  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, APP_VERSION_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
 )
 
 class AppConfig(Config):
@@ -71,12 +71,21 @@ class AppConfig(Config):
   def ui_port(self, v):
     self.__ui_port = v
 
+  @property
+  def version(self):
+    return self.__version or None
+
+  @version.setter
+  def version(self, v):
+    self.__version = v
+
   def load(self, config = None):
     config = config or self.read()
 
     self.name = config.get(APP_NAME_ENV)
     self.proxy_port = config.get(APP_PROXY_PORT_ENV)
     self.ui_port = config.get(APP_UI_PORT_ENV)
+    self.version = config.get(APP_VERSION_ENV)
 
     if config.get(APP_PLUGINS_ENV):
       plugins: str = config.get(APP_PLUGINS_ENV)
@@ -106,5 +115,8 @@ class AppConfig(Config):
 
     if self.ui_port:
       config[APP_UI_PORT_ENV] = self.ui_port
+    
+    if self.version:
+      config[APP_VERSION_ENV] = self.version
 
     super().write(config)
