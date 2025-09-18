@@ -3,13 +3,10 @@ import pdb
 import pytest
 import requests
 import time
-import shutil
 
 from click.testing import CliRunner
 import yaml
 
-from stoobly_agent.app.cli.config_cli import config
-from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
   SERVICES_NAMESPACE,
