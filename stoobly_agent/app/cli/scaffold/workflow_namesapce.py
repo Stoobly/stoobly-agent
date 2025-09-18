@@ -13,7 +13,7 @@ class WorkflowNamespace():
 
   @property
   def dotenv_path(self):
-    return os.path.join(self.path, DOTENV_FILE) or '.env'
+    return os.path.join(self.path, DOTENV_FILE)
 
   @property
   def nameservers_path(self):
@@ -36,7 +36,7 @@ class WorkflowNamespace():
     return os.path.join(self.path, 'traefik.yml')
 
   def copy_dotenv(self):
-    dotenv_path = self.dotenv_path
+    dotenv_path = os.environ.get(DOTENV_PATH_ENV) or '.env'
 
     if os.path.isfile(dotenv_path):
       shutil.copy(dotenv_path, self.dotenv_path)
