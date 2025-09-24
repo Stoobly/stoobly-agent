@@ -111,11 +111,11 @@ class TestScaffoldE2e():
     def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
-      # Create external user defined service
+      # Create user defined services
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
 
-      # Create local user defined service
+      # Create user defined custom container services
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
 
       # Validate docker-compose path exists
