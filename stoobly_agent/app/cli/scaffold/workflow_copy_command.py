@@ -33,8 +33,8 @@ class WorkflowCopyCommand(WorkflowCommand):
 
     self.app.copy_folders_and_hidden_files(self.workflow_path, dest)
 
-    # cCpy folder recursively
-    shutil.copytree(self.workflow_path, destination_workflow.path)
+    # copy folder recursively
+    shutil.copytree(self.workflow_path, destination_workflow.path, dirs_exist_ok=True)
 
     # Replace workflow name
     compose_file_dest = os.path.join(dest, DOCKER_COMPOSE_WORKFLOW)

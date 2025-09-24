@@ -5,7 +5,6 @@ import urllib.parse
 from email.message import Message
 from mitmproxy.coretypes.multidict import MultiDict
 from mitmproxy.net import encoding
-from multipart import ParserError
 from typing import Dict, Union
 
 from stoobly_agent.lib.utils.decode import decode
