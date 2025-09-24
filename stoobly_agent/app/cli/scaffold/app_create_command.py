@@ -190,7 +190,7 @@ class AppCreateCommand(AppCommand):
                     
                     docker_compose_workflow_path = os.path.join(workflow_path, f".docker-compose.{workflow_name}.yml")
                     if os.path.exists(docker_compose_workflow_path):
-                        os.rename(docker_compose_workflow_path, DOCKER_COMPOSE_WORKFLOW)
+                        os.rename(docker_compose_workflow_path, os.path.join(workflow_path, DOCKER_COMPOSE_WORKFLOW))
 
                     bin_path = os.path.join(workflow_path, 'bin')
                     if not os.path.isdir(bin_path):
