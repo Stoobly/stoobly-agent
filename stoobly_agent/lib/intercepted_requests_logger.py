@@ -93,6 +93,8 @@ class InterceptedRequestsLogger():
                 scenario_id = self.outer_cls._get_scenario_id(scenario_key)
                 if scenario_id:
                     base_url = self.outer_cls._InterceptedRequestsLogger__settings.ui.url
+                    if not base_url or base_url == 'http://local.stoobly.com:4200':
+                        base_url = 'http://localhost:4200'
                     stoobly_ui_scenario_url = f"{base_url}/agent/scenarios/{scenario_id}"
                 log_entry.update({
                     "stoobly_ui_scenario_url": stoobly_ui_scenario_url
@@ -117,6 +119,8 @@ class InterceptedRequestsLogger():
                 request_id = self.outer_cls._get_request_id(request_key)
                 if request_id:
                     base_url = self.outer_cls._InterceptedRequestsLogger__settings.ui.url
+                    if not base_url or base_url == 'http://local.stoobly.com:4200':
+                        base_url = 'http://localhost:4200'
                     stoobly_ui_request_url = f"{base_url}/agent/requests/{request_id}"
 
                     log_entry.update({

@@ -108,9 +108,10 @@ intercept/enable:
 	@export EXEC_COMMAND=intercept/.enable EXEC_OPTIONS="" EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
 mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
-mock/services: workflow/mock workflow/services
-mock/logs: workflow/mock workflow/logs
 mock/down: workflow/mock workflow/down workflow/hostname/uninstall
+mock/logs: workflow/mock workflow/logs
+mock/report: workflow/mock workflow/report
+mock/services: workflow/mock workflow/services
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -123,8 +124,9 @@ python/validate:
 	fi
 record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
 record/down: workflow/record workflow/down workflow/hostname/uninstall
-record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs
+record/report: workflow/record workflow/report
+record/services: workflow/record workflow/services
 scenario/create:
 # Create a scenario
 	@export EXEC_COMMAND=scenario/.create EXEC_OPTIONS="$(options)" EXEC_ARGS="$(name)" && \
@@ -155,9 +157,10 @@ stoobly/install: python/validate pipx/install
 		pipx install stoobly-agent || { echo "Failed to install stoobly-agent"; exit 1; }; \
 	fi
 test: workflow/test workflow/up
-test/services: workflow/test workflow/services
-test/logs: workflow/test workflow/logs
 test/down: workflow/test workflow/down
+test/logs: workflow/test workflow/logs
+test/report: workflow/test workflow/report
+test/services: workflow/test workflow/services
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down: dotenv
@@ -188,6 +191,9 @@ workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
+workflow/report:
+	@export EXEC_COMMAND=scaffold/.report EXEC_OPTIONS="$(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
+	$(stoobly_exec_run)
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
