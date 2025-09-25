@@ -30,7 +30,7 @@ class MainGroup(click.Group):
       },
       {
         'name': 'Proxy Commands',
-        'commands': ['ca-cert', 'config', 'intercept', 'log', 'run'],
+        'commands': ['ca-cert', 'config', 'intercept', 'run'],
       }
     ]
 
