@@ -121,7 +121,6 @@ def init(**kwargs):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
-@click.option('--request-log-file-path', required=False, help='Path to the intercepted requests log. Will only be used if --request-log-enable is set')
 @click.option('--request-log-level', default='error', type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log')
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
@@ -172,10 +171,6 @@ def run(**kwargs):
       settings.proxy.url = proxy_url
 
     if kwargs.get('request_log_enable'):
-      request_log_file_path = kwargs.get('request_log_file_path')
-      if request_log_file_path:
-        InterceptedRequestsLogger.set_file_path(request_log_file_path)
-
       InterceptedRequestsLogger.enable_logger_file()
 
     request_log_level = kwargs.get('request_log_level')
@@ -188,7 +183,6 @@ def run(**kwargs):
 
     # Remove the custom options otherwise it gets passed into run_proxy() and errors out
     kwargs.pop('request_log_enable')
-    kwargs.pop('request_log_file_path')
     kwargs.pop('request_log_level')
     kwargs.pop('request_log_truncate')
 

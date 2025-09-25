@@ -180,21 +180,11 @@ def log(ctx):
     pass
 
 @log.command(name="list", help="List intercepted requests log entries")
-@click.option('--request-log-file-path', help='Path to the intercepted requests log')
 def log_list(**kwargs):
-  request_log_file_path = kwargs.get('request_log_file_path')
-  if request_log_file_path:
-    InterceptedRequestsLogger.set_file_path(request_log_file_path)
-
   InterceptedRequestsLogger.dump_logs()
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
-@click.option('--request-log-file-path', help='Path to the intercepted requests log')
 def log_delete(**kwargs):
-  request_log_file_path = kwargs.get('request_log_file_path')
-  if request_log_file_path:
-    InterceptedRequestsLogger.set_file_path(request_log_file_path)
-
   InterceptedRequestsLogger.truncate()
 
 request.add_command(response)
