@@ -4,12 +4,12 @@ from typing import TypedDict
 
 from ...constants import SERVICES_NAMESPACE
 from ..constants import DOCKERFILE_SERVICE
-from .builder import ServiceBuilder
+from .builder import DockerServiceBuilder
 from .types import BuildDecoratorOptions
 
 class BuildDecorator():
 
-  def __init__(self, service_builder: ServiceBuilder):
+  def __init__(self, service_builder: DockerServiceBuilder):
     self.__service_builder = service_builder
 
   def decorate(self, **kwargs: BuildDecoratorOptions):

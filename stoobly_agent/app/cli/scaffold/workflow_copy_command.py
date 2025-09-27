@@ -2,8 +2,9 @@ import os
 import pdb
 import shutil
 
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_WORKFLOW
+
 from .app import App
-from .constants import COMPOSE_TEMPLATE
 from .service_workflow import ServiceWorkflow
 from .workflow_command import WorkflowCommand
 
@@ -32,11 +33,11 @@ class WorkflowCopyCommand(WorkflowCommand):
 
     self.app.copy_folders_and_hidden_files(self.workflow_path, dest)
 
-    compose_file_src = os.path.join(dest, COMPOSE_TEMPLATE.format(workflow=self.workflow_name))
-    compose_file_dest = os.path.join(dest, COMPOSE_TEMPLATE.format(workflow=destination_workflow_name))
-    os.rename(compose_file_src, compose_file_dest)
+    # copy folder recursively
+    shutil.copytree(self.workflow_path, destination_workflow.path, dirs_exist_ok=True)
 
     # Replace workflow name
+    compose_file_dest = os.path.join(dest, DOCKER_COMPOSE_WORKFLOW)
     with open(compose_file_dest, 'r+') as fp:
       contents = fp.read()
       fp.seek(0)

@@ -4,21 +4,21 @@ import shutil
 
 from typing import List, TypedDict, Union
 
+from stoobly_agent.app.cli.scaffold.local.service.builder import ServiceBuilder
+
 from .app import App
-from .constants import WORKFLOW_TEMPLATE_OPTION
-from .docker.service.builder import ServiceBuilder
-from .docker.workflow.mock_decorator import MockDecorator
-from .docker.workflow.reverse_proxy_decorator import ReverseProxyDecorator
-from .docker.workflow.builder import WorkflowBuilder
+from .constants import RUN_ON_DOCKER, WORKFLOW_TEMPLATE_OPTION
+from .docker.service.builder import DockerServiceBuilder
+
+from .docker.workflow.builder import DockerWorkflowBuilder
 from .templates.factory import custom_files, maintained_files
+from .local.workflow.builder import WorkflowBuilder
 from .workflow_command import WorkflowCommand
 
-
 class BuildOptions(TypedDict):
-  builder_class: type 
-  service_builder: ServiceBuilder
+  service_builder: DockerServiceBuilder
   template: WORKFLOW_TEMPLATE_OPTION
-  workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]]
+  workflow_decorators: list
 
 class WorkflowCreateCommand(WorkflowCommand):
 
@@ -40,6 +40,11 @@ class WorkflowCreateCommand(WorkflowCommand):
   def force(self):
     return self.__force
 
+  @property
+  def create_docker_files(self):
+    """Determine if Docker files should be created based on app config run-on setting."""
+    return RUN_ON_DOCKER in self.app_config.run_on
+
   def build(self, **kwargs: BuildOptions):
     # Create workflow folder
     dest = os.path.join(self.workflow_path)
@@ -49,8 +54,23 @@ class WorkflowCreateCommand(WorkflowCommand):
     if not os.path.exists(dest):
       os.makedirs(dest) 
 
-    # Create workflow maintained compose file
-    workflow_builder = self.__write_docker_compose_file(**kwargs)
+    service_builder = kwargs.get('service_builder')
+    workflow_builder = None
+
+    # Create workflow maintained compose file only if Docker files are enabled
+    if self.create_docker_files:
+      if not service_builder:
+        service_builder = DockerServiceBuilder(self.service_config)
+        service_builder.load()
+
+      workflow_builder = DockerWorkflowBuilder(self.workflow_path, service_builder)
+      workflow_builder.build(kwargs.get('workflow_decorators'))
+    else:
+      if not service_builder:
+        service_builder = ServiceBuilder(self.service_config)
+
+      workflow_builder = WorkflowBuilder(self.workflow_path, service_builder)
+    
     self.__copy_templates(workflow_builder, kwargs.get('template'))
 
     if not self.workflow_config.empty:
@@ -76,21 +96,3 @@ class WorkflowCreateCommand(WorkflowCommand):
     custom_workflow_files = custom_files(template or self.workflow_name, workflow_builder)
     self.copy_files_no_replace(templates_path, custom_workflow_files, self.workflow_path)
 
-  def __write_docker_compose_file(self, **kwargs: BuildOptions):
-    builder_class = kwargs.get('builder_class') or WorkflowBuilder
-    service_builder = kwargs.get('service_builder') 
-    if not service_builder:
-      service_builder = ServiceBuilder(self.service_config)
-      service_builder.load()
-    workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = kwargs.get('workflow_decorators')
-
-    workflow_builder = builder_class(self.workflow_path, service_builder)
-    workflow_builder.build_all()
-
-    if isinstance(workflow_decorators, list):
-      for workflow_decorator in workflow_decorators:
-        workflow_decorator(workflow_builder).decorate()
-
-    workflow_builder.write()
-
-    return workflow_builder

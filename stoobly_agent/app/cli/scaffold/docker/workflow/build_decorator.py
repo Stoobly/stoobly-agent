@@ -1,6 +1,6 @@
 import pdb
 
-from .builder import WorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 
 class BuildDecorator():
 

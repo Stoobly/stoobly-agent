@@ -151,11 +151,6 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def response_fixtures(self):
-    pass
-
-  @property
-  @abc.abstractmethod
   def response_fixtures_path(self):
     pass
 

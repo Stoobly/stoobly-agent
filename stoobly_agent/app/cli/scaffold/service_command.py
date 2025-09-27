@@ -12,10 +12,14 @@ class ServiceCommand(AppCommand):
     super().__init__(app)
     self.__service_name = kwargs.get('service_name')
 
-    self.__config = ServiceConfig(self.service_path, **kwargs)
+    if kwargs.get('service_name'):
+      self.__config = ServiceConfig(self.service_path, **kwargs)
 
   @property
   def service_config(self):
+    if not self.service_name:
+      raise Exception("Service name is required")
+
     return self.__config
 
   @service_config.setter
@@ -51,6 +55,10 @@ class ServiceCommand(AppCommand):
       self.scaffold_namespace,
       self.service_name,
     )
+
+  @property
+  def service_templates_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'build', 'services')
 
   def config(self, _c: dict):
     _config = self.app_config.read()

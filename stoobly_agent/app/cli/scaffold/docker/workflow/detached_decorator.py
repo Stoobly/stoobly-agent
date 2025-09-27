@@ -2,7 +2,7 @@ import os
 import pdb
 
 from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
-from .builder import WorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 from .command_decorator import CommandDecorator
 
 class DetachedDecorator(CommandDecorator):
