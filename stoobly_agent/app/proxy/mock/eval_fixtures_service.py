@@ -87,8 +87,8 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
         if request.headers.get('accept'):
           fixture_path = __guess_file_path(fixture_path, request.headers['accept'])
         
-        if not os.path.isfile(fixture_path):
-          return
+      if not os.path.isfile(fixture_path):
+        return
         
       _headers = fixture.get('headers')
       headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
@@ -226,6 +226,9 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
 def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
     if not accept_header:
         return None
+
+    if accept_header == '*/*':
+      return 'text/plain'
 
     types = []
     for part in accept_header.split(","):
