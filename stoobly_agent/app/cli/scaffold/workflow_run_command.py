@@ -4,21 +4,19 @@ import pdb
 import subprocess
 import re
 
-
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.logger import Logger
 
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV,
+  APP_DIR_ENV, APP_NETWORK_ENV, APP_PLUGINS_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, 
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, 
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
-from .docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
+
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 from .workflow_namesapce import WorkflowNamespace
-from ..types.workflow_run_command import BuildOptions, ComposeOptions, DownOptions, UpOptions
+from ..types.workflow_run_command import ComposeOptions
 
 LOG_ID = 'WorkflowRunCommand'
 
@@ -31,8 +29,12 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
+    self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
-    self.__network = f"{self.__namespace}.{kwargs.get('network') or app.network}"
+    self.__network = f"{self.__namespace}.{app.network}"
+    self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
+
+    self.__workflow_namespace.copy_dotenv()
     
   @property
   def app_dir_path(self):
@@ -49,7 +51,7 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def context_dir_path(self):
     if not self.__context_dir_path:
-      data_dir = DataDir.instance()
+      data_dir: DataDir = DataDir.instance()
       return os.path.dirname(data_dir.path) 
 
     return self.__context_dir_path
@@ -64,7 +66,11 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def dotenv_path(self):
-    return WorkflowNamespace(self.app, self.namespace).dotenv_path
+    return self.__workflow_namespace.dotenv_path
+
+  @property
+  def dry_run(self):
+    return self.__dry_run
 
   @property
   def nameservers(self):
@@ -78,7 +84,7 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def nameservers_path(self):
-    return WorkflowNamespace(self.app, self.namespace).nameservers_path
+    return self.__workflow_namespace.nameservers_path
 
   @property
   def namespace(self):
@@ -87,149 +93,6 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def network(self):
     return self.__network
-
-  def create_image(self, **options: BuildOptions):
-    relative_namespace_path = os.path.relpath(self.scaffold_namespace_path, self.__current_working_dir)
-    dockerfile_path = os.path.join(relative_namespace_path, DOCKERFILE_CONTEXT)
-    user_id = options['user_id'] or os.getuid()
-    
-    command = ['docker', 'build']
-    command.append(f"-f {dockerfile_path}")
-    command.append(f"-t stoobly.{user_id}")
-    command.append(f"--build-arg USER_ID={user_id}")
-
-    if not os.environ.get('STOOBLY_IMAGE_USE_LOCAL'):
-      command.append('--pull')
-
-    if not options.get('verbose'):
-      command.append('--quiet')
-
-    # To avoid large context transfer times, should be a folder with relatively low number of files
-    command.append(relative_namespace_path) 
-
-    return ' '.join(command)
-
-  def remove_image(self, user_id: str = None):
-    user_id = user_id or os.getuid()
-    command = ['docker', 'rmi', f"stoobly.{user_id}", '&>', '/dev/null']
-    command.append('|| true')
-    return ' '.join(command)
-
-  def create_egress_network(self):
-    return f"docker network create {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
-
-  def create_ingress_network(self):
-    return f"docker network create {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
-
-  def remove_egress_network(self):
-    return f"docker network rm {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
-
-  def remove_ingress_network(self):
-    return f"docker network rm {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null || true"
-
-  def up(self, **options: UpOptions):
-    if not os.path.exists(self.compose_path):
-      return ''
-
-    command = ['COMPOSE_IGNORE_ORPHANS=true', 'docker', 'compose']
-    command_options = []
-
-    # Add docker compose file
-    command_options.append(f"-f {os.path.relpath(self.compose_path, self.__current_working_dir)}")
-
-    # Add docker compose networks file
-    command_options.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
-
-    # Add custom docker compose file
-    custom_services = self.custom_services
-    if custom_services:
-      uses_profile = False
-      for service_name in custom_services:
-        service = custom_services[service_name]
-        profiles = service.get('profiles')
-        if isinstance(profiles, list):
-          if self.workflow_name in profiles:
-            uses_profile = True
-            break
-      if not uses_profile:
-        # TODO: looking into why warning does not print in docker
-        Logger.instance(LOG_ID).error(f"Missing {self.workflow_name} profile in custom compose file")
-
-      compose_file_path = os.path.relpath(self.custom_compose_path, self.__current_working_dir)
-      command_options.append(f"-f {compose_file_path}")
-
-    if options.get('extra_compose_path'):
-      compose_file_path = os.path.relpath(options['extra_compose_path'], self.__current_working_dir)
-      command_options.append(f"-f {compose_file_path}")
-
-    command_options.append(f"--profile {self.workflow_name}") 
-
-    if not options.get('namespace'):
-      options['namespace'] = self.workflow_name
-    command_options.append(f"-p {options['namespace']}")
-
-    command += command_options
-    command.append('up')
-
-    if not options.get('no_build'):
-      command.append('--build')
-
-    if options.get('pull'):
-      command.append('--pull missing')
-
-    if not options.get('attached'):
-      command.append('-d')
-    else:
-      major_version = 2
-      minor_version = 27
-      patch_version = 0
-      min_version = major_version * 10000 + minor_version * 100 + patch_version
-      formula = "'{print $1*10000 + $2*100 + $3}'"
-      option = f"$(test $(echo $(docker compose version --short) | awk -F. {formula}) -ge {min_version} && echo '--abort-on-container-failure')"
-
-      # This option enables docker compose to return exit code 1 
-      # when one of the services exits with a non-zero exit code
-      # Otherwise, even if a service exits with a non-zero exit code, exit code 0 is returned
-      command.append(option)
-
-    self.write_env(**options)
-
-    return ' '.join(command)
-
-  def down(self, **options: DownOptions):
-    if not os.path.exists(self.compose_path):
-      return ''
-  
-    command = ['docker', 'compose']
-
-    # Add docker compose file
-    command.append(f"-f {os.path.relpath(self.compose_path, os.getcwd())}")
-
-    # Add docker compose networks file
-    command.append(f"-f {os.path.relpath(self.networks_compose_path, os.getcwd())}")
-
-    # Add custom docker compose file
-    if self.custom_services:
-      command.append(f"-f {os.path.relpath(self.custom_compose_path, self.__current_working_dir)}")
-
-    if options.get('extra_compose_path'):
-      command.append(f"-f {os.path.relpath(options['extra_compose_path'], self.__current_working_dir)}")
-
-    command.append(f"--profile {self.workflow_name}") 
-
-    if not options.get('namespace'):
-      options['namespace'] = self.workflow_name
-    command.append(f"-p {options['namespace']}")
-
-    command.append('down')
-    command.append('--volumes')
-
-    if options.get('rmi'):
-      command.append('--rmi local')
-
-    self.write_env(**options)
-
-    return ' '.join(command)
 
   def write_nameservers(self):
     # If hostname is set then the service is external and we will need to configure the container's DNS.
@@ -251,6 +114,10 @@ class WorkflowRunCommand(WorkflowCommand):
       nameservers = [ip for ip in nameservers if ipv4_pattern.match(ip)]
       if nameservers:
         fp.write("\n".join(nameservers))
+
+  @property
+  def workflow_namespace(self):
+    return self.__workflow_namespace
 
   def write_env(self, **options: ComposeOptions):
     namespace = options.get('namespace')

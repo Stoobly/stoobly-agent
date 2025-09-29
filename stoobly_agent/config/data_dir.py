@@ -56,14 +56,6 @@ class DataDir:
 
     @property
     def path(self):
-        if not self.__path and os.environ.get(ENV) == 'test':
-            test_path = os.path.join(self.__data_dir_path, TMP_DIR_NAME, DATA_DIR_NAME)
-
-            if not os.path.exists(test_path):
-                os.makedirs(test_path, exist_ok=True)
-
-            return test_path
-
         return self.__data_dir_path
 
     @property
@@ -202,6 +194,7 @@ class DataDir:
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
                     "\n".join([
+                        '.settings.yml.lock',
                         'ca_certs',
                         'certs',
                         'db',

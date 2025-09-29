@@ -33,10 +33,10 @@ workflow=record
 workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 app_data_dir=$(app_dir)/.stoobly
-app_namespace_dir=$(app_data_dir)/docker
+app_namespace_dir=$(app_data_dir)/services
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
-exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.exec.yml
+exec_docker_compose_file_path=$(app_namespace_dir)/stoobly-ui/exec/.docker-compose.yml
 workflow_namespace=$(if $(namespace),$(namespace),$(workflow))
 workflow_namespace_dir=$(app_tmp_dir)/$(workflow_namespace)
 workflow_script=.stoobly/tmp/$(workflow_namespace)/run.sh

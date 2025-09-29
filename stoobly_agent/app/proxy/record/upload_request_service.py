@@ -49,7 +49,7 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
 ):
-    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {flow.request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {flow.request.url}")
 
     flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
     joined_request = join_request_from_flow(flow_copy, intercept_settings=intercept_settings)
@@ -63,10 +63,7 @@ def upload_request(
         scenario_key=scenario_key
     )
 
-    # If request_origin is WEB, then we are in proxy
-    # This means that we have access to Cache singleton and do not need send a request to update the status
-    sync = intercept_settings.request_origin == request_origin.WEB
-    res = __upload_request_with_body_params(request_model, body_params, sync)
+    res = __upload_request_with_body_params(request_model, body_params)
 
     if intercept_settings.settings.is_debug():
         file_path = __debug_request(flow.request, joined_request.build())
@@ -80,7 +77,7 @@ def upload_request(
 def upload_staged_request(
     request: Request, request_model: RequestModel, project_key: str, scenario_key: str = None
 ):
-    Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Recording{bcolors.ENDC} {request.url}")
+    Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {request.url}")
 
     response = request.response
 
@@ -107,11 +104,11 @@ def upload_staged_request(
 
     return __upload_request_with_body_params(request_model, body_params)
 
-def __upload_request_with_body_params(request_model: RequestModel, body_params: dict, sync=True):
+def __upload_request_with_body_params(request_model: RequestModel, body_params: dict):
     request, status = request_model.create(**body_params)
 
     if status < 400:
-        publish_requests_modified(body_params['project_id'], sync=sync)
+        publish_requests_modified(body_params['project_id'])
 
         return request
 

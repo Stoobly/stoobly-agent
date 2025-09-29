@@ -2,18 +2,18 @@ services:
   entrypoint.configure_base:
     command:
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
-    - bin/configure
+    - configure
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
-    working_dir: /home/stoobly/.stoobly/docker/${SERVICE_NAME}/${WORKFLOW_NAME}
+    working_dir: /home/stoobly/.stoobly/services/${SERVICE_NAME}/${WORKFLOW_NAME}
   entrypoint.init_base:
     command:
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
-    - bin/init
+    - init
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
     volumes:
     - ${APP_DIR}:/app
-    working_dir: /home/stoobly/.stoobly/docker/${SERVICE_NAME}/${WORKFLOW_NAME}
+    working_dir: /home/stoobly/.stoobly/services/${SERVICE_NAME}/${WORKFLOW_NAME}

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Add custom Stoobly configuration here, to learn more: https://docs.stoobly.com/core-concepts/agent/proxy-settings
+
+origin=$1 # e.g. https://docs.stoobly.com
+
+# Uncomment the following example to include or exclude requests
+# stoobly-agent config firewall set \
+#   --action include \
+#   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+#   --mode record \
+#   --pattern "$origin/index.html"
+
+# Uncomment the following example to modify parts of a request
+# stoobly-agent config rewrite set \
+#   --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+#   --mode record \
+#   --name etag \
+#   --pattern "$origin/.*" \
+#   --type Header \
+#   --value '' \

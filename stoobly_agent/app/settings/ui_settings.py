@@ -21,8 +21,8 @@ class UISettings:
     if self.__active != self.active_before_change:
       return self.__active
 
-    if os.environ.get(env_vars.AGENT_IS_HEADLESS):
-        return True
+    if os.environ.get(env_vars.AGENT_HEADLESS):
+        return False
 
     return self.__active or False
 
@@ -39,8 +39,8 @@ class UISettings:
     if self.__url != self.url_before_change:
         return self.__url
 
-    if os.environ.get(env_vars.AGENT_URL):
-        return os.environ[env_vars.AGENT_URL]
+    if os.environ.get(env_vars.AGENT_UI_URL):
+        return os.environ[env_vars.AGENT_UI_URL]
 
     return self.__url or ''
 

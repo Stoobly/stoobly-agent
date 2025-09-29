@@ -1,0 +1,19 @@
+services:
+  entrypoint.cypress:
+    build:
+      args:
+        CYPRESS_IMAGE: ${CYPRESS_IMAGE:-cypress/browsers:22.11.0}
+        USER_ID: ${USER_ID}
+      context: ./
+      dockerfile: ./.Dockerfile.cypress
+    command: npx cypress run --project .
+    depends_on:
+      entrypoint.configure:
+        condition: service_completed_successfully
+    networks:
+      - "app.ingress"
+    profiles:
+      - ${WORKFLOW_NAME}
+    user: stoobly
+    volumes:
+      - ${CONTEXT_DIR}:/home/stoobly

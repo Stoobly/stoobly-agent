@@ -12,10 +12,9 @@ proxy:
         project_key: eyJpIjowLCJvIjowfQ==
     firewall: {}
     rewrite: {}
-proxy_config_path: config/settings.yml
 remote: 
     api_key: ''
-    api_url: 'http://localhost:3000'
+    api_url: ''
 ui:
     active: false
-    url: http://localhost:4200
+    url: ''

@@ -1,29 +1,26 @@
 import os
 import pdb
 
+from typing import List, Union
+
 from ...constants import (
-  COMPOSE_TEMPLATE, SERVICE_HOSTNAME, 
-  SERVICE_HOSTNAME_ENV, SERVICE_NAME_ENV, SERVICE_PORT, SERVICE_PORT_ENV, SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
   WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
 )
+from ...local.workflow.builder import WorkflowBuilder
 from ..builder import Builder
-from ..service.builder import ServiceBuilder
+from ..constants import DOCKER_COMPOSE_WORKFLOW
+from ..service.builder import DockerServiceBuilder
+from .mock_decorator import MockDecorator
+from .reverse_proxy_decorator import ReverseProxyDecorator
 
-class WorkflowBuilder(Builder):
+class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
-  def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
-    self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
-    self.__workflow_name = os.path.basename(workflow_path)
-    super().__init__(workflow_path, COMPOSE_TEMPLATE.format(workflow=self.__workflow_name))
+  def __init__(self, workflow_path: str, service_builder: DockerServiceBuilder):
+    WorkflowBuilder.__init__(self, workflow_path, service_builder)
+    Builder.__init__(self, workflow_path, DOCKER_COMPOSE_WORKFLOW)
 
-    self.__context = '../'
-    self.__profiles = [WORKFLOW_NAME]
-
-    if not service_builder:
-      service_path = os.path.dirname(workflow_path)
-      service_builder = ServiceBuilder(service_path)
-
-    self.__service_builder = service_builder
+    self._context = '../'
+    self._profiles = [WORKFLOW_NAME]
 
   @property
   def app(self):
@@ -34,16 +31,12 @@ class WorkflowBuilder(Builder):
     return os.path.relpath(self.service_builder.compose_file_path, self.dir_path)
 
   @property
-  def config(self):
-    return self.service_builder.config
-
-  @property
   def configure(self):
     return WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def context(self):
-    return self.__context
+    return self._context
 
   @property
   def context_docker_file_path(self):
@@ -59,23 +52,11 @@ class WorkflowBuilder(Builder):
 
   @property
   def profiles(self):
-    return self.__profiles
+    return self._profiles
 
   @property
   def proxy(self):
     return WORKFLOW_CONTAINER_PROXY_TEMPLATE.format(service_name=self.namespace)
-
-  @property
-  def service_builder(self):
-    return self.__service_builder
-
-  @property
-  def service_path(self):
-    return self.__service_builder.dir_path
-
-  @property
-  def workflow_name(self):
-    return self.__workflow_name
 
   def build_all(self):
     # Resources
@@ -94,7 +75,6 @@ class WorkflowBuilder(Builder):
     if not self.service_builder.init_base_service:
       return
 
-      return
     service = {
       'extends': self.service_builder.build_extends_init_base(self.dir_path),
       'profiles': self.profiles,
@@ -138,10 +118,6 @@ class WorkflowBuilder(Builder):
     }
 
     if self.configure in self.services:
-      depends_on[self.init] = {
-        'condition': 'service_completed_successfully',
-      }
-
       depends_on[self.configure] = {
         'condition': 'service_completed_successfully',
       }
@@ -152,24 +128,21 @@ class WorkflowBuilder(Builder):
 
     self.with_service(self.proxy, service)
 
-  def env_dict(self):
-    env = {}
-    for e in self._env:
-      env[e] = '${' + e + '}'
-    return env
+  def build(self, workflow_decorators: List[Union[MockDecorator, ReverseProxyDecorator]] = None):
+    """Build the Docker workflow with all components and decorators."""
 
-  def initialize_custom_file(self):
-    dest = self.custom_compose_file_path
+    # Build all workflow components
+    self.build_all()
 
-    if not os.path.exists(dest):
-      compose = {
-        'services': {}
-      }
+    # Apply workflow decorators if provided
+    if isinstance(workflow_decorators, list):
+      for workflow_decorator in workflow_decorators:
+        workflow_decorator(self).decorate()
 
-      if self.networks:
-        compose['networks'] = self.networks
+    # Write the compose file
+    self.write()
 
-      super().write(compose, dest)
+    return self
 
   def write(self):
     compose = {
@@ -184,11 +157,3 @@ class WorkflowBuilder(Builder):
 
     super().write(compose)
 
-  def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
-
-    if self.config.scheme:
-      environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
-
-    if self.config.port:
-      environment[SERVICE_PORT_ENV] = SERVICE_PORT

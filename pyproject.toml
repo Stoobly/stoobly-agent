@@ -10,7 +10,7 @@ description = "Record, mock, and test HTTP(s) requests. CLI agent for Stoobly"
 license = "Apache License 2.0"
 name = "stoobly-agent"
 readme = "README.md"
-version = "1.9.12"
+version = "1.10.2"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -33,6 +33,7 @@ stoobly_orator = ">=0.9.12"
 tabulate = ">=0.8.8"
 watchdog = ">=6.0.0,<=6.1.0"
 yamale = ">=6.0.0,<=7.0.0"
+filelock = "^3.19.1"
 
 [tool.poetry.group.test.dependencies]
 mock = ">=5.0.0"

@@ -1,0 +1,51 @@
+# Safety and Compliance Rules
+
+## Forbidden Actions
+The following actions are **strictly forbidden** and should never be performed:
+
+### File Operations
+- **DO NOT** delete files from the codebase
+- **DO NOT** modify files outside the project scope
+- **DO NOT** access system files outside the workspace
+
+### Security
+- **DO NOT** access external APIs without explicit permission
+- **DO NOT** modify or expose secrets, API keys, or sensitive configuration
+- **DO NOT** push code directly to production environments
+
+### Data Handling
+- **DO NOT** store personal data or sensitive information
+- **DO NOT** log sensitive information
+- **DO NOT** expose credentials in code or logs
+
+## Allowed Actions
+The following actions are **permitted**:
+
+### Code Operations
+- ✅ Document and comment code
+- ✅ Generate new code following project standards
+- ✅ Refactor existing code
+- ✅ Suggest improvements
+- ✅ Write and modify tests
+
+### File Operations
+- ✅ Create new files in the project scope
+- ✅ Modify existing project files
+- ✅ Read project files for analysis
+
+## Compliance Requirements
+- Log all changes made to the codebase
+- Use proper error handling and logging
+- Follow the project's coding standards
+- Maintain backward compatibility when possible
+- Test changes before suggesting them
+
+## Error Handling
+- Always use proper exception handling
+- Log errors appropriately using the Logger instance
+- Return meaningful error codes
+- Clean up resources in finally blocks
+description:
+globs:
+alwaysApply: false
+---

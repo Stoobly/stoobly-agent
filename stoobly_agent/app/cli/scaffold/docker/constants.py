@@ -8,11 +8,11 @@ DOCKER_COMPOSE_BASE = '.docker-compose.base.yml'
 DOCKER_COMPOSE_BASE_TEMPLATE = '.docker-compose.base.template.yml'
 DOCKER_COMPOSE_CUSTOM = 'docker-compose.yml'
 DOCKER_COMPOSE_NETWORKS = '.docker-compose.networks.yml'
+DOCKER_COMPOSE_WORKFLOW = '.docker-compose.yml'
+DOCKER_MAKEFILE = 'Makefile'
+DOCKER_MAKEFILE_DOT = '.Makefile'
 DOCKERFILE_CONTEXT = '.Dockerfile.context'
 DOCKERFILE_SERVICE = 'Dockerfile.source'
-
-# TODO: add scaffold container name templates here
-
-# Example:
-# COMPOSE_TEMPLATE = 'docker-compose.{workflow}.yml'
-
+PLUGIN_CONTAINER_SERVICE_TEMPLATE = '{service}.{plugin}'
+PLUGIN_DOCKER_ENTRYPOINT = '.entrypoint.sh'
+PLUGIN_DOCKERFILE_TEMPLATE = '.Dockerfile.{plugin}'

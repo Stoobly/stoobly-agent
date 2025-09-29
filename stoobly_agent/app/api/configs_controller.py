@@ -4,7 +4,7 @@ from mergedeep import merge
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.handle_config_update_service import (
-    context as handle_context, handle_intercept_active_update, handle_order_update, handle_project_update, handle_scenario_update
+    context as handle_context, handle_intercept_active_update, handle_order_update, handle_project_update, handle_scenario_update, handle_strategy_update
 ) 
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -61,7 +61,7 @@ class ConfigsController:
 
     # GET /configs/summary
     def summary(self, context):
-        settings = Settings.instance()
+        settings: Settings = Settings.instance()
         proxy = settings.proxy
         intercept_settings = InterceptSettings(settings)
 
@@ -94,7 +94,6 @@ class ConfigsController:
                 'mode': intercept_settings.mode,
                 'modes': modes,
                 'project_id': int(project_id) if project_id != None else None,
-                'proxy_url': proxy.url,
                 'remote_enabled': settings.cli.features.remote,
                 'remote_project_id': remote_project_id,
                 'scenario_id': int(scenario_id) if scenario_id != None else None,
@@ -113,6 +112,7 @@ class ConfigsController:
 
         handle_intercept_active_update(settings, _handle_context)
         handle_order_update(settings, _handle_context)
+        handle_strategy_update(settings, _handle_context)
         handle_project_update(settings, _handle_context)
         handle_scenario_update(settings, _handle_context)
 

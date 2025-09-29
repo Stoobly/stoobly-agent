@@ -1,0 +1,22 @@
+ARG CYPRESS_IMAGE
+FROM ${CYPRESS_IMAGE}
+
+# Change user id of stoobly user to that of host's user id
+ARG USER_ID
+ARG USER_NAME=stoobly
+RUN set -eux; \
+    # Check if a user with this UID exists
+    if getent passwd "${USER_ID}" > /dev/null; then \
+        EXISTING_USER="$(getent passwd "${USER_ID}" | cut -d: -f1)"; \
+        if [ "$EXISTING_USER" != "${USER_NAME}" ]; then \
+            usermod -l "${USER_NAME}" "$EXISTING_USER"; \
+            usermod -d "/home/${USER_NAME}" -m "${USER_NAME}"; \
+        fi; \
+    else \
+        useradd -u "${USER_ID}" -m "${USER_NAME}"; \
+    fi
+
+USER stoobly
+WORKDIR /home/stoobly
+
+RUN npx cypress install # Install Cypress binary into image

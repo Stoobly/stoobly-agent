@@ -7,45 +7,39 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, DOCKER_NAMESPACE, 
+  APP_DIR, SERVICES_NAMESPACE, 
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_NAME, SERVICE_NAME_ENV, 
   SERVICE_ID,
   SERVICE_PORT, SERVICE_PORT_ENV, 
-  SERVICE_SCHEME, SERVICE_SCHEME_ENV, 
-  STOOBLY_HOME_DIR, STOOBLY_HOME_DIR, 
+  SERVICE_SCHEME, SERVICE_SCHEME_ENV,
+  SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_HOSTNAME_ENV, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_PORT_ENV, SERVICE_UPSTREAM_SCHEME, SERVICE_UPSTREAM_SCHEME_ENV,
+  STOOBLY_HOME_DIR, 
   WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 )
 from ...service_config import ServiceConfig
+from ...local.service.builder import ServiceBuilder
 from ..app_builder import AppBuilder
 from ..builder import Builder
 from ..constants import DOCKER_COMPOSE_BASE
 
-class ServiceBuilder(Builder):
+class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def __init__(self, config: ServiceConfig, app_builder: AppBuilder = None):
     service_path = config.dir
-    super().__init__(service_path, DOCKER_COMPOSE_BASE)
+    
+    # Initialize both parent classes
+    ServiceBuilder.__init__(self, config)
+    Builder.__init__(self, service_path, DOCKER_COMPOSE_BASE)
 
     if not app_builder:
-      app_dir = os.path.dirname(service_path)
-      app_builder = AppBuilder(AppConfig(app_dir))
+      app_config = AppConfig(config.app_config_dir_path)
+      app_builder = AppBuilder(app_config)
     self.app_builder = app_builder
-
-    self.__config = config
-    self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
-    self.__service_name = os.path.basename(service_path)
-    self.__working_dir = os.path.join(
-      STOOBLY_HOME_DIR, DATA_DIR_NAME, DOCKER_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
-    )
 
   @property
   def app_base(self):
     return f"{self.service_name}.app_base"
-
-  @property
-  def config(self):
-    return self.__config
 
   @property
   def configure_base(self):
@@ -78,10 +72,6 @@ class ServiceBuilder(Builder):
   def proxy_base_service(self):
     return self.services.get(self.proxy_base)
 
-  @property
-  def service_name(self):
-    return self.__service_name
-
   def build_extends_init_base(self, source_dir: str):
     return self.build_extends(self.init_base, source_dir)
 
@@ -99,9 +89,6 @@ class ServiceBuilder(Builder):
     environment = { **self.env_dict() }
     labels = [
       'traefik.enable=true',
-      f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)",
-      f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}",
-      f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}"
     ]
     volumes = []
 
@@ -109,7 +96,14 @@ class ServiceBuilder(Builder):
       self.__with_detached_volumes(volumes)
 
     if self.config.tls:
-      labels.append(f"traefik.http.routers.{service_id}.tls=true")
+      labels.append(f"traefik.tcp.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.tcp.routers.{service_id}.rule=HostSNI(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.tcp.routers.{service_id}.tls.passthrough=true")
+      labels.append(f"traefik.tcp.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
+    else:
+      labels.append(f"traefik.http.routers.{service_id}.entrypoints={SERVICE_PORT}")
+      labels.append(f"traefik.http.routers.{service_id}.rule=Host(`{SERVICE_HOSTNAME}`)")
+      labels.append(f"traefik.http.services.{service_id}.loadbalancer.server.port={SERVICE_PORT}")
 
     base = {
       'environment': environment,
@@ -118,7 +112,7 @@ class ServiceBuilder(Builder):
         'service': self.extends_service
       },
       'labels': labels,
-      'working_dir': self.__working_dir,
+      'working_dir': self.working_dir,
     }
 
     if len(volumes):
@@ -137,14 +131,14 @@ class ServiceBuilder(Builder):
       self.__with_detached_volumes(volumes)
 
     self.with_service(self.init_base, {
-      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'bin/init'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.init", 'init'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.extends_service
       },
       'volumes': volumes,
-      'working_dir': self.__working_dir,
+      'working_dir': self.working_dir,
     })
 
   def build_configure_base(self):
@@ -158,31 +152,19 @@ class ServiceBuilder(Builder):
       self.__with_detached_volumes(volumes)
 
     base = {
-      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'bin/configure'],
+      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'configure'],
       'environment': environment,
       'extends': {
         'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
         'service': self.extends_service
       },
-      'working_dir': self.__working_dir,
+      'working_dir': self.working_dir,
     }
 
     if len(volumes):
       base['volumes'] = volumes
 
     self.with_service(self.configure_base, base)
-
-  def env_dict(self):
-    env = {}
-    for e in self.__env:
-      env[e] = '${' + e + '}'
-    return env
-
-  def with_env(self, v: List[str]): 
-    if not isinstance(v, list):
-      return self
-    self.__env += v
-    return self
 
   def write(self):
     self.build_init_base()
@@ -198,20 +180,30 @@ class ServiceBuilder(Builder):
     if self.networks:
       compose['networks'] = self.networks
 
-    super().write(compose)
+    Builder.write(self, compose)
 
   def __with_detached_volumes(self, volumes: list):
     # Mount named volume
     volumes.append(f"{self.service_name}:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}")
 
     # Mount docker folder
-    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{DOCKER_NAMESPACE}")
+    volumes.append(f"../:{STOOBLY_HOME_DIR}/{DATA_DIR_NAME}/{SERVICES_NAMESPACE}")
 
   def __with_url_environment(self, environment):
-    environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
+    if self.config.hostname:
+      environment[SERVICE_HOSTNAME_ENV] = SERVICE_HOSTNAME
 
     if self.config.scheme:
       environment[SERVICE_SCHEME_ENV] = SERVICE_SCHEME
 
     if self.config.port:
       environment[SERVICE_PORT_ENV] = SERVICE_PORT
+
+    if self.config.upstream_hostname:
+      environment[SERVICE_UPSTREAM_HOSTNAME_ENV] = SERVICE_UPSTREAM_HOSTNAME
+
+    if self.config.upstream_port:
+      environment[SERVICE_UPSTREAM_PORT_ENV] = SERVICE_UPSTREAM_PORT
+
+    if self.config.upstream_scheme:
+      environment[SERVICE_UPSTREAM_SCHEME_ENV] = SERVICE_UPSTREAM_SCHEME

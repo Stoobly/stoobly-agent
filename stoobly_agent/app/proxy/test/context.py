@@ -167,10 +167,6 @@ class TestContext(TestContextABC):
     return self.__response
 
   @property
-  def response_fixtures(self):
-    return self.__intercept_settings.response_fixtures
-
-  @property
   def response_fixtures_path(self):
     return self.__intercept_settings.response_fixtures_path
 

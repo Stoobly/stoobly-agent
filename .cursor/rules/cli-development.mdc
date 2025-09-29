@@ -1,0 +1,53 @@
+# CLI Development Guidelines
+
+## Click Framework Usage
+This project uses the Click framework for command-line interfaces. Follow these patterns:
+
+### Command Structure
+- Use `@click.command()` decorator for main commands
+- Use `@click.option()` for command options
+- Use `@click.argument()` for positional arguments
+- Group related commands using `@click.group()`
+
+### Option Patterns
+- Use `TypedDict` for complex option structures
+- Define options in [stoobly_agent/app/cli/types/](mdc:stoobly_agent/app/cli/types/) directory
+- Use descriptive option names with proper help text
+- Support both short and long option formats
+
+### Error Handling
+- Use `click.Abort()` for user-initiated cancellations
+- Use `sys.exit(1)` for error conditions
+- Provide clear error messages with actionable guidance
+- Log errors using the Logger instance
+
+## Command Organization
+
+### Scaffold Commands
+- Main scaffold CLI: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py)
+- Workflow commands: `up`, `down`, `logs`, `status`
+- Service commands: `create`, `delete`, `build`
+- App commands: `create`, `config`
+
+### Command Flow
+1. Validate inputs and environment
+2. Load configuration
+3. Execute business logic
+4. Handle errors gracefully
+5. Provide clear feedback
+
+## Configuration Management
+- Use [stoobly_agent/app/cli/scaffold/app_config.py](mdc:stoobly_agent/app/cli/scaffold/app_config.py) for app configuration
+- Support environment variables for configuration
+- Use dotenv files for local development
+- Validate configuration on startup
+
+## Process Management
+- Support both foreground and background execution
+- Use `--detached` option for background processes
+- Track process PIDs for local workflows
+- Implement graceful shutdown procedures
+description:
+globs:
+alwaysApply: false
+---

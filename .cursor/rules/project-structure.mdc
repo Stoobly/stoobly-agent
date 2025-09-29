@@ -1,0 +1,25 @@
+# Project Structure Guide
+
+This is a Python CLI application for Stoobly Agent. The main entry point is [stoobly_agent/cli.py](mdc:stoobly_agent/cli.py), which handles the main CLI commands.
+
+## Key Components
+
+- **CLI Framework**: Uses Click framework for command-line interface
+- **Main CLI**: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py) - Scaffolding commands
+- **Proxy System**: [stoobly_agent/app/proxy/intercept_handler.py](mdc:stoobly_agent/app/proxy/intercept_handler.py) - Proxy interception
+- **Configuration**: [stoobly_agent/app/cli/scaffold/app_config.py](mdc:stoobly_agent/app/cli/scaffold/app_config.py) - App configuration management
+
+## Scaffolding System
+
+The project supports both Docker and local development workflows:
+- **Docker Workflows**: [stoobly_agent/app/cli/scaffold/docker/workflow/builder.py](mdc:stoobly_agent/app/cli/scaffold/docker/workflow/builder.py)
+- **Local Workflows**: [stoobly_agent/app/cli/scaffold/local/workflow/builder.py](mdc:stoobly_agent/app/cli/scaffold/local/workflow/builder.py)
+- **Workflow Commands**: [stoobly_agent/app/cli/scaffold/workflow_run_command.py](mdc:stoobly_agent/app/cli/scaffold/workflow_run_command.py)
+
+## Testing
+
+Test files are located in [stoobly_agent/test/](mdc:stoobly_agent/test/) directory.
+description:
+globs:
+alwaysApply: false
+---

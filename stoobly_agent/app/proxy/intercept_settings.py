@@ -38,9 +38,6 @@ class InterceptSettings:
     self.__lifecycle_hooks = None
     self.__initialize_lifecycle_hooks()
 
-    self.__response_fixtures = None
-    self.__initialize_response_fixtures()
-
     self._mock_rewrite_rules = None
     self._record_rewrite_rules = None
     self._replay_rewrite_rules = None
@@ -57,14 +54,11 @@ class InterceptSettings:
 
   @property
   def active(self):
-    if self.__intercept_settings.active:
-      return True
+    if self.__headers and custom_headers.PROXY_MODE in self.__headers:
+      return not not self.__headers[custom_headers.PROXY_MODE]
 
-    if not self.__headers:
-      return False
+    return self.__intercept_settings.active
     
-    return custom_headers.PROXY_MODE in self.__headers
-
   @property
   def lifecycle_hooks_path(self):
     if self.__headers and custom_headers.LIFECYCLE_HOOKS_PATH in self.__headers:
@@ -113,11 +107,12 @@ class InterceptSettings:
 
   @property
   def public_directory_path(self):
+    """Get raw public directory paths string from environment or headers."""
     if self.__headers and custom_headers.PUBLIC_DIRECTORY_PATH in self.__headers:
       return self.__headers[custom_headers.PUBLIC_DIRECTORY_PATH]
-
-    if os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
-      return os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] 
+    elif os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
+      return os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH]
+    return None
 
   @property
   def remote_project_key(self):
@@ -133,15 +128,12 @@ class InterceptSettings:
 
   @property
   def response_fixtures_path(self):
+    """Returns comma-separated list of response fixtures paths, optionally with origin prefix."""
     if self.__headers and custom_headers.RESPONSE_FIXTURES_PATH in self.__headers:
       return self.__headers[custom_headers.RESPONSE_FIXTURES_PATH]
 
     if os.environ.get(env_vars.AGENT_RESPONSE_FIXTURES_PATH):
       return os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] 
-
-  @property
-  def response_fixtures(self):
-    return self.__response_fixtures or {}
 
   @property
   def parsed_remote_project_key(self):
@@ -181,6 +173,13 @@ class InterceptSettings:
       return self.__policy(mode)
 
     return self.policy
+
+  @property
+  def record_strategy(self):
+    if self.__headers and custom_headers.RECORD_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.RECORD_STRATEGY]
+
+    return self.__data_rules.record_strategy
 
   @property
   def exclude_rules(self) -> List[FirewallRule]:
@@ -276,7 +275,7 @@ class InterceptSettings:
     if self.__headers and custom_headers.REQUEST_ORIGIN in self.__headers:
       return self.__headers[custom_headers.REQUEST_ORIGIN]
 
-    return request_origin.WEB
+    return request_origin.PROXY
 
   def for_response(self):
     self.__for_response = True
@@ -328,21 +327,6 @@ class InterceptSettings:
         self.__lifecycle_hooks = run_path(script_path)
     except Exception as e:
         return Logger.instance().error(e)
-
-  def __initialize_response_fixtures(self):
-    fixtures_path = self.response_fixtures_path
-
-    if not fixtures_path:
-        return
-
-    if not os.path.exists(fixtures_path):
-        return Logger.instance().error(f"Response fixtures {fixtures_path} does not exist")
-
-    with open(fixtures_path, 'r') as stream:
-        try:
-            self.__response_fixtures = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            Logger.instance().error(exc)
 
   def __order(self, mode):
     if mode == intercept_mode.RECORD:

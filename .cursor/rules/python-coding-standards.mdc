@@ -1,0 +1,43 @@
+# Python Coding Standards
+
+## Code Style
+- Use 2-space indentation
+- Maximum line length: 88 characters
+- Use snake_case for functions and variables
+- Use PascalCase for classes
+- Always include type hints
+- Always include docstrings for functions and classes
+
+## Import Standards
+- Use absolute imports for modules more than 2 directories deep
+- Remove unused imports
+- Group imports: standard library, third-party, local
+- Use `from typing import TYPE_CHECKING` for conditional imports to avoid circular dependencies
+
+## Error Handling
+- Use proper exception handling with specific exception types
+- Log errors using the Logger instance
+- Return meaningful error codes
+- Clean up resources in finally blocks
+
+## Documentation
+- All functions must have docstrings
+- Use Google-style docstrings
+- Include type hints in docstrings
+- Document parameters, return values, and exceptions
+
+## Testing
+- Write tests for all new functionality
+- Use descriptive test names
+- Test both success and failure cases
+- Mock external dependencies
+
+## Process Management
+- Use `subprocess.run()` for command execution
+- Handle process termination gracefully (SIGTERM before SIGKILL)
+- Track process PIDs for background processes
+- Clean up PID files after process termination
+description:
+globs:
+alwaysApply: false
+---

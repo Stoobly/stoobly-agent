@@ -45,16 +45,16 @@ class AppCommand(Command):
     )
 
   @property
-  def scaffold_namespace_path(self):
-    return self.app.scaffold_namespace_path
-
-  @property
   def app_templates_root_dir(self):
     return os.path.join(self.templates_root_dir, 'app')
 
   @property
   def data_dir_path(self):
     return self.app.data_dir_path
+
+  @property
+  def plugins_root_dir(self):
+    return os.path.join(self.templates_root_dir, 'plugins')
 
   @property
   def scaffold_namespace_path(self):
