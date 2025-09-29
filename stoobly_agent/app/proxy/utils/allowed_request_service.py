@@ -80,7 +80,7 @@ def __include(request: MitmproxyRequest, patterns: List[str]) -> bool:
 
     for pattern in patterns:
         try:
-            if re.match(pattern, request.url):
+            if re.fullmatch(pattern, request.url):
                 return True
         except re.error as e:
             Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")
@@ -94,7 +94,7 @@ def __exclude(request: MitmproxyRequest, patterns: List[str]) -> bool:
 
     for pattern in patterns:
         try:
-            if re.match(pattern, request.url):
+            if re.fullmatch(pattern, request.url):
                 return True
         except re.error as e:
             Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")

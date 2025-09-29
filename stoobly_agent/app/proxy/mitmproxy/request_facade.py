@@ -170,7 +170,7 @@ class MitmproxyRequestFacade(Request):
         pattern = rewrite_rule.pattern
 
         try:
-            url_matches = re.match(pattern, self.url)
+            url_matches = re.fullmatch(pattern, self.url)
         except re.error as e:
             Logger.instance().error(f"RegExp error '{e}' for {pattern}")
             return False

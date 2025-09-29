@@ -32,7 +32,7 @@ class Cache:
         else:
             delete_list = []
             for key in self.data.keys():
-                if re.match(pattern, key):
+                if re.fullmatch(pattern, key):
                     delete_list.append(key)
             
             for key in delete_list:
