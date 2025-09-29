@@ -28,6 +28,24 @@ def mitmproxy_get_request():
   )
 
 @pytest.fixture
+def mitmproxy_get_request_details():
+  now = time()
+  return MitmproxyRequest(
+    'stoobly.com',
+    443,
+    b'GET',
+    b'https',
+    b'stoobly.com:443',
+    b'/requests/1?project_id=1',
+    b'HTTP/1.1',
+    Headers(**{'access-token': b'123'}),
+    b'',
+    Headers(), # Trailers
+    now,
+    now + 1,
+  )
+
+@pytest.fixture
 def mitmproxy_post_request():
   now = time()
   return MitmproxyRequest(
@@ -45,6 +63,28 @@ def mitmproxy_post_request():
     now + 1,
   )
 
+class TestDoesNotRewrite():
+
+  def test_does_not_rewrite_header(self, mitmproxy_get_request_details: MitmproxyRequest):
+    parameter_rule = {
+      'modes': [intercept_mode.RECORD],
+      'name': 'access-token',
+      'type': request_component.HEADER,
+      'value': '',
+    }
+    rewrite_rule = RewriteRule({
+      'methods': ['GET'],
+      'pattern': '.*?/requests',
+      'parameter_rules': [parameter_rule]
+    })
+
+    facade = MitmproxyRequestFacade(mitmproxy_get_request_details)
+    facade.with_parameter_rules([rewrite_rule])
+    facade.rewrite()
+
+    headers = facade.headers
+    assert headers['access-token'] != ''
+
 class TestRewriteParams():
 
   def test_rewrites_header(self, mitmproxy_get_request: MitmproxyRequest):
@@ -56,7 +96,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -76,7 +116,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -96,7 +136,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['POST'],
-      'pattern': '.*?/users',
+      'pattern': '.*?/users(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -118,7 +158,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -139,7 +179,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -162,7 +202,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -185,7 +225,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests',
+      'pattern': '.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -215,7 +255,7 @@ class TestRewriteUrl():
       }
       rewrite_rule = RewriteRule({
         'methods': ['GET'],
-        'pattern': '.*?/requests',
+        'pattern': '.*?/requests(?:\?.*)?',
         'url_rules': [url_rule1, url_rule2]
       })
 

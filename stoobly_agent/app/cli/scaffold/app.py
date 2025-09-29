@@ -111,7 +111,7 @@ class App():
 
               # Skip files that match the ignore list pattern, use regex
               for ignore_pattern in ignore:
-                  if re.match(os.path.join(src, ignore_pattern), src_file_path):
+                  if re.fullmatch(os.path.join(src, ignore_pattern), src_file_path):
                       ignored = True
                       break
 

@@ -58,12 +58,9 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
             continue
         
         # Try to find the file in this directory
-        _fixture_path = os.path.join(dir_path_config['path'], request_path.lstrip('/'))
+        fixture_path = os.path.join(dir_path_config['path'], request_path.lstrip('/'))
         if request.headers.get('accept'):
-          fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
-        
-        if not fixture_path:
-          fixture_path = _fixture_path
+          fixture_path = __guess_file_path(fixture_path, request.headers['accept'])
         
         if os.path.isfile(fixture_path):
           break
@@ -74,15 +71,31 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
         return
     else:
       fixture_path = fixture.get('path')
-      if not fixture_path or not os.path.isfile(fixture_path):
+      if not fixture_path:
         return
 
+      if os.path.isdir(fixture_path):
+        request_path = request.path
+        match = re.match(fixture.get('path_pattern', request_path), request_path)
+
+        if not match or match.end() == len(request_path):
+          sub_path = 'index'
+        else:
+          sub_path = request_path[match.end():]
+
+        fixture_path = os.path.join(fixture_path, sub_path.lstrip('/'))
+        if request.headers.get('accept'):
+          fixture_path = __guess_file_path(fixture_path, request.headers['accept'])
+        
+      if not os.path.isfile(fixture_path):
+        return
+        
       _headers = fixture.get('headers')
       headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
 
       if fixture.get('status_code'):
         status_code = fixture.get('status_code')
-    
+
   with open(fixture_path, 'rb') as fp:
     response = Response()
 
@@ -158,13 +171,13 @@ def __guess_content_type(file_path):
     return
   return mimetypes.types_map.get(file_extension)
 
-def __guess_file_path(file_path, content_type):
+def __guess_file_path(file_path: str, content_type):
   file_extension = os.path.splitext(file_path)[1]
   if file_extension:
     return file_path
 
   if not content_type:
-    return
+    return file_path
 
   content_types = __parse_accept_header(content_type)
 
@@ -177,6 +190,8 @@ def __guess_file_path(file_path, content_type):
     _file_path = f"{file_path}{file_extension}"
     if os.path.isfile(_file_path):
       return _file_path
+
+  return file_path
 
 def __find_fixture_for_request(request: MitmproxyRequest, fixtures: dict, method: str):
   """Find a fixture for the given request in the provided fixtures."""
@@ -193,7 +208,7 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
     return None
 
   for path_pattern in routes:
-    if not re.match(path_pattern, request_path):
+    if not re.fullmatch(path_pattern, request_path):
       continue
       
     fixture = routes[path_pattern]
@@ -203,6 +218,7 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
     path = fixture.get('path')
 
     if path:
+      fixture['path_pattern'] = path_pattern
       return fixture
   
   return None
@@ -210,6 +226,9 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
 def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
     if not accept_header:
         return None
+
+    if accept_header == '*/*':
+      return 'text/plain'
 
     types = []
     for part in accept_header.split(","):
@@ -234,9 +253,13 @@ def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
     return types[0][0] if types else None
 
 def __origin_matches(pattern: str, request_origin: str) -> bool:
-    return bool(re.match(pattern, request_origin))
+    return bool(re.fullmatch(pattern, request_origin))
 
 def __parse_accept_header(accept_header):
+    # In the case accept_header is */*, default to html and json file types
+    if accept_header == '*/*':
+      return ['text/html', 'application/json']
+
     types = []
     for item in accept_header.split(","):
         parts = item.split(";")

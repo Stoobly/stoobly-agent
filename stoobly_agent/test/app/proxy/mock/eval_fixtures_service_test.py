@@ -52,8 +52,16 @@ class TestEvalFixturesService():
       return Request.last()
 
     @pytest.fixture(scope='class')
+    def default_file_contents(self):
+      return b'Default'
+
+    @pytest.fixture(scope='class')
     def not_found_file_contents(self):
       return b'Not Found'
+
+    @pytest.fixture(scope='class')
+    def user_file_contents(self):
+      return b'{"id": 1, "name": "John Doe"}'
 
     @pytest.fixture(scope='class')
     def public_directory(self):
@@ -64,14 +72,28 @@ class TestEvalFixturesService():
       return public_dir_path
 
     @pytest.fixture(autouse=True, scope='class')
-    def not_found_file_path(self, public_directory: str, not_found_file_contents: str):
+    def not_found_file_path(self, public_directory: str, not_found_file_contents: bytes):
       path = os.path.join(public_directory, '404.html')
       with open(path, 'wb') as fp:
         fp.write(not_found_file_contents)
       return path
 
+    @pytest.fixture(autouse=True, scope='class')
+    def user_file_path(self, public_directory: str, user_file_contents: bytes):
+      path = os.path.join(public_directory, 'user.json')
+      with open(path, 'wb') as fp:
+        fp.write(user_file_contents)
+      return path
+
+    @pytest.fixture(autouse=True, scope='class')
+    def default_file_path(self, public_directory: str, default_file_contents: bytes):
+      path = os.path.join(public_directory, 'index.html')
+      with open(path, 'wb') as fp:
+        fp.write(default_file_contents)
+      return path
+
     @pytest.fixture(scope='class')
-    def response_fixtures(self, request_method: str, not_found_file_path: str) -> Fixtures:
+    def response_fixtures(self, public_directory: str, request_method: str, not_found_file_path: str) -> Fixtures:
       fixtures = {}
       fixtures[request_method] = {
         '/404.html': {
@@ -80,6 +102,9 @@ class TestEvalFixturesService():
           },
           'path': not_found_file_path,
           'status_code': 404,
+        },
+        '/.*?': {
+          'path': public_directory
         }
       }
       return fixtures
@@ -95,14 +120,31 @@ class TestEvalFixturesService():
       fixtures_file = os.path.join(tmp_dir_path, 'test_response_fixtures.yml')
       
       with open(fixtures_file, 'w') as f:
-        yaml.dump(response_fixtures, f)
-      
+        yaml.dump(response_fixtures, f, sort_keys=False)
+
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures_path=fixtures_file)
       assert res != None
       return res
 
+    @pytest.fixture()
+    def default_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
+      mitmproxy_request.path = '/'
+      mitmproxy_request.headers['accept'] = '*/*'
+
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
+      assert res != None
+      return res
+
+    @pytest.fixture()
+    def user_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
+      mitmproxy_request.path = '/user.json'
+      mitmproxy_request.headers['accept'] = 'application/json'
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
+      assert res != None
+      return res
+
     def test_it_sets_response(
-      self, fixtures_response: requests.Response, not_found_file_contents: str
+      self, fixtures_response: requests.Response, not_found_file_contents: bytes
     ):
       assert fixtures_response.raw.read() == not_found_file_contents
 
@@ -112,6 +154,12 @@ class TestEvalFixturesService():
 
     def test_it_sets_status_code(self,  fixtures_response: requests.Response):
       assert fixtures_response.status_code == 404
+
+    def test_fixture_directory(self, default_fixtures_response: requests.Response, default_file_contents: bytes):
+      assert default_fixtures_response.raw.read() == default_file_contents
+
+    def test_it_sets_user_response(self, user_fixtures_response: requests.Response, user_file_contents: bytes):
+      assert user_fixtures_response.raw.read() == user_file_contents
 
   class TestPublicDirectory():
     @pytest.fixture(scope='class')
@@ -460,6 +508,404 @@ class TestEvalFixturesService():
       assert res is not None
       assert res.raw.read() == b'Hostname Port Content'
 
+  class TestErrorHandling():
+    """Test error handling and edge cases."""
+    
+    @pytest.fixture(scope='class')
+    def request_method(self):
+      return 'GET'
+
+    @pytest.fixture(scope='class')
+    def request_url(self):
+      return 'https://example.com/test'
+    
+    @pytest.fixture(scope='class')
+    def created_request(self, settings: Settings, request_method: str, request_url: str):
+      status = RequestBuilder(
+        method=request_method,
+        request_headers={'accept': 'application/json'},
+        response_body='',
+        status_code=200,
+        url=request_url,
+      ).with_settings(settings).build()[1]
+      assert status == 200
+      return Request.last()
+
+    @pytest.fixture()
+    def mitmproxy_request(self, created_request: Request) -> MitmproxyRequest:
+      return MitmproxyRequestAdapter(created_request).adapt()
+
+    def test_missing_path_pattern_in_fixture(self, mitmproxy_request: MitmproxyRequest):
+      """Test fixture without path_pattern key - should handle KeyError gracefully."""
+      # Create fixture without path_pattern
+      fixture_without_pattern = {
+        'GET': {
+          '/test': {
+            'path': '/tmp/nonexistent_dir'  # Directory that doesn't exist
+          }
+        }
+      }
+      
+      # This should not raise a KeyError when accessing fixture['path_pattern']
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture_without_pattern)
+      # Should return None since directory doesn't exist
+      assert res is None
+
+    def test_nonexistent_fixture_file(self, mitmproxy_request: MitmproxyRequest):
+      """Test fixture pointing to nonexistent file."""
+      fixture = {
+        'GET': {
+          '/test': {
+            'path': '/tmp/nonexistent_file.json'
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is None
+
+    def test_nonexistent_public_directory(self, mitmproxy_request: MitmproxyRequest):
+      """Test public directory that doesn't exist."""
+      res = eval_fixtures(mitmproxy_request, public_directory_path='/tmp/nonexistent_directory')
+      assert res is None
+
+    def test_invalid_yaml_in_response_fixtures_path(self, mitmproxy_request: MitmproxyRequest):
+      """Test handling of invalid YAML in response fixtures file."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      invalid_yaml_file = os.path.join(tmp_dir_path, 'invalid.yml')
+      
+      # Create file with invalid YAML
+      with open(invalid_yaml_file, 'w') as f:
+        f.write('invalid: yaml: content: [')
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures_path=invalid_yaml_file)
+      assert res is None
+
+    def test_empty_response_fixtures(self, mitmproxy_request: MitmproxyRequest):
+      """Test with empty response fixtures."""
+      res = eval_fixtures(mitmproxy_request, response_fixtures={})
+      assert res is None
+
+    def test_none_response_fixtures(self, mitmproxy_request: MitmproxyRequest):
+      """Test with None response fixtures."""
+      res = eval_fixtures(mitmproxy_request, response_fixtures=None)
+      assert res is None
+
+    def test_malformed_fixture_structure(self, mitmproxy_request: MitmproxyRequest):
+      """Test fixture with malformed structure."""
+      malformed_fixture = {
+        'GET': 'not_a_dict'  # Should be a dict
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=malformed_fixture)
+      assert res is None
+
+    def test_fixture_without_path(self, mitmproxy_request: MitmproxyRequest):
+      """Test fixture without path key."""
+      fixture_without_path = {
+        'GET': {
+          '/test': {
+            'status_code': 200
+            # Missing 'path' key
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture_without_path)
+      assert res is None
+
+    def test_directory_fixture_without_matching_subpath(self, mitmproxy_request: MitmproxyRequest):
+      """Test directory fixture when no matching subpath file exists."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      test_dir = os.path.join(tmp_dir_path, 'test_dir')
+      os.makedirs(test_dir, exist_ok=True)
+      
+      # Don't create any files in the directory
+      
+      fixture = {
+        'GET': {
+          '/test': {
+            'path': test_dir
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is None
+
+  class TestCustomHeaders():
+    """Test custom header handling."""
+    
+    @pytest.fixture(scope='class')
+    def request_method(self):
+      return 'GET'
+
+    @pytest.fixture(scope='class')
+    def request_url(self):
+      return 'https://example.com/test'
+    
+    @pytest.fixture(scope='class')
+    def test_file_contents(self):
+      return b'Test content'
+
+    @pytest.fixture(scope='class')
+    def test_file_path(self, test_file_contents: bytes):
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      file_path = os.path.join(tmp_dir_path, 'custom_headers_test.txt')
+      with open(file_path, 'wb') as f:
+        f.write(test_file_contents)
+      return file_path
+    
+    @pytest.fixture(scope='class')
+    def created_request(self, settings: Settings, request_method: str, request_url: str):
+      from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
+      status = RequestBuilder(
+        method=request_method,
+        request_headers={MOCK_FIXTURE_PATH: '/custom/path'},
+        response_body='',
+        status_code=200,
+        url=request_url,
+      ).with_settings(settings).build()[1]
+      assert status == 200
+      return Request.last()
+
+    @pytest.fixture()
+    def mitmproxy_request(self, created_request: Request, test_file_path: str) -> MitmproxyRequest:
+      from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
+      request = MitmproxyRequestAdapter(created_request).adapt()
+      # Override the custom header to point to our test file
+      request.headers[MOCK_FIXTURE_PATH] = test_file_path
+      return request
+
+    def test_custom_fixture_path_header(self, mitmproxy_request: MitmproxyRequest, test_file_contents: bytes):
+      """Test fixture path specified via custom header."""
+      res = eval_fixtures(mitmproxy_request)
+      assert res is not None
+      assert res.raw.read() == test_file_contents
+
+    def test_custom_fixture_path_header_nonexistent_file(self, mitmproxy_request: MitmproxyRequest):
+      """Test custom fixture path header pointing to nonexistent file."""
+      from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
+      mitmproxy_request.headers[MOCK_FIXTURE_PATH] = '/tmp/nonexistent_file.txt'
+      
+      res = eval_fixtures(mitmproxy_request)
+      assert res is None
+
+  class TestContentTypeGuessing():
+    """Test content type guessing and file extension handling."""
+    
+    @pytest.fixture(scope='class')
+    def request_method(self):
+      return 'GET'
+
+    @pytest.fixture(scope='class')
+    def request_url(self):
+      return 'https://example.com/api/data'
+    
+    @pytest.fixture(scope='class')
+    def created_request(self, settings: Settings, request_method: str, request_url: str):
+      status = RequestBuilder(
+        method=request_method,
+        request_headers={'accept': 'application/json,text/html;q=0.9,*/*;q=0.8'},
+        response_body='',
+        status_code=200,
+        url=request_url,
+      ).with_settings(settings).build()[1]
+      assert status == 200
+      return Request.last()
+
+    @pytest.fixture()
+    def mitmproxy_request(self, created_request: Request) -> MitmproxyRequest:
+      return MitmproxyRequestAdapter(created_request).adapt()
+
+    def test_json_file_content_type(self, mitmproxy_request: MitmproxyRequest):
+      """Test that JSON files get correct content type."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      json_file = os.path.join(tmp_dir_path, 'test.json')
+      
+      with open(json_file, 'w') as f:
+        json.dump({'test': 'data'}, f)
+      
+      fixture = {
+        'GET': {
+          '/api/data': {
+            'path': json_file
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      assert res.headers.get('content-type') == 'application/json'
+
+    def test_html_file_content_type(self, mitmproxy_request: MitmproxyRequest):
+      """Test that HTML files get correct content type."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      html_file = os.path.join(tmp_dir_path, 'test.html')
+      
+      with open(html_file, 'w') as f:
+        f.write('<html><body>Test</body></html>')
+      
+      fixture = {
+        'GET': {
+          '/api/data': {
+            'path': html_file
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      assert res.headers.get('content-type') == 'text/html'
+
+    def test_unknown_extension_uses_accept_header(self, mitmproxy_request: MitmproxyRequest):
+      """Test that files with unknown extensions use accept header for content type."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      unknown_file = os.path.join(tmp_dir_path, 'test.unknown')
+      
+      with open(unknown_file, 'w') as f:
+        f.write('test content')
+      
+      fixture = {
+        'GET': {
+          '/api/data': {
+            'path': unknown_file
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      # Should use highest priority from accept header (application/json)
+      assert res.headers.get('content-type') == 'application/json'
+
+    def test_wildcard_accept_header_defaults(self, mitmproxy_request: MitmproxyRequest):
+      """Test that wildcard accept header gets reasonable defaults."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      test_file = os.path.join(tmp_dir_path, 'test_wildcard')
+      
+      with open(test_file, 'w') as f:
+        f.write('test content')
+      
+      # Set accept header to */*
+      mitmproxy_request.headers['accept'] = '*/*'
+      
+      fixture = {
+        'GET': {
+          '/api/data': {
+            'path': test_file
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      # Should default to text/html based on the wildcard handling
+      assert res.headers.get('content-type') == 'text/plain'
+
+  class TestRegexPatternMatching():
+    """Test regex pattern matching for fixture routes."""
+    
+    @pytest.fixture(scope='class')
+    def request_method(self):
+      return 'GET'
+
+    @pytest.fixture(scope='class')
+    def request_url(self):
+      return 'https://example.com/api/users/123'
+    
+    @pytest.fixture(scope='class')
+    def test_file_contents(self):
+      return b'User 123 data'
+
+    @pytest.fixture(scope='class')
+    def test_file_path(self, test_file_contents: bytes):
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      file_path = os.path.join(tmp_dir_path, 'user_data.json')
+      with open(file_path, 'wb') as f:
+        f.write(test_file_contents)
+      return file_path
+    
+    @pytest.fixture(scope='class')
+    def created_request(self, settings: Settings, request_method: str, request_url: str):
+      status = RequestBuilder(
+        method=request_method,
+        request_headers={'accept': 'application/json'},
+        response_body='',
+        status_code=200,
+        url=request_url,
+      ).with_settings(settings).build()[1]
+      assert status == 200
+      return Request.last()
+
+    @pytest.fixture()
+    def mitmproxy_request(self, created_request: Request) -> MitmproxyRequest:
+      return MitmproxyRequestAdapter(created_request).adapt()
+
+    def test_regex_pattern_matching(self, mitmproxy_request: MitmproxyRequest, test_file_path: str, test_file_contents: bytes):
+      """Test that regex patterns work for matching routes."""
+      fixture = {
+        'GET': {
+          r'/api/users/\d+': {  # Regex pattern to match user IDs
+            'path': test_file_path
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      assert res.raw.read() == test_file_contents
+
+    def test_exact_path_matching(self, mitmproxy_request: MitmproxyRequest, test_file_path: str, test_file_contents: bytes):
+      """Test exact path matching."""
+      fixture = {
+        'GET': {
+          '/api/users/123': {  # Exact path match
+            'path': test_file_path
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      assert res.raw.read() == test_file_contents
+
+    def test_non_matching_pattern(self, mitmproxy_request: MitmproxyRequest, test_file_path: str):
+      """Test that non-matching patterns return None."""
+      fixture = {
+        'GET': {
+          r'/api/posts/\d+': {  # Different pattern that shouldn't match
+            'path': test_file_path
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is None
+
+    def test_multiple_patterns_first_match_wins(self, mitmproxy_request: MitmproxyRequest, test_file_path: str):
+      """Test that first matching pattern is used."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      second_file = os.path.join(tmp_dir_path, 'second_file.json')
+      with open(second_file, 'w') as f:
+        f.write('Second file content')
+      
+      fixture = {
+        'GET': {
+          r'/api/users/\d+': {  # First pattern - should match
+            'path': test_file_path
+          },
+          r'/api/.*': {  # Second pattern - also matches but shouldn't be used
+            'path': second_file
+          }
+        }
+      }
+      
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixture)
+      assert res is not None
+      # Should use first matching pattern
+      assert res.raw.read() == b'User 123 data'
+
   class TestMultipleResponseFixtures():
     @pytest.fixture(scope='class')
     def request_method(self):
@@ -649,10 +1095,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(api_fixtures_content, f)
+        yaml.dump(api_fixtures_content, f, sort_keys=False)
       
       with open(main_fixtures_file, 'w') as f:
-        yaml.dump(main_fixtures_content, f)
+        yaml.dump(main_fixtures_content, f, sort_keys=False)
       
       # Use response_fixtures_path with origin specification
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{main_fixtures_file}:https://petstore\\.swagger\\.io"
@@ -681,7 +1127,7 @@ class TestEvalFixturesService():
       }
       
       with open(fallback_fixtures_file, 'w') as f:
-        yaml.dump(fallback_fixtures_content, f)
+        yaml.dump(fallback_fixtures_content, f, sort_keys=False)
       
       # Use a fixture file without origin specification (fallback)
       res: requests.Response = eval_fixtures(main_mitmproxy_request, response_fixtures_path=fallback_fixtures_file)
@@ -721,10 +1167,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(api_fixtures_content, f)
+        yaml.dump(api_fixtures_content, f, sort_keys=False)
       
       with open(fallback_fixtures_file, 'w') as f:
-        yaml.dump(fallback_fixtures_content, f)
+        yaml.dump(fallback_fixtures_content, f, sort_keys=False)
       
       # Use response_fixtures_path with origin-specific first, fallback second
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{fallback_fixtures_file}"
@@ -766,7 +1212,7 @@ class TestEvalFixturesService():
       }
       
       with open(wildcard_fixtures_file, 'w') as f:
-        yaml.dump(wildcard_fixtures_content, f)
+        yaml.dump(wildcard_fixtures_content, f, sort_keys=False)
       
       # Use regex wildcard pattern in response_fixtures_path
       fixtures_paths = f"{wildcard_fixtures_file}:https://.*\\.example\\.com"
@@ -795,7 +1241,7 @@ class TestEvalFixturesService():
       }
       
       with open(fixtures_file_path, 'w') as fp:
-        yaml.dump(fixtures_content, fp)
+        yaml.dump(fixtures_content, fp, sort_keys=False)
       
       # Test loading fixtures via response_fixtures_path
       res: requests.Response = eval_fixtures(api_mitmproxy_request, response_fixtures_path=fixtures_file_path)
@@ -834,10 +1280,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as fp:
-        yaml.dump(api_fixtures_content, fp)
+        yaml.dump(api_fixtures_content, fp, sort_keys=False)
       
       with open(main_fixtures_file, 'w') as fp:
-        yaml.dump(main_fixtures_content, fp)
+        yaml.dump(main_fixtures_content, fp, sort_keys=False)
       
       # Test with comma-separated paths with origins
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{main_fixtures_file}:https://petstore\\.swagger\\.io"
@@ -885,10 +1331,10 @@ class TestEvalFixturesService():
       }
       
       with open(first_fixtures_file, 'w') as fp:
-        yaml.dump(first_fixtures_content, fp)
+        yaml.dump(first_fixtures_content, fp, sort_keys=False)
       
       with open(second_fixtures_file, 'w') as fp:
-        yaml.dump(second_fixtures_content, fp)
+        yaml.dump(second_fixtures_content, fp, sort_keys=False)
       
       # Create an invalid YAML file that would cause an error if processed
       with open(invalid_fixtures_file, 'w') as fp:
@@ -936,10 +1382,10 @@ class TestEvalFixturesService():
       }
       
       with open(wrong_origin_file, 'w') as fp:
-        yaml.dump(wrong_origin_content, fp)
+        yaml.dump(wrong_origin_content, fp, sort_keys=False)
       
       with open(correct_origin_file, 'w') as fp:
-        yaml.dump(correct_origin_content, fp)
+        yaml.dump(correct_origin_content, fp, sort_keys=False)
       
       # Test with API request - wrong origin should be skipped, correct origin should be used
       fixtures_paths = f"{wrong_origin_file}:https://petstore\\.swagger\\.io,{correct_origin_file}:https://api\\.example\\.com"
@@ -974,7 +1420,7 @@ class TestEvalFixturesService():
         }
       }
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test full URL with port
       status = RequestBuilder(
@@ -1015,7 +1461,7 @@ class TestEvalFixturesService():
         }
       }
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test HTTP request
       status = RequestBuilder(
@@ -1056,7 +1502,7 @@ class TestEvalFixturesService():
         }
       }
       with open(wildcard_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test subdomain request
       status = RequestBuilder(
