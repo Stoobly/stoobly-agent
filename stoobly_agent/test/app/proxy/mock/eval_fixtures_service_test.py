@@ -60,6 +60,10 @@ class TestEvalFixturesService():
       return b'Not Found'
 
     @pytest.fixture(scope='class')
+    def user_file_contents(self):
+      return b'{"id": 1, "name": "John Doe"}'
+
+    @pytest.fixture(scope='class')
     def public_directory(self):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'public') 
@@ -72,6 +76,13 @@ class TestEvalFixturesService():
       path = os.path.join(public_directory, '404.html')
       with open(path, 'wb') as fp:
         fp.write(not_found_file_contents)
+      return path
+
+    @pytest.fixture(autouse=True, scope='class')
+    def user_file_path(self, public_directory: str, user_file_contents: bytes):
+      path = os.path.join(public_directory, 'user.json')
+      with open(path, 'wb') as fp:
+        fp.write(user_file_contents)
       return path
 
     @pytest.fixture(autouse=True, scope='class')
@@ -92,7 +103,7 @@ class TestEvalFixturesService():
           'path': not_found_file_path,
           'status_code': 404,
         },
-        '/': {
+        '/.*?': {
           'path': public_directory
         }
       }
@@ -109,7 +120,7 @@ class TestEvalFixturesService():
       fixtures_file = os.path.join(tmp_dir_path, 'test_response_fixtures.yml')
       
       with open(fixtures_file, 'w') as f:
-        yaml.dump(response_fixtures, f)
+        yaml.dump(response_fixtures, f, sort_keys=False)
 
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures_path=fixtures_file)
       assert res != None
@@ -120,6 +131,14 @@ class TestEvalFixturesService():
       mitmproxy_request.path = '/'
       mitmproxy_request.headers['accept'] = '*/*'
 
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
+      assert res != None
+      return res
+
+    @pytest.fixture()
+    def user_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
+      mitmproxy_request.path = '/user.json'
+      mitmproxy_request.headers['accept'] = 'application/json'
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
       assert res != None
       return res
@@ -138,6 +157,9 @@ class TestEvalFixturesService():
 
     def test_fixture_directory(self, default_fixtures_response: requests.Response, default_file_contents: bytes):
       assert default_fixtures_response.raw.read() == default_file_contents
+
+    def test_it_sets_user_response(self, user_fixtures_response: requests.Response, user_file_contents: bytes):
+      assert user_fixtures_response.raw.read() == user_file_contents
 
   class TestPublicDirectory():
     @pytest.fixture(scope='class')
@@ -1073,10 +1095,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(api_fixtures_content, f)
+        yaml.dump(api_fixtures_content, f, sort_keys=False)
       
       with open(main_fixtures_file, 'w') as f:
-        yaml.dump(main_fixtures_content, f)
+        yaml.dump(main_fixtures_content, f, sort_keys=False)
       
       # Use response_fixtures_path with origin specification
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{main_fixtures_file}:https://petstore\\.swagger\\.io"
@@ -1105,7 +1127,7 @@ class TestEvalFixturesService():
       }
       
       with open(fallback_fixtures_file, 'w') as f:
-        yaml.dump(fallback_fixtures_content, f)
+        yaml.dump(fallback_fixtures_content, f, sort_keys=False)
       
       # Use a fixture file without origin specification (fallback)
       res: requests.Response = eval_fixtures(main_mitmproxy_request, response_fixtures_path=fallback_fixtures_file)
@@ -1145,10 +1167,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(api_fixtures_content, f)
+        yaml.dump(api_fixtures_content, f, sort_keys=False)
       
       with open(fallback_fixtures_file, 'w') as f:
-        yaml.dump(fallback_fixtures_content, f)
+        yaml.dump(fallback_fixtures_content, f, sort_keys=False)
       
       # Use response_fixtures_path with origin-specific first, fallback second
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{fallback_fixtures_file}"
@@ -1190,7 +1212,7 @@ class TestEvalFixturesService():
       }
       
       with open(wildcard_fixtures_file, 'w') as f:
-        yaml.dump(wildcard_fixtures_content, f)
+        yaml.dump(wildcard_fixtures_content, f, sort_keys=False)
       
       # Use regex wildcard pattern in response_fixtures_path
       fixtures_paths = f"{wildcard_fixtures_file}:https://.*\\.example\\.com"
@@ -1219,7 +1241,7 @@ class TestEvalFixturesService():
       }
       
       with open(fixtures_file_path, 'w') as fp:
-        yaml.dump(fixtures_content, fp)
+        yaml.dump(fixtures_content, fp, sort_keys=False)
       
       # Test loading fixtures via response_fixtures_path
       res: requests.Response = eval_fixtures(api_mitmproxy_request, response_fixtures_path=fixtures_file_path)
@@ -1258,10 +1280,10 @@ class TestEvalFixturesService():
       }
       
       with open(api_fixtures_file, 'w') as fp:
-        yaml.dump(api_fixtures_content, fp)
+        yaml.dump(api_fixtures_content, fp, sort_keys=False)
       
       with open(main_fixtures_file, 'w') as fp:
-        yaml.dump(main_fixtures_content, fp)
+        yaml.dump(main_fixtures_content, fp, sort_keys=False)
       
       # Test with comma-separated paths with origins
       fixtures_paths = f"{api_fixtures_file}:https://api\\.example\\.com,{main_fixtures_file}:https://petstore\\.swagger\\.io"
@@ -1309,10 +1331,10 @@ class TestEvalFixturesService():
       }
       
       with open(first_fixtures_file, 'w') as fp:
-        yaml.dump(first_fixtures_content, fp)
+        yaml.dump(first_fixtures_content, fp, sort_keys=False)
       
       with open(second_fixtures_file, 'w') as fp:
-        yaml.dump(second_fixtures_content, fp)
+        yaml.dump(second_fixtures_content, fp, sort_keys=False)
       
       # Create an invalid YAML file that would cause an error if processed
       with open(invalid_fixtures_file, 'w') as fp:
@@ -1360,10 +1382,10 @@ class TestEvalFixturesService():
       }
       
       with open(wrong_origin_file, 'w') as fp:
-        yaml.dump(wrong_origin_content, fp)
+        yaml.dump(wrong_origin_content, fp, sort_keys=False)
       
       with open(correct_origin_file, 'w') as fp:
-        yaml.dump(correct_origin_content, fp)
+        yaml.dump(correct_origin_content, fp, sort_keys=False)
       
       # Test with API request - wrong origin should be skipped, correct origin should be used
       fixtures_paths = f"{wrong_origin_file}:https://petstore\\.swagger\\.io,{correct_origin_file}:https://api\\.example\\.com"
@@ -1398,7 +1420,7 @@ class TestEvalFixturesService():
         }
       }
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test full URL with port
       status = RequestBuilder(
@@ -1439,7 +1461,7 @@ class TestEvalFixturesService():
         }
       }
       with open(api_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test HTTP request
       status = RequestBuilder(
@@ -1480,7 +1502,7 @@ class TestEvalFixturesService():
         }
       }
       with open(wildcard_fixtures_file, 'w') as f:
-        yaml.dump(fixtures_content, f)
+        yaml.dump(fixtures_content, f, sort_keys=False)
       
       # Test subdomain request
       status = RequestBuilder(

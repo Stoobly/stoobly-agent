@@ -76,7 +76,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
 
       if os.path.isdir(fixture_path):
         request_path = request.path
-        match = re.fullmatch(fixture['path_pattern'], request_path)
+        match = re.match(fixture.get('path_pattern', request_path), request_path)
 
         if not match or match.end() == len(request_path):
           sub_path = 'index'
