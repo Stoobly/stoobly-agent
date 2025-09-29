@@ -110,7 +110,7 @@ class TestEvalFixturesService():
       
       with open(fixtures_file, 'w') as f:
         yaml.dump(response_fixtures, f)
-      
+
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures_path=fixtures_file)
       assert res != None
       return res
@@ -119,7 +119,7 @@ class TestEvalFixturesService():
     def default_fixtures_response(self, mitmproxy_request: MitmproxyRequest, response_fixtures: Fixtures):
       mitmproxy_request.path = '/'
       mitmproxy_request.headers['accept'] = '*/*'
-      pdb.set_trace()
+
       res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures=response_fixtures)
       assert res != None
       return res

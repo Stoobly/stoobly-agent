@@ -58,12 +58,9 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
             continue
         
         # Try to find the file in this directory
-        _fixture_path = os.path.join(dir_path_config['path'], request_path.lstrip('/'))
+        fixture_path = os.path.join(dir_path_config['path'], request_path.lstrip('/'))
         if request.headers.get('accept'):
-          fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
-        
-        if not fixture_path:
-          fixture_path = _fixture_path
+          fixture_path = __guess_file_path(fixture_path, request.headers['accept'])
         
         if os.path.isfile(fixture_path):
           break
@@ -86,13 +83,10 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
         else:
           sub_path = request_path[match.end():]
 
-        _fixture_path = os.path.join(fixture_path, sub_path.lstrip('/'))
+        fixture_path = os.path.join(fixture_path, sub_path.lstrip('/'))
         if request.headers.get('accept'):
-          fixture_path = __guess_file_path(_fixture_path, request.headers['accept'])
+          fixture_path = __guess_file_path(fixture_path, request.headers['accept'])
         
-        if not fixture_path:
-          fixture_path = _fixture_path
-
         if not os.path.isfile(fixture_path):
           return
         
@@ -177,13 +171,13 @@ def __guess_content_type(file_path):
     return
   return mimetypes.types_map.get(file_extension)
 
-def __guess_file_path(file_path, content_type):
+def __guess_file_path(file_path: str, content_type):
   file_extension = os.path.splitext(file_path)[1]
   if file_extension:
     return file_path
 
   if not content_type:
-    return
+    return file_path
 
   content_types = __parse_accept_header(content_type)
 
@@ -196,6 +190,8 @@ def __guess_file_path(file_path, content_type):
     _file_path = f"{file_path}{file_extension}"
     if os.path.isfile(_file_path):
       return _file_path
+
+  return file_path
 
 def __find_fixture_for_request(request: MitmproxyRequest, fixtures: dict, method: str):
   """Find a fixture for the given request in the provided fixtures."""
@@ -257,6 +253,7 @@ def __origin_matches(pattern: str, request_origin: str) -> bool:
     return bool(re.match(pattern, request_origin))
 
 def __parse_accept_header(accept_header):
+    # In the case accept_header is */*, default to html and json file types
     if accept_header == '*/*':
       return ['text/html', 'application/json']
 
