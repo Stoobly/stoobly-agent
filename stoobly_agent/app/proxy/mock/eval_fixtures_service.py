@@ -76,7 +76,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
 
       if os.path.isdir(fixture_path):
         request_path = request.path
-        match = re.match(fixture['path_pattern'], request_path)
+        match = re.fullmatch(fixture['path_pattern'], request_path)
 
         if not match or match.end() == len(request_path):
           sub_path = 'index'
@@ -208,7 +208,7 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
     return None
 
   for path_pattern in routes:
-    if not re.match(path_pattern, request_path):
+    if not re.fullmatch(path_pattern, request_path):
       continue
       
     fixture = routes[path_pattern]
@@ -250,7 +250,7 @@ def __choose_highest_priority_content_type(accept_header: str) -> Optional[str]:
     return types[0][0] if types else None
 
 def __origin_matches(pattern: str, request_origin: str) -> bool:
-    return bool(re.match(pattern, request_origin))
+    return bool(re.fullmatch(pattern, request_origin))
 
 def __parse_accept_header(accept_header):
     # In the case accept_header is */*, default to html and json file types
