@@ -1,7 +1,7 @@
 from ...constants import (
   SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_SCHEME,
 )
-from .builder import WorkflowBuilder
+from ...local.workflow.builder import WorkflowBuilder
 
 class CommandDecorator():
 

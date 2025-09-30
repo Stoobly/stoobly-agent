@@ -1,8 +1,12 @@
+import importlib
+import os
 import pdb
+from click import Group
 import pytest
 
 from click.testing import CliRunner
 
+from stoobly_agent.app.cli import intercept_cli
 from stoobly_agent.test.test_helper import reset
 
 from stoobly_agent.cli import config, intercept, scenario
@@ -10,7 +14,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
+from stoobly_agent.config.constants import env_vars, mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
 
 @pytest.fixture(scope='module')
 def runner():
@@ -19,6 +23,14 @@ def runner():
 @pytest.fixture(autouse=True, scope='module')
 def settings():
   return reset()
+
+@pytest.fixture(scope='module')
+def intercept_cli():
+  from stoobly_agent.app.cli import intercept_cli as _intercept_cli
+  os.environ[env_vars.AGENT_REMOTE_ENABLED] = '1'
+  importlib.reload(_intercept_cli)
+  del os.environ[env_vars.AGENT_REMOTE_ENABLED]
+  return _intercept_cli.intercept
 
 class TestInterceptConfigure():
 
@@ -156,9 +168,8 @@ class TestInterceptConfigure():
         assert data_rule.replay_policy == replay_policy.ALL
 
     class TestTestPolicy():
-
-      def test_policy_test_mode_found(self, runner: CliRunner):
-        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.TEST, '--policy', mock_policy.FOUND])
+      def test_policy_test_mode_found(self, runner: CliRunner, intercept_cli: Group):
+        configure_result = runner.invoke(intercept_cli, ['configure', '--mode', mode.TEST, '--policy', mock_policy.FOUND])
         assert configure_result.exit_code == 0
 
         settings = Settings.instance()
@@ -196,9 +207,9 @@ class TestInterceptConfigure():
         assert configure_result.exit_code == 1
         assert "Error: Valid policies for" in configure_result.output
 
-      def test_policy_invalid_for_test_mode(self, runner: CliRunner):
+      def test_policy_invalid_for_test_mode(self, runner: CliRunner, intercept_cli: Group):
         # Use record_policy.API which is not valid for TEST mode
-        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.TEST, '--policy', record_policy.API])
+        configure_result = runner.invoke(intercept_cli, ['configure', '--mode', mode.TEST, '--policy', record_policy.API])
         assert configure_result.exit_code == 1
         assert "Error: Valid policies for" in configure_result.output
 

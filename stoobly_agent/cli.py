@@ -9,8 +9,10 @@ from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
+from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
+from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
@@ -81,7 +83,7 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-dir-path', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -91,6 +93,7 @@ def init(**kwargs):
   config.yaml to avoid this.
 ''')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
+@click.option('--detached', type=click.Path(), help='Run in detached mode and redirect output to the specified file path.')
 @click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
   0: no output
@@ -101,7 +104,7 @@ def init(**kwargs):
 ''')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
-@click.option('--intercept-mode', help='Set intercept mode.')
+@click.option('--intercept-mode', type=click.Choice(mode_options), help='Set intercept mode.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -119,11 +122,11 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
-@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
 @click.option('--request-log-level', default='error', type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log')
-@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
@@ -133,6 +136,9 @@ def run(**kwargs):
     # Observe config for changes
     settings: Settings = Settings.instance()
     settings.watch()
+
+    if not os.path.exists(kwargs.get('ca_certs_dir_path')):
+      kwargs['ca_certs_dir_path'] = DataDir.instance().ca_certs_dir_path
 
     if kwargs.get('headless'):
       os.environ[env_vars.AGENT_HEADLESS] = '1'
@@ -148,10 +154,18 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
 
     if kwargs.get('public_directory_path'):
-      os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = kwargs['public_directory_path']
+      # Join multiple paths with commas
+      public_dirs = kwargs['public_directory_path']
+      if isinstance(public_dirs, (list, tuple)):
+        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = ','.join(public_dirs)
+      else:
+        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = public_dirs
 
     if kwargs.get('response_fixtures_path'):
-      os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = kwargs['response_fixtures_path']
+      response_fixtures_paths = kwargs.get('response_fixtures_path', ())
+      if response_fixtures_paths:
+        response_fixtures = ','.join(response_fixtures_paths)
+        os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = response_fixtures
 
     if not os.getenv(env_vars.LOG_LEVEL):
       os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -190,11 +204,46 @@ def run(**kwargs):
       settings.commit()
       run_api(**kwargs)
 
-    if not kwargs.get('proxyless'):
-      log_id = 'Proxy'
-      Logger.instance(log_id).info(f"starting with mode {kwargs['proxy_mode']} and listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
-      Logger.instance(log_id).info(f"{'' if settings.proxy.intercept.active else 'not yet '}configured to {settings.proxy.intercept.mode}")
-      run_proxy(**kwargs)
+    if kwargs.get('detached'):
+      # Run in detached mode with output redirection
+      import subprocess
+      import sys
+      
+      # Build the command to run in background
+      cmd = [sys.executable, '-m', 'stoobly_agent'] + sys.argv[1:]
+      # Remove the --detached flag and its value from the command
+      detached_index = None
+      for i, arg in enumerate(cmd):
+        if arg == '--detached':
+          detached_index = i
+          break
+      if detached_index is not None:
+        cmd.pop(detached_index)  # Remove --detached
+        if detached_index < len(cmd) and not cmd[detached_index].startswith('--'):
+          cmd.pop(detached_index)  # Remove the file path
+      
+      # Start the process in background with output redirection
+      with open(kwargs['detached'], 'w') as output_file:
+        process = subprocess.Popen(
+          cmd,
+          stdout=output_file,
+          stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+          preexec_fn=os.setsid  # Create new process group
+        )
+      
+      print(process.pid)
+      return
+    else:
+      # Run in foreground mode
+      if not kwargs.get('headless'):
+        settings.commit()
+        run_api(**kwargs)
+
+      if not kwargs.get('proxyless'):
+        log_id = 'Proxy'
+        Logger.instance(log_id).info(f"starting with mode {kwargs['proxy_mode']} and listening at {kwargs['proxy_host']}:{kwargs['proxy_port']}")
+        Logger.instance(log_id).info(f"{'' if settings.proxy.intercept.active else 'not yet '}configured to {settings.proxy.intercept.mode}")
+        run_proxy(**kwargs)
 
 @main.command(
   help="Mock request"
@@ -206,8 +255,8 @@ def run(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-directory-path', help='Path to public files. Used for mocking requests.')
-@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')

@@ -10,7 +10,7 @@ from .helpers.handle_config_update_service import handle_intercept_active_update
 
 settings: Settings = Settings.instance()
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
+mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
 
 if settings.cli.features.remote:
     mode_options.append(mode.TEST)
@@ -87,9 +87,9 @@ def disable(**kwargs):
     help="Configure intercept"
 )
 @click.option('--mode', type=click.Choice(mode_options))
-@click.option('--order', type=click.Choice(order_options))
-@click.option('--policy', type=click.Choice(policy_options))
-@click.option('--strategy', type=click.Choice(strategy_options))
+@click.option('--order', help=f"Order to use for recording. Valid options: {order_options}")
+@click.option('--policy', help=f"Policy to use for recording. Valid options: {policy_options}")
+@click.option('--strategy', help=f"Strategy to use for recording. Valid options: {strategy_options}")
 def configure(**kwargs):
     settings: Settings = Settings.instance()
 
@@ -172,7 +172,7 @@ def configure(**kwargs):
     help="Show intercept"
 )
 def show(**kwargs):
-    settings = Settings.instance()
+    settings: Settings = Settings.instance()
 
     _mode = settings.proxy.intercept.mode
     project_key = ProjectKey(settings.proxy.intercept.project_key)

@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 import shutil
 
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
@@ -63,10 +64,6 @@ class App():
     return self.__scaffold_namespace
 
   @property
-  def scaffold_namespace_path(self):
-    return os.path.join(self.data_dir_path, self.scaffold_namespace)
-
-  @property
   def dir_path(self):
     return self.__dir_path
 
@@ -101,7 +98,7 @@ class App():
 
     return services
 
-  def copy_folders_and_hidden_files(self, src, dst):
+  def copy_folders_and_hidden_files(self, src: str, dst: str, ignore: list = []):
       os.makedirs(dst, exist_ok=True)
 
       # Walk through the source directory
@@ -109,6 +106,18 @@ class App():
           # Copy hidden files only
           for file_name in files:
               src_file_path = os.path.join(root, file_name)
+
+              ignored = False
+
+              # Skip files that match the ignore list pattern, use regex
+              for ignore_pattern in ignore:
+                  if re.fullmatch(os.path.join(src, ignore_pattern), src_file_path):
+                      ignored = True
+                      break
+
+              if ignored:
+                continue
+
               dst_file_path = os.path.join(dst, os.path.relpath(root, src), file_name)
 
               if not file_name.startswith('.'):

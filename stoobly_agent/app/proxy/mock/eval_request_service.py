@@ -202,7 +202,7 @@ def __filter_by_match_rules(request: MitmproxyRequest, match_rules: List[MatchRu
 
 def __matches(url: str, pattern: str):
     try:
-        return re.match(pattern, url)
+        return re.fullmatch(pattern, url)
     except re.error as e:
         Logger.instance().error(f"RegExp error '{e}' for {pattern}")
         return False

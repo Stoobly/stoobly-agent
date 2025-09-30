@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerCompose
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.e2e_test import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.e2e_test import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
 
@@ -81,13 +81,6 @@ class TestScaffoldCli():
 
       # Generate certs
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
-    
-    @pytest.fixture(scope="class", autouse=True)
-    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
-      yield
-      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
-      shutil.rmtree(app_dir_path)
-    
  
     def test_service_delete(self, runner, app_dir_path, external_service_docker_compose):
       app = App(app_dir_path, SERVICES_NAMESPACE)

@@ -17,14 +17,9 @@ class TestDataDir():
   def original_cwd(self) -> str:
     return os.getcwd()
 
-  @pytest.fixture(scope='class')
-  def home_dir(self) -> str:
-    return os.path.expanduser("~")
-
-  def test_in_home(self, original_cwd: str, home_dir: str):
-    # A previous test can put us in 'stoobly_agent/test/app/models/schemas/.stoobly'
+  def test_in_home(self, original_cwd: str):
     os.chdir(original_cwd)
-    data_dir_path = os.path.join(home_dir, DATA_DIR_NAME)
+    data_dir_path = os.path.join(original_cwd, DATA_DIR_NAME)
     os.environ[ENV] = NONE
 
     result = DataDir.instance().path

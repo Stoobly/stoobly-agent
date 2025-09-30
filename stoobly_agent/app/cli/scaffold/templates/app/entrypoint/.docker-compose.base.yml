@@ -2,7 +2,7 @@ services:
   entrypoint.configure_base:
     command:
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.configure
-    - bin/configure
+    - configure
     extends:
       file: ../.docker-compose.base.yml
       service: context_base
@@ -10,7 +10,7 @@ services:
   entrypoint.init_base:
     command:
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
-    - bin/init
+    - init
     extends:
       file: ../.docker-compose.base.yml
       service: context_base

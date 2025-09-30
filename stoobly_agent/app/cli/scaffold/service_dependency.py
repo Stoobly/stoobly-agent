@@ -37,7 +37,7 @@ class DockerImage:
             (?::(?P<tag>[^@]+))?             # optional :tag
             (?:@(?P<digest>.+))?             # optional @digest
         """
-        match = re.match(pattern, ref, re.VERBOSE)
+        match = re.fullmatch(pattern, ref, re.VERBOSE)
         if not match:
             raise ValueError(f"Invalid Docker image reference: {ref}")
         

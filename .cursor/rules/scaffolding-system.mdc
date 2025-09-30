@@ -1,0 +1,44 @@
+# Scaffolding System Architecture
+
+## Overview
+The scaffolding system supports both Docker and local development workflows. It uses a builder pattern with base classes and specialized implementations.
+
+## Architecture Components
+
+### Base Classes
+- **ServiceBuilder**: Base class for service configuration in [stoobly_agent/app/cli/scaffold/local/service/builder.py](mdc:stoobly_agent/app/cli/scaffold/local/service/builder.py)
+- **WorkflowBuilder**: Base class for workflow configuration in [stoobly_agent/app/cli/scaffold/local/workflow/builder.py](mdc:stoobly_agent/app/cli/scaffold/local/workflow/builder.py)
+- **WorkflowRunCommand**: Base class for workflow execution in [stoobly_agent/app/cli/scaffold/workflow_run_command.py](mdc:stoobly_agent/app/cli/scaffold/workflow_run_command.py)
+
+### Docker Implementation
+- **DockerServiceBuilder**: Docker-specific service builder in [stoobly_agent/app/cli/scaffold/docker/service/builder.py](mdc:stoobly_agent/app/cli/scaffold/docker/service/builder.py)
+- **DockerWorkflowBuilder**: Docker-specific workflow builder in [stoobly_agent/app/cli/scaffold/docker/workflow/builder.py](mdc:stoobly_agent/app/cli/scaffold/docker/workflow/builder.py)
+- **DockerWorkflowRunCommand**: Docker workflow execution in [stoobly_agent/app/cli/scaffold/docker/workflow/run_command.py](mdc:stoobly_agent/app/cli/scaffold/docker/workflow/run_command.py)
+
+### Local Implementation
+- **LocalWorkflowRunCommand**: Local workflow execution in [stoobly_agent/app/cli/scaffold/local/workflow/run_command.py](mdc:stoobly_agent/app/cli/scaffold/local/workflow/run_command.py)
+
+## Key Design Patterns
+
+### Multiple Inheritance
+- Docker builders inherit from both base classes and Docker-specific Builder
+- Use explicit method calls (e.g., `Builder.write(self, compose)`) to resolve ambiguity
+
+### Conditional Instantiation
+- Choose between Docker and Local implementations based on `app_config.run_on`
+- Use constants like `RUN_ON_DOCKER` and `RUN_ON_LOCAL` for configuration
+
+### Process Management
+- Local workflows use PID tracking for background processes
+- Graceful shutdown: SIGTERM → wait → SIGKILL
+- PID files stored in `.stoobly/tmp/<workflow-name>/.pid`
+
+## CLI Integration
+- Main CLI entry: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py)
+- Commands: `up`, `down`, `logs`, `status`
+- Support for `--detached` mode for background execution
+- Script generation for batch operations
+description:
+globs:
+alwaysApply: false
+---

@@ -3,6 +3,10 @@
 # This file was automatically generated. DO NOT EDIT.
 # Any changes made to this file will be overwritten.
 
+if [ -f .env ]; then
+  set -a; . ./.env; set +a;
+fi
+
 entrypoint=$1
 
 port=$SERVICE_PORT
@@ -26,5 +30,5 @@ if [ "$service_origin" != "$upstream_origin" ] && [ "$SERVICE_UPSTREAM_HOSTNAME"
 fi
 
 if [ -e "$entrypoint" ]; then
-  "$entrypoint" "$service_origin"
+  ./"$entrypoint" "$service_origin"
 fi
