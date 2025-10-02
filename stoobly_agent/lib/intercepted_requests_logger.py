@@ -44,6 +44,14 @@ class InterceptedRequestsLogger():
             return base_url
 
         def format(self, record: logging.LogRecord) -> str:
+            # Handle delimiter entries such as when changing scenarios
+            if hasattr(record, 'delimiter'):
+                delimiter_entry = {
+                    "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+                    **record.delimiter
+                }
+                return json.dumps(delimiter_entry)
+
             log_entry = {
                 "timestamp": datetime.fromtimestamp(record.created).isoformat(),
                 "level": record.levelname,
@@ -250,22 +258,17 @@ class InterceptedRequestsLogger():
         previous_name = cls._get_scenario_name(previous_scenario_key)
         current_name = cls._get_scenario_name(current_scenario_key)
 
-        delimiter_entry = {
-            "type": "----- Scenario change delimiter -----",
-            "timestamp": datetime.now().isoformat(),
-            "message": "Scenario changed",
-            "previous_scenario_key": previous_scenario_key or "",
-            "previous_scenario_name": previous_name or "",
-            "current_scenario_key": current_scenario_key or "",
-            "current_scenario_name": current_name or "",
+        extra = {
+            'delimiter': {
+                "type": "----- Scenario change delimiter -----",
+                "previous_scenario_key": previous_scenario_key or "",
+                "previous_scenario_name": previous_name or "",
+                "current_scenario_key": current_scenario_key or "",
+                "current_scenario_name": current_name or "",
+            }
         }
 
-        file_path = cls.__get_file_path()
-        try:
-            with open(file_path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(delimiter_entry) + '\n')
-        except IOError as e:
-            cls.__logger.error(f"Failed to write delimiter to log file: {e}")
+        cls.__logger.info("Scenario changed", extra=extra)
 
     @classmethod
     def __setup_logging(cls, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> dict:
