@@ -30,9 +30,18 @@ class InterceptedRequestsLogger():
     __previous_scenario_key: str = None
 
     class JSONFormatter(logging.Formatter):
-        def __init__(self, outer_cls):
+        def __init__(self, settings: Settings):
             super().__init__()
-            self.outer_cls = outer_cls
+            self.__settings = settings
+
+        def _get_base_ui_url(self) -> str:
+            base_url = self.__settings.ui.url
+
+            # If base URL is not set in settings.yml OR it's set to the URL from within a Scaffold workflow
+            # Then return the localhost URL so users can access it.
+            if not base_url or base_url == 'http://local.stoobly.com:4200':
+                base_url = 'http://localhost:4200'
+            return base_url
 
         def format(self, record: logging.LogRecord) -> str:
             log_entry = {
@@ -57,7 +66,7 @@ class InterceptedRequestsLogger():
                 })
 
             # Set scenario key
-            intercept_settings = InterceptSettings(self.outer_cls._InterceptedRequestsLogger__settings)
+            intercept_settings = InterceptSettings(self.__settings)
             scenario_key = intercept_settings.scenario_key
             log_entry.update({
                 "scenario_key": scenario_key
@@ -66,7 +75,7 @@ class InterceptedRequestsLogger():
             # Set scenario name if scenario_key is set
             scenario_name = ""
             if scenario_key:
-                scenario_name = self.outer_cls._get_scenario_name(scenario_key)
+                scenario_name = InterceptedRequestsLogger._get_scenario_name(scenario_key)
                 log_entry.update({
                     "scenario_name": scenario_name
                 })
@@ -90,11 +99,9 @@ class InterceptedRequestsLogger():
             # Set scenario UI URL if scenario_key has a value
             stoobly_ui_scenario_url = ""
             if scenario_key:
-                scenario_id = self.outer_cls._get_scenario_id(scenario_key)
+                scenario_id = InterceptedRequestsLogger._get_scenario_id(scenario_key)
                 if scenario_id:
-                    base_url = self.outer_cls._InterceptedRequestsLogger__settings.ui.url
-                    if not base_url or base_url == 'http://local.stoobly.com:4200':
-                        base_url = 'http://localhost:4200'
+                    base_url = self._get_base_ui_url()
                     stoobly_ui_scenario_url = f"{base_url}/agent/scenarios/{scenario_id}"
                 log_entry.update({
                     "stoobly_ui_scenario_url": stoobly_ui_scenario_url
@@ -109,18 +116,16 @@ class InterceptedRequestsLogger():
                 request_key = record.request_key
             # Fallback to extracting from response headers
             elif hasattr(record, 'response') and record.response is not None:
-                request_key = self.outer_cls._extract_request_key(record.response)
+                request_key = InterceptedRequestsLogger._extract_request_key(record.response)
 
             if request_key:
                 log_entry.update({
                     "request_key": request_key
                 })
 
-                request_id = self.outer_cls._get_request_id(request_key)
+                request_id = InterceptedRequestsLogger._get_request_id(request_key)
                 if request_id:
-                    base_url = self.outer_cls._InterceptedRequestsLogger__settings.ui.url
-                    if not base_url or base_url == 'http://local.stoobly.com:4200':
-                        base_url = 'http://localhost:4200'
+                    base_url = self._get_base_ui_url()
                     stoobly_ui_request_url = f"{base_url}/agent/requests/{request_id}"
 
                     log_entry.update({
@@ -231,7 +236,7 @@ class InterceptedRequestsLogger():
             cls.__logger.propagate = False
 
             file_handler = logging.FileHandler(cls.__get_file_path())
-            json_formatter = cls.JSONFormatter(cls)
+            json_formatter = cls.JSONFormatter(cls.__settings)
             file_handler.setFormatter(json_formatter)
             cls.__logger.addHandler(file_handler)
 

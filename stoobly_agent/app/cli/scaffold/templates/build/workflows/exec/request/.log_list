@@ -1,3 +1,5 @@
 #!/bin/bash
 
-stoobly-agent request log list
+extra_options=$EXEC_OPTIONS
+
+stoobly-agent request log list $extra_options

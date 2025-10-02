@@ -190,12 +190,12 @@ def __handle_mock_success(context: MockContext) -> None:
         request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
         if request_key:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
-            InterceptedRequestsLogger.debug("Mock success", request=request, response=response, request_key=request_key)
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
 
         fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
         if fixture_path:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
-            InterceptedRequestsLogger.debug("Mock success", request=request, response=response, fixture_path=fixture_path)
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         response = context.response
