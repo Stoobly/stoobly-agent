@@ -187,22 +187,13 @@ def run(**kwargs):
     if kwargs.get('request_log_enable'):
       InterceptedRequestsLogger.enable_logger_file()
 
-    request_log_level = kwargs.get('request_log_level')
-    if request_log_level:
-      InterceptedRequestsLogger.set_log_level(request_log_level)
+      request_log_level = kwargs.get('request_log_level')
+      if request_log_level:
+        InterceptedRequestsLogger.set_log_level(request_log_level)
 
     # Truncate the requests log on startup
     if kwargs.get('request_log_truncate'):
       InterceptedRequestsLogger.truncate()
-
-    # Remove the custom options otherwise it gets passed into run_proxy() and errors out
-    kwargs.pop('request_log_enable')
-    kwargs.pop('request_log_level')
-    kwargs.pop('request_log_truncate')
-
-    if not kwargs.get('headless'):
-      settings.commit()
-      run_api(**kwargs)
 
     if kwargs.get('detached'):
       # Run in detached mode with output redirection
