@@ -128,7 +128,7 @@ def configure(**kwargs):
         active_mode = settings.proxy.intercept.mode
         valid_policies = __get_policy_options(active_mode)
 
-        if not kwargs['policy'] in valid_policies:
+        if kwargs['policy'] not in valid_policies:
             print("Error: Valid policies for {active_mode} are {valid_policies}", file=sys.stderr)
             sys.exit(1)
 

@@ -3,17 +3,10 @@ from typing import List
 
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
-from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, SERVICES_NAMESPACE, 
-  SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
-  SERVICE_NAME, SERVICE_NAME_ENV, 
-  SERVICE_ID,
-  SERVICE_PORT, SERVICE_PORT_ENV, 
-  SERVICE_SCHEME, SERVICE_SCHEME_ENV,
-  SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_HOSTNAME_ENV, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_PORT_ENV, SERVICE_UPSTREAM_SCHEME, SERVICE_UPSTREAM_SCHEME_ENV,
+  SERVICES_NAMESPACE, SERVICE_NAME, SERVICE_NAME_ENV, 
   STOOBLY_HOME_DIR, 
-  WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
+  WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 )
 from ...service_config import ServiceConfig
 
@@ -23,7 +16,7 @@ class ServiceBuilder():
     self.__config = config
     self.__dir_path = config.dir
     self.__upstream_port = None
-    self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV]
+    self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV]
     self.__service_name = os.path.basename(config.dir)
     self.__working_dir = os.path.join(
       STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME

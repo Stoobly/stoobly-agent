@@ -135,7 +135,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     # connection is working, but we haven't recorded anything yet
     logs = output.decode('ascii')
     if logs != '200' and  logs != '499':
-      raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network")
+      raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network with logs: \n{logs}")
 
   # Check public folder exists in container
   def validate_public_folder(self, container: Container):

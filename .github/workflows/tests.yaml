@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: '3.10'
@@ -50,10 +50,10 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: ${{ matrix.python-version }}
@@ -74,10 +74,10 @@ jobs:
         python-version: ["3.12"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: ${{ matrix.python-version }}
@@ -93,13 +93,27 @@ jobs:
       - name: Build image
         run: |
           # e.g. stoobly/agent:1.3
-          docker build -t stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py) .
+          IMAGE_TAG=stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py)
+          docker build -t "$IMAGE_TAG" .
+
+          # Wait for image to be available in Docker daemon
+          for i in {1..30}; do
+            if docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "Image $IMAGE_TAG is ready"
+              docker images
+              break
+            fi
+            echo "Waiting for image to be available... (attempt $i/30)"
+            sleep 2
+          done
+
+          # Final verification
+          docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || { echo "Image not available after waiting"; exit 1; }
 
       - name: Test with pytest
         run: |
           python --version
           python -m pip install poetry && \
           python -m poetry install --with test
-            
-          STOOBLY_IMAGE_USE_LOCAL=1 make test/e2e
 
+          STOOBLY_IMAGE_USE_LOCAL=1 make test/e2e
