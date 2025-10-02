@@ -135,7 +135,7 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name
     # Default to the workflow name if a namespace isn't given
-    _config[WORKFLOW_NAMESPACE_ENV] = self.namespace if namespace else _config[WORKFLOW_NAME_ENV]
+    _config[WORKFLOW_NAMESPACE_ENV] = namespace if namespace else _config[WORKFLOW_NAME_ENV]
 
     if self.network:
       _config[APP_NETWORK_ENV] = self.network

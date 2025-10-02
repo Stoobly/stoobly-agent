@@ -96,6 +96,7 @@ jobs:
           docker build -t stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py) .
 
           docker images
+          sleep(3)
 
       - name: Test with pytest
         run: |

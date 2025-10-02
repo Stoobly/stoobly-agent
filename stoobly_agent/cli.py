@@ -12,7 +12,6 @@ from stoobly_agent.app.cli.helpers.validations import validate_project_key, vali
 from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
-from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
@@ -125,7 +124,7 @@ def init(**kwargs):
 @click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
-@click.option('--request-log-level', default='error', type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
+@click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
