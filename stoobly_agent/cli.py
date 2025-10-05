@@ -184,15 +184,16 @@ def run(**kwargs):
       settings.proxy.url = proxy_url
 
     if kwargs.get('request_log_enable'):
-      InterceptedRequestsLogger.enable_logger_file()
+      # If truncating, do that first (it handles enable internally)
+      if kwargs.get('request_log_truncate'):
+        InterceptedRequestsLogger.truncate()
+      else:
+        InterceptedRequestsLogger.enable_logger_file()
 
+      # Set log level after logger is enabled
       request_log_level = kwargs.get('request_log_level')
       if request_log_level:
         InterceptedRequestsLogger.set_log_level(request_log_level)
-
-    # Truncate the requests log on startup
-    if kwargs.get('request_log_truncate'):
-      InterceptedRequestsLogger.truncate()
 
     if kwargs.get('detached'):
       # Run in detached mode with output redirection
