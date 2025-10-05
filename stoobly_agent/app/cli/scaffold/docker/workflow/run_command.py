@@ -1,3 +1,4 @@
+from ast import FunctionType
 import os
 import pdb
 import subprocess
@@ -7,7 +8,7 @@ from typing import List
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
@@ -28,9 +29,13 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.script = script
 
   @property
+  def timestamp_file_extension(self):
+    return '.timestamp'
+
+  @property
   def timestamp_file_path(self):
     """Get the path to the timestamp file for this workflow."""
-    return os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.timestamp")
+    return os.path.join(self.workflow_namespace.path, self.timestamp_file_name(self.workflow_name))
 
   def exec_setup(self, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
@@ -47,25 +52,34 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     for command in init_commands:
       self.exec(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
-  def up(self, **options: WorkflowUpOptions):
-    """Execute the complete Docker workflow up process."""
-    # Define timestamp file path
-    timestamp_file = self.timestamp_file_path
-    
+
+  def timestamp_file_name(self, workflow_name: str):
+    return f"{workflow_name}{self.timestamp_file_extension}"
+
+  def __create_timestamp_file(self):
     # Create timestamp file to indicate workflow is starting
+    timestamp_file = self.timestamp_file_path
     try:
       with open(timestamp_file, 'w') as f:
         import time
         f.write(str(time.time()))
-      Logger.instance(LOG_ID).info(f"Created timestamp file: {timestamp_file}")
+      Logger.instance(LOG_ID).debug(f"Created timestamp file: {timestamp_file}")
     except Exception as e:
       Logger.instance(LOG_ID).error(f"Failed to create timestamp file: {e}")
       sys.exit(1)
     
+    return timestamp_file
+
+  def up(self, **options: WorkflowUpOptions):
+    """Execute the complete Docker workflow up process."""
+
     no_publish = options.get('no_publish', False)
     print_service_header = options.get('print_service_header')
-    
+
+    self.__iterate_active_workflows(handle_active=self.__handle_up_active)
+
+    timestamp_file = self.__create_timestamp_file()
+
     try:
       # Create individual service commands
       commands: List[DockerWorkflowRunCommand] = []
@@ -128,11 +142,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def down(self, **options: WorkflowDownOptions):
     """Execute the complete Docker workflow down process."""
-    # Check if workflow is running (timestamp file exists)
-    timestamp_file = self.timestamp_file_path
-    if not os.path.exists(timestamp_file):
-      Logger.instance(LOG_ID).info(f"Workflow '{self.workflow_name}' is not running. No timestamp file found: {timestamp_file}")
-      return
+    timestamp_file = self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
     
@@ -197,14 +207,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
-    # Check if workflow is running (timestamp file exists)
-    timestamp_file = self.timestamp_file_path
-    if not os.path.exists(timestamp_file):
-      Logger.instance(LOG_ID).info(f"Workflow '{self.workflow_name}' is not running. No timestamp file found: {timestamp_file}")
-      return
-    
-    from ...templates.constants import CORE_SERVICES
-    
+    timestamp_file = self.__find_and_verify_timestamp_file()
+     
     print_service_header = options.get('print_service_header')
     
     # Filter services based on options
@@ -421,3 +425,62 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       if result.returncode != 0:
         Logger.instance(LOG_ID).error(command)
         sys.exit(1)
+
+  def __find_and_verify_timestamp_file(self):
+    # Check if workflow is running (timestamp file exists)
+
+    timestamp_file = self.timestamp_file_path
+    if not os.path.exists(timestamp_file):
+      Logger.instance(LOG_ID).error(f"Workflow '{self.workflow_name}' is not running.")
+
+      if self.workflow_name != self.workflow_namespace.namespace:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow up {self.workflow_name} --namespace {self.workflow_namespace.namespace}` to start it first.")
+      else:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow up {self.workflow_name}` to start it first.")
+      sys.exit(2)
+
+    return timestamp_file
+
+  def __handle_up_active(self, folder: str, timestamp_file_path: str):
+    file_name = os.path.basename(timestamp_file_path)
+
+    # In the case of a namespace, the workflow name is the name of the file without the timestamp extension
+    workflow_name = self.workflow_name
+    if folder != self.workflow_name:
+      workflow_name = file_name.split(self.timestamp_file_extension)[0]
+
+    Logger.instance(LOG_ID).error(f"Workflow '{workflow_name}' is running, please stop it first.")
+
+    if folder != workflow_name:
+      Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {workflow_name} --namespace {folder}` to stop it first.")
+    else:
+      Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {workflow_name}` to stop it first.")
+
+    sys.exit(1)
+
+  def __iterate_active_workflows(self, **kwargs):
+    handle_active: FunctionType = kwargs.get('handle_active')
+    tmp_dir_path = self.app.data_dir.tmp_dir_path
+
+    # For each folder in self.app.data_dir.tmp_dir_path
+    for folder in os.listdir(tmp_dir_path):
+      folder_path = os.path.join(tmp_dir_path, folder)
+
+      # If the folder is not a directory, skip
+      if not os.path.isdir(folder_path):
+        continue
+
+      # For each file in folder_path that ends with .timestamp
+      for file in os.listdir(folder_path):
+        if not file.endswith(self.timestamp_file_extension):
+          continue
+
+        # If the folder contains a .timestamp file, then another workflow is running
+        timestamp_file_path = os.path.join(folder_path, file)
+
+        # Allow re-running the same workflow
+        if timestamp_file_path == self.timestamp_file_path:
+          continue
+
+        if handle_active:
+          handle_active(folder, timestamp_file_path)
