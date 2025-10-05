@@ -12,7 +12,7 @@ from .app import App
 from .app_command import AppCommand
 from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL
 from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
-from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, MAINTAINED_RUN
+from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
   docker_socket_path: str
@@ -85,6 +85,7 @@ class AppCreateCommand(AppCommand):
             ignore.append(f"{CORE_MOCK_UI_SERVICE_NAME}/.*")
 
         if RUN_ON_DOCKER in self.app_run_on:
+            ignore.append(f".*/{CUSTOM_RUN}")
             ignore.append(f".*/{MAINTAINED_RUN}")
 
         # Copy all app templates
