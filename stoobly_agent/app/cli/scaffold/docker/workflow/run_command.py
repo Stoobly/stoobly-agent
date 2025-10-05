@@ -60,6 +60,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
   def __create_timestamp_file(self):
     # Create timestamp file to indicate workflow is starting
     timestamp_file = self.timestamp_file_path
+
     try:
       with open(timestamp_file, 'w') as f:
         f.write(str(time.time()))
@@ -198,7 +199,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     # Clean up timestamp file
-    timestamp_file = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.timestamp")
     if os.path.exists(timestamp_file):
       try:
         os.remove(timestamp_file)
