@@ -1,10 +1,11 @@
-from ast import FunctionType
 import os
 import pdb
 import subprocess
 import sys
+import time
 
 from typing import List
+from types import FunctionType
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
@@ -61,7 +62,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     timestamp_file = self.timestamp_file_path
     try:
       with open(timestamp_file, 'w') as f:
-        import time
         f.write(str(time.time()))
       Logger.instance(LOG_ID).debug(f"Created timestamp file: {timestamp_file}")
     except Exception as e:

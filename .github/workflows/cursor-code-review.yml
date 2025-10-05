@@ -39,21 +39,32 @@ jobs:
           Objectives:
           1) Re-check existing review comments and reply resolved when addressed
           2) Review the current PR diff and flag only clear, high-severity issues
-          3) Leave very short inline comments (1-2 sentences) on changed lines only and a brief summary at the end
+          3) Leave very short inline comments on changed lines only and a brief summary at the end, mention file path and line number
 
           Procedure:
           - Get existing comments: gh pr view --json comments
           - Get diff: gh pr diff
+          - Identify the exact file path and line number for each issue
           - If a previously reported issue appears fixed by nearby changes, reply: ✅ This issue appears to be resolved by the recent changes
           - Avoid duplicates: skip if similar feedback already exists on or near the same lines
 
           Commenting rules:
           - Max 10 inline comments total; prioritize the most critical issues
-          - One issue per comment; place on the exact changed line
+          - One issue per comment; place on the exact changed line with file path
           - Natural tone, specific and actionable; do not mention automated or high-confidence
           - Use emojis: 🚨 Critical 🔒 Security ⚡ Performance ⚠️ Logic ✅ Resolved ✨ Improvement
 
-          Submission:
-          - Submit one review containing inline comments plus a concise summary
-          - Use only: gh pr review --comment
+          Inline Comment Format:
+          - Use: gh pr review ${{ github.event.pull_request.number }} --comment --body '<comment>' --path '<file-path>' --line <line-number>
+          - Example: gh pr review ${{ github.event.pull_request.number }} --comment --body '🚨 Critical: Missing import will cause NameError' --path 'stoobly_agent/cli.py' --line 128
+          - For multi-line issues, use --start-line and --line
+          - Always include the full relative file path from repository root
+
+          Summary Comment:
+          - After inline comments, post a summary: gh pr comment ${{ github.event.pull_request.number }} --body '<summary>'
+          - Include: number of critical issues, positive changes, and overall recommendation
+
+          Important:
+          - Use gh pr review for inline comments (with --path and --line)
+          - Use gh pr comment for summary (no --path or --line)
           - Do not use: gh pr review --approve or --request-changes"
