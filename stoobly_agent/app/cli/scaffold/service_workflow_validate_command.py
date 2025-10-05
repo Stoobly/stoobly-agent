@@ -201,7 +201,12 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     # Test workflow won't expose services that are detached and have a hostname to the host such as assets.
     # Need to test connection from inside the Docker network
     if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE:
-      self.validate_internal_hostname(url)
+      try:
+        self.validate_internal_hostname(url)
+      except ScaffoldValidateException:
+        time.sleep(1)
+        # Retry once
+        self.validate_internal_hostname(url)
 
     self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
 
