@@ -1,6 +1,5 @@
 
 import os
-import pdb
 import logging
 import json
 from datetime import datetime
@@ -177,6 +176,8 @@ class InterceptedRequestsLogger():
         }
 
         numeric_level = level_mapping.get(log_level.lower())
+        if numeric_level is None:
+            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(level_mapping.keys())}")
         cls.__logger.setLevel(numeric_level)
 
     @classmethod
@@ -339,8 +340,18 @@ class InterceptedRequestsLogger():
         file_path = cls.__get_file_path()
 
         try:
+            # Close and remove existing handler to release the file lock
+            for handler in cls.__logger.handlers[:]:
+                if isinstance(handler, logging.FileHandler):
+                    handler.close()
+                    cls.__logger.removeHandler(handler)
+
+            # Now truncate the file
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write('')
+
+            # Re-enable logging with a fresh handler
+            cls.enable_logger_file()
             cls.__logger.info(f"Cleared log file: {file_path}")
 
             cls.reset_scenario_key()
@@ -354,7 +365,7 @@ class InterceptedRequestsLogger():
 
         if directory and not os.path.exists(directory):
             try:
-                Logger.instance(cls.__LOG_ID).info(f"created missing directory: {file_path}")
+                cls.__logger.info(f"created missing directory: {file_path}")
                 os.makedirs(directory, exist_ok=True)
             except OSError as e:
                 cls.__logger.error(f"Failed to create log directory: {e}")
