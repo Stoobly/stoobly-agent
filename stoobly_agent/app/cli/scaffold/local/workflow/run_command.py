@@ -4,6 +4,7 @@ import signal
 import subprocess
 import sys
 
+from types import FunctionType
 from typing import Optional, List
 
 from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
@@ -35,11 +36,18 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     return self._log_file_path
 
   @property
+  def pid_file_extension(self):
+    return '.pid'
+
+  @property
   def pid_file_path(self):
     """Get the path to the PID file for this workflow."""
     if not self._pid_file_path:
-      self._pid_file_path = os.path.join(self.workflow_namespace.path, f"{self.workflow_name}.pid")
+      self._pid_file_path = os.path.join(self.workflow_namespace.path, self.pid_file_name(self.workflow_name))
     return self._pid_file_path
+
+  def pid_file_name(self, workflow_name: str):
+    return f"{workflow_name}{self.pid_file_extension}"
 
   def _write_pid(self, pid: int):
     """Write the process PID to the PID file."""
@@ -47,13 +55,14 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     with open(self.pid_file_path, 'w') as f:
       f.write(str(pid))
 
-  def _read_pid(self) -> Optional[int]:
+  def _read_pid(self, file_path = None) -> Optional[int]:
     """Read the process PID from the PID file."""
-    if not os.path.exists(self.pid_file_path):
+    file_path = file_path or self.pid_file_path
+    if not os.path.exists(file_path):
       return None
     
     try:
-      with open(self.pid_file_path, 'r') as f:
+      with open(file_path, 'r') as f:
         return int(f.read().strip())
     except (ValueError, IOError):
       return None
@@ -130,9 +139,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
 
-    commands = self.workflow_service_commands(**options)
+    self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
 
     # iterate through each service in the workflow
+    commands = self.workflow_service_commands(**options)
+
     public_directory_paths = []
     response_fixtures_paths = []
     for command in commands:
@@ -145,18 +156,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
         if os.path.exists(command.response_fixtures_path):
           response_fixtures_paths.append('--response-fixtures-path')
           response_fixtures_paths.append(f"{command.response_fixtures_path}:{url}")
-    
-    # Check if PID file already exists
-    if os.path.exists(self.pid_file_path):
-      pid = self._read_pid()
-      if pid and self._is_process_running(pid):
-        Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is already running with PID: {pid}")
-        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {self.workflow_name}` to stop it first")
-        sys.exit(1)
-      else:
-        # PID file exists but process is not running, clean it up
-        os.remove(self.pid_file_path)
-
+   
     for command in commands:
       command.service_up(**options)
 
@@ -166,17 +166,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
-    
-    pid = self._read_pid()
+
+    pid = self.__find_and_verify_workflow_pid()
     if not pid:
-      Logger.instance(LOG_ID).warning(f"No PID file found for {self.workflow_name}")
-      return
-    
-    if not self._is_process_running(pid):
-      Logger.instance(LOG_ID).info(f"Process {pid} for {self.workflow_name} is not running")
-      # Clean up PID file
-      if os.path.exists(self.pid_file_path):
-        os.remove(self.pid_file_path)
       return
     
     # Kill the process
@@ -222,10 +214,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     """Show logs for the local workflow process."""
     follow = options.get('follow', False)
     
-    pid = self._read_pid()
-    if not pid:
-      Logger.instance(LOG_ID).warning(f"No PID file found for {self.workflow_name}")
-      return
+    # Find and verify the workflow PID
+    self.__find_and_verify_workflow_pid()
     
     # Build log command
     log_file = f"{self.log_file_path}"
@@ -242,17 +232,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           subprocess.run(['cat', log_file])
       except subprocess.CalledProcessError as e:
         Logger.instance(LOG_ID).error(f"Failed to show logs for {self.workflow_name}: {e}")
-
-  def status(self):
-    """Check the status of the local workflow process."""
-    pid = self._read_pid()
-    if not pid:
-      return "not running"
-    
-    if self._is_process_running(pid):
-      return f"running (PID: {pid})"
-    else:
-      return "not running (stale PID file)"
 
   def workflow_service_commands(self, **options: WorkflowUpOptions):
     commands = list(map(lambda service_name: LocalWorkflowRunCommand(self.app, service_name=service_name, **options), self.services))
@@ -272,6 +251,79 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       print(f"tail -f {log_file}", file=output_file)
     else:
       print(f"cat {log_file}", file=output_file)
+
+  def __find_and_verify_workflow_pid(self):
+    pid = self._read_pid()
+    if not pid:
+      Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is not running.")
+
+      # If the workflow name does not match the workflow namespace, then recommend with --namespace option
+      if self.workflow_name != self.workflow_namespace.namespace:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow up {self.workflow_name} --namespace {self.workflow_namespace.namespace}` to start it first.")
+      else:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow up {self.workflow_name}` to start it first.")
+
+      sys.exit(1)
+    
+    if not self._is_process_running(pid):
+      Logger.instance(LOG_ID).info(f"Process {pid} for {self.workflow_name} is not running")
+      # Clean up PID file
+      if os.path.exists(self.pid_file_path):
+        os.remove(self.pid_file_path)
+      return
+
+    return pid
+
+  def __handle_up_active(self, folder: str, pid: str, pid_file_path: str):
+    # Allow re-running the same workflow, bring workflow down first
+    if pid_file_path == self.pid_file_path and os.path.exists(pid_file_path):
+      self.down()
+    else:
+      file_name = os.path.basename(pid_file_path)
+      workflow_name = self.workflow_name
+      if folder != self.workflow_name:
+        workflow_name = file_name.split(self.pid_file_extension)[0]
+
+      Logger.instance(LOG_ID).error(f"Workflow {workflow_name} is already running with PID {pid}")
+
+      if folder != workflow_name:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {workflow_name} --namespace {folder}` to stop it first.")
+      else:
+        Logger.instance(LOG_ID).error(f"Run `stoobly-agent scaffold workflow down {workflow_name}` to stop it first.")
+
+      sys.exit(1)
+
+  def __handle_up_stale(self, folder: str, pid: str, pid_file_path: str):
+    # PID file exists but process is not running, clean it up
+    os.remove(pid_file_path)
+
+  def __iterate_active_workflows(self, **kwargs):
+    handle_active: FunctionType = kwargs.get('handle_active')
+    handle_stale: FunctionType = kwargs.get('handle_stale')
+    tmp_dir_path = self.app.data_dir.tmp_dir_path
+
+    # For each folder in self.app.data_dir.tmp_dir_path
+    for folder in os.listdir(tmp_dir_path):
+      folder_path = os.path.join(tmp_dir_path, folder)
+
+      # If the folder is not a directory, skip
+      if not os.path.isdir(folder_path):
+        continue
+
+      # For each file in folder_path that ends with .pid
+      for file in os.listdir(folder_path):
+        if not file.endswith(self.pid_file_extension):
+          continue
+          
+        # If the folder contains a .pid file, then another workflow is running
+        pid_file_path = os.path.join(folder_path, file)
+        pid = self._read_pid(pid_file_path)
+        if pid and self._is_process_running(pid):
+          if handle_active:
+            handle_active(folder, pid, pid_file_path)
+        else:
+          if handle_stale:
+            handle_stale(folder, pid, pid_file_path)
 
   def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
     # Build the stoobly-agent run command
