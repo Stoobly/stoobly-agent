@@ -276,7 +276,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def __handle_up_active(self, folder: str, pid: str, pid_file_path: str):
     # Allow re-running the same workflow, bring workflow down first
-    if pid_file_path == self.pid_file_path:
+    if pid_file_path == self.pid_file_path and os.path.exists(pid_file_path):
       self.down()
     else:
       file_name = os.path.basename(pid_file_path)

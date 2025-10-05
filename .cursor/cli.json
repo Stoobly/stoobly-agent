@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "allow": [],
     "deny": [
       "Shell(git push)",
       "Shell(gh pr create)",
