@@ -64,7 +64,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     print_service_header = options.get('print_service_header')
     timestamp_file = None
 
-    if not self.dry_run:
+    if not self.dry_run or self.containerized:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
 
       timestamp_file = self.__create_timestamp_file()
@@ -183,13 +183,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    if not self.dry_run:
-      # Clean up timestamp file
-      if os.path.exists(timestamp_file):
-        try:
-          os.remove(timestamp_file)
-        except Exception as e:
-          Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
+    if not self.dry_run or self.containerized:
+      self.__remove_timestamp_file(timestamp_file)
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
@@ -418,7 +413,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     timestamp_file = self.timestamp_file_path
 
-    if self.dry_run:
+    if self.dry_run and not self.containerized:
       return timestamp_file
 
     if not os.path.exists(timestamp_file):
@@ -491,9 +486,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     return timestamp_file
 
   def __remove_timestamp_file(self, timestamp_file: str):
+    # Clean up timestamp file
     if os.path.exists(timestamp_file):
       try:
         os.remove(timestamp_file)
-        Logger.instance(LOG_ID).info(f"Removed timestamp file due to error: {timestamp_file}")
-      except Exception as cleanup_error:
-        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file after error: {cleanup_error}")
+      except Exception as e:
+        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
