@@ -387,7 +387,7 @@ def down(**kwargs):
       **kwargs
     )
 
-    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+    # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
     # Entrypoint container will be within the container network
     if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
       if not containerized and not kwargs['dry_run']:
