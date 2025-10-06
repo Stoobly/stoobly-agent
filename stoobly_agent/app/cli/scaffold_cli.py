@@ -341,6 +341,7 @@ def copy(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
+@click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -385,7 +386,20 @@ def down(**kwargs):
       script=script,
       **kwargs
     )
-  
+
+    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+    # Entrypoint container will be within the container network
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+      if not containerized and not kwargs['dry_run']:
+        # Prompt confirm to install hostnames
+        if kwargs.get('hostname_uninstall_confirm'):
+          confirm = kwargs['hostname_uninstall_confirm']
+        else:
+          confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
+
+        if confirm == "y" or confirm == "Y":
+          __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+
   # Execute the workflow down
   workflow_command.down(
     **command_args,
@@ -533,7 +547,7 @@ def up(**kwargs):
     )
 
     # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
-    # Etnrypoint container will be within the container network
+    # Entrypoint container will be within the container network
     if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
       if not containerized and not dry_run:
         # Prompt confirm to install hostnames
@@ -617,33 +631,7 @@ def install(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
-  __validate_app(app)
-
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
-  )
-
-  hostnames = []
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-    if service_config.hostname:
-      hostnames.append(service_config.hostname)
-
-  if not hostnames:
-    return
-
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.uninstall_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  __hostname_uninstall(**kwargs)
 
 scaffold.add_command(app)
 scaffold.add_command(service)
@@ -733,6 +721,35 @@ def __hostname_install(**kwargs):
   try:
     hosts_file_manager = HostsFileManager()
     hosts_file_manager.install_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
+
+def __hostname_uninstall(**kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
+
+  hostnames = []
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  if not hostnames:
+    return
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.uninstall_hostnames(hostnames)
   except PermissionError:
     print("Permission denied. Please run this command with sudo.", file=sys.stderr)
     sys.exit(1)
