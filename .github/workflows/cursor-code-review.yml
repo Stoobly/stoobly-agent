@@ -49,6 +49,7 @@ jobs:
           4) STYLE: Code formatting, naming conventions, documentation, code organization (only flag if significantly impacts readability)
 
           Procedure:
+          - Review the PR issue and description to understand the goal and context
           - Get existing comments: gh pr view --json comments
           - Get diff: gh pr diff
           - Identify the exact file path and line number for each issue
