@@ -380,11 +380,16 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           check=True
         )
 
+        time.sleep(1) # Wait for the process to start
+
         if result.returncode != 0:
           self.__handle_up_error()
         
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
+
+        if not self._is_process_running(pid):
+          self.__handle_up_error()
         
         # Write PID to file
         self.__create_pid_file(pid)
@@ -398,7 +403,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def __handle_up_error(self):
     log_file = f"{self.log_file_path}"
-    time.sleep(1)
     # Read log file it exists and print to stderr
     if os.path.exists(log_file):
       with open(log_file, 'r') as f:

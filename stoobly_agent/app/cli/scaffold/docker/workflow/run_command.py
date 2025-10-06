@@ -62,6 +62,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     no_publish = options.get('no_publish', False)
     print_service_header = options.get('print_service_header')
+    timestamp_file = None
 
     if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
@@ -119,8 +120,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
           self.exec(exec_command)
     
     except Exception as e:
-      # Clean up timestamp file on error
-      self.__remove_timestamp_file(timestamp_file) 
+      if timestamp_file:
+        # Clean up timestamp file on error
+        self.__remove_timestamp_file(timestamp_file) 
       raise e
 
   def down(self, **options: WorkflowDownOptions):

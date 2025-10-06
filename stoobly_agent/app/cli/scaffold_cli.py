@@ -605,7 +605,7 @@ def validate(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
-  __hostname_install(kwargs)
+  __hostname_install(**kwargs)
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
@@ -702,7 +702,7 @@ def __get_services(app: App, **kwargs):
 
   return services
 
-def __hostname_install(kwargs):
+def __hostname_install(**kwargs):
   app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
