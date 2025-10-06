@@ -57,29 +57,16 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
   def timestamp_file_name(self, workflow_name: str):
     return f"{workflow_name}{self.timestamp_file_extension}"
 
-  def __create_timestamp_file(self):
-    # Create timestamp file to indicate workflow is starting
-    timestamp_file = self.timestamp_file_path
-
-    try:
-      with open(timestamp_file, 'w') as f:
-        f.write(str(time.time()))
-      Logger.instance(LOG_ID).debug(f"Created timestamp file: {timestamp_file}")
-    except Exception as e:
-      Logger.instance(LOG_ID).error(f"Failed to create timestamp file: {e}")
-      sys.exit(1)
-    
-    return timestamp_file
-
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
 
     no_publish = options.get('no_publish', False)
     print_service_header = options.get('print_service_header')
 
-    self.__iterate_active_workflows(handle_active=self.__handle_up_active)
+    if not self.dry_run:
+      self.__iterate_active_workflows(handle_active=self.__handle_up_active)
 
-    timestamp_file = self.__create_timestamp_file()
+      timestamp_file = self.__create_timestamp_file()
 
     try:
       # Create individual service commands
@@ -133,16 +120,12 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     except Exception as e:
       # Clean up timestamp file on error
-      if os.path.exists(timestamp_file):
-        try:
-          os.remove(timestamp_file)
-          Logger.instance(LOG_ID).info(f"Removed timestamp file due to error: {timestamp_file}")
-        except Exception as cleanup_error:
-          Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file after error: {cleanup_error}")
+      self.__remove_timestamp_file(timestamp_file) 
       raise e
 
   def down(self, **options: WorkflowDownOptions):
     """Execute the complete Docker workflow down process."""
+
     timestamp_file = self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
@@ -197,17 +180,19 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       remove_ingress_network_command = command.remove_ingress_network()
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
-    # Clean up timestamp file
-    if os.path.exists(timestamp_file):
-      try:
-        os.remove(timestamp_file)
-      except Exception as e:
-        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
+
+    if not self.dry_run:
+      # Clean up timestamp file
+      if os.path.exists(timestamp_file):
+        try:
+          os.remove(timestamp_file)
+        except Exception as e:
+          Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
-    timestamp_file = self.__find_and_verify_timestamp_file()
+
+    self.__find_and_verify_timestamp_file()
      
     print_service_header = options.get('print_service_header')
     
@@ -430,6 +415,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     # Check if workflow is running (timestamp file exists)
 
     timestamp_file = self.timestamp_file_path
+
+    if self.dry_run:
+      return timestamp_file
+
     if not os.path.exists(timestamp_file):
       Logger.instance(LOG_ID).error(f"Workflow '{self.workflow_name}' is not running.")
 
@@ -484,3 +473,25 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
         if handle_active:
           handle_active(folder, timestamp_file_path)
+
+  def __create_timestamp_file(self):
+    # Create timestamp file to indicate workflow is starting
+    timestamp_file = self.timestamp_file_path
+
+    try:
+      with open(timestamp_file, 'w') as f:
+        f.write(str(time.time()))
+      Logger.instance(LOG_ID).debug(f"Created timestamp file: {timestamp_file}")
+    except Exception as e:
+      Logger.instance(LOG_ID).error(f"Failed to create timestamp file: {e}")
+      sys.exit(1)
+    
+    return timestamp_file
+
+  def __remove_timestamp_file(self, timestamp_file: str):
+    if os.path.exists(timestamp_file):
+      try:
+        os.remove(timestamp_file)
+        Logger.instance(LOG_ID).info(f"Removed timestamp file due to error: {timestamp_file}")
+      except Exception as cleanup_error:
+        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file after error: {cleanup_error}")

@@ -2,6 +2,7 @@
 #
 # STOOBLY_APP_DIR: path to the application source code directory, defaults to $(pwd)
 # STOOBLY_CA_CERTS_DIR: path to folder where ca certs are stored, defaults to $(pwd)/.stoobly/ca_certs
+# STOOBLY_CA_CERTS_INSTALL_CONFIRM: confirm answer to CA certificate installation prompt
 # STOOBLY_CERTS_DIR: path to a folder to store certs, defaults to $(pwd)/.stoobly/certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder, defaults to $(pwd)
 # STOOBLY_DOTENV_FILE: path to dotenv file, defaults to $(pwd)/.env
@@ -78,7 +79,11 @@ action/uninstall:
 	$(eval action=uninstall)
 ca-cert/install: stoobly/install
 	@if [ -z "$$(ls $(ca_certs_dir) 2> /dev/null)" ]; then \
-		read -p "Installing CA certificate is required for $(workflow)ing requests, continue? (y/N) " confirm && \
+		if [ -n "$$STOOBLY_CA_CERTS_INSTALL_CONFIRM" ]; then \
+			confirm="$$STOOBLY_CA_CERTS_INSTALL_CONFIRM"; \
+		else \
+			read -p "Installing CA certificate is required for $(workflow)ing requests, continue? (y/N) " confirm; \
+		fi && \
 		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 			echo "Running stoobly-agent ca-cert install..."; \
 			stoobly-agent ca-cert install --ca-certs-dir-path $(ca_certs_dir); \

@@ -206,9 +206,11 @@ def run(**kwargs):
           stderr=subprocess.STDOUT,  # Redirect stderr to stdout
           preexec_fn=os.setsid  # Create new process group
         )
+
+      if process.returncode != 0:
+        sys.exit(1)
       
       print(process.pid)
-      return
     else:
       # Run in foreground mode
       if not kwargs.get('headless'):

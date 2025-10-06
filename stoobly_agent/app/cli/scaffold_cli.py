@@ -492,8 +492,8 @@ def up(**kwargs):
   # First time if folder does not exist or is empty
   first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
   if first_time and not containerized and not dry_run:
-    if kwargs.get('ca-certs-install-confirm'):
-      confirm = kwargs['ca-certs-install-confirm']
+    if kwargs.get('ca_certs_install_confirm'):
+      confirm = kwargs['ca_certs_install_confirm']
     else:
       confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
 
@@ -524,14 +524,15 @@ def up(**kwargs):
       _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
       __services_mkcert(_app, services)
 
-    # Prompt confirm to install hostnames
-    if kwargs.get('hostname-install-confirm'):
-      confirm = kwargs['hostname-install-confirm']
-    else:
-      confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
+    if not containerized and not dry_run:
+      # Prompt confirm to install hostnames
+      if kwargs.get('hostname_install_confirm'):
+        confirm = kwargs['hostname_install_confirm']
+      else:
+        confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
 
-    if confirm == "y" or confirm == "Y":
-      __hostname_install(app_dir_path=kwargs['app_dir_path'], service=[kwargs['service']], workflow=[kwargs['workflow_name']])
+      if confirm == "y" or confirm == "Y":
+        __hostname_install(app_dir_path=kwargs['app_dir_path'], service=[kwargs['service']], workflow=[kwargs['workflow_name']])
 
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
