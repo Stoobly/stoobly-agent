@@ -5,6 +5,7 @@
 # STOOBLY_CERTS_DIR: path to a folder to store certs, defaults to $(pwd)/.stoobly/certs
 # STOOBLY_CONTEXT_DIR: path to the folder containing the .stoobly folder, defaults to $(pwd)
 # STOOBLY_DOTENV_FILE: path to dotenv file, defaults to $(pwd)/.env
+# STOOBLY_HOSTNAME_INSTALL_CONFIRM: confirm answer to hostname installation prompt
 # STOOBLY_WORKFLOW_SERVICE_OPTIONS: extra --service options to pass 'stoobly-agent scaffold workflow' commands
 
 # Overridable Options
@@ -165,7 +166,11 @@ workflow/down: dotenv
 	$(stoobly_exec_run) && \
 	$(workflow_run)
 workflow/hostname: stoobly/install
-	@read -p "Do you want to $(action) hostname(s) in /etc/hosts? (y/N) " confirm && \
+	@if [ -n "$$STOOBLY_HOSTNAME_INSTALL_CONFIRM" ]; then \
+		confirm="$$STOOBLY_HOSTNAME_INSTALL_CONFIRM"; \
+	else \
+		read -p "Do you want to $(action) hostname(s) in /etc/hosts? (y/N) " confirm; \
+	fi && \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		CURRENT_VERSION=$$(stoobly-agent --version); \
 		REQUIRED_VERSION="1.4.0"; \
