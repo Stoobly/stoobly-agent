@@ -208,6 +208,7 @@ def run(**kwargs):
         )
       
       print(process.pid)
+      return
     else:
       # Run in foreground mode
       if not kwargs.get('headless'):

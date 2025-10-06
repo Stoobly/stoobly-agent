@@ -532,7 +532,7 @@ def up(**kwargs):
         confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
 
       if confirm == "y" or confirm == "Y":
-        __hostname_install(app_dir_path=kwargs['app_dir_path'], service=[kwargs['service']], workflow=[kwargs['workflow_name']])
+        __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
@@ -630,6 +630,9 @@ def uninstall(**kwargs):
     if service_config.hostname:
       hostnames.append(service_config.hostname)
 
+  if not hostnames:
+    return
+
   __elevate_sudo()
 
   try:
@@ -718,6 +721,9 @@ def __hostname_install(**kwargs):
     service_config = ServiceConfig(service.dir_path)
     if service_config.hostname:
       hostnames.append(service_config.hostname)
+
+  if not hostnames:
+    return
 
   __elevate_sudo()
 
