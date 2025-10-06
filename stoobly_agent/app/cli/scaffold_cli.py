@@ -457,11 +457,13 @@ def logs(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -472,7 +474,6 @@ def logs(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
-@click.option('-y', '--yes', is_flag=True, help='Auto-confirm CA certificate installation prompt.')
 @click.argument('workflow_name')
 def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -491,17 +492,15 @@ def up(**kwargs):
   # First time if folder does not exist or is empty
   first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
   if first_time and not containerized and not dry_run:
-    # If ca certs dir path does not exist, run ca-cert install
-    if kwargs.get('yes'):
-      # Auto-confirm if -y/--yes option is provided
-      ca_cert_install(app.ca_certs_dir_path)
+    if kwargs.get('ca-certs-install-confirm'):
+      confirm = kwargs['ca-certs-install-confirm']
     else:
       confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
-      if confirm == "y" or confirm == "Y":
-        ca_cert_install(app.ca_certs_dir_path)
-      else:
-        print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
-        sys.exit(1)
+
+    if confirm == "y" or confirm == "Y":
+      ca_cert_install(app.ca_certs_dir_path)
+    else:
+      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -524,6 +523,15 @@ def up(**kwargs):
     if kwargs['mkcert']:
       _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
       __services_mkcert(_app, services)
+
+    # Prompt confirm to install hostnames
+    if kwargs.get('hostname-install-confirm'):
+      confirm = kwargs['hostname-install-confirm']
+    else:
+      confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
+
+    if confirm == "y" or confirm == "Y":
+      __hostname_install(app_dir_path=kwargs['app_dir_path'], service=[kwargs['service']], workflow=[kwargs['workflow_name']])
 
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
@@ -596,30 +604,7 @@ def validate(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
-  __validate_app(app)
-
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
-  )
-
-  hostnames = []
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-    if service_config.hostname:
-      hostnames.append(service_config.hostname)
-
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.install_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  __hostname_install(kwargs)
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
@@ -715,6 +700,32 @@ def __get_services(app: App, **kwargs):
   services.sort()
 
   return services
+
+def __hostname_install(kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
+
+  hostnames = []
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.install_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
