@@ -524,16 +524,6 @@ def up(**kwargs):
       _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
       __services_mkcert(_app, services)
 
-    if not containerized and not dry_run:
-      # Prompt confirm to install hostnames
-      if kwargs.get('hostname_install_confirm'):
-        confirm = kwargs['hostname_install_confirm']
-      else:
-        confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
-
-      if confirm == "y" or confirm == "Y":
-        __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
-
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
@@ -541,6 +531,19 @@ def up(**kwargs):
       script=script,
       **kwargs
     )
+
+    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+    # Etnrypoint container will be within the container network
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+      if not containerized and not dry_run:
+        # Prompt confirm to install hostnames
+        if kwargs.get('hostname_install_confirm'):
+          confirm = kwargs['hostname_install_confirm']
+        else:
+          confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
+
+        if confirm == "y" or confirm == "Y":
+          __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
   if first_time and not containerized and not dry_run:
     options = {}
