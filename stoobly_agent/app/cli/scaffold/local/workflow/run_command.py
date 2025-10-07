@@ -163,6 +163,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
 
+    # Intentially run this during dry run, we need the PID to be returned
     pid = self.__find_and_verify_workflow_pid()
     if not pid:
       return
@@ -209,8 +210,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     """Show logs for the local workflow process."""
     follow = options.get('follow', False)
 
-    # Find and verify the workflow PID
-    if not options.get('no_verify', False):
+    if not self.dry_run:
       self.__find_and_verify_workflow_pid()
     
     # Build log command
@@ -255,10 +255,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       print(f"cat {log_file}", file=output_file)
 
   def __find_and_verify_workflow_pid(self):
+    # Find and verify the workflow PID
     pid = self._read_pid()
-
-    if self.dry_run:
-      return pid 
 
     if not pid:
       Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is not running.")
@@ -367,7 +365,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       for line in script_lines:
         print(line, file=self.script)
 
-    if self.dry_run:
+    if self.dry_run or self.containerized:
       print(command_str)
     else:
       # Execute directly

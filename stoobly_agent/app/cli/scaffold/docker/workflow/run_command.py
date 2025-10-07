@@ -64,7 +64,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     print_service_header = options.get('print_service_header')
     timestamp_file = None
 
-    if not self.dry_run or self.containerized:
+    if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
 
       timestamp_file = self.__create_timestamp_file()
@@ -128,7 +128,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
   def down(self, **options: WorkflowDownOptions):
     """Execute the complete Docker workflow down process."""
 
-    timestamp_file = self.__find_and_verify_timestamp_file()
+    timestamp_file = None
+    if not self.dry_run: 
+      timestamp_file = self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
     
@@ -183,13 +185,14 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    if not self.dry_run or self.containerized:
+    if timestamp_file:
       self.__remove_timestamp_file(timestamp_file)
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
 
-    self.__find_and_verify_timestamp_file()
+    if not self.dry_run:
+      self.__find_and_verify_timestamp_file()
      
     print_service_header = options.get('print_service_header')
     
@@ -400,7 +403,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if self.script:
       print(command, file=self.script)
 
-    if self.dry_run:
+    if self.dry_run or self.containerized:
       print(command)
     else:
       result = subprocess.run(command, shell=True, **options)
@@ -412,9 +415,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     # Check if workflow is running (timestamp file exists)
 
     timestamp_file = self.timestamp_file_path
-
-    if self.dry_run and not self.containerized:
-      return timestamp_file
 
     if not os.path.exists(timestamp_file):
       Logger.instance(LOG_ID).error(f"Workflow '{self.workflow_name}' is not running.")
