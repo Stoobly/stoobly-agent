@@ -436,6 +436,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       workflow_name = file_name.split(self.timestamp_file_extension)[0]
 
     # If the workflow is namespaced, allow it to run at the same time
+    # Same workflow with same namespace is allowed, workflow will be restarted
     if workflow_name == self.workflow_name:
       return
 
