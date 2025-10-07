@@ -70,9 +70,6 @@ stoobly_exec_env=$(exec_env) CONTEXT_DIR="$(context_dir)"
 stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
 stoobly_exec_run_env=$(exec_env) CONTEXT_DIR="$(app_dir)"
 
-# Workflow run
-workflow_run=bash "$(app_dir)/$(workflow_script)"
-
 action/install:
 	$(eval action=install)
 action/uninstall:
@@ -113,10 +110,10 @@ intercept/disable:
 intercept/enable:
 	@export EXEC_COMMAND=intercept/.enable EXEC_OPTIONS="" EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: workflow/mock ca-cert/install workflow/hostname/install nameservers workflow/up
+mock: workflow/mock ca-cert/install workflow/up nameservers workflow/hostname/install workflow/run
 mock/services: workflow/mock workflow/services
-mock/logs: workflow/mock workflow/logs
-mock/down: workflow/mock workflow/down workflow/hostname/uninstall
+mock/logs: workflow/mock workflow/logs workflow/run
+mock/down: workflow/mock workflow/down workflow/run workflow/hostname/uninstall
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -127,10 +124,10 @@ python/validate:
 		echo "Error: Python 3.10, 3.11, or 3.12 is required."; \
 		exit 1; \
 	fi
-record: workflow/record ca-cert/install workflow/hostname/install nameservers workflow/up
-record/down: workflow/record workflow/down workflow/hostname/uninstall
+record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/run
+record/down: workflow/record workflow/down workflow/run workflow/hostname/uninstall
 record/services: workflow/record workflow/services
-record/logs: workflow/record workflow/logs
+record/logs: workflow/record workflow/logs workflow/run
 scenario/create:
 # Create a scenario
 	@export EXEC_COMMAND=scenario/.create EXEC_OPTIONS="$(options)" EXEC_ARGS="$(name)" && \
@@ -160,16 +157,15 @@ stoobly/install: python/validate pipx/install
 		echo "stoobly-agent not found. Installing..."; \
 		pipx install stoobly-agent || { echo "Failed to install stoobly-agent"; exit 1; }; \
 	fi
-test: workflow/test workflow/up
+test: workflow/test workflow/up workflow/run
 test/services: workflow/test workflow/services
-test/logs: workflow/test workflow/logs
-test/down: workflow/test workflow/down
+test/logs: workflow/test workflow/logs workflow/run
+test/down: workflow/test workflow/down workflow/run
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down: dotenv
 	@export EXEC_COMMAND=scaffold/.down EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run) && \
-	$(workflow_run)
+	$(stoobly_exec_run)
 workflow/hostname: stoobly/install
 	@if [ -n "$$STOOBLY_HOSTNAME_INSTALL_CONFIRM" ]; then \
 		confirm="$$STOOBLY_HOSTNAME_INSTALL_CONFIRM"; \
@@ -190,14 +186,15 @@ workflow/hostname/install: action/install workflow/hostname
 workflow/hostname/uninstall: action/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=scaffold/.logs EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run) && \
-	$(workflow_run)
+	$(stoobly_exec_run)
 workflow/mock:
 	$(eval workflow=mock)
 workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
+workflow/run:
+	@bash "$(app_dir)/$(workflow_script)"
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
@@ -205,5 +202,4 @@ workflow/test:
 	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
 workflow/up: dotenv
 	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run) && \
-	$(workflow_run)
+	$(stoobly_exec_run)
