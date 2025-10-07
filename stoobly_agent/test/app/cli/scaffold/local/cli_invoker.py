@@ -92,8 +92,9 @@ class LocalScaffoldCliInvoker():
   def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
+      '--ca-certs-install-confirm', 'y',
       '--context-dir-path', app_dir_path,
-      '--yes',
+      '--hostname-install-confirm', 'y',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)

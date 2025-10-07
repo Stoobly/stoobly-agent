@@ -28,6 +28,7 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__current_working_dir = os.getcwd()
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
+    self.__containerized = kwargs.get('containerized') or False
     self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
     self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
@@ -47,6 +48,10 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def certs_dir_path(self):
     return self.__certs_dir_path
+
+  @property
+  def containerized(self):
+    return self.__containerized
 
   @property
   def context_dir_path(self):

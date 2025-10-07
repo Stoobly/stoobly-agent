@@ -117,7 +117,7 @@ class ScaffoldCliInvoker():
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
-      '--yes',
+      '--hostname-install-confirm', 'n',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
@@ -134,6 +134,7 @@ class ScaffoldCliInvoker():
     command = ['workflow', 'down',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
+      '--hostname-uninstall-confirm', 'n',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
