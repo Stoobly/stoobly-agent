@@ -283,8 +283,14 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name
+
+      # If the folder is not the same as the workflow name, then the workflow is namespaced, get the real worflow name
       if folder != self.workflow_name:
         workflow_name = file_name.split(self.pid_file_extension)[0]
+
+      # If the workflow is namespaced, allow it to run at the same time
+      if workflow_name == self.workflow_name:
+        return
 
       Logger.instance(LOG_ID).error(f"Workflow {workflow_name} is already running with PID {pid}")
 

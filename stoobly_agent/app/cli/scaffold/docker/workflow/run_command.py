@@ -435,6 +435,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if folder != self.workflow_name:
       workflow_name = file_name.split(self.timestamp_file_extension)[0]
 
+    # If the workflow is namespaced, allow it to run at the same time
+    if workflow_name == self.workflow_name:
+      return
+
     Logger.instance(LOG_ID).error(f"Workflow '{workflow_name}' is running, please stop it first.")
 
     if folder != workflow_name:
