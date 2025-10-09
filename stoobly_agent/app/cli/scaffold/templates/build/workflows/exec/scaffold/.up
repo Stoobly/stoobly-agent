@@ -5,7 +5,6 @@ extra_options=$EXEC_OPTIONS
 stoobly-agent scaffold workflow up \
   --app-dir-path "$(pwd)" \
   --containerized \
-  --dry-run \
   --log-level warning \
   --mkcert \
   $extra_options $1 > /dev/null

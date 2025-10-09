@@ -3,6 +3,7 @@ import pdb
 import signal
 import subprocess
 import sys
+import time
 
 from types import FunctionType
 from typing import Optional, List
@@ -48,12 +49,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def pid_file_name(self, workflow_name: str):
     return f"{workflow_name}{self.pid_file_extension}"
-
-  def _write_pid(self, pid: int):
-    """Write the process PID to the PID file."""
-    os.makedirs(os.path.dirname(self.pid_file_path), exist_ok=True)
-    with open(self.pid_file_path, 'w') as f:
-      f.write(str(pid))
 
   def _read_pid(self, file_path = None) -> Optional[int]:
     """Read the process PID from the PID file."""
@@ -139,7 +134,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     """Start the workflow using local stoobly-agent run."""
     detached = options.get('detached', False)
 
-    self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
+    if not self.dry_run:
+      self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
 
     # iterate through each service in the workflow
     commands = self.workflow_service_commands(**options)
@@ -167,6 +163,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
 
+    # Intentially run this during dry run, we need the PID to be returned
     pid = self.__find_and_verify_workflow_pid()
     if not pid:
       return
@@ -204,8 +201,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
         
         # Clean up PID file
-        if os.path.exists(self.pid_file_path):
-          os.remove(self.pid_file_path)
+        self.__remove_pid_file()
           
       except Exception as e:
         Logger.instance(LOG_ID).error(f"Failed to stop {self.workflow_name}: {e}")
@@ -213,9 +209,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def logs(self, **options: WorkflowLogsOptions):
     """Show logs for the local workflow process."""
     follow = options.get('follow', False)
-    
-    # Find and verify the workflow PID
-    self.__find_and_verify_workflow_pid()
+
+    if not self.dry_run:
+      self.__find_and_verify_workflow_pid()
     
     # Build log command
     log_file = f"{self.log_file_path}"
@@ -238,6 +234,12 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     commands.sort(key=lambda command: command.service_config.priority)
     return commands
 
+  def __create_pid_file(self, pid: int):
+    """Write the process PID to the PID file."""
+    os.makedirs(os.path.dirname(self.pid_file_path), exist_ok=True)
+    with open(self.pid_file_path, 'w') as f:
+      f.write(str(pid))
+
   def __dry_run_down(self, pid: int, output_file: str):
     print(f"# Stop {self.workflow_name} (PID: {pid})", file=output_file)
     print(f"kill {pid} || true", file=output_file)
@@ -253,7 +255,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       print(f"cat {log_file}", file=output_file)
 
   def __find_and_verify_workflow_pid(self):
+    # Find and verify the workflow PID
     pid = self._read_pid()
+
     if not pid:
       Logger.instance(LOG_ID).error(f"Workflow {self.workflow_name} is not running.")
 
@@ -268,9 +272,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if not self._is_process_running(pid):
       Logger.instance(LOG_ID).info(f"Process {pid} for {self.workflow_name} is not running")
       # Clean up PID file
-      if os.path.exists(self.pid_file_path):
-        os.remove(self.pid_file_path)
-      return
+      return self.__remove_pid_file()
 
     return pid
 
@@ -281,8 +283,15 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name
+
+      # If the folder is not the same as the workflow name, then the workflow is namespaced, get the real workflow name
       if folder != self.workflow_name:
         workflow_name = file_name.split(self.pid_file_extension)[0]
+
+      # If the workflow is namespaced, allow it to run at the same time
+      # Same workflow with same namespace is covered by pid_file_path check
+      if workflow_name == self.workflow_name:
+        return
 
       Logger.instance(LOG_ID).error(f"Workflow {workflow_name} is already running with PID {pid}")
 
@@ -325,6 +334,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           if handle_stale:
             handle_stale(folder, pid, pid_file_path)
 
+  def __remove_pid_file(self):
+    if os.path.exists(self.pid_file_path):
+      os.remove(self.pid_file_path)
+
   def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
@@ -359,7 +372,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       for line in script_lines:
         print(line, file=self.script)
 
-    if self.dry_run:
+    if self.dry_run or self.containerized:
       print(command_str)
     else:
       # Execute directly
@@ -372,20 +385,31 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           check=True
         )
 
+        time.sleep(1) # Wait for the process to start
+
         if result.returncode != 0:
-          Logger.instance(LOG_ID).error(f"Failed to start agent, run `stoobly-agent workflow logs {self.workflow_name}` to see the error")
-          sys.exit(1)
+          self.__handle_up_error()
         
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
+
+        if not self._is_process_running(pid):
+          self.__handle_up_error()
         
         # Write PID to file
-        self._write_pid(pid)
+        self.__create_pid_file(pid)
         
         Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
       except subprocess.CalledProcessError as e:
-        Logger.instance(LOG_ID).error(f"Failed to start {self.workflow_name}: {e}")
-        return None
+        self.__handle_up_error()
       except ValueError as e:
         Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
         return None
+
+  def __handle_up_error(self):
+    log_file = f"{self.log_file_path}"
+    # Read log file it exists and print to stderr
+    if os.path.exists(log_file):
+      with open(log_file, 'r') as f:
+        print(f.read(), file=sys.stderr)
+    sys.exit(1)
