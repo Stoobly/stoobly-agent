@@ -1,6 +1,7 @@
 import click
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
@@ -170,4 +171,21 @@ def get(**kwargs) -> None:
 def query(**kwargs):
   query_handler(kwargs)
 
+@click.group(
+  epilog="Run 'stoobly-agent request log COMMAND --help' for more information on a command.",
+  help="Manage intercepted requests logs"
+)
+@click.pass_context
+def log(ctx):
+    pass
+
+@log.command(name="list", help="List intercepted requests log entries")
+def log_list(**kwargs):
+  InterceptedRequestsLogger.dump_logs()
+
+@log.command(name="delete", help="Delete intercepted requests log entries")
+def log_delete(**kwargs):
+  InterceptedRequestsLogger.truncate()
+
 request.add_command(response)
+request.add_command(log)

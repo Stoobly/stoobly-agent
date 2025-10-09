@@ -4,7 +4,7 @@ import pdb
 from typing import List, Union
 
 from ...constants import (
-  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME, WORKFLOW_NAME_ENV
+  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME
 )
 from ...local.workflow.builder import WorkflowBuilder
 from ..builder import Builder
@@ -12,6 +12,7 @@ from ..constants import DOCKER_COMPOSE_WORKFLOW
 from ..service.builder import DockerServiceBuilder
 from .mock_decorator import MockDecorator
 from .reverse_proxy_decorator import ReverseProxyDecorator
+
 
 class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
