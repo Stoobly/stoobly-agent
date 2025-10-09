@@ -111,10 +111,10 @@ intercept/enable:
 	@export EXEC_COMMAND=intercept/.enable EXEC_OPTIONS="" EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
 mock: workflow/mock ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
-mock/services: workflow/mock workflow/services
-mock/logs: workflow/mock workflow/logs workflow/logs/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
+mock/logs: workflow/mock workflow/logs workflow/logs/run
 mock/report: workflow/mock workflow/report
+mock/services: workflow/mock workflow/services
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -127,9 +127,9 @@ python/validate:
 	fi
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
 record/down: workflow/record workflow/down workflow/down/run workflow/hostname/uninstall
-record/services: workflow/record workflow/services
 record/logs: workflow/record workflow/logs workflow/logs/run
 record/report: workflow/record workflow/report
+record/services: workflow/record workflow/services
 scenario/create:
 # Create a scenario
 	@export EXEC_COMMAND=scenario/.create EXEC_OPTIONS="$(options)" EXEC_ARGS="$(name)" && \
@@ -160,10 +160,10 @@ stoobly/install: python/validate pipx/install
 		pipx install stoobly-agent || { echo "Failed to install stoobly-agent"; exit 1; }; \
 	fi
 test: workflow/test workflow/up workflow/up/run
-test/services: workflow/test workflow/services
-test/logs: workflow/test workflow/logs workflow/logs/run
 test/down: workflow/test workflow/down workflow/down/run
+test/logs: workflow/test workflow/logs workflow/logs/run
 test/report: workflow/test workflow/report
+test/services: workflow/test workflow/services
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down: dotenv
