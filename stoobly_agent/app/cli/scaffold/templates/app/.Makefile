@@ -201,7 +201,7 @@ workflow/namespace: tmpdir
 workflow/record:
 	$(eval workflow=record)
 workflow/report:
-	@export EXEC_COMMAND=request/.log_list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
+	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
