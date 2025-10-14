@@ -20,7 +20,7 @@ from stoobly_agent.config.constants import custom_headers
 
 
 class InterceptedRequestsLogger():
-    __LOG_ID: Final[str] = "RequestsLogger"
+    __LOG_ID: Final[str] = "InterceptedRequestsLogger"
     __logger: Logger = Logger.instance(__LOG_ID)
 
     __settings: Settings = Settings.instance()
