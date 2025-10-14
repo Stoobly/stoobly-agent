@@ -336,6 +336,8 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def truncate(cls) -> None:
+        cls.__ensure_directory()
+
         file_path = cls.__get_file_path()
 
         if not os.path.exists(file_path):
