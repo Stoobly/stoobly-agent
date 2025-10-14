@@ -341,6 +341,7 @@ class InterceptedRequestsLogger():
         file_path = cls.__get_file_path()
 
         if not os.path.exists(file_path):
+            cls.enable_logger_file()
             return
 
         try:
