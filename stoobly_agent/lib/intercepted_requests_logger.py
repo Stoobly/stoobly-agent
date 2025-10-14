@@ -241,6 +241,9 @@ class InterceptedRequestsLogger():
     def enable_logger_file(cls) -> None:
         cls.__ensure_directory()
 
+        # Enable the logger before setup so error logging works
+        cls.__logger.disabled = False
+
         try:
             # Remove all existing handlers to prevent logging to stdout
             cls.__logger.handlers.clear()
@@ -251,9 +254,6 @@ class InterceptedRequestsLogger():
             json_formatter = cls.JSONFormatter(cls.__settings)
             file_handler.setFormatter(json_formatter)
             cls.__logger.addHandler(file_handler)
-
-            # Enable the logger
-            cls.__logger.disabled = False
 
         except IOError as e:
             cls.__logger.error(f"Failed to configure logger file output: {e}")
