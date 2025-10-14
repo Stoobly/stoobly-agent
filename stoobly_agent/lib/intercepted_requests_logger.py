@@ -28,6 +28,9 @@ class InterceptedRequestsLogger():
     __file_path: str = None
     __previous_scenario_key: str = None
 
+    # Initialize logger as disabled by default
+    __logger.disabled = True
+
     class JSONFormatter(logging.Formatter):
         def __init__(self, settings: Settings):
             super().__init__()
@@ -248,6 +251,9 @@ class InterceptedRequestsLogger():
             json_formatter = cls.JSONFormatter(cls.__settings)
             file_handler.setFormatter(json_formatter)
             cls.__logger.addHandler(file_handler)
+
+            # Enable the logger
+            cls.__logger.disabled = False
 
         except IOError as e:
             cls.__logger.error(f"Failed to configure logger file output: {e}")
