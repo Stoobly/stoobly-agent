@@ -28,6 +28,9 @@ class InterceptedRequestsLogger():
     __file_path: str = None
     __previous_scenario_key: str = None
 
+    # Initialize logger as disabled by default
+    __logger.disabled = True
+
     class JSONFormatter(logging.Formatter):
         def __init__(self, settings: Settings):
             super().__init__()
@@ -237,6 +240,9 @@ class InterceptedRequestsLogger():
     @classmethod
     def enable_logger_file(cls) -> None:
         cls.__ensure_directory()
+
+        # Enable the logger before setup so error logging works
+        cls.__logger.disabled = False
 
         try:
             # Remove all existing handlers to prevent logging to stdout
