@@ -20,7 +20,7 @@ from stoobly_agent.config.constants import custom_headers
 
 
 class InterceptedRequestsLogger():
-    __LOG_ID: Final[str] = "INTERCEPTED_REQUESTS_LOGGER"
+    __LOG_ID: Final[str] = "RequestsLogger"
     __logger: Logger = Logger.instance(__LOG_ID)
 
     __settings: Settings = Settings.instance()
@@ -253,7 +253,7 @@ class InterceptedRequestsLogger():
             cls.__logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
-    def __log_delimiter(cls, previous_scenario_key: str, current_scenario_key: str) -> None:
+    def __log_scenario_change_delimiter(cls, previous_scenario_key: str, current_scenario_key: str) -> None:
         cls.__ensure_directory()
 
         previous_name = cls._get_scenario_name(previous_scenario_key)
@@ -269,7 +269,7 @@ class InterceptedRequestsLogger():
             }
         }
 
-        cls.__logger.info("Scenario changed", extra=extra)
+        cls.__logger.info(f"Scenario changed to {current_name or ''}", extra=extra)
 
     @classmethod
     def __setup_logging(cls, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> dict:
@@ -294,7 +294,7 @@ class InterceptedRequestsLogger():
         current_scenario_key = intercept_settings.scenario_key
 
         if cls.__previous_scenario_key != current_scenario_key:
-            cls.__log_delimiter(cls.__previous_scenario_key, current_scenario_key)
+            cls.__log_scenario_change_delimiter(cls.__previous_scenario_key, current_scenario_key)
             cls.__previous_scenario_key = current_scenario_key
 
     @classmethod
@@ -321,7 +321,6 @@ class InterceptedRequestsLogger():
     def dump_logs(cls):
         file_path = cls.__get_file_path()
         if not os.path.exists(file_path):
-            cls.__logger.error(f"Log file not found at: {file_path}")
             return
 
         try:
@@ -339,6 +338,9 @@ class InterceptedRequestsLogger():
     def truncate(cls) -> None:
         file_path = cls.__get_file_path()
 
+        if not os.path.exists(file_path):
+            return
+
         try:
             # Close and remove existing handler to release the file lock
             for handler in cls.__logger.handlers[:]:
@@ -352,7 +354,7 @@ class InterceptedRequestsLogger():
 
             # Re-enable logging with a fresh handler
             cls.enable_logger_file()
-            cls.__logger.info(f"Cleared log file: {file_path}")
+            cls.__logger.debug(f"Cleared log file: {file_path}")
 
             cls.reset_scenario_key()
         except IOError as e:
@@ -365,7 +367,7 @@ class InterceptedRequestsLogger():
 
         if directory and not os.path.exists(directory):
             try:
-                cls.__logger.info(f"created missing directory: {file_path}")
+                cls.__logger.debug(f"created missing directory: {directory}")
                 os.makedirs(directory, exist_ok=True)
             except OSError as e:
                 cls.__logger.error(f"Failed to create log directory: {e}")
