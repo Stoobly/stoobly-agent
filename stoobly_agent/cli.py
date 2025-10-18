@@ -12,9 +12,9 @@ from stoobly_agent.app.cli.helpers.validations import validate_project_key, vali
 from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
-from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
@@ -123,6 +123,9 @@ def init(**kwargs):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging')
+@click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
+@click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
@@ -179,6 +182,18 @@ def run(**kwargs):
       proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
       os.environ[env_vars.AGENT_PROXY_URL] = proxy_url
       settings.proxy.url = proxy_url
+
+    if kwargs.get('request_log_enable'):
+      # If truncating, do that first (it handles enable internally)
+      if kwargs.get('request_log_truncate'):
+        InterceptedRequestsLogger.truncate()
+      else:
+        InterceptedRequestsLogger.enable_logger_file()
+
+      # Set log level after logger is enabled
+      request_log_level = kwargs.get('request_log_level')
+      if request_log_level:
+        InterceptedRequestsLogger.set_log_level(request_log_level)
 
     if kwargs.get('detached'):
       # Run in detached mode with output redirection

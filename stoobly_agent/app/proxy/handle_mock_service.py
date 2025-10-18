@@ -10,8 +10,8 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
-from stoobly_agent.lib.logger import bcolors, Logger
-
+from stoobly_agent.lib.logger import bcolors, Logger, DEBUG, INFO, WARNING, ERROR
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_fixtures_service import eval_fixtures
@@ -153,6 +153,9 @@ def handle_response_mock(context: MockContext):
 def __handle_mock_failure(context: MockContext) -> None:
     flow = context.flow
     request = flow.request
+    response = context.response
+
+    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
     if request.method.upper() != 'OPTIONS':
         return False
@@ -187,10 +190,12 @@ def __handle_mock_success(context: MockContext) -> None:
         request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
         if request_key:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
 
         fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
         if fixture_path:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
     if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
         response = context.response

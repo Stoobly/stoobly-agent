@@ -4,6 +4,8 @@ services:
       service: stoobly_base
     volumes:
       - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
+      - ${APP_DIR}/.stoobly/ca_certs:/home/stoobly/.stoobly/ca_certs
+      - ${APP_DIR}/.stoobly/certs:/home/stoobly/.stoobly/certs
       - ${APP_DIR}/.stoobly/services:/home/stoobly/.stoobly/services
   stoobly_base:
     image: stoobly.${USER_ID}

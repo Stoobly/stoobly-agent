@@ -341,6 +341,7 @@ def copy(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
+@click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -385,7 +386,20 @@ def down(**kwargs):
       script=script,
       **kwargs
     )
-  
+
+    # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+    # Entrypoint container will be within the container network
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+      if not containerized and not kwargs['dry_run']:
+        # Prompt confirm to install hostnames
+        if kwargs.get('hostname_uninstall_confirm'):
+          confirm = kwargs['hostname_uninstall_confirm']
+        else:
+          confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
+
+        if confirm == "y" or confirm == "Y":
+          __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+
   # Execute the workflow down
   workflow_command.down(
     **command_args,
@@ -401,6 +415,7 @@ def down(**kwargs):
 @click.option(
   '--container', multiple=True, help=f"Select which containers to log. Defaults to '{WORKFLOW_CONTAINER_PROXY}'"
 )
+@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--follow', is_flag=True, help='Follow last container log output.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -457,11 +472,13 @@ def logs(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -472,7 +489,6 @@ def logs(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
-@click.option('-y', '--yes', is_flag=True, help='Auto-confirm CA certificate installation prompt.')
 @click.argument('workflow_name')
 def up(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -491,17 +507,15 @@ def up(**kwargs):
   # First time if folder does not exist or is empty
   first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
   if first_time and not containerized and not dry_run:
-    # If ca certs dir path does not exist, run ca-cert install
-    if kwargs.get('yes'):
-      # Auto-confirm if -y/--yes option is provided
-      ca_cert_install(app.ca_certs_dir_path)
+    if kwargs.get('ca_certs_install_confirm'):
+      confirm = kwargs['ca_certs_install_confirm']
     else:
       confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
-      if confirm == "y" or confirm == "Y":
-        ca_cert_install(app.ca_certs_dir_path)
-      else:
-        print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
-        sys.exit(1)
+
+    if confirm == "y" or confirm == "Y":
+      ca_cert_install(app.ca_certs_dir_path)
+    else:
+      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -532,6 +546,19 @@ def up(**kwargs):
       script=script,
       **kwargs
     )
+
+    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+    # Entrypoint container will be within the container network
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+      if not containerized and not dry_run:
+        # Prompt confirm to install hostnames
+        if kwargs.get('hostname_install_confirm'):
+          confirm = kwargs['hostname_install_confirm']
+        else:
+          confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
+
+        if confirm == "y" or confirm == "Y":
+          __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
   if first_time and not containerized and not dry_run:
     options = {}
@@ -596,30 +623,7 @@ def validate(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
-  __validate_app(app)
-
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
-  )
-
-  hostnames = []
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-    if service_config.hostname:
-      hostnames.append(service_config.hostname)
-
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.install_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  __hostname_install(**kwargs)
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
@@ -628,30 +632,7 @@ def install(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
-  __validate_app(app)
-
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
-  )
-
-  hostnames = []
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-    if service_config.hostname:
-      hostnames.append(service_config.hostname)
-
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.uninstall_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  __hostname_uninstall(**kwargs)
 
 scaffold.add_command(app)
 scaffold.add_command(service)
@@ -715,6 +696,64 @@ def __get_services(app: App, **kwargs):
   services.sort()
 
   return services
+
+def __hostname_install(**kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
+
+  hostnames = []
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  if not hostnames:
+    return
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.install_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
+
+def __hostname_uninstall(**kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
+  )
+
+  hostnames = []
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    service_config = ServiceConfig(service.dir_path)
+    if service_config.hostname:
+      hostnames.append(service_config.hostname)
+
+  if not hostnames:
+    return
+
+  __elevate_sudo()
+
+  try:
+    hosts_file_manager = HostsFileManager()
+    hosts_file_manager.uninstall_hostnames(hostnames)
+  except PermissionError:
+    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+    sys.exit(1)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
