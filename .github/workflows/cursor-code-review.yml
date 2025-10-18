@@ -28,7 +28,7 @@ jobs:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          cursor-agent --force --model "sonnet-4.5-thinking" --output-format=text --print "You are operating in a GitHub Actions runner performing automated code review. The gh CLI is available and authenticated via GH_TOKEN. You may comment on pull requests.
+          cursor-agent --force --model "sonnet-4.5" --output-format=text --print "You are operating in a GitHub Actions runner performing automated code review. The gh CLI is available and authenticated via GH_TOKEN. You may comment on pull requests.
 
           Context:
           - Repo: ${{ github.repository }}
