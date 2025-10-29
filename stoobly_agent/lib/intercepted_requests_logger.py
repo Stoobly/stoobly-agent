@@ -148,7 +148,7 @@ class InterceptedRequestsLogger():
                     "fixture_path": record.fixture_path
                 })
 
-            # Set test name if available in request headers
+            # Set test title if available in request headers
             if hasattr(record, 'request') and record.request is not None:
                 request: MitmproxyRequest = record.request
                 if hasattr(request, 'headers') and request.headers:
