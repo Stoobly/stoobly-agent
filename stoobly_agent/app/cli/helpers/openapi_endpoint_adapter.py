@@ -21,6 +21,7 @@ from .schema_builder import SchemaBuilder
 
 class OpenApiEndpointAdapter():
   def __init__(self):
+    self.spec = None
     return
 
   def adapt_from_file(self, file_path) -> List[EndpointShowResponse]:
@@ -42,6 +43,7 @@ class OpenApiEndpointAdapter():
     return self.adapt(spec)
 
   def adapt(self, spec: SchemaPath) -> List[EndpointShowResponse]:
+    self.spec = spec  # Store spec for use in __dereference
     endpoints = []
     endpoint_counter = 0
     components = spec.get("components", {})
@@ -122,7 +124,7 @@ class OpenApiEndpointAdapter():
           parameters = operation.get("parameters", {})
           for parameter in parameters:
             if '$ref' in parameter.keys():
-              parameter = self.__dereference(components, parameter['$ref'])
+              parameter = self.__dereference(components, parameter['$ref'], self.spec)
 
             if parameter['in'] == 'query':
               # query_param: RequestComponentName = {}
@@ -146,11 +148,15 @@ class OpenApiEndpointAdapter():
             elif parameter['in'] == 'header':
               header: RequestComponentName = {}
               header['name'] = parameter['name']
+
               header_example = parameter.get('example')
               if header_example:
-                if not header.get('values'):
-                  header['values'] = []
-                header['values'].append(header_example)
+                header['values'] = [header_example]
+
+              header_examples = parameter.get('examples')
+              if header_examples:
+                header['values'] = [example['value'] for example in header_examples]
+
               if parameter.get('required'):
                 header['is_required'] = True
               else:
@@ -294,7 +300,7 @@ class OpenApiEndpointAdapter():
     property_schema = list(schema_object.values())[0] 
 
     if '$ref' in property_schema.keys():
-      property_schema = self.__dereference(components, property_schema.get('$ref'))
+      property_schema = self.__dereference(components, property_schema.get('$ref'), self.spec)
 
     # Generates the entire query string for this particular property (ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
     if property_name == 'tmp':
@@ -370,30 +376,80 @@ class OpenApiEndpointAdapter():
   
 
   # Returns the schema object located at the given reference path
-  def __dereference(self, components: SchemaPath, reference: str):
-    # '#/components/schemas/NewPet'
+  def __dereference(self, components: SchemaPath, reference: str, spec: SchemaPath = None):
+    # '#/components/schemas/NewPet' or '#/paths/~1users~1{id}/get/responses/200'
     if not reference.startswith('#'):
       raise ValueError(f'External references are not supported yet: {reference}')
-    if not reference.startswith('#/components'):
-      raise ValueError(f'Non-component references are not supported yet: {reference}')
     
-    ref_split = reference.split('#/components/')
-    component_data = ref_split[1].split('/')
-    component_type = component_data[0]
-    component_name = component_data[1]
-    component = components.get(component_type, {})
+    # Remove leading '#'
+    ref_path = reference[1:]
+    
+    # Handle component references: #/components/schemas/Pet
+    if reference.startswith('#/components'):
+      ref_split = reference.split('#/components/')
+      component_data = ref_split[1].split('/')
+      component_type = component_data[0]
+      component_name = component_data[1]
+      component = components.get(component_type, {})
 
-    component_content = component.content()
-    if component_name not in component_content:
-      raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
+      component_content = component.content()
+      if component_name not in component_content:
+        raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
 
-    # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-    body_spec = component_content[component_name]
+      # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+      body_spec = component_content[component_name]
+        
+      if '$ref' in body_spec.keys():
+        body_spec = self.__dereference(components, body_spec.get('$ref'), spec)
       
-    if '$ref' in body_spec.keys():
-      body_spec = self.__dereference(components, body_spec.get('$ref'))
+      return body_spec
     
-    return body_spec 
+    # Handle non-component references: #/paths/~1users/get/parameters/0
+    if spec is None:
+      raise ValueError(f'Non-component reference requires spec parameter: {reference}')
+    
+    # Split path by '/' and navigate through spec
+    # Note: OpenAPI uses ~1 to escape '/' and ~0 to escape '~' in JSON pointers (RFC 6901)
+    path_parts = ref_path.split('/')[1:]  # Skip empty string from leading '/'
+    
+    current = spec
+    for i, part in enumerate(path_parts):
+      # Unescape JSON pointer tokens
+      unescaped_part = part.replace('~1', '/').replace('~0', '~')
+      
+      # Try to navigate
+      if hasattr(current, 'get'):
+        # SchemaPath objects use .get() method
+        current = current.get(unescaped_part)
+        if current is None:
+          # Also try with getkey for paths
+          try:
+            current = current.getkey(unescaped_part) if hasattr(current, 'getkey') else None
+          except:
+            pass
+      elif hasattr(current, '__getitem__'):
+        try:
+          # Try as integer index for arrays
+          if unescaped_part.isdigit():
+            current = current[int(unescaped_part)]
+          else:
+            current = current[unescaped_part]
+        except (KeyError, IndexError, TypeError):
+          raise ValueError(f'Could not resolve reference path "{reference}" at "{unescaped_part}"')
+      else:
+        raise ValueError(f'Could not navigate reference "{reference}" at "{unescaped_part}"')
+      
+      # Check if resolution failed
+      if current is None:
+        # Provide better error message
+        resolved_path = '/'.join(path_parts[:i+1])
+        raise ValueError(f'Could not resolve reference path "{reference}" - path "{resolved_path}" not found')
+    
+    # If the resolved value itself has a $ref, recursively resolve it
+    if isinstance(current, dict) and '$ref' in current:
+      current = self.__dereference(components, current['$ref'], spec)
+    
+    return current 
   
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: Union[dict, list],
@@ -566,7 +622,7 @@ class OpenApiEndpointAdapter():
         response_header_name['name'] = header_name
         
         if '$ref' in header_definition:
-          header_definition = self.__dereference(components, header_definition.get('$ref'))
+          header_definition = self.__dereference(components, header_definition.get('$ref'), self.spec)
 
         header_example = header_definition.get('example')
         if header_example:
