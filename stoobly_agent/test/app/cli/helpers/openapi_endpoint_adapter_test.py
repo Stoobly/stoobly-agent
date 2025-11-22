@@ -1478,9 +1478,10 @@ class TestOpenApiEndpointAdapter():
       assert 'parameters' in result
       assert 'responses' in result
 
-    def test_dereference_external_reference_raises_error(self, open_api_endpoint_adapter):
-      """Test that external references raise a ValueError"""
+    def test_dereference_external_reference_raises_error_in_strict_mode(self, open_api_endpoint_adapter):
+      """Test that external references raise a ValueError in strict mode"""
       from openapi_core import OpenAPI
+      from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import OpenApiEndpointAdapter
       
       spec_dict = {
         'openapi': '3.0.0',
@@ -1490,15 +1491,46 @@ class TestOpenApiEndpointAdapter():
       
       openApi = OpenAPI.from_dict(spec_dict)
       spec = openApi.spec
-      adapter = open_api_endpoint_adapter
+      
+      # Create adapter in strict mode
+      adapter = OpenApiEndpointAdapter(strict_refs=True)
       adapter.spec = spec
       components = spec.get("components", {})
       
-      # External reference should raise ValueError
+      # External reference should raise ValueError in strict mode
       ref = 'external-file.yaml#/components/schemas/Pet'
       
       with pytest.raises(ValueError, match='External references are not supported'):
         adapter._OpenApiEndpointAdapter__dereference(components, ref, spec)
+    
+    def test_dereference_external_reference_returns_placeholder_in_lenient_mode(self, open_api_endpoint_adapter):
+      """Test that external references return a placeholder in lenient mode (default)"""
+      from openapi_core import OpenAPI
+      from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import OpenApiEndpointAdapter
+      
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {}
+      }
+      
+      openApi = OpenAPI.from_dict(spec_dict)
+      spec = openApi.spec
+      
+      # Create adapter in lenient mode (default)
+      adapter = OpenApiEndpointAdapter(strict_refs=False)
+      adapter.spec = spec
+      components = spec.get("components", {})
+      
+      # External reference should return placeholder in lenient mode
+      ref = 'external-file.yaml#/components/schemas/Pet'
+      
+      result = adapter._OpenApiEndpointAdapter__dereference(components, ref, spec)
+      
+      # Should return a placeholder object
+      assert result['type'] == 'object'
+      assert 'x-external-ref' in result
+      assert result['x-external-ref'] == ref
 
     def test_dereference_nonexistent_path_raises_error(self, open_api_endpoint_adapter):
       """Test that referencing a non-existent path raises a ValueError"""

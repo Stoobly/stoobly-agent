@@ -1,5 +1,6 @@
 import copy
 import itertools
+import logging
 import re
 import yaml
 
@@ -9,6 +10,8 @@ from openapi_core import OpenAPI
 from pprint import pprint
 from typing import Dict, List, Union
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 from stoobly_agent.lib.api.interfaces.endpoints import (
   Alias,
@@ -20,9 +23,16 @@ from stoobly_agent.lib.utils.python_to_ruby_type import convert_reverse
 from .schema_builder import SchemaBuilder
 
 class OpenApiEndpointAdapter():
-  def __init__(self):
+  def __init__(self, strict_refs=False):
+    """
+    Initialize the OpenAPI Endpoint Adapter.
+    
+    Args:
+      strict_refs: If True, raise errors for unsupported references.
+                   If False, log warnings and return placeholder objects.
+    """
     self.spec = None
-    return
+    self.strict_refs = strict_refs
 
   def adapt_from_file(self, file_path) -> List[EndpointShowResponse]:
     spec = {}
@@ -379,7 +389,18 @@ class OpenApiEndpointAdapter():
   def __dereference(self, components: SchemaPath, reference: str, spec: SchemaPath = None):
     # '#/components/schemas/NewPet' or '#/paths/~1users~1{id}/get/responses/200'
     if not reference.startswith('#'):
-      raise ValueError(f'External references are not supported yet: {reference}')
+      # External reference (e.g., 'external-file.yaml#/components/schemas/Pet')
+      if self.strict_refs:
+        raise ValueError(f'External references are not supported yet: {reference}')
+      else:
+        # Log warning and return a placeholder object
+        logger.warning(f'External reference "{reference}" cannot be resolved. Using placeholder object.')
+        # Return a generic object schema as fallback
+        return {
+          'type': 'object',
+          'description': f'External reference: {reference}',
+          'x-external-ref': reference
+        }
     
     # Remove leading '#'
     ref_path = reference[1:]
