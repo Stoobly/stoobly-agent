@@ -102,14 +102,15 @@ class OpenApiEndpointAdapter():
             path_component_name['type'] = "alias" if segment_name.startswith(':') else "static"
             endpoint['path_segment_names'].append(path_component_name)
           
-          endpoint['port'] = str(parsed_url.port)
-          if endpoint['port'] is None or endpoint['port'] == 'None':
+          if parsed_url.port is None:
             if parsed_url.scheme == 'https':
               endpoint['port'] = '443'
             elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
             else:
               endpoint['port'] = '0'
+          else:
+            endpoint['port'] = str(parsed_url.port)
 
           alias_counter = 0
           header_param_counter = 0
@@ -131,7 +132,7 @@ class OpenApiEndpointAdapter():
               # if query_param_example:
               #   query_param['values'].append(query_param_example)
 
-              if parameter.get('required') == True:
+              if parameter.get('required'):
                 required_query_params.append(parameter['name'])
 
               if not endpoint.get('query_param_names'):
@@ -147,8 +148,10 @@ class OpenApiEndpointAdapter():
               header['name'] = parameter['name']
               header_example = parameter.get('example')
               if header_example:
+                if not header.get('values'):
+                  header['values'] = []
                 header['values'].append(header_example)
-              if parameter['required'] == True:
+              if parameter.get('required'):
                 header['is_required'] = True
               else:
                 header['is_required'] = False
@@ -359,7 +362,8 @@ class OpenApiEndpointAdapter():
 
       curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
       for part in all_of:
-        required_component_params = part.get('required', [])
+        part_required = part.get('required', [])
+        required_component_params.extend(part_required)
         curr_id = self.__extract_param_properties(components, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
 
     return curr_id
@@ -369,23 +373,27 @@ class OpenApiEndpointAdapter():
   def __dereference(self, components: SchemaPath, reference: str):
     # '#/components/schemas/NewPet'
     if not reference.startswith('#'):
-      print('external references are not supported yet')
+      raise ValueError(f'External references are not supported yet: {reference}')
     if not reference.startswith('#/components'):
-      print('non component references are not supported yet')
-    else:
-      ref_split = reference.split('#/components/')
-      component_data = ref_split[1].split('/')
-      component_type = component_data[0]
-      component_name = component_data[1]
-      component = components.get(component_type, {})
+      raise ValueError(f'Non-component references are not supported yet: {reference}')
+    
+    ref_split = reference.split('#/components/')
+    component_data = ref_split[1].split('/')
+    component_type = component_data[0]
+    component_name = component_data[1]
+    component = components.get(component_type, {})
 
-      # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-      body_spec = component.content()[component_name]
-        
-      if '$ref' in body_spec.keys():
-        body_spec = self.__dereference(components, body_spec.get('$ref'))
+    component_content = component.content()
+    if component_name not in component_content:
+      raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
+
+    # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+    body_spec = component_content[component_name]
       
-      return body_spec 
+    if '$ref' in body_spec.keys():
+      body_spec = self.__dereference(components, body_spec.get('$ref'))
+    
+    return body_spec 
   
   def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
       required_component_params: List[str], literal_component_params: Union[dict, list],
@@ -399,7 +407,7 @@ class OpenApiEndpointAdapter():
 
     built_params_list = list(built_params)
     for param in built_params_list:
-      if param.get('is_required', False) == True:
+      if param.get('is_required', False):
         inferred_type = param['inferred_type']
         default_python_type = convert_reverse(inferred_type)
 
@@ -452,26 +460,26 @@ class OpenApiEndpointAdapter():
 
   # https://swagger.io/docs/specification/data-models/data-types/
   def __convert_open_api_type(self, open_api_type: str) -> str:
-    type_map = {}
-    type_map['string'] = str(str)
-    type_map['number'] = str(float)
-    type_map['integer'] = str(int) 
-    type_map['boolean'] = str(bool) 
-    type_map['array'] = str(list)
-    type_map['object'] = str(dict)
-
-    return type_map[open_api_type]
+    type_map = {
+      'string': str(str),
+      'number': str(float),
+      'integer': str(int),
+      'boolean': str(bool),
+      'array': str(list),
+      'object': str(dict)
+    }
+    return type_map.get(open_api_type, str(dict))
 
   def __open_api_to_default_python_type(self, open_api_type: str):
-    type_map = {}
-    type_map['string'] = str()
-    type_map['number'] = float()
-    type_map['integer'] = int()
-    type_map['boolean'] = bool()
-    type_map['array'] = list()
-    type_map['object'] = dict()
-
-    return type_map[open_api_type]
+    type_map = {
+      'string': str(),
+      'number': float(),
+      'integer': int(),
+      'boolean': bool(),
+      'array': list(),
+      'object': dict()
+    }
+    return type_map.get(open_api_type, dict())
 
   def __num_variables(self, url: str) -> int:
     num = url.count('{')
