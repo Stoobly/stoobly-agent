@@ -551,6 +551,7 @@ def up(**kwargs):
     # Entrypoint container will be within the container network
     if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
       if not containerized and not dry_run:
+
         # Prompt confirm to install hostnames
         if kwargs.get('hostname_install_confirm'):
           confirm = kwargs['hostname_install_confirm']
@@ -655,13 +656,6 @@ def __build_script(app: App, **kwargs):
 
   return open(script_path, 'a')
 
-def __elevate_sudo():
-  import subprocess
-
-  if os.geteuid() != 0:
-    subprocess.run(["sudo", sys.executable] + sys.argv)
-    sys.exit(0)
-
 def __get_services(app: App, **kwargs):
   selected_services = list(kwargs['service'])
 
@@ -697,7 +691,8 @@ def __get_services(app: App, **kwargs):
 
   return services
 
-def __hostname_install(**kwargs):
+def __get_hostnames(**kwargs):
+  """Get list of hostnames from services in the workflow."""
   app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
 
@@ -714,46 +709,55 @@ def __hostname_install(**kwargs):
     if service_config.hostname:
       hostnames.append(service_config.hostname)
 
+  return hostnames
+
+def __run_hostname_command_with_sudo(action: str, **kwargs):
+  """Run hostname install/uninstall command with sudo if not root."""
+  import subprocess
+  
+  cmd = [
+    "sudo", "stoobly-agent",
+    "scaffold", "hostname", action,
+    "--app-dir-path", kwargs['app_dir_path']
+  ]
+  for workflow_name in kwargs.get('workflow', []):
+    cmd.extend(["--workflow", workflow_name])
+  for service_name in kwargs.get('service', []):
+    cmd.extend(["--service", service_name])
+  
+  result = subprocess.run(cmd)
+  if result.returncode != 0:
+    sys.exit(result.returncode)
+
+def __hostname_install(**kwargs):
+  hostnames = __get_hostnames(**kwargs)
   if not hostnames:
     return
 
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.install_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  if os.geteuid() != 0:
+    __run_hostname_command_with_sudo("install", **kwargs)
+  else:
+    try:
+      hosts_file_manager = HostsFileManager()
+      hosts_file_manager.install_hostnames(hostnames)
+    except PermissionError:
+      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+      sys.exit(1)
 
 def __hostname_uninstall(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
-  __validate_app(app)
-
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=kwargs['workflow']
-  )
-
-  hostnames = []
-  for service_name in services:
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
-
-    service_config = ServiceConfig(service.dir_path)
-    if service_config.hostname:
-      hostnames.append(service_config.hostname)
-
+  hostnames = __get_hostnames(**kwargs)
   if not hostnames:
     return
 
-  __elevate_sudo()
-
-  try:
-    hosts_file_manager = HostsFileManager()
-    hosts_file_manager.uninstall_hostnames(hostnames)
-  except PermissionError:
-    print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-    sys.exit(1)
+  if os.geteuid() != 0:
+    __run_hostname_command_with_sudo("uninstall", **kwargs)
+  else:
+    try:
+      hosts_file_manager = HostsFileManager()
+      hosts_file_manager.uninstall_hostnames(hostnames)
+    except PermissionError:
+      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
+      sys.exit(1)
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
