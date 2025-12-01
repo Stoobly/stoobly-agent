@@ -714,9 +714,9 @@ def __get_hostnames(**kwargs):
 def __run_hostname_command_with_sudo(action: str, **kwargs):
   """Run hostname install/uninstall command with sudo if not root."""
   import subprocess
-  
+
   cmd = [
-    "sudo", "stoobly-agent",
+    "sudo", sys.executable, sys.argv[0],
     "scaffold", "hostname", action,
     "--app-dir-path", kwargs['app_dir_path']
   ]
@@ -724,7 +724,7 @@ def __run_hostname_command_with_sudo(action: str, **kwargs):
     cmd.extend(["--workflow", workflow_name])
   for service_name in kwargs.get('service', []):
     cmd.extend(["--service", service_name])
-  
+
   result = subprocess.run(cmd)
   if result.returncode != 0:
     sys.exit(result.returncode)
