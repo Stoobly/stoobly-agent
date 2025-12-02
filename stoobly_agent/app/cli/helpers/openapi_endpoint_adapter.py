@@ -407,7 +407,7 @@ class OpenApiEndpointAdapter():
       component = components.get(component_type, {})
 
       component_content = component.content()
-      if component_content and component_name not in component_content:
+      if component_content is not None and component_name not in component_content:
         raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
 
       # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
@@ -648,12 +648,13 @@ class OpenApiEndpointAdapter():
   def __extract_examples(self, definition: dict):
     values = []
 
-    example = definition.get('example')
-    if example:
-      values = [example]
+    if 'example' in definition:
+      values = [definition['example']]
 
     examples = definition.get('examples', {})
     if examples:
-      values += [example['value'] for example in examples.values()]
+      for example in examples.values():
+        if 'value' in example:
+          values.append(example['value'])
 
     return values

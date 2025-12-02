@@ -50,12 +50,18 @@ jobs:
 
           Procedure:
           - Review the PR issue and description to understand the goal and context
-          - Get existing comments: gh pr view --json comments
-          - Get diff: gh pr diff
+          - Get existing comments: gh pr view ${{ github.event.pull_request.number }} --json comments,reviews
+          - Get diff: gh pr diff ${{ github.event.pull_request.number }}
           - Identify the exact file path and line number for each issue
           - Prioritize issues according to the review focus order above
           - If a previously reported comment appears fixed by nearby changes, reply to the comment: ✅ This issue appears to be resolved by the recent changes
-          - Avoid duplicates: skip if similar feedback already exists on or near the same lines
+
+          Duplicate Prevention (CRITICAL):
+          - Before posting ANY comment, check if a similar comment already exists on the same file and line
+          - Parse existing comments from 'gh pr view --json comments,reviews' output
+          - If an existing comment mentions the same issue (same file, same/nearby line, same concern), DO NOT post a duplicate
+          - Only post new comments for issues not already flagged in previous reviews
+          - Skip the summary comment if one already exists from a previous run
 
           Commenting rules:
           - Max 10 inline comments total; prioritize bugs > security > performance > maintainability
