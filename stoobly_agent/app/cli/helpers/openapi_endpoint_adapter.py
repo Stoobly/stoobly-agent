@@ -165,7 +165,7 @@ class OpenApiEndpointAdapter():
 
               header_examples = parameter.get('examples')
               if header_examples:
-                header['values'] = [example['value'] for example in header_examples]
+                header['values'] = [example['value'] for example in header_examples.values()]
 
               if parameter.get('required'):
                 header['is_required'] = True
@@ -414,7 +414,7 @@ class OpenApiEndpointAdapter():
       component = components.get(component_type, {})
 
       component_content = component.content()
-      if component_name not in component_content:
+      if component_content and component_name not in component_content:
         raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
 
       # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}

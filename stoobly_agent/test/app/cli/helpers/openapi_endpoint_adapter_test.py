@@ -1616,3 +1616,349 @@ class TestOpenApiEndpointAdapter():
       assert 'name' in result['properties']
       assert result['required'] == ['name']
 
+  class TestAllOf:
+    """Test cases for allOf schema handling"""
+
+    @pytest.fixture(scope='class')
+    def open_api_endpoint_adapter(self):
+      return OpenApiEndpointAdapter()
+
+    def test_allof_with_ref_and_inline_properties(self, open_api_endpoint_adapter):
+      """Test allOf combining a $ref with inline properties (common pattern for extending schemas)"""
+      from openapi_core import OpenAPI
+
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {
+          '/pets': {
+            'post': {
+              'requestBody': {
+                'content': {
+                  'application/json': {
+                    'schema': {
+                      'allOf': [
+                        {'$ref': '#/components/schemas/NewPet'},
+                        {
+                          'type': 'object',
+                          'required': ['id'],
+                          'properties': {
+                            'id': {'type': 'integer', 'format': 'int64'}
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              'responses': {
+                '200': {
+                  'description': 'Success'
+                }
+              }
+            }
+          }
+        },
+        'components': {
+          'schemas': {
+            'NewPet': {
+              'type': 'object',
+              'required': ['name'],
+              'properties': {
+                'name': {'type': 'string'},
+                'tag': {'type': 'string'}
+              }
+            }
+          }
+        }
+      }
+
+      openApi = OpenAPI.from_dict(spec_dict)
+      adapter = open_api_endpoint_adapter
+      endpoints = adapter.adapt(openApi.spec)
+
+      assert len(endpoints) == 1
+      endpoint = endpoints[0]
+
+      # Check that the request body contains properties from both the $ref and inline schema
+      body_params = endpoint.get('body_param_names', [])
+      assert len(body_params) > 0
+
+      # Find the parameter names
+      param_names = [p['name'] for p in body_params]
+      
+      # Should have name from NewPet
+      assert 'name' in param_names
+      # Should have tag from NewPet
+      assert 'tag' in param_names
+      # Should have id from inline schema
+      assert 'id' in param_names
+
+    def test_allof_with_multiple_refs(self, open_api_endpoint_adapter):
+      """Test allOf combining multiple $refs"""
+      from openapi_core import OpenAPI
+
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {
+          '/items': {
+            'post': {
+              'requestBody': {
+                'content': {
+                  'application/json': {
+                    'schema': {
+                      'allOf': [
+                        {'$ref': '#/components/schemas/BaseItem'},
+                        {'$ref': '#/components/schemas/ItemMetadata'}
+                      ]
+                    }
+                  }
+                }
+              },
+              'responses': {
+                '200': {'description': 'Success'}
+              }
+            }
+          }
+        },
+        'components': {
+          'schemas': {
+            'BaseItem': {
+              'type': 'object',
+              'required': ['name'],
+              'properties': {
+                'name': {'type': 'string'},
+                'description': {'type': 'string'}
+              }
+            },
+            'ItemMetadata': {
+              'type': 'object',
+              'required': ['createdAt'],
+              'properties': {
+                'createdAt': {'type': 'string', 'format': 'date-time'},
+                'updatedAt': {'type': 'string', 'format': 'date-time'}
+              }
+            }
+          }
+        }
+      }
+
+      openApi = OpenAPI.from_dict(spec_dict)
+      adapter = open_api_endpoint_adapter
+      endpoints = adapter.adapt(openApi.spec)
+
+      assert len(endpoints) == 1
+      endpoint = endpoints[0]
+
+      body_params = endpoint.get('body_param_names', [])
+      param_names = [p['name'] for p in body_params]
+
+      # Should have properties from BaseItem
+      assert 'name' in param_names
+      assert 'description' in param_names
+      # Should have properties from ItemMetadata
+      assert 'createdAt' in param_names
+      assert 'updatedAt' in param_names
+
+    def test_allof_required_properties_merged(self, open_api_endpoint_adapter):
+      """Test that required properties from all allOf parts are properly merged"""
+      from openapi_core import OpenAPI
+
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {
+          '/users': {
+            'post': {
+              'requestBody': {
+                'content': {
+                  'application/json': {
+                    'schema': {
+                      'allOf': [
+                        {
+                          'type': 'object',
+                          'required': ['firstName'],
+                          'properties': {
+                            'firstName': {'type': 'string'},
+                            'lastName': {'type': 'string'}
+                          }
+                        },
+                        {
+                          'type': 'object',
+                          'required': ['email'],
+                          'properties': {
+                            'email': {'type': 'string', 'format': 'email'},
+                            'phone': {'type': 'string'}
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              'responses': {
+                '200': {'description': 'Success'}
+              }
+            }
+          }
+        }
+      }
+
+      openApi = OpenAPI.from_dict(spec_dict)
+      adapter = open_api_endpoint_adapter
+      endpoints = adapter.adapt(openApi.spec)
+
+      assert len(endpoints) == 1
+      endpoint = endpoints[0]
+
+      body_params = endpoint.get('body_param_names', [])
+      
+      # Find required parameters
+      required_params = [p for p in body_params if p.get('is_required')]
+      required_names = [p['name'] for p in required_params]
+
+      # Both firstName and email should be required
+      assert 'firstName' in required_names
+      assert 'email' in required_names
+
+      # lastName and phone should not be required
+      optional_params = [p for p in body_params if not p.get('is_required')]
+      optional_names = [p['name'] for p in optional_params]
+      assert 'lastName' in optional_names
+      assert 'phone' in optional_names
+
+    def test_allof_nested_in_response(self, open_api_endpoint_adapter):
+      """Test allOf in response schema"""
+      from openapi_core import OpenAPI
+
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {
+          '/pets/{id}': {
+            'get': {
+              'parameters': [
+                {
+                  'name': 'id',
+                  'in': 'path',
+                  'required': True,
+                  'schema': {'type': 'integer'}
+                }
+              ],
+              'responses': {
+                '200': {
+                  'description': 'Success',
+                  'content': {
+                    'application/json': {
+                      'schema': {
+                        'allOf': [
+                          {'$ref': '#/components/schemas/Pet'},
+                          {
+                            'type': 'object',
+                            'properties': {
+                              'owner': {'type': 'string'}
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        'components': {
+          'schemas': {
+            'Pet': {
+              'type': 'object',
+              'properties': {
+                'name': {'type': 'string'},
+                'species': {'type': 'string'}
+              }
+            }
+          }
+        }
+      }
+
+      openApi = OpenAPI.from_dict(spec_dict)
+      adapter = open_api_endpoint_adapter
+      endpoints = adapter.adapt(openApi.spec)
+
+      assert len(endpoints) == 1
+      endpoint = endpoints[0]
+
+      response_params = endpoint.get('response_param_names', [])
+      param_names = [p['name'] for p in response_params]
+
+      # Should have properties from Pet
+      assert 'name' in param_names
+      assert 'species' in param_names
+      # Should have inline property
+      assert 'owner' in param_names
+
+    def test_allof_with_nested_object(self, open_api_endpoint_adapter):
+      """Test allOf with nested object properties"""
+      from openapi_core import OpenAPI
+
+      spec_dict = {
+        'openapi': '3.0.0',
+        'info': {'title': 'Test', 'version': '1.0.0'},
+        'paths': {
+          '/orders': {
+            'post': {
+              'requestBody': {
+                'content': {
+                  'application/json': {
+                    'schema': {
+                      'allOf': [
+                        {
+                          'type': 'object',
+                          'properties': {
+                            'orderId': {'type': 'string'}
+                          }
+                        },
+                        {
+                          'type': 'object',
+                          'properties': {
+                            'customer': {
+                              'type': 'object',
+                              'properties': {
+                                'name': {'type': 'string'},
+                                'address': {'type': 'string'}
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              'responses': {
+                '200': {'description': 'Success'}
+              }
+            }
+          }
+        }
+      }
+
+      openApi = OpenAPI.from_dict(spec_dict)
+      adapter = open_api_endpoint_adapter
+      endpoints = adapter.adapt(openApi.spec)
+
+      assert len(endpoints) == 1
+      endpoint = endpoints[0]
+
+      body_params = endpoint.get('body_param_names', [])
+      param_names = [p['name'] for p in body_params]
+
+      # Should have orderId
+      assert 'orderId' in param_names
+      # Should have customer object
+      assert 'customer' in param_names
+      # Should have nested properties
+      assert 'name' in param_names
+      assert 'address' in param_names
+
