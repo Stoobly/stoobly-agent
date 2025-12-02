@@ -158,14 +158,7 @@ class OpenApiEndpointAdapter():
             elif parameter['in'] == 'header':
               header: RequestComponentName = {}
               header['name'] = parameter['name']
-
-              header_example = parameter.get('example')
-              if header_example:
-                header['values'] = [header_example]
-
-              header_examples = parameter.get('examples')
-              if header_examples:
-                header['values'] = [example['value'] for example in header_examples.values()]
+              header['values'] = self.__extract_examples(parameter)
 
               if parameter.get('required'):
                 header['is_required'] = True
@@ -330,7 +323,7 @@ class OpenApiEndpointAdapter():
       # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
       if property_name != 'tmp':
         literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
-        literal_val = {'name': property_name, 'value': literal_val_type, 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+        literal_val = {'name': property_name, 'values': [literal_val_type], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
       return curr_id
 
@@ -517,7 +510,6 @@ class OpenApiEndpointAdapter():
 
     return simple_dict
 
-
   def __build_url(self, host, scheme, port, path, query):
     s = host
     if scheme and len(scheme) > 0:
@@ -645,12 +637,23 @@ class OpenApiEndpointAdapter():
         if '$ref' in header_definition:
           header_definition = self.__dereference(components, header_definition.get('$ref'), self.spec)
 
-        header_example = header_definition.get('example')
-        if header_example:
-          response_header_name['value']= header_example
         response_header_name['is_required'] = header_definition.get('is_required', False)
         response_header_name['is_deterministic'] = True
+        response_header_name['values'] = self.__extract_examples(header_definition)
           
         if not endpoint.get('response_header_names'):
           endpoint['response_header_names'] = []
         endpoint['response_header_names'].append(response_header_name)	  
+
+  def __extract_examples(self, definition: dict):
+    values = []
+
+    example = definition.get('example')
+    if example:
+      values = [example]
+
+    examples = definition.get('examples', {})
+    if examples:
+      values += [example['value'] for example in examples.values()]
+
+    return values
