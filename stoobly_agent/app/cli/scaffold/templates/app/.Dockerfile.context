@@ -1,4 +1,4 @@
-FROM stoobly/agent:1.10
+FROM stoobly/agent:1.11
 
 ARG USER_ID
 
