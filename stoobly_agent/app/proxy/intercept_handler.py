@@ -7,7 +7,7 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
-from stoobly_agent.app.proxy.handle_record_service import handle_response_record
+from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
@@ -44,7 +44,8 @@ def request(flow: MitmproxyHTTPFlow):
         context = MockContext(flow, intercept_settings)
         handle_request_mock(context)
     elif active_mode == mode.RECORD:
-        pass
+        context = ReplayContext(flow, intercept_settings)
+        handle_request_record(context)
     elif active_mode == mode.REPLAY:
         context = ReplayContext(flow, intercept_settings)
         handle_request_replay(context)

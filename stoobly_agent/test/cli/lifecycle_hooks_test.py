@@ -50,7 +50,7 @@ class TestLifecycleHooks():
     return test_result
 
   def test_calls_record_hooks(self, record_result):
-    expected_stdout = ['before_request', 'before_record', 'after_record', 'before_response']
+    expected_stdout = ['before_request', 'before_replay', 'after_replay', 'before_record', 'after_record', 'before_response']
     assert record_result.stdout.strip() == "\n".join(expected_stdout)
 
   def test_calls_mock_hooks(self, mock_result):
