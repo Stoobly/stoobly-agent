@@ -24,7 +24,7 @@ class StooblyApi(Api):
         }
 
         if not os.environ.get(env_vars.AGENT_SELF_INTERCEPT_ENABLED):
-            headers[custom_headers.DO_PROXY] = '1'
+            headers[custom_headers.INTERCEPT_ACTIVE] = '0'
 
         return headers
 

@@ -28,11 +28,11 @@ def is_proxy_enabled(headers: MitmproxyRequest.headers, settings: IProjectModeSe
 
 def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
     access_control_header =  'Access-Control-Request-Headers'
-    do_proxy_header = custom_headers.DO_PROXY
+    intercept_active_header = custom_headers.INTERCEPT_ACTIVE
 
-    if access_control_header in headers and do_proxy_header.lower() in headers[access_control_header]:
+    if access_control_header in headers and intercept_active_header.lower() in headers[access_control_header]:
         return mode.NONE
-    elif do_proxy_header in headers:
+    elif headers.get(intercept_active_header) == '0':
         return mode.NONE
     elif custom_headers.PROXY_MODE in headers:
         return headers[custom_headers.PROXY_MODE]

@@ -1,6 +1,5 @@
 import os
 import pdb
-import yaml
 
 from runpy import run_path
 from typing import List, Union
@@ -54,8 +53,8 @@ class InterceptSettings:
 
   @property
   def active(self):
-    if self.__headers and custom_headers.PROXY_MODE in self.__headers:
-      return not not self.__headers[custom_headers.PROXY_MODE]
+    if self.__headers and custom_headers.INTERCEPT_ACTIVE in self.__headers:
+      return self.__headers[custom_headers.INTERCEPT_ACTIVE] == '1'
 
     return self.__intercept_settings.active
     
@@ -78,12 +77,12 @@ class InterceptSettings:
         return self.__headers[custom_headers.RESPONSE_PROXY_MODE]
 
       access_control_header = self.__headers.get('Access-Control-Request-Headers')
-      do_proxy_header = custom_headers.DO_PROXY
+      intercept_active_header = custom_headers.INTERCEPT_ACTIVE
 
-      if access_control_header and do_proxy_header.lower() in access_control_header:
+      if access_control_header and intercept_active_header.lower() in access_control_header:
           return mode.NONE
 
-      if do_proxy_header in self.__headers:
+      if self.__headers.get(intercept_active_header) == '0':
           return mode.NONE
 
       if custom_headers.PROXY_MODE in self.__headers:

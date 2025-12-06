@@ -102,7 +102,7 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
                 'Content-Type',
                 headers.ACCESS_TOKEN.title(),
                 headers.CLIENT.title(),
-                custom_headers.DO_PROXY.title(),
+                custom_headers.INTERCEPT_ACTIVE.title(),
                 headers.EXPIRY.title(),
                 custom_headers.REQUEST_ORIGIN.title(),
                 headers.TOKEN_TYPE.title(),
