@@ -55,7 +55,13 @@ class InterceptSettings:
   def active(self):
     # If proxy mode is explicitly set, use it to determine if intercept is active
     if self.__headers and custom_headers.PROXY_MODE in self.__headers:
+      if custom_headers.INTERCEPT_ACTIVE in self.__headers and self.__headers[custom_headers.INTERCEPT_ACTIVE] == '0':
+        return False
+      
       return not not self.__headers[custom_headers.PROXY_MODE]
+
+    if self.__headers and custom_headers.INTERCEPT_ACTIVE in self.__headers:
+      return self.__headers[custom_headers.INTERCEPT_ACTIVE] == '1'
 
     return self.__intercept_settings.active
     
