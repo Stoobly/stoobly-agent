@@ -68,15 +68,6 @@ def __rewrite_response(replay_context: ReplayContext):
     """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
     flow = replay_context.flow
-    request = flow.request
-    response = flow.response
-
-    request_proxy_mode_header = request.headers.get(custom_headers.PROXY_MODE)
-    response_proxy_mode_header = response.headers.get(custom_headers.RESPONSE_PROXY_MODE)
-
-    if request_proxy_mode_header == mode.REPLAY and response_proxy_mode_header == mode.RECORD:
-        if intercept_settings.record_strategy == record_strategy.MINIMAL:
-            minimize_response_headers(flow)
 
     rewrite_rules = intercept_settings.replay_rewrite_rules
 
