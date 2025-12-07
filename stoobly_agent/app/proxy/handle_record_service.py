@@ -5,7 +5,6 @@ import threading
 from copy import deepcopy
 from mitmproxy.http import Request as MitmproxyRequest
 
-from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
@@ -19,6 +18,7 @@ from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
 from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
+from .replay.context import ReplayContext
 from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.minimize_headers import minimize_headers

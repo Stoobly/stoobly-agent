@@ -58,7 +58,7 @@ class InterceptSettings:
       if custom_headers.INTERCEPT_ACTIVE in self.__headers and self.__headers[custom_headers.INTERCEPT_ACTIVE] == '0':
         return False
       
-      return not not self.__headers[custom_headers.PROXY_MODE]
+      return self.__headers[custom_headers.PROXY_MODE] != mode.NONE
 
     if self.__headers and custom_headers.INTERCEPT_ACTIVE in self.__headers:
       return self.__headers[custom_headers.INTERCEPT_ACTIVE] == '1'
