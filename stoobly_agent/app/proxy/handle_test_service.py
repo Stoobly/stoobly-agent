@@ -55,11 +55,11 @@ def handle_response_test(context: ReplayContext) -> None:
     disable_transfer_encoding(flow.response)
     handle_response_replay(context)
 
-    test_context = None
+    test_context: TestContext = None
 
     # Deep copy to prevent modifications from persisting
     def build_test_context(mock_context: MockContext):
-        nonlocal test_context
+        nonlocal test_context  # Bind to outer scope variable so modifications are visible after callback execution
         test_context = TestContext(ReplayContext(flow.copy(), intercept_settings), mock_context)
         return test_context
 
