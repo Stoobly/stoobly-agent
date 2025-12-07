@@ -236,6 +236,10 @@ class TestContext(TestContextABC):
     return self.intercept_settings.test_strategy
 
   @property
+  def test_id(self):
+    return self.response.headers.get(custom_headers.TEST_ID)
+
+  @property
   def test_results(self) -> TestResultsBuilder:
     return self.__test_results
 

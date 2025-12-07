@@ -1,6 +1,7 @@
 import pdb
 
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from typing import Union
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.record.context import RecordContext
@@ -72,12 +73,17 @@ def handle_response_test(context: ReplayContext) -> None:
     )
 
     # If test context was built, and it has test results, override response with test results
-    if test_context and test_context.test_results:
-        __override_response(flow, test_context.test_results.serialize())
+    if test_context:
+        if test_context.test_results:
+            __override_response(flow, test_context.test_results.serialize())
 
-def __decorate_test_id(flow: MitmproxyHTTPFlow, test_response: TestShowResponse):
-    if test_response.get('id'):
-        flow.response.headers[custom_headers.TEST_ID] = str(test_response['id'])
+        # Apply test ID from flow.copy() to the original flow that will returned to the client
+        if test_context.test_id:
+            __decorate_test_id(flow, test_context.test_id)
+
+def __decorate_test_id(flow: MitmproxyHTTPFlow, test_id: Union[str, None]):
+    if test_id:
+        flow.response.headers[custom_headers.TEST_ID] = str(test_id)
 
 def __handle_mock_error(test_context: TestContext):
     Logger.instance().warn(f"{LOG_ID}:TestStatus: Mock not enabled")
@@ -138,9 +144,10 @@ def __handle_mock_success(test_context: TestContext) -> None:
             res = __record_handler(test_context, upload_test_data) 
 
             if is_cli:
-                # If the origin was not from a CLI, send test ID in response header
+                # If the origin was from a CLI, send test ID in response header
                 if res.ok:
-                    __decorate_test_id(flow, res.json())
+                    response = res.json()
+                    __decorate_test_id(flow, response.get('id'))
                 else:
                     # If we failed to upload test results, provide a local response
                     Logger.instance().warn(f"{LOG_ID}:TestStatus: Failed to upload results")
