@@ -138,7 +138,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
             res = __record_handler(test_context, upload_test_data) 
 
             if is_cli:
-                # If the origin was from a CLI, send test ID in response header
+                # If the origin was not from a CLI, send test ID in response header
                 if res.ok:
                     __decorate_test_id(flow, res.json())
                 else:
