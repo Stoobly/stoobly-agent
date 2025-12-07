@@ -143,8 +143,9 @@ def handle_request_mock(context: MockContext):
 
 ###
 #
-# 1. Rewrites mock response (if mock found)
-# 2. AFTER_MOCK gets triggered (if mock found)
+# Occurs if mock is found
+# 1. Rewrites mock response
+# 2. AFTER_MOCK gets triggered
 #
 def handle_response_mock(context: MockContext):
     __rewrite_response(context)

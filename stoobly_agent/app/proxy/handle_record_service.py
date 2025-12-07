@@ -5,6 +5,7 @@ import threading
 from copy import deepcopy
 from mitmproxy.http import Request as MitmproxyRequest
 
+from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -17,6 +18,7 @@ from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
 from .record.overwrite_scenario_service import overwrite_scenario
 from .record.upload_request_service import inject_upload_request
+from .replay.context import ReplayContext
 from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_active_mode_policy
 from .utils.minimize_headers import minimize_headers
@@ -29,15 +31,25 @@ LOG_ID = 'Record'
 
 ###
 #
-# 1. Rewrites a copy of request and response
+# 1. BEFORE_REPLAY gets triggered
+#
+def handle_request_record(context: ReplayContext) -> None:
+    # To differentiate record rewrite rules, outbound request uses replay rules
+    # Record rules are applied to the request and its response when storing
+    handle_request_replay(context)
+
+###
+# 1. AFTER_REPLAY gets triggered
 # 2. BEFORE_RECORD gets triggered
 # 3. AFTER_RECORD gets triggered
 #
 def handle_response_record(context: RecordContext):
     flow = context.flow
-    disable_transfer_encoding(flow.response)
-
     intercept_settings = context.intercept_settings
+
+    disable_transfer_encoding(flow.response)
+    handle_response_replay(context)
+
     request: MitmproxyRequest = flow.request
     request_model = RequestModel(intercept_settings.settings)
 

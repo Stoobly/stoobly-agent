@@ -14,6 +14,7 @@ from stoobly_agent.app.proxy.test.helpers.mitmproxy_response_adapter import Mitm
 from stoobly_agent.app.proxy.test.helpers.requests_response_adapter import RequestsResponseAdapter
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 
+from stoobly_agent.app.proxy.test.helpers.test_results_builder import TestResultsBuilder
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
@@ -26,8 +27,8 @@ FuzzyContent = Union[dict, list, str]
 
 class TestContext(TestContextABC):
   def __init__(self, replay_context: ReplayContext, mock_context: MockContext):
-    self.__flow = mock_context.flow
-    self.__intercept_settings = mock_context.intercept_settings
+    self.__flow = replay_context.flow
+    self.__intercept_settings = replay_context.intercept_settings
     self.__mock_context = mock_context
     self.__replay_context = replay_context
 
@@ -43,15 +44,13 @@ class TestContext(TestContextABC):
 
     # Optional
     self.__endpoints_resource: EndpointsResource = None
+    self.__test_id = None
+    self.__test_results = None
 
     # Cache
     self.__cached_rewritten_expected_response_content = None
     self.__cached_endpoint_show_response = None
     self.__cached_response_param_names = None
-
-  def with_endpoints_resource(self, resource: EndpointShowResponse):
-    self.__endpoints_resource = resource
-    return self 
 
   @property
   def cached_rewritten_expected_response_content(self) -> FuzzyContent:
@@ -223,7 +222,7 @@ class TestContext(TestContextABC):
 
   @skipped.setter
   def skipped(self, v: bool):
-    self.skipped = v
+    self.__skipped = v
 
   @property
   def start_time(self):
@@ -238,6 +237,14 @@ class TestContext(TestContextABC):
     return self.intercept_settings.test_strategy
 
   @property
+  def test_id(self) -> Union[str, None]:
+    return self.__test_id
+
+  @property
+  def test_results(self) -> Union[TestResultsBuilder, None]:
+    return self.__test_results
+
+  @property
   def trace(self) -> Union[Trace, None]:
     headers = self.request.headers
     trace_id = headers.get(custom_headers.TRACE_ID)
@@ -246,3 +253,15 @@ class TestContext(TestContextABC):
       return
 
     return Trace.find(trace_id)
+
+  def with_endpoints_resource(self, resource: EndpointShowResponse):
+    self.__endpoints_resource = resource
+    return self 
+
+  def with_test_id(self, test_id: str):
+    self.__test_id = test_id
+    return self
+
+  def with_test_results(self, test_results: TestResultsBuilder):
+    self.__test_results = test_results
+    return self

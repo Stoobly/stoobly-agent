@@ -16,7 +16,10 @@ def search_request(base_model, query: str):
       return base_model.where('host', uri.hostname).where('path', uri.path)
     else:
       pattern = f"%{query}%"
-      return base_model.where('path', 'like', pattern).or_where('host', 'like', pattern)
+      return base_model.where_raw(
+        "(path LIKE ? OR host LIKE ?)",
+        [pattern, pattern]
+      )
 
 def search_scenario(base_model, query: str):
   try:

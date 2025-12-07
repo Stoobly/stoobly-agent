@@ -1,11 +1,12 @@
 import abc
 
-from mitmproxy.http import Request
+from mitmproxy.http import HTTPFlow, Request
 from typing import Union
 
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.test.helpers.test_results_builder import TestResultsBuilder
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
 
@@ -14,10 +15,6 @@ from .context_response import TestContextResponse
 FuzzyContent = Union[dict, list, str]
 
 class TestContextABC(abc.ABC):
-
-  @abc.abstractmethod
-  def with_endpoints_resource(self, resource: EndpointShowResponse):
-    pass
 
   @property
   @abc.abstractmethod
@@ -66,7 +63,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def flow(self):
+  def flow(self) -> HTTPFlow:
     pass
 
   @property
@@ -191,5 +188,22 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
+  def test_results(self) -> TestResultsBuilder:
+    pass
+
+  @property
+  @abc.abstractmethod
   def trace(self) -> Union[Trace, None]:
+    pass
+
+  @abc.abstractmethod
+  def with_endpoints_resource(self, resource: EndpointShowResponse):
+    pass
+
+  @abc.abstractmethod
+  def with_test_id(self, test_id: str):
+    pass
+
+  @abc.abstractmethod
+  def with_test_results(self, test_results: TestResultsBuilder):
     pass

@@ -33,3 +33,9 @@ class MitmproxyFlowMock():
       self.__response = PythonResponseAdapterFactory(_response).mitmproxy_response()
     else:
       self.__response = _response
+
+  def copy(self):
+    mock = MitmproxyFlowMock()
+    mock.request = self.__request.copy()
+    mock.response = self.__response.copy()
+    return mock
