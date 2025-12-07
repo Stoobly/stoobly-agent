@@ -147,13 +147,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     starred = query_params.get('filter') == 'starred'
     unassigned = query_params.get('filter') == 'unassigned'
 
-    requests = Request.query()
-
-    # Due to or_where, this has to be first
-    if query:
-      requests = search_request(requests, query)
-    
-    requests = requests.where('is_deleted', is_deleted)
+    requests = Request.where('is_deleted', is_deleted)
 
     if unassigned:
       requests = requests.where('scenario_id', None)
@@ -163,6 +157,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     if starred:
       requests = requests.where('starred', starred)
+
+    if query:
+      requests = search_request(requests, query)
 
     total = requests.count()
     requests = requests.offset(page * size).limit(size).order_by(sort_by, sort_order).get()

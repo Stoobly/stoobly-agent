@@ -147,7 +147,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
                 # If the origin was from a CLI, send test ID in response header
                 if res.ok:
                     response = res.json()
-                    __decorate_test_id(flow, response.get('id'))
+                    test_context.with_test_id(response.get('id'))
                 else:
                     # If we failed to upload test results, provide a local response
                     Logger.instance().warn(f"{LOG_ID}:TestStatus: Failed to upload results")

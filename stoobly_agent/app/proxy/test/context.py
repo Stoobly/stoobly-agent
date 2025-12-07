@@ -44,6 +44,7 @@ class TestContext(TestContextABC):
 
     # Optional
     self.__endpoints_resource: EndpointsResource = None
+    self.__test_id = None
     self.__test_results = None
 
     # Cache
@@ -236,11 +237,11 @@ class TestContext(TestContextABC):
     return self.intercept_settings.test_strategy
 
   @property
-  def test_id(self):
-    return self.response.headers.get(custom_headers.TEST_ID)
+  def test_id(self) -> Union[str, None]:
+    return self.__test_id
 
   @property
-  def test_results(self) -> TestResultsBuilder:
+  def test_results(self) -> Union[TestResultsBuilder, None]:
     return self.__test_results
 
   @property
