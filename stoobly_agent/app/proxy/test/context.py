@@ -258,6 +258,10 @@ class TestContext(TestContextABC):
     self.__endpoints_resource = resource
     return self 
 
+  def with_test_id(self, test_id: str):
+    self.__test_id = test_id
+    return self
+
   def with_test_results(self, test_results: TestResultsBuilder):
     self.__test_results = test_results
     return self

@@ -201,5 +201,9 @@ class TestContextABC(abc.ABC):
     pass
 
   @abc.abstractmethod
+  def with_test_id(self, test_id: str):
+    pass
+
+  @abc.abstractmethod
   def with_test_results(self, test_results: TestResultsBuilder):
     pass
