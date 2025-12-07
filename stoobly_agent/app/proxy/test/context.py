@@ -222,7 +222,7 @@ class TestContext(TestContextABC):
 
   @skipped.setter
   def skipped(self, v: bool):
-    self.skipped = v
+    self.__skipped = v
 
   @property
   def start_time(self):
