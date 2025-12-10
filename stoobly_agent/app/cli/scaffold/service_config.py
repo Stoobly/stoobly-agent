@@ -4,6 +4,7 @@ import os
 import pdb
 import re
 
+from .app_config import AppConfig
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
@@ -24,6 +25,7 @@ class ServiceConfig(Config):
   def __init__(self, dir: str, **kwargs):
     super().__init__(dir)
 
+    self.__app_config = AppConfig(self.app_config_dir_path)
     self.__detached = None
     self.__hostname = None
     self.__local = None
@@ -68,6 +70,10 @@ class ServiceConfig(Config):
 
     if 'upstream_scheme' in kwargs:
       self.__upstream_scheme = kwargs.get('upstream_scheme')
+
+  @property
+  def app_config(self):
+    return self.__app_config
 
   @property
   def app_config_dir_path(self):
@@ -173,9 +179,11 @@ class ServiceConfig(Config):
     return self.__scheme == 'https'
 
   @property
-  def upstream_hostname(self) -> int:
+  def upstream_hostname(self) -> str:
     if self.local:
-      return 'host.docker.internal'
+      if self.app_config.run_on_docker:
+        return 'host.docker.internal'
+      return 'localhost'
     return self.__upstream_hostname or self.hostname
 
   @upstream_hostname.setter

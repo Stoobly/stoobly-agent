@@ -12,24 +12,32 @@ from stoobly_agent.lib.logger import bcolors, Logger
 
 LOG_ID = 'Firewall'
 
-def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> str:
+def get_active_mode_policy(request: MitmproxyRequest, intercept_settings: InterceptSettings, mode = None) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
         return intercept_settings.policy 
 
-    if allowed_request(request, intercept_settings):
+    if allowed_request(request, intercept_settings, mode):
         return intercept_settings.policy
     else:
         # If the request path does not match accepted paths, do not intercept
         return intercept_policy.NONE
 
-def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings) -> bool:
+def allowed_request(request: MitmproxyRequest, intercept_settings: InterceptSettings, mode = None) -> bool:
+    if mode:
+        exclude_rules = intercept_settings.exclude_rules_for_mode(mode)
+    else:
+        exclude_rules = intercept_settings.exclude_rules
+
     # If an exclude rule(s) exists, then only requests not matching these pattern(s) are allowed
-    exclude_rules = intercept_settings.exclude_rules
     if __request_excluded(request, exclude_rules):
         return False
 
+    if mode:
+        include_rules = intercept_settings.include_rules_for_mode(mode)
+    else:
+        include_rules = intercept_settings.include_rules
+
     # If an include rule(s) exists, then only requests matching these pattern(s) are allowed
-    include_rules = intercept_settings.include_rules
     if not __request_included(request, include_rules):
         return False
 

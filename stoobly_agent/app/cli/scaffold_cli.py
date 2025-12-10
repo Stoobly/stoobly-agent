@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -90,7 +90,7 @@ def hostname(ctx):
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
-@click.option('--run-on', multiple=True, type=click.Choice(RUN_ON_OPTIONS), default=[RUN_ON_DOCKER], help='Runtime environments to support (default: docker).')
+@click.option('--run-on', type=click.Choice(RUN_ON_OPTIONS), default=RUN_ON_LOCAL, help=f"Runtime environments to support (default: {RUN_ON_LOCAL}).")
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):

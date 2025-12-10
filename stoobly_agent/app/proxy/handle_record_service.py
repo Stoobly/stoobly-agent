@@ -10,7 +10,7 @@ from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants.env_vars import ENV
-from stoobly_agent.config.constants import lifecycle_hooks, record_order, record_policy, record_strategy
+from stoobly_agent.config.constants import lifecycle_hooks, mode, record_order, record_policy, record_strategy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -53,7 +53,7 @@ def handle_response_record(context: RecordContext):
     request: MitmproxyRequest = flow.request
     request_model = RequestModel(intercept_settings.settings)
 
-    active_record_policy = get_active_mode_policy(request, intercept_settings)
+    active_record_policy = get_active_mode_policy(request, intercept_settings, mode.RECORD)
     Logger.instance(LOG_ID).debug(f"RecordPolicy: {active_record_policy}")
 
     if active_record_policy == record_policy.ALL:

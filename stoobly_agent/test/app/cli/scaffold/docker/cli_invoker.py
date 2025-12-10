@@ -8,7 +8,6 @@ from click.testing import CliRunner
 from stoobly_agent.app.cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
-
 class ScaffoldCliInvoker():
 
   @staticmethod
@@ -18,6 +17,7 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
       '--quiet',
+      '--run-on', 'docker',
       app_name
     ])
 

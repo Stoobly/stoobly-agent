@@ -3,6 +3,7 @@ import pdb
 
 from .app import App
 from .app_command import AppCommand
+from .app_config import AppConfig
 from .service_config import ServiceConfig
 
 

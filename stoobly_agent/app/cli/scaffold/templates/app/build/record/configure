@@ -4,7 +4,7 @@
 
 echo "Configuring rewrite rules..."
 stoobly-agent config rewrite set \
-  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
   --mode record \
   --name authorization \
   --pattern ".*" \
@@ -12,7 +12,7 @@ stoobly-agent config rewrite set \
   --value '' \
 
 stoobly-agent config rewrite set \
-  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
   --mode record \
   --name cookie \
   --pattern ".*" \
@@ -20,7 +20,7 @@ stoobly-agent config rewrite set \
   --value '' \
 
 stoobly-agent config rewrite set \
-  --method GET --method POST --method OPTIONS --method PUT --method DELETE \
+  --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
   --mode record \
   --name set-cookie \
   --pattern ".*" \
