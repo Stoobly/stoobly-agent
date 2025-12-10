@@ -2,7 +2,7 @@ import os
 
 from .config import Config
 from .constants import (
-  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_RUN_ON_DELIMITER, APP_UI_PORT_ENV, APP_VERSION_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
+  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
 )
 
 class AppConfig(Config):
@@ -45,15 +45,19 @@ class AppConfig(Config):
 
   @property
   def run_on(self):
-    return self.__run_on or [RUN_ON_DOCKER]
+    return self.__run_on or RUN_ON_LOCAL
 
   @run_on.setter
-  def run_on(self, v: list):
+  def run_on(self, v: str):
     self.__run_on = v
 
   @property
   def run_on_local(self):
-    return RUN_ON_LOCAL in self.run_on
+    return self.run_on == RUN_ON_LOCAL
+
+  @property
+  def run_on_docker(self):
+    return self.run_on == RUN_ON_DOCKER
 
   @property
   def proxy_port(self):
@@ -92,8 +96,7 @@ class AppConfig(Config):
       self.plugins = plugins.split(APP_PLUGINS_DELMITTER)
 
     if config.get(APP_RUN_ON_ENV):
-      run_on: str = config.get(APP_RUN_ON_ENV)
-      self.run_on = run_on.split(APP_RUN_ON_DELIMITER)
+      self.run_on = config.get(APP_RUN_ON_ENV)
 
   def write(self):
     config = {}
@@ -108,7 +111,7 @@ class AppConfig(Config):
       config[APP_PLUGINS_ENV] = APP_PLUGINS_DELMITTER.join(self.plugins)
 
     if self.run_on:
-      config[APP_RUN_ON_ENV] = APP_RUN_ON_DELIMITER.join(self.run_on)
+      config[APP_RUN_ON_ENV] = self.run_on
 
     if self.proxy_port:
       config[APP_PROXY_PORT_ENV] = self.proxy_port
