@@ -283,10 +283,10 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
-  def exclude_rules_for_mode(self, mode: mode) -> List[FirewallRule]:
+  def exclude_rules_for_mode(self, mode: str) -> List[FirewallRule]:
     return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
 
-  def include_rules_for_mode(self, mode: mode) -> List[FirewallRule]:
+  def include_rules_for_mode(self, mode: str) -> List[FirewallRule]:
     return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
 
   def for_response(self):
