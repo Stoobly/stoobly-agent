@@ -190,12 +190,12 @@ class InterceptSettings:
   @property
   def exclude_rules(self) -> List[FirewallRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+    return self.exclude_rules_for_mode(_mode)
 
   @property
   def include_rules(self) -> List[FirewallRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+    return self.include_rules_for_mode(_mode)
 
   @property
   def match_rules(self) -> List[MatchRule]:
@@ -283,6 +283,12 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
+  def exclude_rules_for_mode(self, mode: mode) -> List[FirewallRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+
+  def include_rules_for_mode(self, mode: mode) -> List[FirewallRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+
   def for_response(self):
     self.__for_response = True
 
@@ -292,7 +298,7 @@ class InterceptSettings:
     # Filter only parameters matching active intercept mode
     for rewrite_rule in self.__rewrite_rules:
       # If url rule applies, then update .url_rules with url_rule
-      url_rules = self.__select_url_rules(rewrite_rule)
+      url_rules = self.__select_url_rules(rewrite_rule, mode)
 
       # If parameters rules apply, then update .parameter_rules with applicable parameter_rules
       parameter_rules = self.__select_parameter_rules(rewrite_rule, mode)
