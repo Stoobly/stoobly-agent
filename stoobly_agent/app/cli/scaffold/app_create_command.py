@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_WORKF
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL
+from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
 from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
@@ -80,11 +80,11 @@ class AppCreateCommand(AppCommand):
         ignore = []
         warnings = []
 
-        if RUN_ON_LOCAL in self.app_run_on:
+        if self.app_config.run_on_local:
             ignore.append(f"{CORE_GATEWAY_SERVICE_NAME}/.*")
             ignore.append(f"{CORE_MOCK_UI_SERVICE_NAME}/.*")
 
-        if RUN_ON_DOCKER in self.app_run_on:
+        if self.app_config.run_on_docker:
             ignore.append(f".*/{CUSTOM_RUN}")
             ignore.append(f".*/{MAINTAINED_RUN}")
 
@@ -92,7 +92,7 @@ class AppCreateCommand(AppCommand):
         self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest, ignore)
 
         # Remove Docker-specific files if not using Docker
-        if RUN_ON_DOCKER not in self.app_run_on:
+        if not self.app_config.run_on_docker:
             remove_app_docker_files(dest)
             remove_service_docker_files(dest)
 
@@ -104,7 +104,7 @@ class AppCreateCommand(AppCommand):
             if not self.__playwright_initialized(self.app):
                 warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
 
-        if RUN_ON_DOCKER in self.app_run_on:
+        if self.app_run_on:
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
