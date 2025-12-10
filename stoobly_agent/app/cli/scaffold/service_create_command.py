@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from .app import App
-from .constants import RUN_ON_DOCKER, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from .local.service.builder import ServiceBuilder
 from .docker.service.builder import DockerServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
@@ -37,11 +37,11 @@ class ServiceCreateCommand(ServiceCommand):
   @property
   def create_docker_files(self):
     """Determine if Docker files should be created based on app config run-on setting."""
-    return RUN_ON_DOCKER in self.app_config.run_on
+    return self.app_config.run_on_docker
 
   def build(self):
     # Choose builder based on app run_on configuration
-    if RUN_ON_DOCKER in self.app_config.run_on:
+    if self.app_config.run_on_docker:
       service_builder = DockerServiceBuilder(self.service_config)
     else:
       service_builder = ServiceBuilder(self.service_config)
