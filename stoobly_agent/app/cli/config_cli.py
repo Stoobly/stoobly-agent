@@ -9,7 +9,6 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings.match_rule import MatchRule
-from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
@@ -21,6 +20,7 @@ from .helpers.handle_config_update_service import (
     handle_scenario_update,
 )
 from .helpers.print_service import FORMATS, print_projects, print_scenarios, select_print_options
+from .helpers.set_rewrite_rule_service import set_rewrite_rule
 from .helpers.validations import *
 
 LOG_ID = 'ConfigCLI'
@@ -164,7 +164,7 @@ def rewrite(ctx):
     '--method', 
     multiple=True, 
     required=True,
-    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT', 'PATCH']), 
     help='HTTP methods.'
 )
 @click.option(
@@ -207,61 +207,7 @@ def set(**kwargs):
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
     project_key = ProjectKey(project_key_str)
 
-    methods = list(kwargs['method'])
-    modes = list(kwargs['mode'])
-
-    rewrite_rules = settings.proxy.rewrite.rewrite_rules(project_key.id)
-
-    rewrite_rule_filter = lambda rule: rule.pattern == kwargs['pattern'] and rule.methods == methods
-    filtered_rewrite_rules: List[RewriteRule] = list(filter(rewrite_rule_filter, rewrite_rules))
-
-    if len(filtered_rewrite_rules) == 0:
-        parameter_rules = list(filter(lambda r: r != None, [__select_parameter_rule(kwargs)]))
-        url_rules = list(filter(lambda r: r != None , [__select_url_rule(kwargs)]))
-        rewrite_rule = RewriteRule({
-            'methods': methods,
-            'pattern': kwargs['pattern'],
-            'parameter_rules': parameter_rules,
-            'url_rules': url_rules,
-        })
-        rewrite_rules.append(rewrite_rule)
-        settings.proxy.rewrite.set_rewrite_rules(project_key.id, rewrite_rules)
-    else:
-        parameter_rule_filter = lambda rule: rule.name == kwargs['name'] and rule.type == kwargs['type'] and rule.modes == modes
-        url_rule_filter = lambda rule: rule.modes == modes
-
-        for rewrite_rule in filtered_rewrite_rules:
-            # Parameter rules
-            parameter_rule_dict = __select_parameter_rule(kwargs)
-
-            if parameter_rule_dict:
-                parameter_rules = rewrite_rule.parameter_rules
-                filtered_parameter_rules: List[ParameterRule] = list(filter(parameter_rule_filter, parameter_rules))
-
-                if len(filtered_parameter_rules) == 0:
-                    parameter_rule = ParameterRule(parameter_rule_dict)
-                    parameter_rules.append(parameter_rule)
-                    rewrite_rule.parameter_rules = parameter_rules
-                else:
-                    for parameter_rule in filtered_parameter_rules:
-                        parameter_rule.update(parameter_rule_dict)
-
-            # URL rules
-            url_rule_dict = __select_url_rule(kwargs)
-            
-            if url_rule_dict:
-                url_rules = rewrite_rule.url_rules
-                filtered_url_rules: List[UrlRule] = list(filter(url_rule_filter, url_rules))
-
-                if len(filtered_url_rules) == 0:
-                    url_rule = UrlRule(url_rule_dict)
-                    url_rules.append(url_rule)
-                    rewrite_rule.url_rules = url_rules
-                else:
-                    for url_rule in filtered_url_rules:
-                        url_rule.update(url_rule_dict)
-
-    settings.commit()
+    set_rewrite_rule(project_key.id, **kwargs)
 
     Logger.instance(LOG_ID).debug(f"Rewrite {kwargs['name']} -> {kwargs['value']} set!")
 
@@ -492,29 +438,6 @@ if is_remote:
 
 config.add_command(rewrite)
 config.add_command(scenario)
-
-def __select_parameter_rule(kwargs):
-    if kwargs['name'] == None or kwargs['value'] == None or kwargs['type'] == None:
-        return
-
-    return {
-        'modes': list(kwargs['mode']),
-        'name': kwargs['name'],
-        'value': kwargs['value'],
-        'type': kwargs['type'],
-    }
-
-def __select_url_rule(kwargs):
-    if  kwargs['scheme'] == None and kwargs['hostname'] == None and kwargs['port'] == None and kwargs['path'] == None:
-        return
-
-    return {
-        'hostname': kwargs['hostname'],
-        'modes': list(kwargs['mode']),
-        'path': kwargs['path'],
-        'port': kwargs['port'],
-        'scheme': kwargs['scheme'],
-    }
 
 def __project_key(settings):
     project_key = settings.proxy.intercept.project_key

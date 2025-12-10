@@ -11,7 +11,7 @@ from typing import Optional, List
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
-from stoobly_agent.app.settings.rewrite_rule import RewriteRule
+from stoobly_agent.app.cli.helpers.set_rewrite_rule_service import set_rewrite_rule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import method, mode
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
@@ -171,18 +171,15 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme:
         settings: Settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
-        rewrite_rule = RewriteRule({
-          'methods': [method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
-          'pattern': f'{command.service_config.url}/?.*?',
-          'url_rules': [{
-            'hostname': upstream_hostname,
-            'modes': [mode.REPLAY],
-            'port': upstream_port,
-            'scheme': upstream_scheme
-          }]
-        })
-        settings.proxy.rewrite.set_rewrite_rules(project_key.id, [rewrite_rule])
-        settings.commit()
+        set_rewrite_rule(
+          project_key.id,
+          pattern=f'{command.service_config.url}/?.*?',
+          method=[method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
+          mode=[mode.REPLAY],
+          hostname=upstream_hostname,
+          port=upstream_port,
+          scheme=upstream_scheme
+        )
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""

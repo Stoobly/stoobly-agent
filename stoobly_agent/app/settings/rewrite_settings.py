@@ -18,6 +18,11 @@ class RewriteSettings:
   def rewrite_rules(self, project_id: str) -> List[RewriteRule]:
     return self.__rewrite_rules_map.get(project_id) or []
 
+  def add_rewrite_rule(self, project_id: str, rewrite_rule: RewriteRule):
+    if project_id not in self.__rewrite_rules_map:
+      self.__rewrite_rules_map[project_id] = []
+    self.__rewrite_rules_map[project_id].append(rewrite_rule)
+
   def set_rewrite_rules(self, project_id: str, v: List[RewriteRule]):
     self.__rewrite_rules_map[project_id] = v
 
