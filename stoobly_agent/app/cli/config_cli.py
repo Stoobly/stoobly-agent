@@ -227,7 +227,7 @@ def match(ctx):
     '--method', 
     multiple=True, 
     required=True,
-    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT', 'PATCH']), 
     help='HTTP methods.'
 )
 @click.option(
@@ -292,7 +292,7 @@ def firewall(ctx):
     '--method', 
     multiple=True, 
     required=True,
-    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT']), 
+    type=click.Choice(['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT', 'PATCH']), 
     help='HTTP methods.'
 )
 @click.option(
