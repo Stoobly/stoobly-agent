@@ -9,7 +9,7 @@ from typing import Callable, TypedDict
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
+from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, mode, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger, DEBUG, INFO, WARNING, ERROR
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
@@ -51,7 +51,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     request: MitmproxyRequest = context.flow.request
     res = None
 
-    policy = get_active_mode_policy(request, intercept_settings)
+    policy = get_active_mode_policy(request, intercept_settings, mode.MOCK)
     if policy == mock_policy.NONE:
         if handle_error:
             res = handle_error(context)

@@ -29,7 +29,7 @@ def handle_request_replay(replay_context: ReplayContext, **options: ReplayOption
     request: MitmproxyRequest = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
-    policy = get_active_mode_policy(request, intercept_settings)
+    policy = get_active_mode_policy(request, intercept_settings, mode.REPLAY)
     if policy != replay_policy.NONE:
         if not options.get('no_rewrite'):
             __rewrite_request(replay_context)
