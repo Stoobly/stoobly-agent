@@ -8,11 +8,13 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
-from stoobly_agent.app.cli.scaffold.constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
-from stoobly_agent.app.cli.scaffold.docker.constants import PLUGIN_CONTAINER_SERVICE_TEMPLATE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
+from stoobly_agent.app.settings.rewrite_rule import RewriteRule
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import method, mode
+from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'LocalWorkflowRunCommand'
@@ -159,6 +161,28 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # If second from last command, run up_command i.e. right before entrypoint
       if command == commands[-2]:
         self.__up_command(public_directory_paths, response_fixtures_paths, **options)
+
+      upstream_hostname = command.service_config.upstream_hostname
+      upstream_port = command.service_config.upstream_port
+      upstream_scheme = command.service_config.upstream_scheme
+
+      # If upstream hostname, port, scheme, or url is different from service hostname, port, scheme, or url,
+      # update settings rewrite rules to rewrite url to upstream url
+      if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme or command.service_config.url != url:
+        settings: Settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        rewrite_rule = RewriteRule({
+          'methods': [method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
+          'pattern': f'{command.service_config.url}/?.*?',
+          'url_rules': [{
+            'hostname': upstream_hostname,
+            'modes': [mode.REPLAY],
+            'port': upstream_port,
+            'scheme': upstream_scheme
+          }]
+        })
+        settings.proxy.rewrite.set_rewrite_rules(project_key.id, [rewrite_rule])
+        settings.commit()
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
