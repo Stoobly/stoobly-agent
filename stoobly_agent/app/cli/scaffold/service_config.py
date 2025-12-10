@@ -4,8 +4,7 @@ import os
 import pdb
 import re
 
-from stoobly_agent.app.cli.scaffold.app_config import AppConfig
-
+from .app_config import AppConfig
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,

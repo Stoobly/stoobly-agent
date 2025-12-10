@@ -168,7 +168,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
       # If upstream hostname, port, scheme, or url is different from service hostname, port, scheme, or url,
       # update settings rewrite rules to rewrite url to upstream url
-      if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme or command.service_config.url != url:
+      if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme:
         settings: Settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         rewrite_rule = RewriteRule({

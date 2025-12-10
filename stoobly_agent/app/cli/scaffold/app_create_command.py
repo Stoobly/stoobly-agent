@@ -104,7 +104,7 @@ class AppCreateCommand(AppCommand):
             if not self.__playwright_initialized(self.app):
                 warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
 
-        if self.app_run_on:
+        if self.app_config.run_on_docker:
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
