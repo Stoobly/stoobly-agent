@@ -195,7 +195,7 @@ class InterceptSettings:
                 try:
                     scenario_key = None
                     
-                    if project_id:
+                    if project_id is not None:
                         response, status = self.__scenario_model.index(
                           project_id=project_id, q=scenario_name, sort_by='requests_count'
                         )

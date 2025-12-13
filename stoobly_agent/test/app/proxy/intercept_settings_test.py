@@ -88,8 +88,8 @@ class TestScenarioKey:
         scenario_name = 'Test Scenario'
         scenario_key = 'cached_scenario_key'
         
-        # Set up cache with scenario name mapping
-        cache.write('scenario_name_index', {scenario_name: scenario_key}, timeout=None)
+        # Set up cache with scenario name mapping (cache key now includes project_id)
+        cache.write('scenario_name_index.1', {scenario_name: scenario_key}, timeout=None)
         
         mock_request.headers = Headers(**{custom_headers.SCENARIO_NAME: scenario_name})
         mock_settings.proxy.data.data_rules.return_value = mock_data_rules
@@ -117,8 +117,8 @@ class TestScenarioKey:
         assert result == scenario_key
         scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
         
-        # Verify cache was updated
-        cache_data = cache.read('scenario_name_index')
+        # Verify cache was updated (cache key now includes project_id)
+        cache_data = cache.read('scenario_name_index.1')
         assert cache_data is not None
         assert cache_data['value'][scenario_name] == scenario_key
 
@@ -141,12 +141,12 @@ class TestScenarioKey:
         assert result is None
         scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
         
-        # Verify cache was updated with None
-        cache_data = cache.read('scenario_name_index')
+        # Verify cache was NOT updated when scenario not found (code only caches found scenarios)
+        cache_data = cache.read('scenario_name_index.1')
         assert cache_data is None
 
     def test_does_not_cache_on_error(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
-        """Test that scenario_key caches None when an error occurs during query."""
+        """Test that scenario_key does not cache when an error occurs during query."""
         scenario_name = 'Error Scenario'
         
         # Mock scenario model to raise an exception
@@ -160,23 +160,24 @@ class TestScenarioKey:
         
         assert result is None
         
-        # Verify cache was updated with None even on error
-        cache_data = cache.read('scenario_name_index')
+        # Verify cache was NOT updated on error (code only caches found scenarios)
+        cache_data = cache.read('scenario_name_index.1')
         assert cache_data is None
 
     def test_uses_first_scenario_from_list(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
-        """Test that scenario_key uses the first scenario from the list when multiple are found."""
+        """Test that scenario_key uses the first scenario that exactly matches the name when multiple are found."""
         scenario_name = 'Test Scenario'
         first_scenario_key = 'first_scenario_key'
         second_scenario_key = 'second_scenario_key'
         
-        # Mock scenario model response with multiple scenarios
+        # Mock scenario model response with multiple scenarios (including one that doesn't match exactly)
         scenario_model.index.return_value = ({
             'list': [
                 {'key': first_scenario_key, 'name': scenario_name},
+                {'key': 'other_key', 'name': 'Test Scenario Different'},
                 {'key': second_scenario_key, 'name': scenario_name}
             ],
-            'total': 2
+            'total': 3
         }, 200)
         
         mock_request.headers = Headers(**{custom_headers.SCENARIO_NAME: scenario_name})
@@ -186,13 +187,25 @@ class TestScenarioKey:
         result = intercept_settings.scenario_key
         
         assert result == first_scenario_key
+        scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
+        
+        # Verify cache was updated with the first matching scenario
+        cache_data = cache.read('scenario_name_index.1')
+        assert cache_data is not None
+        assert cache_data['value'][scenario_name] == first_scenario_key
 
     def test_returns_none_when_no_project_id(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
         """Test that scenario_key returns None when project_id is not available."""
         scenario_name = 'Test Scenario'
         
-        # Set project_key to None to simulate no project
+        # Set project_key to None to simulate no project (project_id will default to 0)
         mock_settings.proxy.intercept.project_key = None
+        
+        # Mock scenario model to return empty list when queried with project_id=0
+        scenario_model.index.return_value = ({
+            'list': [],
+            'total': 0
+        }, 200)
         
         mock_request.headers = Headers(**{custom_headers.SCENARIO_NAME: scenario_name})
         mock_settings.proxy.data.data_rules.return_value = mock_data_rules
@@ -201,14 +214,16 @@ class TestScenarioKey:
         result = intercept_settings.scenario_key
         
         assert result is None
-        scenario_model.index.assert_not_called()
+        # project_id defaults to 0, which is not None, so query will be attempted
+        scenario_model.index.assert_called_once_with(project_id=0, q=scenario_name, sort_by='requests_count')
 
     def test_uses_fluent_interface_for_cache(self, mock_settings, mock_data_rules, mock_request, cache):
         """Test that with_cache method works with fluent interface."""
         scenario_name = 'Test Scenario'
         scenario_key = 'cached_scenario_key'
         
-        cache.write('scenario_name_index', {scenario_name: scenario_key}, timeout=None)
+        # Cache key now includes project_id
+        cache.write('scenario_name_index.1', {scenario_name: scenario_key}, timeout=None)
         
         mock_request.headers = Headers(**{custom_headers.SCENARIO_NAME: scenario_name})
         mock_settings.proxy.data.data_rules.return_value = mock_data_rules
