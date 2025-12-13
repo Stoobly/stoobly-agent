@@ -176,7 +176,11 @@ class InterceptSettings:
         # Check cache first if available
         if self.__cache:
             parsed_project_key = self.parsed_project_key
-            project_id = parsed_project_key.id if parsed_project_key else 0
+            project_id = parsed_project_key.id if parsed_project_key else None
+
+            if project_id is None:
+                return None
+
             cache_key = f'scenario_name_index.{project_id}'
             cache_data = self.__cache.read(cache_key)
             
@@ -186,8 +190,8 @@ class InterceptSettings:
             else:
                 scenario_name_to_key_map = {}
             
-            # Check if scenario name is already in cache
-            # For None values, allow retrying. This will ensure that if the user creates a new scenario after a cache miss, it will be cached.
+            # Check if scenario name is already in cache, for None values, allow cache miss
+            # This will ensure that if the user creates a new scenario after a cache miss, it will be cached.
             if scenario_name in scenario_name_to_key_map and scenario_name_to_key_map[scenario_name]:
                 return scenario_name_to_key_map[scenario_name]
             

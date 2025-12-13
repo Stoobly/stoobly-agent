@@ -214,8 +214,7 @@ class TestScenarioKey:
         result = intercept_settings.scenario_key
         
         assert result is None
-        # project_id defaults to 0, which is not None, so query will be attempted
-        scenario_model.index.assert_called_once_with(project_id=0, q=scenario_name, sort_by='requests_count')
+        scenario_model.index.assert_not_called()
 
     def test_uses_fluent_interface_for_cache(self, mock_settings, mock_data_rules, mock_request, cache):
         """Test that with_cache method works with fluent interface."""
