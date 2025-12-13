@@ -408,6 +408,9 @@ class InterceptSettings:
 
   def __order(self, mode):
     if mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
+        return self.__headers[custom_headers.RECORD_ORDER]
+
       return self.__data_rules.record_order
     
   def __policy(self, mode):
