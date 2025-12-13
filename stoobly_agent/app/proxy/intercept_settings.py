@@ -205,7 +205,10 @@ class InterceptSettings:
                                 if scenario.get('name') == scenario_name:
                                     scenario_key = scenario.get('key')
                                     break
-
+                    
+                    # Do not cache if scenario key is not found
+                    # If the user is recording requests, they may create a new scenario after a cache miss
+                    # This would result in a cache miss loop until the agent restarts, so we do not cache the result
                     if scenario_key:
                       scenario_name_to_key_map[scenario_name] = scenario_key
                       self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)

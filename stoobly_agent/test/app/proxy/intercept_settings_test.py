@@ -143,10 +143,9 @@ class TestScenarioKey:
         
         # Verify cache was updated with None
         cache_data = cache.read('scenario_name_index')
-        assert cache_data is not None
-        assert cache_data['value'][scenario_name] is None
+        assert cache_data is None
 
-    def test_caches_none_on_error(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+    def test_does_not_cache_on_error(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
         """Test that scenario_key caches None when an error occurs during query."""
         scenario_name = 'Error Scenario'
         
@@ -163,8 +162,7 @@ class TestScenarioKey:
         
         # Verify cache was updated with None even on error
         cache_data = cache.read('scenario_name_index')
-        assert cache_data is not None
-        assert cache_data['value'][scenario_name] is None
+        assert cache_data is None
 
     def test_uses_first_scenario_from_list(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
         """Test that scenario_key uses the first scenario from the list when multiple are found."""
