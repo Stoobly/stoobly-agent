@@ -52,3 +52,5 @@ def disable_transfer_encoding(response: MitmproxyResponse) -> None:
     header_name = 'Transfer-Encoding'
     if header_name in response.headers and response.headers[header_name] == 'chunked':
         del response.headers['Transfer-Encoding']
+        response.headers['Content-Length'] = str(len(response.content))
+        # Potentially need to handler cases where multiple Transfer-Encoding headers are present
