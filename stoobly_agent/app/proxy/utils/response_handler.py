@@ -50,15 +50,12 @@ def enable_cors(flow: MitmproxyHTTPFlow):
 # Without deleting this header, causes parsing issues when reading response
 def disable_transfer_encoding(response: MitmproxyResponse) -> None:
     header_name = 'Transfer-Encoding'
-    if header_name in response.headers and response.headers[header_name] == 'chunked':
+    if header_name in response.header:
         header_values = response.headers.get_all(header_name)
-        try:
-            # Remove chunked transfer encoding
-            for header_value in header_values:
-                if header_value == 'chunked':
-                    header_values.remove(header_value)
 
-            response.headers.set_all(header_name, header_values)
+        # Remove chunked transfer encoding
+        new_header_values = [v for v in header_values if v.lower() != "chunked"]
+
+        if len(new_header_values) != len(header_values):
+            response.headers.set_all(header_name, new_header_values)
             response.headers['Content-Length'] = str(len(response.content))
-        except ValueError:
-            pass
