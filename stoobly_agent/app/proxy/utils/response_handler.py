@@ -59,7 +59,6 @@ def disable_transfer_encoding(response: MitmproxyResponse) -> None:
                     header_values.remove(header_value)
 
             response.headers.set_all(header_name, header_values)
+            response.headers['Content-Length'] = str(len(response.content))
         except ValueError:
             pass
-
-        response.headers['Content-Length'] = str(len(response.content))

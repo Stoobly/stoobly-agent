@@ -187,6 +187,7 @@ class InterceptSettings:
                 scenario_name_to_key_map = {}
             
             # Check if scenario name is already in cache
+            # For None values, allow retrying. This will ensure that if the user creates a new scenario after a cache miss, it will be cached.
             if scenario_name in scenario_name_to_key_map and scenario_name_to_key_map[scenario_name]:
                 return scenario_name_to_key_map[scenario_name]
             
