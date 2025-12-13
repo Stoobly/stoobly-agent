@@ -185,27 +185,26 @@ class InterceptSettings:
                 scenario_name_to_key_map = {}
             
             # Check if scenario name is already in cache
-            if scenario_name in scenario_name_to_key_map:
-                scenario_key = scenario_name_to_key_map[scenario_name]
-                return scenario_key if scenario_key else None
+            if scenario_name in scenario_name_to_key_map and scenario_name_to_key_map[scenario_name]:
+                return scenario_name_to_key_map[scenario_name]
             
             # Cache miss, query ScenarioModel if available
             if self.__scenario_model:
                 try:
                     parsed_project_key = self.parsed_project_key
                     project_id = parsed_project_key.id if parsed_project_key else None
+                    scenario_key = None
                     
                     if project_id:
                         response, status = self.__scenario_model.index(
                           project_id=project_id, q=scenario_name, sort_by='requests_count'
                         )
                         if status == 200 and response.get('list') and len(response['list']) > 0:
-                            # Use the first scenario found
-                            scenario_key = response['list'][0].get('key')
-                        else:
-                            scenario_key = None
-                    else:
-                        scenario_key = None
+                            # Find first scenario that exactly matches the name
+                            for scenario in response['list']:
+                                if scenario.get('name') == scenario_name:
+                                    scenario_key = scenario.get('key')
+                                    break
                     
                     # Update cache with scenario name to key mapping (even if None)
                     scenario_name_to_key_map[scenario_name] = scenario_key

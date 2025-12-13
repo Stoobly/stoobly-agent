@@ -115,7 +115,7 @@ class TestScenarioKey:
         result = intercept_settings.scenario_key
         
         assert result == scenario_key
-        scenario_model.index.assert_called_once_with(project_id='1', name=scenario_name)
+        scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
         
         # Verify cache was updated
         cache_data = cache.read('scenario_name_index')
@@ -139,7 +139,7 @@ class TestScenarioKey:
         result = intercept_settings.scenario_key
         
         assert result is None
-        scenario_model.index.assert_called_once_with(project_id='1', name=scenario_name)
+        scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
         
         # Verify cache was updated with None
         cache_data = cache.read('scenario_name_index')
@@ -237,7 +237,7 @@ class TestScenarioKey:
         result = intercept_settings.with_scenario_model(scenario_model).scenario_key
         
         assert result == scenario_key
-        scenario_model.index.assert_called_once_with(project_id='1', name=scenario_name)
+        scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
 
     def test_prioritizes_scenario_key_header_over_scenario_name(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
         """Test that SCENARIO_KEY header takes priority over SCENARIO_NAME header."""
