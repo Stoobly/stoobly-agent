@@ -175,7 +175,9 @@ class InterceptSettings:
         
         # Check cache first if available
         if self.__cache:
-            cache_key = 'scenario_name_index'
+            parsed_project_key = self.parsed_project_key
+            project_id = parsed_project_key.id if parsed_project_key else 0
+            cache_key = f'scenario_name_index.{project_id}'
             cache_data = self.__cache.read(cache_key)
             
             # Get existing mapping or create new one
@@ -191,8 +193,6 @@ class InterceptSettings:
             # Cache miss, query ScenarioModel if available
             if self.__scenario_model:
                 try:
-                    parsed_project_key = self.parsed_project_key
-                    project_id = parsed_project_key.id if parsed_project_key else None
                     scenario_key = None
                     
                     if project_id:
