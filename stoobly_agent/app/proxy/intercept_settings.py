@@ -205,17 +205,14 @@ class InterceptSettings:
                                 if scenario.get('name') == scenario_name:
                                     scenario_key = scenario.get('key')
                                     break
-                    
-                    # Update cache with scenario name to key mapping (even if None)
-                    scenario_name_to_key_map[scenario_name] = scenario_key
-                    self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
-                    
-                    return scenario_key if scenario_key else None
+
+                    if scenario_key:
+                      scenario_name_to_key_map[scenario_name] = scenario_key
+                      self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
+
+                    return scenario_key
                 except Exception as e:
                     Logger.instance().error(f"Error querying scenario by name: {e}")
-                    # Update cache with None even on error
-                    scenario_name_to_key_map[scenario_name] = None
-                    self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
                     return None
 
     return self.__data_rules.scenario_key
