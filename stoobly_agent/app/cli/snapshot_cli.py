@@ -24,7 +24,7 @@ from .types.snapshot_migration import SnapshotMigration
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
-    help="Manage snapshots."
+    help="Manage snapshots"
 )
 @click.pass_context
 def snapshot(ctx):
@@ -144,7 +144,7 @@ def migrate(**kwargs):
     if request_snapshot.uuid not in snapshot_migrations:
       snapshot_migration = SnapshotMigration(request_snapshot, event)
       snapshot_migrations[request_snapshot.uuid] = snapshot_migration
-      
+
       if before_migrate_hook(snapshot_migration):
         break
 
@@ -180,7 +180,7 @@ def update(**kwargs):
     sys.exit(1)
 
   if not kwargs['no_verify']:
-    if event.is_request(): 
+    if event.is_request():
       snapshot: RequestSnapshot = event.snapshot()
       __verify_request(snapshot)
     elif event.is_scenario():
@@ -229,7 +229,7 @@ def __format_events(events: List[LogEvent], **kwargs):
     for event in events:
       if event.resource != REQUEST_RESOURCE:
         snapshot: ScenarioSnapshot = event.snapshot()
-        snapshot.iter_request_snapshots(lambda snapshot: joined_events.append((event, snapshot))) 
+        snapshot.iter_request_snapshots(lambda snapshot: joined_events.append((event, snapshot)))
       else:
         joined_events.append((event, event.snapshot()))
 
@@ -295,7 +295,7 @@ def __to_request(snapshot: RequestSnapshot):
 def __request_matches(request: requests.Request, search: str):
   if not search:
     return True
-  
+
   if not request:
     return False
 
