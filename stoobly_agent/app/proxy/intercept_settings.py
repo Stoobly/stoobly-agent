@@ -6,22 +6,28 @@ from typing import List, Union
 
 from mitmproxy.http import Request as MitmproxyRequest
 
+from typing import Optional
+
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
+from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
 class InterceptSettings:
 
-  def __init__(self, settings: Settings, request: MitmproxyRequest = None):
+  def __init__(self, settings: Settings, request: MitmproxyRequest = None, cache: Optional[Cache] = None, scenario_model: Optional[ScenarioModel] = None):
     self.__settings = settings
     self.__request = request
     self.__headers: MitmproxyRequest.headers = request.headers if request else None
     self.__for_response = False
+    self.__cache = cache
+    self.__scenario_model = scenario_model
 
     parsed_project_key = self.parsed_project_key
     project_id = parsed_project_key.id if parsed_project_key else None
@@ -41,6 +47,16 @@ class InterceptSettings:
     self._record_rewrite_rules = None
     self._replay_rewrite_rules = None
     self._test_rewrite_rules = None
+
+  def with_cache(self, cache: Cache):
+    """Set cache using fluent interface pattern."""
+    self.__cache = cache
+    return self
+
+  def with_scenario_model(self, scenario_model: ScenarioModel):
+    """Set scenario_model using fluent interface pattern."""
+    self.__scenario_model = scenario_model
+    return self
 
   @property
   def settings(self):
@@ -152,6 +168,60 @@ class InterceptSettings:
   def scenario_key(self):
     if self.__headers and custom_headers.SCENARIO_KEY in self.__headers:
         return self.__headers[custom_headers.SCENARIO_KEY]
+
+    # Check if scenario name header is set
+    if self.__headers and custom_headers.SCENARIO_NAME in self.__headers:
+        scenario_name = self.__headers[custom_headers.SCENARIO_NAME]
+        
+        # Check cache first if available
+        if self.__cache:
+            parsed_project_key = self.parsed_project_key
+            project_id = parsed_project_key.id if parsed_project_key else None
+
+            if project_id is None:
+                return None
+
+            cache_key = f'scenario_name_index.{project_id}'
+            cache_data = self.__cache.read(cache_key)
+            
+            # Get existing mapping or create new one
+            if cache_data and cache_data.get('value'):
+                scenario_name_to_key_map = cache_data['value']
+            else:
+                scenario_name_to_key_map = {}
+            
+            # Check if scenario name is already in cache, for None values, allow cache miss
+            # This will ensure that if the user creates a new scenario after a cache miss, it will be cached.
+            if scenario_name in scenario_name_to_key_map and scenario_name_to_key_map[scenario_name]:
+                return scenario_name_to_key_map[scenario_name]
+            
+            # Cache miss, query ScenarioModel if available
+            if self.__scenario_model:
+                try:
+                    scenario_key = None
+                    
+                    if project_id is not None:
+                        response, status = self.__scenario_model.index(
+                          project_id=project_id, q=scenario_name, sort_by='requests_count'
+                        )
+                        if status == 200 and response.get('list') and len(response['list']) > 0:
+                            # Find first scenario that exactly matches the name
+                            for scenario in response['list']:
+                                if scenario.get('name') == scenario_name:
+                                    scenario_key = scenario.get('key')
+                                    break
+                    
+                    # Do not cache if scenario key is not found
+                    # If the user is recording requests, they may create a new scenario after a cache miss
+                    # This would result in a cache miss loop until the agent restarts, so we do not cache the result
+                    if scenario_key:
+                      scenario_name_to_key_map[scenario_name] = scenario_key
+                      self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
+
+                    return scenario_key
+                except Exception as e:
+                    Logger.instance().error(f"Error querying scenario by name: {e}")
+                    return None
 
     return self.__data_rules.scenario_key
 

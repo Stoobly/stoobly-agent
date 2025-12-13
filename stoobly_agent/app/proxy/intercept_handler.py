@@ -4,6 +4,7 @@ import pdb
 from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
+from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
@@ -16,6 +17,7 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import lifecycle_hooks, mode
+from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
 # Disable proxy settings in urllib
@@ -23,12 +25,17 @@ os.environ['no_proxy'] = '*'
 
 LOG_ID = 'Intercept'
 
+cache = Cache.instance()
+settings = Settings.instance()
+
+scenario_model = ScenarioModel(settings)
+
 def request(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
 
     __patch_cookie(request)
 
-    intercept_settings = InterceptSettings(Settings.instance(), request)
+    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
     if not intercept_settings.active:
         return
 
@@ -62,7 +69,7 @@ def request(flow: MitmproxyHTTPFlow):
 def response(flow: MitmproxyHTTPFlow):
     request: MitmproxyRequest = flow.request
 
-    intercept_settings = InterceptSettings(Settings.instance(), request)
+    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
     intercept_settings.for_response()
 
     if not intercept_settings.active:
