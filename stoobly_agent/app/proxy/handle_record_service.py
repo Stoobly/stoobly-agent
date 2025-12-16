@@ -111,9 +111,12 @@ def __record_request(context: RecordContext, request_model: RequestModel):
         scenario_key = intercept_settings.parsed_scenario_key
         scenario_model = intercept_settings.scenario_model
         if scenario_key and scenario_model:
-            res = scenario_model.update(scenario_key.id, **{ 'overwritable': True })
-            if res.status_code == 200:
-                overwrite_scenario(scenario_key)
+            res, status = scenario_model.update(scenario_key.id, **{ 'overwritable': True })
+            if status != 200:
+                Logger.instance(LOG_ID).error(f"Failed to update scenario {scenario_key.id} to overwritable: {res}")
+                return
+            
+            overwrite_scenario(scenario_key)
     elif intercept_settings.order == record_order.OVERWRITE:
         scenario_key = intercept_settings.parsed_scenario_key
 

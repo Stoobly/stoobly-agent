@@ -228,6 +228,10 @@ class InterceptSettings:
 
   @property
   def parsed_scenario_key(self):
+    _scenario_key = self.scenario_key
+    if not _scenario_key:
+      return None
+
     try: 
       return ScenarioKey(self.scenario_key)
     except InvalidScenarioKey:
