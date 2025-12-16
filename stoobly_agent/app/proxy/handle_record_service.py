@@ -106,6 +106,13 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
 def __record_request(context: RecordContext, request_model: RequestModel):
     intercept_settings = context.intercept_settings
 
+    # If record order header is set to overwrite, then make the scenario overwritable
+    if intercept_settings.order_from_header == record_order.OVERWRITE:
+        scenario_key = intercept_settings.parsed_scenario_key
+        scenario_model = intercept_settings.scenario_model
+        if scenario_key and scenario_model:
+            scenario_model.update(scenario_key.id, **{ 'overwritable': True })
+
     if intercept_settings.order == record_order.OVERWRITE:
         overwrite_scenario(intercept_settings.scenario_key)
 
