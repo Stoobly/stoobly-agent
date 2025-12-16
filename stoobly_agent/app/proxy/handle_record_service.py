@@ -111,10 +111,14 @@ def __record_request(context: RecordContext, request_model: RequestModel):
         scenario_key = intercept_settings.parsed_scenario_key
         scenario_model = intercept_settings.scenario_model
         if scenario_key and scenario_model:
-            scenario_model.update(scenario_key.id, **{ 'overwritable': True })
+            res = scenario_model.update(scenario_key.id, **{ 'overwritable': True })
+            if res.status_code == 200:
+                overwrite_scenario(scenario_key)
+    elif intercept_settings.order == record_order.OVERWRITE:
+        scenario_key = intercept_settings.parsed_scenario_key
 
-    if intercept_settings.order == record_order.OVERWRITE:
-        overwrite_scenario(intercept_settings.scenario_key)
+        if scenario_key:
+            overwrite_scenario(scenario_key)
 
     if os.environ.get(ENV) == TEST:
         __record_handler(context, request_model)
