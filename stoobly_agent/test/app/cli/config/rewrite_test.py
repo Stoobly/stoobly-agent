@@ -112,7 +112,7 @@ class TestRewrite():
 
     @pytest.fixture(scope='class')
     def port(self):
-      return '80'
+      return 80
 
     @pytest.fixture(scope='class')
     def method(self):
