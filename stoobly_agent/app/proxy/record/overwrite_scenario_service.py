@@ -2,19 +2,10 @@ import pdb
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.scenario_model import ScenarioModel
-from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
-
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
-def overwrite_scenario(scenario_key: str):
-  if not scenario_key:
-    return
-
-  try:
-    scenario_key = ScenarioKey(scenario_key)
-  except InvalidScenarioKey:
-    return
-
+def overwrite_scenario(scenario_key: ScenarioKey):
   settings = Settings.instance()
   scenario_model = ScenarioModel(settings) 
   scenario, status = scenario_model.show(scenario_key.id)
