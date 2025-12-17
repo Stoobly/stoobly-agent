@@ -28,7 +28,7 @@ class TestScaffoldServiceUpdate:
     def temp_dir(self):
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(temp_dir)
 
     @pytest.fixture(scope='class')
     def app_name(self):
