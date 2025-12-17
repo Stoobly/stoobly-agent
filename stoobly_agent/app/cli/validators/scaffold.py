@@ -38,6 +38,8 @@ def validate_namespace(ctx, param, namespace: str) -> str:
   return namespace
 
 def validate_service_name(ctx, param, service_name: str) -> str:
+  if not service_name:
+    return
   if service_name in CORE_SERVICES:
     print(f"Error: {service_name} is a core service", file=sys.stderr)
     sys.exit(1)
