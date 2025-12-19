@@ -1,11 +1,15 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request
 
 from .python_adapter import PythonRequestAdapter
 
 class MitmproxyRequestAdapterFactory():
 
-  def __init__(self, request: requests.Request):
+  def __init__(self, request: 'Request'):
     self.__request = request
 
   def python_request(self):

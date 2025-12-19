@@ -3,10 +3,12 @@ import os
 import logging
 import json
 from datetime import datetime
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from mitmproxy.http import Request as MitmproxyRequest
-from requests import Response
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import Request as MitmproxyRequest
+
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -62,7 +64,9 @@ class InterceptedRequestsLogger():
 
             # Extract fields from request
             if hasattr(record, 'request') and record.request is not None:
-                request: MitmproxyRequest = record.request
+                # Lazy import for runtime usage
+                from mitmproxy.http import Request as MitmproxyRequest
+                request: 'MitmproxyRequest' = record.request
                 log_entry.update({
                     "method": request.method,
                     "url": request.pretty_url,
@@ -150,7 +154,7 @@ class InterceptedRequestsLogger():
 
             # Set test title if available in request headers
             if hasattr(record, 'request') and record.request is not None:
-                request: MitmproxyRequest = record.request
+                request: 'MitmproxyRequest' = record.request
                 if hasattr(request, 'headers') and request.headers:
                     test_title = request.headers.get(custom_headers.TEST_TITLE, "")
                     if test_title:
@@ -278,7 +282,7 @@ class InterceptedRequestsLogger():
         cls.__logger.info(f"Scenario changed to {current_name or ''}", extra=extra)
 
     @classmethod
-    def __setup_logging(cls, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> dict:
+    def __setup_logging(cls, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> dict:
         cls.__ensure_directory()
         cls.__check_scenario_key_changes()
         extra = {}
@@ -304,22 +308,22 @@ class InterceptedRequestsLogger():
             cls.__previous_scenario_key = current_scenario_key
 
     @classmethod
-    def debug(cls, message: str, *, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> None:
+    def debug(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:
         extra = cls.__setup_logging(request, response, request_key, fixture_path)
         cls.__logger.debug(message, extra=extra if extra else None)
 
     @classmethod
-    def info(cls, message: str, *, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> None:
+    def info(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:
         extra = cls.__setup_logging(request, response, request_key, fixture_path)
         cls.__logger.info(message, extra=extra if extra else None)
 
     @classmethod
-    def warning(cls, message: str, *, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> None:
+    def warning(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:
         extra = cls.__setup_logging(request, response, request_key, fixture_path)
         cls.__logger.warning(message, extra=extra if extra else None)
 
     @classmethod
-    def error(cls, message: str, *, request: MitmproxyRequest = None, response: Response = None, request_key: str = None, fixture_path: str = None) -> None:
+    def error(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:
         extra = cls.__setup_logging(request, response, request_key, fixture_path)
         cls.__logger.error(message, extra=extra if extra else None)
 

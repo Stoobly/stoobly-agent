@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.settings import Settings
 
@@ -22,35 +26,53 @@ class ReplayedResponseModel(Model):
   def create(self, **body_params: ReplayeResponseCreateParams):
     try:
       return self.adapter.create(**body_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def mock(self, replayed_response_id: str):
     try:
       return self.adapter.mock(replayed_response_id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def activate(self, replayed_response_id: str):
     try:
       return self.adapter.activate(replayed_response_id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def raw(self, replayed_response_id: str):
     try:
       return self.adapter.raw(replayed_response_id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
-  def update(self, replayed_response_id: str, **params) -> requests.Response:
+  def update(self, replayed_response_id: str, **params) -> 'Response':
     try:
       return self.adapter.update(replayed_response_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise

@@ -1,6 +1,3 @@
-import urllib
-
-from ..logger import Logger
 from .stoobly_api import StooblyApi
 
 class ReportsResource(StooblyApi):

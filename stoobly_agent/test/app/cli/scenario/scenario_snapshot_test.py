@@ -6,10 +6,11 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.cli import record, scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 

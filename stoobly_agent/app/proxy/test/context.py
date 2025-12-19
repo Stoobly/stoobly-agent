@@ -1,7 +1,9 @@
 import pdb
 
-from mitmproxy.http import Request
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
@@ -150,7 +152,7 @@ class TestContext(TestContextABC):
     return self.__replay_context
 
   @property
-  def request(self) -> Request:
+  def request(self) -> 'Request':
     return self.__flow.request
 
   @property

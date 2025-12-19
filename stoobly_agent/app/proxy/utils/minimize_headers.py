@@ -1,10 +1,10 @@
 import pdb
 
-from mitmproxy.http import Headers
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+from typing import TYPE_CHECKING, Final
 
-from typing import Final
-
+if TYPE_CHECKING:
+    from mitmproxy.http import Headers
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 REQUEST_HEADERS_ALLOWLIST: Final[dict[str]] = {
   "Accept",
@@ -26,17 +26,17 @@ RESPONSE_HEADERS_ALLOWLIST: Final[dict[str]] = {
   "Server",  # Sometimes required for HTTP/1.0, but not strictly mandatory
 }
 
-def minimize_headers(flow: MitmproxyHTTPFlow):
+def minimize_headers(flow: 'MitmproxyHTTPFlow'):
   minimize_request_headers(flow)
   minimize_response_headers(flow)
 
-def minimize_request_headers(flow: MitmproxyHTTPFlow) -> None:
+def minimize_request_headers(flow: 'MitmproxyHTTPFlow') -> None:
   remove_headers(flow.request.headers, REQUEST_HEADERS_ALLOWLIST)
 
-def minimize_response_headers(flow: MitmproxyHTTPFlow) -> None:
+def minimize_response_headers(flow: 'MitmproxyHTTPFlow') -> None:
   remove_headers(flow.response.headers, RESPONSE_HEADERS_ALLOWLIST)
 
-def remove_headers(headers: Headers, allowlist: dict[str]):
+def remove_headers(headers: 'Headers', allowlist: dict[str]):
   keys_to_remove = []
 
   for key in headers:

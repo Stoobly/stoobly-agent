@@ -1,9 +1,10 @@
 from io import BytesIO
-from requests import Response
 
 class JSONResponseBuilder():
 
   def __init__(self):
+    # Lazy import for runtime usage
+    from requests import Response
     self.__response = Response()
     self.__response.headers['Content-Type'] = 'application/json'
 

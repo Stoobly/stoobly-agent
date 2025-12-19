@@ -1,8 +1,6 @@
 import pdb
-import requests
 
 from io import BytesIO
-from urllib3 import HTTPResponse
 from typing import TypedDict, Union
 
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params_from_python
@@ -62,6 +60,8 @@ class RequestBuilder():
     return self.__properties.get('url')
 
   def build(self):
+    # Lazy import for runtime usage
+    import requests
     req = requests.Request(
       method=self.method,
       url=self.url,
@@ -71,6 +71,8 @@ class RequestBuilder():
     
     res = requests.Response()
     res.headers = self.response_headers
+
+    from urllib3 import HTTPResponse
     res.raw = HTTPResponse(
         body=BytesIO(
           self.serialized_response_body(self.response_headers_value('content-type')),

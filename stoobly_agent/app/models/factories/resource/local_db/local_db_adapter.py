@@ -1,6 +1,9 @@
 import uuid
 
-from mitmproxy.http import Response as MitmproxyResponse
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Response as MitmproxyResponse
 
 class LocalDBAdapter():
 
@@ -17,6 +20,8 @@ class LocalDBAdapter():
     # otherwise, there's an assumption that the 'text' will always be provided as decoded
 
     if content_encoding:
+      # Lazy import for runtime usage
+      from mitmproxy.http import Response as MitmproxyResponse
       # Use MitmproxyResponse to encode the body
       res = MitmproxyResponse.make(
           200,

@@ -6,8 +6,9 @@ from pathlib import Path
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL
 
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.config.constants.custom_headers import SESSION_ID
-from stoobly_agent.cli import mock, record, scenario
+from stoobly_agent.cli import mock, record
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
 

@@ -4,7 +4,7 @@ import sys
 
 from stoobly_agent.app.settings import Settings
 
-from .helpers import ProjectFacade
+from .helpers.project_facade import ProjectFacade
 from .helpers.print_service import FORMATS, print_projects, select_print_options
 from .helpers.validations import *
 

@@ -1,19 +1,15 @@
 import json
-import requests
 import sys
-from typing import Dict, TypedDict, Optional
+from typing import TYPE_CHECKING, Dict, TypedDict, Optional
+
+if TYPE_CHECKING:
+    from requests import HTTPError, Response
 
 from .endpoints_import_context import EndpointsImportContext
 from stoobly_agent.app.models.types import ENDPOINT_COMPONENT_NAMES
-from stoobly_agent.lib.api.body_param_names_resource import BodyParamNamesResource
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.header_names_resource import HeaderNamesResource
-from stoobly_agent.lib.api.interfaces.endpoints import BodyParamName
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.api.interfaces.endpoints import RequestComponentName
-from stoobly_agent.lib.api.query_param_names_resource import QueryParamNamesResource
-from stoobly_agent.lib.api.response_header_names_resource import ResponseHeaderNamesResource
-from stoobly_agent.lib.api.response_param_names_resource import ResponseParamNamesResource
 from stoobly_agent.lib.logger import bcolors
 
 class ComponentImportArgs(TypedDict):
@@ -30,9 +26,13 @@ def import_endpoints(context: EndpointsImportContext):
 
         try:    
             res = import_endpoint(context.project_id, context.resources['endpoint'], endpoint)
-        except requests.HTTPError as e:
-            error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
-            return
+        except Exception as e:
+            # Lazy import for runtime exception handling
+            import requests
+            if isinstance(e, requests.HTTPError):
+                error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
+                return
+            raise
         
         if res.status_code == 409: # Endpoint already created
             continue
@@ -40,17 +40,24 @@ def import_endpoints(context: EndpointsImportContext):
         endpoint_id = res.json()['id']
         try:
             res = import_component_names(context.project_id, endpoint_id, endpoint, context.resources)
-        except requests.HTTPError as e:
-            error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
+        except Exception as e:
+            import requests
+            if isinstance(e, requests.HTTPError):
+                error_handler(e, f"Failed to import endpoint: {endpoint['method']} {endpoint['path']}")
 
-            try:
-                cleanup_endpoint(context.project_id, endpoint_id, context.resources['endpoint'])
-            except requests.HTTPError as e:
-                error_handler(e, f"Failed to delete endpoint: {endpoint['method']} {endpoint['path']}, id {endpoint_id}")
-            return
+                try:
+                    cleanup_endpoint(context.project_id, endpoint_id, context.resources['endpoint'])
+                except Exception as cleanup_e:
+                    import requests
+                    if isinstance(cleanup_e, requests.HTTPError):
+                        error_handler(cleanup_e, f"Failed to delete endpoint: {endpoint['method']} {endpoint['path']}, id {endpoint_id}")
+                    else:
+                        raise
+                return
+            raise
 
 def import_endpoint(project_id: int, endpoint_resource: EndpointsResource, endpoint: EndpointShowResponse):
-    res: requests.Response = endpoint_resource.create(**{
+    res: 'Response' = endpoint_resource.create(**{
         'host': endpoint.get('host'),
         'method': endpoint.get('method'),
         'path_segments': json.dumps(endpoint.get('path_segment_names', [])),
@@ -70,7 +77,7 @@ def import_header_name(args: ComponentImportArgs):
     header_name_resource = args['resource']
     header_name = args['component']
 
-    res: requests.Response = header_name_resource.create(endpoint_id, {
+    res: 'Response' = header_name_resource.create(endpoint_id, {
         'name': header_name.get('name'),
         'is_deterministic': header_name.get('is_deterministic', True),
         'is_required': header_name.get('is_required', False),
@@ -92,7 +99,7 @@ def import_body_param_name(args: ComponentImportArgs):
     if parent_id:
         body_param_name_id = parents[parent_id]
     
-    res: requests.Response = body_param_name_resource.create(endpoint_id, {
+    res: 'Response' = body_param_name_resource.create(endpoint_id, {
         'name': body_param_name.get('name'),
         'is_deterministic': body_param_name.get('is_deterministic', True),
         'is_required': body_param_name.get('is_required', False),
@@ -114,7 +121,7 @@ def import_query_param_name(args: ComponentImportArgs):
     query_param_name_resource = args['resource']
     query_param_name = args['component']
 
-    res: requests.Response = query_param_name_resource.create(endpoint_id, {
+    res: 'Response' = query_param_name_resource.create(endpoint_id, {
         'name': query_param_name.get('name'),
         'is_deterministic': query_param_name.get('is_deterministic', True),
         'is_required': query_param_name.get('is_required', False),
@@ -136,7 +143,7 @@ def import_response_param_name(args: ComponentImportArgs):
     if parent_id:
         response_param_name_id = parents[parent_id]
     
-    res: requests.Response = response_param_name_resource.create(endpoint_id, {
+    res: 'Response' = response_param_name_resource.create(endpoint_id, {
         'name': response_param_name.get('name'),
         'is_deterministic': response_param_name.get('is_deterministic', True),
         'is_required': response_param_name.get('is_required', False),
@@ -159,7 +166,7 @@ def import_response_header_name(args: ComponentImportArgs):
     response_header_name_resource = args['resource']
     response_header_name = args['component']
 
-    res: requests.Response = response_header_name_resource.create(endpoint_id, {
+    res: 'Response' = response_header_name_resource.create(endpoint_id, {
         'name': response_header_name.get('name'),
         'is_deterministic': response_header_name.get('is_deterministic', True),
         'is_required': response_header_name.get('is_required', False),
@@ -194,13 +201,13 @@ def import_component_names(project_id: int, endpoint_id: int, endpoint: Endpoint
 
 def cleanup_endpoint(project_id: int, endpoint_id: int, resource: EndpointsResource):
     print(f"{bcolors.OKBLUE}Cleaning up partial import...{bcolors.ENDC}")
-    res: requests.Response = resource.destroy(endpoint_id, **{
+    res: 'Response' = resource.destroy(endpoint_id, **{
         'project_id': project_id
     })
 
     res.raise_for_status()
 
-def error_handler(error: requests.HTTPError, message = ''):
+def error_handler(error: 'HTTPError', message = ''):
     if message:
         print(
             f"{bcolors.FAIL}{message}{bcolors.ENDC}",

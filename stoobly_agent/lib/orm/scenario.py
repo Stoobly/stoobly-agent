@@ -3,7 +3,6 @@ import uuid
 
 from stoobly_orator.orm import has_many
 
-from stoobly_agent.lib import orm
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -14,6 +13,7 @@ class Scenario(Base):
   
   @has_many
   def requests(self):
+    from .request import Request
     return Request
 
   def key(self):
@@ -42,5 +42,3 @@ def handle_deleting(scenario):
 
 Scenario.creating(handle_creating)
 Scenario.deleting(handle_deleting)
-
-from .request import Request

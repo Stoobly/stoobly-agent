@@ -1,7 +1,6 @@
 from stoobly_orator.orm import belongs_to, has_many
 
 from .base import Base
-from .trace_alias import TraceAlias
 
 class TraceRequest(Base):
   __fillable__ = ['trace_id']
@@ -13,6 +12,7 @@ class TraceRequest(Base):
 
   @has_many
   def trace_aliases(self):
+    from .trace_alias import TraceAlias
     return TraceAlias
 
 def handle_deleting(trace):

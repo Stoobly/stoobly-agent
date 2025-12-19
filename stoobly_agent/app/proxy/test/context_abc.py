@@ -1,7 +1,9 @@
 import abc
 
-from mitmproxy.http import HTTPFlow, Request
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow, Request
 
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
@@ -63,7 +65,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def flow(self) -> HTTPFlow:
+  def flow(self) -> 'HTTPFlow':
     pass
 
   @property
@@ -128,7 +130,7 @@ class TestContextABC(abc.ABC):
 
   @property
   @abc.abstractmethod
-  def request(self) -> Request:
+  def request(self) -> 'Request':
     pass
 
   @property

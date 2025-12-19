@@ -1,6 +1,8 @@
 import pdb
-import requests
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.response_model import ResponseModel
@@ -77,7 +79,7 @@ class ResponsesController:
         response_model = ResponseModel(Settings.instance(), access_token=access_token)
         return response_model
 
-    def __render_response(self, context: SimpleHTTPRequestHandler, response: requests.Response):
+    def __render_response(self, context: SimpleHTTPRequestHandler, response: 'Response'):
         if response == None:
             return context.render(
                 plain = '',

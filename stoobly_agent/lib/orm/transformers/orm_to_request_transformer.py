@@ -1,6 +1,10 @@
 import pdb
 
-from requests import Request
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request
+
 from urllib.parse import urlparse, urlunparse
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
@@ -24,7 +28,7 @@ class ORMToRequestTransformer():
     self.__scheme = None
     self.__url = None
 
-  def transform(self) -> Request:
+  def transform(self) -> 'Request':
     adapter = RawHttpRequestAdapter(self.__request.raw)
 
     if self.__body:

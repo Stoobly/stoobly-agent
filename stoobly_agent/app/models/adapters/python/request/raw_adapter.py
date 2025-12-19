@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request
 
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.record.proxy_request import ProxyRequest
@@ -9,7 +13,7 @@ from .mitmproxy_adapter import MitmproxyRequestAdapter
 
 class RawRequestAdapter():
 
-  def __init__(self, request: requests.Request, http_version: str):
+  def __init__(self, request: 'Request', http_version: str):
     self.__http_version = http_version
     self.__request = request
 

@@ -1,7 +1,4 @@
 import pdb
-import requests
-
-from typing import Union
 
 from stoobly_agent.app.settings import Settings
 
@@ -25,32 +22,47 @@ class ScenarioModel(Model):
   def create(self, **body_params: ScenarioCreateParams):
     try:
       return self.adapter.create(**body_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def show(self, scenario_id: str):
     try:
       return self.adapter.show(scenario_id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def update(self, scenario_id: str, **params: ScenarioCreateParams):
     try:
       return self.adapter.update(scenario_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def destroy(self, scenario_id, **params: ScenarioDestroyParams):
     try:
       return self.adapter.destroy(scenario_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def snapshot(self, scenario_id: str, **params):
     try:

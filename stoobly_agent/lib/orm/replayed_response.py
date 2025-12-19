@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_orator.orm import belongs_to
 
@@ -8,12 +12,11 @@ from stoobly_agent.app.proxy.record.response_string import ResponseString
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 
 from .base import Base
-from .request import Request
 
 class ReplayedResponse(Base):
   __fillable__ = ['latency', 'timestamp', 'raw', 'status', 'request_id']
 
-  def with_python_response(self, response: requests.Response):
+  def with_python_response(self, response: 'Response'):
     mitmproxy_response = PythonResponseAdapterFactory(response).mitmproxy_response()
     adapted_response = MitmproxyResponseFacade(mitmproxy_response)
     response_string = ResponseString(adapted_response, None) 
@@ -23,6 +26,7 @@ class ReplayedResponse(Base):
 
   @belongs_to
   def request(self):
+    from .request import Request
     return Request
 
   # Override

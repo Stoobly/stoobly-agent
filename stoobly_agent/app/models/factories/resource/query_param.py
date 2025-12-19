@@ -1,4 +1,4 @@
-from stoobly_agent.app.settings import RemoteSettings
+from stoobly_agent.app.settings.remote_settings import RemoteSettings
 from stoobly_agent.lib.orm.request import Request
 
 from .local_db.query_param_adapter import LocalDBQueryParamAdapter

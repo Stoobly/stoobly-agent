@@ -3,20 +3,10 @@ import pdb
 import time
 import yaml
 
-from filelock import FileLock
-from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
-from yamale import *
-
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir
 from stoobly_agent.lib.logger import Logger
-
-from .cli_settings import CLISettings
-from .proxy_settings import ProxySettings
-from .remote_settings import RemoteSettings
-from .ui_settings import UISettings
 
 LOG_ID = 'Settings'
 SETTINGS_YML = 'settings.yml'
@@ -103,6 +93,8 @@ class Settings:
         if self.__watching:
             return False
 
+        from watchdog.events import PatternMatchingEventHandler
+
         patterns = [SETTINGS_YML]
         ignore_patterns = None
         ignore_directories = False
@@ -115,6 +107,7 @@ class Settings:
         )
         event_handler.on_modified = self.__reload_settings
 
+        from watchdog.observers import Observer
         observer = Observer()
         watch_dir = os.path.dirname(self.__settings_file_path)
 
@@ -144,11 +137,13 @@ class Settings:
             return yaml.safe_load(fp)
 
     def validate(self):
+        import yamale
+
         try:
             schema = yamale.make_schema(self.__schema_file_path)
             data = yamale.make_data(self.__settings_file_path)
             yamale.validate(schema, data)
-        except YamaleError as e:
+        except yamale.YamaleError as e:
             for result in e.results:
                 print(f"{result}\n")
 
@@ -161,6 +156,11 @@ class Settings:
     def from_dict(self, settings):
         self.__settings = settings
         if settings:
+            from .cli_settings import CLISettings
+            from .proxy_settings import ProxySettings
+            from .remote_settings import RemoteSettings
+            from .ui_settings import UISettings
+
             self.__cli_settings = CLISettings(settings.get('cli'))
             self.__proxy_settings = ProxySettings(settings.get('proxy'))
             self.__remote_settings = RemoteSettings(settings.get('remote'))
@@ -180,6 +180,8 @@ class Settings:
     def write(self, contents):
         if not contents:
             return
+
+        from filelock import FileLock
 
         lock_file = f".{SETTINGS_YML}.lock"
         lock_file_path = os.path.join(os.path.dirname(self.__settings_file_path), lock_file)
