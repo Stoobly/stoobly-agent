@@ -5,6 +5,7 @@ import os
 
 from typing import List
 
+from stoobly_agent.app.cli.validators.scaffold import validate_hostname
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
@@ -160,7 +161,7 @@ def rewrite(ctx):
 @rewrite.command(
     help="Set rewrite rule."
 )
-@click.option('--hostname', help='Request URL hostname.')
+@click.option('--hostname', callback=validate_hostname, help='Request URL hostname.')
 @click.option(
     '--method', 
     multiple=True, 
@@ -177,7 +178,7 @@ def rewrite(ctx):
 @click.option('--name', help='Name of the request component.')
 @click.option('--path', help='Request URL path to rewrite to.')
 @click.option('--pattern', required=True, help='URLs to rewrite.')
-@click.option('--port', help='Request URL port to rewrite to.')
+@click.option('--port', type=click.IntRange(1, 65535), help='Request URL port to rewrite to.')
 @click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
@@ -222,7 +223,7 @@ def match(ctx):
     pass
 
 @match.command(
-    help="Set match rule."
+    help="Set match rule"
 )
 @click.option(
     '--method', 

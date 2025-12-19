@@ -15,6 +15,7 @@ from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
@@ -226,9 +227,24 @@ class InterceptSettings:
 
     return self.__data_rules.scenario_key
 
+  @property
+  def parsed_scenario_key(self):
+    _scenario_key = self.scenario_key
+    if not _scenario_key:
+      return None
+
+    try: 
+      return ScenarioKey(self.scenario_key)
+    except InvalidScenarioKey:
+      pass
+
   @scenario_key.setter
   def scenario_key(self, v):
     self.__data_rules.scenario_key = v
+
+  @property
+  def scenario_model(self):
+    return self.__scenario_model
 
   @property
   def report_key(self) -> Union[str, None]:
@@ -238,6 +254,10 @@ class InterceptSettings:
   @property
   def order(self):
     return self.__order(self.mode)
+
+  @property
+  def order_from_header(self):
+    return self.__order_from_header(self.mode)
 
   @property
   def policy(self):
@@ -417,7 +437,12 @@ class InterceptSettings:
         return self.__headers[custom_headers.RECORD_ORDER]
 
       return self.__data_rules.record_order
-    
+
+  def __order_from_header(self, mode):
+    if mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
+        return self.__headers[custom_headers.RECORD_ORDER]
+
   def __policy(self, mode):
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
