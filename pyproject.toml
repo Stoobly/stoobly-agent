@@ -62,7 +62,7 @@ select = ["TID253"]
 # Ban top-level imports of 'requests' and 'mitmproxy' modules
 # This will flag any 'import requests'/'import mitmproxy' or 'from requests import ...'/'from mitmproxy import ...' at module level
 # Use lazy imports inside functions/methods instead
-banned-module-level-imports = ["mitmproxy", "stoobly_orator"]
+banned-module-level-imports = ["mitmproxy", "requests"]
 
 [tool.ruff.lint.per-file-ignores]
 # Allow requests and mitmproxy imports in test files and migrations
