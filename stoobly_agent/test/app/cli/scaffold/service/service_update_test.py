@@ -5,7 +5,7 @@ import tempfile
 import pytest
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli import scaffold
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service import Service
