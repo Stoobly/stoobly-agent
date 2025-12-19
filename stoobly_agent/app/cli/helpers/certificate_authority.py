@@ -115,6 +115,8 @@ class CertificateAuthority():
             )
 
     def sign(self, hostname: str, dest = None, port = 443):
+        from mitmproxy.certs import CertStore
+
         dest = dest or self.certs_dir
 
         if self.signed(hostname, dest):
