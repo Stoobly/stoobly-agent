@@ -25,14 +25,14 @@ class MainGroup(click.Group):
     # Add lazy-loadable commands
     lazy_commands = [
       'ca-cert', 'config', 'endpoint', 'feature', 'intercept',
-      'request', 'scaffold', 'scenario', 'snapshot', 'trace'
+      'request', 'scaffold', 'scenario', 'snapshot'
     ]
     
     if self.__settings.cli.features.dev_tools:
       lazy_commands.append('dev-tools')
     
     if self.__settings.cli.features.remote:
-      lazy_commands.extend(['project', 'report'])
+      lazy_commands.extend(['project', 'report', 'trace'])
     
     # Combine and deduplicate
     all_commands = list(set(base_commands + lazy_commands))
@@ -67,7 +67,6 @@ class MainGroup(click.Group):
       'scaffold': ('scaffold_cli', 'scaffold'),
       'scenario': ('scenario_cli', 'scenario'),
       'snapshot': ('snapshot_cli', 'snapshot'),
-      'trace': ('trace_cli', 'trace'),
     }
     
     if self.__settings.cli.features.dev_tools and name == 'dev-tools':
@@ -78,6 +77,8 @@ class MainGroup(click.Group):
         command_map['project'] = ('project_cli', 'project')
       elif name == 'report':
         command_map['report'] = ('report_cli', 'report')
+      elif name == 'trace':
+        command_map['trace'] = ('trace_cli', 'trace')
     
     if name not in command_map:
       return None
@@ -95,23 +96,22 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['dev-tools', 'exec', 'feature', 'init', 'mock', 'record', 'scaffold'],
+        'commands': ['dev-tools', 'exec', 'init', 'mock', 'record', 'scaffold'],
       },
       {
         'name': 'Proxy Commands',
         'commands': ['ca-cert', 'config', 'intercept', 'run'],
-      }
+      },
+      {
+        'name': 'Resource Commands',
+        'commands': ['endpoint' , 'request', 'scenario', 'snapshot'],
+      },
     ]
 
     if self.__settings.cli.features.remote:
       command_groups.append({
         'name': 'Remote Resource Commands',
-        'commands': ['project', 'report', 'request', 'scenario', 'snapshot', 'trace'],
-      })
-    else:
-      command_groups.append({
-        'name': 'Local Resource Commands',
-        'commands': ['endpoint', 'request', 'scenario', 'snapshot'],
+        'commands': ['project', 'report', 'trace'],
       })
 
     self.__print(formatter, command_groups)
