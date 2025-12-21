@@ -60,6 +60,8 @@ class ProxyController:
         self.__proxy(context, requests.put)
 
     def __proxy(self, context: SimpleHTTPRequestHandler, method):
+        import requests
+
         url = self.__get_url(context)
 
         if url:
@@ -85,7 +87,6 @@ class ProxyController:
             if not _verify:
                 # Suppress only the single warning from urllib3 needed.
                 # Lazy import for runtime usage
-                import requests
                 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
             try:
