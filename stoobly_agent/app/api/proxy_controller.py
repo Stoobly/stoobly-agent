@@ -103,6 +103,9 @@ class ProxyController:
                 body = res.raw.data
                 headers = res.headers
                 status = res.status_code
+
+                Logger.instance(LOG_ID).debug('Response Headers')
+                Logger.instance(LOG_ID).debug(res.headers)
             except requests.exceptions.ConnectTimeout:
                 body = b'Gateway Timeout'
                 status = 504
@@ -115,9 +118,6 @@ class ProxyController:
             except Exception:
                 body = b'Unknown Error'
                 status = 0
-
-            Logger.instance(LOG_ID).debug('Response Headers')
-            Logger.instance(LOG_ID).debug(res.headers)
 
             context.render(
                 headers = headers,
