@@ -7,10 +7,10 @@ from pathlib import Path
 
 from stoobly_agent.test.test_helper import reset
 
+from stoobly_agent.app.cli.endpoint_cli import endpoint
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.types import OPENAPI_FORMAT
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.cli import endpoint
 from stoobly_agent.lib.orm.request import Request
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder

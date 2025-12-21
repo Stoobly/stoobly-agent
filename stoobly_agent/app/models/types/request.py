@@ -1,10 +1,12 @@
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import List, Optional, TypedDict
+from typing import List, Optional, TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.app.proxy.record.joined_request import JoinedRequest
 
 class RequestCreateParams(TypedDict):
-  flow: MitmproxyHTTPFlow
+  flow: 'MitmproxyHTTPFlow'
   project_id: str
   joined_request: JoinedRequest
   scenario_id: str

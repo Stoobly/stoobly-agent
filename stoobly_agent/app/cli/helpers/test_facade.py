@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.settings import Settings
@@ -18,7 +22,7 @@ class TestFacade():
   def create(self, **kwargs: TestCreateParams) -> TestShowResponse:
     organization_key: str = OrganizationKey(kwargs.get('organization_key')) 
 
-    res: requests.Response =  self.__api.create(
+    res: 'Response' =  self.__api.create(
       description=kwargs.get('description') or '',
       name=kwargs.get('name'),
       organization_id=organization_key.id
@@ -29,7 +33,7 @@ class TestFacade():
 
     return res.json()
 
-  def expected_repsonse(self, test_key: str) -> requests.Response:
+  def expected_repsonse(self, test_key: str) -> 'Response':
     api = TestResponsesResource(self.__settings.remote.api_url, self.__settings.remote.api_key)
     key = TestKey(test_key)
     res = api.mock(key.id, **{ 'expected': True, 'project_id': key.project_id })

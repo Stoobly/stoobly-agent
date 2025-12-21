@@ -1,5 +1,3 @@
-import requests
-
 from http.cookies import SimpleCookie
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -27,27 +25,43 @@ class ProxyController:
         return cls._instance
 
     def do_DELETE(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.delete)
 
     def do_GET(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.get)
 
     def do_HEAD(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.head)
 
     def do_OPTIONS(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.options)
 
     def do_PATCH(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.patch)
 
     def do_POST(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.post)
 
     def do_PUT(self, context):
+        # Lazy import for runtime usage
+        import requests
         self.__proxy(context, requests.put)
 
     def __proxy(self, context: SimpleHTTPRequestHandler, method):
+        import requests
+
         url = self.__get_url(context)
 
         if url:
@@ -72,6 +86,7 @@ class ProxyController:
 
             if not _verify:
                 # Suppress only the single warning from urllib3 needed.
+                # Lazy import for runtime usage
                 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
             try:
@@ -89,6 +104,9 @@ class ProxyController:
                 body = res.raw.data
                 headers = res.headers
                 status = res.status_code
+
+                Logger.instance(LOG_ID).debug('Response Headers')
+                Logger.instance(LOG_ID).debug(res.headers)
             except requests.exceptions.ConnectTimeout:
                 body = b'Gateway Timeout'
                 status = 504
@@ -101,9 +119,6 @@ class ProxyController:
             except Exception:
                 body = b'Unknown Error'
                 status = 0
-
-            Logger.instance(LOG_ID).debug('Response Headers')
-            Logger.instance(LOG_ID).debug(res.headers)
 
             context.render(
                 headers = headers,

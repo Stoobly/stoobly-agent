@@ -1,10 +1,13 @@
-from requests import Response
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from ..context_response import TestContextResponse
 
 class RequestsResponseAdapter():
 
-  def __init__(self, response: Response):
+  def __init__(self, response: 'Response'):
     self._response = response
 
   def adapt(self):

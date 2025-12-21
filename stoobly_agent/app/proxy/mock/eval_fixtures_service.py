@@ -5,20 +5,25 @@ import re
 import yaml
 
 from io import BytesIO
-from mitmproxy.http import Request as MitmproxyRequest
-from requests import Response
-from requests.structures import CaseInsensitiveDict
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
-from .types import Fixtures, MockOptions, PublicDirectoryPath, ResponseFixturesPath
+from .types import MockOptions, PublicDirectoryPath, ResponseFixturesPath
 
 LOG_ID = 'Fixture'
 
-def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Response, None]:
+def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union['Response', None]:
+  # Lazy import for runtime
+  from requests import Response
+  from requests.structures import CaseInsensitiveDict
+  
   fixture_path = request.headers.get(MOCK_FIXTURE_PATH)
   headers = CaseInsensitiveDict()
   status_code = 200
@@ -118,7 +123,7 @@ def eval_fixtures(request: MitmproxyRequest, **options: MockOptions) -> Union[Re
 
     return response
 
-def __eval_response_fixtures_from_paths(request: MitmproxyRequest, fixtures_paths: str):
+def __eval_response_fixtures_from_paths(request: 'MitmproxyRequest', fixtures_paths: str):
   """Iterate through response fixtures paths and return the first matching fixture."""
   if not fixtures_paths:
     return None
@@ -193,7 +198,7 @@ def __guess_file_path(file_path: str, content_type):
 
   return file_path
 
-def __find_fixture_for_request(request: MitmproxyRequest, fixtures: dict, method: str):
+def __find_fixture_for_request(request: 'MitmproxyRequest', fixtures: dict, method: str):
   """Find a fixture for the given request in the provided fixtures."""
   if not fixtures:
     return None
@@ -341,6 +346,6 @@ def __parse_response_fixtures_paths(raw_paths: str) -> List[ResponseFixturesPath
   
   return paths
 
-def __request_origin(request: MitmproxyRequest) -> str:
+def __request_origin(request: 'MitmproxyRequest') -> str:
   parsed_url = urlparse(request.url)
   return f"{parsed_url.scheme}://{parsed_url.hostname}" + (f":{parsed_url.port}" if parsed_url.port else "")

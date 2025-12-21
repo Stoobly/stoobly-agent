@@ -2,8 +2,6 @@ import base64
 import copy
 import pdb
 
-from mitmproxy.net.http.url import encode as urlencode
-from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse
 from typing import List, Union
 
@@ -54,6 +52,8 @@ class Request():
 
   @property
   def url(self) -> str:
+    # Lazy import for runtime usage
+    from mitmproxy.net.http.url import encode as urlencode
     query_params = self.query_params
 
     query_tuples = []
@@ -92,7 +92,9 @@ class Request():
     return self.request['method']
 
   @property
-  def headers(self) -> MultiDict:
+  def headers(self):
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     headers = MultiDict()
 
     for header in (self.request.get('headers') or []):
@@ -101,15 +103,19 @@ class Request():
     return headers 
 
   @headers.setter
-  def headers(self, v: MultiDict):
+  def headers(self, v):
     self.__set_dict('headers', v)
 
   @property
   def query(self) -> str:
+    # Lazy import for runtime usage
+    from mitmproxy.net.http.url import encode as urlencode
     return urlencode(self.query_params)
 
   @property
-  def query_params(self) -> MultiDict:
+  def query_params(self):
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     query_params = MultiDict()
 
     for query_param in (self.request.get('query_params') or []):
@@ -118,7 +124,7 @@ class Request():
     return query_params
 
   @query_params.setter
-  def query_params(self, v: MultiDict):
+  def query_params(self, v):
     self.__set_dict('query_params', v) 
   
   @property
@@ -159,7 +165,9 @@ class Request():
       if content_type:
         self.body = encode_response(v, content_type)
 
-  def __set_dict(self, component_name_str, v: MultiDict):
+  def __set_dict(self, component_name_str, v):
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     component_names: List[RequestComponentName] = self.request[component_name_str] or []
 
     indexes = {}

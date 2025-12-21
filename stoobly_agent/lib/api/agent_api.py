@@ -1,5 +1,3 @@
-import requests
-
 from typing import Union
 
 from .api import Api

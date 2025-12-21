@@ -1,7 +1,9 @@
 import pdb
-import requests
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
+
+if TYPE_CHECKING:
+    from requests import Request
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.lib.orm.request import Request
@@ -23,7 +25,7 @@ class LocalDBBodyAdapter(LocalDBAdapter):
 
     return self.success(LocalDBRequestAdapter(self.__request_orm).update(request_id, body=text))
 
-  def mock(self, request_id) -> Tuple[requests.Request, int]:
+  def mock(self, request_id) -> Tuple['Request', int]:
     request = self.__request_orm.find(request_id)
 
     if not request:

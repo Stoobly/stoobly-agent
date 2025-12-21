@@ -2,29 +2,21 @@ import click
 import json
 import os
 import pdb
-import requests
 import sys
 
 from stoobly_agent import VERSION
-from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
-from stoobly_agent.app.proxy.constants import custom_response_codes
-from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
-
-from .app.api import run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
+from .app.cli import MainGroup
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
-from .lib.utils.decode import decode
 
 settings: Settings = Settings.instance()
 is_remote = remote(settings)
@@ -46,30 +38,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def main(ctx):
   ctx.terminal_width = 256
 
-# Attach subcommands to main
-main.add_command(ca_cert)
-main.add_command(config)
-main.add_command(endpoint)
-main.add_command(feature)
-main.add_command(intercept)
-main.add_command(request)
-main.add_command(scaffold)
-main.add_command(scenario)
-main.add_command(snapshot)
-main.add_command(trace)
-
-if settings.cli.features.dev_tools:
-    from .app.cli import dev_tools
-    main.add_command(dev_tools)
-
 if settings.cli.features.exec:
     from .app.cli.decorators.exec import ExecDecorator
     ExecDecorator(main).decorate()
-
-if settings.cli.features.remote:
-    from .app.cli import project, report
-    main.add_command(project)
-    main.add_command(report)
 
 @main.command(
     help="Initialize a new context"
@@ -184,6 +155,7 @@ def run(**kwargs):
       settings.proxy.url = proxy_url
 
     if kwargs.get('request_log_enable'):
+      from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
       # If truncating, do that first (it handles enable internally)
       if kwargs.get('request_log_truncate'):
         InterceptedRequestsLogger.truncate()
@@ -228,6 +200,8 @@ def run(**kwargs):
       # Run in foreground mode
       if not kwargs.get('headless'):
         settings.commit()
+
+        from .app.api import run as run_api
         run_api(**kwargs)
 
       if not kwargs.get('proxyless'):
@@ -252,6 +226,10 @@ def run(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
+  from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
+  from stoobly_agent.app.proxy.constants import custom_response_codes
+  from stoobly_agent.lib.utils.decode import decode
+  
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
 
@@ -286,6 +264,8 @@ def mock(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
+  from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
+  
   response = __replay(mode.RECORD, **kwargs) 
 
   if kwargs['format'] == RAW_FORMAT:
@@ -303,6 +283,8 @@ def record(**kwargs):
         fp.write(content.decode(json.detect_encoding(content))) 
 
 def __build_request_from_curl(**kwargs):
+  import requests
+  
   headers = {}
   for header in kwargs['header']:
     toks = header.split(':')
@@ -320,6 +302,9 @@ def __build_request_from_curl(**kwargs):
   )
 
 def __replay(mode, **kwargs):
+  from stoobly_agent.app.cli.helpers.context import ReplayContext
+  from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
+  
   if kwargs.get('scenario_key'):
     validate_scenario_key(kwargs['scenario_key'])
 

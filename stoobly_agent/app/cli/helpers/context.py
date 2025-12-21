@@ -1,6 +1,10 @@
 import pdb
-import requests
 import time
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request, Response
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.schemas.request import Request
@@ -12,12 +16,12 @@ class ReplayContext():
     self.__start_time = time.time()
 
     self.__request: Request = request
-    self.__response: requests.Response = None
+    self.__response: 'Response' = None
 
     self.__sequence = None
 
   @classmethod
-  def from_python_request(cls, request: requests.Request):
+  def from_python_request(cls, request: 'Request'):
     stoobly_request = PythonRequestAdapterFactory(request).stoobly_request()
     return cls(Request(stoobly_request))
 
@@ -66,7 +70,7 @@ class ReplayContext():
   def clone(self):
     return ReplayContext(self.__request.clone())
 
-  def with_response(self, response: requests.Response):
+  def with_response(self, response: 'Response'):
     self.__end_time = time.time()
     self.__response = response
     return self

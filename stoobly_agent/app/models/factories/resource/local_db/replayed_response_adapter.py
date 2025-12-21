@@ -1,7 +1,9 @@
 import pdb
-import requests
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.models.types import ReplayedResponseIndexQueryParams
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
@@ -46,7 +48,7 @@ class LocalDBReplayedResponseAdapter(LocalDBAdapter):
 
     return self.success({})
 
-  def mock(self, replayed_response_id: int) -> Tuple[requests.Response, int]:
+  def mock(self, replayed_response_id: int) -> Tuple['Response', int]:
     replayed_response = self.__replayed_response_orm.find(replayed_response_id)
 
     if not replayed_response:

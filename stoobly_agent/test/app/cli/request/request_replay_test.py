@@ -5,9 +5,11 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
-from stoobly_agent.cli import record, request, scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.utils.decode import decode

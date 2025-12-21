@@ -1,6 +1,6 @@
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.api.scenarios_resource import ScenariosResource
-from stoobly_agent.app.settings import RemoteSettings
+from stoobly_agent.app.settings.remote_settings import RemoteSettings
 
 from .local_db.scenario_adapter import LocalDBScenarioAdapter
 from .stoobly.scenario_adapter import StooblyScenarioAdapter

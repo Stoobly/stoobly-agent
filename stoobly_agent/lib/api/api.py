@@ -1,6 +1,5 @@
 import os
 import pdb
-import requests
 
 from stoobly_agent.config.constants.env_vars import HTTP_PROXY, HTTPS_PROXY, NO_PROXY
 from stoobly_agent.app.settings import Settings
@@ -59,17 +58,25 @@ class Api():
       return current
 
     def get(self, url, **kwargs):
+      # Lazy import for runtime usage
+      import requests
       handler = lambda: requests.get(url, **kwargs)
       return self.without_proxy(handler)
 
     def post(self, url, **kwargs):
+      # Lazy import for runtime usage
+      import requests
       handler = lambda: requests.post(url, **kwargs)
       return self.without_proxy(handler)
 
     def put(self, url, **kwargs):
+      # Lazy import for runtime usage
+      import requests
       handler = lambda: requests.put(url, **kwargs)
       return self.without_proxy(handler)
     
     def delete(self, url, **kwargs):
+      # Lazy import for runtime usage
+      import requests
       handler = lambda: requests.delete(url, **kwargs)
       return self.without_proxy(handler)

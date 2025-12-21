@@ -1,7 +1,11 @@
 import os
 import pdb
-import requests
 import sys
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
@@ -197,7 +201,7 @@ def test_handler(kwargs: RequestTestOptions):
 
   exit_on_failure(session_context, format=kwargs['format'])
 
-def __replay(handler, kwargs) -> requests.Response:
+def __replay(handler, kwargs) -> 'Response':
   request_key = kwargs['request_key']
   del kwargs['request_key']
 

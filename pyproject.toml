@@ -39,8 +39,32 @@ filelock = "^3.19.1"
 mock = ">=5.0.0"
 pytest = ">=7.1.0"
 
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.14.10"
+
 [tool.poetry.scripts]
 stoobly-agent = "stoobly_agent.cli:main"
 
 [tool.poetry.urls]
 Homepage = "https://github.com/Stoobly/stoobly-agent"
+
+[tool.ruff]
+# Only check files in the stoobly_agent folder
+include = ["stoobly_agent/**/*.py"]
+
+[tool.ruff.lint]
+# Enable flake8-tidy-imports rules to ban direct requests imports
+# Only select TID253 (banned module-level imports), not TID252 (relative imports)
+select = ["TID253"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban top-level imports of 'requests' and 'mitmproxy' modules
+# This will flag any 'import requests'/'import mitmproxy' or 'from requests import ...'/'from mitmproxy import ...' at module level
+# Use lazy imports inside functions/methods instead
+banned-module-level-imports = ["mitmproxy", "requests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow requests and mitmproxy imports in test files and migrations
+"*_test.py" = ["TID253"]
+"stoobly_agent/db/migrations/**" = ["TID253"]

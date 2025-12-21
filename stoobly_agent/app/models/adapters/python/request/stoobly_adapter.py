@@ -1,11 +1,14 @@
 import pdb
-import requests
 
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
+
+if TYPE_CHECKING:
+    from requests import Request
 
 class StooblyRequestAdapter():
 
-  def __init__(self, request: requests.Request):
+  def __init__(self, request: 'Request'):
     self.__request = request
 
   def adapt(self):

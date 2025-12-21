@@ -1,13 +1,16 @@
-import requests
+from typing import TYPE_CHECKING
 
-from mitmproxy.http import Request as MitmproxyRequest
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 class PythonRequestAdapter():
   
-  def __init__(self, request: MitmproxyRequest):
+  def __init__(self, request: 'MitmproxyRequest'):
     self.__request = request
 
   def adapt(self):
+    # Lazy import for runtime usage
+    import requests
     return requests.Request(
       method=self.__request.method,
       url=self.__request.url,

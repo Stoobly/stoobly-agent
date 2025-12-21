@@ -5,7 +5,9 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.cli import record, request, scenario
+from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.app.cli.scenario_cli import scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.api.keys import ScenarioKey
 from stoobly_agent.lib.orm.scenario import Scenario
 

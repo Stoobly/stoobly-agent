@@ -1,8 +1,10 @@
 import pdb
-import requests
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.helpers.create_request_params_service import build_params
@@ -40,7 +42,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   def create(self, **params: RequestCreateParams) -> Tuple[RequestShowResponse, int]:
     self.__adapt_scenario_id(params)
 
-    flow: MitmproxyHTTPFlow = params['flow']
+    flow: 'MitmproxyHTTPFlow' = params['flow']
     joined_request: JoinedRequest = params['joined_request']
     scenario_id = params.get('scenario_id')
     uuid = params.get('uuid')
@@ -70,7 +72,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return self.success(ORMToStooblyRequestTransformer(request, options).transform())
 
-  def response(self, **query_params: RequestColumns) -> requests.Response:
+  def response(self, **query_params: RequestColumns) -> 'Response':
     self.__adapt_scenario_id(query_params)
 
     request = None

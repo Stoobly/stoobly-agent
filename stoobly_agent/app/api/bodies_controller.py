@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.body_model import BodyModel

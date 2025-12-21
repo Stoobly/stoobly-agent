@@ -1,5 +1,8 @@
-from mitmproxy.http import Request as MitmproxyRequest
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
+
 from ...config.constants import mock_policy, record_policy
 
 from stoobly_agent.config.constants import custom_headers
@@ -8,25 +11,25 @@ from stoobly_agent.app.settings.types import IProjectModeSettings
 
 from ...config.constants import mode
 
-def get_project_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
+def get_project_key(headers: 'MitmproxyRequest.headers', settings: IProjectModeSettings) -> str:
     if custom_headers.PROJECT_KEY in headers:
         return headers[custom_headers.PROJECT_KEY]
 
     return settings.get('project_key')
 
-def get_report_key(headers: MitmproxyRequest.headers) -> Union[str, None]:
+def get_report_key(headers: 'MitmproxyRequest.headers') -> Union[str, None]:
     return headers.get(custom_headers.REPORT_KEY)
 
-def get_scenario_key(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
+def get_scenario_key(headers: 'MitmproxyRequest.headers', settings: IProjectModeSettings) -> str:
     if custom_headers.SCENARIO_KEY in headers:
         return headers[custom_headers.SCENARIO_KEY]
 
     return settings.get('scenario_key')
 
-def is_proxy_enabled(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> bool:
+def is_proxy_enabled(headers: 'MitmproxyRequest.headers', settings: IProjectModeSettings) -> bool:
     return settings.get('enabled') or custom_headers.PROXY_MODE in headers
 
-def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str:
+def get_proxy_mode(headers: 'MitmproxyRequest.headers', settings: Settings) -> str:
     access_control_header =  'Access-Control-Request-Headers'
     intercept_active_header = custom_headers.INTERCEPT_ACTIVE
 
@@ -39,13 +42,13 @@ def get_proxy_mode(headers: MitmproxyRequest.headers, settings: Settings) -> str
     else:
         return settings.proxy.intercept.active
 
-def get_mock_policy(headers: MitmproxyRequest.headers, settings: IProjectModeSettings) -> str:
+def get_mock_policy(headers: 'MitmproxyRequest.headers', settings: IProjectModeSettings) -> str:
     if custom_headers.MOCK_POLICY in headers:
         return headers[custom_headers.MOCK_POLICY]
     else:
         return settings.get('policy') or mock_policy.FOUND
 
-def get_record_policy(headers: MitmproxyRequest.headers, settings: Settings) -> str:
+def get_record_policy(headers: 'MitmproxyRequest.headers', settings: Settings) -> str:
     if custom_headers.RECORD_POLICY in headers:
         return headers[custom_headers.RECORD_POLICY]
     else:

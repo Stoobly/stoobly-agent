@@ -15,7 +15,8 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
 
-from .helpers import ProjectFacade, ScenarioFacade
+from .helpers.project_facade import ProjectFacade
+from .helpers.scenario_facade import ScenarioFacade
 from .helpers.handle_config_update_service import (
     handle_project_update,
     handle_scenario_update,

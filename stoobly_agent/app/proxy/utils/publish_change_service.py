@@ -1,5 +1,4 @@
 import pdb
-import requests
 import threading
 
 from stoobly_agent.app.settings import Settings
@@ -40,5 +39,10 @@ def __put_status(ui_url, status, value):
     api: AgentApi = AgentApi(ui_url)
     try:
       api.update_status(status, value)
-    except requests.exceptions.ConnectionError:
-      Logger.instance(LOG_ID).error(f"could not connect to {ui_url}")
+    except Exception as e:
+      # Lazy import for runtime exception handling
+      import requests
+      if isinstance(e, requests.exceptions.ConnectionError):
+        Logger.instance(LOG_ID).error(f"could not connect to {ui_url}")
+      else:
+        raise

@@ -6,9 +6,10 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.config.constants import mode
+from stoobly_agent.app.cli.config_cli import config
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.cli import config, mock, record
+from stoobly_agent.config.constants import mode
+from stoobly_agent.cli import mock, record
 from stoobly_agent.lib.orm.request import Request
 
 @pytest.fixture(scope='module')

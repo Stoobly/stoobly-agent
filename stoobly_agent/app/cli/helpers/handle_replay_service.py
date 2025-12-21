@@ -1,9 +1,11 @@
 import json
 import pdb
-import requests
 import sys
 
-from typing import List, TypedDict, Union
+from typing import TYPE_CHECKING, List, TypedDict, Union
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.cli.types.output import ReplayOutput
@@ -131,6 +133,6 @@ def __json_format_handler(context: ReplayContext):
 
   return [output]
 
-def __content(res: requests.Response):
+def __content(res: 'Response'):
   content = res.content
   return decode(content)
