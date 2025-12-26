@@ -3,7 +3,10 @@ import pdb
 import threading
 
 from copy import deepcopy
-from mitmproxy.http import Request as MitmproxyRequest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
 from stoobly_agent.app.settings.constants.mode import TEST
@@ -50,7 +53,9 @@ def handle_response_record(context: RecordContext):
     disable_transfer_encoding(flow.response)
     handle_response_replay(context)
 
-    request: MitmproxyRequest = flow.request
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
+    request: 'MitmproxyRequest' = flow.request
     request_model = RequestModel(intercept_settings.settings)
 
     active_record_policy = get_active_mode_policy(request, intercept_settings, mode.RECORD)

@@ -4,10 +4,12 @@ import pytest
 from click.testing import CliRunner
 from pathlib import Path
 
+from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.cli import config, mock, record, request
+from stoobly_agent.cli import mock, record
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response

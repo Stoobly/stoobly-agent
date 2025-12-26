@@ -1,7 +1,9 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.record.context import RecordContext
@@ -48,9 +50,11 @@ def handle_request_test(context: ReplayContext) -> None:
 # 9.  AFTER_RECORD gets triggered (if not from CLI)
 #
 def handle_response_test(context: ReplayContext) -> None:
+    # Lazy import for runtime usage
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
     from .test.context import TestContext
 
-    flow: MitmproxyHTTPFlow = context.flow
+    flow: 'MitmproxyHTTPFlow' = context.flow
     intercept_settings: InterceptSettings = context.intercept_settings
 
     disable_transfer_encoding(flow.response)
@@ -81,7 +85,7 @@ def handle_response_test(context: ReplayContext) -> None:
         if test_context.test_id:
             __decorate_test_id(flow, test_context.test_id)
 
-def __decorate_test_id(flow: MitmproxyHTTPFlow, test_id: Union[str, None]):
+def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
     if test_id:
         flow.response.headers[custom_headers.TEST_ID] = str(test_id)
 
@@ -104,7 +108,9 @@ def __handle_mock_failure(test_context: TestContext) -> None:
 def __handle_mock_success(test_context: TestContext) -> None:
     handle_response_mock(test_context.mock_context)
 
-    flow: MitmproxyHTTPFlow = test_context.flow
+    # Lazy import for runtime usage
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+    flow: 'MitmproxyHTTPFlow' = test_context.flow
     settings: Settings = Settings.instance()
 
     test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
@@ -169,7 +175,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
             test_context.with_test_results(builder)
  
-def __override_response(flow: MitmproxyHTTPFlow, content: bytes):
+def __override_response(flow: 'MitmproxyHTTPFlow', content: bytes):
     headers = { 'Content-Type': 'text/plain' }
     headers[custom_headers.CONTENT_TYPE] = custom_headers.CONTENT_TYPE_TEST_RESULTS
     flow.response.headers = headers

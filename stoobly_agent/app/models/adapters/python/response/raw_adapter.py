@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.proxy.mitmproxy.response_facade import MitmproxyResponseFacade
 from stoobly_agent.app.proxy.record.response_string import ResponseString
@@ -8,7 +12,7 @@ from .mitmproxy_adapter import MitmproxyResponseAdapter
 
 class RawResponseAdapter():
 
-  def __init__(self, response: requests.Response):
+  def __init__(self, response: 'Response'):
     self.__response = response
 
   def adapt(self):

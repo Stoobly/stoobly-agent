@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID, ProjectKey
@@ -35,8 +34,13 @@ class Model():
   def as_remote(self):
     pass
 
-  def handle_request_error(self, e: requests.exceptions.RequestException):
-      response: requests.Response = e.response
+  def handle_request_error(self, e: Exception):
+      # Lazy import for runtime exception handling
+      import requests
+      if not isinstance(e, requests.exceptions.RequestException):
+        raise
+      
+      response = e.response
 
       if response:
         Logger.instance().error(f"{response.status_code} {response.content}")

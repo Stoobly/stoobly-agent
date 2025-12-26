@@ -3,7 +3,6 @@ import pdb
 import re
 
 from mergedeep import merge
-from mitmproxy.coretypes.multidict import MultiDict
 from urllib.parse import urlparse, parse_qs
 
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -28,6 +27,9 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
         )
 
     def do_POST(self):
+        # Lazy import for runtime usage
+        from mitmproxy.coretypes.multidict import MultiDict
+
         self.preprocess()
 
         self.body = self.parse_body()
@@ -61,6 +63,8 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
             )
 
     def do_PUT(self):
+        from mitmproxy.coretypes.multidict import MultiDict
+
         self.preprocess()
 
         self.body = self.parse_body()

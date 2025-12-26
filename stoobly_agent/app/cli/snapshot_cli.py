@@ -3,11 +3,13 @@ import datetime
 import pdb
 import os
 import re
-import requests
 import sys
 
+from typing import TYPE_CHECKING, List
 from urllib.parse import urlparse
-from typing import List
+
+if TYPE_CHECKING:
+    from requests import Request
 
 from stoobly_agent.app.models.adapters.raw_joined import RawJoinedRequestAdapterFactory
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
@@ -292,7 +294,7 @@ def __to_request(snapshot: RequestSnapshot):
 
   return RawJoinedRequestAdapterFactory(raw_request).python_request()
 
-def __request_matches(request: requests.Request, search: str):
+def __request_matches(request: 'Request', search: str):
   if not search:
     return True
 
@@ -302,7 +304,7 @@ def __request_matches(request: requests.Request, search: str):
   uri = urlparse(request.url)
   return re.match(search, request.url) or re.match(search, uri.path)
 
-def __transform_request(request: requests.Request):
+def __transform_request(request: 'Request'):
   event_dict = { 'method': '', 'host': '', 'port': '', 'path': '', 'query': ''}
 
   if request:

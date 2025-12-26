@@ -3,7 +3,7 @@ import pdb
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli import scaffold
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 

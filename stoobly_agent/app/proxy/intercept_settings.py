@@ -2,11 +2,10 @@ import os
 import pdb
 
 from runpy import run_path
-from typing import List, Union
+from typing import List, Optional, Union, TYPE_CHECKING
 
-from mitmproxy.http import Request as MitmproxyRequest
-
-from typing import Optional
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
@@ -22,10 +21,12 @@ from stoobly_agent.lib.logger import Logger
 
 class InterceptSettings:
 
-  def __init__(self, settings: Settings, request: MitmproxyRequest = None, cache: Optional[Cache] = None, scenario_model: Optional[ScenarioModel] = None):
+  def __init__(self, settings: Settings, request: 'MitmproxyRequest' = None, cache: Optional[Cache] = None, scenario_model: Optional[ScenarioModel] = None):
     self.__settings = settings
     self.__request = request
-    self.__headers: MitmproxyRequest.headers = request.headers if request else None
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
+    self.__headers: 'MitmproxyRequest.headers' = request.headers if request else None
     self.__for_response = False
     self.__cache = cache
     self.__scenario_model = scenario_model

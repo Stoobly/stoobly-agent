@@ -1,15 +1,15 @@
 import pdb
 
-from mitmproxy.http import Headers, Response as MitmproxyResponse
-from mitmproxy.coretypes import multidict
-from typing import Callable, List
+from typing import Callable, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Headers, Response as MitmproxyResponse
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
-from stoobly_agent.lib.utils.decode import decode
 
 from .request_facade import MitmproxyRequestFacade
 from .response_body_facade import MitmproxyResponseBodyFacade
@@ -19,7 +19,7 @@ LOG_ID = 'Response'
 
 class MitmproxyResponseFacade(Response):
 
-    def __init__(self, response: MitmproxyResponse):
+    def __init__(self, response: 'MitmproxyResponse'):
         self.response = response
 
         self.__body = MitmproxyResponseBodyFacade(response)
@@ -101,10 +101,11 @@ class MitmproxyResponseFacade(Response):
         self.__apply_rewrites(parsed_content, rewrites, handler)
         self.__body.set(parsed_content, content_type)
 
-    def __filter_custom_headers(self, response_headers: Headers):
+    def __filter_custom_headers(self, response_headers: 'Headers'):
         '''
         Remove custom headers
         '''
+        from mitmproxy.http import Headers
         _response_headers = Headers(**response_headers)
 
         headers = custom_headers.__dict__
@@ -122,4 +123,5 @@ class MitmproxyResponseFacade(Response):
         return _response_headers
 
     def __is_iterable(self, v):
+        from mitmproxy.coretypes import multidict
         return isinstance(v, dict) or isinstance(v, multidict.MultiDictView) or isinstance(v, list)

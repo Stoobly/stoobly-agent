@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from stoobly_agent.app.settings import Settings
 
@@ -21,11 +20,17 @@ class BodyModel(Model):
   def update(self, request_id: int, text: str):
     try:
       return self.adapter.update(request_id, text)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def mock(self, request_id: str):
     try:
       return self.adapter.mock(request_id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise

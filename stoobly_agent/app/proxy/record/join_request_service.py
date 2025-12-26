@@ -1,7 +1,9 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest, Response as MitmproxyResponse
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
@@ -30,12 +32,12 @@ def join_request(
     return JoinedRequest(proxy_request).with_response(adapted_response)
 
 def join_request_from_flow(
-    flow: MitmproxyHTTPFlow, **options: JoinRequestOptions
+    flow: 'MitmproxyHTTPFlow', **options: JoinRequestOptions
 ) -> JoinedRequest:
     return join_request_from_request_response(flow.request, flow.response, **options)
 
 def join_request_from_request_response(
-    request: MitmproxyRequest, response: MitmproxyResponse, **options: JoinRequestOptions
+    request: 'MitmproxyRequest', response: 'MitmproxyResponse', **options: JoinRequestOptions
 ):
     request = MitmproxyRequestFacade(request)
     response = MitmproxyResponseFacade(response)

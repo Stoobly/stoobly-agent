@@ -9,7 +9,6 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import NameOID
-from mitmproxy.certs import CertStore
 from pathlib import Path
 
 from stoobly_agent.config.data_dir import DataDir
@@ -54,10 +53,13 @@ class CertificateAuthority():
         return os.path.join(self.certs_dir, file_name)
 
     def generate_certs(self):
+        from mitmproxy.certs import CertStore
+
         if not os.path.exists(self.certs_dir):
             os.makedirs(self.certs_dir, exist_ok=True)
 
         path = Path(self.certs_dir)
+
         CertStore.create_store(path, self.cn, self.key_size)
 
     # https://askubuntu.com/a/94861
@@ -113,6 +115,8 @@ class CertificateAuthority():
             )
 
     def sign(self, hostname: str, dest = None, port = 443):
+        from mitmproxy.certs import CertStore
+
         dest = dest or self.certs_dir
 
         if self.signed(hostname, dest):

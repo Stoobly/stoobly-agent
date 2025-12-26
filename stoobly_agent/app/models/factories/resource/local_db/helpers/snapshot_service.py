@@ -1,14 +1,17 @@
 import pdb
 
-from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.scenario import Scenario
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+  from stoobly_agent.lib.orm.request import Request
+  from stoobly_agent.lib.orm.scenario import Scenario
 
 from .log import Log
 from .log_event import Action, DELETE_ACTION, PUT_ACTION
 from .request_snapshot import RequestSnapshot, RequestSnapshotOptions
 from .scenario_snapshot import ScenarioSnapshot
 
-def snapshot_request(request: Request, **options: RequestSnapshotOptions):
+def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
   action: Action = options.get('action')
   if not __validate_action(action):
     return
@@ -36,7 +39,7 @@ def snapshot_request(request: Request, **options: RequestSnapshotOptions):
 
   return snapshot.path
 
-def snapshot_scenario(scenario: Scenario, **options):
+def snapshot_scenario(scenario: 'Scenario', **options):
   action: Action = options.get('action')
   if not __validate_action(action):
     return

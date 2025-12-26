@@ -4,11 +4,13 @@ import time
 
 from click.testing import CliRunner
 
+from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent
-from stoobly_agent.cli import record, request, snapshot
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 

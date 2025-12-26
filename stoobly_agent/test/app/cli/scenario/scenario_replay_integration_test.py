@@ -1,4 +1,3 @@
-import json
 import pdb
 import pytest
 
@@ -9,14 +8,14 @@ from unittest.mock import MagicMock
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.cli import record, scenario
-from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.response import Response
-from stoobly_agent.lib.orm.scenario import Scenario
-
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
 from stoobly_agent.app.proxy.replay.replay_request_service import ReplayRequestOptions, replay
 from stoobly_agent.app.proxy.record.upload_request_service import upload_request
+from stoobly_agent.cli import record
+from stoobly_agent.lib.orm.request import Request
+from stoobly_agent.lib.orm.response import Response
+from stoobly_agent.lib.orm.scenario import Scenario
 
 @pytest.fixture(scope='module')
 def runner():

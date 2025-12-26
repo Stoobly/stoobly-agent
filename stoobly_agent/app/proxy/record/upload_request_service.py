@@ -5,8 +5,11 @@ import time
 import tempfile
 
 from copy import deepcopy
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.http import Request as MitmproxyRequest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -47,7 +50,7 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 # @param res [Net::HTTP::Response]
 #
 def upload_request(
-    request_model: RequestModel, intercept_settings: InterceptSettings, flow: MitmproxyHTTPFlow = None
+    request_model: RequestModel, intercept_settings: InterceptSettings, flow: 'MitmproxyHTTPFlow' = None
 ):
     Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {flow.request.url}")
 
@@ -122,7 +125,7 @@ def __build_body_params(project_key: str, joined_request: JoinedRequest, **kwarg
     return body_params.build()
 
 # Write the request to a file to help debug
-def __debug_request(request: MitmproxyRequest, raw_requests: bytes):
+def __debug_request(request: 'MitmproxyRequest', raw_requests: bytes):
     # Build file path, replace slashes with underscores
     request_path = request.path.replace('/', '_')
     if len(request_path) > os.pathconf('/', 'PC_NAME_MAX'):

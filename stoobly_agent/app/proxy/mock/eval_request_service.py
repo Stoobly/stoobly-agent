@@ -2,9 +2,11 @@ import json
 import pdb
 import re
 
-from mitmproxy.http import Request as MitmproxyRequest
-from requests import Response
-from typing import List, TypedDict, Union
+from typing import TYPE_CHECKING, List, TypedDict, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
+    from requests import Response
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -48,10 +50,10 @@ def inject_eval_request(
 def eval_request(
     request_model: RequestModel,
     intercept_settings: InterceptSettings,
-    request: MitmproxyRequest,
+    request: 'MitmproxyRequest',
     ignored_components_list: List[Union[list, str, None]],
     **options: EvalRequestOptions
-) -> Response:
+) -> 'Response':
     query_params_builder = ParamBuilder({})
     scenario_key = intercept_settings.scenario_key
 
@@ -113,7 +115,7 @@ def __build_ignored_components(ignored_components_list):
 #
 # @return [Hash] query parameters to pass to stoobly request_model
 #
-def __build_request_params(request: MitmproxyRequest, ignored_components = []) -> RequestResponseShowQueryParams:
+def __build_request_params(request: 'MitmproxyRequest', ignored_components = []) -> RequestResponseShowQueryParams:
     request = MitmproxyRequestFacade(request)
     hashed_request = HashedRequestDecorator(request).with_ignored_components(ignored_components)
 
@@ -144,7 +146,7 @@ def __build_request_params(request: MitmproxyRequest, ignored_components = []) -
 
     return query_params
 
-def __build_optional_params(request: MitmproxyRequest, options: EvalRequestOptions):
+def __build_optional_params(request: 'MitmproxyRequest', options: EvalRequestOptions):
     optional_params = {}
 
     if options.get('retry'):
@@ -162,7 +164,7 @@ def __build_optional_params(request: MitmproxyRequest, options: EvalRequestOptio
 
     return optional_params
 
-def __filter_by_match_rules(request: MitmproxyRequest, match_rules: List[MatchRule], query_params: RequestResponseShowQueryParams):
+def __filter_by_match_rules(request: 'MitmproxyRequest', match_rules: List[MatchRule], query_params: RequestResponseShowQueryParams):
     components = [request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]
     method = request.method.upper()
 

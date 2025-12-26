@@ -1,9 +1,11 @@
 import json
 import pdb
-import requests
 import sys
 
-from typing import TypedDict, Union
+from typing import TYPE_CHECKING, TypedDict, Union
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT, format_request, print_with_decoding
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
@@ -209,14 +211,16 @@ def __json_session_complete_formatter(session_context: SessionContext):
 
   print(json.dumps(session_context['output']))
 
-def __build_json_response(response: requests.Response):
+def __build_json_response(response: 'Response'):
   return {
     'content': __decode_response(response),
     'status_code': response.status_code,
   }
 
-def __decode_response(response: requests.Response):
-  if not isinstance(response, requests.Response):
+def __decode_response(response: 'Response'):
+  # Lazy import for runtime isinstance check
+  from requests import Response
+  if not isinstance(response, Response):
     return ''
   content = response.content
   return decode(content)

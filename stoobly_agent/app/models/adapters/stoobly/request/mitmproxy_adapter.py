@@ -1,7 +1,10 @@
 import pdb
 
-from mitmproxy.coretypes.multidict import MultiDict
-from mitmproxy.http import Headers, Request as MitmproxyRequest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mitmproxy.coretypes.multidict import MultiDict
+    from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.lib.utils.decode import decode
@@ -14,10 +17,14 @@ class MitmproxyRequestAdapter():
 
   @property
   def headers(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Headers
     _headers = self.__request.headers
     return Headers(**self.__decode_dict(_headers))
 
   def adapt(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
     request = MitmproxyRequest.make(
       self.__request.method,
       self.__request.url,
@@ -27,7 +34,9 @@ class MitmproxyRequestAdapter():
     request.http_version = self.__http_version
     return request
 
-  def __decode_dict(self, d: Headers) -> MultiDict:
+  def __decode_dict(self, d: 'Headers') -> 'MultiDict':
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     new_d = MultiDict()
     for k, v in d.items():
       new_d.add(decode(k), decode(v))

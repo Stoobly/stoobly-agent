@@ -1,16 +1,18 @@
 import os
 import pdb
-import requests
 import time
 
-from mitmproxy.http import Request as MitmproxyRequest
-from typing import Callable, TypedDict
+from typing import TYPE_CHECKING, Callable, TypedDict
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, mode, request_origin
-from stoobly_agent.lib.logger import bcolors, Logger, DEBUG, INFO, WARNING, ERROR
+from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
 from .mock.context import MockContext
@@ -116,7 +118,7 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
     infer = bool(options.get('infer'))
     ignored_components = options['ignored_components'] if 'ignored_components' in options else []
 
-    res: requests.Response = eval_request(request, ignored_components)
+    res: 'Response' = eval_request(request, ignored_components)
 
     if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
         ignored_components.append(res.content)

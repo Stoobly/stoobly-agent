@@ -22,7 +22,7 @@ is_local = local(settings)
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",
-    help="Manage request scenarios"
+    help="Manage scenarios"
 )
 @click.pass_context
 def scenario(ctx):

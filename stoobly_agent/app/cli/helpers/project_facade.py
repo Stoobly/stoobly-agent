@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.lib.api.projects_resource import ProjectsResource
 from stoobly_agent.lib.api.users_resource import UsersResource
@@ -25,7 +29,7 @@ class ProjectFacade():
   def create(self, **kwargs: ProjectDetails) -> ProjectShowResponse:
     organization_key: OrganizationKey = OrganizationKey(kwargs.get('organization_key')) 
 
-    res: requests.Response =  self.__api.create(
+    res: 'Response' =  self.__api.create(
       project={
         "description": kwargs.get('description') or '',
         "name": kwargs.get('name'),

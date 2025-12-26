@@ -1,7 +1,10 @@
 import os
 import pdb
 
-from stoobly_orator.migrations import Migrator, DatabaseMigrationRepository
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+  from stoobly_orator.migrations import Migrator
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir
@@ -30,7 +33,9 @@ def rollback(pretend = False):
 
   os.remove(DataDir.instance().db_version_path)
 
-def __build_migrator() -> Migrator:
+def __build_migrator() -> 'Migrator':
+  from stoobly_orator.migrations import Migrator, DatabaseMigrationRepository
+
   db = ORM.instance().db
 
   # Table to store migrations history

@@ -1,9 +1,5 @@
 import pdb
-import re
 from typing import List
-
-from mitmproxy.coretypes.multidict import MultiDict
-from requests import request
 
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map
 from stoobly_agent.config.constants import test_filter
@@ -41,6 +37,8 @@ class RequestComponentNamesFacade():
     if self.__query_index_cache:
       return self.__query_index_cache
 
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     _index = MultiDict()
 
     for request_component_name in self.__request_component_names:

@@ -1,6 +1,9 @@
 import pdb
 
-from requests import Response
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
@@ -21,7 +24,7 @@ class ORMToRequestsResponseTransformer():
   def dirty(self):
     return self.__dirty
 
-  def transform(self) -> Response:
+  def transform(self) -> 'Response':
     adapter = RawHttpResponseAdapter(self.__response.raw)
 
     if self.__body:
