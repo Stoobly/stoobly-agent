@@ -635,7 +635,7 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
-def __prompt_ca_cert_install(app: App, workflow_name: str, containerized: bool, dry_run: bool, ca_certs_install_confirm: str = None):
+def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_confirm: str = None):
   # First time if folder does not exist or is empty
   if ca_certs_install_confirm:
     confirm = ca_certs_install_confirm
