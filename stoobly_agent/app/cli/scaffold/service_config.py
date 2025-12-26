@@ -181,7 +181,7 @@ class ServiceConfig(Config):
   @property
   def upstream_hostname(self) -> str:
     if self.local:
-      if self.app_config.run_on_docker:
+      if self.app_config.runtime_docker:
         return 'host.docker.internal'
       return 'localhost'
     return self.__upstream_hostname or self.hostname

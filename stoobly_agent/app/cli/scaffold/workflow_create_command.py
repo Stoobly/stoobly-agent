@@ -42,8 +42,8 @@ class WorkflowCreateCommand(WorkflowCommand):
 
   @property
   def create_docker_files(self):
-    """Determine if Docker files should be created based on app config run-on setting."""
-    return self.app_config.run_on_docker
+    """Determine if Docker files should be created based on app config runtime setting."""
+    return self.app_config.runtime_docker
 
   def build(self, **kwargs: BuildOptions):
     # Create workflow folder

@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL, RUN_ON_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -90,7 +90,7 @@ def hostname(ctx):
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
-@click.option('--run-on', type=click.Choice(RUN_ON_OPTIONS), default=RUN_ON_LOCAL, help=f"Runtime environments to support (default: {RUN_ON_LOCAL}).")
+@click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
@@ -365,12 +365,11 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
-  if app_config.run_on_local:
+  if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
@@ -387,20 +386,22 @@ def down(**kwargs):
       **kwargs
     )
 
-    # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
-    # Entrypoint container will be within the container network
-    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-      if not containerized and not kwargs['dry_run']:
-        # Prompt confirm to install hostnames
-        if kwargs.get('hostname_uninstall_confirm'):
-          confirm = kwargs['hostname_uninstall_confirm']
-        else:
-          confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
+  if not containerized and not kwargs['dry_run']:
+    if app_config.runtime_docker:
+      # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+      # Entrypoint container will be within the container network
+      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+          # Prompt confirm to install hostnames
+          if kwargs.get('hostname_uninstall_confirm'):
+            confirm = kwargs['hostname_uninstall_confirm']
+          else:
+            confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
 
-        if confirm == "y" or confirm == "Y":
-          __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+          if confirm == "y" or confirm == "Y":
+            __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
   # Execute the workflow down
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
   workflow_command.down(
     **command_args,
     **kwargs
@@ -440,12 +441,11 @@ def logs(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
 
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
-  if app_config.run_on_local:
+  if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
@@ -461,9 +461,9 @@ def logs(**kwargs):
       script=script,
       **kwargs
     )
-    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
 
   # Execute the workflow logs
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   workflow_command.logs(
     **command_args,
     **kwargs
@@ -504,29 +504,14 @@ def up(**kwargs):
 
   __with_namespace_defaults(kwargs)
 
-  # First time if folder does not exist or is empty
-  first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
-  if first_time and not containerized and not dry_run:
-    if kwargs.get('ca_certs_install_confirm'):
-      confirm = kwargs['ca_certs_install_confirm']
-    else:
-      confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
-
-    if confirm == "y" or confirm == "Y":
-      ca_cert_install(app.ca_certs_dir_path)
-    else:
-      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
-
+  # Determine which workflow command to use based on app configuration
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
-
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
 
-  # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
-  if app_config.run_on_local:
+  if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
@@ -547,11 +532,25 @@ def up(**kwargs):
       **kwargs
     )
 
-    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
-    # Entrypoint container will be within the container network
-    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-      if not containerized and not dry_run:
+  if not containerized and not dry_run:
+    # First time running the up command if ca certs folder does not exist or is empty
+    first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
 
+    if first_time:
+      # To improve FTUE, prompt install CA certificate for record workflow
+      if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
+        # Install CA certs for record workflow
+        __prompt_ca_cert_install(
+          app,
+          workflow_name=kwargs['workflow_name'],
+          ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
+        )
+
+    if app_config.runtime_docker:
+      # To improve UX, prompt install hostnames for record and mock workflows
+      # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+      # Entrypoint container will be within the container network
+      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
         # Prompt confirm to install hostnames
         if kwargs.get('hostname_install_confirm'):
           confirm = kwargs['hostname_install_confirm']
@@ -561,7 +560,6 @@ def up(**kwargs):
         if confirm == "y" or confirm == "Y":
           __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
-  if first_time and not containerized and not dry_run:
     options = {}
 
     if os.getcwd() != app_dir_path:
@@ -577,6 +575,7 @@ def up(**kwargs):
     Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   workflow_command.up(
     **command_args,
     **kwargs
@@ -639,6 +638,19 @@ scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
+
+def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_confirm: str = None):
+  """Prompt user to install CA certificate for record workflow."""
+
+  if ca_certs_install_confirm:
+    confirm = ca_certs_install_confirm
+  else:
+    confirm = input(f"Installing CA certificate is required for {workflow_name}ing requests, continue? (y/N) ")
+
+  if confirm == "y" or confirm == "Y":
+    ca_cert_install(app.ca_certs_dir_path)
+  else:
+    print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
 def __build_script(app: App, **kwargs):
   script_path = kwargs['script_path']

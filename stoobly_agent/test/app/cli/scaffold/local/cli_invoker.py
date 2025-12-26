@@ -16,7 +16,7 @@ class LocalScaffoldCliInvoker():
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
       '--proxy-port', '8081',
-      '--run-on', 'local',
+      '--runtime', 'local',
       '--quiet',
       app_name
     ])
