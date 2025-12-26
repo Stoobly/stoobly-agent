@@ -504,23 +504,11 @@ def up(**kwargs):
 
   __with_namespace_defaults(kwargs)
 
-  # First time if folder does not exist or is empty
-  first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
-  if first_time and not containerized and not dry_run:
-    if kwargs.get('ca_certs_install_confirm'):
-      confirm = kwargs['ca_certs_install_confirm']
-    else:
-      confirm = input(f"Installing CA certificate is required for {kwargs['workflow_name']}ing requests, continue? (y/N) ")
-
-    if confirm == "y" or confirm == "Y":
-      ca_cert_install(app.ca_certs_dir_path)
-    else:
-      print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
-
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
+  first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
   command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
 
@@ -547,11 +535,19 @@ def up(**kwargs):
       **kwargs
     )
 
+  if first_time and not containerized and not dry_run:
+    if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
+      # Install CA certs for record workflow
+      __prompt_ca_cert_install(
+        app,
+        workflow_name=kwargs['workflow_name'],
+        ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
+      )
+
     # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
     # Entrypoint container will be within the container network
-    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-      if not containerized and not dry_run:
-
+    if app_config.runtime_docker:
+      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
         # Prompt confirm to install hostnames
         if kwargs.get('hostname_install_confirm'):
           confirm = kwargs['hostname_install_confirm']
@@ -561,7 +557,6 @@ def up(**kwargs):
         if confirm == "y" or confirm == "Y":
           __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
-  if first_time and not containerized and not dry_run:
     options = {}
 
     if os.getcwd() != app_dir_path:
@@ -639,6 +634,18 @@ scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
+
+def __prompt_ca_cert_install(app: App, workflow_name: str, containerized: bool, dry_run: bool, ca_certs_install_confirm: str = None):
+  # First time if folder does not exist or is empty
+  if ca_certs_install_confirm:
+    confirm = ca_certs_install_confirm
+  else:
+    confirm = input(f"Installing CA certificate is required for {workflow_name}ing requests, continue? (y/N) ")
+
+  if confirm == "y" or confirm == "Y":
+    ca_cert_install(app.ca_certs_dir_path)
+  else:
+    print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
 def __build_script(app: App, **kwargs):
   script_path = kwargs['script_path']

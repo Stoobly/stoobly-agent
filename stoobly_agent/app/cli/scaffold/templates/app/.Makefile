@@ -110,7 +110,7 @@ intercept/disable:
 intercept/enable:
 	@export EXEC_COMMAND=intercept/.enable EXEC_OPTIONS="" EXEC_ARGS=$(scenario_key) && \
 	$(stoobly_exec)
-mock: workflow/mock ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
+mock: workflow/mock workflow/up nameservers workflow/hostname/install workflow/up/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
 mock/logs: workflow/mock workflow/logs workflow/logs/run
 mock/report: workflow/mock workflow/report
