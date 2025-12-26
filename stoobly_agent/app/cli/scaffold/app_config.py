@@ -2,7 +2,7 @@ import os
 
 from .config import Config
 from .constants import (
-  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUN_ON_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUN_ON_DOCKER, RUN_ON_LOCAL
+  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
 )
 
 class AppConfig(Config):
@@ -14,7 +14,7 @@ class AppConfig(Config):
     self.__name = None
     self.__plugins = None
     self.__proxy_port = None
-    self.__run_on = None
+    self.__runtime = None
     self.__ui_port = None
 
     self.load()
@@ -44,20 +44,20 @@ class AppConfig(Config):
     self.__plugins = v
 
   @property
-  def run_on(self):
-    return self.__run_on or RUN_ON_LOCAL
+  def runtime(self):
+    return self.__runtime or RUNTIME_LOCAL
 
-  @run_on.setter
-  def run_on(self, v: str):
-    self.__run_on = v
-
-  @property
-  def run_on_local(self):
-    return self.run_on == RUN_ON_LOCAL
+  @runtime.setter
+  def runtime(self, v: str):
+    self.__runtime = v
 
   @property
-  def run_on_docker(self):
-    return self.run_on == RUN_ON_DOCKER
+  def runtime_local(self):
+    return self.runtime == RUNTIME_LOCAL
+
+  @property
+  def runtime_docker(self):
+    return self.runtime == RUNTIME_DOCKER
 
   @property
   def proxy_port(self):
@@ -95,8 +95,8 @@ class AppConfig(Config):
       plugins: str = config.get(APP_PLUGINS_ENV)
       self.plugins = plugins.split(APP_PLUGINS_DELMITTER)
 
-    if config.get(APP_RUN_ON_ENV):
-      self.run_on = config.get(APP_RUN_ON_ENV)
+    if config.get(APP_RUNTIME_ENV):
+      self.runtime = config.get(APP_RUNTIME_ENV)
 
   def write(self):
     config = {}
@@ -110,8 +110,8 @@ class AppConfig(Config):
     if self.plugins:
       config[APP_PLUGINS_ENV] = APP_PLUGINS_DELMITTER.join(self.plugins)
 
-    if self.run_on:
-      config[APP_RUN_ON_ENV] = self.run_on
+    if self.runtime:
+      config[APP_RUNTIME_ENV] = self.runtime
 
     if self.proxy_port:
       config[APP_PROXY_PORT_ENV] = self.proxy_port
