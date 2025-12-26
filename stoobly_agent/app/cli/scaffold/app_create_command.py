@@ -19,7 +19,7 @@ class AppCreateOptions(TypedDict):
   name: str
   plugin: list
   proxy_port: int
-  run_on: list
+  runtime: list
   ui_port: int
 
 class AppCreateCommand(AppCommand):
@@ -39,8 +39,8 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('proxy_port'):
             self.app_config.proxy_port = kwargs['proxy_port']
 
-        if kwargs.get('run_on'):
-            self.app_config.run_on = kwargs['run_on']
+        if kwargs.get('runtime'):
+            self.app_config.runtime = kwargs['runtime']
 
         if kwargs.get('ui_port'):
             self.app_config.ui_port = kwargs['ui_port']
@@ -58,8 +58,8 @@ class AppCreateCommand(AppCommand):
         return self.app_config.plugins
 
     @property
-    def app_run_on(self):
-        return self.app_config.run_on
+    def app_runtime(self):
+        return self.app_config.runtime
 
     @property
     def app_proxy_port(self):
@@ -80,11 +80,11 @@ class AppCreateCommand(AppCommand):
         ignore = []
         warnings = []
 
-        if self.app_config.run_on_local:
+        if self.app_config.runtime_local:
             ignore.append(f"{CORE_GATEWAY_SERVICE_NAME}/.*")
             ignore.append(f"{CORE_MOCK_UI_SERVICE_NAME}/.*")
 
-        if self.app_config.run_on_docker:
+        if self.app_config.runtime_docker:
             ignore.append(f".*/{CUSTOM_RUN}")
             ignore.append(f".*/{MAINTAINED_RUN}")
 
@@ -92,7 +92,7 @@ class AppCreateCommand(AppCommand):
         self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest, ignore)
 
         # Remove Docker-specific files if not using Docker
-        if not self.app_config.run_on_docker:
+        if not self.app_config.runtime_docker:
             remove_app_docker_files(dest)
             remove_service_docker_files(dest)
 
@@ -104,7 +104,7 @@ class AppCreateCommand(AppCommand):
             if not self.__playwright_initialized(self.app):
                 warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
 
-        if self.app_config.run_on_docker:
+        if self.app_config.runtime_docker:
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
