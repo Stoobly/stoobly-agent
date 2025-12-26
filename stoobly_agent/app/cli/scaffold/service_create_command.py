@@ -36,12 +36,12 @@ class ServiceCreateCommand(ServiceCommand):
 
   @property
   def create_docker_files(self):
-    """Determine if Docker files should be created based on app config run-on setting."""
-    return self.app_config.run_on_docker
+    """Determine if Docker files should be created based on app config runtime setting."""
+    return self.app_config.runtime_docker
 
   def build(self):
-    # Choose builder based on app run_on configuration
-    if self.app_config.run_on_docker:
+    # Choose builder based on app runtime configuration
+    if self.app_config.runtime_docker:
       service_builder = DockerServiceBuilder(self.service_config)
     else:
       service_builder = ServiceBuilder(self.service_config)
