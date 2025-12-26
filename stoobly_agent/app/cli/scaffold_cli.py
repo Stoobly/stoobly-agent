@@ -504,15 +504,12 @@ def up(**kwargs):
 
   __with_namespace_defaults(kwargs)
 
+  # Determine which workflow command to use based on app configuration
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
-
-  first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
 
-  # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
@@ -535,18 +532,24 @@ def up(**kwargs):
       **kwargs
     )
 
-  if first_time and not containerized and not dry_run:
-    if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
-      # Install CA certs for record workflow
-      __prompt_ca_cert_install(
-        app,
-        workflow_name=kwargs['workflow_name'],
-        ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
-      )
+  if not containerized and not dry_run:
+    # First time running the up command if ca certs folder does not exist or is empty
+    first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
 
-    # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
-    # Entrypoint container will be within the container network
+    if first_time:
+      # To improve FTUE, prompt install CA certificate for record workflow
+      if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
+        # Install CA certs for record workflow
+        __prompt_ca_cert_install(
+          app,
+          workflow_name=kwargs['workflow_name'],
+          ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
+        )
+
     if app_config.runtime_docker:
+      # To improve UX, prompt install hostnames for record and mock workflows
+      # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+      # Entrypoint container will be within the container network
       if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
         # Prompt confirm to install hostnames
         if kwargs.get('hostname_install_confirm'):
@@ -572,6 +575,7 @@ def up(**kwargs):
     Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   workflow_command.up(
     **command_args,
     **kwargs
@@ -636,7 +640,8 @@ scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 
 def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_confirm: str = None):
-  # First time if folder does not exist or is empty
+  """Prompt user to install CA certificate for record workflow."""
+
   if ca_certs_install_confirm:
     confirm = ca_certs_install_confirm
   else:
