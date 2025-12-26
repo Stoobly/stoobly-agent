@@ -25,8 +25,8 @@ The scaffolding system supports both Docker and local development workflows. It 
 - Use explicit method calls (e.g., `Builder.write(self, compose)`) to resolve ambiguity
 
 ### Conditional Instantiation
-- Choose between Docker and Local implementations based on `app_config.run_on`
-- Use constants like `RUN_ON_DOCKER` and `RUN_ON_LOCAL` for configuration
+- Choose between Docker and Local implementations based on `app_config.runtime`
+- Use constants like `RUNTIME_DOCKER` and `RUNTIME_LOCAL` for configuration
 
 ### Process Management
 - Local workflows use PID tracking for background processes
