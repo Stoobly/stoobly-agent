@@ -365,7 +365,6 @@ def down(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -387,20 +386,22 @@ def down(**kwargs):
       **kwargs
     )
 
-    # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
-    # Entrypoint container will be within the container network
-    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-      if not containerized and not kwargs['dry_run']:
-        # Prompt confirm to install hostnames
-        if kwargs.get('hostname_uninstall_confirm'):
-          confirm = kwargs['hostname_uninstall_confirm']
-        else:
-          confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
+  if not containerized and not kwargs['dry_run']:
+    if app_config.runtime_docker:
+      # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+      # Entrypoint container will be within the container network
+      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+          # Prompt confirm to install hostnames
+          if kwargs.get('hostname_uninstall_confirm'):
+            confirm = kwargs['hostname_uninstall_confirm']
+          else:
+            confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
 
-        if confirm == "y" or confirm == "Y":
-          __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+          if confirm == "y" or confirm == "Y":
+            __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
 
   # Execute the workflow down
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
   workflow_command.down(
     **command_args,
     **kwargs
@@ -440,7 +441,6 @@ def logs(**kwargs):
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
 
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
@@ -461,9 +461,9 @@ def logs(**kwargs):
       script=script,
       **kwargs
     )
-    command_args['print_service_header'] = lambda service_name: __print_header(f"SERVICE {service_name}")
 
   # Execute the workflow logs
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   workflow_command.logs(
     **command_args,
     **kwargs
