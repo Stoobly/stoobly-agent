@@ -78,7 +78,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined services
@@ -122,7 +122,7 @@ class TestLocalScaffoldE2e():
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
@@ -163,7 +163,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
@@ -201,7 +201,7 @@ class TestLocalScaffoldE2e():
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path, external_service_name, local_service_name):
       """Test that services are created and configured properly"""
@@ -278,7 +278,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_name: str, app_dir_path: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
@@ -317,7 +317,7 @@ class TestLocalScaffoldE2e():
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
