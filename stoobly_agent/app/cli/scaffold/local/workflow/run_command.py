@@ -23,6 +23,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   """Local workflow run command that executes stoobly-agent run directly."""
 
   def __init__(self, app, services=None, script=None, **kwargs):
+    if not kwargs.get('service_name'):
+      kwargs['service_name'] = CORE_ENTRYPOINT_SERVICE_NAME
+
     super().__init__(app, **kwargs)
     
     self.services = services or []
