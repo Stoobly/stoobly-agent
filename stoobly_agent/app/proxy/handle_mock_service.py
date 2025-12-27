@@ -165,6 +165,7 @@ def __handle_mock_failure(context: MockContext) -> None:
 
     # Default OPTIONS request to allow CORS
     enable_cors(flow)
+    return flow.response
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request
