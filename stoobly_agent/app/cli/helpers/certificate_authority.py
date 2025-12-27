@@ -6,8 +6,10 @@ import ssl
 import subprocess
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, ec
 from cryptography.x509.oid import NameOID
 from pathlib import Path
 
@@ -163,7 +165,78 @@ class CertificateAuthority():
         if not os.path.exists(joined_path):
             return False
 
-        return True
+        # Verify the certificate was signed by this CA
+        try:
+            # Load the CA certificate
+            ca_cert_path = self.ca_cert_path('.pem')
+            if not os.path.exists(ca_cert_path):
+                return False
+                
+            with open(ca_cert_path, 'rb') as f:
+                ca_cert_data = f.read()
+                ca_cert = x509.load_pem_x509_certificate(ca_cert_data, default_backend())
+            
+            # Load the signed certificate
+            with open(crt_path, 'rb') as f:
+                cert_data = f.read()
+                certificate = x509.load_pem_x509_certificate(cert_data, default_backend())
+            
+            # Check 1: Verify issuer matches CA subject
+            if certificate.issuer != ca_cert.subject:
+                return False
+            
+            # Check 2: Verify the signature using CA's public key
+            from cryptography.hazmat.primitives.asymmetric import padding
+            
+            ca_public_key = ca_cert.public_key()
+            
+            # Handle different key types
+            if isinstance(ca_public_key, rsa.RSAPublicKey):
+                # RSA signature verification - check if PSS or PKCS1v15 padding is used
+                signature_algorithm = certificate.signature_algorithm_oid
+                
+                # Check if signature uses PSS padding
+                if signature_algorithm in (
+                    x509.SignatureAlgorithmOID.RSASSA_PSS,
+                ):
+                    # Use PSS padding with MGF1 and MAX_LENGTH salt
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PSS(
+                            mgf=padding.MGF1(certificate.signature_hash_algorithm),
+                            salt_length=padding.PSS.MAX_LENGTH
+                        ),
+                        certificate.signature_hash_algorithm,
+                    )
+                else:
+                    # Use PKCS1v15 padding (default for most RSA signatures)
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PKCS1v15(),
+                        certificate.signature_hash_algorithm,
+                    )
+            elif isinstance(ca_public_key, ec.EllipticCurvePublicKey):
+                # ECDSA signature verification (uses different padding)
+                ca_public_key.verify(
+                    certificate.signature,
+                    certificate.tbs_certificate_bytes,
+                    ec.ECDSA(certificate.signature_hash_algorithm),
+                )
+            else:
+                # Unknown key type - log warning and assume valid
+                Logger.instance(LOG_ID).warning(f"Unknown key type for CA certificate: {type(ca_public_key)}")
+                return False
+            
+            return True
+            
+        except InvalidSignature:
+            Logger.instance(LOG_ID).warning(f"Certificate signature verification failed for {hostname}: certificate was not signed by this CA")
+            return False
+        except Exception as e:
+            Logger.instance(LOG_ID).warning(f"Certificate verification failed for {hostname}: {e}")
+            return False
 
     def __ensure_exists(self, file_path):
         if not os.path.exists(file_path):
