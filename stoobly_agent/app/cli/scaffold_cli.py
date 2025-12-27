@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT,  RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -115,11 +115,19 @@ def create(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def mkcert(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
+  containerized = kwargs['containerized']
+  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
+
+  if containerized:
+    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+  else:
+    app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+
   __validate_app(app)
 
   services = __get_services(
@@ -429,7 +437,8 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app_dir_path = current_working_dir if kwargs['containerized'] else kwargs['app_dir_path']
+  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -482,7 +491,6 @@ def logs(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--script-path', help='Path to intermediate script path.')
@@ -498,6 +506,7 @@ def up(**kwargs):
 
   # Because we are running a docker-compose command which depends on APP_DIR env var
   # when we are running this command within a container, the host's app_dir_path will likely differ
+  # It needs to differ because if containerized, we are generating .env with contents from the host
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
   app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
   __validate_app(app)
@@ -520,10 +529,6 @@ def up(**kwargs):
       **kwargs
     )
   else:
-    if kwargs['mkcert']:
-      _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
-      __services_mkcert(_app, services)
-
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
       app, 
