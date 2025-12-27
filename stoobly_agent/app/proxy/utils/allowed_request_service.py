@@ -48,7 +48,7 @@ def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[Firewall
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
-            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Ignore (exclude) handling {mode}){bcolors.ENDC} {request.url}")
+            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Ignore (exclude) handling {mode}{bcolors.ENDC} {request.url}")
             return True
     
     return False
