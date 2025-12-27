@@ -1,9 +1,8 @@
-from ctypes import Union
 import os
 import pdb
 import time
 
-from typing import TYPE_CHECKING, Callable, TypedDict
+from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
 if TYPE_CHECKING:
     from requests import Response
