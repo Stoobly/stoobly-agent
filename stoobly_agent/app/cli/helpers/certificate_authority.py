@@ -230,7 +230,6 @@ class CertificateAuthority():
                 return False
             
             return True
-            
         except InvalidSignature:
             Logger.instance(LOG_ID).warning(f"Certificate signature verification failed for {hostname}: certificate was not signed by this CA")
             return False
