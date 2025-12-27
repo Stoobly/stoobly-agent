@@ -1,3 +1,4 @@
+from ctypes import Union
 import os
 import pdb
 import time
@@ -153,7 +154,7 @@ def handle_response_mock(context: MockContext):
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
-def __handle_mock_failure(context: MockContext) -> None:
+def __handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
     flow = context.flow
     request = flow.request
     response = context.response
