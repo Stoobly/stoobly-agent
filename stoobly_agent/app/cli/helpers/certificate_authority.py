@@ -192,13 +192,31 @@ class CertificateAuthority():
             
             # Handle different key types
             if isinstance(ca_public_key, rsa.RSAPublicKey):
-                # RSA signature verification
-                ca_public_key.verify(
-                    certificate.signature,
-                    certificate.tbs_certificate_bytes,
-                    padding.PKCS1v15(),
-                    certificate.signature_hash_algorithm,
-                )
+                # RSA signature verification - check if PSS or PKCS1v15 padding is used
+                signature_algorithm = certificate.signature_algorithm_oid
+                
+                # Check if signature uses PSS padding
+                if signature_algorithm in (
+                    x509.SignatureAlgorithmOID.RSASSA_PSS,
+                ):
+                    # Use PSS padding with MGF1 and MAX_LENGTH salt
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PSS(
+                            mgf=padding.MGF1(certificate.signature_hash_algorithm),
+                            salt_length=padding.PSS.MAX_LENGTH
+                        ),
+                        certificate.signature_hash_algorithm,
+                    )
+                else:
+                    # Use PKCS1v15 padding (default for most RSA signatures)
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PKCS1v15(),
+                        certificate.signature_hash_algorithm,
+                    )
             elif isinstance(ca_public_key, ec.EllipticCurvePublicKey):
                 # ECDSA signature verification (uses different padding)
                 ca_public_key.verify(
