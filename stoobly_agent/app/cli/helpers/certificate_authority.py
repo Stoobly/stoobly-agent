@@ -6,6 +6,7 @@ import ssl
 import subprocess
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
@@ -212,8 +213,11 @@ class CertificateAuthority():
             
             return True
             
+        except InvalidSignature:
+            Logger.instance(LOG_ID).warning(f"Certificate signature verification failed for {hostname}: certificate was not signed by this CA")
+            return False
         except Exception as e:
-            Logger.instance(LOG_ID).debug(f"Certificate verification failed for {hostname}: {e}")
+            Logger.instance(LOG_ID).warning(f"Certificate verification failed for {hostname}: {e}")
             return False
 
     def __ensure_exists(self, file_path):
