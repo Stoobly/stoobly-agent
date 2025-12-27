@@ -36,6 +36,9 @@ LOG_ID = 'Record'
 
 # Shared thread pool executor for record operations
 # Limits concurrent record operations and integrates with asyncio event loop
+#
+# This module will not be reloaded, so we can safely use a global variable
+# and not worry about it being recreated on each request
 _record_executor = None
 _MAX_WORKERS = 10
 

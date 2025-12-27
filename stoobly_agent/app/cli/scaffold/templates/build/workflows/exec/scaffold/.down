@@ -7,4 +7,4 @@ mkdir -p .stoobly/tmp
 stoobly-agent scaffold workflow down \
   --containerized \
   --log-level error \
-  $extra_options $1 > /dev/null
+  $extra_options "$1" > /dev/null
