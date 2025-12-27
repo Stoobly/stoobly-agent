@@ -64,12 +64,6 @@ class RequestString:
         headers = self.request.headers
 
         for name, val in headers.items():
-            if 'content-encoding' in headers:
-                # self.request.body will decode content-encoding
-                # to maintain internal consistency, remove this header since it will be decoded
-                print(self.request.body)
-                pass
-
             line = ' '.join([
                 "{}:".format(self.__to_header_case(self.__to_str(name))), 
                 self.__to_str(val)

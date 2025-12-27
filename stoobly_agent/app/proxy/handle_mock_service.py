@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
 if TYPE_CHECKING:
     from requests import Response
-    from mitmproxy.http import Request as MitmproxyRequest
+    from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
@@ -199,10 +199,6 @@ def __handle_mock_success(context: MockContext) -> None:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
             InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
-    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
-        response = context.response
-        start_time = context.start_time
-        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __rewrite_request(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -222,34 +218,6 @@ def __rewrite_response(context: MockContext):
     if len(rewrite_rules) > 0:
         rewrite_response(context.flow, rewrite_rules) 
 
-###
-#
-# Try to simulate expected response latency
-#
-# wait_time (seconds) = expected_latency - estimated_rtt_network_latency - api_latency
-#
-# expected_latency = provided value
-# estimated_rtt_network_latency = 15ms
-# api_latency = current_time - start_time of this request
-#
-def __simulate_latency(expected_latency: str, start_time: float) -> float:
-    if not expected_latency:
-        return 0
-
-    estimated_rtt_network_latency = 0.015 # seconds
-    api_latency = (time.time() - start_time)
-    expected_latency = float(expected_latency) / 1000
-
-    wait_time = expected_latency - estimated_rtt_network_latency - api_latency
-
-    Logger.instance(LOG_ID).debug(f"Expected latency: {expected_latency}")
-    Logger.instance(LOG_ID).debug(f"API latency: {api_latency}")
-    Logger.instance(LOG_ID).debug(f"Wait time: {wait_time}")
-
-    if wait_time > 0:
-        time.sleep(wait_time)
-
-    return wait_time
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings

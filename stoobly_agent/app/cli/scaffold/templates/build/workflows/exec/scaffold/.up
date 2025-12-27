@@ -3,9 +3,10 @@
 extra_options=$EXEC_OPTIONS
 
 stoobly-agent scaffold app mkcert \
-  --containerized > /dev/null
+  --containerized \
+  --workflow "$1" > /dev/null
 
 stoobly-agent scaffold workflow up \
   --containerized \
   --log-level warning \
-  $extra_options $1 > /dev/null
+  $extra_options "$1" > /dev/null
