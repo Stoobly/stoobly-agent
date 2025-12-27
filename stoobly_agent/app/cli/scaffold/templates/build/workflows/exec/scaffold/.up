@@ -2,9 +2,10 @@
 
 extra_options=$EXEC_OPTIONS
 
+stoobly-agent scaffold app mkcert \
+  --containerized > /dev/null
+
 stoobly-agent scaffold workflow up \
-  --app-dir-path "$(pwd)" \
   --containerized \
   --log-level warning \
-  --mkcert \
   $extra_options $1 > /dev/null

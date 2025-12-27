@@ -2,7 +2,7 @@ import os
 import pdb
 import time
 
-from typing import TYPE_CHECKING, Callable, TypedDict
+from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
 if TYPE_CHECKING:
     from requests import Response
@@ -153,7 +153,7 @@ def handle_response_mock(context: MockContext):
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
-def __handle_mock_failure(context: MockContext) -> None:
+def __handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
     flow = context.flow
     request = flow.request
     response = context.response
@@ -161,12 +161,11 @@ def __handle_mock_failure(context: MockContext) -> None:
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
     if request.method.upper() != 'OPTIONS':
-        return False
-        
+        return
+
     # Default OPTIONS request to allow CORS
     enable_cors(flow)
-
-    return True
+    return flow.response
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request

@@ -5,7 +5,6 @@ extra_options=$EXEC_OPTIONS
 mkdir -p .stoobly/tmp
 
 stoobly-agent scaffold workflow down \
-  --app-dir-path "$(pwd)" \
   --containerized \
   --log-level error \
   $extra_options $1 > /dev/null
