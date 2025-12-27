@@ -1,4 +1,3 @@
-import asyncio
 import os
 import pdb
 import time
@@ -200,10 +199,6 @@ def __handle_mock_success(context: MockContext) -> None:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
             InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
-    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
-        response = context.response
-        start_time = context.start_time
-        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __rewrite_request(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -223,56 +218,6 @@ def __rewrite_response(context: MockContext):
     if len(rewrite_rules) > 0:
         rewrite_response(context.flow, rewrite_rules) 
 
-###
-#
-# Try to simulate expected response latency
-#
-# wait_time (seconds) = expected_latency - estimated_rtt_network_latency - api_latency
-#
-# expected_latency = provided value
-# estimated_rtt_network_latency = 15ms
-# api_latency = current_time - start_time of this request
-#
-def __simulate_latency(expected_latency: str, start_time: float) -> float:
-    if not expected_latency:
-        return 0
-
-    estimated_rtt_network_latency = 0.015 # seconds
-    api_latency = (time.time() - start_time)
-    expected_latency = float(expected_latency) / 1000
-
-    wait_time = expected_latency - estimated_rtt_network_latency - api_latency
-
-    Logger.instance(LOG_ID).debug(f"Expected latency: {expected_latency}")
-    Logger.instance(LOG_ID).debug(f"API latency: {api_latency}")
-    Logger.instance(LOG_ID).debug(f"Wait time: {wait_time}")
-
-    if wait_time > 0:
-        # Use asyncio.sleep to avoid blocking the event loop
-        # Since mitmproxy runs in an async event loop but handlers are sync,
-        # we need to schedule the sleep in the event loop without blocking
-        try:
-            loop = asyncio.get_running_loop()
-            # We're in an async context. Since the handler is sync and called from
-            # the event loop thread, we need to run the sleep in a separate thread
-            # to avoid blocking. Use run_coroutine_threadsafe from a worker thread.
-            import threading
-            import queue
-            result_queue = queue.Queue()
-            
-            def schedule_sleep():
-                future = asyncio.run_coroutine_threadsafe(asyncio.sleep(wait_time), loop)
-                future.result()  # Wait for completion
-                result_queue.put(None)
-            
-            thread = threading.Thread(target=schedule_sleep)
-            thread.start()
-            thread.join()  # Wait for sleep to complete
-        except RuntimeError:
-            # No running event loop, fall back to time.sleep
-            time.sleep(wait_time)
-
-    return wait_time
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings

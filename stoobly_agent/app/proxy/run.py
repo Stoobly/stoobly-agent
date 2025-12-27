@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from stoobly_agent.config.mitmproxy import MitmproxyConfig
 
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
+INTERCEPT_HANDLER_CONCURRENT_FILENAME = 'intercept_handler_concurrent.py'
 
 def run(**kwargs):
     from mitmproxy.net import tls
@@ -58,10 +59,18 @@ def __get_intercept_handler_path():
     script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
     return script
 
+def __get_intercept_handler_concurrent_path():
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    script = os.path.join(cwd, INTERCEPT_HANDLER_CONCURRENT_FILENAME)
+    return script
+
 def __with_static_options(config: 'MitmproxyConfig', cli_options):
+    # Intercept handler concurrent needs to be incuded second to run background tasks
+    # Set scripts multiple times - mitmproxy expects each script to be set separately
     options = (
         'block_global=false',
         f"scripts={__get_intercept_handler_path()}",
+        f"scripts={__get_intercept_handler_concurrent_path()}",
         'upstream_cert=false'
     )
 
