@@ -1,7 +1,9 @@
+import asyncio
 import os
 import pdb
 import threading
 
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -31,6 +33,11 @@ from .utils.strategy import get_active_mode_strategy
 
 
 LOG_ID = 'Record'
+
+# Shared thread pool executor for record operations
+# Limits concurrent record operations and integrates with asyncio event loop
+_record_executor = None
+_MAX_WORKERS = 10
 
 ###
 #
@@ -131,11 +138,33 @@ def __record_request(context: RecordContext, request_model: RequestModel):
     if os.environ.get(ENV) == TEST:
         __record_handler(context, request_model)
     else:
-        thread = threading.Thread(
-            target=__record_handler,
-            args=[context, request_model]
-        )
-        thread.start()
+        # Use asyncio.run_in_executor to schedule record handler without blocking event loop
+        # This integrates with mitmproxy's async event loop and limits thread usage
+        try:
+            loop = asyncio.get_running_loop()
+            # Schedule the blocking I/O operation in a thread pool
+            # This allows the event loop to process other requests while upload happens
+            # When max_workers is reached, tasks are queued and processed as workers become available
+            executor = __get_record_executor()
+            loop.run_in_executor(executor, __record_handler, context, request_model)
+        except RuntimeError:
+            # No running event loop, fall back to threading for compatibility
+            # This should rarely happen in mitmproxy context
+            thread = threading.Thread(
+                target=__record_handler,
+                args=[context, request_model],
+                daemon=True  # Mark as daemon to avoid blocking shutdown
+            )
+            thread.start()
+
+def __get_record_executor():
+    """Get or create the shared thread pool executor for record operations."""
+    global _record_executor
+    if _record_executor is None:
+        # Use a reasonable max_workers to limit resource usage
+        # This allows multiple concurrent uploads without creating unlimited threads
+        _record_executor = ThreadPoolExecutor(max_workers=_MAX_WORKERS, thread_name_prefix='request-record')
+    return _record_executor
 
 def __record_hook(hook: str, context: RecordContext):
     intercept_settings: InterceptSettings = context.intercept_settings
