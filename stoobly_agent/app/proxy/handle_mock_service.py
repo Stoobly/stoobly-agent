@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pdb
 import time
@@ -6,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
 if TYPE_CHECKING:
     from requests import Response
-    from mitmproxy.http import Request as MitmproxyRequest
+    from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
@@ -247,7 +248,29 @@ def __simulate_latency(expected_latency: str, start_time: float) -> float:
     Logger.instance(LOG_ID).debug(f"Wait time: {wait_time}")
 
     if wait_time > 0:
-        time.sleep(wait_time)
+        # Use asyncio.sleep to avoid blocking the event loop
+        # Since mitmproxy runs in an async event loop but handlers are sync,
+        # we need to schedule the sleep in the event loop without blocking
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context. Since the handler is sync and called from
+            # the event loop thread, we need to run the sleep in a separate thread
+            # to avoid blocking. Use run_coroutine_threadsafe from a worker thread.
+            import threading
+            import queue
+            result_queue = queue.Queue()
+            
+            def schedule_sleep():
+                future = asyncio.run_coroutine_threadsafe(asyncio.sleep(wait_time), loop)
+                future.result()  # Wait for completion
+                result_queue.put(None)
+            
+            thread = threading.Thread(target=schedule_sleep)
+            thread.start()
+            thread.join()  # Wait for sleep to complete
+        except RuntimeError:
+            # No running event loop, fall back to time.sleep
+            time.sleep(wait_time)
 
     return wait_time
 
