@@ -105,6 +105,9 @@ def __filter_options(options):
     options['listen_port'] = options['proxy_port']
     options['mode'] = options['proxy_mode']
 
+    if 'upstream_auth' in options and not options['upstream_auth']:
+        del options['upstream_auth']
+
     if 'api_url' in options:
         del options['api_url']
 

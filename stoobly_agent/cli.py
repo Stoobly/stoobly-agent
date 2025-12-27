@@ -79,10 +79,6 @@ def init(**kwargs):
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
-@click.option('--modify-headers', multiple=True, help='''
-  Header modify pattern of the form "[/flow-filter]/header-name/[@]header-value", where the separator can be any character. The @ allows to provide a file path that is used to read the header value string.
-  An empty header-value removes existing header-name headers. May be passed multiple times.
-''')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
@@ -100,6 +96,7 @@ def init(**kwargs):
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
+@click.option('--upstream-auth', help='Add HTTP Basic authentication to upstream proxy and reverse proxy requests. Format: username:password')
 def run(**kwargs):
     from .app.proxy.run import run as run_proxy
 
