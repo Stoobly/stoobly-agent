@@ -65,7 +65,7 @@ def __get_intercept_handler_concurrent_path():
     return script
 
 def __with_static_options(config: 'MitmproxyConfig', cli_options):
-    # Intercept handler concurrent needs to be incuded second to run background tasks
+    # Intercept handler concurrent needs to be included second to run background tasks
     # Set scripts multiple times - mitmproxy expects each script to be set separately
     options = (
         'block_global=false',
