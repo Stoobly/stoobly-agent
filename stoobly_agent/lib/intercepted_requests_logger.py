@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from requests import Response
-    from mitmproxy.http import Request as MitmproxyRequest
+    from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
@@ -38,16 +38,9 @@ class InterceptedRequestsLogger():
             super().__init__()
             self.__settings = settings
 
-        def _get_base_ui_url(self) -> str:
-            base_url = self.__settings.ui.url
-
-            # If base URL is not set in settings.yml OR it's set to the URL from within a Scaffold workflow
-            # Then return the localhost URL so users can access it.
-            if not base_url or base_url == 'http://local.stoobly.com:4200':
-                base_url = 'http://localhost:4200'
-            return base_url
-
         def format(self, record: logging.LogRecord) -> str:
+            timestamp = datetime.fromtimestamp(record.created)
+
             # Handle delimiter entries such as when changing scenarios
             if hasattr(record, 'delimiter'):
                 delimiter_entry = {
@@ -57,27 +50,49 @@ class InterceptedRequestsLogger():
                 return json.dumps(delimiter_entry)
 
             log_entry = {
-                "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+                "timestamp": timestamp.isoformat(),
                 "level": record.levelname,
                 "message": record.getMessage()
             }
 
+            request = None
+
             # Extract fields from request
             if hasattr(record, 'request') and record.request is not None:
                 # Lazy import for runtime usage
-                from mitmproxy.http import Request as MitmproxyRequest
                 request: 'MitmproxyRequest' = record.request
+                agent = request.headers.get("User-Agent", None)
+
+                if agent:
+                    log_entry.update({
+                        "user_agent": agent
+                    })
+
+                url = request.pretty_url
+
+                # Truncate URL to 100 characters
+                if len(url) > 100:
+                    url = url[:100] + '...'
+
                 log_entry.update({
                     "method": request.method,
-                    "url": request.pretty_url,
+                    "url": url,
                 })
 
             # Extract fields from response
             if hasattr(record, 'response') and record.response is not None:
-                response = record.response
+                response: 'MitmproxyResponse' = record.response
                 log_entry.update({
                     "status_code": response.status_code,
                 })
+                
+                if request:
+                    # Calculate latency 
+                    latency = timestamp.timestamp() - request.timestamp_start
+                    latency_ms = round(latency * 1000)
+                    log_entry.update({
+                        "latency_ms": latency_ms
+                    })
 
             # Set scenario key
             intercept_settings = InterceptSettings(self.__settings)
@@ -110,19 +125,7 @@ class InterceptedRequestsLogger():
                     "namespace": env_var_namespace_name
                 })
 
-            # Set scenario UI URL if scenario_key has a value
-            stoobly_ui_scenario_url = ""
-            if scenario_key:
-                scenario_id = InterceptedRequestsLogger._get_scenario_id(scenario_key)
-                if scenario_id:
-                    base_url = self._get_base_ui_url()
-                    stoobly_ui_scenario_url = f"{base_url}/agent/scenarios/{scenario_id}"
-                log_entry.update({
-                    "stoobly_ui_scenario_url": stoobly_ui_scenario_url
-                })
-
             # Set request key and UI URL - prioritize passed-in value, fallback to response headers
-            stoobly_ui_request_url = ""
             request_key = None
 
             # Check for passed-in request_key first
@@ -136,15 +139,6 @@ class InterceptedRequestsLogger():
                 log_entry.update({
                     "request_key": request_key
                 })
-
-                request_id = InterceptedRequestsLogger._get_request_id(request_key)
-                if request_id:
-                    base_url = self._get_base_ui_url()
-                    stoobly_ui_request_url = f"{base_url}/agent/requests/{request_id}"
-
-                    log_entry.update({
-                        "stoobly_ui_request_url": stoobly_ui_request_url
-                    })
 
             # Set fixture path if provided
             if hasattr(record, 'fixture_path') and record.fixture_path is not None:
