@@ -6,6 +6,7 @@ import ssl
 import subprocess
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
@@ -191,13 +192,31 @@ class CertificateAuthority():
             
             # Handle different key types
             if isinstance(ca_public_key, rsa.RSAPublicKey):
-                # RSA signature verification
-                ca_public_key.verify(
-                    certificate.signature,
-                    certificate.tbs_certificate_bytes,
-                    padding.PKCS1v15(),
-                    certificate.signature_hash_algorithm,
-                )
+                # RSA signature verification - check if PSS or PKCS1v15 padding is used
+                signature_algorithm = certificate.signature_algorithm_oid
+                
+                # Check if signature uses PSS padding
+                if signature_algorithm in (
+                    x509.SignatureAlgorithmOID.RSASSA_PSS,
+                ):
+                    # Use PSS padding with MGF1 and MAX_LENGTH salt
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PSS(
+                            mgf=padding.MGF1(certificate.signature_hash_algorithm),
+                            salt_length=padding.PSS.MAX_LENGTH
+                        ),
+                        certificate.signature_hash_algorithm,
+                    )
+                else:
+                    # Use PKCS1v15 padding (default for most RSA signatures)
+                    ca_public_key.verify(
+                        certificate.signature,
+                        certificate.tbs_certificate_bytes,
+                        padding.PKCS1v15(),
+                        certificate.signature_hash_algorithm,
+                    )
             elif isinstance(ca_public_key, ec.EllipticCurvePublicKey):
                 # ECDSA signature verification (uses different padding)
                 ca_public_key.verify(
@@ -211,9 +230,11 @@ class CertificateAuthority():
                 return False
             
             return True
-            
+        except InvalidSignature:
+            Logger.instance(LOG_ID).warning(f"Certificate signature verification failed for {hostname}: certificate was not signed by this CA")
+            return False
         except Exception as e:
-            Logger.instance(LOG_ID).debug(f"Certificate verification failed for {hostname}: {e}")
+            Logger.instance(LOG_ID).warning(f"Certificate verification failed for {hostname}: {e}")
             return False
 
     def __ensure_exists(self, file_path):
