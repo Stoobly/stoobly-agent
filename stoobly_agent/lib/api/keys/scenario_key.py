@@ -27,8 +27,8 @@ class ScenarioKey(UuidKey):
     return self.__raw
 
   @staticmethod
-  def encode(project_id: str, request_id: str):
+  def encode(project_id: str, id: str):
     return UuidKey.encode({
       'p': project_id,
-      'i': request_id.replace('-', ''),
+      'i': id.replace('-', ''),
     })
