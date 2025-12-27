@@ -161,12 +161,10 @@ def __handle_mock_failure(context: MockContext) -> None:
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
     if request.method.upper() != 'OPTIONS':
-        return False
-        
+        return
+
     # Default OPTIONS request to allow CORS
     enable_cors(flow)
-
-    return True
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request
