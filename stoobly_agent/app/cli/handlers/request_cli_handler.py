@@ -146,7 +146,7 @@ def snapshot_handler(kwargs):
   validate_request_key(request_key)
 
   request = RequestFacade(Settings.instance())
-  status = request.show(request_key)[1]
+  status = request.show(request_key, {})[1]
 
   if status == 404:
     print(f"Error: Could not find request", file=sys.stderr)
