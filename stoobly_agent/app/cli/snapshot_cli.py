@@ -301,8 +301,17 @@ def __request_matches(request: 'Request', search: str):
   if not request:
     return False
 
+  if re.match(search, request.url):
+    return True
+
   uri = urlparse(request.url)
-  return re.match(search, request.url) or re.match(search, uri.path)
+  if re.match(search, uri.hostname):
+    return True
+
+  if re.match(search, uri.path):
+    return True
+  
+  return False
 
 def __transform_request(request: 'Request'):
   event_dict = { 'method': '', 'host': '', 'port': '', 'path': '', 'query': ''}
