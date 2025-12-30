@@ -305,7 +305,7 @@ def __request_matches(request: 'Request', search: str):
     return True
 
   uri = urlparse(request.url)
-  if re.match(search, uri.hostname):
+  if uri.hostname and re.match(search, uri.hostname):
     return True
 
   if re.match(search, uri.path):

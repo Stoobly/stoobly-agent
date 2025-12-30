@@ -24,7 +24,7 @@ class RequestFacade(ReplayFacade):
 
     return self.__model.destroy(key.id)
 
-  def show(self, request_key: str, **cli_options: dict):
+  def show(self, request_key: str, cli_options: dict):
     key = RequestKey(request_key)
 
     return self.__model.show(key.id, **{ 
