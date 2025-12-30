@@ -49,5 +49,9 @@ class JoinedRequestStringAdapter():
     if content_encoding_header in adapter.headers:
       del adapter.headers[content_encoding_header]
 
+    # Update Content-Length header to match decoded body size
+    if adapter.body is not None:
+      adapter.headers['Content-Length'] = str(len(adapter.body))
+
     python_response = adapter.to_response()
     response.raw = RawResponseAdapter(python_response).adapt()

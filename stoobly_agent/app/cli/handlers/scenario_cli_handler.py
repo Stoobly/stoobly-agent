@@ -154,6 +154,12 @@ def snapshot_handler(kwargs):
   validate_scenario_key(scenario_key)
 
   scenario = ScenarioFacade(Settings.instance())
+  status = scenario.show(scenario_key)[1]
+
+  if status == 404:
+    print(f"Error: Could not find scenario", file=sys.stderr)
+    sys.exit(1)
+
   scenario.snapshot(scenario_key, kwargs)
 
 def test_handler(kwargs: ScenarioTestOptions):
