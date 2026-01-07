@@ -124,6 +124,8 @@ def mkcert(**kwargs):
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
 
   if containerized:
+    # Intentially not passing kwargs to ContainerizedApp to avoid overriding path options e.g. --context-dir-path
+    # In a containerized environment, the context-dir-path is the cwd
     app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE)
   else:
     app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
