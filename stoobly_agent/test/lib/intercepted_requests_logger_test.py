@@ -14,7 +14,7 @@ from stoobly_agent.test.test_helper import reset
 
 @pytest.fixture(autouse=True, scope='module')
 def settings():
-    return reset('intercepted-requests-logger-test')
+    return reset()
 
 
 @pytest.fixture(autouse=True)

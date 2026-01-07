@@ -1,5 +1,6 @@
 import json
 import os
+import pdb
 import pytest
 import requests
 import time
@@ -23,7 +24,7 @@ class TestRequestLogE2e():
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
-        return reset('request-log-e2e-test')
+        return reset()
 
     @pytest.fixture(scope='module')
     def runner(self):
@@ -41,41 +42,49 @@ class TestRequestLogE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield "api.example.com"
+        yield "docs.stoobly.com"
 
     @pytest.fixture(scope='class')
     def service_name(self):
         yield "test-api"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+        yield WORKFLOW_MOCK_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
     def proxy_url(self):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
     @pytest.fixture(scope="class", autouse=True)
-    def mock_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, settings: Settings):
+    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
         """Start mock workflow for testing."""
-        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
         settings.load()
 
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
         yield
 
-        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
 
-    def test_log_list_shows_mock_failures(self, mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_log_list_shows_mock_failures(self, app_dir_path, hostname, runner: CliRunner, proxy_url: str):
         """Test that 499 mock failures are logged and visible via request log list."""
         # Make an unrecorded request through proxy - should trigger 499
+        # curl -x http://localhost:8081 -k 'https://docs.stoobly.com/test-unrecorded'
         res = requests.get(
-            'https://docs.stoobly.com/test-unrecorded',
+            f'https://{hostname}/test-unrecorded',
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
+
         assert res.status_code == 499
 
         # Give time for async logging to complete
@@ -109,11 +118,11 @@ class TestRequestLogE2e():
 
         assert found_mock_failure, f"Expected to find 'Mock failure' log entry in output:\n{output}"
 
-    def test_log_delete_clears_log_entries(self, mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_log_delete_clears_log_entries(self, runner: CliRunner, proxy_url: str, hostname):
         """Test that request log delete clears all log entries."""
         # Make another request to ensure we have log entries
         requests.get(
-            'https://docs.stoobly.com/another-unrecorded',
+            f'https://{hostname}/another-unrecorded',
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -134,7 +143,7 @@ class TestRequestLogE2e():
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
-    def test_log_list_empty_for_successful_requests_at_error_level(self, mock_workflow, runner: CliRunner):
+    def test_log_list_empty_for_successful_requests_at_error_level(self, runner: CliRunner):
         """Test that successful requests are not logged when log level is ERROR (default)."""
         # Clear the log first
         runner.invoke(request, ['log', 'delete'])
@@ -155,7 +164,7 @@ class TestRequestLogWithRecordedRequestsE2e():
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
-        return reset('request-log-recorded-e2e-test')
+        return reset()
 
     @pytest.fixture(scope='module')
     def runner(self):
@@ -184,7 +193,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
@@ -200,6 +209,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         settings.proxy.intercept.active = True
         settings.commit()
         time.sleep(1)
+        settings.load()
 
         requests.get(
             'https://dog.ceo/api/breeds/list/all',
