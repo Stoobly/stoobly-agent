@@ -124,7 +124,9 @@ def mkcert(**kwargs):
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
 
   if containerized:
-    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+    # Intentially not passing kwargs to ContainerizedApp to avoid overriding path options e.g. --context-dir-path
+    # In a containerized environment, the context-dir-path is the cwd
+    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE)
   else:
     app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
 
@@ -491,6 +493,7 @@ def logs(**kwargs):
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
+@click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--script-path', help='Path to intermediate script path.')
@@ -512,6 +515,14 @@ def up(**kwargs):
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
+
+  # Generate SSL certs for HTTPS services
+  if kwargs['mkcert']:
+    services = __get_services(
+      app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+    )
+    _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
+    __services_mkcert(_app, services)
 
   # Determine which workflow command to use based on app configuration
   services = __get_services(
