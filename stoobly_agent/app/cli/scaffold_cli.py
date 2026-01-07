@@ -124,7 +124,7 @@ def mkcert(**kwargs):
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
 
   if containerized:
-    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE)
   else:
     app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
 
