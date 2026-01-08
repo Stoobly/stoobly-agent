@@ -43,7 +43,7 @@ class InterceptedRequestsLogger():
 
 
     # Feature flag: Set to True to enable async queue-based logging
-    __USE_ASYNC_QUEUE: bool = False
+    __USE_ASYNC_QUEUE: bool = True
 
     # Async logging components
     __queue_listener: Optional[logging.handlers.QueueListener] = None
@@ -80,6 +80,18 @@ class InterceptedRequestsLogger():
         """Public method to shutdown logger gracefully"""
         cls.__cleanup_handlers()
         cls.__logger.handlers.clear()
+
+    @classmethod
+    def flush(cls) -> None:
+        """Flush pending log messages to disk without stopping the listener."""
+        if cls.__USE_ASYNC_QUEUE and cls.__log_queue is not None:
+            # Wait for the queue to be empty (all messages processed)
+            # QueueListener calls task_done() after handling each record (since Python 3.7+)
+            cls.__log_queue.join()
+
+        # Flush the file handler buffer to disk
+        if cls.__file_handler is not None:
+            cls.__file_handler.flush()
 
     class JSONFormatter(logging.Formatter):
         def __init__(self, settings: Settings):

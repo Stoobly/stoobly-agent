@@ -115,6 +115,8 @@ class TestLogMethods:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Test info message")
 
+        InterceptedRequestsLogger.flush()
+
         with open(self.log_path, 'r') as f:
             content = f.read()
             assert "Test info message" in content
@@ -124,6 +126,8 @@ class TestLogMethods:
         with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Request log", request=mock_mitmproxy_request)
+
+        InterceptedRequestsLogger.flush()
 
         with open(self.log_path, 'r') as f:
             lines = f.readlines()
@@ -146,6 +150,8 @@ class TestLogMethods:
                 response=mock_mitmproxy_response
             )
 
+        InterceptedRequestsLogger.flush()
+
         with open(self.log_path, 'r') as f:
             lines = f.readlines()
             for line in lines:
@@ -164,6 +170,8 @@ class TestLogMethods:
             InterceptedRequestsLogger.debug("Should not appear")
             InterceptedRequestsLogger.info("Should not appear")
             InterceptedRequestsLogger.error("Should appear")
+
+        InterceptedRequestsLogger.flush()
 
         with open(self.log_path, 'r') as f:
             content = f.read()
@@ -191,6 +199,8 @@ class TestJSONFormatter:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("JSON test message")
 
+        InterceptedRequestsLogger.flush()
+
         with open(self.log_path, 'r') as f:
             lines = f.readlines()
             for line in lines:
@@ -209,6 +219,8 @@ class TestJSONFormatter:
         with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Long URL test", request=mock_mitmproxy_request)
+
+        InterceptedRequestsLogger.flush()
 
         with open(self.log_path, 'r') as f:
             lines = f.readlines()
@@ -234,6 +246,7 @@ class TestFileOperations:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Dump test message")
 
+        InterceptedRequestsLogger.flush()
         InterceptedRequestsLogger.shutdown()
         InterceptedRequestsLogger.dump_logs()
 
@@ -250,6 +263,7 @@ class TestFileOperations:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Before truncate")
 
+        InterceptedRequestsLogger.flush()
         InterceptedRequestsLogger.truncate()
 
         with open(log_path, 'r') as f:
