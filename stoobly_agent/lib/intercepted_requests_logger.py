@@ -49,6 +49,7 @@ class InterceptedRequestsLogger():
     __queue_listener: Optional[logging.handlers.QueueListener] = None
     __log_queue: Optional[queue.Queue] = None
     __file_handler: Optional[logging.FileHandler] = None
+    __atexit_registered: bool = False
 
     @staticmethod
     def _get_namespace() -> str:
@@ -246,7 +247,7 @@ class InterceptedRequestsLogger():
             parsed_key = ScenarioKey(scenario_key)
             scenario = Scenario.find_by(uuid=parsed_key.id)
             return scenario.name if scenario else None
-        except (InvalidScenarioKey, Exception):
+        except InvalidScenarioKey:
             return None
 
     @classmethod
@@ -258,7 +259,7 @@ class InterceptedRequestsLogger():
             parsed_key = ScenarioKey(scenario_key)
             scenario = Scenario.find_by(uuid=parsed_key.id)
             return scenario.id if scenario else None
-        except (InvalidScenarioKey, Exception):
+        except InvalidScenarioKey:
             return None
 
     @classmethod
@@ -268,7 +269,7 @@ class InterceptedRequestsLogger():
 
         try:
             return response.headers.get('X-Stoobly-Request-Key')
-        except (AttributeError, Exception):
+        except AttributeError:
             return None
 
     @classmethod
@@ -280,7 +281,7 @@ class InterceptedRequestsLogger():
             parsed_key = RequestKey(request_key)
             request = Request.find_by(uuid=parsed_key.id)
             return request.id if request else None
-        except (InvalidRequestKey, Exception):
+        except InvalidRequestKey:
             return None
 
     @classmethod
@@ -326,8 +327,10 @@ class InterceptedRequestsLogger():
                 )
                 cls.__queue_listener.start()
 
-                # Register cleanup on program exit to flush remaining logs
-                atexit.register(cls.shutdown)
+                # Register cleanup on program exit to flush remaining logs (only once)
+                if not cls.__atexit_registered:
+                    atexit.register(cls.shutdown)
+                    cls.__atexit_registered = True
 
                 queue_handler = logging.handlers.QueueHandler(cls.__log_queue)
                 cls.__logger.addHandler(queue_handler)
@@ -335,7 +338,7 @@ class InterceptedRequestsLogger():
                 # Synchronous direct logging
                 cls.__logger.addHandler(cls.__file_handler)
 
-        except (IOError, Exception) as e:
+        except OSError as e:
             cls.__logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
