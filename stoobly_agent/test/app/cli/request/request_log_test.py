@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
@@ -69,7 +70,7 @@ class TestRequestLogE2e():
         settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
         yield
 
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
@@ -85,13 +86,10 @@ class TestRequestLogE2e():
             verify=False
         )
 
-        assert res.status_code == 499
+        assert res.status_code == NOT_FOUND
 
         # Give time for async logging to complete
         time.sleep(0.5)
-
-        # Shutdown logger to flush any pending writes
-        InterceptedRequestsLogger.shutdown()
 
         # Invoke request log list
         result = runner.invoke(request, ['log', 'list'])
@@ -109,9 +107,19 @@ class TestRequestLogE2e():
                 entry = json.loads(line)
                 if entry.get('message') == 'Mock failure':
                     found_mock_failure = True
+
+                    # Check specific field values
                     assert entry['level'] == 'ERROR'
-                    assert entry['status_code'] == 499
-                    assert 'docs.stoobly.com' in entry.get('url', '')
+                    assert entry['method'] == 'GET'
+                    assert hostname in entry.get('url', '')
+                    assert entry['status_code'] == NOT_FOUND
+                    assert 'scenario_key' in entry
+
+                    # Assert these fields exist and are not null
+                    assert entry.get('timestamp'), "timestamp should exist and not be empty"
+                    assert entry.get('user_agent'), "user_agent should exist and not be empty"
+                    assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
                     break
             except json.JSONDecodeError:
                 continue
@@ -142,21 +150,6 @@ class TestRequestLogE2e():
         list_result = runner.invoke(request, ['log', 'list'])
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
-
-    def test_log_list_empty_for_successful_requests_at_error_level(self, runner: CliRunner):
-        """Test that successful requests are not logged when log level is ERROR (default)."""
-        # Clear the log first
-        runner.invoke(request, ['log', 'delete'])
-
-        # Note: To test successful mock requests, we would need to first record a request
-        # and then mock it. Since this test class is for mock workflow with no recordings,
-        # all requests will fail with 499. This test verifies that after clearing,
-        # the log starts empty.
-        list_result = runner.invoke(request, ['log', 'list'])
-        assert list_result.exit_code == 0
-        # After delete, log should be empty (no new requests made)
-        assert not list_result.output.strip(), "Log should be empty after delete with no new requests"
-
 
 @pytest.mark.e2e
 class TestRequestLogWithRecordedRequestsE2e():
@@ -232,8 +225,8 @@ class TestRequestLogWithRecordedRequestsE2e():
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
 
-    def test_successful_mock_not_logged_at_error_level(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
-        """Test that successful mock requests are not logged at ERROR level."""
+    def test_successful_mock_logged_at_info_level(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+        """Test that successful mock requests are logged at INFO level (default)."""
         # Clear log first
         runner.invoke(request, ['log', 'delete'])
 
@@ -243,8 +236,6 @@ class TestRequestLogWithRecordedRequestsE2e():
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
-        # This should be 200 if properly mocked, or 499 if not found
-        # We're testing that successful mocks (200) are NOT logged at ERROR level
 
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
@@ -252,20 +243,38 @@ class TestRequestLogWithRecordedRequestsE2e():
         list_result = runner.invoke(request, ['log', 'list'])
         assert list_result.exit_code == 0
 
-        # If the request was successful (200), there should be no log entry
-        # because default log level is ERROR
-        if res.status_code == 200:
-            # Should not have "Mock success" entries since log level is ERROR
-            output = list_result.output
-            for line in output.strip().split('\n'):
-                if not line.strip():
-                    continue
-                try:
-                    entry = json.loads(line)
-                    assert entry.get('message') != 'Mock success', \
-                        "Mock success should not be logged at ERROR level"
-                except json.JSONDecodeError:
-                    continue
+        if res.status_code != 200:
+            assert False, f"Expected successful mock (200), got {res.status_code}. Response: {res.text}. Ensure the request was recorded properly before mocking."
+
+        # If the request was successful (200), there should be a "Mock success" log entry
+        # because default log level is INFO
+        found_mock_success = False
+        output = list_result.output
+        for line in output.strip().split('\n'):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get('message') == 'Mock success':
+                    found_mock_success = True
+
+                    # Check specific field values
+                    assert entry['level'] == 'INFO'
+                    assert entry['method'] == 'GET'
+                    assert 'dog.ceo' in entry.get('url', '')
+                    assert entry['status_code'] == 200
+                    assert 'scenario_key' in entry
+
+                    # Assert these fields exist and are not null
+                    assert entry.get('timestamp'), "timestamp should exist and not be empty"
+                    assert entry.get('user_agent'), "user_agent should exist and not be empty"
+                    assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+                    break
+            except json.JSONDecodeError:
+                continue
+
+        assert found_mock_success, f"Expected Mock success log entry, got:\n{output}"
 
     def test_unrecorded_request_logged_as_error(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
@@ -278,7 +287,7 @@ class TestRequestLogWithRecordedRequestsE2e():
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
-        assert res.status_code == 499
+        assert res.status_code == NOT_FOUND
 
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
@@ -296,7 +305,7 @@ class TestRequestLogWithRecordedRequestsE2e():
                 if entry.get('message') == 'Mock failure':
                     found_failure = True
                     assert entry['level'] == 'ERROR'
-                    assert entry['status_code'] == 499
+                    assert entry['status_code'] == NOT_FOUND
                     break
             except json.JSONDecodeError:
                 continue

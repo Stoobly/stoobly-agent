@@ -38,7 +38,6 @@ class InterceptedRequestsLogger():
     __LEVEL_TO_STR: Final[dict] = {v: k for k, v in __STR_TO_LEVEL.items()}
 
     __settings: Settings = Settings.instance()
-    __NAMESPACE: str = os.environ.get(WORKFLOW_NAMESPACE_ENV, __settings.proxy.intercept.mode)
     __file_path: str = None
     __previous_scenario_key: str = None
 
@@ -278,7 +277,8 @@ class InterceptedRequestsLogger():
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        return f"{data_dir_path}/tmp/{cls.__NAMESPACE}/logs/requests.json"
+        namespace = cls._get_namespace()
+        return f"{data_dir_path}/tmp/{namespace}/logs/requests.json"
 
     @classmethod
     def enable_logger_file(cls) -> None:
