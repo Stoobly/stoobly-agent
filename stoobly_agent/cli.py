@@ -153,6 +153,7 @@ def run(**kwargs):
 
     if kwargs.get('request_log_enable'):
       from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
+
       # If truncating, do that first (it handles enable internally)
       if kwargs.get('request_log_truncate'):
         InterceptedRequestsLogger.truncate()
