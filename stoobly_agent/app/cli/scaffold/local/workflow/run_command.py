@@ -381,7 +381,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     if response_fixtures_paths:
       command.extend(response_fixtures_paths)
-    
+
+    command.append('--request-log-enable')
+
     # Convert command to string
     command_str = ' '.join(command)
 
