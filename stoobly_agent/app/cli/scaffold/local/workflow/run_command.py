@@ -11,10 +11,7 @@ from typing import Optional, List
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
-from stoobly_agent.app.cli.helpers.set_rewrite_rule_service import set_rewrite_rule
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import method, mode
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
+from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
 from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'LocalWorkflowRunCommand'
@@ -144,45 +141,18 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     # iterate through each service in the workflow
     commands = self.workflow_service_commands(**options)
-
-    public_directory_paths = []
-    response_fixtures_paths = []
-    for command in commands:
-      url = command.service_config.url
-      if url:
-        if os.path.exists(command.public_dir_path):
-          public_directory_paths.append('--public-directory-path')
-          public_directory_paths.append(f"{command.public_dir_path}:{url}")
-
-        if os.path.exists(command.response_fixtures_path):
-          response_fixtures_paths.append('--response-fixtures-path')
-          response_fixtures_paths.append(f"{command.response_fixtures_path}:{url}")
    
-    for command in commands:
+    def on_service_up(command):
       command.service_up(**options)
 
-      # If second from last command, run up_command i.e. right before entrypoint
-      if command == commands[-2]:
-        self.__up_command(public_directory_paths, response_fixtures_paths, **options)
+    def on_before_entrypoint(public_directory_paths, response_fixtures_paths):
+      self.__up_command(public_directory_paths, response_fixtures_paths, **options)
 
-      upstream_hostname = command.service_config.upstream_hostname
-      upstream_port = command.service_config.upstream_port
-      upstream_scheme = command.service_config.upstream_scheme
-
-      # If upstream hostname, port, scheme, or url is different from service hostname, port, scheme, or url,
-      # update settings rewrite rules to rewrite url to upstream url
-      if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme:
-        settings: Settings = Settings.instance()
-        project_key = ProjectKey(settings.proxy.intercept.project_key)
-        set_rewrite_rule(
-          project_key.id,
-          pattern=f'{command.service_config.url}/?.*?',
-          method=[method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
-          mode=[mode.REPLAY],
-          hostname=upstream_hostname,
-          port=upstream_port,
-          scheme=upstream_scheme
-        )
+    iter_commands(
+      commands,
+      handle_command=on_service_up,
+      handle_before_entrypoint=on_before_entrypoint,
+    )
 
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
@@ -366,21 +336,17 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
 
-    # Add log level if provided
-    if options.get('log_level'):
-      command.extend(['--log-level', options['log_level']])
-    
     # Use the PID file path as the detached output file
     command.extend(['--detached', self.log_file_path])
 
-    command.extend(['--proxy-port', f"{self.app_config.proxy_port}"])
-    command.extend(['--ui-port', f"{self.app_config.ui_port}"])
+    options = run_options(
+      self.app_config,
+      log_level=options.get('log_level'),
+      public_directory_paths=public_directory_paths,
+      response_fixtures_paths=response_fixtures_paths,
+    )
 
-    if public_directory_paths:
-      command.extend(public_directory_paths)
-
-    if response_fixtures_paths:
-      command.extend(response_fixtures_paths)
+    command.extend(options)
     
     # Convert command to string
     command_str = ' '.join(command)
