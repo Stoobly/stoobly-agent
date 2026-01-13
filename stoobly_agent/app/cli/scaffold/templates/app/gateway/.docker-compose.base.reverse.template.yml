@@ -1,0 +1,10 @@
+services:
+  gateway_base:
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    image: traefik:v3
+    profiles:
+      - gateway_base
+    volumes:
+      - ${APP_DOCKER_SOCKET_PATH}:/var/run/docker.sock:ro
+      - ${CERTS_DIR}:/certs:ro
