@@ -5,7 +5,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, SERVICES_NAMESPACE,
+  APP_DIR, PROXY_MODE_REVERSE, SERVICES_NAMESPACE,
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_ID,
   SERVICE_PORT, SERVICE_PORT_ENV,
@@ -168,7 +168,9 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
     self.build_configure_base()
 
     if self.config.hostname:
-      self.build_proxy_base()
+      # Only build the proxy base if we are reverse proxying
+      if self.config.app_config.proxy_mode == PROXY_MODE_REVERSE:
+        self.build_proxy_base()
 
     compose = {
       'services': self.services,
