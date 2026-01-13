@@ -249,16 +249,15 @@ class ServiceConfig(Config):
 
   def to_dict(self):
     return {
-      'detached': self.detached,
+      'scheme': self.scheme if self.hostname else '',
       'hostname': self.hostname,
-      'local': self.local,
-      'name': self.name,
       'port': self.port,
       'priority': self.priority,
-      'scheme': self.scheme if self.hostname else '',
+      'local': self.local,
+      'detached': self.detached,
+      'upstream_scheme': self.upstream_scheme,
       'upstream_hostname': self.upstream_hostname,
       'upstream_port': self.upstream_port,
-      'upstream_scheme': self.upstream_scheme,
     }
 
   def write(self):
