@@ -8,7 +8,7 @@ from typing import List
 from types import FunctionType
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
-from stoobly_agent.app.cli.scaffold.docker.service.configure_gateway import configure_gateway
+from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
@@ -60,7 +60,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
 
-    no_publish = options.get('no_publish', False)
     print_service_header = options.get('print_service_header')
     timestamp_file = None
 
@@ -83,7 +82,11 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
       # Configure gateway ports dynamically based on workflow run
       workflow = Workflow(self.workflow_name, self.app)
-      configure_gateway(self.workflow_namespace, workflow.service_paths_from_services(self.services), no_publish)
+      gateway_base = GatewayBase(self.workflow_namespace, workflow.service_paths_from_services(self.services))
+      gateway_base.with_app_config(self.app_config).with_commands(commands)
+      gateway_base.log_level = options.get('log_level')
+      gateway_base.no_publish = options.get('no_publish', False)
+      gateway_base.configure()
 
       # Write nameservers if not running in container
       if not options.get('containerized'):
