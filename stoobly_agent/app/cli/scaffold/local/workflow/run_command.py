@@ -347,7 +347,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     )
 
     command.extend(options)
-    
+
     # Convert command to string
     command_str = ' '.join(command)
 

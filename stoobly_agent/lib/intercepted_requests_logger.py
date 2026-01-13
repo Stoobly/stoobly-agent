@@ -1,9 +1,12 @@
 
 import os
 import logging
+import logging.handlers
 import json
+import queue
+import atexit
 from datetime import datetime
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Optional
 
 if TYPE_CHECKING:
     from requests import Response
@@ -25,13 +28,71 @@ class InterceptedRequestsLogger():
     __LOG_ID: Final[str] = "InterceptedRequestsLogger"
     __logger: Logger = Logger.instance(__LOG_ID)
 
+    # Log level mappings for conversion between string and numeric levels
+    __STR_TO_LEVEL: Final[dict] = {
+        DEBUG: logging.DEBUG,
+        INFO: logging.INFO,
+        WARNING: logging.WARNING,
+        ERROR: logging.ERROR,
+    }
+    __LEVEL_TO_STR: Final[dict] = {v: k for k, v in __STR_TO_LEVEL.items()}
+
     __settings: Settings = Settings.instance()
-    __NAMESPACE: str = os.environ.get(WORKFLOW_NAMESPACE_ENV, __settings.proxy.intercept.mode)
     __file_path: str = None
     __previous_scenario_key: str = None
 
+
+    # Feature flag: Set to True to enable async queue-based logging
+    __USE_ASYNC_QUEUE: bool = True
+
+    # Async logging components
+    __queue_listener: Optional[logging.handlers.QueueListener] = None
+    __log_queue: Optional[queue.Queue] = None
+    __file_handler: Optional[logging.FileHandler] = None
+    __atexit_registered: bool = False
+
+    @staticmethod
+    def _get_namespace() -> str:
+        # Imported lazily to avoid circular import
+        from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV
+        return os.environ.get(WORKFLOW_NAMESPACE_ENV, InterceptedRequestsLogger.__settings.proxy.intercept.mode)
+
     # Initialize logger as disabled by default
     __logger.disabled = True
+
+    @classmethod
+    def __cleanup_handlers(cls) -> None:
+        """Stop queue listener and close handlers"""
+        # Stop the queue listener (flushes remaining records)
+        if cls.__queue_listener is not None:
+            cls.__queue_listener.stop()
+            cls.__queue_listener = None
+
+        # Close file handler
+        if cls.__file_handler is not None:
+            cls.__file_handler.close()
+            cls.__file_handler = None
+
+        # Clear queue reference
+        cls.__log_queue = None
+
+    @classmethod
+    def shutdown(cls) -> None:
+        """Public method to shutdown logger gracefully"""
+        cls.__cleanup_handlers()
+        cls.__logger.handlers.clear()
+
+    @classmethod
+    def flush(cls) -> None:
+        """Flush pending log messages to disk without stopping the listener."""
+        if cls.__USE_ASYNC_QUEUE and cls.__log_queue is not None:
+            # Wait for the queue to be empty (all messages processed)
+            # QueueListener calls task_done() after handling each record (since Python 3.7+)
+            cls.__log_queue.join()
+
+        # Flush the file handler buffer to disk
+        if cls.__file_handler is not None:
+            cls.__file_handler.flush()
 
     class JSONFormatter(logging.Formatter):
         def __init__(self, settings: Settings):
@@ -168,18 +229,14 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def set_log_level(cls, log_level: str) -> None:
-        # Convert string log level to Python standard logging constants
-        level_mapping = {
-            DEBUG: logging.DEBUG,
-            INFO: logging.INFO,
-            WARNING: logging.WARNING,
-            ERROR: logging.ERROR,
-        }
-
-        numeric_level = level_mapping.get(log_level.lower())
+        numeric_level = cls.__STR_TO_LEVEL.get(log_level.lower())
         if numeric_level is None:
-            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(level_mapping.keys())}")
+            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(cls.__STR_TO_LEVEL.keys())}")
         cls.__logger.setLevel(numeric_level)
+
+    @classmethod
+    def get_log_level(cls) -> str:
+        return cls.__LEVEL_TO_STR.get(cls.__logger.level, INFO)
 
     @classmethod
     def _get_scenario_name(cls, scenario_key: str) -> str:
@@ -190,7 +247,7 @@ class InterceptedRequestsLogger():
             parsed_key = ScenarioKey(scenario_key)
             scenario = Scenario.find_by(uuid=parsed_key.id)
             return scenario.name if scenario else None
-        except (InvalidScenarioKey, Exception):
+        except InvalidScenarioKey:
             return None
 
     @classmethod
@@ -202,7 +259,7 @@ class InterceptedRequestsLogger():
             parsed_key = ScenarioKey(scenario_key)
             scenario = Scenario.find_by(uuid=parsed_key.id)
             return scenario.id if scenario else None
-        except (InvalidScenarioKey, Exception):
+        except InvalidScenarioKey:
             return None
 
     @classmethod
@@ -212,7 +269,7 @@ class InterceptedRequestsLogger():
 
         try:
             return response.headers.get('X-Stoobly-Request-Key')
-        except (AttributeError, Exception):
+        except AttributeError:
             return None
 
     @classmethod
@@ -224,7 +281,7 @@ class InterceptedRequestsLogger():
             parsed_key = RequestKey(request_key)
             request = Request.find_by(uuid=parsed_key.id)
             return request.id if request else None
-        except (InvalidRequestKey, Exception):
+        except InvalidRequestKey:
             return None
 
     @classmethod
@@ -233,7 +290,8 @@ class InterceptedRequestsLogger():
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        return f"{data_dir_path}/tmp/{cls.__NAMESPACE}/logs/requests.json"
+        namespace = cls._get_namespace()
+        return f"{data_dir_path}/tmp/{namespace}/logs/requests.json"
 
     @classmethod
     def enable_logger_file(cls) -> None:
@@ -243,17 +301,44 @@ class InterceptedRequestsLogger():
         cls.__logger.disabled = False
 
         try:
+            # Clean up existing handlers/listeners
+            cls.__cleanup_handlers()
+
+            # Create file handler
+            cls.__file_handler = logging.FileHandler(
+                cls.__get_file_path()
+            )
+            cls.__file_handler.setLevel(logging.DEBUG)
+            json_formatter = cls.JSONFormatter(cls.__settings)
+            cls.__file_handler.setFormatter(json_formatter)
+
             # Remove all existing handlers to prevent logging to stdout
             cls.__logger.handlers.clear()
             # Prevent propagation to parent loggers which may have console handlers
             cls.__logger.propagate = False
 
-            file_handler = logging.FileHandler(cls.__get_file_path())
-            json_formatter = cls.JSONFormatter(cls.__settings)
-            file_handler.setFormatter(json_formatter)
-            cls.__logger.addHandler(file_handler)
+            if cls.__USE_ASYNC_QUEUE:
+                # Async queue-based logging
+                cls.__log_queue = queue.Queue()
+                cls.__queue_listener = logging.handlers.QueueListener(
+                    cls.__log_queue,
+                    cls.__file_handler,
+                    respect_handler_level=True
+                )
+                cls.__queue_listener.start()
 
-        except IOError as e:
+                # Register cleanup on program exit to flush remaining logs (only once)
+                if not cls.__atexit_registered:
+                    atexit.register(cls.shutdown)
+                    cls.__atexit_registered = True
+
+                queue_handler = logging.handlers.QueueHandler(cls.__log_queue)
+                cls.__logger.addHandler(queue_handler)
+            else:
+                # Synchronous direct logging
+                cls.__logger.addHandler(cls.__file_handler)
+
+        except OSError as e:
             cls.__logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
@@ -349,17 +434,23 @@ class InterceptedRequestsLogger():
             return
 
         try:
-            # Close and remove existing handler to release the file lock
+            # Stop queue listener and close file handler to release the file lock
+            cls.__cleanup_handlers()
+
+            # Close and remove existing handlers (backward compatibility)
             for handler in cls.__logger.handlers[:]:
                 if isinstance(handler, logging.FileHandler):
                     handler.close()
                     cls.__logger.removeHandler(handler)
 
+            # Clear all handlers
+            cls.__logger.handlers.clear()
+
             # Now truncate the file
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write('')
 
-            # Re-enable logging with a fresh handler
+            # Re-enable logging with fresh handlers
             cls.enable_logger_file()
             cls.__logger.debug(f"Cleared log file: {file_path}")
 
