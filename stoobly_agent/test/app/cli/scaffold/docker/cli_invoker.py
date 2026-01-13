@@ -18,6 +18,7 @@ class ScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--quiet',
       '--runtime', 'docker',
+      '--proxy-mode', 'reverse',
       app_name
     ])
 
