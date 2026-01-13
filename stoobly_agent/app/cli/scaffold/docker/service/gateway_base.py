@@ -32,7 +32,7 @@ class GatewayBase():
   @property
   def proxy_mode(self):
     if not self.app_config:
-      raise Exception("App config is required")
+      raise ValueError("App config is required")
 
     return self.app_config.proxy_mode
 
@@ -86,9 +86,11 @@ class GatewayBase():
           hostnames, ports = self.__find_hosts()
         else:
           hostnames = [CORE_GATEWAY_SERVICE_NAME]
-          ports = [
-            f"{self.app_config.proxy_port}:{self.app_config.proxy_port}",
-          ]
+
+          if self.app_config:
+            ports = [
+              f"{self.app_config.proxy_port}:{self.app_config.proxy_port}",
+            ]
 
         if not self.no_publish:
           gateway_base['ports'] = ports

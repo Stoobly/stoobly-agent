@@ -73,7 +73,7 @@ def iter_commands(
       )
 
     # If second from last command, run up_command i.e. right before entrypoint
-    if command == commands[-2]:
+    if len(commands) >= 2 and command == commands[-2]:
       if handle_before_entrypoint:
         handle_before_entrypoint(public_directory_paths, response_fixtures_paths)
 

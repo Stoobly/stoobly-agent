@@ -112,13 +112,14 @@ class AppCreateCommand(AppCommand):
             docker_compose_reverse_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE)
             docker_compose_forward_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE)
 
-            # Rename the reverse or forward base template file to the base template file
-            if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
-                os.rename(docker_compose_reverse_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
-                os.remove(docker_compose_forward_base_path)
-            else:
-                os.rename(docker_compose_forward_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
-                os.remove(docker_compose_reverse_base_path)
+            if os.path.exists(docker_compose_reverse_base_path) and os.path.exists(docker_compose_forward_base_path):
+                # Rename the reverse or forward base template file to the base template file
+                if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+                    os.rename(docker_compose_reverse_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_forward_base_path)
+                else:
+                    os.rename(docker_compose_forward_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_reverse_base_path)
 
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(

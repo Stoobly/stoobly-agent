@@ -336,7 +336,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
 
-    # Use the PID file path as the detached output file
+    # Use the log file path as the detached output file
     command.extend(['--detached', self.log_file_path])
 
     options = run_options(
