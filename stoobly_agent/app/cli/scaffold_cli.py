@@ -3,14 +3,13 @@ import os
 import pdb
 import sys
 
-
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_REGULAR, PROXY_MODE_REVERSE, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -88,6 +87,7 @@ def hostname(ctx):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
+@click.option('--proxy-mode', default=PROXY_MODE_REGULAR, type=click.Choice([PROXY_MODE_REGULAR, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
