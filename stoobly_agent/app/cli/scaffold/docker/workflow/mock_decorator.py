@@ -38,9 +38,10 @@ class MockDecorator(CommandDecorator):
 
     services = self.workflow_builder.services
     proxy_name = self.workflow_builder.proxy
-    proxy_service = services.get(proxy_name) or {}
+    proxy_service = services.get(proxy_name)
 
-    services[proxy_name] = { 
-      **proxy_service,
-      **{ 'command': command },
-    }
+    if proxy_service:
+      services[proxy_name] = { 
+        **proxy_service,
+        **{ 'command': command },
+      }
