@@ -362,13 +362,13 @@ def show(**kwargs):
   found_workflows = __find_running_workflows(app, app_config)
 
   if not found_workflows:
-    print("No workflows are currently running.")
+    click.echo("No workflows are currently running.")
     return
 
   for workflow_info in found_workflows:
     __print_workflow_status(workflow_info, app, app_config, verbose)
     if len(found_workflows) > 1:
-      print()  # Blank line between multiple workflows
+      click.echo()  # Blank line between multiple workflows
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -897,13 +897,23 @@ def __find_running_workflows(app: App, app_config: AppConfig):
     file_extension = '.timestamp'
 
   # Scan tmp directory for workflow status files
-  for folder in os.listdir(tmp_dir_path):
+  try:
+    folders = os.listdir(tmp_dir_path)
+  except PermissionError:
+    return found_workflows
+
+  for folder in folders:
     folder_path = os.path.join(tmp_dir_path, folder)
 
     if not os.path.isdir(folder_path):
       continue
 
-    for file in os.listdir(folder_path):
+    try:
+      files = os.listdir(folder_path)
+    except PermissionError:
+      continue
+
+    for file in files:
       if not file.endswith(file_extension):
         continue
 
@@ -959,9 +969,12 @@ def __print_workflow_status(workflow_info: dict, app: App, app_config: AppConfig
     click.echo(f"  {'PID':<12}{workflow_info['pid']}")
   else:
     # Read timestamp for Docker runtime
-    with open(workflow_info['file_path'], 'r') as f:
-      timestamp = float(f.read().strip())
-    started = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    try:
+      with open(workflow_info['file_path'], 'r') as f:
+        timestamp = float(f.read().strip())
+      started = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    except (IOError, ValueError):
+      started = "unknown"
     click.echo(f"  {'Runtime':<12}docker")
     click.echo(f"  {'Started':<12}{started}")
 
