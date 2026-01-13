@@ -1,4 +1,5 @@
 import click
+from datetime import datetime
 import os
 import pdb
 import sys
@@ -345,6 +346,29 @@ def copy(**kwargs):
       sys.exit(1)
 
     command.copy(kwargs['destination_workflow_name'])
+
+@workflow.command(
+  help="Show information about running workflow(s)"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--verbose', '-v', is_flag=True, default=False, help='Show detailed information.')
+def show(**kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  app_config = AppConfig(app.scaffold_namespace_path)
+  verbose = kwargs.get('verbose', False)
+
+  found_workflows = __find_running_workflows(app, app_config)
+
+  if not found_workflows:
+    print("No workflows are currently running.")
+    return
+
+  for workflow_info in found_workflows:
+    __print_workflow_status(workflow_info, app, app_config, verbose)
+    if len(found_workflows) > 1:
+      print()  # Blank line between multiple workflows
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -857,3 +881,108 @@ def __with_workflow_namespace(app: App, namespace: str):
   workflow_namespace = WorkflowNamespace(app, namespace)
   workflow_namespace.copy_dotenv()
   return workflow_namespace
+
+def __find_running_workflows(app: App, app_config: AppConfig):
+  """Scan for running workflows and return their info."""
+  found_workflows = []
+  tmp_dir_path = app.data_dir.tmp_dir_path
+
+  if not os.path.exists(tmp_dir_path):
+    return found_workflows
+
+  # Determine file extension based on runtime
+  if app_config.runtime_local:
+    file_extension = '.pid'
+  else:
+    file_extension = '.timestamp'
+
+  # Scan tmp directory for workflow status files
+  for folder in os.listdir(tmp_dir_path):
+    folder_path = os.path.join(tmp_dir_path, folder)
+
+    if not os.path.isdir(folder_path):
+      continue
+
+    for file in os.listdir(folder_path):
+      if not file.endswith(file_extension):
+        continue
+
+      file_path = os.path.join(folder_path, file)
+      workflow_name = file.replace(file_extension, '')
+
+      # For local runtime, verify process is still running
+      if app_config.runtime_local:
+        try:
+          with open(file_path, 'r') as f:
+            pid = int(f.read().strip())
+          # Check if process is running (signal 0 doesn't kill)
+          os.kill(pid, 0)
+          found_workflows.append({
+            'workflow_name': workflow_name,
+            'namespace': folder,
+            'file_path': file_path,
+            'pid': pid
+          })
+        except (OSError, ProcessLookupError, ValueError):
+          continue
+      else:
+        # Docker runtime - timestamp file existence means running
+        found_workflows.append({
+          'workflow_name': workflow_name,
+          'namespace': folder,
+          'file_path': file_path
+        })
+
+  return found_workflows
+
+def __print_workflow_status(workflow_info: dict, app: App, app_config: AppConfig, verbose: bool):
+  """Print status for a single workflow."""
+  workflow_name = workflow_info['workflow_name']
+  namespace = workflow_info['namespace']
+
+  # Header bar
+  header = f"  Workflow: {workflow_name}"
+  bar = "═" * 45
+  click.echo(bar)
+  click.echo(header)
+  click.echo(bar)
+
+  # Status with green color for "running"
+  status_value = click.style("running", fg="green")
+
+  # Aligned key-value pairs
+  click.echo(f"  {'Namespace':<12}{namespace}")
+  click.echo(f"  {'Status':<12}{status_value}")
+
+  if app_config.runtime_local:
+    click.echo(f"  {'Runtime':<12}local")
+    click.echo(f"  {'PID':<12}{workflow_info['pid']}")
+  else:
+    # Read timestamp for Docker runtime
+    with open(workflow_info['file_path'], 'r') as f:
+      timestamp = float(f.read().strip())
+    started = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    click.echo(f"  {'Runtime':<12}docker")
+    click.echo(f"  {'Started':<12}{started}")
+
+  if verbose:
+    __show_workflow_services(workflow_name, app)
+
+def __show_workflow_services(workflow_name: str, app: App):
+  """Show services for a workflow."""
+  services = __get_services(app, service=(), without_core=True, workflow=(workflow_name,))
+
+  if services:
+    click.echo()
+    click.echo("Services")
+    click.echo("─" * 45)
+    rows = []
+    for service_name in services:
+      service = Service(service_name, app)
+      config = ServiceConfig(service.dir_path)
+      rows.append({
+        'name': service_name,
+        **config.to_dict()
+      })
+    
+    print_services(rows)
