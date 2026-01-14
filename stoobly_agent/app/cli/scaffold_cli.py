@@ -909,16 +909,20 @@ def __with_workflow_namespace(app: App, namespace: str):
 
 def __is_docker_workflow_running(namespace: str) -> bool:
   """Check if any containers are running for this workflow namespace."""
+  docker_client = None
   try:
-    client = docker.from_env()
+    docker_client = docker.from_env()
     # Filter containers by compose project name (namespace)
-    containers = client.containers.list(
+    containers = docker_client.containers.list(
       filters={'label': f'com.docker.compose.project={namespace}'}
     )
     # Check if any are running
     return any(c.status == 'running' for c in containers)
   except docker_errors.DockerException:
     return False  # Docker not available or error
+  finally:
+    if docker_client:
+      docker_client.close()
 
 def __find_running_workflows(app: App, app_config: AppConfig):
   """Scan for running workflows and return their info."""
