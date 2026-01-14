@@ -1,4 +1,7 @@
+from datetime import datetime
+from docker import errors as docker_errors
 import click
+import docker
 import os
 import pdb
 import sys
@@ -352,6 +355,48 @@ def copy(**kwargs):
 
     command.copy(kwargs['destination_workflow_name'])
 
+@workflow.command(
+  help="Show information about running workflow(s)"
+)
+@click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace. Only valid when workflow_name is provided.')
+@click.option('--verbose', '-v', is_flag=True, default=False, help='Show detailed information.')
+@click.argument('workflow_name', required=False, default=None)
+def show(**kwargs):
+  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  __validate_app(app)
+
+  workflow_name = kwargs.get('workflow_name')
+  namespace = kwargs.get('namespace')
+
+  if namespace and not workflow_name:
+    click.echo("Error: --namespace requires a workflow_name argument.")
+    sys.exit(1)
+
+  app_config = AppConfig(app.scaffold_namespace_path)
+  verbose = kwargs.get('verbose', False)
+
+  found_workflows = __find_running_workflows(app, app_config)
+
+  if workflow_name:
+    found_workflows = [w for w in found_workflows if w['workflow_name'] == workflow_name]
+    if namespace:
+      found_workflows = [w for w in found_workflows if w['namespace'] == namespace]
+
+  if not found_workflows:
+    if workflow_name and namespace:
+      click.echo(f"No running workflow found for '{workflow_name}' with namespace '{namespace}'.")
+    elif workflow_name:
+      click.echo(f"No running workflow found for '{workflow_name}'.")
+    else:
+      click.echo("No workflows are currently running.")
+    return
+
+  for workflow_info in found_workflows:
+    __print_workflow_status(workflow_info, app, app_config, verbose)
+    if len(found_workflows) > 1:
+      click.echo()  # Blank line between multiple workflows
+
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
@@ -607,10 +652,13 @@ def up(**kwargs):
   help="Validate a scaffold workflow"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.argument('workflow_name')
 def validate(**kwargs):
   app = App(kwargs['app_dir_path'])
   __validate_app(app)
+
+  __with_namespace_defaults(kwargs)
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -863,3 +911,142 @@ def __with_workflow_namespace(app: App, namespace: str):
   workflow_namespace = WorkflowNamespace(app, namespace)
   workflow_namespace.copy_dotenv()
   return workflow_namespace
+
+def __is_docker_workflow_running(namespace: str) -> bool:
+  """Check if any containers are running for this workflow namespace."""
+  docker_client = None
+  try:
+    docker_client = docker.from_env()
+    # Filter containers by compose project name (namespace)
+    containers = docker_client.containers.list(
+      filters={'label': f'com.docker.compose.project={namespace}'}
+    )
+    # Check if any are running
+    return any(c.status == 'running' for c in containers)
+  except docker_errors.DockerException:
+    return False  # Docker not available or error
+  finally:
+    if docker_client:
+      docker_client.close()
+
+def __find_running_workflows(app: App, app_config: AppConfig):
+  """Scan for running workflows and return their info."""
+  found_workflows = []
+  tmp_dir_path = app.data_dir.tmp_dir_path
+
+  if not os.path.exists(tmp_dir_path):
+    return found_workflows
+
+  # Determine file extension based on runtime
+  if app_config.runtime_local:
+    file_extension = '.pid'
+  else:
+    file_extension = '.timestamp'
+
+  # Scan tmp directory for workflow status files
+  try:
+    folders = os.listdir(tmp_dir_path)
+  except PermissionError:
+    return found_workflows
+
+  for folder in folders:
+    folder_path = os.path.join(tmp_dir_path, folder)
+
+    if not os.path.isdir(folder_path):
+      continue
+
+    try:
+      files = os.listdir(folder_path)
+    except PermissionError:
+      continue
+
+    for file in files:
+      if not file.endswith(file_extension):
+        continue
+
+      file_path = os.path.join(folder_path, file)
+      workflow_name = file.removesuffix(file_extension)
+
+      # For local runtime, verify process is running
+      if app_config.runtime_local:
+        try:
+          with open(file_path, 'r') as f:
+            pid = int(f.read().strip())
+          # Check if process is running (signal 0 doesn't kill)
+          os.kill(pid, 0)
+          found_workflows.append({
+            'workflow_name': workflow_name,
+            'namespace': folder,
+            'file_path': file_path,
+            'pid': pid
+          })
+        except (OSError, ProcessLookupError, ValueError):
+          continue
+      else:
+        # For Docker runtime, verify containers are running
+        if not __is_docker_workflow_running(folder):
+          continue
+        found_workflows.append({
+          'workflow_name': workflow_name,
+          'namespace': folder,
+          'file_path': file_path
+        })
+
+  return found_workflows
+
+def __print_workflow_status(workflow_info: dict, app: App, app_config: AppConfig, verbose: bool):
+  """Print status for a single workflow."""
+  workflow_name = workflow_info['workflow_name']
+  namespace = workflow_info['namespace']
+
+  # Header bar
+  header = f"  Workflow: {workflow_name}"
+  bar = "═" * 45
+  click.echo(bar)
+  click.echo(header)
+  click.echo(bar)
+
+  # Status with green color for "running"
+  status_value = click.style("running", fg="green")
+
+  # Aligned key-value pairs
+  click.echo(f"  {'Namespace':<12}{namespace}")
+  click.echo(f"  {'Status':<12}{status_value}")
+
+  if app_config.runtime_local:
+    click.echo(f"  {'Runtime':<12}local")
+    click.echo(f"  {'PID':<12}{workflow_info['pid']}")
+  else:
+    # Read timestamp for Docker runtime
+    try:
+      with open(workflow_info['file_path'], 'r') as f:
+        timestamp = float(f.read().strip())
+      started = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    except (IOError, ValueError):
+      started = "unknown"
+    click.echo(f"  {'Runtime':<12}docker")
+    click.echo(f"  {'Started':<12}{started}")
+
+  if verbose:
+    __show_workflow_services(workflow_name, app)
+
+def __show_workflow_services(workflow_name: str, app: App):
+  """Show services for a workflow."""
+  services = __get_services(app, service=(), without_core=True, workflow=(workflow_name,))
+
+  if services:
+    click.echo()
+    click.echo("Services")
+    click.echo("─" * 45)
+    rows = []
+    for service_name in services:
+      service = Service(service_name, app)
+      if not os.path.exists(service.dir_path):
+        continue
+      config = ServiceConfig(service.dir_path)
+      rows.append({
+        'name': service_name,
+        **config.to_dict()
+      })
+
+    print_services(rows)
