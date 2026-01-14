@@ -82,7 +82,7 @@ class TestWorkflowNamespace():
 
     def test_access_increments_count_based_on_folders(self, workflow_namespace, workflow_name, app):
       """Test that access counts folders when 10+ seconds has passed"""
-      from stoobly_agent.app.cli.scaffold.workflow_namesapce import FOLDER_COUNT_INTERVAL_SECONDS
+      from stoobly_agent.app.cli.scaffold.workflow_namespace import FOLDER_COUNT_INTERVAL_SECONDS
       tmp_dir_path = app.data_dir.tmp_dir_path
       
       # Create folders with pid and timestamp files
