@@ -9,7 +9,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -94,6 +94,12 @@ def hostname(ctx):
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
+  # Validate that reverse proxy mode is only used with docker runtime
+  if kwargs.get('runtime') == RUNTIME_LOCAL and kwargs.get('proxy_mode') == PROXY_MODE_REVERSE:
+    error_message = f"Error: {PROXY_MODE_REVERSE.capitalize()} proxy mode is only supported for {RUNTIME_DOCKER} runtime."
+    click.echo(error_message, err=True)
+    sys.exit(1)
+
   __validate_app_dir(kwargs['app_dir_path'])
 
   app = App(kwargs['app_dir_path'])

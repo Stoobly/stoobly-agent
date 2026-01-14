@@ -86,6 +86,7 @@ class GatewayBase():
           hostnames, ports = self.__find_hosts()
         else:
           hostnames = [CORE_GATEWAY_SERVICE_NAME]
+          ports = []
 
           if self.app_config:
             ports = [
@@ -138,7 +139,7 @@ class GatewayBase():
   def with_traefik_config(self, compose: dict):
     config_dest = '/etc/traefik/traefik.yml'
 
-    if not compose['volumes']:
+    if not compose.get('volumes'):
       compose['volumes'] = []
 
     entry_points = {}
