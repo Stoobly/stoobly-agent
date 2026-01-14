@@ -956,7 +956,7 @@ def __find_running_workflows(app: App, app_config: AppConfig):
         continue
 
       file_path = os.path.join(folder_path, file)
-      workflow_name = file.replace(file_extension, '')
+      workflow_name = file.removesuffix(file_extension)
 
       # For local runtime, verify process is running
       if app_config.runtime_local:
