@@ -2,7 +2,7 @@ import os
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import APP_DIR_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 def workflow_running() -> bool:
   """Check if a workflow is currently running.

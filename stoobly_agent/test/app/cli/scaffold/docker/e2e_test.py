@@ -19,7 +19,7 @@ from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerC
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import (
   ServiceWorkflowValidateCommand,
 )
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
 )

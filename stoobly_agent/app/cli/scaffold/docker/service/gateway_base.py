@@ -13,7 +13,7 @@ from stoobly_agent.app.cli.scaffold.constants import APP_DIR, PROXY_MODE_REVERSE
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 class GatewayBase():
 

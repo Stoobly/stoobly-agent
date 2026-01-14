@@ -15,7 +15,7 @@ from .constants import (
 
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
-from .workflow_namesapce import WorkflowNamespace
+from .workflow_namespace import WorkflowNamespace
 from ..types.workflow_run_command import ComposeOptions
 
 LOG_ID = 'WorkflowRunCommand'

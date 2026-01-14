@@ -15,7 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_MOCK_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
