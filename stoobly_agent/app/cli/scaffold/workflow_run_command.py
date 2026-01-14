@@ -9,7 +9,7 @@ from stoobly_agent.config.data_dir import DataDir
 from .app import App
 from .constants import (
   APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV,
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV,
+  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 
@@ -136,6 +136,7 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[SERVICE_NAME_ENV] = self.service_name
     _config[SERVICE_SCRIPTS_ENV] = SERVICE_SCRIPTS_DIR
     _config[USER_ID_ENV] = user_id or os.getuid()
+    _config[WORKFLOW_ACCESS_COUNT_ENV] = self.workflow_namespace.access_count(self.workflow_name)
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
     _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name

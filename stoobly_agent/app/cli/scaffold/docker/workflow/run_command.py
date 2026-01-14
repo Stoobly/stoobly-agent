@@ -29,14 +29,18 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     self.services = services or []
     self.script = script
 
+    self._timestamp_file_path = None
+
   @property
   def timestamp_file_extension(self):
-    return '.timestamp'
+    return self.workflow_namespace.timestamp_file_extension
 
   @property
   def timestamp_file_path(self):
     """Get the path to the timestamp file for this workflow."""
-    return os.path.join(self.workflow_namespace.path, self.timestamp_file_name(self.workflow_name))
+    if not self._timestamp_file_path:
+      self._timestamp_file_path = self.workflow_namespace.timestamp_file_path(self.workflow_name)
+    return self._timestamp_file_path
 
   def exec_setup(self, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
@@ -54,19 +58,14 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     for command in init_commands:
       self.exec(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-  def timestamp_file_name(self, workflow_name: str):
-    return f"{workflow_name}{self.timestamp_file_extension}"
-
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
 
     print_service_header = options.get('print_service_header')
-    timestamp_file = None
 
     if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
-
-      timestamp_file = self.__create_timestamp_file()
+      self.workflow_namespace.access(self.workflow_name)
 
     try:
       # Create individual service commands
@@ -121,19 +120,19 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         
         if exec_command and self.script:
           self.exec(exec_command)
-    
+
+        if not self.dry_run:
+          self.__create_timestamp_file()
     except Exception as e:
-      if timestamp_file:
-        # Clean up timestamp file on error
-        self.__remove_timestamp_file(timestamp_file) 
+      if not self.dry_run:
+        self.__release()
       raise e
 
   def down(self, **options: WorkflowDownOptions):
     """Execute the complete Docker workflow down process."""
 
-    timestamp_file = None
     if not self.dry_run: 
-      timestamp_file = self.__find_and_verify_timestamp_file()
+      self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
     
@@ -188,8 +187,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    if timestamp_file:
-      self.__remove_timestamp_file(timestamp_file)
+    if not self.dry_run:
+      self.__release()
 
   def logs(self, **options: WorkflowLogsOptions):
     """Execute the complete Docker workflow logs process."""
@@ -493,10 +492,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     return timestamp_file
 
-  def __remove_timestamp_file(self, timestamp_file: str):
-    # Clean up timestamp file
-    if os.path.exists(timestamp_file):
-      try:
-        os.remove(timestamp_file)
-      except Exception as e:
-        Logger.instance(LOG_ID).warning(f"Failed to remove timestamp file: {e}")
+  def __release(self):
+    self.workflow_namespace.remove_timestamp_file(self.workflow_name)
+    self.workflow_namespace.release(self.workflow_name)

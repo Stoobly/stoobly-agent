@@ -70,7 +70,7 @@ class TestScaffoldServiceUpdate:
             ])
             assert result.exit_code == 0
 
-            app = App(app_dir_path, SERVICES_NAMESPACE)
+            app = App(app_dir_path)
             service = Service(service_name, app)
             service_config = ServiceConfig(service.dir_path)
             assert service_config.hostname != initial_hostname
@@ -103,7 +103,7 @@ class TestScaffoldServiceUpdate:
             ])
             assert result.exit_code == 0
 
-            app = App(app_dir_path, SERVICES_NAMESPACE)
+            app = App(app_dir_path)
             service = Service(service_name, app)
             service_config = ServiceConfig(service.dir_path)
             assert service_config.port != 80
@@ -136,7 +136,7 @@ class TestScaffoldServiceUpdate:
             ])
             assert result.exit_code == 0
 
-            app = App(app_dir_path, SERVICES_NAMESPACE)
+            app = App(app_dir_path)
             old_service = Service(service_name, app)
             new_service = Service(new_service_name, app)
 
