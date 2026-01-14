@@ -9,7 +9,7 @@ from .app import App
 from .constants import DOTENV_PATH_ENV, DOTENV_FILE, NAMESERVERS_FILE
 
 LOG_ID = 'WorkflowNamespace'
-FOLDER_COUNT_INTERVAL_SECONDS = 5  # Use folder counting if this much time has passed
+FOLDER_COUNT_INTERVAL_SECONDS = 10  # Use folder counting if this much time has passed
 
 class WorkflowNamespace():
 
@@ -128,7 +128,7 @@ class WorkflowNamespace():
               if os.path.exists(pid_file_path) or os.path.exists(timestamp_file_path):
                 folder_count += 1
 
-          count = folder_count
+          count = folder_count + 1
         else:
           # Less than 10 seconds has passed, just increment the read count value
           count = current_count + 1
