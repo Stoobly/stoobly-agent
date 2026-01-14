@@ -15,6 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_MOCK_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
+from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
@@ -22,7 +23,7 @@ from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
-@pytest.mark.e2e
+#@pytest.mark.e2e
 class TestLocalScaffoldE2e():
 
   @pytest.fixture(scope='class', autouse=True)
@@ -116,7 +117,7 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path: str):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
@@ -126,7 +127,7 @@ class TestLocalScaffoldE2e():
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -154,6 +155,14 @@ class TestLocalScaffoldE2e():
       assert res.status_code == 200, "HTTP request with HTTP_PROXY and HTTPS_PROXY set to the local service should succeed"
       _requests = Request.all()
       assert len(_requests) == 1, "Expected 1 request to be recorded"
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      workflow_namespace = WorkflowNamespace(app)
+      access_count = workflow_namespace.access_count(target_workflow_name)
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
 
   class TestMockWorkflow():
@@ -195,7 +204,7 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
@@ -205,7 +214,7 @@ class TestLocalScaffoldE2e():
 
     def test_services_exist(self, app_dir_path, external_service_name, local_service_name):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -220,7 +229,7 @@ class TestLocalScaffoldE2e():
 
     def test_public_directory(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
       """Test public directory is created"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
       assert os.path.exists(workflow_command.public_dir_path), "Public directory should be created"
       # Create an index.html file in the public directory
@@ -236,7 +245,7 @@ class TestLocalScaffoldE2e():
 
     def test_response_fixtures(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
       """Test response fixtures are created"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
       assert os.path.exists(workflow_command.response_fixtures_path), "Response fixtures should be created"
 
@@ -262,6 +271,14 @@ class TestLocalScaffoldE2e():
 
     def test_intercept_mode_active(self, settings: Settings):
       assert settings.proxy.intercept.active
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      workflow_namespace = WorkflowNamespace(app)
+      access_count = workflow_namespace.access_count(target_workflow_name)
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
   class TestTestWorkflow():
     @pytest.fixture(scope='class', autouse=True)
@@ -311,7 +328,7 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path: str):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
@@ -321,7 +338,7 @@ class TestLocalScaffoldE2e():
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -340,3 +357,11 @@ class TestLocalScaffoldE2e():
 
     def test_intercept_mode_active(self, settings: Settings):
       assert settings.proxy.intercept.active
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      workflow_namespace = WorkflowNamespace(app)
+      access_count = workflow_namespace.access_count(target_workflow_name)
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
