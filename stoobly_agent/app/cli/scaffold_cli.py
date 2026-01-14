@@ -1,8 +1,11 @@
-import click
 from datetime import datetime
 import os
 import pdb
 import sys
+
+import click
+import docker
+from docker import errors as docker_errors
 
 
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
@@ -351,18 +354,37 @@ def copy(**kwargs):
   help="Show information about running workflow(s)"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace. Only valid when workflow_name is provided.')
 @click.option('--verbose', '-v', is_flag=True, default=False, help='Show detailed information.')
+@click.argument('workflow_name', required=False, default=None)
 def show(**kwargs):
   app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
+
+  workflow_name = kwargs.get('workflow_name')
+  namespace = kwargs.get('namespace')
+
+  if namespace and not workflow_name:
+    click.echo("Error: --namespace requires a workflow_name argument.")
+    sys.exit(1)
 
   app_config = AppConfig(app.scaffold_namespace_path)
   verbose = kwargs.get('verbose', False)
 
   found_workflows = __find_running_workflows(app, app_config)
 
+  if workflow_name:
+    found_workflows = [w for w in found_workflows if w['workflow_name'] == workflow_name]
+    if namespace:
+      found_workflows = [w for w in found_workflows if w['namespace'] == namespace]
+
   if not found_workflows:
-    click.echo("No workflows are currently running.")
+    if workflow_name and namespace:
+      click.echo(f"No running workflow found for '{workflow_name}' with namespace '{namespace}'.")
+    elif workflow_name:
+      click.echo(f"No running workflow found for '{workflow_name}'.")
+    else:
+      click.echo("No workflows are currently running.")
     return
 
   for workflow_info in found_workflows:
@@ -625,10 +647,13 @@ def up(**kwargs):
   help="Validate a scaffold workflow"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
+@click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.argument('workflow_name')
 def validate(**kwargs):
   app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
   __validate_app(app)
+
+  __with_namespace_defaults(kwargs)
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -882,6 +907,19 @@ def __with_workflow_namespace(app: App, namespace: str):
   workflow_namespace.copy_dotenv()
   return workflow_namespace
 
+def __is_docker_workflow_running(namespace: str) -> bool:
+  """Check if any containers are running for this workflow namespace."""
+  try:
+    client = docker.from_env()
+    # Filter containers by compose project name (namespace)
+    containers = client.containers.list(
+      filters={'label': f'com.docker.compose.project={namespace}'}
+    )
+    # Check if any are running
+    return any(c.status == 'running' for c in containers)
+  except docker_errors.DockerException:
+    return False  # Docker not available or error
+
 def __find_running_workflows(app: App, app_config: AppConfig):
   """Scan for running workflows and return their info."""
   found_workflows = []
@@ -920,7 +958,7 @@ def __find_running_workflows(app: App, app_config: AppConfig):
       file_path = os.path.join(folder_path, file)
       workflow_name = file.replace(file_extension, '')
 
-      # For local runtime, verify process is still running
+      # For local runtime, verify process is running
       if app_config.runtime_local:
         try:
           with open(file_path, 'r') as f:
@@ -936,7 +974,9 @@ def __find_running_workflows(app: App, app_config: AppConfig):
         except (OSError, ProcessLookupError, ValueError):
           continue
       else:
-        # Docker runtime - timestamp file existence means running
+        # For Docker runtime, verify containers are running
+        if not __is_docker_workflow_running(folder):
+          continue
         found_workflows.append({
           'workflow_name': workflow_name,
           'namespace': folder,
@@ -992,10 +1032,12 @@ def __show_workflow_services(workflow_name: str, app: App):
     rows = []
     for service_name in services:
       service = Service(service_name, app)
+      if not os.path.exists(service.dir_path):
+        continue
       config = ServiceConfig(service.dir_path)
       rows.append({
         'name': service_name,
         **config.to_dict()
       })
-    
+
     print_services(rows)
