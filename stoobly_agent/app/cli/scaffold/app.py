@@ -5,9 +5,12 @@ import shutil
 
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
+from .constants import SERVICES_NAMESPACE
+
 class App():
 
-  def __init__(self, path: str, scaffold_namespace: str, **kwargs):
+  # path: path to the folder where data dir directory resides e.g. ~
+  def __init__(self, path: str, **kwargs):
     path = os.path.abspath(path) or os.getcwd()
     data_dir: DataDir = DataDir.instance(path) 
 
@@ -17,7 +20,7 @@ class App():
     self.__context_dir_path = kwargs.get('context_dir_path') or data_dir.context_dir_path
     self.__data_dir = data_dir
     self.__dir_path = path
-    self.__scaffold_namespace = scaffold_namespace
+    self.__scaffold_namespace = kwargs.get('scaffold_namespace') or SERVICES_NAMESPACE
     self.__skip_validate_path = not not kwargs.get('dry_run')
 
   @property

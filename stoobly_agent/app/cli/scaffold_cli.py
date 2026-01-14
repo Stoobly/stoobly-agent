@@ -3,14 +3,13 @@ import os
 import pdb
 import sys
 
-
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -26,7 +25,7 @@ from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateE
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
 from stoobly_agent.app.cli.scaffold.workflow_copy_command import WorkflowCopyCommand
-from stoobly_agent.app.cli.scaffold.workflow_namesapce import WorkflowNamespace
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
@@ -88,15 +87,22 @@ def hostname(ctx):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
+@click.option('--proxy-mode', default=PROXY_MODE_FORWARD, type=click.Choice([PROXY_MODE_FORWARD, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
+  # Validate that reverse proxy mode is only used with docker runtime
+  if kwargs.get('runtime') == RUNTIME_LOCAL and kwargs.get('proxy_mode') == PROXY_MODE_REVERSE:
+    error_message = f"Error: {PROXY_MODE_REVERSE.capitalize()} proxy mode is only supported for {RUNTIME_DOCKER} runtime."
+    click.echo(error_message, err=True)
+    sys.exit(1)
+
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
 
   if not kwargs['quiet']:
     if os.path.exists(app.scaffold_namespace_path):
@@ -126,9 +132,9 @@ def mkcert(**kwargs):
   if containerized:
     # Intentially not passing kwargs to ContainerizedApp to avoid overriding path options e.g. --context-dir-path
     # In a containerized environment, the context-dir-path is the cwd
-    app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE)
+    app = ContainerizedApp(app_dir_path)
   else:
-    app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+    app = App(app_dir_path, **kwargs)
 
   __validate_app(app)
 
@@ -158,7 +164,7 @@ def mkcert(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   service = Service(kwargs['service_name'], app)
 
   if not kwargs['quiet'] and os.path.exists(service.dir_path):
@@ -178,7 +184,7 @@ def create(**kwargs):
 @click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   without_core = not kwargs['all']
@@ -219,7 +225,7 @@ def show(ctx, **kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   service = Service(kwargs['service_name'], app)
@@ -246,7 +252,7 @@ def delete(**kwargs):
 @click.option('--upstream-scheme', type=click.Choice(['http', 'https']), help='Upstream service scheme.')
 @click.argument('service_name')
 def update(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   service = Service(kwargs['service_name'], app)
@@ -305,7 +311,7 @@ def update(**kwargs):
 def create(**kwargs):
   __validate_app_dir(kwargs['app_dir_path'])
 
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -331,7 +337,7 @@ def create(**kwargs):
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE, **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -366,7 +372,7 @@ def down(**kwargs):
   containerized = kwargs['containerized']
 
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+  app = App(app_dir_path, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -440,7 +446,7 @@ def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   app_dir_path = current_working_dir if kwargs['containerized'] else kwargs['app_dir_path']
-  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+  app = App(app_dir_path, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -511,7 +517,7 @@ def up(**kwargs):
   # when we are running this command within a container, the host's app_dir_path will likely differ
   # It needs to differ because if containerized, we are generating .env with contents from the host
   app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, SERVICES_NAMESPACE, **kwargs)
+  app = App(app_dir_path, **kwargs)
   __validate_app(app)
 
   __with_namespace_defaults(kwargs)
@@ -521,7 +527,7 @@ def up(**kwargs):
     services = __get_services(
       app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
     )
-    _app = ContainerizedApp(app_dir_path, SERVICES_NAMESPACE) if containerized else app
+    _app = ContainerizedApp(app_dir_path) if containerized else app
     __services_mkcert(_app, services)
 
   # Determine which workflow command to use based on app configuration
@@ -603,7 +609,7 @@ def up(**kwargs):
 @click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
 @click.argument('workflow_name')
 def validate(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   workflow = Workflow(kwargs['workflow_name'], app)
@@ -721,7 +727,7 @@ def __get_services(app: App, **kwargs):
 
 def __get_hostnames(**kwargs):
   """Get list of hostnames from services in the workflow."""
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   services = __get_services(

@@ -83,7 +83,7 @@ class TestScaffoldCli():
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
  
     def test_service_delete(self, runner, app_dir_path, external_service_docker_compose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       service_name = external_service_docker_compose.service_name
       
       ScaffoldCliInvoker.cli_service_delete(runner, app_dir_path, service_name)
@@ -98,7 +98,7 @@ class TestScaffoldCli():
         assert False
 
     def test_service_delete_https(self, runner, app_dir_path, external_https_service_docker_compose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       service_name = external_https_service_docker_compose.service_name
       hostname = external_https_service_docker_compose.hostname
 

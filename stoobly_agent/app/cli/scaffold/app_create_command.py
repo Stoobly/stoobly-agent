@@ -6,11 +6,11 @@ import shutil
 from typing import TypedDict
 
 from stoobly_agent import VERSION
-from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_WORKFLOW
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE, DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE, DOCKER_COMPOSE_BASE_TEMPLATE, DOCKER_COMPOSE_WORKFLOW
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT
+from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_REVERSE
 from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
@@ -18,6 +18,7 @@ class AppCreateOptions(TypedDict):
   docker_socket_path: str
   name: str
   plugin: list
+  proxy_mode: str
   proxy_port: int
   runtime: list
   ui_port: int
@@ -35,6 +36,9 @@ class AppCreateCommand(AppCommand):
 
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
+
+        if kwargs.get('proxy_mode'):
+            self.app_config.proxy_mode = kwargs['proxy_mode']
 
         if kwargs.get('proxy_port'):
             self.app_config.proxy_port = kwargs['proxy_port']
@@ -105,6 +109,18 @@ class AppCreateCommand(AppCommand):
                 warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
 
         if self.app_config.runtime_docker:
+            docker_compose_reverse_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE)
+            docker_compose_forward_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE)
+
+            if os.path.exists(docker_compose_reverse_base_path) and os.path.exists(docker_compose_forward_base_path):
+                # Rename the reverse or forward base template file to the base template file
+                if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+                    os.rename(docker_compose_reverse_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_forward_base_path)
+                else:
+                    os.rename(docker_compose_forward_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_reverse_base_path)
+
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
