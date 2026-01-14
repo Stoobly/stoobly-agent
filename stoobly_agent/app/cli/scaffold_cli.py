@@ -363,7 +363,7 @@ def copy(**kwargs):
 @click.option('--verbose', '-v', is_flag=True, default=False, help='Show detailed information.')
 @click.argument('workflow_name', required=False, default=None)
 def show(**kwargs):
-  app = App(kwargs['app_dir_path'], SERVICES_NAMESPACE)
+  app = App(kwargs['app_dir_path'])
   __validate_app(app)
 
   workflow_name = kwargs.get('workflow_name')
