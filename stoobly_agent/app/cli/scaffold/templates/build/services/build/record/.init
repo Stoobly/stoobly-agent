@@ -7,9 +7,10 @@ if [ -f .env ]; then
   set -a; . ./.env; set +a;
 fi
 
-stoobly-agent config reset
-
-stoobly-agent snapshot apply
+if [ "${WORKFLOW_ACCESS_COUNT:-1}" == "1" ]; then
+  stoobly-agent config reset
+  stoobly-agent snapshot apply
+fi
 
 entrypoint=$1
 

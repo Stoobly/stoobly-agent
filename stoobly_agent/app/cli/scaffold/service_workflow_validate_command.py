@@ -11,6 +11,8 @@ import yaml
 from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.constants import (
+  PROXY_MODE_FORWARD,
+  PROXY_MODE_REVERSE,
   PUBLIC_FOLDER_NAME,
   SERVICES_NAMESPACE,
   STOOBLY_DATA_DIR,
@@ -76,18 +78,59 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     retries = 15
     delay = 0.100
 
-    for attempt in range(retries):
-      try:
-        with socket.create_connection((hostname, port), timeout=timeout):
-          return True
-      except (socket.timeout, socket.error):
-        if attempt < retries - 1:
-          time.sleep(delay)
+    # In forward proxy mode, connections must go through the proxy
+    if self.service_config.app_config.proxy_mode == PROXY_MODE_FORWARD:
+      proxy_host = 'localhost'
+      proxy_port = self.service_config.app_config.proxy_port
+      
+      for attempt in range(retries):
+        proxy_socket = None
+        try:
+          # Use HTTP CONNECT method through the proxy
+          proxy_socket = socket.create_connection((proxy_host, proxy_port), timeout=timeout)
+          
+          # Send CONNECT request
+          connect_request = f"CONNECT {hostname}:{port} HTTP/1.1\r\nHost: {hostname}:{port}\r\n\r\n"
+          proxy_socket.sendall(connect_request.encode())
+          
+          # Read response
+          response = proxy_socket.recv(4096).decode('utf-8', errors='ignore')
+          
+          # Check if connection was established (HTTP 200)
+          if '200' in response or 'Connection established' in response:
+            if proxy_socket:
+              proxy_socket.close()
+            return True
+          
+          if proxy_socket:
+            proxy_socket.close()
+        except (socket.timeout, socket.error, Exception) as e:
+          if proxy_socket:
+            try:
+              proxy_socket.close()
+            except:
+              pass
+          if attempt < retries - 1:
+            time.sleep(delay)
+          else:
+            hostname_not_reachable_message = f"{bcolors.FAIL}Connection failed to hostname: {hostname}, port: {port} through proxy {proxy_host}:{proxy_port}, num_retries: {retries}{bcolors.ENDC}"
+            suggestion_message = f"{bcolors.BOLD}Try confirming that {hostname} is reachable through the proxy at {proxy_host}:{proxy_port}.{bcolors.ENDC}"
+            error_message = f"{hostname_not_reachable_message}\n\n{suggestion_message}"
+            raise ScaffoldValidateException(error_message)
+    else:
+      # Direct connection (reverse proxy mode or regular mode)
+      for attempt in range(retries):
+        try:
+          with socket.create_connection((hostname, port), timeout=timeout):
+            return True
+        except (socket.timeout, socket.error):
+          if attempt < retries - 1:
+            time.sleep(delay)
 
-    hostname_not_reachable_message = f"{bcolors.FAIL}Connection failed to hostname: {hostname}, port: {port}, num_retries: {retries}{bcolors.ENDC}"
-    suggestion_message = f"{bcolors.BOLD}Try confirming that {hostname} is reachable from your machine or environment.{bcolors.ENDC}"
-    error_message = f"{hostname_not_reachable_message}\n\n{suggestion_message}"
-    raise ScaffoldValidateException(error_message)
+      hostname_not_reachable_message = f"{bcolors.FAIL}Connection failed to hostname: {hostname}, port: {port}, num_retries: {retries}{bcolors.ENDC}"
+      suggestion_message = f"{bcolors.BOLD}Try confirming that {hostname} is reachable from your machine or environment.{bcolors.ENDC}"
+      error_message = f"{hostname_not_reachable_message}\n\n{suggestion_message}"
+      raise ScaffoldValidateException(error_message)
 
   # Check if hostname is defined in hosts file
   def hostname_exists(self, hostname: str) -> bool:
@@ -214,7 +257,9 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
     self.validate_public_folder(init_container)
 
-    if self.service_config.hostname:
+    # Proxy containers are only created in reverse proxy mode
+    # In forward mode, the gateway runs as a forward proxy and no proxy containers are started
+    if self.service_config.hostname and self.service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:
       try:
         service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
       except docker_errors.NotFound:

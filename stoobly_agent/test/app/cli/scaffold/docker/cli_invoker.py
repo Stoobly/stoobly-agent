@@ -11,13 +11,14 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 class ScaffoldCliInvoker():
 
   @staticmethod
-  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):
+  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse'):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
       '--quiet',
       '--runtime', 'docker',
+      '--proxy-mode', proxy_mode,
       app_name
     ])
 

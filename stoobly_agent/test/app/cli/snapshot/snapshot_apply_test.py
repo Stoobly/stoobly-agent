@@ -2,6 +2,8 @@ import os
 import pdb
 import pytest
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from click.testing import CliRunner
 from typing import List
@@ -15,6 +17,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snaps
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.test_helper import assert_orm_request_equivalent, DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 def write_junk(path: str):
@@ -813,3 +816,41 @@ class TestApply():
           unprocessed_events = log.unprocessed_events
           assert len(unprocessed_events) == 1
           assert unprocessed_events[0].action == DELETE_ACTION
+
+    class TestLocking():
+      def test_concurrent_apply_commands_timeout(self, runner: CliRunner):
+        """Test that concurrent snapshot apply commands properly timeout"""
+        from filelock import FileLock
+        
+        data_dir = DataDir.instance()
+        lock_file_path = os.path.join(data_dir.path, '.snapshot-apply.lock')
+        
+        # Acquire lock in a separate thread to simulate a running snapshot apply
+        lock_acquired = threading.Event()
+        lock_released = threading.Event()
+        
+        def hold_lock():
+          lock = FileLock(lock_file_path)
+          with lock:
+            lock_acquired.set()
+            # Hold the lock for a short time
+            time.sleep(0.5)
+            lock_released.set()
+        
+        # Start thread that holds the lock
+        lock_thread = threading.Thread(target=hold_lock)
+        lock_thread.start()
+        
+        # Wait for lock to be acquired
+        lock_acquired.wait(timeout=2)
+        
+        try:
+          # Try to run snapshot apply while lock is held (with short timeout)
+          result = runner.invoke(snapshot, ['apply', '--lock-timeout', '1'])
+          
+          # Should timeout and exit with error (exit code 1 indicates timeout)
+          assert result.exit_code == 1
+        finally:
+          # Wait for lock to be released
+          lock_released.wait(timeout=2)
+          lock_thread.join(timeout=2)

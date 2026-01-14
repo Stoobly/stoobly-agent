@@ -7,6 +7,7 @@ import sys
 
 from typing import TYPE_CHECKING, List
 from urllib.parse import urlparse
+from filelock import FileLock, Timeout
 
 if TYPE_CHECKING:
     from requests import Request
@@ -36,17 +37,27 @@ def snapshot(ctx):
   help="Apply snapshots.",
 )
 @click.option('--force', is_flag=True, default=False, help="Toggles whether resources are hard deleted.")
+@click.option('--lock-timeout', default=60, type=int, help='Lock timeout in seconds (default: 60).')
 @click.argument('uuid', required=False)
 def apply(**kwargs):
-  apply = Apply(force=kwargs['force']).with_logger(print)
-  completed = True
+  data_dir = DataDir.instance()
+  lock_file_path = os.path.join(data_dir.path, '.snapshot-apply.lock')
+  lock = FileLock(lock_file_path, timeout=kwargs.get('lock_timeout', 60))
 
-  if kwargs.get('uuid'):
-    completed = apply.single(kwargs['uuid'])
-  else:
-    completed = apply.all()
+  try:
+    with lock:
+      apply = Apply(force=kwargs['force']).with_logger(print)
+      completed = True
 
-  if not completed:
+      if kwargs.get('uuid'):
+        completed = apply.single(kwargs['uuid'])
+      else:
+        completed = apply.all()
+
+      if not completed:
+        sys.exit(1)
+  except Timeout:
+    print("Error: Another snapshot apply command is already running. Please wait for it to complete.", file=sys.stderr)
     sys.exit(1)
 
 @snapshot.command(
