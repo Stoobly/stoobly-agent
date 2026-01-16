@@ -79,3 +79,7 @@ class TestCliSubcommandsLoad:
             f"Subcommand '{' '.join(command)}' failed to load.\n"
             f"Output: {result.output}"
         )
+        assert result.exit_code == 0, (
+            f"Subcommand '{' '.join(command)}' exited with code {result.exit_code}.\n"
+            f"Output: {result.output}"
+        )
