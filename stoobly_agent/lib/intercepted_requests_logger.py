@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.data_dir import DataDir
@@ -52,9 +52,11 @@ class InterceptedRequestsLogger():
     __atexit_registered: bool = False
 
     @staticmethod
+    def _get_workflow() -> str:
+        return os.environ.get(WORKFLOW_NAME_ENV, InterceptedRequestsLogger.__settings.proxy.intercept.mode)
+
+    @staticmethod
     def _get_namespace() -> str:
-        # Imported lazily to avoid circular import
-        from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV
         return os.environ.get(WORKFLOW_NAMESPACE_ENV, InterceptedRequestsLogger.__settings.proxy.intercept.mode)
 
     # Initialize logger as disabled by default
@@ -285,13 +287,14 @@ class InterceptedRequestsLogger():
             return None
 
     @classmethod
-    def __get_file_path(cls) -> str:
+    def __get_file_path(cls, workflow: str = None, namespace: str = None) -> str:
         if cls.__file_path is not None:
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        namespace = cls._get_namespace()
-        return f"{data_dir_path}/tmp/{namespace}/logs/requests.json"
+        wf = workflow if workflow else cls._get_workflow()
+        ns = namespace if namespace else cls._get_namespace()
+        return f"{data_dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
 
     @classmethod
     def enable_logger_file(cls) -> None:
@@ -407,8 +410,8 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
-    def dump_logs(cls):
-        file_path = cls.__get_file_path()
+    def dump_logs(cls, workflow: str = None, namespace: str = None):
+        file_path = cls.__get_file_path(workflow, namespace)
         if not os.path.exists(file_path):
             return
 
@@ -424,10 +427,10 @@ class InterceptedRequestsLogger():
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def truncate(cls) -> None:
-        cls.__ensure_directory()
+    def truncate(cls, workflow: str = None, namespace: str = None) -> None:
+        cls.__ensure_directory(workflow, namespace)
 
-        file_path = cls.__get_file_path()
+        file_path = cls.__get_file_path(workflow, namespace)
 
         if not os.path.exists(file_path):
             cls.enable_logger_file()
@@ -459,8 +462,8 @@ class InterceptedRequestsLogger():
             cls.__logger.error(f"Failed to clear log file: {e}")
 
     @classmethod
-    def __ensure_directory(cls):
-        file_path = cls.__get_file_path()
+    def __ensure_directory(cls, workflow: str = None, namespace: str = None):
+        file_path = cls.__get_file_path(workflow, namespace)
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):
