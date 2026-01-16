@@ -63,6 +63,49 @@ class HostsFileManager():
 
     return None
 
+  def hostname_installed(self, hostnames: list[str]) -> bool:
+    """Check if all given hostnames are installed in the hosts file.
+    
+    Args:
+      hostnames: List of hostnames to check
+      
+    Returns:
+      bool: True if all hostnames are installed, False otherwise
+    """
+    if not hostnames:
+      return True
+    
+    hosts_file_path = self.get_hosts_file_path()
+    
+    with open(hosts_file_path, 'r') as f:
+      lines = f.readlines()
+    
+    # Find the scaffold section between markers
+    in_section = False
+    found_hostnames = set()
+    
+    for line in lines:
+      if SCAFFOLD_HOSTS_DELIMITTER_BEGIN in line:
+        in_section = True
+        continue
+      
+      if SCAFFOLD_HOSTS_DELIMITTER_END in line:
+        break
+      
+      if in_section:
+        # Check if any of the hostnames are in this line
+        for hostname in hostnames:
+          if hostname in line:
+            # Verify it's a valid hosts entry (has IP address)
+            ip_addr_hosts_split = self.__split_hosts_line(line)
+            if len(ip_addr_hosts_split) >= 2:
+              ip_address = ip_addr_hosts_split[0]
+              if ip_address == '0.0.0.0' or ip_address == '127.0.0.1' or ip_address == '::1':
+                found_hostnames.add(hostname)
+    
+    # Return True if all hostnames were found
+    return len(found_hostnames) == len(hostnames)
+
   def install_hostnames(self, hostnames: list[str]) -> None:
     hosts_file_path = self.get_hosts_file_path()
 
