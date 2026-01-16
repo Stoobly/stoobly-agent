@@ -180,12 +180,16 @@ def log(ctx):
     pass
 
 @log.command(name="list", help="List intercepted requests log entries")
+@click.option('--namespace', help='Workflow namespace to list logs for.')
+@click.argument('workflow_name', required=False, default=None)
 def log_list(**kwargs):
-  InterceptedRequestsLogger.dump_logs()
+  InterceptedRequestsLogger.dump_logs(workflow=kwargs.get('workflow_name'), namespace=kwargs.get('namespace'))
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
+@click.option('--namespace', help='Workflow namespace to delete logs for.')
+@click.argument('workflow_name', required=False, default=None)
 def log_delete(**kwargs):
-  InterceptedRequestsLogger.truncate()
+  InterceptedRequestsLogger.truncate(workflow=kwargs.get('workflow_name'), namespace=kwargs.get('namespace'))
 
 request.add_command(response)
 request.add_command(log)
