@@ -82,7 +82,6 @@ ca-cert/install: stoobly/install
 			read -p "Installing CA certificate is required for $(workflow)ing requests, continue? (y/N) " confirm; \
 		fi && \
 		if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-			echo "Running stoobly-agent ca-cert install..."; \
 			stoobly-agent ca-cert install --ca-certs-dir-path $(ca_certs_dir); \
 		else \
 			echo "You can install the CA certificate later by running: stoobly-agent ca-cert install"; \
@@ -172,21 +171,13 @@ workflow/down: dotenv
 workflow/down/run:
 	@bash "$(app_dir)/$(workflow_script)"
 workflow/hostname: stoobly/install
-	@if [ -n "$$STOOBLY_HOSTNAME_INSTALL_CONFIRM" ]; then \
-		confirm="$$STOOBLY_HOSTNAME_INSTALL_CONFIRM"; \
-	else \
-		read -p "Do you want to $(action) hostname(s) in /etc/hosts? (y/N) " confirm; \
-	fi && \
-	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		CURRENT_VERSION=$$(stoobly-agent --version); \
-		REQUIRED_VERSION="1.4.0"; \
-		if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | head -n 1)" != "$$REQUIRED_VERSION" ]; then \
-			echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
-			exit 1; \
-		fi; \
-		echo "Running stoobly-agent scaffold hostname $(action) $(workflow_service_options)"; \
-		stoobly-agent scaffold hostname $(action) --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options); \
-	fi
+	@CURRENT_VERSION="$$(stoobly-agent --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; \
+	REQUIRED_VERSION="1.13.0"; \
+	if [ "$$(printf '%s\n' "$$REQUIRED_VERSION" "$$CURRENT_VERSION" | sort -V | head -n 1)" != "$$REQUIRED_VERSION" ]; then \
+		echo "stoobly-agent version $$REQUIRED_VERSION required. Please run: pipx upgrade stoobly-agent"; \
+		exit 1; \
+	fi; \
+	stoobly-agent scaffold hostname $(action) --validate --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options);
 workflow/hostname/install: action/install workflow/hostname
 workflow/hostname/uninstall: action/uninstall workflow/hostname  
 workflow/logs:
