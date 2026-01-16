@@ -692,14 +692,14 @@ def validate(**kwargs):
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
-@click.option('--workflow', help='Specify services by workflow. Defaults to all.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
   __hostname_install_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
     hostname_install_confirm=kwargs.get('hostname_install_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
-    workflow_name=kwargs['workflow'],
+    workflow=kwargs['workflow'],
   )
 
 @hostname.command(
@@ -709,14 +709,14 @@ def install(**kwargs):
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
-@click.option('--workflow', help='Specify services by workflow. Defaults to all.')
+@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
   __hostname_uninstall_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
     hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
-    workflow_name=kwargs['workflow'],
+    workflow=kwargs['workflow'],
   )
 
 scaffold.add_command(app)
@@ -828,12 +828,12 @@ def __run_hostname_command_with_sudo(action: str, **kwargs):
     sys.exit(result.returncode)
 
 def __hostname_install_with_prompt(
-  workflow_name: str, app_dir_path: str, service: tuple, hostname_install_confirm: str = None, validate: bool = False
+  workflow: tuple, app_dir_path: str, service: tuple, hostname_install_confirm: str = None, validate: bool = False
 ):
   """Prompt user to install hostnames and install them if confirmed."""
 
   hostnames = __get_hostnames(
-    app_dir_path=app_dir_path, service=service, workflow=[workflow_name]
+    app_dir_path=app_dir_path, service=service, workflow=workflow
   )
 
   if validate:
@@ -854,15 +854,15 @@ def __hostname_install_with_prompt(
   if hostname_install_confirm:
     confirm = hostname_install_confirm
   else:
-    confirm = input(f"Do you want to install hostnames for {workflow_name}? (y/N) ")
+    confirm = input(f"Do you want to install hostname(s) in /etc/hosts? (y/N) ")
 
   if confirm == "y" or confirm == "Y":
-    __hostname_install(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=[workflow_name])
+    __hostname_install(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=workflow)
 
-def __hostname_uninstall_with_prompt(workflow_name: str, app_dir_path: str, service: tuple, hostname_uninstall_confirm: str = None, validate: bool = False):
+def __hostname_uninstall_with_prompt(workflow: tuple, app_dir_path: str, service: tuple, hostname_uninstall_confirm: str = None, validate: bool = False):
   """Prompt user to uninstall hostnames and uninstall them if confirmed."""
 
-  hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=[workflow_name])
+  hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=workflow)
 
   if validate:
     # Check app_config.proxy_mode is reverse
@@ -882,10 +882,10 @@ def __hostname_uninstall_with_prompt(workflow_name: str, app_dir_path: str, serv
   if hostname_uninstall_confirm:
     confirm = hostname_uninstall_confirm
   else:
-    confirm = input(f"Do you want to uninstall hostnames for {workflow_name}? (y/N) ")
+    confirm = input(f"Do you want to uninstall hostname(s) in /etc/hosts? (y/N) ")
 
   if confirm == "y" or confirm == "Y":
-    __hostname_uninstall(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=[workflow_name])
+    __hostname_uninstall(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=workflow)
 
 def __hostname_install(**kwargs):
   hostnames = kwargs.get('hostnames')
