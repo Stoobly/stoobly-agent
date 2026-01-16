@@ -453,13 +453,13 @@ def down(**kwargs):
       # Entrypoint container will be within the container network
       if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
           # Prompt confirm to install hostnames
-          if kwargs.get('hostname_uninstall_confirm'):
-            confirm = kwargs['hostname_uninstall_confirm']
-          else:
-            confirm = input(f"Do you want to uninstall hostnames for {kwargs['workflow_name']}? (y/N) ")
-
-          if confirm == "y" or confirm == "Y":
-            __hostname_uninstall(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+          __hostname_uninstall_with_prompt(
+              app_dir_path=kwargs['app_dir_path'],
+              hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
+              service=kwargs['service'],
+              validate=True,
+              workflow_name=kwargs['workflow_name'],
+            )
 
   # Execute the workflow down
   command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
@@ -618,14 +618,13 @@ def up(**kwargs):
       # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
       # Entrypoint container will be within the container network
       if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-        # Prompt confirm to install hostnames
-        if kwargs.get('hostname_install_confirm'):
-          confirm = kwargs['hostname_install_confirm']
-        else:
-          confirm = input(f"Do you want to install hostnames for {kwargs['workflow_name']}? (y/N) ")
-
-        if confirm == "y" or confirm == "Y":
-          __hostname_install(app_dir_path=kwargs['app_dir_path'], service=kwargs['service'], workflow=[kwargs['workflow_name']])
+        __hostname_install_with_prompt(
+          app_dir_path=kwargs['app_dir_path'],
+          hostname_install_confirm=kwargs.get('hostname_install_confirm'),
+          service=kwargs['service'],
+          validate=True,
+          workflow_name=kwargs['workflow_name'],
+        )
 
     options = {}
 
@@ -690,19 +689,41 @@ def validate(**kwargs):
   help="Update the system hosts file for all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
-@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
+@click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
+@click.option('--workflow', help='Specify services by workflow. Defaults to all.')
 def install(**kwargs):
-  __hostname_install(**kwargs)
+  app = App(kwargs['app_dir_path'])
+  __validate_app(app)
+  
+  __hostname_install_with_prompt(
+    app_dir_path=kwargs['app_dir_path'],
+    hostname_install_confirm=kwargs.get('hostname_install_confirm'),
+    service=kwargs['service'],
+    validate=kwargs.get('validate'),
+    workflow_name=kwargs['workflow'],
+  )
 
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
+@click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
-@click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
+@click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
+@click.option('--workflow', help='Specify services by workflow. Defaults to all.')
 def uninstall(**kwargs):
-  __hostname_uninstall(**kwargs)
+  app = App(kwargs['app_dir_path'])
+  __validate_app(app)
+
+  __hostname_uninstall_with_prompt(
+    app_dir_path=kwargs['app_dir_path'],
+    hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
+    service=kwargs['service'],
+    validate=kwargs.get('validate'),
+    workflow_name=kwargs['workflow'],
+  )
 
 scaffold.add_command(app)
 scaffold.add_command(service)
@@ -800,7 +821,8 @@ def __run_hostname_command_with_sudo(action: str, **kwargs):
   cmd = [
     "sudo", sys.executable, sys.argv[0],
     "scaffold", "hostname", action,
-    "--app-dir-path", kwargs['app_dir_path']
+    "--app-dir-path", kwargs['app_dir_path'],
+    f"--hostname-{action}-confirm", 'y',
   ]
   for workflow_name in kwargs.get('workflow', []):
     cmd.extend(["--workflow", workflow_name])
@@ -811,8 +833,68 @@ def __run_hostname_command_with_sudo(action: str, **kwargs):
   if result.returncode != 0:
     sys.exit(result.returncode)
 
+def __hostname_install_with_prompt(
+  workflow_name: str, app_dir_path: str, service: tuple, hostname_install_confirm: str = None, validate: bool = False
+):
+  """Prompt user to install hostnames and install them if confirmed."""
+
+  hostnames = __get_hostnames(
+    app_dir_path=app_dir_path, service=service, workflow=[workflow_name]
+  )
+
+  if validate:
+    # Check app_config.proxy_mode is reverse
+    app = App(app_dir_path)
+    app_config = AppConfig(app.scaffold_namespace_path)
+
+    if app_config.proxy_mode != PROXY_MODE_REVERSE:
+      return
+
+    hosts_file_manager = HostsFileManager()
+    if hosts_file_manager.hostname_installed(hostnames):
+      return
+
+  hostname_install_confirm = hostname_install_confirm or os.environ.get('STOOBLY_HOSTNAME_INSTALL_CONFIRM')
+
+  # Prompt confirm to install hostnames
+  if hostname_install_confirm:
+    confirm = hostname_install_confirm
+  else:
+    confirm = input(f"Do you want to install hostnames for {workflow_name}? (y/N) ")
+
+  if confirm == "y" or confirm == "Y":
+    __hostname_install(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=[workflow_name])
+
+def __hostname_uninstall_with_prompt(workflow_name: str, app_dir_path: str, service: tuple, hostname_uninstall_confirm: str = None, validate: bool = False):
+  """Prompt user to uninstall hostnames and uninstall them if confirmed."""
+
+  hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=[workflow_name])
+
+  if validate:
+    # Check app_config.proxy_mode is reverse
+    app = App(app_dir_path)
+    app_config = AppConfig(app.scaffold_namespace_path)
+
+    if app_config.proxy_mode != PROXY_MODE_REVERSE:
+      return
+
+    hosts_file_manager = HostsFileManager()
+    if not hosts_file_manager.hostname_installed(hostnames):
+      return
+
+  hostname_uninstall_confirm = hostname_uninstall_confirm or os.environ.get('STOOBLY_HOSTNAME_UNINSTALL_CONFIRM')
+
+  # Prompt confirm to uninstall hostnames
+  if hostname_uninstall_confirm:
+    confirm = hostname_uninstall_confirm
+  else:
+    confirm = input(f"Do you want to uninstall hostnames for {workflow_name}? (y/N) ")
+
+  if confirm == "y" or confirm == "Y":
+    __hostname_uninstall(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=[workflow_name])
+
 def __hostname_install(**kwargs):
-  hostnames = __get_hostnames(**kwargs)
+  hostnames = kwargs.get('hostnames')
   if not hostnames:
     return
 
@@ -827,7 +909,7 @@ def __hostname_install(**kwargs):
       sys.exit(1)
 
 def __hostname_uninstall(**kwargs):
-  hostnames = __get_hostnames(**kwargs)
+  hostnames = kwargs.get('hostnames')
   if not hostnames:
     return
 
