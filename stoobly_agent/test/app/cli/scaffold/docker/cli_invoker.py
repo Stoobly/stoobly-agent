@@ -124,7 +124,6 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      pdb.set_trace()
       print(f"Command failed with exit code {result.exit_code}")
       print(f"Output: {result.output}")
       print(f"Exception: {result.exception}")
