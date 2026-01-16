@@ -114,6 +114,10 @@ class WorkflowNamespace():
           if os.path.exists(tmp_dir_path):
             for folder in os.listdir(tmp_dir_path):
               folder_path = os.path.join(tmp_dir_path, folder)
+
+              # Skip current namespace or else it will count itself twice
+              if folder == self._namespace:
+                continue
               
               # If the folder is not a directory, skip
               if not os.path.isdir(folder_path):
