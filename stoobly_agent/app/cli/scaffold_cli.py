@@ -694,9 +694,6 @@ def validate(**kwargs):
 @click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
 @click.option('--workflow', help='Specify services by workflow. Defaults to all.')
 def install(**kwargs):
-  app = App(kwargs['app_dir_path'])
-  __validate_app(app)
-  
   __hostname_install_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
     hostname_install_confirm=kwargs.get('hostname_install_confirm'),
@@ -714,9 +711,6 @@ def install(**kwargs):
 @click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
 @click.option('--workflow', help='Specify services by workflow. Defaults to all.')
 def uninstall(**kwargs):
-  app = App(kwargs['app_dir_path'])
-  __validate_app(app)
-
   __hostname_uninstall_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
     hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
