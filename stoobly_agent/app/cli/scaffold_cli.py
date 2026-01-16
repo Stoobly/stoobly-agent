@@ -458,7 +458,7 @@ def down(**kwargs):
               hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
               service=kwargs['service'],
               validate=True,
-              workflow_name=kwargs['workflow_name'],
+              workflow=[kwargs['workflow_name']],
             )
 
   # Execute the workflow down
@@ -623,7 +623,7 @@ def up(**kwargs):
           hostname_install_confirm=kwargs.get('hostname_install_confirm'),
           service=kwargs['service'],
           validate=True,
-          workflow_name=kwargs['workflow_name'],
+          workflow=[kwargs['workflow_name']],
         )
 
     options = {}
