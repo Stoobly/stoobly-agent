@@ -325,6 +325,20 @@ class TestRequestLogCliParams:
     def runner(self):
         return CliRunner()
 
+    def test_log_list_without_args_uses_defaults(self, runner):
+        """request log list without args passes None for both params."""
+        with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
+            result = runner.invoke(request, ['log', 'list'])
+            assert result.exit_code == 0
+            mock_dump.assert_called_once_with(workflow=None, namespace=None)
+
+    def test_log_delete_without_args_uses_defaults(self, runner):
+        """request log delete without args passes None for both params."""
+        with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
+            result = runner.invoke(request, ['log', 'delete'])
+            assert result.exit_code == 0
+            mock_truncate.assert_called_once_with(workflow=None, namespace=None)
+
     def test_log_list_accepts_workflow_name_argument(self, runner):
         """request log list accepts workflow_name as positional argument."""
         with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
