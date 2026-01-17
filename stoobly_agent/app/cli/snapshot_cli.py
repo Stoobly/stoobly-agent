@@ -40,7 +40,7 @@ def snapshot(ctx):
 @click.option('--lock-timeout', default=60, type=int, help='Lock timeout in seconds (default: 60).')
 @click.argument('uuid', required=False)
 def apply(**kwargs):
-  data_dir = DataDir.instance()
+  data_dir: DataDir = DataDir.instance()
   lock_file_path = os.path.join(data_dir.path, '.snapshot-apply.lock')
   lock = FileLock(lock_file_path, timeout=kwargs.get('lock_timeout', 60))
 
