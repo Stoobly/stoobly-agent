@@ -41,7 +41,7 @@ def snapshot(ctx):
 @click.argument('uuid', required=False)
 def apply(**kwargs):
   data_dir: DataDir = DataDir.instance()
-  lock_file_path = os.path.join(data_dir.path, '.snapshot-apply.lock')
+  lock_file_path = os.path.join(data_dir.tmp_dir_path, '.snapshot-apply.lock')
   lock = FileLock(lock_file_path, timeout=kwargs.get('lock_timeout', 60))
 
   try:
