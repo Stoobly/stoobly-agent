@@ -6,6 +6,7 @@ import requests
 import time
 
 from click.testing import CliRunner
+from unittest.mock import patch
 
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.cli.scaffold.constants import (
@@ -311,3 +312,57 @@ class TestRequestLogWithRecordedRequestsE2e():
                 continue
 
         assert found_failure, f"Expected Mock failure log entry, got:\n{list_result.output}"
+
+
+class TestRequestLogCliParams:
+    """Unit tests for CLI parameter handling (not E2E)."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_log_list_accepts_workflow_name_argument(self, runner):
+        """request log list accepts workflow_name as positional argument."""
+        with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
+            result = runner.invoke(request, ['log', 'list', 'mock'])
+            assert result.exit_code == 0
+            mock_dump.assert_called_once_with(workflow='mock', namespace=None)
+
+    def test_log_list_accepts_namespace_option(self, runner):
+        """request log list accepts --namespace option."""
+        with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
+            result = runner.invoke(request, ['log', 'list', '--namespace', 'test-ns'])
+            assert result.exit_code == 0
+            mock_dump.assert_called_once_with(workflow=None, namespace='test-ns')
+
+    def test_log_list_accepts_both_workflow_and_namespace(self, runner):
+        """request log list accepts both workflow_name and --namespace."""
+        with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
+            result = runner.invoke(request, ['log', 'list', 'record', '--namespace', 'prod'])
+            assert result.exit_code == 0
+            mock_dump.assert_called_once_with(workflow='record', namespace='prod')
+
+    def test_log_delete_accepts_workflow_name_argument(self, runner):
+        """request log delete accepts workflow_name as positional argument."""
+        with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
+            result = runner.invoke(request, ['log', 'delete', 'mock'])
+            assert result.exit_code == 0
+            mock_truncate.assert_called_once_with(workflow='mock', namespace=None)
+
+    def test_log_delete_accepts_namespace_option(self, runner):
+        """request log delete accepts --namespace option."""
+        with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
+            result = runner.invoke(request, ['log', 'delete', '--namespace', 'test-ns'])
+            assert result.exit_code == 0
+            mock_truncate.assert_called_once_with(workflow=None, namespace='test-ns')
+
+    def test_log_delete_accepts_both_workflow_and_namespace(self, runner):
+        """request log delete accepts both workflow_name and --namespace."""
+        with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
+            result = runner.invoke(request, ['log', 'delete', 'record', '--namespace', 'prod'])
+            assert result.exit_code == 0
+            mock_truncate.assert_called_once_with(workflow='record', namespace='prod')
