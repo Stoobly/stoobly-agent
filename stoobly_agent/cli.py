@@ -92,7 +92,7 @@ def init(**kwargs):
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
-@click.option('--request-log-truncate', is_flag=True, default=True, required=False, help='Truncate the intercepted requests log.')
+@click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
@@ -154,8 +154,8 @@ def run(**kwargs):
     if kwargs.get('request_log_enable'):
       from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 
-      # If truncating, do that first (it handles enable internally)
-      if kwargs.get('request_log_truncate'):
+      # If not appending, do that first (it handles enable internally)
+      if not kwargs.get('request_log_append'):
         InterceptedRequestsLogger.truncate()
       else:
         InterceptedRequestsLogger.enable_logger_file()
