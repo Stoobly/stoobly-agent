@@ -137,7 +137,7 @@ scenario/delete:
 # Delete a scenario
 	@export EXEC_COMMAND=scenario/.delete EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
-scenario/list:
+scenarios:
 # List scenarios
 	@export EXEC_COMMAND=scenario/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
