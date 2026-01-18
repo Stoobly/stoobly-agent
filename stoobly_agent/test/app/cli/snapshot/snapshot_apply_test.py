@@ -822,8 +822,8 @@ class TestApply():
         """Test that concurrent snapshot apply commands properly timeout"""
         from filelock import FileLock
         
-        data_dir = DataDir.instance()
-        lock_file_path = os.path.join(data_dir.path, '.snapshot-apply.lock')
+        data_dir: DataDir = DataDir.instance()
+        lock_file_path = os.path.join(data_dir.tmp_dir_path, '.snapshot-apply.lock')
         
         # Acquire lock in a separate thread to simulate a running snapshot apply
         lock_acquired = threading.Event()
