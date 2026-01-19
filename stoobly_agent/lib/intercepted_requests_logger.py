@@ -57,8 +57,8 @@ class InterceptedRequestsLogger():
         """Remove path traversal sequences and invalid characters to prevent path traversal attacks."""
         if value is None:
             return None
-        # Remove path separators and traversal sequences
-        sanitized = re.sub(r'[/\\]|\.\.', '', value)
+        # Remove null bytes, path separators, URL-encoded separators, and traversal sequences
+        sanitized = re.sub(r'\x00|[/\\]|%2[Ff]|%5[Cc]|\.\.', '', value)
         return sanitized if sanitized else None
 
     @staticmethod
@@ -298,12 +298,13 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def __get_file_path(cls, workflow: str = None, namespace: str = None) -> str:
-        if cls.__file_path is not None:
+        # Only use cache when no specific workflow/namespace is requested
+        if (cls.__file_path is not None) and (workflow is None) and (namespace is None):
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        wf = cls._sanitize_path_component(workflow) if workflow else cls._get_workflow()
-        ns = cls._sanitize_path_component(namespace) if namespace else cls._get_namespace()
+        wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow())
+        ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace())
         return f"{data_dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
 
     @classmethod
