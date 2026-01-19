@@ -348,3 +348,42 @@ class TestWorkflowNamespaceParameters:
         with open(log_file, 'r') as f:
             content = f.read()
             assert 'should be cleared' not in content
+
+
+class TestPathSanitization:
+    """Tests for path traversal prevention."""
+
+    def test_sanitize_removes_forward_slashes(self):
+        """Path components with forward slashes are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('foo/bar')
+        assert result == 'foobar'
+
+    def test_sanitize_removes_backslashes(self):
+        """Path components with backslashes are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('foo\\bar')
+        assert result == 'foobar'
+
+    def test_sanitize_removes_dot_dot_sequences(self):
+        """Path components with .. sequences are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../etc')
+        assert result == 'etc'
+
+    def test_sanitize_removes_complex_traversal(self):
+        """Complex path traversal attempts are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../../etc/passwd')
+        assert result == 'etcpasswd'
+
+    def test_sanitize_returns_none_for_none(self):
+        """None input returns None."""
+        result = InterceptedRequestsLogger._sanitize_path_component(None)
+        assert result is None
+
+    def test_sanitize_returns_none_for_only_traversal(self):
+        """Input containing only traversal characters returns None."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../..')
+        assert result is None
+
+    def test_sanitize_preserves_valid_names(self):
+        """Valid workflow/namespace names are preserved."""
+        result = InterceptedRequestsLogger._sanitize_path_component('my-workflow_123')
+        assert result == 'my-workflow_123'

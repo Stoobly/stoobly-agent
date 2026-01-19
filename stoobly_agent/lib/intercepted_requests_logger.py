@@ -5,6 +5,7 @@ import logging.handlers
 import json
 import queue
 import atexit
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Final, Optional
 
@@ -50,6 +51,15 @@ class InterceptedRequestsLogger():
     __log_queue: Optional[queue.Queue] = None
     __file_handler: Optional[logging.FileHandler] = None
     __atexit_registered: bool = False
+
+    @staticmethod
+    def _sanitize_path_component(value: str) -> str:
+        """Remove path traversal sequences and invalid characters to prevent path traversal attacks."""
+        if value is None:
+            return None
+        # Remove path separators and traversal sequences
+        sanitized = re.sub(r'[/\\]|\.\.', '', value)
+        return sanitized if sanitized else None
 
     @staticmethod
     def _get_workflow() -> str:
@@ -292,8 +302,8 @@ class InterceptedRequestsLogger():
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        wf = workflow if workflow else cls._get_workflow()
-        ns = namespace if namespace else cls._get_namespace()
+        wf = cls._sanitize_path_component(workflow) if workflow else cls._get_workflow()
+        ns = cls._sanitize_path_component(namespace) if namespace else cls._get_namespace()
         return f"{data_dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
 
     @classmethod
