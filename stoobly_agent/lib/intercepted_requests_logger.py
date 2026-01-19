@@ -67,7 +67,7 @@ class InterceptedRequestsLogger():
 
     @staticmethod
     def _get_namespace() -> str:
-        return os.environ.get(WORKFLOW_NAMESPACE_ENV, InterceptedRequestsLogger.__settings.proxy.intercept.mode)
+        return os.environ.get(WORKFLOW_NAMESPACE_ENV) or InterceptedRequestsLogger._get_workflow()
 
     # Initialize logger as disabled by default
     __logger.disabled = True
@@ -303,13 +303,13 @@ class InterceptedRequestsLogger():
             return cls.__file_path
 
         data_dir_path = DataDir.instance().path
-        wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow())
-        ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace())
+        wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow()) or cls._get_workflow()
+        ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace()) or wf
         return f"{data_dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
 
     @classmethod
-    def enable_logger_file(cls) -> None:
-        cls.__ensure_directory()
+    def enable_logger_file(cls, workflow: str = None, namespace: str = None) -> None:
+        cls.__ensure_directory(workflow, namespace)
 
         # Enable the logger before setup so error logging works
         cls.__logger.disabled = False
@@ -320,7 +320,7 @@ class InterceptedRequestsLogger():
 
             # Create file handler
             cls.__file_handler = logging.FileHandler(
-                cls.__get_file_path()
+                cls.__get_file_path(workflow, namespace)
             )
             cls.__file_handler.setLevel(logging.DEBUG)
             json_formatter = cls.JSONFormatter(cls.__settings)
@@ -444,7 +444,7 @@ class InterceptedRequestsLogger():
         file_path = cls.__get_file_path(workflow, namespace)
 
         if not os.path.exists(file_path):
-            cls.enable_logger_file()
+            cls.enable_logger_file(workflow, namespace)
             return
 
         try:
@@ -465,7 +465,7 @@ class InterceptedRequestsLogger():
                 f.write('')
 
             # Re-enable logging with fresh handlers
-            cls.enable_logger_file()
+            cls.enable_logger_file(workflow, namespace)
             cls.__logger.debug(f"Cleared log file: {file_path}")
 
             cls.reset_scenario_key()
