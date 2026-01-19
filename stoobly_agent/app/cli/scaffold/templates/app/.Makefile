@@ -112,7 +112,7 @@ intercept/enable:
 mock: workflow/mock workflow/up nameservers workflow/hostname/install workflow/up/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
 mock/logs: workflow/mock workflow/logs workflow/logs/run
-mock/report: workflow/mock workflow/report
+mock/request/logs: workflow/mock workflow/request/logs
 mock/services: workflow/mock workflow/services
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
@@ -127,7 +127,7 @@ python/validate:
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
 record/down: workflow/record workflow/down workflow/down/run workflow/hostname/uninstall
 record/logs: workflow/record workflow/logs workflow/logs/run
-record/report: workflow/record workflow/report
+record/request/logs: workflow/record workflow/request/logs
 record/services: workflow/record workflow/services
 scenario/create:
 # Create a scenario
@@ -137,7 +137,7 @@ scenario/delete:
 # Delete a scenario
 	@export EXEC_COMMAND=scenario/.delete EXEC_OPTIONS="$(options)" EXEC_ARGS="$(key)" && \
 	$(stoobly_exec)
-scenario/list:
+scenarios:
 # List scenarios
 	@export EXEC_COMMAND=scenario/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
@@ -161,7 +161,7 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up workflow/up/run
 test/down: workflow/test workflow/down workflow/down/run
 test/logs: workflow/test workflow/logs workflow/logs/run
-test/report: workflow/test workflow/report
+test/request/logs: workflow/test workflow/request/logs
 test/services: workflow/test workflow/services
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
@@ -191,7 +191,7 @@ workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
-workflow/report:
+workflow/request/logs:
 	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
 workflow/services:
