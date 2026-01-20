@@ -362,6 +362,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Execute directly
       try:
+        # Build env with workflow name and namespace for InterceptedRequestsLogger
+        env = os.environ.copy()
+        env[WORKFLOW_NAME_ENV] = self.workflow_name or ''
+        env[WORKFLOW_NAMESPACE_ENV] = self.namespace or self.workflow_name or ''
+
         # Run the command with --detached option
         result = subprocess.run(
           command,
