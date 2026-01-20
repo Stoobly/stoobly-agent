@@ -40,7 +40,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.hostname = self.service_config.hostname
     self.service_docker_compose = ServiceDockerCompose(
-      app_dir_path=app.dir_path, target_workflow_name=self.__namespace, service_name=self.service_name, hostname=self.hostname
+      app_dir_path=app.dir_path, namespace=self.__namespace, workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname
     )
 
   @property
