@@ -34,7 +34,10 @@ from .app import App
 class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def __init__(self, app: App, **kwargs):
     ServiceCommand.__init__(self, app, **kwargs)
-    ValidateCommand.__init__(self)
+
+    # Only require Docker for non-local runtime (consistent with WorkflowValidateCommand)
+    require_docker = not self.service_config.app_config.runtime_local
+    ValidateCommand.__init__(self, require_docker=require_docker)
 
     self.workflow_name = kwargs['workflow_name']
     self.__namespace = kwargs.get('namespace') or self.workflow_name
@@ -61,7 +64,11 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     )
 
   def is_user_defined_docker_service(self):
-    with open (self.service_docker_compose.docker_compose_path,'rb') as f:
+    docker_compose_path = self.service_docker_compose.docker_compose_path
+    if not os.path.exists(docker_compose_path):
+      return False
+
+    with open(docker_compose_path, 'rb') as f:
       docker_compose_file_content = yaml.safe_load(f)
       if docker_compose_file_content and docker_compose_file_content.get('services'):
         return True
@@ -109,7 +116,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
           if proxy_socket:
             try:
               proxy_socket.close()
-            except:
+            except Exception:
               pass
           if attempt < retries - 1:
             time.sleep(delay)
