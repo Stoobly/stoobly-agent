@@ -311,3 +311,35 @@ class TestRequestLogWithRecordedRequestsE2e():
                 continue
 
         assert found_failure, f"Expected Mock failure log entry, got:\n{list_result.output}"
+
+    def test_options_request_not_logged_as_failure(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+        """Test that OPTIONS requests are not logged as mock failures."""
+        # Clear log first
+        runner.invoke(request, ['log', 'delete'])
+
+        # Make an OPTIONS request - should get CORS response, not logged as failure
+        res = requests.options(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        # OPTIONS requests should return 200 with CORS headers
+        assert res.status_code == 200
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(request, ['log', 'list'])
+        assert list_result.exit_code == 0
+
+        # Should NOT have a Mock failure entry for OPTIONS request
+        for line in list_result.output.strip().split('\n'):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get('message') == 'Mock failure' and entry.get('method') == 'OPTIONS':
+                    assert False, f"OPTIONS request should not be logged as Mock failure, got log output:\n{list_result.output}"
+            except json.JSONDecodeError:
+                continue
