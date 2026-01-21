@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
     WORKFLOW_RECORD_TYPE,
+    WORKFLOW_TEST_TYPE,
 )
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
@@ -18,6 +19,22 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
+from typing import Optional
+
+
+def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
+    """Find a log entry matching the given message and optional method."""
+    for line in output.strip().split('\n'):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+            if entry.get('message') == message:
+                if method is None or entry.get('method') == method:
+                    return entry
+        except json.JSONDecodeError:
+            continue
+    return None
 
 
 @pytest.mark.e2e
@@ -98,33 +115,20 @@ class TestRequestLogE2e():
         output = result.output
         assert output, "Log output should not be empty"
 
-        # Parse JSON lines and find the mock failure entry
-        found_mock_failure = False
-        for line in output.strip().split('\n'):
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if entry.get('message') == 'Mock failure':
-                    found_mock_failure = True
+        entry = find_log_entry(output, 'Mock failure')
+        assert entry is not None, f"Expected to find 'Mock failure' log entry in output:\n{output}"
 
-                    # Check specific field values
-                    assert entry['level'] == 'ERROR'
-                    assert entry['method'] == 'GET'
-                    assert hostname in entry.get('url', '')
-                    assert entry['status_code'] == NOT_FOUND
-                    assert 'scenario_key' in entry
+        # Check specific field values
+        assert entry['level'] == 'ERROR'
+        assert entry['method'] == 'GET'
+        assert hostname in entry.get('url', '')
+        assert entry['status_code'] == NOT_FOUND
+        assert 'scenario_key' in entry
 
-                    # Assert these fields exist and are not null
-                    assert entry.get('timestamp'), "timestamp should exist and not be empty"
-                    assert entry.get('user_agent'), "user_agent should exist and not be empty"
-                    assert entry.get('latency_ms') is not None, "latency_ms should exist"
-
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        assert found_mock_failure, f"Expected to find 'Mock failure' log entry in output:\n{output}"
+        # Assert these fields exist and are not null
+        assert entry.get('timestamp'), "timestamp should exist and not be empty"
+        assert entry.get('user_agent'), "user_agent should exist and not be empty"
+        assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
     def test_log_delete_clears_log_entries(self, runner: CliRunner, proxy_url: str, hostname):
         """Test that request log delete clears all log entries."""
@@ -248,33 +252,21 @@ class TestRequestLogWithRecordedRequestsE2e():
 
         # If the request was successful (200), there should be a "Mock success" log entry
         # because default log level is INFO
-        found_mock_success = False
         output = list_result.output
-        for line in output.strip().split('\n'):
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if entry.get('message') == 'Mock success':
-                    found_mock_success = True
+        entry = find_log_entry(output, 'Mock success')
+        assert entry is not None, f"Expected Mock success log entry, got:\n{output}"
 
-                    # Check specific field values
-                    assert entry['level'] == 'INFO'
-                    assert entry['method'] == 'GET'
-                    assert 'dog.ceo' in entry.get('url', '')
-                    assert entry['status_code'] == 200
-                    assert 'scenario_key' in entry
+        # Check specific field values
+        assert entry['level'] == 'INFO'
+        assert entry['method'] == 'GET'
+        assert 'dog.ceo' in entry.get('url', '')
+        assert entry['status_code'] == 200
+        assert 'scenario_key' in entry
 
-                    # Assert these fields exist and are not null
-                    assert entry.get('timestamp'), "timestamp should exist and not be empty"
-                    assert entry.get('user_agent'), "user_agent should exist and not be empty"
-                    assert entry.get('latency_ms') is not None, "latency_ms should exist"
-
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        assert found_mock_success, f"Expected Mock success log entry, got:\n{output}"
+        # Assert these fields exist and are not null
+        assert entry.get('timestamp'), "timestamp should exist and not be empty"
+        assert entry.get('user_agent'), "user_agent should exist and not be empty"
+        assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
     def test_unrecorded_request_logged_as_error(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
@@ -296,21 +288,10 @@ class TestRequestLogWithRecordedRequestsE2e():
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry
-        found_failure = False
-        for line in list_result.output.strip().split('\n'):
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if entry.get('message') == 'Mock failure':
-                    found_failure = True
-                    assert entry['level'] == 'ERROR'
-                    assert entry['status_code'] == NOT_FOUND
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        assert found_failure, f"Expected Mock failure log entry, got:\n{list_result.output}"
+        entry = find_log_entry(list_result.output, 'Mock failure')
+        assert entry is not None, f"Expected Mock failure log entry, got:\n{list_result.output}"
+        assert entry['level'] == 'ERROR'
+        assert entry['status_code'] == NOT_FOUND
 
     def test_options_request_not_logged_as_failure(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as mock failures."""
@@ -334,12 +315,168 @@ class TestRequestLogWithRecordedRequestsE2e():
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
-        for line in list_result.output.strip().split('\n'):
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if entry.get('message') == 'Mock failure' and entry.get('method') == 'OPTIONS':
-                    assert False, f"OPTIONS request should not be logged as Mock failure, got log output:\n{list_result.output}"
-            except json.JSONDecodeError:
-                continue
+        entry = find_log_entry(list_result.output, 'Mock failure', method='OPTIONS')
+        assert entry is None, f"OPTIONS request should not be logged as Mock failure, got log output:\n{list_result.output}"
+
+
+@pytest.mark.e2e
+class TestRequestLogWithTestWorkflowE2e():
+    """Test logging behavior for the test scaffold workflow."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class')
+    def app_name(self):
+        yield "request-log-test-workflow-app"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "dog.ceo"
+
+    @pytest.fixture(scope='class')
+    def service_name(self):
+        yield "dog-api-test"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def proxy_url(self):
+        return "http://localhost:8081"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+        LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def record_then_test_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+        """Record a request, then switch to test workflow for testing."""
+        # Start record workflow
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
+        time.sleep(1)
+        settings.load()
+
+        # Record a request
+        settings.proxy.intercept.active = True
+        settings.commit()
+        time.sleep(1)
+        settings.load()
+
+        requests.get(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        # Stop record workflow
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
+        time.sleep(1)
+
+        # Start test workflow
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_TEST_TYPE)
+        time.sleep(1)
+        settings.load()
+
+        yield
+
+        # Cleanup: stop test workflow
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_TEST_TYPE)
+        time.sleep(1)
+
+    def test_successful_test_logged_at_info_level(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+        """Test that successful test requests are logged at INFO level."""
+        # Clear log first
+        runner.invoke(request, ['log', 'delete'])
+
+        # Make the recorded request - should succeed with test comparison
+        res = requests.get(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(request, ['log', 'list'])
+        assert list_result.exit_code == 0
+
+        if res.status_code != 200:
+            assert False, f"Expected successful test (200), got {res.status_code}. Response: {res.text}."
+
+        # Should have a "Mock success" log entry (test workflow uses mock mode)
+        output = list_result.output
+        entry = find_log_entry(output, 'Mock success')
+        assert entry is not None, f"Expected Mock success log entry, got:\n{output}"
+
+        # Check specific field values
+        assert entry['level'] == 'INFO'
+        assert entry['method'] == 'GET'
+        assert 'dog.ceo' in entry.get('url', '')
+        assert entry['status_code'] == 200
+        assert 'scenario_key' in entry
+
+        # Assert these fields exist and are not null
+        assert entry.get('timestamp'), "timestamp should exist and not be empty"
+        assert entry.get('user_agent'), "user_agent should exist and not be empty"
+        assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+    def test_unrecorded_request_logged_as_test_failure(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+        """Test that unrecorded requests in test mode are logged as test failures."""
+        # Clear log first
+        runner.invoke(request, ['log', 'delete'])
+
+        # Make an unrecorded request - should trigger test failure
+        res = requests.get(
+            'https://dog.ceo/api/breeds/unknown-endpoint',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+        assert res.status_code == NOT_FOUND
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(request, ['log', 'list'])
+        assert list_result.exit_code == 0
+
+        # Should have a Mock failure entry (test workflow uses mock mode)
+        entry = find_log_entry(list_result.output, 'Mock failure')
+        assert entry is not None, f"Expected Mock failure log entry, got:\n{list_result.output}"
+        assert entry['level'] == 'ERROR'
+        assert entry['status_code'] == NOT_FOUND
+
+    def test_options_request_not_logged_as_test_failure(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+        """Test that OPTIONS requests are not logged as test failures."""
+        # Clear log first
+        runner.invoke(request, ['log', 'delete'])
+
+        # Make an OPTIONS request - should get CORS response, not logged as failure
+        res = requests.options(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        # OPTIONS requests should return 200 with CORS headers
+        assert res.status_code == 200
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(request, ['log', 'list'])
+        assert list_result.exit_code == 0
+
+        # Should NOT have a Mock failure entry for OPTIONS request
+        entry = find_log_entry(list_result.output, 'Mock failure', method='OPTIONS')
+        assert entry is None, f"OPTIONS request should not be logged as Test failure, got log output:\n{list_result.output}"
