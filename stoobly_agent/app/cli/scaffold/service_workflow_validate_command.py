@@ -34,12 +34,16 @@ from .app import App
 class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def __init__(self, app: App, **kwargs):
     ServiceCommand.__init__(self, app, **kwargs)
-    ValidateCommand.__init__(self)
+
+    # Only require Docker for non-local runtime (consistent with WorkflowValidateCommand)
+    require_docker = not self.service_config.app_config.runtime_local
+    ValidateCommand.__init__(self, require_docker=require_docker)
 
     self.workflow_name = kwargs['workflow_name']
+    self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.hostname = self.service_config.hostname
     self.service_docker_compose = ServiceDockerCompose(
-      app_dir_path=app.dir_path, target_workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname
+      app_dir_path=app.dir_path, namespace=self.__namespace, workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname
     )
 
   @property
@@ -59,8 +63,12 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       self.workflow_name
     )
 
-  def is_local(self):
-    with open (self.service_docker_compose.docker_compose_path,'rb') as f:
+  def is_user_defined_docker_service(self):
+    docker_compose_path = self.service_docker_compose.docker_compose_path
+    if not os.path.exists(docker_compose_path):
+      return False
+
+    with open(docker_compose_path, 'rb') as f:
       docker_compose_file_content = yaml.safe_load(f)
       if docker_compose_file_content and docker_compose_file_content.get('services'):
         return True
@@ -69,8 +77,8 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     return False
 
-  def is_external(self):
-    return not self.is_local()
+  def is_external_docker_service(self):
+    return not self.is_user_defined_docker_service()
 
   def hostname_reachable(self, hostname: str, port: int) -> bool:
     print(f"Validating connection to hostname: {hostname}, port: {port}")
@@ -108,7 +116,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
           if proxy_socket:
             try:
               proxy_socket.close()
-            except:
+            except Exception:
               pass
           if attempt < retries - 1:
             time.sleep(delay)
@@ -163,16 +171,30 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     
     # See WorkflowRunCommand for how 'network' is generated
     # Debug command=f"curl -k --max-time {timeout_seconds} {url} --verbose",
-    network = f"{self.workflow_name}.{self.app.network}" 
+    base_network_name = f"{self.__namespace}.{self.app.network}" 
+    network = APP_INGRESS_NETWORK_TEMPLATE.format(network=base_network_name)
     timeout_seconds = 1
     http_code_format = '"%{http_code}"'
-    output = self.docker_client.containers.run(
-      image='curlimages/curl:8.11.0',
-      command=f"curl -k -s -o /dev/null -w {http_code_format} --max-time {timeout_seconds} {url}",
-      network=APP_INGRESS_NETWORK_TEMPLATE.format(network=network),
-      stderr=True,
-      remove=True,
-    )
+    command = f"curl -k -s -o /dev/null -w {http_code_format} --max-time {timeout_seconds} {url}"
+
+    try:
+      output = self.docker_client.containers.run(
+        image='curlimages/curl:8.18.0',
+        command=command,
+        network=network,
+        stderr=True,
+        remove=True,
+      )
+    except docker_errors.ContainerError as err:
+      stderr_info = ""
+      if err.stderr:
+        stderr_decoded = err.stderr.decode('utf-8', errors='ignore').strip() if isinstance(err.stderr, bytes) else str(err.stderr).strip()
+        if stderr_decoded:
+          stderr_info = f"\nStderr: {stderr_decoded}"
+
+      error_message = f"{bcolors.FAIL}Failed to reach {url} from inside Docker network (curl exit code {err.exit_status}){bcolors.ENDC}{stderr_info}"
+      suggestion_message = f"{bcolors.BOLD}Verify the service is running and accessible on network '{network}'.{bcolors.ENDC}"
+      raise ScaffoldValidateException(f"{error_message}\n\n{suggestion_message}")
 
     # Note: 499 error could also mean success because it shows the proxy
     # connection is working, but we haven't recorded anything yet
@@ -238,12 +260,14 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     url = self.service_config.url
 
-    if self.service_config.hostname and self.workflow_name not in [WORKFLOW_TEST_TYPE]:
+    if self.service_config.hostname and (self.workflow_name not in [WORKFLOW_TEST_TYPE]) \
+      and self.service_config.app_config.runtime_docker and self.service_config.app_config.proxy_mode == PROXY_MODE_FORWARD:
       self.validate_hostname(self.hostname, self.service_config.port)
     
     # Test workflow won't expose services that are detached and have a hostname to the host such as assets.
     # Need to test connection from inside the Docker network
-    if self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE:
+    if self.service_config.app_config.runtime_docker and self.service_config.app_config.proxy_mode == PROXY_MODE_REVERSE \
+        and self.service_config.hostname and self.workflow_name == WORKFLOW_TEST_TYPE:
       try:
         self.validate_internal_hostname(url)
       except ScaffoldValidateException:
@@ -251,15 +275,19 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
         # Retry once
         self.validate_internal_hostname(url)
 
-    self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
+    # Only validate init Docker containers for Docker runtime
+    # Local workflows execute init/configure scripts directly, not via Docker containers
+    if self.service_config.app_config.runtime_docker:
+      self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
 
-    # Service init containers have a mounted dist folder unlike the core init container
-    init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
-    self.validate_public_folder(init_container)
+      # Service init containers have a mounted dist folder unlike the core init container
+      init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
+      self.validate_public_folder(init_container)
 
     # Proxy containers are only created in reverse proxy mode
     # In forward mode, the gateway runs as a forward proxy and no proxy containers are started
-    if self.service_config.hostname and self.service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:
+    if self.service_config.app_config.runtime_docker and self.service_config.hostname \
+        and self.service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:
       try:
         service_proxy_container = self.docker_client.containers.get(self.service_docker_compose.proxy_container_name)
       except docker_errors.NotFound:
@@ -269,7 +297,8 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       self.validate_proxy_container(service_proxy_container)
 
     # External services won't have a container to check
-    if self.is_local() or self.service_config.detached:
+    if self.service_config.app_config.runtime_docker \
+        and (self.is_user_defined_docker_service() or self.service_config.detached):
       container_name = self.service_docker_compose.container_name
       try:
         service_container = self.docker_client.containers.get(container_name)
@@ -281,7 +310,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       if service_container.status != 'running':
         raise ScaffoldValidateException(f"Custom container is not running: {service_container.name}")
     
-    if self.is_local():
+    if self.service_config.app_config.runtime_docker and self.is_user_defined_docker_service():
       print(f"Validating local user defined service: {self.service_name}")
       # Validate docker-compose path exists
       docker_compose_path = f"{self.app_dir_path}/{DATA_DIR_NAME}/{SERVICES_NAMESPACE}/{self.service_docker_compose.service_name}/{self.workflow_name}/docker-compose.yml"
@@ -303,7 +332,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
           error_message = f"{message}\n\n{suggestion_message}"
           raise ScaffoldValidateException(error_message)
 
-    if self.service_config.detached:
+    if self.service_config.app_config.runtime_docker and self.service_config.detached:
       self.validate_detached(service_container)
 
     print(f"{bcolors.OKGREEN}✔ Done validating service: {self.service_name}, success!{bcolors.ENDC}\n")

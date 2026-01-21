@@ -64,11 +64,11 @@ class TestScaffoldCli():
 
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
     def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def create_setup(self, runner, app_dir_path, app_name, external_service_docker_compose, external_https_service_docker_compose):

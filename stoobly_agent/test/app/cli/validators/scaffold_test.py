@@ -7,7 +7,7 @@ from stoobly_agent.app.cli.validators.scaffold import (
     validate_network,
     validate_service_name,
 )
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES_DOCKER
 
 
 class TestValidateAppName:
@@ -217,7 +217,7 @@ class TestValidateNamespace:
 
 class TestValidateServiceName:
 
-    @pytest.mark.parametrize("core_service", CORE_SERVICES)
+    @pytest.mark.parametrize("core_service", CORE_SERVICES_DOCKER)
     def test_core_service_is_rejected(self, core_service: str):
         with pytest.raises(SystemExit) as exc_info:
             validate_service_name(None, None, core_service)
