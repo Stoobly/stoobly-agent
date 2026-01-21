@@ -37,7 +37,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
     # Only initialize Docker-specific components when needed
     if not self.app_config.runtime_local:
-      self.managed_services_docker_compose = ManagedServicesDockerCompose(target_workflow_name=self.__namespace)
+      self.managed_services_docker_compose = ManagedServicesDockerCompose(namespace=self.__namespace)
 
   # Gateway core service only runs in Docker scaffolds
   def validate_gateway_service(self):

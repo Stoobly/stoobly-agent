@@ -156,7 +156,7 @@ class InterceptedRequestsLogger():
                     })
 
             # Set scenario key
-            intercept_settings = InterceptSettings(self.__settings)
+            intercept_settings = InterceptSettings(self.__settings, request=request)
             scenario_key = intercept_settings.scenario_key
             log_entry.update({
                 "scenario_key": scenario_key
