@@ -285,13 +285,16 @@ class InterceptedRequestsLogger():
             return None
 
     @classmethod
-    def __get_file_path(cls) -> str:
+    def __get_file_path(cls, data_dir_path: str = None) -> str:
         if cls.__file_path is not None:
             return cls.__file_path
 
-        data_dir_path = DataDir.instance().path
+        if data_dir_path:
+            dir_path = DataDir.instance(data_dir_path).path
+        else:
+            dir_path = DataDir.instance().path
         namespace = cls._get_namespace()
-        return f"{data_dir_path}/tmp/{namespace}/logs/requests.json"
+        return f"{dir_path}/tmp/{namespace}/logs/requests.json"
 
     @classmethod
     def enable_logger_file(cls) -> None:
@@ -407,8 +410,8 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
-    def dump_logs(cls):
-        file_path = cls.__get_file_path()
+    def dump_logs(cls, data_dir_path: str = None):
+        file_path = cls.__get_file_path(data_dir_path)
         if not os.path.exists(file_path):
             return
 
@@ -424,10 +427,10 @@ class InterceptedRequestsLogger():
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def truncate(cls) -> None:
-        cls.__ensure_directory()
+    def truncate(cls, data_dir_path: str = None) -> None:
+        cls.__ensure_directory(data_dir_path)
 
-        file_path = cls.__get_file_path()
+        file_path = cls.__get_file_path(data_dir_path)
 
         if not os.path.exists(file_path):
             cls.enable_logger_file()
@@ -459,8 +462,8 @@ class InterceptedRequestsLogger():
             cls.__logger.error(f"Failed to clear log file: {e}")
 
     @classmethod
-    def __ensure_directory(cls):
-        file_path = cls.__get_file_path()
+    def __ensure_directory(cls, data_dir_path: str = None):
+        file_path = cls.__get_file_path(data_dir_path)
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):

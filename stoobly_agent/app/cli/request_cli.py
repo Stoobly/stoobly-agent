@@ -1,6 +1,7 @@
 import click
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
@@ -18,8 +19,9 @@ from .types.request import RequestTestOptions
 
 settings = Settings.instance()
 is_remote = remote(settings)
-is_local = local(settings) 
+is_local = local(settings)
 
+data_dir: DataDir = DataDir.instance()
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
 @click.group(
@@ -180,12 +182,14 @@ def log(ctx):
     pass
 
 @log.command(name="list", help="List intercepted requests log entries")
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 def log_list(**kwargs):
-  InterceptedRequestsLogger.dump_logs()
+  InterceptedRequestsLogger.dump_logs(kwargs.get('context_dir_path'))
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 def log_delete(**kwargs):
-  InterceptedRequestsLogger.truncate()
+  InterceptedRequestsLogger.truncate(kwargs.get('context_dir_path'))
 
 request.add_command(response)
 request.add_command(log)

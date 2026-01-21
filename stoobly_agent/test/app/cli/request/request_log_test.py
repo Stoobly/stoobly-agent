@@ -109,7 +109,7 @@ class TestRequestLogE2e():
         time.sleep(0.5)
 
         # Invoke request log list
-        result = runner.invoke(request, ['log', 'list'])
+        result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         output = result.output
@@ -130,7 +130,7 @@ class TestRequestLogE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_log_delete_clears_log_entries(self, runner: CliRunner, proxy_url: str, hostname):
+    def test_log_delete_clears_log_entries(self, app_dir_path, runner: CliRunner, proxy_url: str, hostname):
         """Test that request log delete clears all log entries."""
         # Make another request to ensure we have log entries
         requests.get(
@@ -142,16 +142,16 @@ class TestRequestLogE2e():
         InterceptedRequestsLogger.shutdown()
 
         # Verify log has entries
-        result = runner.invoke(request, ['log', 'list'])
+        result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
         assert result.output.strip(), "Log should have entries before delete"
 
         # Delete log entries
-        delete_result = runner.invoke(request, ['log', 'delete'])
+        delete_result = runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
         assert delete_result.exit_code == 0
 
         # Verify log is now empty
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
@@ -229,10 +229,10 @@ class TestRequestLogWithRecordedRequestsE2e():
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
 
-    def test_successful_mock_logged_at_info_level(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_successful_mock_logged_at_info_level(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful mock requests are logged at INFO level (default)."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with mocked response
         res = requests.get(
@@ -244,7 +244,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -268,10 +268,10 @@ class TestRequestLogWithRecordedRequestsE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_unrecorded_request_logged_as_error(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger 499
         res = requests.get(
@@ -284,7 +284,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry
@@ -293,10 +293,10 @@ class TestRequestLogWithRecordedRequestsE2e():
         assert entry['level'] == 'ERROR'
         assert entry['status_code'] == NOT_FOUND
 
-    def test_options_request_not_logged_as_failure(self, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_options_request_not_logged_as_failure(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as mock failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -311,7 +311,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
@@ -393,10 +393,10 @@ class TestRequestLogWithTestWorkflowE2e():
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_TEST_TYPE)
         time.sleep(1)
 
-    def test_successful_test_logged_at_info_level(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+    def test_successful_test_logged_at_info_level(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful test requests are logged at INFO level."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
@@ -408,7 +408,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -431,10 +431,10 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_unrecorded_request_logged_as_test_failure(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
@@ -447,7 +447,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry (test workflow uses mock mode)
@@ -456,10 +456,10 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry['level'] == 'ERROR'
         assert entry['status_code'] == NOT_FOUND
 
-    def test_options_request_not_logged_as_test_failure(self, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+    def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete'])
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -474,7 +474,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list'])
+        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
