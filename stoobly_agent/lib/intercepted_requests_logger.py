@@ -297,8 +297,8 @@ class InterceptedRequestsLogger():
         return f"{dir_path}/tmp/{namespace}/logs/requests.json"
 
     @classmethod
-    def enable_logger_file(cls) -> None:
-        cls.__ensure_directory()
+    def enable_logger_file(cls, data_dir_path: str = None) -> None:
+        cls.__ensure_directory(data_dir_path)
 
         # Enable the logger before setup so error logging works
         cls.__logger.disabled = False
@@ -309,7 +309,7 @@ class InterceptedRequestsLogger():
 
             # Create file handler
             cls.__file_handler = logging.FileHandler(
-                cls.__get_file_path()
+                cls.__get_file_path(data_dir_path)
             )
             cls.__file_handler.setLevel(logging.DEBUG)
             json_formatter = cls.JSONFormatter(cls.__settings)
@@ -433,7 +433,7 @@ class InterceptedRequestsLogger():
         file_path = cls.__get_file_path(data_dir_path)
 
         if not os.path.exists(file_path):
-            cls.enable_logger_file()
+            cls.enable_logger_file(data_dir_path)
             return
 
         try:
@@ -454,7 +454,7 @@ class InterceptedRequestsLogger():
                 f.write('')
 
             # Re-enable logging with fresh handlers
-            cls.enable_logger_file()
+            cls.enable_logger_file(data_dir_path)
             cls.__logger.debug(f"Cleared log file: {file_path}")
 
             cls.reset_scenario_key()
