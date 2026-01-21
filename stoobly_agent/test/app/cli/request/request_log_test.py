@@ -480,3 +480,118 @@ class TestRequestLogWithTestWorkflowE2e():
         # Should NOT have a Mock failure entry for OPTIONS request
         entry = find_log_entry(list_result.output, 'Mock failure', method='OPTIONS')
         assert entry is None, f"OPTIONS request should not be logged as Test failure, got log output:\n{list_result.output}"
+
+
+@pytest.mark.e2e
+class TestRequestLogFromDifferentWorkingDirectory():
+    """Test that --context-dir-path flag allows viewing logs from a different working directory."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class')
+    def app_name(self):
+        yield "request-log-diff-cwd-app"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
+
+    @pytest.fixture(scope='class')
+    def different_working_dir(self, tmp_path_factory):
+        """Create a completely different directory to simulate user's actual working directory."""
+        different_dir = tmp_path_factory.mktemp("different_cwd")
+        yield str(different_dir)
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "docs.stoobly.com"
+
+    @pytest.fixture(scope='class')
+    def service_name(self):
+        yield "test-api-diff-cwd"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+        yield WORKFLOW_MOCK_TYPE
+
+    @pytest.fixture(scope="class", autouse=True)
+    def proxy_url(self):
+        return "http://localhost:8081"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+        LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+        """Start mock workflow for testing."""
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+        time.sleep(1)
+        settings.load()
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+        yield
+
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+        time.sleep(1)
+
+    def test_log_list_with_context_dir_path_from_different_directory(
+        self, app_dir_path: str, different_working_dir: str, hostname: str, runner: CliRunner, proxy_url: str
+    ):
+        """
+        Test that request log list works with --context-dir-path when running from a different directory.
+
+        This simulates the bug where users cd to their app directory but logs are in the context directory.
+        Without --context-dir-path, logs would not be found.
+        With --context-dir-path pointing to the correct location, logs are retrieved.
+        """
+        # Clear any existing logs
+        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+
+        # Make a request to generate log entries
+        res = requests.get(
+            f'https://{hostname}/test-different-cwd',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+        assert res.status_code == NOT_FOUND
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        # Save original directory
+        original_cwd = os.getcwd()
+
+        try:
+            # Change to a completely different directory (simulating user being in their app dir)
+            os.chdir(different_working_dir)
+
+            # Without --context-dir-path, logs should not be found (empty output or error)
+            result_without_flag = runner.invoke(request, ['log', 'list'])
+            # The output should be empty because there's no .stoobly in different_working_dir
+            assert not result_without_flag.output.strip() or 'Mock failure' not in result_without_flag.output, \
+                "Logs should NOT be found without --context-dir-path from a different directory"
+
+            # With --context-dir-path, logs SHOULD be found
+            result_with_flag = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+            assert result_with_flag.exit_code == 0
+            assert result_with_flag.output.strip(), "Logs should be found with --context-dir-path"
+
+            entry = find_log_entry(result_with_flag.output, 'Mock failure')
+            assert entry is not None, f"Expected 'Mock failure' log entry with --context-dir-path, got:\n{result_with_flag.output}"
+            assert entry['level'] == 'ERROR'
+            assert hostname in entry.get('url', '')
+
+        finally:
+            # Restore original directory
+            os.chdir(original_cwd)
