@@ -13,8 +13,15 @@ from stoobly_agent.lib.logger import bcolors
 
 
 class ValidateCommand():
-  def __init__(self):
-    self.docker_client = docker.from_env()
+  def __init__(self, require_docker: bool = True):
+    self._docker_client = None
+    self._require_docker = require_docker
+
+  @property
+  def docker_client(self):
+    if self._docker_client is None and self._require_docker:
+      self._docker_client = docker.from_env()
+    return self._docker_client
 
   def __generate_container_not_found_error(self, container_name: Union[str, None]) -> str:
     not_found_error_message = f"{bcolors.FAIL}Container not found: {container_name}{bcolors.ENDC}"
