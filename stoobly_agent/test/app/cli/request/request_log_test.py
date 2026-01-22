@@ -3,6 +3,8 @@ import os
 import pdb
 import pytest
 import requests
+import shutil
+import tempfile
 import time
 
 from click.testing import CliRunner
@@ -505,10 +507,15 @@ class TestRequestLogFromDifferentWorkingDirectory():
         yield path
 
     @pytest.fixture(scope='class')
-    def different_working_dir(self, tmp_path_factory):
-        """Create a completely different directory to simulate user's actual working directory."""
-        different_dir = tmp_path_factory.mktemp("different_cwd")
-        yield str(different_dir)
+    def different_working_dir(self):
+        """Create a completely different directory to simulate user's actual working directory.
+
+        Uses tempfile.mkdtemp directly in /tmp to ensure the directory is truly isolated
+        and has no .stoobly folder in any parent directory (which DataDir.find_data_dir would find).
+        """
+        different_dir = tempfile.mkdtemp(prefix="different_cwd_", dir="/tmp")
+        yield different_dir
+        shutil.rmtree(different_dir, ignore_errors=True)
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -572,9 +579,17 @@ class TestRequestLogFromDifferentWorkingDirectory():
         # Save original directory
         original_cwd = os.getcwd()
 
+        # Save the original DataDir instances to restore later
+        original_data_dir_instances = DataDir._instances
+
         try:
             # Change to a completely different directory (simulating user being in their app dir)
             os.chdir(different_working_dir)
+
+            # Reset DataDir singleton cache to force fresh lookup from new cwd
+            # This is critical because DataDir.instance() is cached at module import time
+            # in request_cli.py, and we need a fresh lookup for the test to work correctly
+            DataDir._instances = None
 
             # Without --context-dir-path, logs should not be found (empty output or error)
             result_without_flag = runner.invoke(request, ['log', 'list'])
@@ -593,5 +608,6 @@ class TestRequestLogFromDifferentWorkingDirectory():
             assert hostname in entry.get('url', '')
 
         finally:
-            # Restore original directory
+            # Restore original directory and DataDir instances
             os.chdir(original_cwd)
+            DataDir._instances = original_data_dir_instances
