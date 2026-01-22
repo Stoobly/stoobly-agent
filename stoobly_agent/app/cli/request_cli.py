@@ -182,14 +182,16 @@ def log(ctx):
     pass
 
 @log.command(name="list", help="List intercepted requests log entries")
-@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 def log_list(**kwargs):
-  InterceptedRequestsLogger.dump_logs(kwargs.get('context_dir_path'))
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  InterceptedRequestsLogger.dump_logs(context_dir_path)
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
-@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 def log_delete(**kwargs):
-  InterceptedRequestsLogger.truncate(kwargs.get('context_dir_path'))
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  InterceptedRequestsLogger.truncate(context_dir_path)
 
 request.add_command(response)
 request.add_command(log)
