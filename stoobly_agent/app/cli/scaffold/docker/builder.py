@@ -117,7 +117,7 @@ class Builder():
     parent_dir = os.path.dirname(path)
 
     if not os.path.exists(parent_dir):
-      os.makedirs(parent_dir)
+      os.makedirs(parent_dir, exist_ok=True)
 
     with open(path, 'w') as fp:
       yaml.dump(compose, fp, allow_unicode=True)

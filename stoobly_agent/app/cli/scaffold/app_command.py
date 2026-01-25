@@ -75,7 +75,7 @@ class AppCommand(Command):
   def copy_files(self, source_dir: str, src_files: list, dest_dir: str, replace_ok=True):
     # Ensure the destination directory exists
     if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
+        os.makedirs(dest_dir, exist_ok=True)
     
     for file in src_files:
       src_file_path = os.path.join(source_dir, file)

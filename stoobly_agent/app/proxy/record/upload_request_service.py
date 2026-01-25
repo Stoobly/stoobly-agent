@@ -136,7 +136,7 @@ def __debug_request(request: 'MitmproxyRequest', raw_requests: bytes):
 
     if not os.path.exists(os.path.dirname(file_path)):
         try:
-            os.makedirs(os.path.dirname(file_path))
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
         except OSError as err: # Guard against race condition
             if err.errno != errno.EEXIST:
                 raise err
