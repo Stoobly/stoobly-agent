@@ -19,12 +19,27 @@ def migrate(version, pretend = False):
       if _version == version:
         return
 
-  migrator = __build_migrator()
-  migrations_path = __build_migrations_path()
-  migrator.run(migrations_path, pretend)
+  # Check if migration lock exists
+  data_dir: DataDir = DataDir.instance()
+  lock_path = os.path.join(data_dir.tmp_dir_path, '.db-migrate.lock')
+  if os.path.exists(lock_path):
+    return
 
-  with open(DataDir.instance().db_version_path, 'w') as fp:
-    fp.write(version)
+  try:
+    # Create lock file
+    with open(lock_path, 'w') as fp:
+      fp.write(str(os.getpid()))
+    
+    migrator = __build_migrator()
+    migrations_path = __build_migrations_path()
+    migrator.run(migrations_path, pretend)
+
+    with open(DataDir.instance().db_version_path, 'w') as fp:
+      fp.write(version)
+  finally:
+    # Remove lock file
+    if os.path.exists(lock_path):
+      os.remove(lock_path)
 
 def rollback(pretend = False):
   migrator = __build_migrator()
