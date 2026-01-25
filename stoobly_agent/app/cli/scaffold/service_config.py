@@ -128,7 +128,7 @@ class ServiceConfig(Config):
     if not self.__port:
       if self.__scheme == 'https':
         return 443
-      elif self.__scheme == 'http':
+      else:
         return 80
 
     return self.__port
