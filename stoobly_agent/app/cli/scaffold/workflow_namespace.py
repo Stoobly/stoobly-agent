@@ -18,6 +18,9 @@ class WorkflowNamespace():
     self._namespace = namespace
     self._path = os.path.join(app.data_dir.tmp_dir_path, namespace or '')
 
+    if not os.path.exists(self._path):
+      os.makedirs(self._path, exist_ok=True)
+
   @property
   def dotenv_path(self):
     return os.path.join(self.path, DOTENV_FILE)
