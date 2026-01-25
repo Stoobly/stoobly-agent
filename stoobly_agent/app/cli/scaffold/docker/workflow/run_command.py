@@ -67,7 +67,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if not self.dry_run:
       # Handle denormalization if enabled
       if self.app_config.denormalize:
-        if not self.denormalize_up(options):
+        if not self.denormalize():
           Logger.instance(LOG_ID).error(f"Failed to denormalize {self.workflow_name}")
 
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
@@ -80,6 +80,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         config = { **options }
         config['service_name'] = service
         command = DockerWorkflowRunCommand(self.app, **config)
+        if self.app_config.denormalize:
+          command.denormalize_config()
         commands.append(command)
 
       if not commands:
@@ -138,9 +140,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     """Execute the complete Docker workflow down process."""
 
     if not self.dry_run: 
-      if self.app_config.denormalize:
-        self.denormalize_down(options)
-
       self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
@@ -380,6 +379,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     """Stop the workflow using Docker Compose."""
     if not os.path.exists(self.compose_path):
       return ''
+
+    if self.app_config.denormalize:
+       self.denormalize_config()
   
     command = ['docker', 'compose']
 

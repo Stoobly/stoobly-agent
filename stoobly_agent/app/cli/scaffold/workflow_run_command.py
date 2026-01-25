@@ -104,11 +104,20 @@ class WorkflowRunCommand(WorkflowCommand):
   def workflow_namespace(self):
     return self.__workflow_namespace
 
-  def denormalize_down(self, options: ComposeOptions):
-    self.__denormalize(options)
+  def denormalize_config(self):
+    denormalize_service = DenormalizeService(self.workflow_namespace)
 
-  def denormalize_up(self, options: ComposeOptions):
-    denormalize_service = self.__denormalize(options)
+    # Update the app to the denormalized app
+    # Do not update __workflow_namespace, it contains metadata about the workflow run
+    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
+    self.app = denormalize_service.denormalized_app
+    self.__app_dir_path = self.app.dir_path
+    self.__network = f"{self.__namespace}.{self.app.network}"
+
+    return denormalize_service
+
+  def denormalize(self):
+    denormalize_service = DenormalizeService(self.workflow_namespace)
     return denormalize_service.denormalize()
 
   def write_nameservers(self):
@@ -162,21 +171,9 @@ class WorkflowRunCommand(WorkflowCommand):
       _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
+
     WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
-
-  def __denormalize(self, options: ComposeOptions):
-    denormalize_service = DenormalizeService(self.app)
-
-    # Update the app to the denormalized app
-    # Do not update __workflow_namespace, it contains metadata about the workflow run
-    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
-    self.app = denormalize_service.denormalized_app
-    self.__app_dir_path = self.app.dir_path
-    self.__network = f"{self.__namespace}.{self.app.network}"
-    options['app_dir_path'] = self.app_dir_path
-
-    return denormalize_service
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
     nameservers = dns_resolver.nameservers

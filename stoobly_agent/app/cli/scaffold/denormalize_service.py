@@ -1,6 +1,7 @@
 import os
 import shutil
 
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
@@ -14,10 +15,10 @@ class DenormalizeService:
     This allows the app to run with all its configuration in the context directory.
     """
 
-    def __init__(self, app: App):
-        self.app = app
+    def __init__(self, workflow_namespace: WorkflowNamespace):
+        self.app = workflow_namespace.app
         self.logger = Logger.instance(LOG_ID)
-        self.denormalized_app = App(self.app.context_dir_path)
+        self.denormalized_app = App(workflow_namespace.path)
 
     @property
     def source_path(self):
