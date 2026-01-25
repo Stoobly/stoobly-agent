@@ -137,7 +137,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if not self.dry_run:
       # Handle denormalization if enabled
       if self.app_config.denormalize:
-        self.denormalize_up(options)
+        if not self.denormalize_up(options):
+          Logger.instance(LOG_ID).error(f"Failed to denormalize {self.workflow_name}")
       
       self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
       self.workflow_namespace.access(self.workflow_name)

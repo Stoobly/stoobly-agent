@@ -169,13 +169,12 @@ class WorkflowRunCommand(WorkflowCommand):
     denormalize_service = DenormalizeService(self.app)
 
     # Update the app to the denormalized app
+    # Do not update __workflow_namespace, it contains metadata about the workflow run
+    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
     self.app = denormalize_service.denormalized_app
     self.__app_dir_path = self.app.dir_path
     self.__network = f"{self.__namespace}.{self.app.network}"
     options['app_dir_path'] = self.app_dir_path
-
-    # Do not update __workflow_namespace, it contains metadata about the workflow run
-    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
 
     return denormalize_service
 

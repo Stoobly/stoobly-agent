@@ -74,10 +74,13 @@ jobs:
           - For style issues, only comment if they significantly impact code readability or maintainability
 
           Inline Comment Format:
-          - Use: gh pr review ${{ github.event.pull_request.number }} --comment --body '<comment>' --path '<file-path>' --line <line-number>
-          - Example: gh pr review ${{ github.event.pull_request.number }} --comment --body '🚨 Critical: Missing import will cause NameError' --path 'stoobly_agent/cli.py' --line 128
-          - For multi-line issues, use --start-line and --line
+          - Use the GitHub API to post inline comments on specific lines
+          - For NEW/ADDED lines (most common): gh api POST /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments -f body='<comment>' -f path='<file-path>' -f line=<line-number> -f side='RIGHT' -f commit_id='${{ github.event.pull_request.head.sha }}'
+          - For DELETED/REMOVED lines: use side='LEFT' instead of 'RIGHT'
+          - Example (new line): gh api POST /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments -f body='🚨 Critical: Missing import will cause NameError' -f path='stoobly_agent/cli.py' -f line=128 -f side='RIGHT' -f commit_id='${{ github.event.pull_request.head.sha }}'
+          - The line number should be the actual line number in the file (for additions, use the line number in the new version; for deletions, use the line number in the old version)
           - Always include the full relative file path from repository root
+          - For multi-line comments, you can use start_line and line parameters together
 
           Summary Comment:
           - After inline comments, post a summary: gh pr comment ${{ github.event.pull_request.number }} --body '<summary>'
@@ -85,6 +88,7 @@ jobs:
           - Keep summary factual and concise; avoid excessive praise or compliments
 
           Important:
-          - Use gh pr review for inline comments (with --path and --line)
+          - Use gh api POST /repos/{owner}/{repo}/pulls/{pr_number}/comments for inline comments (with path, line, side, and commit_id)
           - Use gh pr comment for summary (no --path or --line)
-          - Do not use: gh pr review --approve or --request-changes"
+          - Do not use: gh pr review --approve or --request-changes
+          - The side parameter is required: 'RIGHT' for additions, 'LEFT' for deletions"
