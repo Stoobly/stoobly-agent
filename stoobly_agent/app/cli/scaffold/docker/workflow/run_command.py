@@ -7,6 +7,7 @@ import time
 from typing import List
 from types import FunctionType
 
+from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES
@@ -64,6 +65,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     print_service_header = options.get('print_service_header')
 
     if not self.dry_run:
+      # Handle denormalization if enabled
+      if self.app_config.denormalize:
+        self.denormalize_up(options)
+
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
       self.workflow_namespace.access(self.workflow_name)
 
@@ -132,6 +137,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     """Execute the complete Docker workflow down process."""
 
     if not self.dry_run: 
+      if self.app_config.denormalize:
+        self.denormalize_down(options)
+
       self.__find_and_verify_timestamp_file()
     
     print_service_header = options.get('print_service_header')
@@ -146,7 +154,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     if not commands:
       return
-    
+
     # Sort commands by priority and execute
     commands = sorted(commands, key=lambda command: command.service_config.priority)
     for index, command in enumerate(commands):
