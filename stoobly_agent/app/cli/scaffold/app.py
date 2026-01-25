@@ -18,6 +18,7 @@ class App():
     self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.ca_certs_dir_path
     self.__certs_dir_path = kwargs.get('certs_dir_path') or data_dir.certs_dir_path
     self.__context_dir_path = kwargs.get('context_dir_path') or data_dir.context_dir_path
+    self.__context_data_dir = DataDir.instance(self.__context_dir_path)
     self.__data_dir = data_dir
     self.__dir_path = path
     self.__scaffold_namespace = kwargs.get('scaffold_namespace') or SERVICES_NAMESPACE
@@ -40,6 +41,10 @@ class App():
   def certs_dir_path(self, v: str):
     self.__validate_path(v)
     self.__certs_dir_path = v
+
+  @property
+  def context_data_dir(self):
+    return self.__context_data_dir
 
   @property
   def context_dir_path(self):

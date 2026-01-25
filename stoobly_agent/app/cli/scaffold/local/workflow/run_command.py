@@ -135,6 +135,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     detached = options.get('detached', False)
 
     if not self.dry_run:
+      # Handle denormalization if enabled
+      if self.app_config.denormalize:
+        if not self.denormalize_up(options):
+          Logger.instance(LOG_ID).error(f"Failed to denormalize {self.workflow_name}")
+      
       self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
       self.workflow_namespace.access(self.workflow_name)
 
@@ -168,6 +173,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if self.dry_run:
       self.__dry_run_down(pid, sys.stdout)
     else:
+      if self.app_config.denormalize:
+        self.denormalize_down(options)
+
       try:
         # Try graceful shutdown first with SIGTERM
         Logger.instance(LOG_ID).info(f"Sending SIGTERM to process {pid} for {self.workflow_name}")

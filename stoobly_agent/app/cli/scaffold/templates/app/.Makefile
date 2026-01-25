@@ -1,3 +1,6 @@
+# This file was automatically generated. DO NOT EDIT.
+# Any changes made to this file will be overwritten.
+#
 # Overridable Environment Variables
 #
 # STOOBLY_APP_DIR: path to the application source code directory, defaults to $(pwd)

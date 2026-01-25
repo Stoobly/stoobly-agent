@@ -18,6 +18,9 @@ class WorkflowNamespace():
     self._namespace = namespace
     self._path = os.path.join(app.data_dir.tmp_dir_path, namespace or '')
 
+    if not os.path.exists(self._path):
+      os.makedirs(self._path, exist_ok=True)
+
   @property
   def dotenv_path(self):
     return os.path.join(self.path, DOTENV_FILE)
@@ -156,7 +159,7 @@ class WorkflowNamespace():
       shutil.copy(dotenv_path, self.dotenv_path)
 
   def lock_file_path(self, workflow_name: str):
-    return os.path.join(self._app.data_dir.tmp_dir_path, f".{workflow_name}.lock")
+    return os.path.join(self._app.context_data_dir.tmp_dir_path, f".{workflow_name}.lock")
 
   def log_file_path(self, workflow_name: str):
     """Get the path to the PID file for this workflow."""

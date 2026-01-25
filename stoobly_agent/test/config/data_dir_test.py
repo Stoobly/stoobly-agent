@@ -33,7 +33,7 @@ class TestDataDir():
     temp_dir = os.path.join(original_cwd, 'tmp')
     nested_temp_dir = os.path.join(temp_dir, 'tmp-nested')
     data_dir_path = os.path.join(nested_temp_dir, DATA_DIR_NAME)
-    os.makedirs(data_dir_path)
+    os.makedirs(data_dir_path, exist_ok=True)
 
     # Go into nested folder
     os.chdir(nested_temp_dir)
@@ -59,11 +59,11 @@ class TestDataDir():
     nested_dir1 = os.path.join(temp_dir, "nested1")
     nested_dir2 = os.path.join(nested_dir1, "nested2")
     nested_dir3 = os.path.join(nested_dir2, "nested3")
-    os.makedirs(nested_dir3)
+    os.makedirs(nested_dir3, exist_ok=True)
 
     # Create .stoobly folder in the nested structure
     data_dir_path = os.path.join(nested_dir1, DATA_DIR_NAME)
-    os.makedirs(data_dir_path)
+    os.makedirs(data_dir_path, exist_ok=True)
 
     # Go into dir3
     os.chdir(nested_dir3)

@@ -4,6 +4,7 @@ import pdb
 import subprocess
 import re
 
+from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
 from stoobly_agent.config.data_dir import DataDir
 
 from .app import App
@@ -26,17 +27,17 @@ class WorkflowRunCommand(WorkflowCommand):
 
     self.__app_dir_path = os.path.abspath(kwargs.get('app_dir_path') or app.dir_path)
     self.__current_working_dir = os.getcwd()
-    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path
-    self.__certs_dir_path = kwargs.get('certs_dir_path') or app.certs_dir_path
+    self.__ca_certs_dir_path = os.path.abspath(kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path)
+    self.__certs_dir_path = os.path.abspath(kwargs.get('certs_dir_path') or app.certs_dir_path)
     self.__containerized = kwargs.get('containerized') or False
-    self.__context_dir_path = kwargs.get('context_dir_path') or app.context_dir_path
+    self.__context_dir_path = os.path.abspath(kwargs.get('context_dir_path') or app.context_dir_path)
     self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.__network = f"{self.__namespace}.{app.network}"
     self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
 
     self.__workflow_namespace.copy_dotenv()
-    
+
   @property
   def app_dir_path(self):
     return self.__app_dir_path
@@ -57,7 +58,7 @@ class WorkflowRunCommand(WorkflowCommand):
   def context_dir_path(self):
     if not self.__context_dir_path:
       data_dir: DataDir = DataDir.instance()
-      return os.path.dirname(data_dir.path) 
+      return data_dir.path 
 
     return self.__context_dir_path
 
@@ -99,6 +100,17 @@ class WorkflowRunCommand(WorkflowCommand):
   def network(self):
     return self.__network
 
+  @property
+  def workflow_namespace(self):
+    return self.__workflow_namespace
+
+  def denormalize_down(self, options: ComposeOptions):
+    self.__denormalize(options)
+
+  def denormalize_up(self, options: ComposeOptions):
+    denormalize_service = self.__denormalize(options)
+    return denormalize_service.denormalize()
+
   def write_nameservers(self):
     # If hostname is set then the service is external and we will need to configure the container's DNS.
     # If we don't configure the container's DNS, then Docker's embedded DNS will potentially
@@ -119,10 +131,6 @@ class WorkflowRunCommand(WorkflowCommand):
       nameservers = [ip for ip in nameservers if ipv4_pattern.match(ip)]
       if nameservers:
         fp.write("\n".join(nameservers))
-
-  @property
-  def workflow_namespace(self):
-    return self.__workflow_namespace
 
   def write_env(self, **options: ComposeOptions):
     namespace = options.get('namespace')
@@ -156,6 +164,19 @@ class WorkflowRunCommand(WorkflowCommand):
     env_vars = self.config(_config)
     WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
+
+  def __denormalize(self, options: ComposeOptions):
+    denormalize_service = DenormalizeService(self.app)
+
+    # Update the app to the denormalized app
+    # Do not update __workflow_namespace, it contains metadata about the workflow run
+    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
+    self.app = denormalize_service.denormalized_app
+    self.__app_dir_path = self.app.dir_path
+    self.__network = f"{self.__namespace}.{self.app.network}"
+    options['app_dir_path'] = self.app_dir_path
+
+    return denormalize_service
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
     nameservers = dns_resolver.nameservers
