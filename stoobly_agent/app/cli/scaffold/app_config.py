@@ -2,7 +2,7 @@ import os
 
 from .config import Config
 from .constants import (
-  APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_MODE_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
+  APP_DENORMALIZE_ENV, APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_MODE_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
 )
 
 class AppConfig(Config):
@@ -10,6 +10,7 @@ class AppConfig(Config):
   def __init__(self, dir: str):
     super().__init__(dir)
 
+    self.__denormalize = False
     self.__docker_socket_path = '/var/run/docker.sock'
     self.__name = None
     self.__plugins = None
@@ -19,6 +20,14 @@ class AppConfig(Config):
     self.__ui_port = None
 
     self.load()
+
+  @property
+  def denormalize(self):
+    return self.__denormalize
+
+  @denormalize.setter
+  def denormalize(self, v):
+    self.__denormalize = v
 
   @property
   def docker_socket_path(self):
@@ -95,6 +104,7 @@ class AppConfig(Config):
   def load(self, config = None):
     config = config or self.read()
 
+    self.denormalize = config.get(APP_DENORMALIZE_ENV, False)
     self.name = config.get(APP_NAME_ENV)
     self.proxy_mode = config.get(APP_PROXY_MODE_ENV)
     self.proxy_port = config.get(APP_PROXY_PORT_ENV)
@@ -110,6 +120,8 @@ class AppConfig(Config):
 
   def write(self):
     config = {}
+
+    config[APP_DENORMALIZE_ENV] = self.denormalize
 
     if self.docker_socket_path:
       config[APP_DOCKER_SOCKET_PATH_ENV] = self.docker_socket_path
