@@ -16,6 +16,7 @@ class ScaffoldCliInvoker():
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
+      '--denormalize',
       '--quiet',
       '--runtime', 'docker',
       '--proxy-mode', proxy_mode,
