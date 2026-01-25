@@ -48,13 +48,13 @@ class DenormalizeService:
                 shutil.rmtree(self.destination_path)
             except Exception as e:
                 self.logger.error(f"Failed to remove destination: {e}")
-                return False
+                if os.path.exists(self.destination_path):
+                    return False
 
         # Copy the folder
         try:
-            self.logger.debug(f"Copying {self.source_path} to {self.destination_path}")
             shutil.copytree(self.source_path, self.destination_path)
-            self.logger.info(f"Denormalized scaffold to {self.destination_path}")
+            self.logger.debug(f"Denormalized scaffold to {self.destination_path}")
             return True
         except Exception as e:
             self.logger.error(f"Failed to copy scaffold namespace: {e}")

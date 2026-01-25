@@ -174,6 +174,9 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__network = f"{self.__namespace}.{self.app.network}"
     options['app_dir_path'] = self.app_dir_path
 
+    # Do not update __workflow_namespace, it contains metadata about the workflow run
+    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
+
     return denormalize_service
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
