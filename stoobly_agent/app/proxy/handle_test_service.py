@@ -15,6 +15,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, request_origin
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
+from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import handle_request_mock_generic, handle_response_mock
@@ -100,6 +101,15 @@ def __handle_mock_error(test_context: TestContext):
 def __handle_mock_failure(test_context: TestContext) -> None:
     Logger.instance().warn(f"{LOG_ID}:TestStatus: No test found")
 
+    flow = test_context.flow
+    request = flow.request
+    response = test_context.mock_context.response
+
+    if request.method.upper() == 'OPTIONS':
+        return
+
+    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
+
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
@@ -123,10 +133,14 @@ def __handle_mock_success(test_context: TestContext) -> None:
     if intercept_settings.test_skip:
         passed, log = (False, '')
         skipped = True
-    else: 
+    else:
         # Run test
         passed, log = test(test_context)
         skipped = False
+
+    mock_response = test_context.mock_context.response
+    request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY) if mock_response else None
+    InterceptedRequestsLogger.info("Mock success", request=flow.request, response=flow.response, request_key=request_key)
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
 

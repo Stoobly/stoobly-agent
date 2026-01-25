@@ -8,6 +8,7 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
@@ -369,6 +370,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Execute directly
       try:
+        # Build env with workflow name and namespace for InterceptedRequestsLogger
+        env = os.environ.copy()
+        env[WORKFLOW_NAME_ENV] = self.workflow_name or ''
+        env[WORKFLOW_NAMESPACE_ENV] = self.namespace or self.workflow_name or ''
+
         # Run the command with --detached option
         result = subprocess.run(
           command,

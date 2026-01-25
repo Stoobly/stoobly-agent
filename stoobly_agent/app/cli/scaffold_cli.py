@@ -23,7 +23,7 @@ from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateC
 from stoobly_agent.app.cli.scaffold.service_delete_command import ServiceDeleteCommand
 from stoobly_agent.app.cli.scaffold.service_update_command import ServiceUpdateCommand
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import ServiceWorkflowValidateCommand
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_SERVICES_DOCKER
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_create_command import WorkflowCreateCommand
@@ -675,7 +675,7 @@ def validate(**kwargs):
 
   try:
     for service in workflow.services_ran:
-      if service not in CORE_SERVICES:
+      if service not in CORE_SERVICES_DOCKER:
         config['service_name'] = service
         command = ServiceWorkflowValidateCommand(app, **config)
         command.validate()
@@ -760,7 +760,7 @@ def __get_services(app: App, **kwargs):
   if not selected_services:
     selected_services = app.services
   else:
-    selected_services += CORE_SERVICES
+    selected_services += CORE_SERVICES_DOCKER
     missing_services = [service for service in selected_services if service not in app.services]
 
     if missing_services:
@@ -772,7 +772,7 @@ def __get_services(app: App, **kwargs):
 
   # If without_score is set, filter out CORE_SERVICES
   if kwargs.get('without_core'):
-    selected_services = list(set(selected_services) - set(CORE_SERVICES))
+    selected_services = list(set(selected_services) - set(CORE_SERVICES_DOCKER))
 
   # If workflow is set, keep only services in the workflow
   if kwargs.get('workflow'):

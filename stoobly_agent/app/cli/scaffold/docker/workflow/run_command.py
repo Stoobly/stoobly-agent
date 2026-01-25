@@ -10,7 +10,7 @@ from types import FunctionType
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES_DOCKER
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
@@ -211,7 +211,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     for service in self.services:
       if len(options.get('service', [])) == 0:
         # If no filter is specified, ignore CORE_SERVICES  
-        if service in CORE_SERVICES:
+        if service in CORE_SERVICES_DOCKER:
           continue
       else:
         # If a filter is specified, ignore all other services

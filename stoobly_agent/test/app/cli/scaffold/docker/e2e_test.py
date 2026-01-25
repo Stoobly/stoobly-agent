@@ -93,19 +93,19 @@ class TestScaffoldE2e():
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
-      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
 
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
     def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
@@ -182,19 +182,19 @@ class TestScaffoldE2e():
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
-      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
 
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
     def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
@@ -289,24 +289,24 @@ class TestScaffoldE2e():
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
-      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
     
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname
       )
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname
       )
     
     @pytest.fixture(scope='class')
     def assets_service_docker_compose(self, app_dir_path, target_workflow_name, assets_service_name, assets_hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname
       )
 
     @pytest.fixture(scope='class', autouse=True)
