@@ -12,6 +12,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.context_lock import ContextLock
 from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
   ManagedServicesDockerCompose,
 )
@@ -169,8 +170,8 @@ class TestScaffoldE2e():
     def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
       """Test that access count is correct after workflow up"""
       app = App(app_dir_path)
-      workflow_namespace = WorkflowNamespace(app)
-      access_count = workflow_namespace.access_count(target_workflow_name)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
@@ -258,8 +259,8 @@ class TestScaffoldE2e():
     def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
       """Test that access count is correct after workflow up"""
       app = App(app_dir_path)
-      workflow_namespace = WorkflowNamespace(app)
-      access_count = workflow_namespace.access_count(target_workflow_name)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
@@ -418,7 +419,7 @@ class TestScaffoldE2e():
     def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
       """Test that access count is correct after workflow up"""
       app = App(app_dir_path)
-      workflow_namespace = WorkflowNamespace(app)
-      access_count = workflow_namespace.access_count(target_workflow_name)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
