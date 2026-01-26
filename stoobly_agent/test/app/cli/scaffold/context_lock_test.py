@@ -33,7 +33,7 @@ class TestContextLock():
   @pytest.fixture
   def filename_hash(self, app):
     """Get the hash used for filenames"""
-    context_path = app.context_data_dir.path
+    context_path = app.host_context_dir_path
     return hashlib.md5(context_path.encode()).hexdigest()
 
   class TestAccessCount():
