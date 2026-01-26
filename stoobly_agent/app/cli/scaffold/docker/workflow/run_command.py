@@ -65,13 +65,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     print_service_header = options.get('print_service_header')
 
     if not self.dry_run:
-      # Handle denormalization if enabled
-      if self.app_config.denormalize:
-        if not self.denormalize():
-          Logger.instance(LOG_ID).error(f"Failed to denormalize {self.workflow_name}")
-
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
-      self.workflow_namespace.access(self.workflow_name)
+      self.context_lock.access()
 
     try:
       # Create individual service commands
@@ -80,8 +75,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         config = { **options }
         config['service_name'] = service
         command = DockerWorkflowRunCommand(self.app, **config)
-        if self.app_config.denormalize:
-          command.denormalize_config()
         commands.append(command)
 
       if not commands:
@@ -380,9 +373,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if not os.path.exists(self.compose_path):
       return ''
 
-    if self.app_config.denormalize:
-       self.denormalize_config()
-  
     command = ['docker', 'compose']
 
     # Add docker compose file
@@ -416,7 +406,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if self.script:
       print(command, file=self.script)
 
-    if self.dry_run or self.containerized:
+    if self.dry_run or self.app.containerized:
       print(command)
     else:
       result = subprocess.run(command, shell=True, **options)
@@ -505,4 +495,4 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def __release(self):
     self.workflow_namespace.remove_timestamp_file(self.workflow_name)
-    self.workflow_namespace.release(self.workflow_name)
+    self.context_lock.release()

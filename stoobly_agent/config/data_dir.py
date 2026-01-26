@@ -1,6 +1,7 @@
 import pdb
 import os
 import shutil
+import sys
 
 from stoobly_agent.config.constants.env_vars import ENV
 
@@ -184,7 +185,17 @@ class DataDir:
         self.__data_dir_path = os.path.join(directory_path, DATA_DIR_NAME)
 
         if not os.path.exists(self.__data_dir_path):
-            os.makedirs(self.__data_dir_path, exist_ok=True)
+            try:
+                os.makedirs(self.__data_dir_path, exist_ok=True)
+            except PermissionError as e:
+                from stoobly_agent.lib.logger import Logger
+                parent_dir = os.path.dirname(self.__data_dir_path)
+                logger = Logger.instance('DataDir')
+                logger.error(
+                    f"Permission denied: Cannot create '{self.__data_dir_path}'. "
+                    f"Please ensure you have write permissions to '{parent_dir}' or choose a different location."
+                )
+                sys.exit(1)
 
             # Create the certs_dir_path if it doesn't exist
             self.certs_dir_path

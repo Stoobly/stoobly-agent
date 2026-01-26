@@ -2,10 +2,15 @@ import hashlib
 import os
 import re
 import shutil
+from typing import TYPE_CHECKING
 
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 from .constants import SERVICES_NAMESPACE
+
+if TYPE_CHECKING:
+    from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+    from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 class App():
 
@@ -15,27 +20,58 @@ class App():
     data_dir: DataDir = DataDir.instance(path) 
 
     self.__data_dir_path = data_dir.path
-    self.__ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or data_dir.ca_certs_dir_path
-    self.__certs_dir_path = kwargs.get('certs_dir_path') or data_dir.certs_dir_path
-    self.__context_dir_path = kwargs.get('context_dir_path') or data_dir.context_dir_path
-    self.__context_data_dir = DataDir.instance(self.__context_dir_path)
+    self.__containerized = kwargs.get('containerized', False)
+    
+    # Store host (kwarg) values
+    self.__host_app_dir_path = kwargs.get('app_dir_path')
+    self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path')
+    self.__host_certs_dir_path = kwargs.get('certs_dir_path')
+    self.__host_context_dir_path = kwargs.get('context_dir_path')
+    
+    # If containerized, use data_dir/constructor values; otherwise use kwargs if provided
+    if self.__containerized:
+      self.__app_data_dir = DataDir.instance(path)
+      self.__app_dir_path = path
+      self.__app_data_dir_path = self.__app_data_dir.path
+      self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
+      self.__certs_dir_path = data_dir.certs_dir_path
+      self.__context_dir_path = data_dir.context_dir_path
+    else:
+      self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or path)
+      self.__app_dir_path = self.__host_app_dir_path or path
+      self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
+      self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
+      self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
     self.__data_dir = data_dir
     self.__dir_path = path
     self.__scaffold_namespace = kwargs.get('scaffold_namespace') or SERVICES_NAMESPACE
     self.__skip_validate_path = not not kwargs.get('dry_run')
 
   @property
+  def app_data_dir(self):
+    return self.__app_data_dir
+
+  @property
+  def app_dir_path(self):
+    return os.path.abspath(self.__app_dir_path)
+
+  @app_dir_path.setter
+  def app_dir_path(self, v: str):
+    self.__validate_path(v)
+    self.__app_dir_path = v
+
+  @property
   def ca_certs_dir_path(self):
-    return self.__ca_certs_dir_path
+    return os.path.abspath(self.__ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
     self.__validate_path(v)
-    self.__certs_dir_path = v
+    self.__ca_certs_dir_path = v
 
   @property
   def certs_dir_path(self):
-    return self.__certs_dir_path
+    return os.path.abspath(self.__certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):
@@ -43,12 +79,12 @@ class App():
     self.__certs_dir_path = v
 
   @property
-  def context_data_dir(self):
-    return self.__context_data_dir
+  def containerized(self):
+    return self.__containerized
 
   @property
   def context_dir_path(self):
-    return self.__context_dir_path
+    return os.path.abspath(self.__context_dir_path)
 
   @context_dir_path.setter
   def context_dir_path(self, v: str):
@@ -62,6 +98,26 @@ class App():
   @property
   def data_dir_path(self):
     return os.path.join(self.context_dir_path, DATA_DIR_NAME)
+
+  @property
+  def host_app_dir_path(self):
+    """Returns the host (kwarg) value for app_dir_path"""
+    return self.__host_app_dir_path or self.app_dir_path
+
+  @property
+  def host_ca_certs_dir_path(self):
+    """Returns the host (kwarg) value for ca_certs_dir_path"""
+    return self.__host_ca_certs_dir_path or self.ca_certs_dir_path
+
+  @property
+  def host_certs_dir_path(self):
+    """Returns the host (kwarg) value for certs_dir_path"""
+    return self.__host_certs_dir_path or self.certs_dir_path
+
+  @property
+  def host_context_dir_path(self):
+    """Returns the host (kwarg) value for context_dir_path"""
+    return self.__host_context_dir_path or self.context_dir_path
 
   @property
   def valid(self):
@@ -134,6 +190,26 @@ class App():
 
               os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)  # Create directories in destination
               shutil.copy2(src_file_path, dst_file_path)
+
+  def denormalize(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
+    """
+    Denormalize the app to the workflow namespace path.
+    CA certs and certs dirs are not denormalized.
+    """
+    from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+    denormalize_service = DenormalizeService(workflow_namespace)
+    relative_path = os.path.relpath(workflow_namespace.path, self.app_dir_path)
+
+    self.app_dir_path = os.path.join(self.app_dir_path, relative_path)
+    self.context_dir_path = os.path.join(self.context_dir_path, relative_path)
+
+    self.__host_app_dir_path = os.path.join(self.__host_app_dir_path, relative_path)
+    self.__host_context_dir_path = os.path.join(self.__host_context_dir_path, relative_path)
+
+    if migrate:
+      return denormalize_service.denormalize()
+
+    return True
 
   def __validate_path(self, v: str):
     if not isinstance(v, str):

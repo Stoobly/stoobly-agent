@@ -135,13 +135,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     detached = options.get('detached', False)
 
     if not self.dry_run:
-      # Handle denormalization if enabled
-      if self.app_config.denormalize:
-        if not self.denormalize():
-          Logger.instance(LOG_ID).error(f"Failed to denormalize {self.workflow_name}")
-      
       self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
-      self.workflow_namespace.access(self.workflow_name)
+      self.context_lock.access()
 
     # iterate through each service in the workflow
     commands = self.workflow_service_commands(**options)
@@ -161,9 +156,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def down(self, **options: WorkflowDownOptions):
     """Stop the workflow by killing the local process."""
 
-    if self.app_config.denormalize:
-      self.denormalize_config()
-
     # Intentially run this during dry run, we need the PID to be returned
     pid = self.__find_and_verify_workflow_pid()
     if not pid:
@@ -176,9 +168,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if self.dry_run:
       self.__dry_run_down(pid, sys.stdout)
     else:
-      if self.app_config.denormalize:
-        self.denormalize_down(options)
-
       try:
         # Try graceful shutdown first with SIGTERM
         Logger.instance(LOG_ID).info(f"Sending SIGTERM to process {pid} for {self.workflow_name}")
@@ -236,8 +225,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def workflow_service_commands(self, **options: WorkflowUpOptions):
     commands = list(map(lambda service_name: LocalWorkflowRunCommand(self.app, service_name=service_name, **options), self.services))
     commands.sort(key=lambda command: command.service_config.priority)
-    if self.app_config.denormalize:
-      commands = list(map(lambda command: command.denormalize_config(), commands))
     return commands
 
   def __create_pid_file(self, pid: int):
@@ -422,4 +409,4 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def __release(self):
     self.workflow_namespace.remove_pid_file(self.workflow_name)
-    self.workflow_namespace.release(self.workflow_name)
+    self.context_lock.release()
