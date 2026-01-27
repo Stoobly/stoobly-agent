@@ -109,7 +109,7 @@ class ContextLock:
         # Write updated timestamp and count
         access_file_path = self.access_file_path()
         with open(access_file_path, 'w') as f:
-          f.write(f"{timestamp}:{count}")
+          f.write(f"{current_time}:{count}")
           
     except Exception as e:
       Logger.instance(LOG_ID).error(f"Failed to create/update lock file: {e}")
