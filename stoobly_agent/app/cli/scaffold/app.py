@@ -210,7 +210,9 @@ class App():
     denormalize_service = DenormalizeService(workflow_namespace)
 
     relative_path = os.path.relpath(workflow_namespace.path, self.app_dir_path)
-    self.__runtime_app_dir_path = os.path.join(self.__host_app_dir_path, relative_path)
+
+    self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
+    self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
 
     if migrate:
       return denormalize_service.denormalize()
