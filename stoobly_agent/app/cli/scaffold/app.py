@@ -98,7 +98,7 @@ class App():
 
   @property
   def data_dir_path(self):
-    return os.path.join(self.context_dir_path, DATA_DIR_NAME)
+    return self.__data_dir_path
 
   @property
   def host_app_dir_path(self):
@@ -136,10 +136,6 @@ class App():
   @property
   def dir_path(self):
     return self.__dir_path
-
-  @property
-  def data_dir_path(self):
-    return self.__data_dir_path
 
   @property
   def network(self):
