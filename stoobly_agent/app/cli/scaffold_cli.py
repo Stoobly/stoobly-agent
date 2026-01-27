@@ -416,11 +416,10 @@ def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
+  __with_namespace_defaults(kwargs)
 
   app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
-
   __validate_app(app)
-  __with_namespace_defaults(kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -429,7 +428,7 @@ def down(**kwargs):
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
-  workflow_namespace = WorkflowNamespace(app, kwargs['workflow_name'])
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.denormalize:
@@ -495,11 +494,12 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app_dir_path = current_working_dir if kwargs['containerized'] else kwargs['app_dir_path']
-  app = App(app_dir_path, **kwargs)
+  containerized = kwargs['containerized']
+  __with_namespace_defaults(kwargs)
+
+  app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
-  __with_namespace_defaults(kwargs)
 
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
@@ -562,14 +562,13 @@ def up(**kwargs):
 
   containerized = kwargs['containerized']
   dry_run = kwargs['dry_run']
+  __with_namespace_defaults(kwargs)
 
   # Because we are running a docker-compose command which depends on APP_DIR env var
   # when we are running this command within a container, the host's app_dir_path will likely differ
   # It needs to differ because if containerized, we are generating .env with contents from the host
   app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
-
   __validate_app(app)
-  __with_namespace_defaults(kwargs)
 
   # Generate SSL certs for HTTPS services
   if kwargs['mkcert']:
@@ -584,7 +583,7 @@ def up(**kwargs):
   )
   script = __build_script(app, **kwargs)
 
-  workflow_namespace = WorkflowNamespace(app, kwargs['workflow_name'])
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.denormalize:
@@ -665,10 +664,10 @@ def up(**kwargs):
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.argument('workflow_name')
 def validate(**kwargs):
+  __with_namespace_defaults(kwargs)
+
   app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
-
-  __with_namespace_defaults(kwargs)
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -962,8 +961,10 @@ def __services_mkcert(app: App, services):
       ca.sign(hostname, app.certs_dir_path)
 
 def __validate_app(app: App):
-  if not app.valid:
-    print(f"Error: {app.dir_path} is not a valid scaffold app", file=sys.stderr)
+  try:
+    app.valid
+  except ValueError as e:
+    print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
 
 def __validate_app_dir(app_dir_path):
