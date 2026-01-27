@@ -281,10 +281,11 @@ class TestApp:
         """Test App.valid property"""
 
         def test_valid_returns_false_when_scaffold_does_not_exist(self, tmp_app_dir):
-            """Test valid returns False when scaffold namespace path doesn't exist"""
+            """Test valid raises ValueError when scaffold namespace path doesn't exist"""
             app = App(tmp_app_dir)
             
-            assert not app.valid
+            with pytest.raises(ValueError, match="does not exist"):
+                app.valid
 
         def test_valid_returns_true_when_scaffold_exists(self, app_with_scaffold):
             """Test valid returns True when scaffold namespace path exists"""
