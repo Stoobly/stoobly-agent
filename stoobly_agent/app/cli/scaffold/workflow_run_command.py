@@ -4,16 +4,14 @@ import pdb
 import subprocess
 import re
 
-from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
-from stoobly_agent.config.data_dir import DataDir
-
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV,
+  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, RUNTIME_APP_DIR_ENV,
   SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 
+from .context_lock import ContextLock
 from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 from .workflow_namespace import WorkflowNamespace
@@ -25,42 +23,33 @@ class WorkflowRunCommand(WorkflowCommand):
   def __init__(self, app: App, **kwargs):
     super().__init__(app, **kwargs)
 
-    self.__app_dir_path = os.path.abspath(kwargs.get('app_dir_path') or app.dir_path)
     self.__current_working_dir = os.getcwd()
-    self.__ca_certs_dir_path = os.path.abspath(kwargs.get('ca_certs_dir_path') or app.ca_certs_dir_path)
-    self.__certs_dir_path = os.path.abspath(kwargs.get('certs_dir_path') or app.certs_dir_path)
-    self.__containerized = kwargs.get('containerized') or False
-    self.__context_dir_path = os.path.abspath(kwargs.get('context_dir_path') or app.context_dir_path)
+    self.__context_lock = ContextLock(app)
     self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
-    self.__network = f"{self.__namespace}.{app.network}"
     self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
 
     self.__workflow_namespace.copy_dotenv()
 
   @property
   def app_dir_path(self):
-    return self.__app_dir_path
+    return self.app.host_app_dir_path
 
   @property
   def ca_certs_dir_path(self):
-    return self.__ca_certs_dir_path
+    return self.app.host_ca_certs_dir_path
 
   @property
   def certs_dir_path(self):
-    return self.__certs_dir_path
-
-  @property
-  def containerized(self):
-    return self.__containerized
+    return self.app.host_certs_dir_path
 
   @property
   def context_dir_path(self):
-    if not self.__context_dir_path:
-      data_dir: DataDir = DataDir.instance()
-      return data_dir.path 
+    return self.app.host_context_dir_path
 
-    return self.__context_dir_path
+  @property
+  def context_lock(self):
+    return self.__context_lock
 
   @property
   def current_working_dir(self):
@@ -98,18 +87,15 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def network(self):
-    return self.__network
+    return f"{self.__namespace}.{self.app.network}"
+
+  @property
+  def runtime_app_dir_path(self):
+    return self.app.host_runtime_app_dir_path
 
   @property
   def workflow_namespace(self):
     return self.__workflow_namespace
-
-  def denormalize_down(self, options: ComposeOptions):
-    self.__denormalize(options)
-
-  def denormalize_up(self, options: ComposeOptions):
-    denormalize_service = self.__denormalize(options)
-    return denormalize_service.denormalize()
 
   def write_nameservers(self):
     # If hostname is set then the service is external and we will need to configure the container's DNS.
@@ -141,10 +127,11 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
+    _config[RUNTIME_APP_DIR_ENV] = self.runtime_app_dir_path
     _config[SERVICE_NAME_ENV] = self.service_name
     _config[SERVICE_SCRIPTS_ENV] = SERVICE_SCRIPTS_DIR
     _config[USER_ID_ENV] = user_id or os.getuid()
-    _config[WORKFLOW_ACCESS_COUNT_ENV] = self.workflow_namespace.access_count(self.workflow_name)
+    _config[WORKFLOW_ACCESS_COUNT_ENV] = self.context_lock.access_count()
     _config[WORKFLOW_NAME_ENV] = self.workflow_name
     _config[WORKFLOW_SCRIPTS_ENV] = WORKFLOW_SCRIPTS_DIR
     _config[WORKFLOW_TEMPLATE_ENV] = self.workflow_name
@@ -162,21 +149,9 @@ class WorkflowRunCommand(WorkflowCommand):
       _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
+ 
     WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
-
-  def __denormalize(self, options: ComposeOptions):
-    denormalize_service = DenormalizeService(self.app)
-
-    # Update the app to the denormalized app
-    # Do not update __workflow_namespace, it contains metadata about the workflow run
-    # Future scaffold commands should be able to access this meta data without specifying the context_dir_path
-    self.app = denormalize_service.denormalized_app
-    self.__app_dir_path = self.app.dir_path
-    self.__network = f"{self.__namespace}.{self.app.network}"
-    options['app_dir_path'] = self.app_dir_path
-
-    return denormalize_service
 
   def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
     nameservers = dns_resolver.nameservers

@@ -5,6 +5,7 @@ import subprocess
 
 from click.testing import CliRunner
 
+from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
@@ -156,7 +157,7 @@ class ScaffoldCliInvoker():
 
     # Run the command using subprocess
     # Instead of piping, print to stdout and stderr
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")
@@ -170,7 +171,8 @@ class ScaffoldCliInvoker():
     command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
       f"{target_workflow_name}/down"
     ]
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")
