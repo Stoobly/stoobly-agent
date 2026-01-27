@@ -127,7 +127,13 @@ class App():
 
   @property
   def valid(self):
-    return os.path.exists(self.scaffold_namespace_path)
+    if not os.path.exists(self.scaffold_namespace_path):
+      raise ValueError(f"{self.scaffold_namespace_path} does not exist")
+
+    if not os.path.exists(os.path.join(self.context_dir_path, DATA_DIR_NAME)):
+      raise ValueError(f"{os.path.join(self.context_dir_path, DATA_DIR_NAME)} does not exist. In that directory, run `stoobly-agent init` to create it.")
+    
+    return True
 
   @property
   def scaffold_namespace(self):
