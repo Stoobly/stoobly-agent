@@ -91,7 +91,7 @@ class WorkflowRunCommand(WorkflowCommand):
 
   @property
   def runtime_app_dir_path(self):
-    return self.app.runtime_app_dir_path
+    return self.app.host_runtime_app_dir_path
 
   @property
   def workflow_namespace(self):

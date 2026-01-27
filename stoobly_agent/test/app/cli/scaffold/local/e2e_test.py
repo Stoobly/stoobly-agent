@@ -24,7 +24,7 @@ from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
 
-#@pytest.mark.e2e
+@pytest.mark.e2e
 class TestLocalScaffoldE2e():
 
   @pytest.fixture(scope='class', autouse=True)

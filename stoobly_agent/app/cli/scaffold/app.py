@@ -30,7 +30,7 @@ class App():
     self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path')
     self.__host_certs_dir_path = kwargs.get('certs_dir_path')
     self.__host_context_dir_path = kwargs.get('context_dir_path')
-    self.__runtime_app_dir_path = os.path.join(self.__host_app_dir_path) if self.__host_app_dir_path else None
+    self.__host_runtime_app_dir_path = self.__host_app_dir_path if self.__host_app_dir_path else None
     
     # If containerized, use data_dir/constructor values; otherwise use kwargs if provided
     if self.__containerized:
@@ -39,14 +39,14 @@ class App():
       self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
       self.__certs_dir_path = data_dir.certs_dir_path
       self.__context_dir_path = data_dir.context_dir_path
-      self.__runtime_app_dir_path = os.path.join(self.__app_dir_path)
+      self.__runtime_app_dir_path = self.__app_dir_path
     else:
       self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or path)
       self.__app_dir_path = self.__host_app_dir_path or path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
-      self.__runtime_app_dir_path = self.__runtime_app_dir_path or os.path.join(self.__app_dir_path)
+      self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
 
   @property
   def app_data_dir(self):
@@ -121,9 +121,9 @@ class App():
     return os.path.abspath(self.__host_context_dir_path or self.context_dir_path)
 
   @property
-  def runtime_app_dir_path(self):
+  def host_runtime_app_dir_path(self):
     """Returns the host (kwarg) value for runtime_app_dir_path"""
-    return os.path.abspath(self.__runtime_app_dir_path or self.runtime_app_dir_path)
+    return os.path.abspath(self.__host_runtime_app_dir_path or self.runtime_app_dir_path)
 
   @property
   def valid(self):
