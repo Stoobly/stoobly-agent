@@ -157,12 +157,7 @@ class ScaffoldCliInvoker():
 
     # Run the command using subprocess
     # Instead of piping, print to stdout and stderr
-    env = {}
-    # Network is generated from context_dir_path, this needs to be set explicitly
-    env['STOOBLY_CONTEXT_DIR'] = app_dir_path # See .Makefile for env var name
-    env['STOOBLY_IMAGE_USE_LOCAL'] = '1'
-
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path, env=env)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")
@@ -176,10 +171,8 @@ class ScaffoldCliInvoker():
     command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
       f"{target_workflow_name}/down"
     ]
-    env = {}
-    env['STOOBLY_CONTEXT_DIR'] = app_dir_path # See .Makefile for env var name
-    env['STOOBLY_IMAGE_USE_LOCAL'] = '1'
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path, env=env)
+
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")

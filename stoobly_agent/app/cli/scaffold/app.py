@@ -144,11 +144,11 @@ class App():
   @property
   def network(self):
     # An app may contain one or more context dirs from which services will derive their mocks from
-    return hashlib.md5(self.context_dir_path.encode()).hexdigest()
+    return hashlib.md5(self.host_context_dir_path.encode()).hexdigest()
 
   @property
   def runtime_app_dir_path(self):
-    return self.__runtime_app_dir_path
+    return os.path.abspath(self.__runtime_app_dir_path)
 
   @property
   def scaffold_namespace_path(self):
