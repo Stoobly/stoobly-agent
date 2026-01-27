@@ -358,7 +358,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       for line in script_lines:
         print(line, file=self.script)
 
-    if self.dry_run or self.containerized:
+    if self.dry_run or self.app.containerized:
       print(command_str)
     else:
       # Execute directly

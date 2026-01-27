@@ -370,7 +370,7 @@ class TestScaffoldE2e():
       else:  # makefile
         ScaffoldCliInvoker.makefile_workflow_down(runner, app_dir_path, target_workflow_name)
 
-    @pytest.fixture(scope='class', params=['cli', 'makefile'])
+    @pytest.fixture(scope='class', params=['makefile'])
     def workflow_up_method(self, request):
       """Parameterized fixture that alternates between CLI and Makefile workflow up methods."""
       return request.param

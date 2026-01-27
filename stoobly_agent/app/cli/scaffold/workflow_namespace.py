@@ -51,16 +51,18 @@ class WorkflowNamespace():
     return '.timestamp'
 
   @property
-  def traefik_config_path(self):
-    return os.path.join(self.path, 'traefik.yml')
+  def traefik_config_file_name(self):
+    return 'traefik.yml'
 
+  @property
+  def traefik_config_path(self):
+    return os.path.join(self.path, self.traefik_config_file_name)
 
   def copy_dotenv(self):
     dotenv_path = os.environ.get(DOTENV_PATH_ENV) or '.env'
 
     if os.path.isfile(dotenv_path):
       shutil.copy(dotenv_path, self.dotenv_path)
-
 
   def log_file_path(self, workflow_name: str):
     """Get the path to the PID file for this workflow."""
@@ -69,7 +71,6 @@ class WorkflowNamespace():
   def pid_file_path(self, workflow_name: str):
     """Get the path to the PID file for this workflow."""
     return os.path.join(self.path, f"{workflow_name}{self.pid_file_extension}")
-
 
   def remove_log_file(self, workflow_name: str):
     log_file_path = self.log_file_path(workflow_name)

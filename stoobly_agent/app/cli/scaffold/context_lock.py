@@ -16,7 +16,7 @@ class ContextLock:
   def __init__(self, app: App):
     self._app = app
     # Generate filename using hash of context_data_dir.path
-    context_path = app.context_dir_path
+    context_path = app.host_context_dir_path
     self._filename_hash = hashlib.md5(context_path.encode()).hexdigest()
 
   @property
