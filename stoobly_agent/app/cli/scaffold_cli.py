@@ -88,6 +88,7 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
+@click.option('--denormalize', is_flag=True, help='Copy app scaffold from --app-dir-path to --context-dir-path on workflow up.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-mode', default=PROXY_MODE_FORWARD, type=click.Choice([PROXY_MODE_FORWARD, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
@@ -415,12 +416,10 @@ def down(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
-
-  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, **kwargs)
-  __validate_app(app)
-
   __with_namespace_defaults(kwargs)
+
+  app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  __validate_app(app)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -429,7 +428,12 @@ def down(**kwargs):
   script = __build_script(app, **kwargs)
   
   # Determine which workflow command to use based on app configuration
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
+
+  if app_config.denormalize:
+    app.denormalize(workflow_namespace, migrate=False)
+
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
@@ -490,11 +494,12 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  app_dir_path = current_working_dir if kwargs['containerized'] else kwargs['app_dir_path']
-  app = App(app_dir_path, **kwargs)
+  containerized = kwargs['containerized']
+  __with_namespace_defaults(kwargs)
+
+  app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
-  __with_namespace_defaults(kwargs)
 
   if len(kwargs['container']) == 0:
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
@@ -557,23 +562,20 @@ def up(**kwargs):
 
   containerized = kwargs['containerized']
   dry_run = kwargs['dry_run']
+  __with_namespace_defaults(kwargs)
 
   # Because we are running a docker-compose command which depends on APP_DIR env var
   # when we are running this command within a container, the host's app_dir_path will likely differ
   # It needs to differ because if containerized, we are generating .env with contents from the host
-  app_dir_path = current_working_dir if containerized else kwargs['app_dir_path']
-  app = App(app_dir_path, **kwargs)
+  app = App(current_working_dir, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
-
-  __with_namespace_defaults(kwargs)
 
   # Generate SSL certs for HTTPS services
   if kwargs['mkcert']:
     services = __get_services(
       app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
     )
-    _app = ContainerizedApp(app_dir_path) if containerized else app
-    __services_mkcert(_app, services)
+    __services_mkcert(app, services)
 
   # Determine which workflow command to use based on app configuration
   services = __get_services(
@@ -581,13 +583,19 @@ def up(**kwargs):
   )
   script = __build_script(app, **kwargs)
 
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
+
+  if app_config.denormalize:
+    app.denormalize(workflow_namespace, migrate=True)
+
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
       app, 
       services=services, 
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
   else:
@@ -596,6 +604,7 @@ def up(**kwargs):
       app, 
       services=services, 
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
 
@@ -628,8 +637,8 @@ def up(**kwargs):
 
     options = {}
 
-    if os.getcwd() != app_dir_path:
-      options['app_dir_path'] = app_dir_path
+    if os.getcwd() != app.dir_path:
+      options['app_dir_path'] = app.dir_path
 
     if kwargs['namespace'] != kwargs['workflow_name']:
       options['namespace'] = kwargs['namespace']
@@ -638,7 +647,7 @@ def up(**kwargs):
     if options_str:
       options_str = f" {options_str}"
 
-    Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent workflow logs{options_str} {kwargs['workflow_name']}`")
+    Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
   command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
@@ -651,13 +660,14 @@ def up(**kwargs):
   help="Validate a scaffold workflow"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to validate the app scaffold.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.argument('workflow_name')
 def validate(**kwargs):
-  app = App(kwargs['app_dir_path'])
-  __validate_app(app)
-
   __with_namespace_defaults(kwargs)
+
+  app = App(kwargs['app_dir_path'], **kwargs)
+  __validate_app(app)
 
   workflow = Workflow(kwargs['workflow_name'], app)
 
@@ -951,8 +961,10 @@ def __services_mkcert(app: App, services):
       ca.sign(hostname, app.certs_dir_path)
 
 def __validate_app(app: App):
-  if not app.valid:
-    print(f"Error: {app.dir_path} is not a valid scaffold app", file=sys.stderr)
+  try:
+    app.valid
+  except ValueError as e:
+    print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
 
 def __validate_app_dir(app_dir_path):

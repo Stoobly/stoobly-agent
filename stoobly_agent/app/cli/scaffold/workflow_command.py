@@ -121,7 +121,7 @@ class WorkflowCommand(ServiceCommand):
   @property
   def workflow_path(self):
     return os.path.join(
-      self.data_dir_path,
+      self.app.data_dir.path,
       self.workflow_relative_path
     )
 

@@ -52,7 +52,7 @@ class WorkflowCreateCommand(WorkflowCommand):
         shutil.rmtree(dest)
 
     if not os.path.exists(dest):
-      os.makedirs(dest) 
+      os.makedirs(dest, exist_ok=True) 
 
     service_builder = kwargs.get('service_builder')
     workflow_builder = None

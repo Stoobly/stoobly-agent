@@ -22,7 +22,7 @@ def reset(dir_name = 'stoobly-agent-test'):
   temp_dir = os.path.join('/tmp', dir_name)
   if os.path.exists(temp_dir):
     shutil.rmtree(temp_dir)
-  os.makedirs(temp_dir)
+  os.makedirs(temp_dir, exist_ok=True)
   os.chdir(temp_dir)
 
   data_dir: DataDir = DataDir.instance()

@@ -1,6 +1,7 @@
 from typing import TypedDict, List, Callable, Optional
 
 class ComposeOptions(TypedDict):
+  app_dir_path: str
   namespace: str
   user_id: str
 

@@ -158,14 +158,12 @@ def __handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyRespons
     request = flow.request
     response = context.response
 
+    if request.method.upper() == 'OPTIONS':
+        # Default OPTIONS request to allow CORS
+        enable_cors(flow)
+        return flow.response
+
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
-
-    if request.method.upper() != 'OPTIONS':
-        return
-
-    # Default OPTIONS request to allow CORS
-    enable_cors(flow)
-    return flow.response
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request

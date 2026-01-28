@@ -10,6 +10,10 @@ class Command():
   def app(self):
     return self.__app
 
+  @app.setter
+  def app(self, value: App):
+    self.__app = value
+
   @property
   def scaffold_namespace(self):
     return self.__scaffold_namespace

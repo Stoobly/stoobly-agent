@@ -168,7 +168,7 @@ class InterceptedRequestsLogger():
                     })
 
             # Set scenario key
-            intercept_settings = InterceptSettings(self.__settings)
+            intercept_settings = InterceptSettings(self.__settings, request=request)
             scenario_key = intercept_settings.scenario_key
             log_entry.update({
                 "scenario_key": scenario_key
@@ -297,20 +297,24 @@ class InterceptedRequestsLogger():
             return None
 
     @classmethod
-    def __get_file_path(cls, workflow: str = None, namespace: str = None) -> str:
+    def __get_file_path(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> str:
         # Only use cache when no specific workflow/namespace is requested
         if (cls.__file_path is not None) and (workflow is None) and (namespace is None):
             return cls.__file_path
+        
+        if data_dir_path:
+            dir_path = DataDir.instance(data_dir_path).path
+        else:
+            dir_path = DataDir.instance().path
 
-        data_dir_path = DataDir.instance().path
         wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow()) or cls._get_workflow()
         ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace()) or wf
-        return f"{data_dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
+        return f"{dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
 
     @classmethod
-    def enable_logger_file(cls, workflow: str = None, namespace: str = None) -> None:
-        cls.__ensure_directory(workflow, namespace)
-
+    def enable_logger_file(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> None:
+        cls.__ensure_directory(workflow, namespace, data_dir_path)
+        
         # Enable the logger before setup so error logging works
         cls.__logger.disabled = False
 
@@ -320,7 +324,8 @@ class InterceptedRequestsLogger():
 
             # Create file handler
             cls.__file_handler = logging.FileHandler(
-                cls.__get_file_path(workflow, namespace)
+                cls.__get_file_path(workflow, namespace, data_dir_path)
+
             )
             cls.__file_handler.setLevel(logging.DEBUG)
             json_formatter = cls.JSONFormatter(cls.__settings)
@@ -421,8 +426,8 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
-    def dump_logs(cls, workflow: str = None, namespace: str = None):
-        file_path = cls.__get_file_path(workflow, namespace)
+    def dump_logs(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None):
+        file_path = cls.__get_file_path(workflow, namespace, data_dir_path)
         if not os.path.exists(file_path):
             return
 
@@ -438,13 +443,13 @@ class InterceptedRequestsLogger():
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def truncate(cls, workflow: str = None, namespace: str = None) -> None:
-        cls.__ensure_directory(workflow, namespace)
+    def truncate(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> None:
+        cls.__ensure_directory(workflow, namespace, data_dir_path)
 
-        file_path = cls.__get_file_path(workflow, namespace)
+        file_path = cls.__get_file_path(workflow, namespace, data_dir_path)
 
         if not os.path.exists(file_path):
-            cls.enable_logger_file(workflow, namespace)
+            cls.enable_logger_file(workflow, namespace, data_dir_path)
             return
 
         try:
@@ -465,7 +470,8 @@ class InterceptedRequestsLogger():
                 f.write('')
 
             # Re-enable logging with fresh handlers
-            cls.enable_logger_file(workflow, namespace)
+            cls.enable_logger_file(workflow, namespace, data_dir_path)
+
             cls.__logger.debug(f"Cleared log file: {file_path}")
 
             cls.reset_scenario_key()
@@ -473,8 +479,8 @@ class InterceptedRequestsLogger():
             cls.__logger.error(f"Failed to clear log file: {e}")
 
     @classmethod
-    def __ensure_directory(cls, workflow: str = None, namespace: str = None):
-        file_path = cls.__get_file_path(workflow, namespace)
+    def __ensure_directory(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None):
+        file_path = cls.__get_file_path(workflow, namespace, data_dir_path)
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):

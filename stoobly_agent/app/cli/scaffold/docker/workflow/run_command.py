@@ -65,7 +65,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active)
-      self.workflow_namespace.access(self.workflow_name)
+      self.context_lock.access()
 
     try:
       # Create individual service commands
@@ -146,7 +146,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     if not commands:
       return
-    
+
     # Sort commands by priority and execute
     commands = sorted(commands, key=lambda command: command.service_config.priority)
     for index, command in enumerate(commands):
@@ -371,7 +371,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     """Stop the workflow using Docker Compose."""
     if not os.path.exists(self.compose_path):
       return ''
-  
+
     command = ['docker', 'compose']
 
     # Add docker compose file
@@ -405,7 +405,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     if self.script:
       print(command, file=self.script)
 
-    if self.dry_run or self.containerized:
+    if self.dry_run or self.app.containerized:
       print(command)
     else:
       result = subprocess.run(command, shell=True, **options)
@@ -494,4 +494,4 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def __release(self):
     self.workflow_namespace.remove_timestamp_file(self.workflow_name)
-    self.workflow_namespace.release(self.workflow_name)
+    self.context_lock.release()

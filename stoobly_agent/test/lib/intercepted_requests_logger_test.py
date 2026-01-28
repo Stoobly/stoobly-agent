@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO
@@ -232,6 +233,32 @@ class TestJSONFormatter:
                     assert entry['url'].endswith('...')
                     return
             pytest.fail("Long URL test entry not found")
+
+    def test_extracts_scenario_key_from_request_headers(self, mock_mitmproxy_request):
+        """scenario_key is extracted from request headers."""
+        expected_scenario_key = 'test-scenario-key-123'
+
+        def mock_header_get(header_name, default=None):
+            if header_name == custom_headers.SCENARIO_KEY:
+                return expected_scenario_key
+            return default
+
+        mock_mitmproxy_request.headers.get = mock_header_get
+        mock_mitmproxy_request.headers.__contains__ = lambda self, key: key == custom_headers.SCENARIO_KEY
+        mock_mitmproxy_request.headers.__getitem__ = lambda self, key: expected_scenario_key if key == custom_headers.SCENARIO_KEY else None
+
+        InterceptedRequestsLogger.info("Scenario key test", request=mock_mitmproxy_request)
+
+        InterceptedRequestsLogger.flush()
+
+        with open(self.log_path, 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                entry = json.loads(line.strip())
+                if entry.get('message') == 'Scenario key test':
+                    assert entry['scenario_key'] == expected_scenario_key
+                    return
+            pytest.fail("Scenario key test entry not found")
 
 
 class TestFileOperations:

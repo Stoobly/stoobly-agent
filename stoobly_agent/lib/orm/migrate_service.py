@@ -2,6 +2,7 @@ import os
 import pdb
 
 from typing import TYPE_CHECKING
+from filelock import FileLock
 
 if TYPE_CHECKING:
   from stoobly_orator.migrations import Migrator
@@ -19,12 +20,18 @@ def migrate(version, pretend = False):
       if _version == version:
         return
 
-  migrator = __build_migrator()
-  migrations_path = __build_migrations_path()
-  migrator.run(migrations_path, pretend)
+  # Use FileLock for migration locking
+  data_dir: DataDir = DataDir.instance()
+  lock_path = os.path.join(data_dir.tmp_dir_path, '.db-migrate.lock')
+  file_lock = FileLock(lock_path, timeout=5)
 
-  with open(DataDir.instance().db_version_path, 'w') as fp:
-    fp.write(version)
+  with file_lock:
+    migrator = __build_migrator()
+    migrations_path = __build_migrations_path()
+    migrator.run(migrations_path, pretend)
+
+    with open(DataDir.instance().db_version_path, 'w') as fp:
+      fp.write(version)
 
 def rollback(pretend = False):
   migrator = __build_migrator()

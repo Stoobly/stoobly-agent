@@ -15,6 +15,7 @@ from .docker.template_files import plugin_docker_cypress, plugin_docker_playwrig
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
+  denormalize: bool
   docker_socket_path: str
   name: str
   plugin: list
@@ -30,6 +31,9 @@ class AppCreateCommand(AppCommand):
 
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
+
+        if kwargs.get('denormalize'):
+            self.app_config.denormalize = kwargs['denormalize']
 
         if kwargs.get('docker_socket_path'):
             self.app_config.docker_socket_path = kwargs['docker_socket_path']
@@ -191,7 +195,7 @@ class AppCreateCommand(AppCommand):
                 if os.path.exists(old_scaffold_namespace_path):
                     shutil.move(old_scaffold_namespace_path, new_scaffold_namespace_path)
                 else:
-                    os.makedirs(new_scaffold_namespace_path)
+                    os.makedirs(new_scaffold_namespace_path, exist_ok=True)
 
             # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin 
             # move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>

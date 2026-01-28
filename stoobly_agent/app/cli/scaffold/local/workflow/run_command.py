@@ -136,7 +136,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
-      self.workflow_namespace.access(self.workflow_name)
+      self.context_lock.access()
 
     # iterate through each service in the workflow
     commands = self.workflow_service_commands(**options)
@@ -358,7 +358,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       for line in script_lines:
         print(line, file=self.script)
 
-    if self.dry_run or self.containerized:
+    if self.dry_run or self.app.containerized:
       print(command_str)
     else:
       # Execute directly
@@ -410,4 +410,4 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def __release(self):
     self.workflow_namespace.remove_pid_file(self.workflow_name)
-    self.workflow_namespace.release(self.workflow_name)
+    self.context_lock.release()
