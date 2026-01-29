@@ -34,7 +34,7 @@ from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkf
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
@@ -107,7 +107,7 @@ def request_log(ctx):
 @click.argument('workflow_name', required=False, default=None)
 def request_log_get(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    InterceptedRequestsLogger.get_log_file_path(
+    ScaffoldInterceptedRequestsLogger.get_log_file_path(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
         data_dir_path=context_dir_path
@@ -119,7 +119,7 @@ def request_log_get(**kwargs):
 @click.argument('workflow_name', required=False, default=None)
 def request_log_list(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    InterceptedRequestsLogger.dump_logs(
+    ScaffoldInterceptedRequestsLogger.dump_logs(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
         data_dir_path=context_dir_path
@@ -131,7 +131,7 @@ def request_log_list(**kwargs):
 @click.argument('workflow_name', required=False, default=None)
 def request_log_delete(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    InterceptedRequestsLogger.truncate(
+    ScaffoldInterceptedRequestsLogger.truncate(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
         data_dir_path=context_dir_path

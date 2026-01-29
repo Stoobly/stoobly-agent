@@ -8,7 +8,11 @@ There are two distinct CLI command paths:
 - **Scaffold**: `stoobly-agent scaffold request log` - For scaffold-based workflows with workflow/namespace support
 
 ## Key Files
-- **Logger**: [stoobly_agent/lib/intercepted_requests_logger.py](mdc:stoobly_agent/lib/intercepted_requests_logger.py) - Core logging implementation
+- **Logger package**: [stoobly_agent/lib/intercepted_requests/](mdc:stoobly_agent/lib/intercepted_requests/) - Request logging package
+  - [logger.py](mdc:stoobly_agent/lib/intercepted_requests/logger.py) - Core `InterceptedRequestsLogger` base class
+  - [json_formatter.py](mdc:stoobly_agent/lib/intercepted_requests/json_formatter.py) - `JSONFormatter` for structured JSON log output
+  - [scaffold_logger.py](mdc:stoobly_agent/lib/intercepted_requests/scaffold_logger.py) - `ScaffoldInterceptedRequestsLogger` with workflow/namespace support
+  - [simple_logger.py](mdc:stoobly_agent/lib/intercepted_requests/simple_logger.py) - `SimpleInterceptedRequestsLogger` for non-scaffold usage
 - **Non-scaffold CLI**: [stoobly_agent/app/cli/request_cli.py](mdc:stoobly_agent/app/cli/request_cli.py) - `request log get`, `request log list`, `request log delete`
 - **Scaffold CLI**: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py) - `scaffold request log get`, `scaffold request log list`, `scaffold request log delete`
 - **Mock Handler**: [stoobly_agent/app/proxy/handle_mock_service.py](mdc:stoobly_agent/app/proxy/handle_mock_service.py) - Logs "Mock success" and "Mock failure"
@@ -88,5 +92,6 @@ Each log entry includes:
 - `fixture_path` - Path to response fixture (if used)
 - `test_title` - Test title from request headers (if set)
 
-## Test File
-- [stoobly_agent/test/app/cli/request/request_log_test.py](mdc:stoobly_agent/test/app/cli/request/request_log_test.py)
+## Test Files
+- [stoobly_agent/test/lib/intercepted_requests/logger_test.py](mdc:stoobly_agent/test/lib/intercepted_requests/logger_test.py) - Unit tests for logger, formatter, and path handling
+- [stoobly_agent/test/app/cli/request/request_log_test.py](mdc:stoobly_agent/test/app/cli/request/request_log_test.py) - CLI integration tests

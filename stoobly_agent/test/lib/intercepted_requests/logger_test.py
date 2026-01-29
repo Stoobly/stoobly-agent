@@ -9,7 +9,8 @@ import pytest
 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO
 from stoobly_agent.test.test_helper import reset
 
@@ -22,13 +23,13 @@ def settings():
 @pytest.fixture(autouse=True)
 def reset_logger_state():
     """Reset class-level state before each test."""
-    InterceptedRequestsLogger._InterceptedRequestsLogger__file_path = None
-    InterceptedRequestsLogger._InterceptedRequestsLogger__previous_scenario_key = None
-    InterceptedRequestsLogger._InterceptedRequestsLogger__queue_listener = None
-    InterceptedRequestsLogger._InterceptedRequestsLogger__log_queue = None
-    InterceptedRequestsLogger._InterceptedRequestsLogger__file_handler = None
-    InterceptedRequestsLogger._InterceptedRequestsLogger__logger.handlers.clear()
-    InterceptedRequestsLogger._InterceptedRequestsLogger__logger.disabled = True
+    InterceptedRequestsLogger._file_path = None
+    InterceptedRequestsLogger._previous_scenario_key = None
+    InterceptedRequestsLogger._queue_listener = None
+    InterceptedRequestsLogger._log_queue = None
+    InterceptedRequestsLogger._file_handler = None
+    InterceptedRequestsLogger._logger.handlers.clear()
+    InterceptedRequestsLogger._logger.disabled = True
     yield
     InterceptedRequestsLogger.shutdown()
 
@@ -71,15 +72,15 @@ class TestLoggerSetup:
         custom_path = os.path.join(temp_log_dir, 'custom.log')
         InterceptedRequestsLogger.set_file_path(custom_path)
 
-        assert InterceptedRequestsLogger._InterceptedRequestsLogger__file_path == custom_path
+        assert InterceptedRequestsLogger._file_path == custom_path
 
     def test_enable_logger_file_creates_file(self, temp_log_dir):
         """Verify log file is created."""
         log_path = os.path.join(temp_log_dir, 'test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
 
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Test message")
 
@@ -105,7 +106,7 @@ class TestLogMethods:
         """Setup logger before each test."""
         log_path = os.path.join(temp_log_dir, 'test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
         InterceptedRequestsLogger.set_log_level(DEBUG)
         self.log_path = log_path
         yield
@@ -113,7 +114,7 @@ class TestLogMethods:
 
     def test_info_logs_message(self):
         """Basic info logging works."""
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Test info message")
 
@@ -125,7 +126,7 @@ class TestLogMethods:
 
     def test_logs_with_request(self, mock_mitmproxy_request):
         """Request data extracted (method, URL)."""
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Request log", request=mock_mitmproxy_request)
 
@@ -144,7 +145,7 @@ class TestLogMethods:
 
     def test_logs_with_response(self, mock_mitmproxy_request, mock_mitmproxy_response):
         """Response data extracted (status_code)."""
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info(
                 "Response log",
@@ -167,7 +168,7 @@ class TestLogMethods:
         """Log level filtering works."""
         InterceptedRequestsLogger.set_log_level(ERROR)
 
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.debug("Should not appear")
             InterceptedRequestsLogger.info("Should not appear")
@@ -189,7 +190,7 @@ class TestJSONFormatter:
         """Setup logger before each test."""
         log_path = os.path.join(temp_log_dir, 'json_test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
         InterceptedRequestsLogger.set_log_level(DEBUG)
         self.log_path = log_path
         yield
@@ -197,7 +198,7 @@ class TestJSONFormatter:
 
     def test_formats_as_valid_json(self):
         """Output is valid JSON with required fields."""
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("JSON test message")
 
@@ -218,7 +219,7 @@ class TestJSONFormatter:
         """URLs >100 chars are truncated."""
         mock_mitmproxy_request.pretty_url = 'https://example.com/' + 'a' * 200
 
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Long URL test", request=mock_mitmproxy_request)
 
@@ -268,15 +269,15 @@ class TestFileOperations:
         """dump_logs() outputs file content."""
         log_path = os.path.join(temp_log_dir, 'dump_test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
 
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Dump test message")
 
         InterceptedRequestsLogger.flush()
         InterceptedRequestsLogger.shutdown()
-        InterceptedRequestsLogger.dump_logs()
+        ScaffoldInterceptedRequestsLogger.dump_logs()
 
         captured = capsys.readouterr()
         assert "Dump test message" in captured.out
@@ -285,14 +286,14 @@ class TestFileOperations:
         """truncate() clears log file."""
         log_path = os.path.join(temp_log_dir, 'truncate_test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
 
-        with patch('stoobly_agent.lib.intercepted_requests_logger.InterceptSettings') as mock_intercept:
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
             InterceptedRequestsLogger.info("Before truncate")
 
         InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.truncate()
+        ScaffoldInterceptedRequestsLogger.truncate()
 
         with open(log_path, 'r') as f:
             content = f.read()
@@ -302,12 +303,12 @@ class TestFileOperations:
         """shutdown() cleans up handlers."""
         log_path = os.path.join(temp_log_dir, 'shutdown_test.log')
         InterceptedRequestsLogger.set_file_path(log_path)
-        InterceptedRequestsLogger.enable_logger_file()
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
 
         InterceptedRequestsLogger.shutdown()
 
-        assert len(InterceptedRequestsLogger._InterceptedRequestsLogger__logger.handlers) == 0
-        assert InterceptedRequestsLogger._InterceptedRequestsLogger__file_handler is None
+        assert len(InterceptedRequestsLogger._logger.handlers) == 0
+        assert InterceptedRequestsLogger._file_handler is None
 
 
 class TestWorkflowNamespaceParameters:
@@ -350,7 +351,7 @@ class TestWorkflowNamespaceParameters:
 
         with patch.object(DataDir, 'instance') as mock_data_dir:
             mock_data_dir.return_value.path = self.temp_dir
-            InterceptedRequestsLogger.dump_logs(workflow=workflow, namespace=namespace)
+            ScaffoldInterceptedRequestsLogger.dump_logs(workflow=workflow, namespace=namespace)
 
         captured = capsys.readouterr()
         assert 'test log entry' in captured.out
@@ -369,7 +370,7 @@ class TestWorkflowNamespaceParameters:
 
         with patch.object(DataDir, 'instance') as mock_data_dir:
             mock_data_dir.return_value.path = self.temp_dir
-            InterceptedRequestsLogger.truncate(workflow=workflow, namespace=namespace)
+            ScaffoldInterceptedRequestsLogger.truncate(workflow=workflow, namespace=namespace)
 
         # File should be empty or cleared
         with open(log_file, 'r') as f:
