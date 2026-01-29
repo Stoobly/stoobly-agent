@@ -318,7 +318,8 @@ class InterceptedRequestsLogger():
             dir_path = DataDir.instance().path
 
         wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow()) or cls._get_workflow()
-        ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace()) or wf
+        # If namespace not provided, default to workflow (if provided) before falling back to env/settings
+        ns = cls._sanitize_path_component(namespace if namespace else (workflow or cls._get_namespace())) or wf
         return f"{dir_path}/tmp/{wf}/{ns}/logs/requests-{wf}.json"
 
     @classmethod
