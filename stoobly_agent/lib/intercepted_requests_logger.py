@@ -297,11 +297,21 @@ class InterceptedRequestsLogger():
             return None
 
     @classmethod
+    def __get_simple_file_path(cls, data_dir_path: str = None) -> str:
+        """Non-scaffold file path: {dir_path}/tmp/logs/requests.json"""
+        if data_dir_path:
+            dir_path = DataDir.instance(data_dir_path).path
+        else:
+            dir_path = DataDir.instance().path
+        return f"{dir_path}/tmp/logs/requests.json"
+
+    @classmethod
     def __get_file_path(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> str:
+        """Scaffold file path: {dir_path}/tmp/{wf}/{ns}/logs/requests-{wf}.json"""
         # Only use cache when no specific workflow/namespace is requested
         if (cls.__file_path is not None) and (workflow is None) and (namespace is None):
             return cls.__file_path
-        
+
         if data_dir_path:
             dir_path = DataDir.instance(data_dir_path).path
         else:
@@ -309,7 +319,7 @@ class InterceptedRequestsLogger():
 
         wf = cls._sanitize_path_component(workflow if workflow else cls._get_workflow()) or cls._get_workflow()
         ns = cls._sanitize_path_component(namespace if namespace else cls._get_namespace()) or wf
-        return f"{dir_path}/tmp/{wf}/{ns}/logs/{wf}.json"
+        return f"{dir_path}/tmp/{wf}/{ns}/logs/requests-{wf}.json"
 
     @classmethod
     def enable_logger_file(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> None:
@@ -426,6 +436,17 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
+    def get_log_file_path(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None) -> str:
+        file_path = cls.__get_file_path(workflow, namespace, data_dir_path)
+
+        print(f"Requests log path for workflow: {workflow}, namespace: {namespace}\nFile path: {file_path}")
+
+        if not os.path.exists(file_path):
+            return
+
+        return file_path
+    
+    @classmethod
     def dump_logs(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None):
         file_path = cls.__get_file_path(workflow, namespace, data_dir_path)
         if not os.path.exists(file_path):
@@ -477,6 +498,136 @@ class InterceptedRequestsLogger():
             cls.reset_scenario_key()
         except IOError as e:
             cls.__logger.error(f"Failed to clear log file: {e}")
+
+    # Simple (non-scaffold) methods
+    @classmethod
+    def get_simple_log_file_path(cls, data_dir_path: str = None) -> str:
+        """Get log file path for non-scaffold use."""
+        file_path = cls.__get_simple_file_path(data_dir_path)
+
+        print(f"Requests log path: {file_path}")
+
+        if not os.path.exists(file_path):
+            return
+
+        return file_path
+
+    @classmethod
+    def dump_simple_logs(cls, data_dir_path: str = None) -> None:
+        """Dump logs for non-scaffold use."""
+        file_path = cls.__get_simple_file_path(data_dir_path)
+        if not os.path.exists(file_path):
+            return
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if content.strip():
+                    print(content)
+                else:
+                    print(end='')
+        except IOError as e:
+            cls.__logger.error(f"Failed to read log file: {e}")
+            print(f"Failed to read log file: {e}")
+
+    @classmethod
+    def truncate_simple(cls, data_dir_path: str = None) -> None:
+        """Truncate logs for non-scaffold use."""
+        cls.__ensure_simple_directory(data_dir_path)
+
+        file_path = cls.__get_simple_file_path(data_dir_path)
+
+        if not os.path.exists(file_path):
+            cls.enable_simple_logger_file(data_dir_path)
+            return
+
+        try:
+            # Stop queue listener and close file handler to release the file lock
+            cls.__cleanup_handlers()
+
+            # Close and remove existing handlers (backward compatibility)
+            for handler in cls.__logger.handlers[:]:
+                if isinstance(handler, logging.FileHandler):
+                    handler.close()
+                    cls.__logger.removeHandler(handler)
+
+            # Clear all handlers
+            cls.__logger.handlers.clear()
+
+            # Now truncate the file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+
+            # Re-enable logging with fresh handlers
+            cls.enable_simple_logger_file(data_dir_path)
+
+            cls.__logger.debug(f"Cleared log file: {file_path}")
+
+            cls.reset_scenario_key()
+        except IOError as e:
+            cls.__logger.error(f"Failed to clear log file: {e}")
+
+    @classmethod
+    def enable_simple_logger_file(cls, data_dir_path: str = None) -> None:
+        """Enable logging to the simple (non-scaffold) log file."""
+        cls.__ensure_simple_directory(data_dir_path)
+
+        # Enable the logger before setup so error logging works
+        cls.__logger.disabled = False
+
+        try:
+            # Clean up existing handlers/listeners
+            cls.__cleanup_handlers()
+
+            # Create file handler
+            cls.__file_handler = logging.FileHandler(
+                cls.__get_simple_file_path(data_dir_path)
+            )
+            cls.__file_handler.setLevel(logging.DEBUG)
+            json_formatter = cls.JSONFormatter(cls.__settings)
+            cls.__file_handler.setFormatter(json_formatter)
+
+            # Remove all existing handlers to prevent logging to stdout
+            cls.__logger.handlers.clear()
+            # Prevent propagation to parent loggers which may have console handlers
+            cls.__logger.propagate = False
+
+            if cls.__USE_ASYNC_QUEUE:
+                # Async queue-based logging
+                cls.__log_queue = queue.Queue()
+                cls.__queue_listener = logging.handlers.QueueListener(
+                    cls.__log_queue,
+                    cls.__file_handler,
+                    respect_handler_level=True
+                )
+                cls.__queue_listener.start()
+
+                # Register cleanup on program exit to flush remaining logs (only once)
+                if not cls.__atexit_registered:
+                    atexit.register(cls.shutdown)
+                    cls.__atexit_registered = True
+
+                queue_handler = logging.handlers.QueueHandler(cls.__log_queue)
+                cls.__logger.addHandler(queue_handler)
+            else:
+                # Synchronous direct logging
+                cls.__logger.addHandler(cls.__file_handler)
+
+        except OSError as e:
+            cls.__logger.error(f"Failed to configure logger file output: {e}")
+
+    @classmethod
+    def __ensure_simple_directory(cls, data_dir_path: str = None):
+        """Ensure directory exists for simple (non-scaffold) log file."""
+        file_path = cls.__get_simple_file_path(data_dir_path)
+        directory = os.path.dirname(file_path)
+
+        if directory and not os.path.exists(directory):
+            try:
+                cls.__logger.debug(f"created missing directory: {directory}")
+                os.makedirs(directory, exist_ok=True)
+            except OSError as e:
+                cls.__logger.error(f"Failed to create log directory: {e}")
 
     @classmethod
     def __ensure_directory(cls, workflow: str = None, namespace: str = None, data_dir_path: str = None):

@@ -343,7 +343,7 @@ class TestWorkflowNamespaceParameters:
         namespace = 'test-ns'
         log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
         os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f'{workflow}.json')
+        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
 
         with open(log_file, 'w') as f:
             f.write('{"message": "test log entry"}\n')
@@ -361,7 +361,7 @@ class TestWorkflowNamespaceParameters:
         namespace = 'prod-ns'
         log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
         os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f'{workflow}.json')
+        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
 
         # Create file with content
         with open(log_file, 'w') as f:

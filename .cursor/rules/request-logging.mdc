@@ -1,0 +1,54 @@
+# Request Logging System
+
+## Overview
+The request logging system captures intercepted HTTP requests during workflow execution (mock, record, test). Logs are stored as JSON files and can be viewed/managed via CLI commands.
+
+## Key Files
+- **Logger**: [stoobly_agent/lib/intercepted_requests_logger.py](mdc:stoobly_agent/lib/intercepted_requests_logger.py) - Core logging implementation
+- **CLI Commands**: [stoobly_agent/app/cli/request_cli.py](mdc:stoobly_agent/app/cli/request_cli.py) - `request log list` and `request log delete`
+- **Mock Handler**: [stoobly_agent/app/proxy/handle_mock_service.py](mdc:stoobly_agent/app/proxy/handle_mock_service.py) - Logs "Mock success" and "Mock failure"
+- **Test Handler**: [stoobly_agent/app/proxy/handle_test_service.py](mdc:stoobly_agent/app/proxy/handle_test_service.py) - Delegates to mock handler for logging
+
+## Log File Path Structure
+Logs are stored at: `{data_dir}/tmp/{workflow}/{namespace}/logs/{workflow}.json`
+
+Example paths:
+- Mock workflow: `.stoobly/tmp/mock/mock/logs/mock.json`
+- Test workflow: `.stoobly/tmp/test/test/logs/test.json`
+- Custom namespace: `.stoobly/tmp/mock/prod-ns/logs/mock.json`
+
+## Path Resolution Logic
+The `__get_file_path()` method determines the log file path:
+1. If `workflow` parameter is provided, use it; otherwise fall back to `WORKFLOW_NAME` env var or `settings.proxy.intercept.mode`
+2. If `namespace` parameter is provided, use it; otherwise fall back to `WORKFLOW_NAMESPACE` env var or the workflow name
+
+**Critical**: When reading logs via CLI, environment variables are NOT set. The fallback uses `settings.proxy.intercept.mode` which returns 'mock' for BOTH mock and test workflows.
+
+## CLI Usage
+```bash
+# List logs for current workflow (uses settings.proxy.intercept.mode)
+stoobly-agent request log list --context-dir-path /path/to/app
+
+# List logs for specific workflow and namespace
+stoobly-agent request log list test --namespace test --context-dir-path /path/to/app
+
+# Delete logs
+stoobly-agent request log delete test --namespace test --context-dir-path /path/to/app
+```
+
+## Common Pitfall
+When querying logs for the test workflow, you MUST specify both workflow AND namespace:
+- **Wrong**: `request log list test` - namespace falls back to 'mock' (from settings)
+- **Correct**: `request log list test --namespace test` - explicitly matches where logs are written
+
+This is because:
+1. Proxy writes logs with env vars: `WORKFLOW_NAME=test`, `WORKFLOW_NAMESPACE=test`
+2. CLI reads without env vars, falling back to `settings.proxy.intercept.mode` = 'mock'
+3. Without explicit namespace, paths don't match
+
+## Test File
+- [stoobly_agent/test/app/cli/request/request_log_test.py](mdc:stoobly_agent/test/app/cli/request/request_log_test.py)
+description:
+globs:
+alwaysApply: false
+---

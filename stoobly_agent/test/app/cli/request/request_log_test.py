@@ -11,6 +11,7 @@ from click.testing import CliRunner
 from unittest.mock import patch
 
 from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
     WORKFLOW_RECORD_TYPE,
@@ -96,8 +97,8 @@ class TestRequestLogE2e():
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
 
-    def test_log_list_shows_mock_failures(self, app_dir_path, hostname, runner: CliRunner, proxy_url: str):
-        """Test that 499 mock failures are logged and visible via request log list."""
+    def test_log_list_shows_mock_failures(self, app_dir_path, hostname, runner: CliRunner, proxy_url: str, target_workflow_name: str):
+        """Test that 499 mock failures are logged and visible via scaffold request log list."""
         # Make an unrecorded request through proxy - should trigger 499
         # curl -x http://localhost:8081 -k 'https://docs.stoobly.com/test-unrecorded'
         res = requests.get(
@@ -111,8 +112,8 @@ class TestRequestLogE2e():
         # Give time for async logging to complete
         time.sleep(0.5)
 
-        # Invoke request log list
-        result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        # Invoke scaffold request log list
+        result = runner.invoke(scaffold, ['request', 'log', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         output = result.output
@@ -133,8 +134,8 @@ class TestRequestLogE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_log_delete_clears_log_entries(self, app_dir_path, runner: CliRunner, proxy_url: str, hostname):
-        """Test that request log delete clears all log entries."""
+    def test_log_delete_clears_log_entries(self, app_dir_path, runner: CliRunner, proxy_url: str, hostname, target_workflow_name: str):
+        """Test that scaffold request log delete clears all log entries."""
         # Make another request to ensure we have log entries
         requests.get(
             f'https://{hostname}/another-unrecorded',
@@ -145,16 +146,16 @@ class TestRequestLogE2e():
         InterceptedRequestsLogger.shutdown()
 
         # Verify log has entries
-        result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'log', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
         assert result.output.strip(), "Log should have entries before delete"
 
         # Delete log entries
-        delete_result = runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+        delete_result = runner.invoke(scaffold, ['request', 'log', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
         assert delete_result.exit_code == 0
 
         # Verify log is now empty
-        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
@@ -235,7 +236,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_successful_mock_logged_at_info_level(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful mock requests are logged at INFO level (default)."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with mocked response
         res = requests.get(
@@ -247,7 +248,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -274,7 +275,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger 499
         res = requests.get(
@@ -287,7 +288,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry
@@ -299,7 +300,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_options_request_not_logged_as_failure(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as mock failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -314,7 +315,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
@@ -399,7 +400,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_successful_test_logged_at_info_level(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful test requests are logged at INFO level."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
@@ -411,7 +412,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -437,7 +438,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
@@ -450,7 +451,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry (test workflow uses mock mode)
@@ -462,7 +463,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""
         # Clear log first
-        runner.invoke(request, ['log', 'delete', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -477,7 +478,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(request, ['log', 'list', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'log', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
@@ -554,17 +555,17 @@ class TestRequestLogFromDifferentWorkingDirectory():
         time.sleep(1)
 
     def test_log_list_with_context_dir_path_from_different_directory(
-        self, app_dir_path: str, different_working_dir: str, hostname: str, runner: CliRunner, proxy_url: str
+        self, app_dir_path: str, different_working_dir: str, hostname: str, runner: CliRunner, proxy_url: str, target_workflow_name: str
     ):
         """
-        Test that request log list works with --context-dir-path when running from a different directory.
+        Test that scaffold request log list works with --context-dir-path when running from a different directory.
 
         This simulates the bug where users cd to their app directory but logs are in the context directory.
         Without --context-dir-path, logs would not be found.
         With --context-dir-path pointing to the correct location, logs are retrieved.
         """
         # Clear any existing logs
-        runner.invoke(request, ['log', 'delete', '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'log', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
 
         # Make a request to generate log entries
         res = requests.get(
@@ -589,17 +590,17 @@ class TestRequestLogFromDifferentWorkingDirectory():
 
             # Reset DataDir singleton cache to force fresh lookup from new cwd
             # This is critical because DataDir.instance() is cached at module import time
-            # in request_cli.py, and we need a fresh lookup for the test to work correctly
+            # in scaffold_cli.py, and we need a fresh lookup for the test to work correctly
             DataDir._instances = None
 
             # Without --context-dir-path, logs should not be found (empty output or error)
-            result_without_flag = runner.invoke(request, ['log', 'list'])
+            result_without_flag = runner.invoke(scaffold, ['request', 'log', 'list', target_workflow_name])
             # The output should be empty because there's no .stoobly in different_working_dir
             assert not result_without_flag.output.strip() or 'Mock failure' not in result_without_flag.output, \
                 "Logs should NOT be found without --context-dir-path from a different directory"
 
             # With --context-dir-path, logs SHOULD be found
-            result_with_flag = runner.invoke(request, ['log', 'list', '--context-dir-path', app_dir_path])
+            result_with_flag = runner.invoke(scaffold, ['request', 'log', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
             assert result_with_flag.exit_code == 0
             assert result_with_flag.output.strip(), "Logs should be found with --context-dir-path"
 
@@ -615,7 +616,40 @@ class TestRequestLogFromDifferentWorkingDirectory():
 
 
 class TestRequestLogCliParams:
-    """Unit tests for CLI parameter handling (not E2E)."""
+    """Unit tests for non-scaffold request log CLI parameter handling."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_log_list_calls_dump_simple_logs(self, runner):
+        """request log list calls dump_simple_logs for non-scaffold use."""
+        with patch.object(InterceptedRequestsLogger, 'dump_simple_logs') as mock_dump:
+            result = runner.invoke(request, ['log', 'list'])
+            assert result.exit_code == 0
+            mock_dump.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+
+    def test_log_delete_calls_truncate_simple(self, runner):
+        """request log delete calls truncate_simple for non-scaffold use."""
+        with patch.object(InterceptedRequestsLogger, 'truncate_simple') as mock_truncate:
+            result = runner.invoke(request, ['log', 'delete'])
+            assert result.exit_code == 0
+            mock_truncate.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+
+    def test_log_get_calls_get_simple_log_file_path(self, runner):
+        """request log get calls get_simple_log_file_path for non-scaffold use."""
+        with patch.object(InterceptedRequestsLogger, 'get_simple_log_file_path') as mock_get:
+            result = runner.invoke(request, ['log', 'get'])
+            assert result.exit_code == 0
+            mock_get.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+
+
+class TestScaffoldRequestLogCliParams:
+    """Unit tests for scaffold request log CLI parameter handling."""
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
@@ -626,57 +660,57 @@ class TestRequestLogCliParams:
         return CliRunner()
 
     def test_log_list_without_args_uses_defaults(self, runner):
-        """request log list without args passes None for both params."""
+        """scaffold request log list without args passes None for workflow/namespace."""
         with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
-            result = runner.invoke(request, ['log', 'list'])
+            result = runner.invoke(scaffold, ['request', 'log', 'list'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow=None, namespace=None, data_dir_path=None)
+            mock_dump.assert_called_once_with(workflow=None, namespace=None, data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_delete_without_args_uses_defaults(self, runner):
-        """request log delete without args passes None for both params."""
+        """scaffold request log delete without args passes None for workflow/namespace."""
         with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['log', 'delete'])
+            result = runner.invoke(scaffold, ['request', 'log', 'delete'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow=None, namespace=None, data_dir_path=None)
+            mock_truncate.assert_called_once_with(workflow=None, namespace=None, data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_list_accepts_workflow_name_argument(self, runner):
-        """request log list accepts workflow_name as positional argument."""
+        """scaffold request log list accepts workflow_name as positional argument."""
         with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
-            result = runner.invoke(request, ['log', 'list', 'mock'])
+            result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=None)
+            mock_dump.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_list_accepts_namespace_option(self, runner):
-        """request log list accepts --namespace option."""
+        """scaffold request log list accepts --namespace option."""
         with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
-            result = runner.invoke(request, ['log', 'list', '--namespace', 'test-ns'])
+            result = runner.invoke(scaffold, ['request', 'log', 'list', '--namespace', 'test-ns'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow=None, namespace='test-ns', data_dir_path=None)
+            mock_dump.assert_called_once_with(workflow=None, namespace='test-ns', data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_list_accepts_both_workflow_and_namespace(self, runner):
-        """request log list accepts both workflow_name and --namespace."""
+        """scaffold request log list accepts both workflow_name and --namespace."""
         with patch.object(InterceptedRequestsLogger, 'dump_logs') as mock_dump:
-            result = runner.invoke(request, ['log', 'list', 'record', '--namespace', 'prod'])
+            result = runner.invoke(scaffold, ['request', 'log', 'list', 'record', '--namespace', 'prod'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=None)
+            mock_dump.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_delete_accepts_workflow_name_argument(self, runner):
-        """request log delete accepts workflow_name as positional argument."""
+        """scaffold request log delete accepts workflow_name as positional argument."""
         with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['log', 'delete', 'mock'])
+            result = runner.invoke(scaffold, ['request', 'log', 'delete', 'mock'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=None)
+            mock_truncate.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_delete_accepts_namespace_option(self, runner):
-        """request log delete accepts --namespace option."""
+        """scaffold request log delete accepts --namespace option."""
         with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['log', 'delete', '--namespace', 'test-ns'])
+            result = runner.invoke(scaffold, ['request', 'log', 'delete', '--namespace', 'test-ns'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow=None, namespace='test-ns', data_dir_path=None)
+            mock_truncate.assert_called_once_with(workflow=None, namespace='test-ns', data_dir_path=DataDir.instance().context_dir_path)
 
     def test_log_delete_accepts_both_workflow_and_namespace(self, runner):
-        """request log delete accepts both workflow_name and --namespace."""
+        """scaffold request log delete accepts both workflow_name and --namespace."""
         with patch.object(InterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['log', 'delete', 'record', '--namespace', 'prod'])
+            result = runner.invoke(scaffold, ['request', 'log', 'delete', 'record', '--namespace', 'prod'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=None)
+            mock_truncate.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=DataDir.instance().context_dir_path)
