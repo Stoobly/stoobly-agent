@@ -5,7 +5,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  PROXY_MODE_REVERSE, RUNTIME_APP_DIR, SERVICES_NAMESPACE,
+  APP_DIR, PROXY_MODE_REVERSE, SERVICES_NAMESPACE,
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
   SERVICE_ID, SERVICE_PORT, SERVICE_PORT_ENV,
   SERVICE_SCHEME, SERVICE_SCHEME_ENV,
@@ -118,7 +118,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def build_init_base(self):
     environment = { **self.env_dict() }
-    volumes = [f"{RUNTIME_APP_DIR}:/app"]
+    volumes = [f"{APP_DIR}:/app"]
 
     if self.config.hostname:
       self.__with_url_environment(environment)
