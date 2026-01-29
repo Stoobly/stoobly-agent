@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
-from stoobly_agent.app.cli.scaffold.constants import APP_DIR, PROXY_MODE_REVERSE
+from stoobly_agent.app.cli.scaffold.constants import APP_DIR, PROXY_MODE_REVERSE, SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
-from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_INGRESS_NETWORK_NAME, APP_EGRESS_NETWORK_NAME, DOCKER_COMPOSE_BASE, DOCKER_COMPOSE_BASE_TEMPLATE, DOCKER_COMPOSE_PROJECT_LABEL
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
@@ -35,6 +35,10 @@ class GatewayBase():
       raise ValueError("App config is required")
 
     return self.app_config.proxy_mode
+
+  @property
+  def runtime_gateway_dir_path(self):
+    return os.path.join(self.workflow_namespace.app.runtime_app_data_dir.path, SERVICES_NAMESPACE, CORE_GATEWAY_SERVICE_NAME)
 
   @property
   def service_dir_path(self):
@@ -64,9 +68,9 @@ class GatewayBase():
     if len(self.service_paths) == 0:
       return
 
-    gateway_service_path = os.path.join(self.service_dir_path, CORE_GATEWAY_SERVICE_NAME)
-    docker_compose_src_path = os.path.join(gateway_service_path, DOCKER_COMPOSE_BASE_TEMPLATE)
-    docker_compose_dest_path = os.path.join(gateway_service_path, DOCKER_COMPOSE_BASE)
+    src_gateway_service_path = os.path.join(self.service_dir_path, CORE_GATEWAY_SERVICE_NAME)
+    docker_compose_src_path = os.path.join(src_gateway_service_path, DOCKER_COMPOSE_BASE_TEMPLATE)
+    docker_compose_dest_path = os.path.join(self.runtime_gateway_dir_path, DOCKER_COMPOSE_BASE)
 
     if not os.path.exists(docker_compose_src_path):
       return
@@ -138,6 +142,7 @@ class GatewayBase():
 
   def with_traefik_config(self, compose: dict):
     config_dest = '/etc/traefik/traefik.yml'
+    namespace = self.workflow_namespace.namespace
 
     if not compose.get('volumes'):
       compose['volumes'] = []
@@ -155,7 +160,9 @@ class GatewayBase():
       },
       'providers': {
         'docker': {
-          'exposedByDefault': False
+          'constraints': f"Label(`{DOCKER_COMPOSE_PROJECT_LABEL}`, `{namespace}`)",
+          'exposedByDefault': False,
+          'network': self.workflow_namespace.app.egress_network(namespace)
         },
         'file': {
           'fileName': config_dest,
