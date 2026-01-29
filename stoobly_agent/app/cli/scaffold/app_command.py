@@ -33,7 +33,7 @@ class AppCommand(Command):
   @property
   def networks_compose_path(self):
     return os.path.join(
-      self.data_dir_path,
+      self.app.runtime_app_data_dir.path,
       self.networks_compose_relative_path
     )
 
