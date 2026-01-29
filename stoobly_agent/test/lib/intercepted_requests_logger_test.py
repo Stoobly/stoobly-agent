@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO
 from stoobly_agent.test.test_helper import reset
@@ -307,3 +308,109 @@ class TestFileOperations:
 
         assert len(InterceptedRequestsLogger._InterceptedRequestsLogger__logger.handlers) == 0
         assert InterceptedRequestsLogger._InterceptedRequestsLogger__file_handler is None
+
+
+class TestWorkflowNamespaceParameters:
+    """Tests for workflow and namespace parameter handling."""
+
+    @pytest.fixture(autouse=True)
+    def setup_logger(self, temp_log_dir):
+        """Setup logger before each test."""
+        self.temp_dir = temp_log_dir
+        yield
+        InterceptedRequestsLogger.shutdown()
+
+    def test_get_workflow_returns_env_var_when_set(self):
+        """_get_workflow() returns WORKFLOW_NAME_ENV when set."""
+        with patch.dict(os.environ, {'WORKFLOW_NAME': 'test-workflow'}):
+            result = InterceptedRequestsLogger._get_workflow()
+            assert result == 'test-workflow'
+
+    def test_get_workflow_returns_default_when_env_not_set(self):
+        """_get_workflow() falls back to intercept mode when env not set."""
+        # Clear the env var if set, but don't clear all env vars
+        env_copy = os.environ.copy()
+        env_copy.pop('WORKFLOW_NAME', None)
+        with patch.dict(os.environ, env_copy, clear=True):
+            result = InterceptedRequestsLogger._get_workflow()
+            # Assert it returns a value (the default intercept mode)
+            assert result is not None
+
+    def test_dump_logs_with_workflow_and_namespace(self, capsys):
+        """dump_logs() reads from correct path when workflow/namespace specified."""
+        # Create a log file at the expected path
+        workflow = 'mock'
+        namespace = 'test-ns'
+        log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
+
+        with open(log_file, 'w') as f:
+            f.write('{"message": "test log entry"}\n')
+
+        with patch.object(DataDir, 'instance') as mock_data_dir:
+            mock_data_dir.return_value.path = self.temp_dir
+            InterceptedRequestsLogger.dump_logs(workflow=workflow, namespace=namespace)
+
+        captured = capsys.readouterr()
+        assert 'test log entry' in captured.out
+
+    def test_truncate_with_workflow_and_namespace(self):
+        """truncate() operates on correct file when workflow/namespace specified."""
+        workflow = 'record'
+        namespace = 'prod-ns'
+        log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
+
+        # Create file with content
+        with open(log_file, 'w') as f:
+            f.write('{"message": "should be cleared"}\n')
+
+        with patch.object(DataDir, 'instance') as mock_data_dir:
+            mock_data_dir.return_value.path = self.temp_dir
+            InterceptedRequestsLogger.truncate(workflow=workflow, namespace=namespace)
+
+        # File should be empty or cleared
+        with open(log_file, 'r') as f:
+            content = f.read()
+            assert 'should be cleared' not in content
+
+
+class TestPathSanitization:
+    """Tests for path traversal prevention."""
+
+    def test_sanitize_removes_forward_slashes(self):
+        """Path components with forward slashes are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('foo/bar')
+        assert result == 'foobar'
+
+    def test_sanitize_removes_backslashes(self):
+        """Path components with backslashes are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('foo\\bar')
+        assert result == 'foobar'
+
+    def test_sanitize_removes_dot_dot_sequences(self):
+        """Path components with .. sequences are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../etc')
+        assert result == 'etc'
+
+    def test_sanitize_removes_complex_traversal(self):
+        """Complex path traversal attempts are sanitized."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../../etc/passwd')
+        assert result == 'etcpasswd'
+
+    def test_sanitize_returns_none_for_none(self):
+        """None input returns None."""
+        result = InterceptedRequestsLogger._sanitize_path_component(None)
+        assert result is None
+
+    def test_sanitize_returns_none_for_only_traversal(self):
+        """Input containing only traversal characters returns None."""
+        result = InterceptedRequestsLogger._sanitize_path_component('../..')
+        assert result is None
+
+    def test_sanitize_preserves_valid_names(self):
+        """Valid workflow/namespace names are preserved."""
+        result = InterceptedRequestsLogger._sanitize_path_component('my-workflow_123')
+        assert result == 'my-workflow_123'

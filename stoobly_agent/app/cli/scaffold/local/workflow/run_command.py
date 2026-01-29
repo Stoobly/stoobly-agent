@@ -373,7 +373,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           command,
           capture_output=True,
           text=True,
-          check=True
+          check=True,
+          env=env
         )
 
         time.sleep(1) # Wait for the process to start
