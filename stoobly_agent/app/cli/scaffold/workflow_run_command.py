@@ -7,7 +7,7 @@ import re
 from .app import App
 from .constants import (
   APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, RUNTIME_APP_DIR_ENV,
-  SERVICE_DNS_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
+  SERVICE_DNS_ENV, SERVICE_ID, SERVICE_ID_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
 
@@ -128,6 +128,7 @@ class WorkflowRunCommand(WorkflowCommand):
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path
     _config[RUNTIME_APP_DIR_ENV] = self.runtime_app_dir_path
+    _config[SERVICE_ID_ENV] = self.service_id
     _config[SERVICE_NAME_ENV] = self.service_name
     _config[SERVICE_SCRIPTS_ENV] = SERVICE_SCRIPTS_DIR
     _config[USER_ID_ENV] = user_id or os.getuid()
