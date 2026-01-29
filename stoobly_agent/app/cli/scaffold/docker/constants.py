@@ -10,6 +10,7 @@ DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE = '.docker-compose.base.forward.template.ym
 DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE = '.docker-compose.base.reverse.template.yml'
 DOCKER_COMPOSE_CUSTOM = 'docker-compose.yml'
 DOCKER_COMPOSE_NETWORKS = '.docker-compose.networks.yml'
+DOCKER_COMPOSE_PROJECT_LABEL = 'com.docker.compose.project'
 DOCKER_COMPOSE_WORKFLOW = '.docker-compose.yml'
 DOCKER_MAKEFILE = 'Makefile'
 DOCKER_MAKEFILE_DOT = '.Makefile'

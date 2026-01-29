@@ -4,6 +4,7 @@ import re
 import shutil
 from typing import TYPE_CHECKING
 
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 from .constants import SERVICES_NAMESPACE
@@ -39,6 +40,7 @@ class App():
       self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
       self.__certs_dir_path = data_dir.certs_dir_path
       self.__context_dir_path = data_dir.context_dir_path
+      self.__runtime_app_data_dir = self.app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
       self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or path)
@@ -46,6 +48,7 @@ class App():
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
+      self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
 
   @property
@@ -149,6 +152,10 @@ class App():
     return hashlib.md5(self.host_context_dir_path.encode()).hexdigest()
 
   @property
+  def runtime_app_data_dir(self):
+    return self.__runtime_app_data_dir
+
+  @property
   def runtime_app_dir_path(self):
     return os.path.abspath(self.__runtime_app_dir_path)
 
@@ -215,11 +222,16 @@ class App():
 
     self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
     self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
+    self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
 
     if migrate:
       return denormalize_service.denormalize()
 
     return True
+
+  def egress_network(self, namespace: str):
+    network = f"{namespace}.{self.network}"
+    return f"{APP_EGRESS_NETWORK_TEMPLATE.format(network=network)}"
 
   def __validate_path(self, v: str):
     if not isinstance(v, str):
