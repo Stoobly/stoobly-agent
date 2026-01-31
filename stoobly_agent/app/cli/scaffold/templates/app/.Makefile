@@ -202,13 +202,13 @@ workflow/namespace: tmpdir
 workflow/record:
 	$(eval workflow=record)
 workflow/request/log/delete:
-	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
+	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/request/log/path:
-	@export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
+	@export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/request/logs:
-	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
+	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \

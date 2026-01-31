@@ -373,7 +373,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           command,
           capture_output=True,
           text=True,
-          check=True,
           env=env
         )
 
@@ -381,19 +380,17 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
         if result.returncode != 0:
           self.__handle_up_error()
-        
+
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
 
         if not self._is_process_running(pid):
           self.__handle_up_error()
-        
+
         # Write PID to file
         self.__create_pid_file(pid)
-        
+
         Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
-      except subprocess.CalledProcessError as e:
-        self.__handle_up_error()
       except ValueError as e:
         Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
 

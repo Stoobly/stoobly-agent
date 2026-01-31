@@ -3,8 +3,6 @@ import click
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 
-data_dir: DataDir = DataDir.instance()
-
 @click.group(
   epilog="Run 'stoobly-agent scaffold request COMMAND --help' for more information on a command.",
   help="Manage scaffold request logs"
@@ -23,7 +21,7 @@ def request_log(ctx):
     pass
 
 @request_log.command(name="path", help="Get intercepted requests log path")
-@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--namespace', help='Workflow namespace to get logs for.')
 @click.argument('workflow_name')
 def request_log_path(**kwargs):
