@@ -6,7 +6,7 @@ import re
 
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, DEFAULT_ENV_PATH, DOTENV_PATH_ENV, RUNTIME_APP_DIR_ENV,
+  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, RUNTIME_APP_DIR_ENV,
   SERVICE_DNS_ENV, SERVICE_ID, SERVICE_ID_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
@@ -28,12 +28,6 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__dry_run = kwargs.get('dry_run', False)
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
-
-    env_path = kwargs.get('env_path')
-    if env_path:
-      os.environ[DOTENV_PATH_ENV] = env_path
-    elif not os.environ.get(DOTENV_PATH_ENV):
-      os.environ[DOTENV_PATH_ENV] = DEFAULT_ENV_PATH
 
     self.__workflow_namespace.copy_dotenv()
 
