@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  DEFAULT_ENV_PATH, PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
@@ -409,6 +409,7 @@ def show(**kwargs):
 ''')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--script-path', help='Path to intermediate script path.')
+@click.option('--env-path', default=DEFAULT_ENV_PATH, help='Path to dotenv file used to populate the workflow namespace.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
@@ -489,6 +490,7 @@ def down(**kwargs):
 ''')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--script-path', help='Path to intermediate script path.')
+@click.option('--env-path', default=DEFAULT_ENV_PATH, help='Path to dotenv file used to populate the workflow namespace.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
@@ -553,6 +555,7 @@ def logs(**kwargs):
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.option('--no-publish', is_flag=True, help='Do not publish all ports.')
 @click.option('--script-path', help='Path to intermediate script path.')
+@click.option('--env-path', default=DEFAULT_ENV_PATH, help='Path to dotenv file used to populate the workflow namespace.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.option('--verbose', is_flag=True)
