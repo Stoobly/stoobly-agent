@@ -34,10 +34,10 @@ from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkf
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
+from .scaffold_request_log_cli import request
 from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
@@ -85,59 +85,6 @@ def workflow(ctx):
 def hostname(ctx):
     pass
 
-@click.group(
-  epilog="Run 'stoobly-agent scaffold request COMMAND --help' for more information on a command.",
-  help="Manage scaffold request logs"
-)
-@click.pass_context
-def request(ctx):
-    pass
-
-@click.group(
-  epilog="Run 'stoobly-agent scaffold request log COMMAND --help' for more information on a command.",
-  help="Manage intercepted requests logs for workflows"
-)
-@click.pass_context
-def request_log(ctx):
-    pass
-
-@request_log.command(name="get", help="Get intercepted requests log path")
-@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
-@click.option('--namespace', help='Workflow namespace to get logs for.')
-@click.argument('workflow_name', required=False, default=None)
-def request_log_get(**kwargs):
-    context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    ScaffoldInterceptedRequestsLogger.get_log_file_path(
-        workflow=kwargs.get('workflow_name'),
-        namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
-    )
-
-@request_log.command(name="list", help="List intercepted requests log entries")
-@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@click.option('--namespace', help='Workflow namespace to list logs for.')
-@click.argument('workflow_name', required=False, default=None)
-def request_log_list(**kwargs):
-    context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    ScaffoldInterceptedRequestsLogger.dump_logs(
-        workflow=kwargs.get('workflow_name'),
-        namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
-    )
-
-@request_log.command(name="delete", help="Delete intercepted requests log entries")
-@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@click.option('--namespace', help='Workflow namespace to delete logs for.')
-@click.argument('workflow_name', required=False, default=None)
-def request_log_delete(**kwargs):
-    context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-    ScaffoldInterceptedRequestsLogger.truncate(
-        workflow=kwargs.get('workflow_name'),
-        namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
-    )
-
-request.add_command(request_log, name="log")
 
 @app.command(
   help="Scaffold application"

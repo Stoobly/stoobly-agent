@@ -53,6 +53,7 @@ working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 workflow_down_options=$(working_dir_options) --user-id $(USER_ID) $(workflow_down_extra_options)
 workflow_log_options=$(workflow_log_extra_options)
 workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
+workflow_request_log_options=--context-dir-path $(context_dir) --namespace $(workflow_namespace)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
  
 # Commands
@@ -115,6 +116,8 @@ intercept/enable:
 mock: workflow/mock workflow/up nameservers workflow/hostname/install workflow/up/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
 mock/logs: workflow/mock workflow/logs workflow/logs/run
+mock/request/log/delete: workflow/mock workflow/request/log/delete
+mock/request/log/path: workflow/mock workflow/request/log/path
 mock/request/logs: workflow/mock workflow/request/logs
 mock/services: workflow/mock workflow/services
 pipx/install:
@@ -130,6 +133,8 @@ python/validate:
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
 record/down: workflow/record workflow/down workflow/down/run workflow/hostname/uninstall
 record/logs: workflow/record workflow/logs workflow/logs/run
+record/request/log/delete: workflow/record workflow/request/log/delete
+record/request/log/path: workflow/record workflow/request/log/path
 record/request/logs: workflow/record workflow/request/logs
 record/services: workflow/record workflow/services
 scenario/create:
@@ -164,6 +169,8 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up workflow/up/run
 test/down: workflow/test workflow/down workflow/down/run
 test/logs: workflow/test workflow/logs workflow/logs/run
+test/request/log/delete: workflow/test workflow/request/log/delete
+test/request/log/path: workflow/test workflow/request/log/path
 test/request/logs: workflow/test workflow/request/logs
 test/services: workflow/test workflow/services
 tmpdir:
@@ -194,8 +201,14 @@ workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
+workflow/request/log/delete:
+	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
+	$(stoobly_exec)
+workflow/request/log/path:
+	@export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
+	$(stoobly_exec)
 workflow/request/logs:
-	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(options)" EXEC_ARGS="" && \
+	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="" && \
 	$(stoobly_exec)
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \

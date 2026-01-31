@@ -3,4 +3,4 @@
 extra_options=$EXEC_OPTIONS
 workflow_name=$1
 
-stoobly-agent request log list $workflow_name $extra_options
+stoobly-agent scaffold request log list $workflow_name $extra_options

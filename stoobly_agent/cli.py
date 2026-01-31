@@ -152,18 +152,25 @@ def run(**kwargs):
       settings.proxy.url = proxy_url
 
     if kwargs.get('request_log_enable'):
-      from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+      from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
+
+      if os.environ.get(WORKFLOW_NAME_ENV):
+        from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+        RequestLogger = ScaffoldInterceptedRequestsLogger
+      else:
+        from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
+        RequestLogger = SimpleInterceptedRequestsLogger
 
       # If not appending, do that first (it handles enable internally)
       if not kwargs.get('request_log_append'):
-        ScaffoldInterceptedRequestsLogger.truncate()
+        RequestLogger.truncate()
       else:
-        ScaffoldInterceptedRequestsLogger.enable_logger_file()
+        RequestLogger.enable_logger_file()
 
       # Set log level after logger is enabled
       request_log_level = kwargs.get('request_log_level')
       if request_log_level:
-        ScaffoldInterceptedRequestsLogger.set_log_level(request_log_level)
+        RequestLogger.set_log_level(request_log_level)
 
     if kwargs.get('detached'):
       # Run in detached mode with output redirection

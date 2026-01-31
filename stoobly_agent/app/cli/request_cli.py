@@ -181,9 +181,9 @@ def query(**kwargs):
 def log(ctx):
     pass
 
-@log.command(name="get", help="Get intercepted requests log path")
+@log.command(name="path", help="Get intercepted requests log path")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-def log_get(**kwargs):
+def log_path(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
   SimpleInterceptedRequestsLogger.get_log_file_path(data_dir_path=context_dir_path)
 
