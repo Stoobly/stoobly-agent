@@ -12,6 +12,7 @@ from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVIC
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'LocalWorkflowRunCommand'
@@ -127,7 +128,10 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     self.exec_service_script(init_script_path, [CUSTOM_INIT])
     self.exec_service_script(configure_script_path, [CUSTOM_CONFIGURE])
-    self.exec_service_script(run_script_path, [CUSTOM_RUN])
+
+    # Run script is the entrypoint, run in current working directory
+    entrypoint_path = os.path.join(DATA_DIR_NAME, self.workflow_relative_path, CUSTOM_RUN)
+    self.exec_service_script(run_script_path, [entrypoint_path], cwd=os.getcwd())
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
@@ -370,11 +374,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           check=True,
           cwd=self.workflow_path,
         )
-
-        time.sleep(1) # Wait for the process to start
-
-        if result.returncode != 0:
-          self.__handle_up_error()
 
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
