@@ -432,7 +432,7 @@ def down(**kwargs):
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.denormalize:
-    app.denormalize(workflow_namespace, migrate=False)
+    app.denormalize_configure(workflow_namespace)
 
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
@@ -475,6 +475,13 @@ def down(**kwargs):
   # Options are no longer valid
   if kwargs['containerized'] and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
+
+  if app_config.denormalize:
+    if not containerized:
+      app.denormalize_down(workflow_namespace)
+    else:
+      # Within a container, we need to pass the script since it won't be executed in the container
+      app.denormalize_down(workflow_namespace, script=script)
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -587,7 +594,7 @@ def up(**kwargs):
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.denormalize:
-    app.denormalize(workflow_namespace, migrate=True)
+    app.denormalize_up(workflow_namespace, migrate=True)
 
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
