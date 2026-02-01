@@ -8,7 +8,6 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
@@ -78,8 +77,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_script(self, service_name: str, step_script_path: str, args: List[str], cwd = None):
-    workflow_path = cwd or os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
+  def exec_service_script(self, step_script_path: str, args: List[str], cwd = None):
+    workflow_path = cwd or self.workflow_path
 
     # Change directory to workflow path
     command = [step_script_path] + args
@@ -126,9 +125,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
       run_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_RUN)
 
-    self.exec_service_script(service_name, init_script_path, [CUSTOM_INIT])
-    self.exec_service_script(service_name, configure_script_path, [CUSTOM_CONFIGURE])
-    self.exec_service_script(service_name, run_script_path, [CUSTOM_RUN], cwd=os.getcwd())
+    self.exec_service_script(init_script_path, [CUSTOM_INIT])
+    self.exec_service_script(configure_script_path, [CUSTOM_CONFIGURE])
+    self.exec_service_script(run_script_path, [CUSTOM_RUN])
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
@@ -363,24 +362,20 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Execute directly
       try:
-        # Build env with workflow name and namespace for InterceptedRequestsLogger
-        env = os.environ.copy()
-        env[WORKFLOW_NAME_ENV] = self.workflow_name or ''
-        env[WORKFLOW_NAMESPACE_ENV] = self.namespace or self.workflow_name or ''
-
         # Run the command with --detached option
         result = subprocess.run(
           command,
           capture_output=True,
           text=True,
-          check=True
+          check=True,
+          cwd=self.workflow_path,
         )
 
         time.sleep(1) # Wait for the process to start
 
         if result.returncode != 0:
           self.__handle_up_error()
-        
+
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
 
