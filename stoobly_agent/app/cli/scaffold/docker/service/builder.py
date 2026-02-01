@@ -120,9 +120,6 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
     environment = { **self.env_dict() }
     volumes = [f"{APP_DIR}:/app"]
 
-    if self.config.hostname:
-      self.__with_url_environment(environment)
-
     if self.config.detached:
       self.__with_detached_volumes(volumes)
 
@@ -140,9 +137,6 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
   def build_configure_base(self):
     environment = { **self.env_dict() }
     volumes = []
-
-    if self.config.hostname:
-      self.__with_url_environment(environment)
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
