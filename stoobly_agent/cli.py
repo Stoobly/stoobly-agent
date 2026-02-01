@@ -98,7 +98,12 @@ def init(**kwargs):
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.option('--upstream-auth', help='Add HTTP Basic authentication to upstream proxy and reverse proxy requests. Format: username:password')
 def run(**kwargs):
+    import dotenv
+
     from .app.proxy.run import run as run_proxy
+
+    if os.path.exists('.env'):
+      dotenv.load_dotenv('.env')
 
     # Observe config for changes
     settings: Settings = Settings.instance()
