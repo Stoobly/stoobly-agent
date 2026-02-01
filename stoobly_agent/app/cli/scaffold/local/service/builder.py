@@ -16,7 +16,7 @@ class ServiceBuilder():
     self.__config = config
     self.__dir_path = config.dir
     self.__upstream_port = None
-    self.__env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV]
+    self.__env = []
     self.__service_name = os.path.basename(config.dir)
     self.__working_dir = os.path.join(
       STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE, SERVICE_NAME, WORKFLOW_NAME
