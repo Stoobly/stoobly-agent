@@ -32,7 +32,7 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
 
-        if kwargs.get('denormalize'):
+        if 'denormalize' in kwargs:
             self.app_config.denormalize = kwargs['denormalize']
 
         if kwargs.get('docker_socket_path'):
