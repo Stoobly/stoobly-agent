@@ -375,6 +375,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           cwd=self.workflow_path,
         )
 
+        # Provide some time for the process to start
+        time.sleep(0.5)
+
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
 
