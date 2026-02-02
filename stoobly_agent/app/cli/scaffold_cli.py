@@ -88,7 +88,7 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to create the app scaffold.')
-@click.option('--denormalize', is_flag=True, help='Copy app scaffold from --app-dir-path to --context-dir-path on workflow up.')
+@click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to --context-dir-path on workflow up.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-mode', default=PROXY_MODE_FORWARD, type=click.Choice([PROXY_MODE_FORWARD, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
@@ -431,7 +431,7 @@ def down(**kwargs):
   workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
 
-  if app_config.denormalize:
+  if app_config.copy_on_workflow_up:
     app.denormalize_configure(workflow_namespace)
 
   if app_config.runtime_local:
@@ -473,15 +473,8 @@ def down(**kwargs):
   )
 
   # Options are no longer valid
-  if kwargs['containerized'] and os.path.exists(data_dir.mitmproxy_options_json_path):
+  if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
-
-  if app_config.denormalize:
-    if not containerized:
-      app.denormalize_down(workflow_namespace)
-    else:
-      # Within a container, we need to pass the script since it won't be executed in the container
-      app.denormalize_down(workflow_namespace, script=script)
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
@@ -593,7 +586,7 @@ def up(**kwargs):
   workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
 
-  if app_config.denormalize:
+  if app_config.copy_on_workflow_up:
     app.denormalize_up(workflow_namespace, migrate=True)
 
   if app_config.runtime_local:

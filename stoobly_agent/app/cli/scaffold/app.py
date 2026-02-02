@@ -226,14 +226,14 @@ class App():
     self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
     self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
 
-  def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', script: str = None):
+  def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', dry_run: bool = False, script: str = None):
     """
     Denormalize the app from the workflow namespace path.
     CA certs and certs dirs are not denormalized.
     """
     from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
     denormalize_service = DenormalizeService(workflow_namespace)
-    return denormalize_service.denormalize_down(script)
+    return denormalize_service.denormalize_down(dry_run=dry_run, script=script)
   
   def denormalize_up(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
     """

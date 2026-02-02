@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.config.data_dir import DATA_DIR_NAME, TMP_DIR_NAME, DataDir
@@ -50,21 +51,26 @@ class DenormalizeService:
             self.logger.error(f"Failed to copy scaffold namespace: {e}")
             return False
 
-    def denormalize_down(self, script: str):
+    def denormalize_down(self, dry_run: bool = False, script: str = None):
         # Remove existing destination folder contents if it exists
         
         # Within a container, host_scaffold_namespace_path does not exist, check self.destination_path
         destination_path = self.destination_path
-        if os.path.exists(destination_path): 
-            if not script:
+        if os.path.exists(destination_path):
+            destination_path = self.app.host_runtime_scaffold_namespace_path
+
+            if script:
+                print(f"rm -rf {destination_path}", file=script)
+
+            if dry_run:
+                print(f"rm -rf {destination_path}", file=sys.stdout)
+            else:
                 self.logger.debug(f"Removing existing destination contents: {destination_path}")
                 try:
-                    shutil.rmtree(destination_path)
+                    shutil.rmtree(self.destination_path)
                 except Exception as e:
                     self.logger.error(f"Failed to remove destination: {e}")
                     if os.path.exists(destination_path):
                         return False
-            else:
-                destination_path = self.app.host_runtime_scaffold_namespace_path
-
-                print(f"rm -rf {destination_path}", file=script)
+            
+            return True
