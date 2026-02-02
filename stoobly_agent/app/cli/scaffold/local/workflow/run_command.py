@@ -195,7 +195,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
             Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
         else:
           Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
-                 
+
+        self.__release()  
       except Exception as e:
         Logger.instance(LOG_ID).error(f"Failed to stop {self.workflow_name}: {e}")
 
@@ -206,9 +207,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
         script=self.script if self.script else sys.stdout
       )
       
-    if not self.dry_run:
-      self.__release()
-
   def logs(self, **options: WorkflowLogsOptions):
     """Show logs for the local workflow process."""
     follow = options.get('follow', False)

@@ -3,7 +3,6 @@ import shutil
 import sys
 
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
-from stoobly_agent.config.data_dir import DATA_DIR_NAME, TMP_DIR_NAME, DataDir
 from stoobly_agent.lib.logger import Logger
 
 from .app import App

@@ -2,10 +2,11 @@ import hashlib
 import os
 import re
 import shutil
+
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
-from stoobly_agent.config.data_dir import TMP_DIR_NAME, DataDir, DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 from .constants import SERVICES_NAMESPACE
 
@@ -185,10 +186,6 @@ class App():
       services.append(path)
 
     return services
-
-  @property
-  def tmp_dir_path(self):
-    return os.path.join(self.app_dir_path, DATA_DIR_NAME, TMP_DIR_NAME)
 
   def copy_folders_and_hidden_files(self, src: str, dst: str, ignore: list = []):
       os.makedirs(dst, exist_ok=True)
