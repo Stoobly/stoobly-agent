@@ -69,12 +69,12 @@ class DenormalizeService:
                     if os.path.exists(destination_path):
                         return False
             
-            destination_path = self.app.host_runtime_scaffold_namespace_path
+            host_destination_path = self.app.host_runtime_scaffold_namespace_path
 
             if script:
-                print(f"rm -rf {destination_path}", file=script)
+                print(f"rm -rf {host_destination_path}", file=script)
 
-            if dry_run:
-                print(f"rm -rf {destination_path}", file=sys.stdout)
+            if dry_run and script != sys.stdout:
+                print(f"rm -rf {host_destination_path}", file=sys.stdout)
             
             return True
