@@ -371,7 +371,7 @@ class TestScaffoldE2e():
       else:  # makefile
         ScaffoldCliInvoker.makefile_workflow_down(runner, app_dir_path, target_workflow_name)
 
-      # If --copy-on-workflow-up is enabled, the runtime app data dir should exist after down
+      # If --copy-on-workflow-up is enabled, the runtime app data dir should not exist after down
       app = App(app_dir_path)
       runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
       if app_dir_path != runtime_scaffold_namespace_path:

@@ -52,11 +52,15 @@ class DenormalizeService:
             return False
 
     def denormalize_down(self, dry_run: bool = False, script: str = None):
-        # Remove existing destination folder contents if it exists
+        """
+        Remove existing destination folder contents if it exists
+        """
         
         # Within a container, host_scaffold_namespace_path does not exist, check self.destination_path
         destination_path = self.destination_path
-        if os.path.exists(destination_path):
+        if not os.path.exists(destination_path):
+            return True
+        else:
             destination_path = self.app.host_runtime_scaffold_namespace_path
 
             if script:
@@ -70,7 +74,7 @@ class DenormalizeService:
                     shutil.rmtree(self.destination_path)
                 except Exception as e:
                     self.logger.error(f"Failed to remove destination: {e}")
-                    if os.path.exists(destination_path):
+                    if os.path.exists(self.destination_path):
                         return False
             
             return True
