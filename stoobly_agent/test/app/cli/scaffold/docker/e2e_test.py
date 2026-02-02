@@ -373,9 +373,9 @@ class TestScaffoldE2e():
 
       # If --copy-on-workflow-up is enabled, the runtime app data dir should not exist after down
       app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
       runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
-      if app_dir_path != runtime_scaffold_namespace_path:
-        assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"
+      assert not os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should not exist"
 
     @pytest.fixture(scope='class', params=['cli', 'makefile'])
     def workflow_up_method(self, request):
@@ -433,7 +433,7 @@ class TestScaffoldE2e():
 
     def test_copy_on_workflow_up(self, app_dir_path: str, target_workflow_name: str):
       app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
       runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
 
-      assert app_dir_path != runtime_scaffold_namespace_path, "App dir path should not be the same as runtime scaffold namespace path"
       assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"

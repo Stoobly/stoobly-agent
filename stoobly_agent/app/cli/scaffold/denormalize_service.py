@@ -60,6 +60,15 @@ class DenormalizeService:
         if not os.path.exists(destination_path):
             return True
         else:
+            if not dry_run:
+                self.logger.debug(f"Removing existing destination contents: {destination_path}")
+                try:
+                    shutil.rmtree(destination_path)
+                except Exception as e:
+                    self.logger.error(f"Failed to remove destination: {e}")
+                    if os.path.exists(destination_path):
+                        return False
+            
             destination_path = self.app.host_runtime_scaffold_namespace_path
 
             if script:
@@ -67,13 +76,5 @@ class DenormalizeService:
 
             if dry_run:
                 print(f"rm -rf {destination_path}", file=sys.stdout)
-            else:
-                self.logger.debug(f"Removing existing destination contents: {destination_path}")
-                try:
-                    shutil.rmtree(self.destination_path)
-                except Exception as e:
-                    self.logger.error(f"Failed to remove destination: {e}")
-                    if os.path.exists(self.destination_path):
-                        return False
             
             return True
