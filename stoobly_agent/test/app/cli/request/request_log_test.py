@@ -3,6 +3,7 @@ import os
 import pytest
 import requests
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -122,8 +123,16 @@ class TestRequestLogE2e():
         assert result.returncode == 0, f"Failed to start proxy: {result.stderr}"
         pid = int(result.stdout.strip())
 
-        # Wait for proxy to be ready
-        time.sleep(2)
+        # Wait for proxy to be ready by polling the port
+        max_attempts = 20
+        for attempt in range(max_attempts):
+            try:
+                with socket.create_connection(('localhost', proxy_port), timeout=1):
+                    break
+            except (socket.timeout, socket.error):
+                if attempt == max_attempts - 1:
+                    raise RuntimeError(f"Proxy did not start listening on port {proxy_port} within {max_attempts * 0.5}s")
+                time.sleep(0.5)
 
         yield pid
 
