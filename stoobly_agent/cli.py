@@ -157,9 +157,9 @@ def run(**kwargs):
       settings.proxy.url = proxy_url
 
     if kwargs.get('request_log_enable'):
-      from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
+      from stoobly_agent.app.cli.helpers.workflow import workflow_running
 
-      if os.environ.get(WORKFLOW_NAME_ENV):
+      if workflow_running():
         from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
         RequestLogger = ScaffoldInterceptedRequestsLogger
       else:
