@@ -509,7 +509,7 @@ class TestApp:
             """Test denormalize without migrate flag returns True"""
             app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
             
-            result = app.denormalize(workflow_namespace_mock, migrate=False)
+            result = app.denormalize_up(workflow_namespace_mock, migrate=False)
             
             assert result is True
 
@@ -518,7 +518,7 @@ class TestApp:
             app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
             
             original_runtime_path = app.runtime_app_dir_path
-            app.denormalize(workflow_namespace_mock, migrate=False)
+            app.denormalize_up(workflow_namespace_mock, migrate=False)
             
             # runtime_app_dir_path should include relative path to workflow namespace
             assert app.runtime_app_dir_path != original_runtime_path

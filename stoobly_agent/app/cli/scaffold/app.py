@@ -2,6 +2,7 @@ import hashlib
 import os
 import re
 import shutil
+
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
@@ -129,6 +130,11 @@ class App():
     return os.path.abspath(self.__host_runtime_app_dir_path or self.runtime_app_dir_path)
 
   @property
+  def host_runtime_scaffold_namespace_path(self):
+    """Returns the host (kwarg) value for scaffold_namespace_path"""
+    return os.path.join(self.host_runtime_app_dir_path, DATA_DIR_NAME, self.scaffold_namespace)
+
+  @property
   def valid(self):
     if not os.path.exists(self.scaffold_namespace_path):
       raise ValueError(f"{self.scaffold_namespace_path} does not exist")
@@ -210,7 +216,23 @@ class App():
               os.makedirs(os.path.dirname(dst_file_path), exist_ok=True)  # Create directories in destination
               shutil.copy2(src_file_path, dst_file_path)
 
-  def denormalize(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
+  def denormalize_configure(self, workflow_namespace: 'WorkflowNamespace'):
+    relative_path = os.path.relpath(workflow_namespace.path, self.app_dir_path)
+
+    self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
+    self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
+    self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
+
+  def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', dry_run: bool = False, script: str = None):
+    """
+    Denormalize the app from the workflow namespace path.
+    CA certs and certs dirs are not denormalized.
+    """
+    from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+    denormalize_service = DenormalizeService(workflow_namespace)
+    return denormalize_service.denormalize_down(dry_run=dry_run, script=script)
+  
+  def denormalize_up(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
     """
     Denormalize the app to the workflow namespace path.
     CA certs and certs dirs are not denormalized.
@@ -218,14 +240,10 @@ class App():
     from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
     denormalize_service = DenormalizeService(workflow_namespace)
 
-    relative_path = os.path.relpath(workflow_namespace.path, self.app_dir_path)
-
-    self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
-    self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
-    self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
+    self.denormalize_configure(workflow_namespace)
 
     if migrate:
-      return denormalize_service.denormalize()
+      return denormalize_service.denormalize_up()
 
     return True
 

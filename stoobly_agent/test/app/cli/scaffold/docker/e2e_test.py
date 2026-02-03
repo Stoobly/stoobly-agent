@@ -1,3 +1,4 @@
+import os
 import pdb
 import pytest
 import shutil
@@ -370,6 +371,12 @@ class TestScaffoldE2e():
       else:  # makefile
         ScaffoldCliInvoker.makefile_workflow_down(runner, app_dir_path, target_workflow_name)
 
+      # If --copy-on-workflow-up is enabled, the runtime app data dir should not exist after down
+      app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
+      runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
+      assert not os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should not exist"
+
     @pytest.fixture(scope='class', params=['cli', 'makefile'])
     def workflow_up_method(self, request):
       """Parameterized fixture that alternates between CLI and Makefile workflow up methods."""
@@ -423,3 +430,10 @@ class TestScaffoldE2e():
       access_count = context_lock.access_count()
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+    def test_copy_on_workflow_up(self, app_dir_path: str, target_workflow_name: str):
+      app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
+      runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
+
+      assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"

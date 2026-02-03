@@ -1,5 +1,6 @@
 import pathlib
 import pdb
+import time
 
 from click.testing import CliRunner
 
@@ -103,6 +104,8 @@ class LocalScaffoldCliInvoker():
       print(f"Command failed with exit code {result.exit_code}")
       print(f"Output: {result.output}")
       print(f"Exception: {result.exception}")
+    else:
+      time.sleep(0.5) # Provide some time for the process to start
 
     assert result.exit_code == 0
     return result

@@ -15,7 +15,7 @@ from .docker.template_files import plugin_docker_cypress, plugin_docker_playwrig
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
-  denormalize: bool
+  copy_on_workflow_up: bool
   docker_socket_path: str
   name: str
   plugin: list
@@ -32,8 +32,8 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
 
-        if kwargs.get('denormalize'):
-            self.app_config.denormalize = kwargs['denormalize']
+        if 'copy_on_workflow_up' in kwargs:
+            self.app_config.copy_on_workflow_up = kwargs['copy_on_workflow_up']
 
         if kwargs.get('docker_socket_path'):
             self.app_config.docker_socket_path = kwargs['docker_socket_path']

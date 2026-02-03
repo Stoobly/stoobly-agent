@@ -8,11 +8,11 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import Logger
 
 LOG_ID = 'LocalWorkflowRunCommand'
@@ -78,8 +78,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_script(self, service_name: str, step_script_path: str, args: List[str], cwd = None):
-    workflow_path = cwd or os.path.join(self.app.scaffold_namespace_path, service_name, self.workflow_name)
+  def exec_service_script(self, step_script_path: str, args: List[str], cwd = None):
+    workflow_path = cwd or self.workflow_path
 
     # Change directory to workflow path
     command = [step_script_path] + args
@@ -126,9 +126,12 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
       run_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_RUN)
 
-    self.exec_service_script(service_name, init_script_path, [CUSTOM_INIT])
-    self.exec_service_script(service_name, configure_script_path, [CUSTOM_CONFIGURE])
-    self.exec_service_script(service_name, run_script_path, [CUSTOM_RUN], cwd=os.getcwd())
+    self.exec_service_script(init_script_path, [CUSTOM_INIT])
+    self.exec_service_script(configure_script_path, [CUSTOM_CONFIGURE])
+
+    # Run script is the entrypoint, run in current working directory
+    entrypoint_path = os.path.join(DATA_DIR_NAME, self.workflow_relative_path, CUSTOM_RUN)
+    self.exec_service_script(run_script_path, [entrypoint_path], cwd=os.getcwd())
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
@@ -192,13 +195,18 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
             Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
         else:
           Logger.instance(LOG_ID).info(f"Successfully stopped process {pid} for {self.workflow_name}")
-        
-        if not self.dry_run:
-          self.__release()
-          
+
+        self.__release()  
       except Exception as e:
         Logger.instance(LOG_ID).error(f"Failed to stop {self.workflow_name}: {e}")
 
+    if self.app_config.copy_on_workflow_up:
+      self.app.denormalize_down(
+        self.workflow_namespace,
+        dry_run=self.dry_run,
+        script=self.script if self.script else sys.stdout
+      )
+      
   def logs(self, **options: WorkflowLogsOptions):
     """Show logs for the local workflow process."""
     follow = options.get('follow', False)
@@ -363,20 +371,16 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Execute directly
       try:
-        # Build env with workflow name and namespace for InterceptedRequestsLogger
-        env = os.environ.copy()
-        env[WORKFLOW_NAME_ENV] = self.workflow_name or ''
-        env[WORKFLOW_NAMESPACE_ENV] = self.namespace or self.workflow_name or ''
-
         # Run the command with --detached option
         result = subprocess.run(
           command,
           capture_output=True,
           text=True,
-          env=env
+          cwd=self.workflow_path,
         )
 
-        time.sleep(1) # Wait for the process to start
+        # Provide some time for the process to start
+        time.sleep(0.5)
 
         if result.returncode != 0:
           self.__handle_up_error()

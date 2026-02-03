@@ -1,8 +1,8 @@
 import os
 import shutil
+import sys
 
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
-from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
@@ -30,10 +30,9 @@ class DenormalizeService:
         """Destination path: scaffold_namespace_path in context_dir"""
         return self.denormalized_app.scaffold_namespace_path
 
-    def denormalize(self):
+    def denormalize_up(self):
         """
         Copy scaffold namespace from data_dir to context_dir.
-        If the folder exists in the destination, remove it first.
         """
         if not os.path.exists(self.source_path):
             self.logger.error(f"Source path does not exist: {self.source_path}")
@@ -42,21 +41,40 @@ class DenormalizeService:
         if self.source_path == self.destination_path:
             return True
 
-        # Remove existing destination folder if it exists
-        if os.path.exists(self.destination_path):
-            self.logger.debug(f"Removing existing destination: {self.destination_path}")
-            try:
-                shutil.rmtree(self.destination_path)
-            except Exception as e:
-                self.logger.error(f"Failed to remove destination: {e}")
-                if os.path.exists(self.destination_path):
-                    return False
-
-        # Copy the folder
         try:
-            shutil.copytree(self.source_path, self.destination_path)
+            shutil.copytree(self.source_path, self.destination_path, dirs_exist_ok=True)
+
             self.logger.debug(f"Denormalized scaffold to {self.destination_path}")
             return True
         except Exception as e:
             self.logger.error(f"Failed to copy scaffold namespace: {e}")
             return False
+
+    def denormalize_down(self, dry_run: bool = False, script: str = None):
+        """
+        Remove existing destination folder contents if it exists
+        """
+        
+        # Within a container, host_scaffold_namespace_path does not exist, check self.destination_path
+        destination_path = self.destination_path
+        if not os.path.exists(destination_path):
+            return True
+        else:
+            if not dry_run:
+                self.logger.debug(f"Removing existing destination contents: {destination_path}")
+                try:
+                    shutil.rmtree(destination_path)
+                except Exception as e:
+                    self.logger.error(f"Failed to remove destination: {e}")
+                    if os.path.exists(destination_path):
+                        return False
+            
+            host_destination_path = self.app.host_runtime_scaffold_namespace_path
+
+            if script:
+                print(f"rm -rf {host_destination_path}", file=script)
+
+            if dry_run and script != sys.stdout:
+                print(f"rm -rf {host_destination_path}", file=sys.stdout)
+            
+            return True
