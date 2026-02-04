@@ -76,7 +76,6 @@ class ContextLock:
           # 10 seconds or more has passed, reset the count
           current_count = 0
 
-        # Less than 10 seconds has passed, just increment the read count value
         count = current_count + 1
         
         # Write updated timestamp and count
