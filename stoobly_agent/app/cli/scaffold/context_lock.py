@@ -59,11 +59,7 @@ class ContextLock:
     update:
     - If less than 10 seconds has passed: increments the count value read
       from the access file
-    - If 10 seconds or more has passed: counts existing workflow instances
-      (folders with pid or timestamp files) and adds 1
-    
-    Note: This method uses the filename hash instead of workflow_name to
-    identify lock files.
+    - If 10 seconds or more has passed: reset the count
     """
     lock_file_path = self.lock_file_path()
     file_lock = FileLock(lock_file_path)
@@ -77,34 +73,11 @@ class ContextLock:
         
         # Check how much time has passed since last update
         if current_time - timestamp >= FOLDER_COUNT_INTERVAL_SECONDS:
-          # 10 seconds or more has passed, count folders in tmp path that have any pid or timestamp files
-          # Since locks are context-based, we count all folders with any workflow files
-          tmp_dir_path = self._app.data_dir.tmp_dir_path
-          folder_count = 0
+          # 10 seconds or more has passed, reset the count
+          current_count = 0
 
-          if os.path.exists(tmp_dir_path):
-            for folder in os.listdir(tmp_dir_path):
-              folder_path = os.path.join(tmp_dir_path, folder)
-              
-              # If the folder is not a directory, skip
-              if not os.path.isdir(folder_path):
-                continue
-              
-              # Check if any pid or timestamp files exist in this folder
-              # (pid/timestamp files are still workflow-specific, but we count all for context-based locking)
-              has_workflow_files = False
-              for file in os.listdir(folder_path):
-                if file.endswith('.pid') or file.endswith('.timestamp'):
-                  has_workflow_files = True
-                  break
-              
-              if has_workflow_files:
-                folder_count += 1
-
-          count = folder_count + 1
-        else:
-          # Less than 10 seconds has passed, just increment the read count value
-          count = current_count + 1
+        # Less than 10 seconds has passed, just increment the read count value
+        count = current_count + 1
         
         # Write updated timestamp and count
         access_file_path = self.access_file_path()
