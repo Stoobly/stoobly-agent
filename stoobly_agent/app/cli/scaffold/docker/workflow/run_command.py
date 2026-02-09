@@ -7,6 +7,7 @@ import time
 from typing import List
 from types import FunctionType
 
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES_DOCKER
@@ -346,6 +347,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         profiles = service.get('profiles')
         if isinstance(profiles, list):
           if self.workflow_name in profiles:
+            uses_profile = True
+            break
+          if WORKFLOW_NAME in profiles:
             uses_profile = True
             break
       if not uses_profile:

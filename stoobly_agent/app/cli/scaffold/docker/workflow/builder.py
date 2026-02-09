@@ -113,6 +113,7 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
     service = {
       'depends_on': depends_on,
+      'env_file': ['.env'],
       'extends': self.service_builder.build_extends_proxy_base(self.dir_path),
       'networks': networks,
       'profiles': self.profiles,

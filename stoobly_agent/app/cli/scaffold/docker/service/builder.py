@@ -17,7 +17,7 @@ from ...service_config import ServiceConfig
 from ...local.service.builder import ServiceBuilder
 from ..app_builder import AppBuilder
 from ..builder import Builder
-from ..constants import DOCKER_COMPOSE_BASE
+from ..constants import APP_DIR_MOUNT_PATH, DOCKER_COMPOSE_BASE
 
 class DockerServiceBuilder(ServiceBuilder, Builder):
 
@@ -118,7 +118,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def build_init_base(self):
     environment = { **self.env_dict() }
-    volumes = [f"{APP_DIR}:/app"]
+    volumes = [f"{APP_DIR}:{APP_DIR_MOUNT_PATH}"]
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
