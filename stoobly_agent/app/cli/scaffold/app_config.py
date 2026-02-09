@@ -1,5 +1,7 @@
 import os
 
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME, SERVICE_EXTENSION
+
 from .config import Config
 from .constants import (
   APP_COPY_ON_WORKFLOW_UP_ENV, APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_MODE_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
@@ -10,6 +12,7 @@ class AppConfig(Config):
   def __init__(self, dir: str):
     super().__init__(dir)
 
+    self.__proxy_hostname = None
     self.__copy_on_workflow_up = False
     self.__docker_socket_path = '/var/run/docker.sock'
     self.__name = None
@@ -68,6 +71,20 @@ class AppConfig(Config):
   @property
   def runtime_docker(self):
     return self.runtime == RUNTIME_DOCKER
+
+  @property
+  def proxy_hostname(self):
+    if self.__proxy_hostname:
+      return self.__proxy_hostname 
+
+    if self.runtime_docker:
+      return f"{CORE_GATEWAY_SERVICE_NAME}{SERVICE_EXTENSION}"
+
+    return 'localhost'
+
+  @proxy_hostname.setter
+  def proxy_hostname(self, v):
+    self.__proxy_hostname = v
 
   @property
   def proxy_mode(self):
