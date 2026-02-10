@@ -25,7 +25,12 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
   from requests.structures import CaseInsensitiveDict
   
   fixture_path = request.headers.get(MOCK_FIXTURE_PATH)
-  headers = CaseInsensitiveDict()
+  # Default CORS-style headers for all mock fixture responses
+  headers = CaseInsensitiveDict({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS, POST, PATCH, PUT, DELETE',
+    'Access-Control-Allow-Headers': '*',
+  })
   status_code = 200
 
   if fixture_path:
@@ -95,8 +100,12 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
       if not os.path.isfile(fixture_path):
         return
         
+      # If fixture specifies headers, merge them into the defaults.
+      # Fixture-provided values override the defaults on conflict.
       _headers = fixture.get('headers')
-      headers = CaseInsensitiveDict(_headers if isinstance(_headers, dict) else {}) 
+      if isinstance(_headers, dict):
+        for k, v in _headers.items():
+          headers[k] = v
 
       if fixture.get('status_code'):
         status_code = fixture.get('status_code')

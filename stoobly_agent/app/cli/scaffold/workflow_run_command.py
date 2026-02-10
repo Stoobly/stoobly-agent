@@ -4,9 +4,11 @@ import pdb
 import subprocess
 import re
 
+from stoobly_agent.app.cli.scaffold.docker.constants import APP_DIR_MOUNT_PATH, CONTEXT_DIR_MOUNT_PATH
+
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_NETWORK_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, RUNTIME_APP_DIR_ENV,
+  APP_DIR_ENV, APP_DIR_MOUNT_ENV, APP_NETWORK_ENV, APP_PROXY_HOSTNAME_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, CONTEXT_DIR_MOUNT_ENV, PROXY_MODE_FORWARD, RUNTIME_APP_DIR_ENV,
   SERVICE_DNS_ENV, SERVICE_ID, SERVICE_ID_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
@@ -34,6 +36,10 @@ class WorkflowRunCommand(WorkflowCommand):
   @property
   def app_dir_path(self):
     return self.app.host_app_dir_path
+
+  @property
+  def app_proxy_hostname(self):
+    return self.app_config.proxy_hostname
 
   @property
   def ca_certs_dir_path(self):
@@ -124,6 +130,15 @@ class WorkflowRunCommand(WorkflowCommand):
 
     _config = {}
     _config[APP_DIR_ENV] = self.app_dir_path
+
+    # Only set the proxy hostname for forward proxy mode
+    if self.app_config.proxy_mode == PROXY_MODE_FORWARD:
+      _config[APP_PROXY_HOSTNAME_ENV] = self.app_proxy_hostname
+
+    if self.app_config.runtime_docker:
+      _config[APP_DIR_MOUNT_ENV] = APP_DIR_MOUNT_PATH
+      _config[CONTEXT_DIR_MOUNT_ENV] = CONTEXT_DIR_MOUNT_PATH
+
     _config[CA_CERTS_DIR_ENV] = self.ca_certs_dir_path
     _config[CERTS_DIR_ENV] = self.certs_dir_path
     _config[CONTEXT_DIR_ENV] = self.context_dir_path

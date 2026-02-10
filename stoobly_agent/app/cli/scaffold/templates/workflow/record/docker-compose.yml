@@ -1,17 +1,23 @@
+x-base: &base
+  env_file:
+    - .env
+  networks:
+    - app.ingress
+  profiles:
+    - ${WORKFLOW_NAME}
+
 # Define custom services here
 #
 # 1. Uncomment the following
 # 2. Replace <SERVICE-NAME> with the name of the service, this can be found in ../config.yml
-# 3. Extend as needed
+# 3. Replace <CUSTOM-SERVICE-NAME>
+# 4. Extend as needed
 #
 # To learn more, see https://docs.stoobly.com/core-concepts/scaffold
 
 #services:
 #  <SERVICE-NAME>.<CUSTOM-SERVICE-NAME>:
+#    <<: *base
 #    depends_on:
 #      <SERVICE-NAME>.configure:
 #        condition: service_completed_successfully
-#    networks:
-#      app.egress: {}
-#    profiles:
-#      - ${WORKFLOW_NAME}
