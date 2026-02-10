@@ -307,3 +307,165 @@ class TestFileOperations:
 
         assert len(InterceptedRequestsLogger._InterceptedRequestsLogger__logger.handlers) == 0
         assert InterceptedRequestsLogger._InterceptedRequestsLogger__file_handler is None
+
+
+class TestDumpLogsFiltering:
+    """Tests for dump_logs filtering."""
+
+    @pytest.fixture(autouse=True)
+    def setup_log_file(self, temp_log_dir):
+        """Create a log file with multiple entries for filtering tests."""
+        log_path = os.path.join(temp_log_dir, 'filter_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "user-api"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "GET", "url": "https://example.com/api/orders", "status_code": 499, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "order-api"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "POST", "url": "https://example.com/api/users", "status_code": 201, "scenario_key": "sk-2", "scenario_name": "Admin Scenario", "service_name": "user-api", "request_key": "rk-1", "test_title": "Create User"},
+            {"timestamp": "2024-01-01T00:00:03", "type": "----- Scenario change delimiter -----", "previous_scenario_key": "sk-1", "current_scenario_key": "sk-2"},
+            {"timestamp": "2024-01-01T00:00:04", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://other.com/api/data", "status_code": 500, "scenario_key": "sk-2", "scenario_name": "Admin Scenario", "service_name": "data-api", "namespace": "prod-ns"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        self.log_path = log_path
+        yield
+
+    def test_no_filters_returns_all_entries(self, capsys):
+        """dump_logs with no filters returns all entries."""
+        InterceptedRequestsLogger.dump_logs(filters=None)
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 5
+
+    def test_filter_by_method(self, capsys):
+        """Filter by HTTP method."""
+        InterceptedRequestsLogger.dump_logs(filters={'method': 'GET'})
+        captured = capsys.readouterr()
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' in captured.out
+        assert captured.out.count('"method": "GET"') == 2
+        assert '"method": "POST"' not in captured.out
+
+    def test_filter_by_status_code(self, capsys):
+        """Filter by status code."""
+        InterceptedRequestsLogger.dump_logs(filters={'status_code': 200})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"status_code": 200' in captured.out
+
+    def test_filter_by_level(self, capsys):
+        """Filter by log level."""
+        InterceptedRequestsLogger.dump_logs(filters={'level': 'ERROR'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"level": "ERROR"' in captured.out
+        assert '"level": "INFO"' not in captured.out
+
+    def test_filter_by_message(self, capsys):
+        """Filter by message."""
+        InterceptedRequestsLogger.dump_logs(filters={'message': 'Mock failure'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'Mock failure' in captured.out
+        assert 'Mock success' not in captured.out
+
+    def test_filter_by_scenario_key(self, capsys):
+        """Filter by scenario key."""
+        InterceptedRequestsLogger.dump_logs(filters={'scenario_key': 'sk-2'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_key": "sk-2"' in captured.out
+        assert '"scenario_key": "sk-1"' not in captured.out
+
+    def test_filter_by_scenario_name(self, capsys):
+        """Filter by scenario name."""
+        InterceptedRequestsLogger.dump_logs(filters={'scenario_name': 'User Scenario'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_name": "User Scenario"' in captured.out
+        assert '"scenario_name": "Admin Scenario"' not in captured.out
+
+    def test_filter_by_service_name(self, capsys):
+        """Filter by service name."""
+        InterceptedRequestsLogger.dump_logs(filters={'service_name': 'user-api'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"service_name": "user-api"' in captured.out
+
+    def test_filter_by_url_substring(self, capsys):
+        """Filter by URL substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'url': '/api/users'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'https://example.com/api/users' in captured.out
+
+    def test_filter_by_request_key(self, capsys):
+        """Filter by request key."""
+        InterceptedRequestsLogger.dump_logs(filters={'request_key': 'rk-1'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"request_key": "rk-1"' in captured.out
+
+    def test_filter_by_test_title(self, capsys):
+        """Filter by test title."""
+        InterceptedRequestsLogger.dump_logs(filters={'test_title': 'Create User'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"test_title": "Create User"' in captured.out
+
+    def test_filter_by_namespace(self, capsys):
+        """Filter by namespace."""
+        InterceptedRequestsLogger.dump_logs(filters={'namespace': 'prod-ns'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"namespace": "prod-ns"' in captured.out
+
+    def test_multiple_filters_and_combined(self, capsys):
+        """Multiple filters are AND-combined."""
+        InterceptedRequestsLogger.dump_logs(filters={'method': 'GET', 'level': 'ERROR'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"method": "GET"' in captured.out
+        assert '"level": "ERROR"' in captured.out
+        assert '"status_code": 499' in captured.out
+
+    def test_filter_excludes_delimiters(self, capsys):
+        """Delimiter entries are excluded when filtering."""
+        InterceptedRequestsLogger.dump_logs(filters={'level': 'INFO'})
+        captured = capsys.readouterr()
+        assert 'delimiter' not in captured.out
+        assert 'Mock success' in captured.out
+
+    def test_filter_no_matches_prints_nothing(self, capsys):
+        """No matches prints empty output."""
+        InterceptedRequestsLogger.dump_logs(filters={'method': 'DELETE'})
+        captured = capsys.readouterr()
+        assert captured.out == ''
+
+    def test_filter_level_case_insensitive(self, capsys):
+        """Level filter is case-insensitive."""
+        InterceptedRequestsLogger.dump_logs(filters={'level': 'info'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"level": "INFO"' in captured.out
+
+    def test_filter_missing_file_returns_gracefully(self, temp_log_dir):
+        """Missing file with filters doesn't crash."""
+        InterceptedRequestsLogger.set_file_path(os.path.join(temp_log_dir, 'nonexistent.log'))
+        InterceptedRequestsLogger.dump_logs(filters={'method': 'GET'})
+        # Should not raise an exception

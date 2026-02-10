@@ -410,16 +410,87 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None):
+    def _entry_matches_filters(cls, entry: dict, filters: dict) -> bool:
+        """Check if a log entry matches all provided filters.
+
+        Args:
+            entry: Parsed JSON log entry dict.
+            filters: Dict of field_name -> expected_value.
+
+        Returns:
+            True if the entry matches all filters, False otherwise.
+        """
+        for key, expected_value in filters.items():
+            actual_value = entry.get(key)
+
+            if actual_value is None:
+                return False
+
+            if key == 'url':
+                # URL uses substring matching
+                if str(expected_value) not in str(actual_value):
+                    return False
+            elif key == 'status_code':
+                # status_code compares as integer
+                if int(actual_value) != int(expected_value):
+                    return False
+            elif key == 'level':
+                # Case-insensitive comparison for level
+                if str(actual_value).upper() != str(expected_value).upper():
+                    return False
+            else:
+                # All other fields use exact string match
+                if str(actual_value) != str(expected_value):
+                    return False
+
+        return True
+
+    @classmethod
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None):
+        """Dump log entries to stdout, optionally filtering by field values.
+
+        Args:
+            data_dir_path: Path to the Stoobly data directory.
+            filters: Optional dict of field_name -> value pairs. When provided,
+                only entries where all specified fields match are printed.
+                The 'url' field uses substring matching; all others use exact match.
+                Delimiter entries are excluded when filters are active.
+        """
         file_path = cls.__get_file_path(data_dir_path)
         if not os.path.exists(file_path):
             return
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                if content.strip():
-                    print(content)
+                if not filters:
+                    # No filters: preserve existing behavior exactly
+                    content = f.read()
+                    if content.strip():
+                        print(content)
+                    else:
+                        print(end='')
+                    return
+
+                # With filters: parse each line as JSON and apply filters
+                matched_lines = []
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Skip delimiter entries when filtering
+                    if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
+                        continue
+
+                    if cls._entry_matches_filters(entry, filters):
+                        matched_lines.append(stripped)
+
+                if matched_lines:
+                    print('\n'.join(matched_lines))
                 else:
                     print(end='')
         except IOError as e:
