@@ -2,7 +2,6 @@
 import os
 import logging
 import logging.handlers
-import pdb
 import json
 import queue
 import atexit
@@ -38,6 +37,8 @@ class InterceptedRequestsLogger():
         ERROR: logging.ERROR,
     }
     __LEVEL_TO_STR: Final[dict] = {v: k for k, v in __STR_TO_LEVEL.items()}
+
+    __SUBSTRING_MATCH_FIELDS: Final[set] = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
 
     __settings: Settings = Settings.instance()
     __file_path: str = None
@@ -428,9 +429,7 @@ class InterceptedRequestsLogger():
             if actual_value is None:
                 return False
 
-            SUBSTRING_MATCH_FIELDS = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
-
-            if key in SUBSTRING_MATCH_FIELDS:
+            if key in cls.__SUBSTRING_MATCH_FIELDS:
                 # Substring matching
                 if str(expected_value) not in str(actual_value):
                     return False
@@ -464,7 +463,7 @@ class InterceptedRequestsLogger():
         Args:
             data_dir_path: Path to the Stoobly data directory.
             filters: Optional dict of field_name -> value pairs for filtering entries.
-            format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'json'.
+            output_format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'json'.
             select: Optional list of field names to display. If empty, all fields shown.
             without_headers: If True, don't print column headers (for table format only).
         """
@@ -475,9 +474,10 @@ class InterceptedRequestsLogger():
 
         select = select or []
 
+        needs_formatting = output_format or len(select) > 0
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                # Parse all entries first
                 entries = []
                 for line in f:
                     stripped = line.strip()
@@ -488,11 +488,12 @@ class InterceptedRequestsLogger():
                     except json.JSONDecodeError:
                         continue
 
-                    # Skip delimiter entries when filtering or selecting
-                    if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
-                        if filters or select or output_format:
+                    # Handle delimiter entries
+                    is_delimiter = 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower()
+                    if is_delimiter:
+                        if needs_formatting or filters:
                             continue
-                        # If no filters/select/format, keep delimiter in original format
+                        # No formatting: print inline to preserve ordering
                         print(stripped)
                         continue
 
@@ -500,13 +501,15 @@ class InterceptedRequestsLogger():
                     if filters and not cls._entry_matches_filters(entry, filters):
                         continue
 
+                    if not needs_formatting:
+                        # Print inline to preserve ordering with delimiters
+                        print(json.dumps(entry))
+                        continue
+
                     entries.append(entry)
 
-                # If no formatting requested and no select, use original behavior
-                if not output_format and len(select) == 0:
-                    # Print as JSON lines (original behavior for backward compatibility)
-                    for entry in entries:
-                        print(json.dumps(entry))
+                # If no formatting requested, everything was already printed inline
+                if not needs_formatting:
                     return
 
                 # Default to table format when select is used but format is not specified
