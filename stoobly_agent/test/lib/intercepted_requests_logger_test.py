@@ -511,3 +511,172 @@ class TestDumpLogsFiltering:
         InterceptedRequestsLogger.set_file_path(os.path.join(temp_log_dir, 'nonexistent.log'))
         InterceptedRequestsLogger.dump_logs(filters={'method': 'GET'})
         # Should not raise an exception
+
+
+class TestDumpLogsSelect:
+    """Tests for dump_logs with --select flag."""
+
+    @pytest.fixture(autouse=True)
+    def setup_log_file(self, temp_log_dir):
+        """Create a log file with multiple entries for select tests."""
+        log_path = os.path.join(temp_log_dir, 'select_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://example.com/api/orders", "status_code": 500, "scenario_key": "sk-2"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/products", "status_code": 200, "scenario_key": "sk-1"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        self.log_path = log_path
+        yield
+
+    def test_select_filters_fields(self, capsys):
+        """Select parameter filters fields correctly."""
+        InterceptedRequestsLogger.dump_logs(select=['timestamp', 'method', 'url'])
+        captured = capsys.readouterr()
+
+        # Should be table format (default when select is used)
+        assert 'timestamp' in captured.out
+        assert 'method' in captured.out
+        assert 'url' in captured.out
+
+        # Should NOT include other fields
+        assert 'level' not in captured.out
+        assert 'message' not in captured.out
+        assert 'status_code' not in captured.out
+        assert 'scenario_key' not in captured.out
+
+    def test_select_with_format_json(self, capsys):
+        """Select with format=json returns JSON array with selected fields."""
+        InterceptedRequestsLogger.dump_logs(select=['method', 'url', 'status_code'], format='json')
+        captured = capsys.readouterr()
+
+        # Should be valid JSON array
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+        assert len(data) == 3
+
+        # Each entry should only have selected fields
+        for entry in data:
+            assert set(entry.keys()) == {'method', 'url', 'status_code'}
+
+    def test_select_without_format_defaults_to_table(self, capsys):
+        """Select without format defaults to table output."""
+        InterceptedRequestsLogger.dump_logs(select=['method', 'status_code'])
+        captured = capsys.readouterr()
+
+        # Should be table format with headers
+        lines = captured.out.strip().split('\n')
+        assert len(lines) > 1  # Headers + data rows
+        assert 'method' in lines[0]  # Header row
+        assert 'status_code' in lines[0]  # Header row
+
+    def test_select_with_format_simple(self, capsys):
+        """Select with format=simple returns table."""
+        InterceptedRequestsLogger.dump_logs(select=['timestamp', 'message'], format='simple')
+        captured = capsys.readouterr()
+
+        # Should be table format
+        assert 'timestamp' in captured.out
+        assert 'message' in captured.out
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' in captured.out
+
+    def test_select_with_without_headers(self, capsys):
+        """Select with without_headers removes table headers."""
+        InterceptedRequestsLogger.dump_logs(select=['method', 'url'], without_headers=True)
+        captured = capsys.readouterr()
+
+        lines = captured.out.strip().split('\n')
+        # Should have data but first line should not be headers
+        assert len(lines) == 3  # 3 data rows, no header
+        assert 'method' not in lines[0]  # First line should be data, not headers
+        assert 'GET' in lines[0] or 'POST' in lines[0]  # First line should be data
+
+    def test_select_with_filters(self, capsys):
+        """Select works with filters."""
+        InterceptedRequestsLogger.dump_logs(
+            select=['method', 'url', 'status_code'],
+            filters={'method': 'GET'}
+        )
+        captured = capsys.readouterr()
+
+        # Should be table with only GET requests
+        assert 'GET' in captured.out
+        assert 'POST' not in captured.out
+        lines = captured.out.strip().split('\n')
+        assert len(lines) == 3  # 1 header + 2 GET requests
+
+    def test_select_nonexistent_field_ignored(self, capsys):
+        """Non-existent fields in select are silently ignored."""
+        InterceptedRequestsLogger.dump_logs(select=['timestamp', 'nonexistent_field', 'method'])
+        captured = capsys.readouterr()
+
+        # Should only show timestamp and method
+        assert 'timestamp' in captured.out
+        assert 'method' in captured.out
+        assert 'nonexistent_field' not in captured.out
+
+    def test_format_json_without_select_shows_all_fields(self, capsys):
+        """Format=json without select shows all fields."""
+        InterceptedRequestsLogger.dump_logs(format='json')
+        captured = capsys.readouterr()
+
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+        assert len(data) == 3
+
+        # Should have all fields
+        first_entry = data[0]
+        assert 'timestamp' in first_entry
+        assert 'level' in first_entry
+        assert 'message' in first_entry
+        assert 'method' in first_entry
+        assert 'url' in first_entry
+        assert 'status_code' in first_entry
+        assert 'scenario_key' in first_entry
+
+    def test_format_simple_without_select_shows_all_fields(self, capsys):
+        """Format=simple without select shows all fields."""
+        InterceptedRequestsLogger.dump_logs(format='simple')
+        captured = capsys.readouterr()
+
+        # Should be table with all fields
+        assert 'timestamp' in captured.out
+        assert 'level' in captured.out
+        assert 'message' in captured.out
+        assert 'method' in captured.out
+        assert 'url' in captured.out
+        assert 'status_code' in captured.out
+        assert 'scenario_key' in captured.out
+
+    def test_empty_select_shows_all_fields(self, capsys):
+        """Empty select list shows all fields."""
+        InterceptedRequestsLogger.dump_logs(select=[])
+        captured = capsys.readouterr()
+
+        # Should show all entries as JSON lines (backward compatible)
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 3
+        for line in lines:
+            entry = json.loads(line)
+            assert 'timestamp' in entry
+            assert 'method' in entry
+
+    def test_backward_compatibility_no_select_no_format(self, capsys):
+        """No select and no format maintains original JSON lines behavior."""
+        InterceptedRequestsLogger.dump_logs()
+        captured = capsys.readouterr()
+
+        # Should be JSON lines format
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 3
+        for line in lines:
+            entry = json.loads(line)
+            assert 'timestamp' in entry
+            assert 'method' in entry

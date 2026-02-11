@@ -2,6 +2,7 @@
 import os
 import logging
 import logging.handlers
+import pdb
 import json
 import queue
 import atexit
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
+from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT, SIMPLE_FORMAT
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -448,33 +450,27 @@ class InterceptedRequestsLogger():
         return True
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None, filters: dict = None):
-        """Dump log entries to stdout, optionally filtering by field values.
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, format: str = None, select: list = None, without_headers: bool = False):
+        """Dump log entries to stdout, optionally filtering by field values and selecting columns.
 
         Args:
             data_dir_path: Path to the Stoobly data directory.
-            filters: Optional dict of field_name -> value pairs. When provided,
-                only entries where all specified fields match are printed.
-                The 'url' field uses substring matching; all others use exact match.
-                Delimiter entries are excluded when filters are active.
+            filters: Optional dict of field_name -> value pairs for filtering entries.
+            format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'json'.
+            select: Optional list of field names to display. If empty, all fields shown.
+            without_headers: If True, don't print column headers (for table format only).
         """
+
         file_path = cls.__get_file_path(data_dir_path)
         if not os.path.exists(file_path):
             return
 
+        select = select or []
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                if not filters:
-                    # No filters: preserve existing behavior exactly
-                    content = f.read()
-                    if content.strip():
-                        print(content)
-                    else:
-                        print(end='')
-                    return
-
-                # With filters: parse each line as JSON and apply filters
-                matched_lines = []
+                # Parse all entries first
+                entries = []
                 for line in f:
                     stripped = line.strip()
                     if not stripped:
@@ -484,17 +480,70 @@ class InterceptedRequestsLogger():
                     except json.JSONDecodeError:
                         continue
 
-                    # Skip delimiter entries when filtering
+                    # Skip delimiter entries when filtering or selecting
                     if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
+                        if filters or select or format:
+                            continue
+                        # If no filters/select/format, keep delimiter in original format
+                        print(stripped)
                         continue
 
-                    if cls._entry_matches_filters(entry, filters):
-                        matched_lines.append(stripped)
+                    # Apply filters
+                    if filters and not cls._entry_matches_filters(entry, filters):
+                        continue
 
-                if matched_lines:
-                    print('\n'.join(matched_lines))
-                else:
+                    entries.append(entry)
+
+                # If no formatting requested and no select, use original behavior
+                if not format and len(select) == 0:
+                    # Print as JSON lines (original behavior for backward compatibility)
+                    for entry in entries:
+                        print(json.dumps(entry))
+                    return
+
+                # Default to table format when select is used but format is not specified
+                if select and not format:
+                    format = SIMPLE_FORMAT
+
+                # Apply select if provided
+                if select:
+                    filtered_entries = []
+                    for entry in entries:
+                        filtered_entry = {}
+                        for key in select:
+                            if key in entry:
+                                filtered_entry[key] = entry[key]
+                        filtered_entries.append(filtered_entry)
+                    entries = filtered_entries
+
+                # Print based on format
+                if not entries:
                     print(end='')
+                    return
+
+                if format == JSON_FORMAT:
+                    # Print as JSON array
+                    print(json.dumps(entries, indent=2))
+                else:
+                    # Print as table using tabulate
+                    from tabulate import tabulate
+
+                    # Build headers and rows
+                    headers = []
+                    rows = []
+
+                    for entry in entries:
+                        if not headers:
+                            headers = list(entry.keys())
+
+                        row = [entry.get(h, '') for h in headers]
+                        rows.append(row)
+
+                    if without_headers:
+                        print(tabulate(rows, tablefmt='plain'))
+                    else:
+                        print(tabulate(rows, headers=headers, tablefmt='plain'))
+
         except IOError as e:
             cls.__logger.error(f"Failed to read log file: {e}")
             print(f"Failed to read log file: {e}")

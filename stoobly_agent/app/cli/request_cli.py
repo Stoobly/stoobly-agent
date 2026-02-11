@@ -183,19 +183,27 @@ def log(ctx):
 
 @log.command(name="list", help="List intercepted requests log entries")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--level', default=None, type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR'], case_sensitive=False), help='Filter by log level.')
 @click.option('--message', default=None, help='Filter by log message (e.g., "Mock success", "Mock failure").')
-@click.option('--method', default=None, help='Filter by HTTP method (e.g., GET, POST).')
+@click.option('--method', default=None, type=click.Choice(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'], case_sensitive=False), help='Filter by HTTP method.')
 @click.option('--namespace', default=None, help='Filter by workflow namespace.')
 @click.option('--request-key', default=None, help='Filter by request key.')
 @click.option('--scenario-key', default=None, help='Filter by scenario key.')
 @click.option('--scenario-name', default=None, help='Filter by scenario name.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service-name', default=None, help='Filter by service name.')
-@click.option('--status-code', default=None, type=int, help='Filter by HTTP status code.')
+@click.option('--status-code', default=None, type=click.IntRange(min=100, max=599), help='Filter by HTTP status code.')
 @click.option('--test-title', default=None, help='Filter by test title.')
 @click.option('--url', default=None, help='Filter by URL (substring match).')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 def log_list(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+
+  # Extract print options
+  format = kwargs.get('format', None)
+  select = kwargs.get('select', None)
+  without_headers = kwargs.get('without_headers', False)
 
   # Build filters dict from provided options
   filter_keys = ['level', 'message', 'method', 'scenario_key', 'scenario_name', 'service_name', 'status_code', 'url', 'request_key', 'test_title', 'namespace']
@@ -205,7 +213,14 @@ def log_list(**kwargs):
     if value is not None:
       filters[key] = value
 
-  InterceptedRequestsLogger.dump_logs(context_dir_path, filters=filters if filters else None)
+  # Pass print options to dump_logs
+  InterceptedRequestsLogger.dump_logs(
+    context_dir_path,
+    filters=filters if filters else None,
+    format=format,
+    select=select,
+    without_headers=without_headers
+  )
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
