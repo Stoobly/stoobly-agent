@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
+from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT, SIMPLE_FORMAT
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAMESPACE_ENV, SERVICE_NAME_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -36,6 +37,8 @@ class InterceptedRequestsLogger():
         ERROR: logging.ERROR,
     }
     __LEVEL_TO_STR: Final[dict] = {v: k for k, v in __STR_TO_LEVEL.items()}
+
+    __SUBSTRING_MATCH_FIELDS: Final[set] = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
 
     __settings: Settings = Settings.instance()
     __file_path: str = None
@@ -410,18 +413,148 @@ class InterceptedRequestsLogger():
         cls.__logger.error(message, extra=extra if extra else None)
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None):
+    def _entry_matches_filters(cls, entry: dict, filters: dict) -> bool:
+        """Check if a log entry matches all provided filters.
+
+        Args:
+            entry: Parsed JSON log entry dict.
+            filters: Dict of field_name -> expected_value.
+
+        Returns:
+            True if the entry matches all filters, False otherwise.
+        """
+        for key, expected_value in filters.items():
+            actual_value = entry.get(key)
+
+            if actual_value is None:
+                return False
+
+            if key in cls.__SUBSTRING_MATCH_FIELDS:
+                # Substring matching
+                if str(expected_value) not in str(actual_value):
+                    return False
+            elif key == 'status_code':
+                # status_code compares as integer
+                try:
+                    if int(actual_value) != int(expected_value):
+                        return False
+                except (ValueError, TypeError) as e:
+                    # Skip malformed entries instead of crashing
+                    cls.__logger.warning(
+                        f"Skipping log entry with malformed status_code: '{actual_value}' "
+                        f"(expected integer). Entry timestamp: {entry.get('timestamp', 'unknown')}. Error: {e}"
+                    )
+                    return False
+            elif key == 'level':
+                # Case-insensitive comparison for level
+                if str(actual_value).upper() != str(expected_value).upper():
+                    return False
+            else:
+                # All other fields use exact string match
+                if str(actual_value) != str(expected_value):
+                    return False
+
+        return True
+
+    @classmethod
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False):
+        """Dump log entries to stdout, optionally filtering by field values and selecting columns.
+
+        Args:
+            data_dir_path: Path to the Stoobly data directory.
+            filters: Optional dict of field_name -> value pairs for filtering entries.
+            output_format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'json'.
+            select: Optional list of field names to display. If empty, all fields shown.
+            without_headers: If True, don't print column headers (for table format only).
+        """
+
         file_path = cls.__get_file_path(data_dir_path)
         if not os.path.exists(file_path):
             return
 
+        select = select or []
+
+        needs_formatting = output_format or len(select) > 0
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                if content.strip():
-                    print(content)
-                else:
+                entries = []
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Handle delimiter entries
+                    is_delimiter = 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower()
+                    if is_delimiter:
+                        if needs_formatting or filters:
+                            continue
+                        # No formatting: print inline to preserve ordering
+                        print(stripped)
+                        continue
+
+                    # Apply filters
+                    if filters and not cls._entry_matches_filters(entry, filters):
+                        continue
+
+                    if not needs_formatting:
+                        # Print inline to preserve ordering with delimiters
+                        print(json.dumps(entry))
+                        continue
+
+                    entries.append(entry)
+
+                # If no formatting requested, everything was already printed inline
+                if not needs_formatting:
+                    return
+
+                # Default to table format when select is used but format is not specified
+                if select and not output_format:
+                    output_format = SIMPLE_FORMAT
+
+                # Apply select if provided
+                if select:
+                    filtered_entries = []
+                    for entry in entries:
+                        filtered_entry = {}
+                        for key in select:
+                            if key in entry:
+                                filtered_entry[key] = entry[key]
+                        filtered_entries.append(filtered_entry)
+                    entries = filtered_entries
+
+                # Print based on format
+                if not entries:
                     print(end='')
+                    return
+
+                if output_format == JSON_FORMAT:
+                    # Print as JSON array
+                    print(json.dumps(entries, indent=2))
+                else:
+                    # Print as table using tabulate
+                    from tabulate import tabulate
+
+                    # Build headers and rows
+                    headers = []
+                    rows = []
+
+                    for entry in entries:
+                        if not headers:
+                            headers = list(entry.keys())
+
+                        row = [entry.get(h, '') for h in headers]
+                        rows.append(row)
+
+                    if without_headers:
+                        print(tabulate(rows, tablefmt='plain'))
+                    else:
+                        print(tabulate(rows, headers=headers, tablefmt='plain'))
+
         except IOError as e:
             cls.__logger.error(f"Failed to read log file: {e}")
             print(f"Failed to read log file: {e}")
