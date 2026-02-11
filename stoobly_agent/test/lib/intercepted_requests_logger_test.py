@@ -319,7 +319,7 @@ class TestDumpLogsFiltering:
         InterceptedRequestsLogger.set_file_path(log_path)
 
         entries = [
-            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "user-api"},
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "user-api", "user_agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0"},
             {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "GET", "url": "https://example.com/api/orders", "status_code": 499, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "order-api"},
             {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "POST", "url": "https://example.com/api/users", "status_code": 201, "scenario_key": "sk-2", "scenario_name": "Admin Scenario", "service_name": "user-api", "request_key": "rk-1", "test_title": "Create User"},
             {"timestamp": "2024-01-01T00:00:03", "type": "----- Scenario change delimiter -----", "previous_scenario_key": "sk-1", "current_scenario_key": "sk-2"},
@@ -408,6 +408,48 @@ class TestDumpLogsFiltering:
         lines = [line for line in captured.out.strip().split('\n') if line]
         assert len(lines) == 2
         assert 'https://example.com/api/users' in captured.out
+
+    def test_filter_by_message_substring(self, capsys):
+        """Filter by message substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'message': 'success'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' not in captured.out
+
+    def test_filter_by_scenario_name_substring(self, capsys):
+        """Filter by scenario name substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'scenario_name': 'User'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_name": "User Scenario"' in captured.out
+        assert '"scenario_name": "Admin Scenario"' not in captured.out
+
+    def test_filter_by_service_name_substring(self, capsys):
+        """Filter by service name substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'service_name': 'user'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"service_name": "user-api"' in captured.out
+
+    def test_filter_by_test_title_substring(self, capsys):
+        """Filter by test title substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'test_title': 'Create'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"test_title": "Create User"' in captured.out
+
+    def test_filter_by_user_agent_substring(self, capsys):
+        """Filter by user agent substring."""
+        InterceptedRequestsLogger.dump_logs(filters={'user_agent': 'Chrome'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert 'Chrome/120.0' in captured.out
 
     def test_filter_by_request_key(self, capsys):
         """Filter by request key."""

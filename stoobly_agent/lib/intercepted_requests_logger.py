@@ -426,8 +426,10 @@ class InterceptedRequestsLogger():
             if actual_value is None:
                 return False
 
-            if key == 'url':
-                # URL uses substring matching
+            SUBSTRING_MATCH_FIELDS = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
+
+            if key in SUBSTRING_MATCH_FIELDS:
+                # Substring matching
                 if str(expected_value) not in str(actual_value):
                     return False
             elif key == 'status_code':
