@@ -201,7 +201,7 @@ def log_list(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
 
   # Extract print options
-  format = kwargs.get('format', None)
+  output_format = kwargs.get('format', None)
   select = kwargs.get('select', None)
   without_headers = kwargs.get('without_headers', False)
 
@@ -217,7 +217,7 @@ def log_list(**kwargs):
   InterceptedRequestsLogger.dump_logs(
     context_dir_path,
     filters=filters if filters else None,
-    format=format,
+    output_format=output_format,
     select=select,
     without_headers=without_headers
   )

@@ -436,7 +436,15 @@ class InterceptedRequestsLogger():
                     return False
             elif key == 'status_code':
                 # status_code compares as integer
-                if int(actual_value) != int(expected_value):
+                try:
+                    if int(actual_value) != int(expected_value):
+                        return False
+                except (ValueError, TypeError) as e:
+                    # Skip malformed entries instead of crashing
+                    cls.__logger.warning(
+                        f"Skipping log entry with malformed status_code: '{actual_value}' "
+                        f"(expected integer). Entry timestamp: {entry.get('timestamp', 'unknown')}. Error: {e}"
+                    )
                     return False
             elif key == 'level':
                 # Case-insensitive comparison for level
@@ -450,7 +458,7 @@ class InterceptedRequestsLogger():
         return True
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, format: str = None, select: list = None, without_headers: bool = False):
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False):
         """Dump log entries to stdout, optionally filtering by field values and selecting columns.
 
         Args:
@@ -482,7 +490,7 @@ class InterceptedRequestsLogger():
 
                     # Skip delimiter entries when filtering or selecting
                     if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
-                        if filters or select or format:
+                        if filters or select or output_format:
                             continue
                         # If no filters/select/format, keep delimiter in original format
                         print(stripped)
@@ -495,15 +503,15 @@ class InterceptedRequestsLogger():
                     entries.append(entry)
 
                 # If no formatting requested and no select, use original behavior
-                if not format and len(select) == 0:
+                if not output_format and len(select) == 0:
                     # Print as JSON lines (original behavior for backward compatibility)
                     for entry in entries:
                         print(json.dumps(entry))
                     return
 
                 # Default to table format when select is used but format is not specified
-                if select and not format:
-                    format = SIMPLE_FORMAT
+                if select and not output_format:
+                    output_format = SIMPLE_FORMAT
 
                 # Apply select if provided
                 if select:
@@ -521,7 +529,7 @@ class InterceptedRequestsLogger():
                     print(end='')
                     return
 
-                if format == JSON_FORMAT:
+                if output_format == JSON_FORMAT:
                     # Print as JSON array
                     print(json.dumps(entries, indent=2))
                 else:

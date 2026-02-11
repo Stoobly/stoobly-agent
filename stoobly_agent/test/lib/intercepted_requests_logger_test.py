@@ -553,7 +553,7 @@ class TestDumpLogsSelect:
 
     def test_select_with_format_json(self, capsys):
         """Select with format=json returns JSON array with selected fields."""
-        InterceptedRequestsLogger.dump_logs(select=['method', 'url', 'status_code'], format='json')
+        InterceptedRequestsLogger.dump_logs(select=['method', 'url', 'status_code'], output_format='json')
         captured = capsys.readouterr()
 
         # Should be valid JSON array
@@ -578,7 +578,7 @@ class TestDumpLogsSelect:
 
     def test_select_with_format_simple(self, capsys):
         """Select with format=simple returns table."""
-        InterceptedRequestsLogger.dump_logs(select=['timestamp', 'message'], format='simple')
+        InterceptedRequestsLogger.dump_logs(select=['timestamp', 'message'], output_format='simple')
         captured = capsys.readouterr()
 
         # Should be table format
@@ -624,7 +624,7 @@ class TestDumpLogsSelect:
 
     def test_format_json_without_select_shows_all_fields(self, capsys):
         """Format=json without select shows all fields."""
-        InterceptedRequestsLogger.dump_logs(format='json')
+        InterceptedRequestsLogger.dump_logs(output_format='json')
         captured = capsys.readouterr()
 
         data = json.loads(captured.out)
@@ -643,7 +643,7 @@ class TestDumpLogsSelect:
 
     def test_format_simple_without_select_shows_all_fields(self, capsys):
         """Format=simple without select shows all fields."""
-        InterceptedRequestsLogger.dump_logs(format='simple')
+        InterceptedRequestsLogger.dump_logs(output_format='simple')
         captured = capsys.readouterr()
 
         # Should be table with all fields
