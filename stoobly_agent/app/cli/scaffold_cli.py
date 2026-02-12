@@ -37,6 +37,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
+from .scaffold_request_log_cli import request
 from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
@@ -84,6 +85,7 @@ def workflow(ctx):
 def hostname(ctx):
     pass
 
+
 @app.command(
   help="Scaffold application"
 )
@@ -123,7 +125,7 @@ def create(**kwargs):
   help="Scaffold app service certs"
 )
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
@@ -538,7 +540,7 @@ def logs(**kwargs):
 
 @workflow.command()
 @click.option('--app-dir-path', default=current_working_dir, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=data_dir.ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
@@ -733,6 +735,7 @@ scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
+scaffold.add_command(request)
 
 def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_confirm: str = None):
   """Prompt user to install CA certificate for record workflow."""

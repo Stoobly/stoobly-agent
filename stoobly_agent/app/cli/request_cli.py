@@ -2,7 +2,7 @@ import click
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
@@ -20,8 +20,6 @@ from .types.request import RequestTestOptions
 settings = Settings.instance()
 is_remote = remote(settings)
 is_local = local(settings)
-
-data_dir: DataDir = DataDir.instance()
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
 @click.group(
@@ -181,6 +179,12 @@ def query(**kwargs):
 def log(ctx):
     pass
 
+@log.command(name="path", help="Get intercepted requests log path")
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+def log_path(**kwargs):
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  SimpleInterceptedRequestsLogger.get_log_file_path(data_dir_path=context_dir_path)
+
 @log.command(name="list", help="List intercepted requests log entries")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
@@ -214,8 +218,8 @@ def log_list(**kwargs):
       filters[key] = value
 
   # Pass print options to dump_logs
-  InterceptedRequestsLogger.dump_logs(
-    context_dir_path,
+  SimpleInterceptedRequestsLogger.dump_logs(
+    data_dir_path=context_dir_path,
     filters=filters if filters else None,
     output_format=output_format,
     select=select,
@@ -226,7 +230,7 @@ def log_list(**kwargs):
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 def log_delete(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
-  InterceptedRequestsLogger.truncate(context_dir_path)
+  SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
 
 request.add_command(response)
 request.add_command(log)
