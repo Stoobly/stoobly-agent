@@ -9,6 +9,11 @@ class SimpleInterceptedRequestsLogger(InterceptedRequestsLogger):
     @classmethod
     def _get_file_path(cls, data_dir_path: str = None, **kwargs) -> str:
         """Return the simple (non-scaffold) log file path."""
+        base = InterceptedRequestsLogger
+        # Use cached path when set (explicit override via set_file_path)
+        if base._file_path is not None:
+            return base._file_path
+
         if data_dir_path:
             dir_path = DataDir.instance(data_dir_path).path
         else:

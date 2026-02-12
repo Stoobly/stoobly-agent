@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest
 
+from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT, SIMPLE_FORMAT
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -41,6 +42,8 @@ class InterceptedRequestsLogger():
         ERROR: logging.ERROR,
     }
     _LEVEL_TO_STR: Final[dict] = {v: k for k, v in _STR_TO_LEVEL.items()}
+
+    _SUBSTRING_MATCH_FIELDS: Final[set] = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
 
     _settings: Settings = Settings.instance()
     _file_path: str = None
@@ -198,13 +201,58 @@ class InterceptedRequestsLogger():
         except InvalidRequestKey:
             return None
 
+    @classmethod
+    def _entry_matches_filters(cls, entry: dict, filters: dict) -> bool:
+        """Check if a log entry matches all provided filters.
+
+        Args:
+            entry: Parsed JSON log entry dict.
+            filters: Dict of field_name -> expected_value.
+
+        Returns:
+            True if the entry matches all filters, False otherwise.
+        """
+        base = InterceptedRequestsLogger
+        for key, expected_value in filters.items():
+            actual_value = entry.get(key)
+
+            if actual_value is None:
+                return False
+
+            if key in base._SUBSTRING_MATCH_FIELDS:
+                # Substring matching
+                if str(expected_value) not in str(actual_value):
+                    return False
+            elif key == 'status_code':
+                # status_code compares as integer
+                try:
+                    if int(actual_value) != int(expected_value):
+                        return False
+                except (ValueError, TypeError) as e:
+                    # Skip malformed entries instead of crashing
+                    base._logger.warning(
+                        f"Skipping log entry with malformed status_code: '{actual_value}' "
+                        f"(expected integer). Entry timestamp: {entry.get('timestamp', 'unknown')}. Error: {e}"
+                    )
+                    return False
+            elif key == 'level':
+                # Case-insensitive comparison for level
+                if str(actual_value).upper() != str(expected_value).upper():
+                    return False
+            else:
+                # All other fields use exact string match
+                if str(actual_value) != str(expected_value):
+                    return False
+
+        return True
+
     # --- Template methods (shared logic, delegate to cls._get_file_path) ---
 
     @classmethod
-    def enable_logger_file(cls, **kwargs) -> None:
+    def enable_logger_file(cls, data_dir_path: str = None, **kwargs) -> None:
         """Enable file-based logging. Subclass determines the file path."""
         base = InterceptedRequestsLogger
-        cls._ensure_directory(**kwargs)
+        cls._ensure_directory(data_dir_path=data_dir_path, **kwargs)
 
         # Enable the logger before setup so error logging works
         base._logger.disabled = False
@@ -215,7 +263,7 @@ class InterceptedRequestsLogger():
 
             # Create file handler
             base._file_handler = logging.FileHandler(
-                cls._get_file_path(**kwargs)
+                cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
             )
             base._file_handler.setLevel(logging.DEBUG)
             json_formatter = JSONFormatter(
@@ -255,11 +303,11 @@ class InterceptedRequestsLogger():
             base._logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
-    def get_log_file_path(cls, **kwargs) -> str:
+    def get_log_file_path(cls, data_dir_path: str = None, **kwargs) -> str:
         """Get the log file path and print it."""
-        file_path = cls._get_file_path(**kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
 
-        print(cls._get_log_path_message(**kwargs))
+        print(cls._get_log_path_message(data_dir_path=data_dir_path, **kwargs))
 
         if not os.path.exists(file_path):
             return
@@ -267,33 +315,120 @@ class InterceptedRequestsLogger():
         return file_path
 
     @classmethod
-    def dump_logs(cls, **kwargs):
-        """Read and print log file contents."""
-        file_path = cls._get_file_path(**kwargs)
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, **kwargs):
+        """Dump log entries to stdout, optionally filtering by field values and selecting columns.
+
+        Args:
+            data_dir_path: Optional path to the data directory. If None, uses default or cached path.
+            filters: Optional dict of field_name -> value pairs for filtering entries.
+            output_format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'simple'.
+            select: Optional list of field names to display. If empty, all fields shown.
+            without_headers: If True, don't print column headers (for table format only).
+            **kwargs: Additional arguments passed to _get_file_path (e.g., workflow, namespace).
+        """
+        base = InterceptedRequestsLogger
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
         if not os.path.exists(file_path):
             return
 
+        select = select or []
+
+        needs_formatting = output_format or len(select) > 0
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                if content.strip():
-                    print(content)
-                else:
+                import json
+                entries = []
+                for line in f:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Handle delimiter entries
+                    is_delimiter = 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower()
+                    if is_delimiter:
+                        if needs_formatting or filters:
+                            continue
+                        # No formatting: print inline to preserve ordering
+                        print(stripped)
+                        continue
+
+                    # Apply filters
+                    if filters and not cls._entry_matches_filters(entry, filters):
+                        continue
+
+                    if not needs_formatting:
+                        # Print inline to preserve ordering with delimiters
+                        print(json.dumps(entry))
+                        continue
+
+                    entries.append(entry)
+
+                # If no formatting requested, everything was already printed inline
+                if not needs_formatting:
+                    return
+
+                # Default to table format when select is used but format is not specified
+                if select and not output_format:
+                    output_format = SIMPLE_FORMAT
+
+                # Apply select if provided
+                if select:
+                    filtered_entries = []
+                    for entry in entries:
+                        filtered_entry = {}
+                        for key in select:
+                            if key in entry:
+                                filtered_entry[key] = entry[key]
+                        filtered_entries.append(filtered_entry)
+                    entries = filtered_entries
+
+                # Print based on format
+                if not entries:
                     print(end='')
+                    return
+
+                if output_format == JSON_FORMAT:
+                    # Print as JSON array
+                    print(json.dumps(entries, indent=2))
+                else:
+                    # Print as table using tabulate
+                    from tabulate import tabulate
+
+                    # Build headers and rows
+                    headers = []
+                    rows = []
+
+                    for entry in entries:
+                        if not headers:
+                            headers = list(entry.keys())
+
+                        row = [entry.get(h, '') for h in headers]
+                        rows.append(row)
+
+                    if without_headers:
+                        print(tabulate(rows, tablefmt='plain'))
+                    else:
+                        print(tabulate(rows, headers=headers, tablefmt='plain'))
+
         except IOError as e:
-            InterceptedRequestsLogger._logger.error(f"Failed to read log file: {e}")
+            base._logger.error(f"Failed to read log file: {e}")
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def truncate(cls, **kwargs) -> None:
+    def truncate(cls, data_dir_path: str = None, **kwargs) -> None:
         """Truncate (clear) the log file and re-enable logging."""
         base = InterceptedRequestsLogger
-        cls._ensure_directory(**kwargs)
+        cls._ensure_directory(data_dir_path=data_dir_path, **kwargs)
 
-        file_path = cls._get_file_path(**kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
 
         if not os.path.exists(file_path):
-            cls.enable_logger_file(**kwargs)
+            cls.enable_logger_file(data_dir_path=data_dir_path, **kwargs)
             return
 
         try:
@@ -314,7 +449,7 @@ class InterceptedRequestsLogger():
                 f.write('')
 
             # Re-enable logging with fresh handlers
-            cls.enable_logger_file(**kwargs)
+            cls.enable_logger_file(data_dir_path=data_dir_path, **kwargs)
 
             base._logger.debug(f"Cleared log file: {file_path}")
 
@@ -323,9 +458,9 @@ class InterceptedRequestsLogger():
             base._logger.error(f"Failed to clear log file: {e}")
 
     @classmethod
-    def _ensure_directory(cls, **kwargs) -> None:
+    def _ensure_directory(cls, data_dir_path: str = None, **kwargs) -> None:
         """Ensure the log file directory exists."""
-        file_path = cls._get_file_path(**kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):

@@ -2,10 +2,12 @@ import json
 import os
 import pytest
 import requests
+import shutil
 import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 
 from click.testing import CliRunner
@@ -16,6 +18,7 @@ from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
 from stoobly_agent.test.test_helper import reset
 
@@ -36,7 +39,13 @@ class TestRequestLogCliParams:
         with patch.object(SimpleInterceptedRequestsLogger, 'dump_logs') as mock_dump:
             result = runner.invoke(request, ['log', 'list'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+            mock_dump.assert_called_once_with(
+                data_dir_path=DataDir.instance().context_dir_path,
+                filters=None,
+                output_format=None,
+                select=(),
+                without_headers=False
+            )
 
     def test_log_delete_calls_truncate(self, runner):
         """request log delete calls truncate for non-scaffold use."""
@@ -197,3 +206,127 @@ class TestRequestLogE2e():
         result = runner.invoke(request, ['log', 'path'])
         assert result.exit_code == 0
         assert 'tmp/logs/requests.json' in result.output
+
+
+class TestRequestLogListFiltering:
+    """Unit tests for request log list filtering via CLI options."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Write a pre-built log file and configure the logger to use it."""
+        # Create a temporary directory for the test
+        self.temp_dir = tempfile.mkdtemp()
+        log_path = os.path.join(self.temp_dir, 'requests.json')
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/test", "status_code": 200, "scenario_key": "sk-1"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://example.com/api/test", "status_code": 499, "scenario_key": "sk-1"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "POST", "url": "https://example.com/api/users", "status_code": 201, "scenario_key": "sk-2", "request_key": "rk-1", "test_title": "Create User"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        InterceptedRequestsLogger.set_file_path(log_path)
+        self.log_path = log_path
+        yield
+
+        # Cleanup
+        InterceptedRequestsLogger._file_path = None
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_filter_by_method_via_cli(self):
+        """Filter by method via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--method', 'GET'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert '"method": "GET"' in result.output
+        # Verify POST is excluded
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_status_code_via_cli(self):
+        """Filter by status code via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--status-code', '499'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        assert '"status_code": 499' in result.output
+        assert 'Mock success' not in result.output
+
+    def test_filter_by_level_via_cli(self):
+        """Filter by level via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--level', 'error'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        assert '"level": "ERROR"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_message_via_cli(self):
+        """Filter by message via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--message', 'Mock success'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert 'Mock failure' not in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 2
+
+    def test_filter_by_scenario_key_via_cli(self):
+        """Filter by scenario key via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--scenario-key', 'sk-2'])
+        assert result.exit_code == 0
+        assert '"scenario_key": "sk-2"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_url_via_cli(self):
+        """Filter by URL substring via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--url', '/api/users'])
+        assert result.exit_code == 0
+        assert 'https://example.com/api/users' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_request_key_via_cli(self):
+        """Filter by request key via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--request-key', 'rk-1'])
+        assert result.exit_code == 0
+        assert '"request_key": "rk-1"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_test_title_via_cli(self):
+        """Filter by test title via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--test-title', 'Create User'])
+        assert result.exit_code == 0
+        assert '"test_title": "Create User"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_multiple_filters_via_cli(self):
+        """Multiple filters via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list', '--method', 'POST', '--level', 'ERROR'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_no_filters_returns_all(self):
+        """No filters returns all entries."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['log', 'list'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert 'Mock failure' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 3

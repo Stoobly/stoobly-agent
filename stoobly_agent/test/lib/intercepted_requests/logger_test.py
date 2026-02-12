@@ -11,6 +11,7 @@ from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO
 from stoobly_agent.test.test_helper import reset
 
@@ -415,3 +416,376 @@ class TestPathSanitization:
         """Valid workflow/namespace names are preserved."""
         result = InterceptedRequestsLogger._sanitize_path_component('my-workflow_123')
         assert result == 'my-workflow_123'
+
+
+class TestDumpLogsFiltering:
+    """Tests for dump_logs filtering."""
+
+    @pytest.fixture(autouse=True)
+    def setup_log_file(self, temp_log_dir):
+        """Create a log file with multiple entries for filtering tests."""
+        log_path = os.path.join(temp_log_dir, 'filter_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "user-api", "user_agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "GET", "url": "https://example.com/api/orders", "status_code": 499, "scenario_key": "sk-1", "scenario_name": "User Scenario", "service_name": "order-api"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "POST", "url": "https://example.com/api/users", "status_code": 201, "scenario_key": "sk-2", "scenario_name": "Admin Scenario", "service_name": "user-api", "request_key": "rk-1", "test_title": "Create User"},
+            {"timestamp": "2024-01-01T00:00:03", "type": "----- Scenario change delimiter -----", "previous_scenario_key": "sk-1", "current_scenario_key": "sk-2"},
+            {"timestamp": "2024-01-01T00:00:04", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://other.com/api/data", "status_code": 500, "scenario_key": "sk-2", "scenario_name": "Admin Scenario", "service_name": "data-api", "namespace": "prod-ns"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        self.log_path = log_path
+        yield
+
+    def test_no_filters_returns_all_entries(self, capsys):
+        """dump_logs with no filters returns all entries."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters=None)
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 5
+
+    def test_filter_by_method(self, capsys):
+        """Filter by HTTP method."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'method': 'GET'})
+        captured = capsys.readouterr()
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' in captured.out
+        assert captured.out.count('"method": "GET"') == 2
+        assert '"method": "POST"' not in captured.out
+
+    def test_filter_by_status_code(self, capsys):
+        """Filter by status code."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'status_code': 200})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"status_code": 200' in captured.out
+
+    def test_filter_by_level(self, capsys):
+        """Filter by log level."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'level': 'ERROR'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"level": "ERROR"' in captured.out
+        assert '"level": "INFO"' not in captured.out
+
+    def test_filter_by_message(self, capsys):
+        """Filter by message."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'message': 'Mock failure'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'Mock failure' in captured.out
+        assert 'Mock success' not in captured.out
+
+    def test_filter_by_scenario_key(self, capsys):
+        """Filter by scenario key."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'scenario_key': 'sk-2'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_key": "sk-2"' in captured.out
+        assert '"scenario_key": "sk-1"' not in captured.out
+
+    def test_filter_by_scenario_name(self, capsys):
+        """Filter by scenario name."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'scenario_name': 'User Scenario'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_name": "User Scenario"' in captured.out
+        assert '"scenario_name": "Admin Scenario"' not in captured.out
+
+    def test_filter_by_service_name(self, capsys):
+        """Filter by service name."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'service_name': 'user-api'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"service_name": "user-api"' in captured.out
+
+    def test_filter_by_url_substring(self, capsys):
+        """Filter by URL substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'url': '/api/users'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'https://example.com/api/users' in captured.out
+
+    def test_filter_by_message_substring(self, capsys):
+        """Filter by message substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'message': 'success'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' not in captured.out
+
+    def test_filter_by_scenario_name_substring(self, capsys):
+        """Filter by scenario name substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'scenario_name': 'User'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"scenario_name": "User Scenario"' in captured.out
+        assert '"scenario_name": "Admin Scenario"' not in captured.out
+
+    def test_filter_by_service_name_substring(self, capsys):
+        """Filter by service name substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'service_name': 'user'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"service_name": "user-api"' in captured.out
+
+    def test_filter_by_test_title_substring(self, capsys):
+        """Filter by test title substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'test_title': 'Create'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"test_title": "Create User"' in captured.out
+
+    def test_filter_by_user_agent_substring(self, capsys):
+        """Filter by user agent substring."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'user_agent': 'Chrome'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert 'Chrome/120.0' in captured.out
+
+    def test_filter_by_request_key(self, capsys):
+        """Filter by request key."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'request_key': 'rk-1'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"request_key": "rk-1"' in captured.out
+
+    def test_filter_by_test_title(self, capsys):
+        """Filter by test title."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'test_title': 'Create User'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"test_title": "Create User"' in captured.out
+
+    def test_filter_by_namespace(self, capsys):
+        """Filter by namespace."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'namespace': 'prod-ns'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"namespace": "prod-ns"' in captured.out
+
+    def test_multiple_filters_and_combined(self, capsys):
+        """Multiple filters are AND-combined."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'method': 'GET', 'level': 'ERROR'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 1
+        assert '"method": "GET"' in captured.out
+        assert '"level": "ERROR"' in captured.out
+        assert '"status_code": 499' in captured.out
+
+    def test_filter_excludes_delimiters(self, capsys):
+        """Delimiter entries are excluded when filtering."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'level': 'INFO'})
+        captured = capsys.readouterr()
+        assert 'delimiter' not in captured.out
+        assert 'Mock success' in captured.out
+
+    def test_filter_no_matches_prints_nothing(self, capsys):
+        """No matches prints empty output."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'method': 'DELETE'})
+        captured = capsys.readouterr()
+        assert captured.out == ''
+
+    def test_filter_level_case_insensitive(self, capsys):
+        """Level filter is case-insensitive."""
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'level': 'info'})
+        captured = capsys.readouterr()
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 2
+        assert '"level": "INFO"' in captured.out
+
+    def test_filter_missing_file_returns_gracefully(self, temp_log_dir):
+        """Missing file with filters doesn't crash."""
+        InterceptedRequestsLogger.set_file_path(os.path.join(temp_log_dir, 'nonexistent.log'))
+        SimpleInterceptedRequestsLogger.dump_logs(filters={'method': 'GET'})
+        # Should not raise an exception
+
+
+class TestDumpLogsSelect:
+    """Tests for dump_logs with --select flag."""
+
+    @pytest.fixture(autouse=True)
+    def setup_log_file(self, temp_log_dir):
+        """Create a log file with multiple entries for select tests."""
+        log_path = os.path.join(temp_log_dir, 'select_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200, "scenario_key": "sk-1"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://example.com/api/orders", "status_code": 500, "scenario_key": "sk-2"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/products", "status_code": 200, "scenario_key": "sk-1"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        self.log_path = log_path
+        yield
+
+    def test_select_filters_fields(self, capsys):
+        """Select parameter filters fields correctly."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['timestamp', 'method', 'url'])
+        captured = capsys.readouterr()
+
+        # Should be table format (default when select is used)
+        assert 'timestamp' in captured.out
+        assert 'method' in captured.out
+        assert 'url' in captured.out
+
+        # Should NOT include other fields
+        assert 'level' not in captured.out
+        assert 'message' not in captured.out
+        assert 'status_code' not in captured.out
+        assert 'scenario_key' not in captured.out
+
+    def test_select_with_format_json(self, capsys):
+        """Select with format=json returns JSON array with selected fields."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['method', 'url', 'status_code'], output_format='json')
+        captured = capsys.readouterr()
+
+        # Should be valid JSON array
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+        assert len(data) == 3
+
+        # Each entry should only have selected fields
+        for entry in data:
+            assert set(entry.keys()) == {'method', 'url', 'status_code'}
+
+    def test_select_without_format_defaults_to_table(self, capsys):
+        """Select without format defaults to table output."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['method', 'status_code'])
+        captured = capsys.readouterr()
+
+        # Should be table format with headers
+        lines = captured.out.strip().split('\n')
+        assert len(lines) > 1  # Headers + data rows
+        assert 'method' in lines[0]  # Header row
+        assert 'status_code' in lines[0]  # Header row
+
+    def test_select_with_format_simple(self, capsys):
+        """Select with format=simple returns table."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['timestamp', 'message'], output_format='simple')
+        captured = capsys.readouterr()
+
+        # Should be table format
+        assert 'timestamp' in captured.out
+        assert 'message' in captured.out
+        assert 'Mock success' in captured.out
+        assert 'Mock failure' in captured.out
+
+    def test_select_with_without_headers(self, capsys):
+        """Select with without_headers removes table headers."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['method', 'url'], without_headers=True)
+        captured = capsys.readouterr()
+
+        lines = captured.out.strip().split('\n')
+        # Should have data but first line should not be headers
+        assert len(lines) == 3  # 3 data rows, no header
+        assert 'method' not in lines[0]  # First line should be data, not headers
+        assert 'GET' in lines[0] or 'POST' in lines[0]  # First line should be data
+
+    def test_select_with_filters(self, capsys):
+        """Select works with filters."""
+        SimpleInterceptedRequestsLogger.dump_logs(
+            select=['method', 'url', 'status_code'],
+            filters={'method': 'GET'}
+        )
+        captured = capsys.readouterr()
+
+        # Should be table with only GET requests
+        assert 'GET' in captured.out
+        assert 'POST' not in captured.out
+        lines = captured.out.strip().split('\n')
+        assert len(lines) == 3  # 1 header + 2 GET requests
+
+    def test_select_nonexistent_field_ignored(self, capsys):
+        """Non-existent fields in select are silently ignored."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=['timestamp', 'nonexistent_field', 'method'])
+        captured = capsys.readouterr()
+
+        # Should only show timestamp and method
+        assert 'timestamp' in captured.out
+        assert 'method' in captured.out
+        assert 'nonexistent_field' not in captured.out
+
+    def test_format_json_without_select_shows_all_fields(self, capsys):
+        """Format=json without select shows all fields."""
+        SimpleInterceptedRequestsLogger.dump_logs(output_format='json')
+        captured = capsys.readouterr()
+
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+        assert len(data) == 3
+
+        # Should have all fields
+        first_entry = data[0]
+        assert 'timestamp' in first_entry
+        assert 'level' in first_entry
+        assert 'message' in first_entry
+        assert 'method' in first_entry
+        assert 'url' in first_entry
+        assert 'status_code' in first_entry
+        assert 'scenario_key' in first_entry
+
+    def test_format_simple_without_select_shows_all_fields(self, capsys):
+        """Format=simple without select shows all fields."""
+        SimpleInterceptedRequestsLogger.dump_logs(output_format='simple')
+        captured = capsys.readouterr()
+
+        # Should be table with all fields
+        assert 'timestamp' in captured.out
+        assert 'level' in captured.out
+        assert 'message' in captured.out
+        assert 'method' in captured.out
+        assert 'url' in captured.out
+        assert 'status_code' in captured.out
+        assert 'scenario_key' in captured.out
+
+    def test_empty_select_shows_all_fields(self, capsys):
+        """Empty select list shows all fields."""
+        SimpleInterceptedRequestsLogger.dump_logs(select=[])
+        captured = capsys.readouterr()
+
+        # Should show all entries as JSON lines (backward compatible)
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 3
+        for line in lines:
+            entry = json.loads(line)
+            assert 'timestamp' in entry
+            assert 'method' in entry
+
+    def test_backward_compatibility_no_select_no_format(self, capsys):
+        """No select and no format maintains original JSON lines behavior."""
+        SimpleInterceptedRequestsLogger.dump_logs()
+        captured = capsys.readouterr()
+
+        # Should be JSON lines format
+        lines = [line for line in captured.out.strip().split('\n') if line]
+        assert len(lines) == 3
+        for line in lines:
+            entry = json.loads(line)
+            assert 'timestamp' in entry
+            assert 'method' in entry

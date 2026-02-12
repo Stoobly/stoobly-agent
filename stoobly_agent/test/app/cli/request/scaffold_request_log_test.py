@@ -9,6 +9,7 @@ import time
 from click.testing import CliRunner
 from unittest.mock import patch
 
+from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
@@ -200,6 +201,9 @@ class TestRequestLogWithRecordedRequestsE2e():
     @pytest.fixture(scope="class", autouse=True)
     def record_then_mock_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Record a request, then switch to mock workflow for testing."""
+        # Pre-generate CA certs so workflow up skips sudo cert install
+        CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
+
         # Start record workflow
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
         time.sleep(1)
@@ -364,6 +368,9 @@ class TestRequestLogWithTestWorkflowE2e():
     @pytest.fixture(scope="class", autouse=True)
     def record_then_test_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Record a request, then switch to test workflow for testing."""
+        # Pre-generate CA certs so workflow up skips sudo cert install
+        CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
+
         # Start record workflow
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
         time.sleep(1)
