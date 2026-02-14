@@ -1,3 +1,4 @@
+import hashlib
 import os
 import pdb
 
@@ -46,11 +47,13 @@ def overwrite_scenario_with_lock(overwrite_id: str, scenario_key: ScenarioKey, s
     Args:
         overwrite_id: Unique identifier for this overwrite operation.
                      Different IDs allow multiple overwrites of the same scenario.
+                     Will be hashed to prevent path traversal attacks.
         scenario_key: The scenario to overwrite
         scenario_model: Model instance for updating scenario state
     
     Behavior:
-        - Creates a file lock based on scenario_key.id and overwrite_id
+        - Sanitizes overwrite_id by hashing to prevent path traversal vulnerabilities
+        - Creates a file lock based on scenario_key.id and hashed overwrite_id
         - First request with a given (scenario_key, overwrite_id) combination will:
           1. Set scenario to overwritable=True
           2. Delete all existing requests in the scenario
@@ -63,8 +66,16 @@ def overwrite_scenario_with_lock(overwrite_id: str, scenario_key: ScenarioKey, s
         - Uses FileLock for coordination across threads and processes
         - In non-detached Docker mode: works across containers (shared bind mount)
         - In detached Docker mode: only works within a single container (isolated volumes)
+    
+    Security:
+        - Hashes overwrite_id to prevent path traversal attacks (e.g., "../../../etc/passwd")
+        - Ensures lock files are always created within tmp_dir_path
     """
-    lock_file_name = f'.{scenario_key.id}_{overwrite_id}.overwrite.lock'
+    # Sanitize overwrite_id by hashing to prevent path traversal vulnerabilities
+    # This ensures the lock file is always created within tmp_dir, even if
+    # overwrite_id contains malicious path segments like "../" or "/"
+    safe_overwrite_id = hashlib.sha256(overwrite_id.encode()).hexdigest()[:16]
+    lock_file_name = f'.{scenario_key.id}_{safe_overwrite_id}.overwrite.lock'
     lock_path = os.path.join(DataDir.instance().tmp_dir_path, lock_file_name)
     file_lock = FileLock(lock_path)
 
@@ -86,5 +97,5 @@ def overwrite_scenario_with_lock(overwrite_id: str, scenario_key: ScenarioKey, s
         with open(marker_file, 'w') as f:
           f.write('')
     except Exception as e:
-      Logger.instance(LOG_ID).error(f"Failed to acquire lock for scenario overwrite: {e}")
+      Logger.instance(LOG_ID).error(f"Error during scenario overwrite: {e}")
       return
