@@ -15,13 +15,13 @@ from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants.env_vars import ENV
-from stoobly_agent.config.constants import lifecycle_hooks, mode, record_order, record_policy, record_strategy
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mode, record_order, record_policy, record_strategy
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
-from .record.overwrite_scenario_service import overwrite_scenario
+from .record.overwrite_scenario_service import overwrite_scenario, overwrite_scenario_with_lock
 from .record.upload_request_service import inject_upload_request
 from .replay.context import ReplayContext
 from .replay.body_parser_service import is_json, is_xml
@@ -50,6 +50,13 @@ def handle_request_record(context: ReplayContext) -> None:
     # To differentiate record rewrite rules, outbound request uses replay rules
     # Record rules are applied to the request and its response when storing
     handle_request_replay(context)
+
+    # Check if scenario should be overwritten before recording new requests.
+    # Must happen here (not in handle_response_record) because:
+    # 1. Ensures scenario is cleared before any responses are recorded
+    # 2. Works even for requests without responses (timeouts, errors, etc.)
+    # 3. Avoids race conditions where multiple requests might record before clearing
+    __try_overwrite_scenario(context.intercept_settings)
 
 ###
 # 1. AFTER_REPLAY gets triggered
@@ -119,25 +126,6 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     context.flow = flow # Reset flow
 
 def __record_request(context: RecordContext, request_model: RequestModel):
-    intercept_settings = context.intercept_settings
-
-    # If record order header is set to overwrite, then make the scenario overwritable
-    if intercept_settings.order_from_header == record_order.OVERWRITE:
-        scenario_key = intercept_settings.parsed_scenario_key
-        scenario_model = intercept_settings.scenario_model
-        if scenario_key and scenario_model:
-            res, status = scenario_model.update(scenario_key.id, **{ 'overwritable': True })
-            if status != 200:
-                Logger.instance(LOG_ID).error(f"Failed to update scenario {scenario_key.id} to overwritable: {res}")
-                return
-            
-            overwrite_scenario(scenario_key)
-    elif intercept_settings.order == record_order.OVERWRITE:
-        scenario_key = intercept_settings.parsed_scenario_key
-
-        if scenario_key:
-            overwrite_scenario(scenario_key)
-
     if os.environ.get(ENV) == TEST:
         __record_handler(context, request_model)
     else:
@@ -175,3 +163,21 @@ def __record_hook(hook: str, context: RecordContext):
 
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](context)
+
+def __try_overwrite_scenario(intercept_settings: InterceptSettings):
+    # If record order header is set to overwrite, then make the scenario overwritable
+    if intercept_settings.order_from_header == record_order.OVERWRITE:
+        overwrite_id = intercept_settings.request.headers.get(custom_headers.OVERWRITE_ID)
+
+        if overwrite_id:
+            scenario_key = intercept_settings.parsed_scenario_key
+            scenario_model = intercept_settings.scenario_model
+
+            if scenario_key and scenario_model:
+                overwrite_scenario_with_lock(overwrite_id, scenario_key, scenario_model)
+    elif intercept_settings.order == record_order.OVERWRITE:
+        # If record order overwrite is set from settings.yml, then overwrite the scenario
+        scenario_key = intercept_settings.parsed_scenario_key
+
+        if scenario_key:
+            overwrite_scenario(scenario_key)
