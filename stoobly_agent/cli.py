@@ -97,12 +97,7 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
-@click.option(
-  '--public-directory-path',
-  multiple=True,
-  type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
-  help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].'
-)
+@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @click.option(
   '--response-fixtures-path',
   multiple=True,
