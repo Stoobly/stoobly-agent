@@ -56,7 +56,7 @@ def handle_request_record(context: ReplayContext) -> None:
     # 1. Ensures scenario is cleared before any responses are recorded
     # 2. Works even for requests without responses (timeouts, errors, etc.)
     # 3. Avoids race conditions where multiple requests might record before clearing
-    __try_overwrite_scenario(context.intercept_settings)
+    __try_overwrite_scenario(context.intercept_settings, context.flow.request)
 
 ###
 # 1. AFTER_REPLAY gets triggered
@@ -164,10 +164,10 @@ def __record_hook(hook: str, context: RecordContext):
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](context)
 
-def __try_overwrite_scenario(intercept_settings: InterceptSettings):
+def __try_overwrite_scenario(intercept_settings: InterceptSettings, request: 'MitmproxyRequest'):
     # If record order header is set to overwrite, then make the scenario overwritable
     if intercept_settings.order_from_header == record_order.OVERWRITE:
-        overwrite_id = intercept_settings.request.headers.get(custom_headers.OVERWRITE_ID)
+        overwrite_id = request.headers.get(custom_headers.OVERWRITE_ID)
 
         if overwrite_id:
             scenario_key = intercept_settings.parsed_scenario_key
