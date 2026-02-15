@@ -53,7 +53,12 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option(
+  '--ca-certs-dir-path', 
+  default=DataDir.instance().ca_certs_dir_path, 
+  type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
+  help='Path to ca certs directory used to sign SSL certs.'
+)
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -78,7 +83,11 @@ def init(**kwargs):
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+  '--lifecycle-hooks-path',
+  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+  help='Path to lifecycle hooks script.'
+)
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
@@ -88,8 +97,18 @@ def init(**kwargs):
   the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
-@click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
-@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option(
+  '--public-directory-path',
+  multiple=True,
+  type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
+  help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].'
+)
+@click.option(
+  '--response-fixtures-path',
+  multiple=True,
+  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+  help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].'
+)
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
