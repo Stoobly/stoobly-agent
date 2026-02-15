@@ -98,12 +98,7 @@ def init(**kwargs):
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
-@click.option(
-  '--response-fixtures-path',
-  multiple=True,
-  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-  help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].'
-)
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
