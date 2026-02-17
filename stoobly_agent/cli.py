@@ -78,7 +78,11 @@ def init(**kwargs):
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+  '--lifecycle-hooks-path',
+  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+  help='Path to lifecycle hooks script.'
+)
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
