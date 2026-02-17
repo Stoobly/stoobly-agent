@@ -20,6 +20,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
@@ -637,53 +638,93 @@ class TestScaffoldRequestLogCliParams:
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
             result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
+            mock_dump.assert_called_once()
+            call_kwargs = mock_dump.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] is None
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
     def test_log_delete_without_args_uses_defaults(self, runner):
         """scaffold request log delete with workflow_name passes None for namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
             result = runner.invoke(scaffold, ['request', 'log', 'delete', 'mock'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
+            mock_truncate.assert_called_once()
+            call_kwargs = mock_truncate.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] is None
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
     def test_log_list_accepts_workflow_name_argument(self, runner):
         """scaffold request log list accepts workflow_name as positional argument."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
             result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
+            mock_dump.assert_called_once()
+            call_kwargs = mock_dump.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] is None
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
     def test_log_list_accepts_namespace_option(self, runner):
         """scaffold request log list accepts --namespace option."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
             result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--namespace', 'test-ns'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='mock', namespace='test-ns', data_dir_path=DataDir.instance().context_dir_path)
+            mock_dump.assert_called_once()
+            call_kwargs = mock_dump.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] == 'test-ns'
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'test-ns'
 
     def test_log_list_accepts_both_workflow_and_namespace(self, runner):
         """scaffold request log list accepts both workflow_name and --namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
             result = runner.invoke(scaffold, ['request', 'log', 'list', 'record', '--namespace', 'prod'])
             assert result.exit_code == 0
-            mock_dump.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=DataDir.instance().context_dir_path)
+            mock_dump.assert_called_once()
+            call_kwargs = mock_dump.call_args.kwargs
+            assert call_kwargs['workflow'] == 'record'
+            assert call_kwargs['namespace'] == 'prod'
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'prod'
 
     def test_log_delete_accepts_workflow_name_argument(self, runner):
         """scaffold request log delete accepts workflow_name as positional argument."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
             result = runner.invoke(scaffold, ['request', 'log', 'delete', 'mock'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='mock', namespace=None, data_dir_path=DataDir.instance().context_dir_path)
+            mock_truncate.assert_called_once()
+            call_kwargs = mock_truncate.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] is None
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
     def test_log_delete_accepts_namespace_option(self, runner):
         """scaffold request log delete accepts --namespace option."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
             result = runner.invoke(scaffold, ['request', 'log', 'delete', 'mock', '--namespace', 'test-ns'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='mock', namespace='test-ns', data_dir_path=DataDir.instance().context_dir_path)
+            mock_truncate.assert_called_once()
+            call_kwargs = mock_truncate.call_args.kwargs
+            assert call_kwargs['workflow'] == 'mock'
+            assert call_kwargs['namespace'] == 'test-ns'
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'test-ns'
 
     def test_log_delete_accepts_both_workflow_and_namespace(self, runner):
         """scaffold request log delete accepts both workflow_name and --namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
             result = runner.invoke(scaffold, ['request', 'log', 'delete', 'record', '--namespace', 'prod'])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(workflow='record', namespace='prod', data_dir_path=DataDir.instance().context_dir_path)
+            mock_truncate.assert_called_once()
+            call_kwargs = mock_truncate.call_args.kwargs
+            assert call_kwargs['workflow'] == 'record'
+            assert call_kwargs['namespace'] == 'prod'
+            assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
+            assert call_kwargs['workflow_namespace'].namespace == 'prod'

@@ -343,15 +343,15 @@ class TestWorkflowNamespaceParameters:
         # Create a log file at the expected path
         workflow = 'mock'
         namespace = 'test-ns'
-        log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
+        log_dir = os.path.join(self.temp_dir, namespace, 'logs')
         os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
+        log_file = os.path.join(log_dir, f'{workflow}.requests.json')
 
         with open(log_file, 'w') as f:
             f.write('{"message": "test log entry"}\n')
 
         with patch.object(DataDir, 'instance') as mock_data_dir:
-            mock_data_dir.return_value.path = self.temp_dir
+            mock_data_dir.return_value.tmp_dir_path = self.temp_dir
             ScaffoldInterceptedRequestsLogger.dump_logs(workflow=workflow, namespace=namespace)
 
         captured = capsys.readouterr()
@@ -361,16 +361,16 @@ class TestWorkflowNamespaceParameters:
         """truncate() operates on correct file when workflow/namespace specified."""
         workflow = 'record'
         namespace = 'prod-ns'
-        log_dir = os.path.join(self.temp_dir, 'tmp', workflow, namespace, 'logs')
+        log_dir = os.path.join(self.temp_dir, namespace, 'logs')
         os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f'requests-{workflow}.json')
+        log_file = os.path.join(log_dir, f'{workflow}.requests.json')
 
         # Create file with content
         with open(log_file, 'w') as f:
             f.write('{"message": "should be cleared"}\n')
 
         with patch.object(DataDir, 'instance') as mock_data_dir:
-            mock_data_dir.return_value.path = self.temp_dir
+            mock_data_dir.return_value.tmp_dir_path = self.temp_dir
             ScaffoldInterceptedRequestsLogger.truncate(workflow=workflow, namespace=namespace)
 
         # File should be empty or cleared

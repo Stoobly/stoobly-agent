@@ -1,5 +1,7 @@
 import click
 
+from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 
@@ -26,10 +28,13 @@ def request_log(ctx):
 @click.argument('workflow_name')
 def request_log_path(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+    app = App(context_dir_path)
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
+
     ScaffoldInterceptedRequestsLogger.get_log_file_path(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
+        workflow_namespace=workflow_namespace,
     )
 
 @request_log.command(name="list", help="List intercepted requests log entries")
@@ -38,10 +43,13 @@ def request_log_path(**kwargs):
 @click.argument('workflow_name')
 def request_log_list(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+    app = App(context_dir_path)
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
+
     ScaffoldInterceptedRequestsLogger.dump_logs(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
+        workflow_namespace=workflow_namespace,
     )
 
 @request_log.command(name="delete", help="Delete intercepted requests log entries")
@@ -50,10 +58,13 @@ def request_log_list(**kwargs):
 @click.argument('workflow_name')
 def request_log_delete(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+    app = App(context_dir_path)
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
+    
     ScaffoldInterceptedRequestsLogger.truncate(
         workflow=kwargs.get('workflow_name'),
         namespace=kwargs.get('namespace'),
-        data_dir_path=context_dir_path
+        workflow_namespace=workflow_namespace,
     )
 
 request.add_command(request_log, name="log")

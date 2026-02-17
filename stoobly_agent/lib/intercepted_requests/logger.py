@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Final, Optional
 if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest
+    from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT, SIMPLE_FORMAT
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
@@ -62,12 +63,12 @@ class InterceptedRequestsLogger():
     _logger.disabled = True
 
     @classmethod
-    def _get_file_path(cls, **kwargs) -> str:
+    def _get_file_path(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> str:
         """Return the log file path. Must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement _get_file_path")
 
     @classmethod
-    def _get_log_path_message(cls, **kwargs) -> str:
+    def _get_log_path_message(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None) -> str:
         """Return the print message for get_log_file_path. Must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement _get_log_path_message")
 
@@ -249,10 +250,10 @@ class InterceptedRequestsLogger():
     # --- Template methods (shared logic, delegate to cls._get_file_path) ---
 
     @classmethod
-    def enable_logger_file(cls, data_dir_path: str = None, **kwargs) -> None:
+    def enable_logger_file(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:
         """Enable file-based logging. Subclass determines the file path."""
         base = InterceptedRequestsLogger
-        cls._ensure_directory(data_dir_path=data_dir_path, **kwargs)
+        cls._ensure_directory(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
         # Enable the logger before setup so error logging works
         base._logger.disabled = False
@@ -263,7 +264,7 @@ class InterceptedRequestsLogger():
 
             # Create file handler
             base._file_handler = logging.FileHandler(
-                cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
+                cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
             )
             base._file_handler.setLevel(logging.DEBUG)
             json_formatter = JSONFormatter(
@@ -303,11 +304,11 @@ class InterceptedRequestsLogger():
             base._logger.error(f"Failed to configure logger file output: {e}")
 
     @classmethod
-    def get_log_file_path(cls, data_dir_path: str = None, **kwargs) -> str:
+    def get_log_file_path(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> str:
         """Get the log file path and print it."""
-        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
-        print(cls._get_log_path_message(data_dir_path=data_dir_path, **kwargs))
+        print(cls._get_log_path_message(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace))
 
         if not os.path.exists(file_path):
             return
@@ -315,7 +316,7 @@ class InterceptedRequestsLogger():
         return file_path
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, **kwargs):
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None):
         """Dump log entries to stdout, optionally filtering by field values and selecting columns.
 
         Args:
@@ -324,10 +325,12 @@ class InterceptedRequestsLogger():
             output_format: Output format ('json' or 'simple'). If None and select is provided, defaults to 'simple'.
             select: Optional list of field names to display. If empty, all fields shown.
             without_headers: If True, don't print column headers (for table format only).
-            **kwargs: Additional arguments passed to _get_file_path (e.g., workflow, namespace).
+            workflow: Workflow name for scaffold-based logging.
+            namespace: Workflow namespace for scaffold-based logging.
+            workflow_namespace: WorkflowNamespace object for scaffold-based logging.
         """
         base = InterceptedRequestsLogger
-        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
         if not os.path.exists(file_path):
             return
 
@@ -420,15 +423,15 @@ class InterceptedRequestsLogger():
             print(f"Failed to read log file: {e}")
 
     @classmethod
-    def truncate(cls, data_dir_path: str = None, **kwargs) -> None:
+    def truncate(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:
         """Truncate (clear) the log file and re-enable logging."""
         base = InterceptedRequestsLogger
-        cls._ensure_directory(data_dir_path=data_dir_path, **kwargs)
+        cls._ensure_directory(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
-        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
         if not os.path.exists(file_path):
-            cls.enable_logger_file(data_dir_path=data_dir_path, **kwargs)
+            cls.enable_logger_file(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
             return
 
         try:
@@ -449,7 +452,7 @@ class InterceptedRequestsLogger():
                 f.write('')
 
             # Re-enable logging with fresh handlers
-            cls.enable_logger_file(data_dir_path=data_dir_path, **kwargs)
+            cls.enable_logger_file(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
             base._logger.debug(f"Cleared log file: {file_path}")
 
@@ -458,9 +461,9 @@ class InterceptedRequestsLogger():
             base._logger.error(f"Failed to clear log file: {e}")
 
     @classmethod
-    def _ensure_directory(cls, data_dir_path: str = None, **kwargs) -> None:
+    def _ensure_directory(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:
         """Ensure the log file directory exists."""
-        file_path = cls._get_file_path(data_dir_path=data_dir_path, **kwargs)
+        file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
         directory = os.path.dirname(file_path)
 
         if directory and not os.path.exists(directory):

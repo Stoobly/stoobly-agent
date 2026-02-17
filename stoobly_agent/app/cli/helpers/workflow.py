@@ -20,6 +20,13 @@ def workflow_running() -> bool:
 
   # Get app directory from environment or use current directory
   app_dir = os.environ.get(APP_DIR_ENV) or os.getcwd()
+
+  # If the data directory doesn't exist yet, no workflow can be running.
+  # Avoids attempting to create it (and failing with PermissionError) just to check the lock file.
+  from stoobly_agent.config.data_dir import DATA_DIR_NAME
+  if not os.path.isdir(os.path.join(app_dir, DATA_DIR_NAME)):
+    return False
+
   app = App(app_dir)
 
   context_lock = ContextLock(app)
