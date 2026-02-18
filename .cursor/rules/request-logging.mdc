@@ -1,0 +1,97 @@
+# Request Logging System
+
+## Overview
+The request logging system captures intercepted HTTP requests during workflow execution (mock, record, test). Logs are stored as JSON files and can be viewed/managed via CLI commands.
+
+There are two distinct CLI command paths:
+- **Non-scaffold**: `stoobly-agent request log` - For direct proxy usage without scaffold
+- **Scaffold**: `stoobly-agent scaffold request log` - For scaffold-based workflows with workflow/namespace support
+
+## Key Files
+- **Logger package**: [stoobly_agent/lib/intercepted_requests/](mdc:stoobly_agent/lib/intercepted_requests/) - Request logging package
+  - [logger.py](mdc:stoobly_agent/lib/intercepted_requests/logger.py) - Core `InterceptedRequestsLogger` base class
+  - [json_formatter.py](mdc:stoobly_agent/lib/intercepted_requests/json_formatter.py) - `JSONFormatter` for structured JSON log output
+  - [scaffold_logger.py](mdc:stoobly_agent/lib/intercepted_requests/scaffold_logger.py) - `ScaffoldInterceptedRequestsLogger` with workflow/namespace support
+  - [simple_logger.py](mdc:stoobly_agent/lib/intercepted_requests/simple_logger.py) - `SimpleInterceptedRequestsLogger` for non-scaffold usage
+- **Non-scaffold CLI**: [stoobly_agent/app/cli/request_cli.py](mdc:stoobly_agent/app/cli/request_cli.py) - `request log path`, `request log list`, `request log delete`
+- **Scaffold CLI**: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py) - `scaffold request log path`, `scaffold request log list`, `scaffold request log delete`
+- **Mock Handler**: [stoobly_agent/app/proxy/handle_mock_service.py](mdc:stoobly_agent/app/proxy/handle_mock_service.py) - Logs "Mock success" and "Mock failure"
+- **Test Handler**: [stoobly_agent/app/proxy/handle_test_service.py](mdc:stoobly_agent/app/proxy/handle_test_service.py) - Delegates to mock handler for logging
+
+## Log File Path Structure
+
+### Non-scaffold (Simple) Mode
+Logs are stored at: `{data_dir}/tmp/logs/requests.json`
+
+Example path: `.stoobly/tmp/logs/requests.json`
+
+### Scaffold Mode
+Logs are stored at: `{data_dir}/tmp/{workflow}/{namespace}/logs/requests-{workflow}.json`
+
+Example paths:
+- Mock workflow: `.stoobly/tmp/mock/mock/logs/requests-mock.json`
+- Test workflow: `.stoobly/tmp/test/test/logs/requests-test.json`
+- Custom namespace: `.stoobly/tmp/mock/prod-ns/logs/requests-mock.json`
+
+## Path Resolution Logic
+The `__get_file_path()` method determines the scaffold log file path:
+1. If `workflow` parameter is provided, use it; otherwise fall back to `WORKFLOW_NAME` env var or `settings.proxy.intercept.mode`
+2. If `namespace` parameter is provided, use it; otherwise default to the `workflow` parameter (if provided), then fall back to `WORKFLOW_NAMESPACE` env var or the workflow name
+
+## CLI Usage
+
+### Non-scaffold Commands (Simple Mode)
+```bash
+# Get log file path
+stoobly-agent request log path --context-dir-path ./path/.stoobly
+
+# List log entries
+stoobly-agent request log list --context-dir-path ./path/.stoobly
+
+# Delete log entries
+stoobly-agent request log delete --context-dir-path ./path/.stoobly
+```
+
+### Scaffold Commands
+```bash
+# List logs for current workflow (uses settings.proxy.intercept.mode)
+stoobly-agent scaffold request log list --context-dir-path ./path/.stoobly
+
+# List logs for specific workflow
+stoobly-agent scaffold request log list mock --context-dir-path ./path/.stoobly
+
+# List logs for specific workflow (namespace defaults to workflow name)
+stoobly-agent scaffold request log list test --context-dir-path ./path/.stoobly
+
+# List logs for specific workflow and custom namespace
+stoobly-agent scaffold request log list mock --namespace prod-ns --context-dir-path ./path/.stoobly
+
+# Get log file path
+stoobly-agent scaffold request log path mock --context-dir-path ./path/.stoobly
+
+# Delete logs
+stoobly-agent scaffold request log delete mock --context-dir-path ./path/.stoobly
+stoobly-agent scaffold request log delete test --context-dir-path ./path/.stoobly
+```
+
+## Log Entry Fields
+Each log entry includes:
+- `timestamp` - ISO format timestamp
+- `level` - Log level (INFO, ERROR, etc.)
+- `message` - Log message ("Mock success", "Mock failure", etc.)
+- `method` - HTTP method (GET, POST, etc.)
+- `url` - Request URL (truncated to 100 chars)
+- `status_code` - HTTP response status code
+- `latency_ms` - Request latency in milliseconds
+- `user_agent` - User-Agent header value
+- `scenario_key` - Stoobly scenario key
+- `scenario_name` - Scenario name (if available)
+- `service_name` - Scaffold service name (if set)
+- `namespace` - Workflow namespace (if set)
+- `request_key` - Stoobly request key (if available)
+- `fixture_path` - Path to response fixture (if used)
+- `test_title` - Test title from request headers (if set)
+
+## Test Files
+- [stoobly_agent/test/lib/intercepted_requests/logger_test.py](mdc:stoobly_agent/test/lib/intercepted_requests/logger_test.py) - Unit tests for logger, formatter, and path handling
+- [stoobly_agent/test/app/cli/request/request_log_test.py](mdc:stoobly_agent/test/app/cli/request/request_log_test.py) - CLI integration tests

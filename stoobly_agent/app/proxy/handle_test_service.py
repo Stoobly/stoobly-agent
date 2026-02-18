@@ -15,7 +15,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, request_origin
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
-from stoobly_agent.lib.intercepted_requests_logger import InterceptedRequestsLogger
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import handle_request_mock_generic, handle_response_mock

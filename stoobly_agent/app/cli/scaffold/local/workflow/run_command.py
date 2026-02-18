@@ -337,6 +337,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
             handle_stale(folder, pid, pid_file_path)
 
   def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
+    # Write .env before starting proxy so it can load WORKFLOW_NAME, etc.
+    self.write_env(**options)
+
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
 
@@ -376,27 +379,30 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           command,
           capture_output=True,
           text=True,
-          check=True,
           cwd=self.workflow_path,
         )
 
         # Provide some time for the process to start
         time.sleep(0.5)
 
+        if result.returncode != 0:
+          self.__handle_up_error()
+
         # The --detached option prints the PID to stdout
         pid = int(result.stdout.strip())
 
         if not self._is_process_running(pid):
           self.__handle_up_error()
-        
+
         # Write PID to file
         self.__create_pid_file(pid)
-        
+
         Logger.instance(LOG_ID).info(f"Started {self.workflow_name} with PID: {pid}")
       except subprocess.CalledProcessError as e:
         self.__handle_up_error()
       except ValueError as e:
         Logger.instance(LOG_ID).error(f"Failed to parse PID from output: {e}")
+        self.__handle_up_error()
 
   def __handle_up_error(self):
     if not self.dry_run:
