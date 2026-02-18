@@ -84,7 +84,7 @@ class InterceptedRequestsLogger():
     @staticmethod
     def _get_workflow() -> str:
         """Get the workflow name from env var or settings."""
-        return os.environ.get(WORKFLOW_NAME_ENV, InterceptedRequestsLogger._settings.proxy.intercept.mode)
+        return os.environ.get(WORKFLOW_NAME_ENV) or InterceptedRequestsLogger._settings.proxy.intercept.mode
 
     @staticmethod
     def _get_namespace() -> str:

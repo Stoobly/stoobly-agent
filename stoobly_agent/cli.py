@@ -8,6 +8,7 @@ from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
@@ -163,7 +164,7 @@ def run(**kwargs):
     if kwargs.get('request_log_enable'):
       from stoobly_agent.app.cli.helpers.workflow import workflow_running
 
-      if workflow_running():
+      if os.environ.get(WORKFLOW_NAME_ENV):
         from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
         RequestLogger = ScaffoldInterceptedRequestsLogger
       else:

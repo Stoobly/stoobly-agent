@@ -378,6 +378,25 @@ class TestWorkflowNamespaceParameters:
             content = f.read()
             assert 'should be cleared' not in content
 
+    def test_get_workflow_empty_env_falls_back_to_settings(self):
+        """_get_workflow() with WORKFLOW_NAME='' falls back to settings.proxy.intercept.mode."""
+        with patch.dict(os.environ, {'WORKFLOW_NAME': ''}):
+            with patch.object(InterceptedRequestsLogger, '_settings') as mock_settings:
+                mock_settings.proxy.intercept.mode = 'mock'
+                result = InterceptedRequestsLogger._get_workflow()
+        assert result == 'mock'
+
+    def test_enable_logger_file_uses_workflow_name_env(self):
+        """enable_logger_file() without params uses WORKFLOW_NAME env var for filename."""
+        workflow = 'mock'
+        with patch.dict(os.environ, {'WORKFLOW_NAME': workflow, 'WORKFLOW_NAMESPACE': workflow}):
+            with patch.object(DataDir, 'instance') as mock_data_dir:
+                mock_data_dir.return_value.tmp_dir_path = self.temp_dir
+                ScaffoldInterceptedRequestsLogger.enable_logger_file()
+
+        expected_path = os.path.join(self.temp_dir, workflow, 'logs', f'{workflow}.requests.json')
+        assert os.path.exists(expected_path), f"Expected log at {expected_path}"
+
 
 class TestPathSanitization:
     """Tests for path traversal prevention."""
