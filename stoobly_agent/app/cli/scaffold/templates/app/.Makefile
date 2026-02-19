@@ -53,7 +53,7 @@ working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 workflow_down_options=$(working_dir_options) --user-id $(USER_ID) $(workflow_down_extra_options)
 workflow_log_options=$(workflow_log_extra_options)
 workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
-workflow_request_log_options=--context-dir-path $(context_dir) --namespace $(workflow_namespace)
+workflow_request_log_options=--context-dir-path /home/stoobly --namespace $(workflow_namespace)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
  
 # Commands
@@ -205,8 +205,10 @@ workflow/request/log/delete:
 	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/request/log/path:
-	@export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec)
+	@_ctx=$(context_dir) && \
+	_ctx_escaped=$$(printf '%s' "$$_ctx" | sed 's/[&|\\]/\\&/g') && \
+	export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
+	$(stoobly_exec) | sed "s|/home/stoobly|$$_ctx_escaped|g"
 workflow/request/logs:
 	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
