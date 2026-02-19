@@ -14,7 +14,7 @@ There are two distinct CLI command paths:
   - [scaffold_logger.py](mdc:stoobly_agent/lib/intercepted_requests/scaffold_logger.py) - `ScaffoldInterceptedRequestsLogger` with workflow/namespace support
   - [simple_logger.py](mdc:stoobly_agent/lib/intercepted_requests/simple_logger.py) - `SimpleInterceptedRequestsLogger` for non-scaffold usage
 - **Non-scaffold CLI**: [stoobly_agent/app/cli/request_cli.py](mdc:stoobly_agent/app/cli/request_cli.py) - `request log path`, `request log list`, `request log delete`
-- **Scaffold CLI**: [stoobly_agent/app/cli/scaffold_cli.py](mdc:stoobly_agent/app/cli/scaffold_cli.py) - `scaffold request log path`, `scaffold request log list`, `scaffold request log delete`
+- **Scaffold CLI**: [stoobly_agent/app/cli/scaffold_request_log_cli.py](mdc:stoobly_agent/app/cli/scaffold_request_log_cli.py) - `scaffold request log path`, `scaffold request log list`, `scaffold request log delete` (registered into `scaffold_cli.py`)
 - **Mock Handler**: [stoobly_agent/app/proxy/handle_mock_service.py](mdc:stoobly_agent/app/proxy/handle_mock_service.py) - Logs "Mock success" and "Mock failure"
 - **Test Handler**: [stoobly_agent/app/proxy/handle_test_service.py](mdc:stoobly_agent/app/proxy/handle_test_service.py) - Delegates to mock handler for logging
 
@@ -26,17 +26,22 @@ Logs are stored at: `{data_dir}/tmp/logs/requests.json`
 Example path: `.stoobly/tmp/logs/requests.json`
 
 ### Scaffold Mode
-Logs are stored at: `{data_dir}/tmp/{workflow}/{namespace}/logs/requests-{workflow}.json`
+Logs are stored at: `{data_dir}/tmp/{namespace}/logs/{workflow}.requests.json`
+
+When a `WorkflowNamespace` object is provided: `{workflow_namespace.path}/logs/{workflow}.requests.json`
 
 Example paths:
-- Mock workflow: `.stoobly/tmp/mock/mock/logs/requests-mock.json`
-- Test workflow: `.stoobly/tmp/test/test/logs/requests-test.json`
-- Custom namespace: `.stoobly/tmp/mock/prod-ns/logs/requests-mock.json`
+- Mock workflow: `.stoobly/tmp/mock/logs/mock.requests.json`
+- Test workflow: `.stoobly/tmp/test/logs/test.requests.json`
+- Custom namespace: `.stoobly/tmp/prod-ns/logs/mock.requests.json`
 
 ## Path Resolution Logic
-The `__get_file_path()` method determines the scaffold log file path:
-1. If `workflow` parameter is provided, use it; otherwise fall back to `WORKFLOW_NAME` env var or `settings.proxy.intercept.mode`
-2. If `namespace` parameter is provided, use it; otherwise default to the `workflow` parameter (if provided), then fall back to `WORKFLOW_NAMESPACE` env var or the workflow name
+The `_get_file_path()` class method on `ScaffoldInterceptedRequestsLogger` determines the log file path:
+1. If `workflow_namespace` object is provided → `{workflow_namespace.path}/logs/{workflow}.requests.json`
+2. Otherwise → resolve `tmp_dir_path` from `data_dir_path` (or default `DataDir`), then:
+   - `workflow` (`wf`): use `workflow` param if given, otherwise fall back to `WORKFLOW_NAME` env var or `settings.proxy.intercept.mode`
+   - `namespace` (`ns`): use `namespace` param if given, otherwise fall back to `workflow` param, then `WORKFLOW_NAMESPACE` env var, or the resolved workflow name
+   - Path: `{tmp_dir_path}/{ns}/logs/{wf}.requests.json`
 
 ## CLI Usage
 
@@ -53,17 +58,14 @@ stoobly-agent request log delete --context-dir-path ./path/.stoobly
 ```
 
 ### Scaffold Commands
+`workflow_name` is a **required positional argument** for all scaffold request log commands.
+
 ```bash
-# List logs for current workflow (uses settings.proxy.intercept.mode)
-stoobly-agent scaffold request log list --context-dir-path ./path/.stoobly
-
-# List logs for specific workflow
+# List logs for a workflow (namespace defaults to workflow name)
 stoobly-agent scaffold request log list mock --context-dir-path ./path/.stoobly
-
-# List logs for specific workflow (namespace defaults to workflow name)
 stoobly-agent scaffold request log list test --context-dir-path ./path/.stoobly
 
-# List logs for specific workflow and custom namespace
+# List logs for a workflow with a custom namespace
 stoobly-agent scaffold request log list mock --namespace prod-ns --context-dir-path ./path/.stoobly
 
 # Get log file path
