@@ -205,8 +205,10 @@ workflow/request/log/delete:
 	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/request/log/path:
-	@export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec) | sed "s|/home/stoobly|$(context_dir)|g"
+	@_ctx=$(context_dir) && \
+	_ctx_escaped=$$(printf '%s' "$$_ctx" | sed 's/[&|\\]/\\&/g') && \
+	export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
+	$(stoobly_exec) | sed "s|/home/stoobly|$$_ctx_escaped|g"
 workflow/request/logs:
 	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
