@@ -1,5 +1,8 @@
+import base64
+import json
 import os
 import pdb
+import re
 
 from runpy import run_path
 from typing import List, Optional, Union, TYPE_CHECKING
@@ -8,9 +11,11 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
+from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.match_rule import MatchRule as MatchRuleClass
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
@@ -291,7 +296,25 @@ class InterceptSettings:
   @property
   def match_rules(self) -> List[MatchRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    if self.__headers and custom_headers.REQUEST_MATCH_RULES in self.__headers and self.__request:
+      value = self.__headers[custom_headers.REQUEST_MATCH_RULES]
+      if value:
+        try:
+          decoded = base64.b64decode(value).decode('utf-8')
+          components_data = json.loads(decoded)
+          components = [c for c in components_data if isinstance(c, str) and c.strip()]
+          if components:
+            header_rule = MatchRuleClass({
+              'components': components,
+              'methods': [self.__request.method.upper()],
+              'modes': [_mode],
+              'pattern': re.escape(self.__request.url),
+            })
+            rules.append(header_rule)
+        except (json.JSONDecodeError, ValueError) as e:
+          Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
+    return rules
 
   # TODO: explore if should support specifying components to ignore
   @property
@@ -384,6 +407,7 @@ class InterceptSettings:
     self.__for_response = True
 
   def __select_rewrite_rules(self, mode = None):
+    mode = mode or self.mode
     rules = []
 
     # Filter only parameters matching active intercept mode
@@ -400,6 +424,34 @@ class InterceptSettings:
         rewrite_rule.url_rules = url_rules
         rewrite_rule.parameter_rules = parameter_rules
         rules.append(rewrite_rule)
+
+    # Append rules from X-Stoobly-Request-Rewrite-Rules header (base64-encoded JSON)
+    if self.__headers and custom_headers.REQUEST_REWRITE_RULES in self.__headers and self.__request:
+      try:
+        value = self.__headers[custom_headers.REQUEST_REWRITE_RULES]
+        if value:
+          decoded = base64.b64decode(value).decode('utf-8')
+          parameter_rules_data = json.loads(decoded)
+          if isinstance(parameter_rules_data, list) and len(parameter_rules_data) > 0:
+            parameter_rules = []
+            for item in parameter_rules_data:
+              if isinstance(item, dict) and item.get('type') and item.get('name') is not None and item.get('value') is not None:
+                parameter_rules.append(ParameterRuleClass({
+                  'modes': [mode],
+                  'name': str(item['name']),
+                  'type': str(item['type']),
+                  'value': str(item['value']),
+                }))
+            if parameter_rules:
+              header_rewrite_rule = RewriteRule({
+                'methods': [self.__request.method.upper()],
+                'pattern': re.escape(self.__request.url),
+                'parameter_rules': [r.to_dict() for r in parameter_rules],
+                'url_rules': [],
+              })
+              rules.append(header_rewrite_rule)
+      except (json.JSONDecodeError, ValueError, KeyError) as e:
+        Logger.instance().warn(f"Invalid X-Stoobly-Request-Rewrite-Rules header: {e}")
 
     return rules
 

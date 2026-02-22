@@ -1,3 +1,6 @@
+import base64
+import json
+import re
 import pytest
 from unittest.mock import MagicMock, Mock
 
@@ -5,6 +8,7 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.cache import Cache
@@ -22,8 +26,14 @@ def mock_settings():
     settings.proxy = MagicMock()
     settings.proxy.data = MagicMock()
     settings.proxy.intercept = MagicMock()
+    settings.proxy.match = MagicMock()
+    settings.proxy.rewrite = MagicMock()
+    settings.proxy.firewall = MagicMock()
     # Use a properly encoded project key with id=1
     settings.proxy.intercept.project_key = ProjectKey.encode(1, 1).decode()
+    settings.proxy.match.match_rules.return_value = []
+    settings.proxy.rewrite.rewrite_rules.return_value = []
+    settings.proxy.firewall.firewall_rules.return_value = []
     return settings
 
 
@@ -268,4 +278,187 @@ class TestScenarioKey:
         assert result == scenario_key_header
         # ScenarioModel should not be called when SCENARIO_KEY header is present
         scenario_model.index.assert_not_called()
+
+
+class TestRequestMatchRules:
+
+    def test_appends_rule_from_header_when_valid_base64_json(self, mock_settings, mock_data_rules, mock_request):
+        """Test that match_rules appends a rule from X-Stoobly-Request-Match-Rules header when valid base64 JSON."""
+        components = [request_component.BODY_PARAM, request_component.HEADER]
+        header_value = base64.b64encode(json.dumps(components).encode('utf-8')).decode('ascii')
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_MATCH_RULES: header_value,
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.match_rules
+
+        assert len(rules) == 1
+        assert rules[0].components == components
+        assert rules[0].methods == ['GET']
+        assert rules[0].modes == ['mock']
+
+    def test_uses_request_method_and_url_for_header_rule(self, mock_settings, mock_data_rules, mock_request):
+        """Test that header rule uses request method and URL as pattern."""
+        components = [request_component.QUERY_PARAM]
+        header_value = base64.b64encode(json.dumps(components).encode('utf-8')).decode('ascii')
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_MATCH_RULES: header_value,
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.match_rules
+
+        assert len(rules) == 1
+        assert rules[0].methods == ['GET']
+        assert rules[0].pattern == re.escape(mock_request.url)
+
+    def test_ignores_invalid_header(self, mock_settings, mock_data_rules, mock_request):
+        """Test that match_rules ignores invalid base64 or JSON in header."""
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_MATCH_RULES: 'not-valid-base64!!!',
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.match_rules
+
+        assert len(rules) == 0
+
+    def test_returns_settings_rules_when_header_not_set(self, mock_settings, mock_data_rules, mock_request):
+        """Test that match_rules returns only settings rules when header is not set."""
+        from stoobly_agent.app.settings.match_rule import MatchRule
+
+        settings_rule = MatchRule({
+            'components': [request_component.BODY_PARAM],
+            'methods': ['GET'],
+            'modes': ['mock'],
+            'pattern': r'.*',
+        })
+        mock_settings.proxy.match.match_rules.return_value = [settings_rule]
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.match_rules
+
+        assert len(rules) == 1
+        assert rules[0].components == [request_component.BODY_PARAM]
+
+    def test_returns_empty_when_request_is_none(self, mock_settings, mock_data_rules):
+        """Test that match_rules does not append header rule when request is None."""
+        components = [request_component.BODY_PARAM]
+        header_value = base64.b64encode(json.dumps(components).encode('utf-8')).decode('ascii')
+
+        intercept_settings = InterceptSettings(mock_settings)
+        intercept_settings._InterceptSettings__headers = Headers(**{custom_headers.REQUEST_MATCH_RULES: header_value})
+        intercept_settings._InterceptSettings__request = None
+
+        rules = intercept_settings.match_rules
+
+        assert len(rules) == 0
+
+
+class TestRequestRewriteRules:
+
+    def test_appends_rule_from_header_when_valid_base64_json(self, mock_settings, mock_data_rules, mock_request):
+        """Test that rewrite_rules appends a rule from X-Stoobly-Request-Rewrite-Rules header when valid base64 JSON."""
+        parameter_rules = [
+            {'type': 'Header', 'name': 'Authorization', 'value': 'Bearer xyz'},
+            {'type': 'Query Param', 'name': 'api_key', 'value': 'secret'},
+        ]
+        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_REWRITE_RULES: header_value,
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.rewrite_rules
+
+        assert len(rules) == 1
+        assert len(rules[0].parameter_rules) == 2
+        assert rules[0].parameter_rules[0].name == 'Authorization'
+        assert rules[0].parameter_rules[0].type == 'Header'
+        assert rules[0].parameter_rules[0].value == 'Bearer xyz'
+        assert rules[0].parameter_rules[1].name == 'api_key'
+        assert rules[0].parameter_rules[1].type == 'Query Param'
+        assert rules[0].parameter_rules[1].value == 'secret'
+
+    def test_uses_request_method_and_url_for_header_rule(self, mock_settings, mock_data_rules, mock_request):
+        """Test that header rewrite rule uses request method and URL as pattern."""
+        parameter_rules = [{'type': 'Header', 'name': 'X-Custom', 'value': 'value'}]
+        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_REWRITE_RULES: header_value,
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.rewrite_rules
+
+        assert len(rules) == 1
+        assert rules[0].methods == ['GET']
+        assert rules[0].pattern == re.escape(mock_request.url)
+
+    def test_ignores_invalid_header(self, mock_settings, mock_data_rules, mock_request):
+        """Test that rewrite_rules ignores invalid base64 or JSON in header."""
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_REWRITE_RULES: 'not-valid-base64!!!',
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.rewrite_rules
+
+        assert len(rules) == 0
+
+    def test_ignores_malformed_parameter_rules(self, mock_settings, mock_data_rules, mock_request):
+        """Test that rewrite_rules ignores parameter rules missing type, name, or value."""
+        parameter_rules = [
+            {'type': 'Header', 'name': 'Valid', 'value': 'ok'},
+            {'name': 'MissingType', 'value': 'x'},
+            {'type': 'Header', 'value': 'MissingName'},
+            {'type': 'Header', 'name': 'MissingValue'},
+        ]
+        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_REWRITE_RULES: header_value,
+            custom_headers.PROXY_MODE: 'mock',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        rules = intercept_settings.rewrite_rules
+
+        assert len(rules) == 1
+        assert len(rules[0].parameter_rules) == 1
+        assert rules[0].parameter_rules[0].name == 'Valid'
+
+    def test_returns_empty_when_request_is_none(self, mock_settings, mock_data_rules):
+        """Test that rewrite_rules does not append header rule when request is None."""
+        parameter_rules = [{'type': 'Header', 'name': 'X-Custom', 'value': 'value'}]
+        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+
+        intercept_settings = InterceptSettings(mock_settings)
+        intercept_settings._InterceptSettings__headers = Headers(**{custom_headers.REQUEST_REWRITE_RULES: header_value})
+        intercept_settings._InterceptSettings__request = None
+
+        rules = intercept_settings.rewrite_rules
+
+        assert len(rules) == 0
 
