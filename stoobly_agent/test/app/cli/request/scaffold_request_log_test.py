@@ -728,3 +728,146 @@ class TestScaffoldRequestLogCliParams:
             assert call_kwargs['namespace'] == 'prod'
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'prod'
+
+
+class TestScaffoldRequestLogListFiltering:
+    """Unit tests for scaffold request log list filtering via CLI options."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Write a pre-built log file and configure the scaffold logger to use it."""
+        temp_dir = tempfile.mkdtemp()
+        log_path = os.path.join(temp_dir, 'requests.json')
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/test", "status_code": 200, "scenario_key": "sk-1", "service_name": "svc-a"},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://example.com/api/test", "status_code": 499, "scenario_key": "sk-1", "service_name": "svc-a"},
+            {"timestamp": "2024-01-01T00:00:02", "level": "INFO", "message": "Mock success", "method": "POST", "url": "https://example.com/api/users", "status_code": 201, "scenario_key": "sk-2", "request_key": "rk-1", "test_title": "Create User", "service_name": "svc-b", "namespace": "ns-1"},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        # ScaffoldInterceptedRequestsLogger._get_file_path() only uses the cached
+        # _file_path when workflow is None, so mock _get_file_path directly to
+        # inject our temp log file regardless of workflow/namespace arguments.
+        with patch.object(ScaffoldInterceptedRequestsLogger, '_get_file_path', return_value=log_path):
+            yield
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_filter_by_method_via_cli(self):
+        """Filter by method via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--method', 'GET'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert '"method": "GET"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_status_code_via_cli(self):
+        """Filter by status code via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--status-code', '499'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        assert '"status_code": 499' in result.output
+        assert 'Mock success' not in result.output
+
+    def test_filter_by_level_via_cli(self):
+        """Filter by level via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--level', 'error'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        assert '"level": "ERROR"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_message_via_cli(self):
+        """Filter by message via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--message', 'Mock success'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert 'Mock failure' not in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 2
+
+    def test_filter_by_scenario_key_via_cli(self):
+        """Filter by scenario key via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--scenario-key', 'sk-2'])
+        assert result.exit_code == 0
+        assert '"scenario_key": "sk-2"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_url_via_cli(self):
+        """Filter by URL substring via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--url', '/api/users'])
+        assert result.exit_code == 0
+        assert 'https://example.com/api/users' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_request_key_via_cli(self):
+        """Filter by request key via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--request-key', 'rk-1'])
+        assert result.exit_code == 0
+        assert '"request_key": "rk-1"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_filter_by_test_title_via_cli(self):
+        """Filter by test title via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--test-title', 'Create User'])
+        assert result.exit_code == 0
+        assert '"test_title": "Create User"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_multiple_filters_via_cli(self):
+        """Multiple filters via CLI."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--method', 'POST', '--level', 'ERROR'])
+        assert result.exit_code == 0
+        assert 'Mock failure' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_no_filters_returns_all(self):
+        """No filters returns all entries."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock'])
+        assert result.exit_code == 0
+        assert 'Mock success' in result.output
+        assert 'Mock failure' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 3
+
+    def test_filter_by_service_name_via_cli(self):
+        """Filter by service name via CLI (scaffold-specific filter)."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--service-name', 'svc-b'])
+        assert result.exit_code == 0
+        assert '"service_name": "svc-b"' in result.output
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 1
+
+    def test_namespace_is_routing_not_filter(self):
+        """--namespace routes to the correct log file; it is not a content filter."""
+        runner = CliRunner()
+        result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--namespace', 'ns-1'])
+        assert result.exit_code == 0
+        lines = [line for line in result.output.strip().split('\n') if line]
+        assert len(lines) == 3
