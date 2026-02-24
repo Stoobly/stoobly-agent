@@ -17,6 +17,7 @@ from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.match_rule import MatchRule as MatchRuleClass
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
+from stoobly_agent.app.settings.url_rule import UrlRule as UrlRuleClass
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
@@ -136,7 +137,14 @@ class InterceptSettings:
 
   @property
   def public_directory_path(self):
-    """Get raw public directory paths string from environment or headers."""
+    """Returns comma-separated list of public directory paths, optionally with origin prefix.
+    
+    Examples:
+      - Single path: '/path/to/public'
+      - Multiple paths: '/path/to/public1,/path/to/public2'
+      - With origin: 'https://example.com:/path/to/public'
+      - Combined: 'https://api.example.com:/public1,/public2,https://other.com:/public3'
+    """
     if self.__headers and custom_headers.PUBLIC_DIRECTORY_PATH in self.__headers:
       return self.__headers[custom_headers.PUBLIC_DIRECTORY_PATH]
     elif os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
@@ -157,7 +165,14 @@ class InterceptSettings:
 
   @property
   def response_fixtures_path(self):
-    """Returns comma-separated list of response fixtures paths, optionally with origin prefix."""
+    """Returns comma-separated list of response fixtures paths, optionally with origin prefix.
+    
+    Examples:
+      - Single path: '/path/to/fixtures.json'
+      - Multiple paths: '/path/to/fixtures1.json,/path/to/fixtures2.json'
+      - With origin: 'https://example.com:/path/to/fixtures.json'
+      - Combined: 'https://api.example.com:/fixtures1.json,/fixtures2.json,https://other.com:/fixtures3.json'
+    """
     if self.__headers and custom_headers.RESPONSE_FIXTURES_PATH in self.__headers:
       return self.__headers[custom_headers.RESPONSE_FIXTURES_PATH]
 
@@ -297,21 +312,46 @@ class InterceptSettings:
   def match_rules(self) -> List[MatchRule]:
     _mode = self.mode
     rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    
+    # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
+    # Expected format from stoobly-js:
+    # [
+    #   {
+    #     modes: ['replay', 'mock'],
+    #     components: 'Header'  // Single RequestParameter value
+    #   }
+    # ]
     if self.__headers and custom_headers.REQUEST_MATCH_RULES in self.__headers and self.__request:
       value = self.__headers[custom_headers.REQUEST_MATCH_RULES]
       if value:
         try:
           decoded = base64.b64decode(value).decode('utf-8')
-          components_data = json.loads(decoded)
-          components = [c for c in components_data if isinstance(c, str) and c.strip()]
-          if components:
-            header_rule = MatchRuleClass({
-              'components': components,
-              'methods': [self.__request.method.upper()],
-              'modes': [_mode],
-              'pattern': re.escape(self.__request.url),
-            })
-            rules.append(header_rule)
+          match_rules_data = json.loads(decoded)
+          if isinstance(match_rules_data, list):
+            for match_rule_data in match_rules_data:
+              if not isinstance(match_rule_data, dict):
+                continue
+              
+              # Get components - stoobly-js sends a single string, but agent expects array
+              components_value = match_rule_data.get('components')
+              if not components_value or not isinstance(components_value, str):
+                continue
+              
+              # Convert single component to array (agent expects List[RequestComponent])
+              components = [components_value.strip()]
+              
+              # Get modes (optional, defaults to current mode)
+              modes = match_rule_data.get('modes', [_mode])
+              if not isinstance(modes, list):
+                modes = [_mode]
+              
+              header_rule = MatchRuleClass({
+                'components': components,
+                'methods': [self.__request.method.upper()],
+                'modes': modes,
+                'pattern': re.escape(self.__request.url),
+              })
+              rules.append(header_rule)
         except (json.JSONDecodeError, ValueError) as e:
           Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
     return rules
@@ -426,30 +466,61 @@ class InterceptSettings:
         rules.append(rewrite_rule)
 
     # Append rules from X-Stoobly-Request-Rewrite-Rules header (base64-encoded JSON)
+    # Expected format from stoobly-js (using snake_case):
+    # [
+    #   {
+    #     url_rules: [{path: '/new-path', port: '8080', scheme: 'https'}],
+    #     parameter_rules: [{type: 'header', name: 'foo', value: 'bar'}]
+    #   }
+    # ]
     if self.__headers and custom_headers.REQUEST_REWRITE_RULES in self.__headers and self.__request:
       try:
         value = self.__headers[custom_headers.REQUEST_REWRITE_RULES]
         if value:
           decoded = base64.b64decode(value).decode('utf-8')
-          parameter_rules_data = json.loads(decoded)
-          if isinstance(parameter_rules_data, list) and len(parameter_rules_data) > 0:
-            parameter_rules = []
-            for item in parameter_rules_data:
-              if isinstance(item, dict) and item.get('type') and item.get('name') is not None and item.get('value') is not None:
-                parameter_rules.append(ParameterRuleClass({
-                  'modes': [mode],
-                  'name': str(item['name']),
-                  'type': str(item['type']),
-                  'value': str(item['value']),
-                }))
-            if parameter_rules:
-              header_rewrite_rule = RewriteRule({
-                'methods': [self.__request.method.upper()],
-                'pattern': re.escape(self.__request.url),
-                'parameter_rules': [r.to_dict() for r in parameter_rules],
-                'url_rules': [],
-              })
-              rules.append(header_rewrite_rule)
+          rewrite_rules_data = json.loads(decoded)
+          if isinstance(rewrite_rules_data, list) and len(rewrite_rules_data) > 0:
+            for rewrite_rule_data in rewrite_rules_data:
+              if not isinstance(rewrite_rule_data, dict):
+                continue
+              
+              # Parse parameter rules (using snake_case)
+              parameter_rules = []
+              parameter_rules_data = rewrite_rule_data.get('parameter_rules', [])
+              if isinstance(parameter_rules_data, list):
+                for item in parameter_rules_data:
+                  if isinstance(item, dict) and item.get('type') and item.get('name') is not None and item.get('value') is not None:
+                    parameter_rules.append(ParameterRuleClass({
+                      'modes': [mode],
+                      'name': str(item['name']),
+                      'type': str(item['type']),
+                      'value': str(item['value']),
+                    }))
+              
+              # Parse URL rules (using snake_case)
+              url_rules = []
+              url_rules_data = rewrite_rule_data.get('url_rules', [])
+              if isinstance(url_rules_data, list):
+                for item in url_rules_data:
+                  if isinstance(item, dict):
+                    url_rule_dict = {'modes': [mode]}
+                    if 'path' in item:
+                      url_rule_dict['path'] = str(item['path'])
+                    if 'port' in item:
+                      url_rule_dict['port'] = str(item['port'])
+                    if 'scheme' in item:
+                      url_rule_dict['scheme'] = str(item['scheme'])
+                    url_rules.append(UrlRuleClass(url_rule_dict))
+              
+              # Only create a rewrite rule if we have at least one parameter or URL rule
+              if parameter_rules or url_rules:
+                header_rewrite_rule = RewriteRule({
+                  'methods': [self.__request.method.upper()],
+                  'pattern': re.escape(self.__request.url),
+                  'parameter_rules': [r.to_dict() for r in parameter_rules],
+                  'url_rules': [r.to_dict() for r in url_rules],
+                })
+                rules.append(header_rewrite_rule)
       except (json.JSONDecodeError, ValueError, KeyError) as e:
         Logger.instance().warn(f"Invalid X-Stoobly-Request-Rewrite-Rules header: {e}")
 
