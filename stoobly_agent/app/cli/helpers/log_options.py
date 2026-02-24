@@ -5,12 +5,23 @@ import click
 from stoobly_agent.app.cli.helpers.print_service import FORMATS
 
 LOG_FILTER_KEYS = [
+    # Filter keys only — display options (format, select, without_headers)
+    # are intentionally excluded and handled directly by each CLI command.
     'level', 'message', 'method', 'scenario_key', 'scenario_name',
     'status_code', 'url', 'request_key', 'test_title',
 ]
 
 
 def build_log_filters(kwargs: dict, extra_keys: list = None) -> dict:
+    """Extract filter parameters from CLI kwargs.
+
+    Args:
+        kwargs: Full kwargs dict from a Click command.
+        extra_keys: Additional filter keys beyond LOG_FILTER_KEYS (e.g. ['service_name']).
+
+    Returns:
+        Dict of non-None filter key/value pairs.
+    """
     keys = LOG_FILTER_KEYS + (extra_keys or [])
     return {k: v for k, v in kwargs.items() if k in keys and v is not None}
 
