@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import re
 import pytest
 from unittest.mock import MagicMock, Mock
@@ -9,7 +10,7 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants import custom_headers, env_vars
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.test.test_helper import reset
@@ -284,8 +285,11 @@ class TestRequestMatchRules:
 
     def test_appends_rule_from_header_when_valid_base64_json(self, mock_settings, mock_data_rules, mock_request):
         """Test that match_rules appends a rule from X-Stoobly-Request-Match-Rules header when valid base64 JSON."""
-        components = [request_component.BODY_PARAM, request_component.HEADER]
-        header_value = base64.b64encode(json.dumps(components).encode('utf-8')).decode('ascii')
+        match_rules = [
+            {'components': request_component.BODY_PARAM, 'modes': ['mock']},
+            {'components': request_component.HEADER, 'modes': ['mock']},
+        ]
+        header_value = base64.b64encode(json.dumps(match_rules).encode('utf-8')).decode('ascii')
 
         mock_request.headers = Headers(**{
             custom_headers.REQUEST_MATCH_RULES: header_value,
@@ -296,15 +300,18 @@ class TestRequestMatchRules:
         intercept_settings = InterceptSettings(mock_settings, mock_request)
         rules = intercept_settings.match_rules
 
-        assert len(rules) == 1
-        assert rules[0].components == components
+        assert len(rules) == 2
+        assert rules[0].components == [request_component.BODY_PARAM]
         assert rules[0].methods == ['GET']
         assert rules[0].modes == ['mock']
+        assert rules[1].components == [request_component.HEADER]
+        assert rules[1].methods == ['GET']
+        assert rules[1].modes == ['mock']
 
     def test_uses_request_method_and_url_for_header_rule(self, mock_settings, mock_data_rules, mock_request):
         """Test that header rule uses request method and URL as pattern."""
-        components = [request_component.QUERY_PARAM]
-        header_value = base64.b64encode(json.dumps(components).encode('utf-8')).decode('ascii')
+        match_rules = [{'components': request_component.QUERY_PARAM}]
+        header_value = base64.b64encode(json.dumps(match_rules).encode('utf-8')).decode('ascii')
 
         mock_request.headers = Headers(**{
             custom_headers.REQUEST_MATCH_RULES: header_value,
@@ -371,11 +378,15 @@ class TestRequestRewriteRules:
 
     def test_appends_rule_from_header_when_valid_base64_json(self, mock_settings, mock_data_rules, mock_request):
         """Test that rewrite_rules appends a rule from X-Stoobly-Request-Rewrite-Rules header when valid base64 JSON."""
-        parameter_rules = [
-            {'type': 'Header', 'name': 'Authorization', 'value': 'Bearer xyz'},
-            {'type': 'Query Param', 'name': 'api_key', 'value': 'secret'},
+        rewrite_rules = [
+            {
+                'parameter_rules': [
+                    {'type': 'Header', 'name': 'Authorization', 'value': 'Bearer xyz'},
+                    {'type': 'Query Param', 'name': 'api_key', 'value': 'secret'},
+                ]
+            }
         ]
-        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+        header_value = base64.b64encode(json.dumps(rewrite_rules).encode('utf-8')).decode('ascii')
 
         mock_request.headers = Headers(**{
             custom_headers.REQUEST_REWRITE_RULES: header_value,
@@ -397,8 +408,14 @@ class TestRequestRewriteRules:
 
     def test_uses_request_method_and_url_for_header_rule(self, mock_settings, mock_data_rules, mock_request):
         """Test that header rewrite rule uses request method and URL as pattern."""
-        parameter_rules = [{'type': 'Header', 'name': 'X-Custom', 'value': 'value'}]
-        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+        rewrite_rules = [
+            {
+                'parameter_rules': [
+                    {'type': 'Header', 'name': 'X-Custom', 'value': 'value'}
+                ]
+            }
+        ]
+        header_value = base64.b64encode(json.dumps(rewrite_rules).encode('utf-8')).decode('ascii')
 
         mock_request.headers = Headers(**{
             custom_headers.REQUEST_REWRITE_RULES: header_value,
@@ -428,13 +445,17 @@ class TestRequestRewriteRules:
 
     def test_ignores_malformed_parameter_rules(self, mock_settings, mock_data_rules, mock_request):
         """Test that rewrite_rules ignores parameter rules missing type, name, or value."""
-        parameter_rules = [
-            {'type': 'Header', 'name': 'Valid', 'value': 'ok'},
-            {'name': 'MissingType', 'value': 'x'},
-            {'type': 'Header', 'value': 'MissingName'},
-            {'type': 'Header', 'name': 'MissingValue'},
+        rewrite_rules = [
+            {
+                'parameter_rules': [
+                    {'type': 'Header', 'name': 'Valid', 'value': 'ok'},
+                    {'name': 'MissingType', 'value': 'x'},
+                    {'type': 'Header', 'value': 'MissingName'},
+                    {'type': 'Header', 'name': 'MissingValue'},
+                ]
+            }
         ]
-        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+        header_value = base64.b64encode(json.dumps(rewrite_rules).encode('utf-8')).decode('ascii')
 
         mock_request.headers = Headers(**{
             custom_headers.REQUEST_REWRITE_RULES: header_value,
@@ -451,8 +472,14 @@ class TestRequestRewriteRules:
 
     def test_returns_empty_when_request_is_none(self, mock_settings, mock_data_rules):
         """Test that rewrite_rules does not append header rule when request is None."""
-        parameter_rules = [{'type': 'Header', 'name': 'X-Custom', 'value': 'value'}]
-        header_value = base64.b64encode(json.dumps(parameter_rules).encode('utf-8')).decode('ascii')
+        rewrite_rules = [
+            {
+                'parameter_rules': [
+                    {'type': 'Header', 'name': 'X-Custom', 'value': 'value'}
+                ]
+            }
+        ]
+        header_value = base64.b64encode(json.dumps(rewrite_rules).encode('utf-8')).decode('ascii')
 
         intercept_settings = InterceptSettings(mock_settings)
         intercept_settings._InterceptSettings__headers = Headers(**{custom_headers.REQUEST_REWRITE_RULES: header_value})
@@ -462,3 +489,89 @@ class TestRequestRewriteRules:
 
         assert len(rules) == 0
 
+
+class TestPublicDirectoryPath:
+
+    def test_returns_path_from_header_when_set(self, mock_settings, mock_data_rules, mock_request):
+        """Test that public_directory_path returns the value from X-Stoobly-Public-Directory-Path header when set."""
+        public_dir = '/path/to/public'
+        mock_request.headers = Headers(**{custom_headers.PUBLIC_DIRECTORY_PATH: public_dir})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.public_directory_path == public_dir
+
+    def test_returns_path_from_env_when_header_not_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that public_directory_path returns environment variable when header is not set."""
+        public_dir = '/env/public'
+        monkeypatch.setenv(env_vars.AGENT_PUBLIC_DIRECTORY_PATH, public_dir)
+        
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.public_directory_path == public_dir
+
+    def test_returns_none_when_neither_header_nor_env_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that public_directory_path returns None when neither header nor environment variable is set."""
+        # Ensure env var is not set
+        monkeypatch.delenv(env_vars.AGENT_PUBLIC_DIRECTORY_PATH, raising=False)
+        
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.public_directory_path is None
+
+    def test_prioritizes_header_over_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that header value takes priority over environment variable."""
+        header_dir = '/header/public'
+        env_dir = '/env/public'
+        
+        monkeypatch.setenv(env_vars.AGENT_PUBLIC_DIRECTORY_PATH, env_dir)
+        mock_request.headers = Headers(**{custom_headers.PUBLIC_DIRECTORY_PATH: header_dir})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.public_directory_path == header_dir
+
+class TestResponseFixturesPath:
+
+    def test_returns_path_from_header_when_set(self, mock_settings, mock_data_rules, mock_request):
+        """Test that response_fixtures_path returns the value from X-Stoobly-Response-Fixtures-Path header when set."""
+        fixtures_path = '/path/to/fixtures.json'
+        mock_request.headers = Headers(**{custom_headers.RESPONSE_FIXTURES_PATH: fixtures_path})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.response_fixtures_path == fixtures_path
+
+    def test_returns_path_from_env_when_header_not_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that response_fixtures_path returns environment variable when header is not set."""
+        fixtures_path = '/env/fixtures.json'
+        monkeypatch.setenv(env_vars.AGENT_RESPONSE_FIXTURES_PATH, fixtures_path)
+        
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.response_fixtures_path == fixtures_path
+
+    def test_returns_none_when_neither_header_nor_env_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that response_fixtures_path returns None when neither header nor environment variable is set."""
+        # Ensure env var is not set
+        monkeypatch.delenv(env_vars.AGENT_RESPONSE_FIXTURES_PATH, raising=False)
+        
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.response_fixtures_path is None
+
+    def test_prioritizes_header_over_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Test that header value takes priority over environment variable."""
+        header_path = '/header/fixtures.json'
+        env_path = '/env/fixtures.json'
+        
+        monkeypatch.setenv(env_vars.AGENT_RESPONSE_FIXTURES_PATH, env_path)
+        mock_request.headers = Headers(**{custom_headers.RESPONSE_FIXTURES_PATH: header_path})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.response_fixtures_path == header_path
