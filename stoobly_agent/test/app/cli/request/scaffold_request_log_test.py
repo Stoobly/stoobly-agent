@@ -864,11 +864,10 @@ class TestScaffoldRequestLogListFiltering:
         lines = [line for line in result.output.strip().split('\n') if line]
         assert len(lines) == 1
 
-    def test_filter_by_namespace_via_cli(self):
-        """Filter by namespace via CLI (scaffold-specific filter)."""
+    def test_namespace_is_routing_not_filter(self):
+        """--namespace routes to the correct log file; it is not a content filter."""
         runner = CliRunner()
         result = runner.invoke(scaffold, ['request', 'log', 'list', 'mock', '--namespace', 'ns-1'])
         assert result.exit_code == 0
-        assert '"namespace": "ns-1"' in result.output
         lines = [line for line in result.output.strip().split('\n') if line]
-        assert len(lines) == 1
+        assert len(lines) == 3

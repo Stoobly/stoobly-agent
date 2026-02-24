@@ -48,7 +48,7 @@ def request_log_list(**kwargs):
     context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
     app = App(context_dir_path)
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
-    filters = build_log_filters(kwargs, extra_keys=['service_name', 'namespace'])
+    filters = build_log_filters(kwargs, extra_keys=['service_name'])
 
     ScaffoldInterceptedRequestsLogger.dump_logs(
         workflow=kwargs.get('workflow_name'),
