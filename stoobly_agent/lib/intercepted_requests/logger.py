@@ -387,6 +387,7 @@ class InterceptedRequestsLogger():
                     proc.wait(timeout=1)
                 except subprocess.TimeoutExpired:
                     proc.kill()
+                    proc.wait()  # reap after kill; SIGKILL is instant so no timeout needed
         except KeyboardInterrupt:
             pass  # clean Ctrl-C exit
         except FileNotFoundError:
