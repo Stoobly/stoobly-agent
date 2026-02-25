@@ -29,6 +29,7 @@ def build_log_filters(kwargs: dict, extra_keys: list = None) -> dict:
 def log_list_options(func):
     """Composite decorator: shared filter + print options for request log list commands."""
     decorators = [
+        click.option('--follow', '-f', is_flag=True, default=False, help='Follow log output (like tail -f). Ctrl-C to stop.'),
         click.option('--format', type=click.Choice(FORMATS), help='Format output.'),
         click.option('--level', default=None,
             type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR'], case_sensitive=False),

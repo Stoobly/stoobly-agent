@@ -44,7 +44,8 @@ class TestRequestLogCliParams:
                 filters=None,
                 output_format=None,
                 select=(),
-                without_headers=False
+                without_headers=False,
+                follow=False,
             )
 
     def test_log_delete_calls_truncate(self, runner):

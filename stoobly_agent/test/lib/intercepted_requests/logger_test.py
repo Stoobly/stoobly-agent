@@ -808,3 +808,85 @@ class TestDumpLogsSelect:
             entry = json.loads(line)
             assert 'timestamp' in entry
             assert 'method' in entry
+
+
+class TestFollowLog:
+    """Tests for _follow_log streaming behavior."""
+
+    @pytest.fixture
+    def log_file(self, temp_log_dir):
+        """Create an empty log file for follow tests."""
+        path = os.path.join(temp_log_dir, 'follow.log')
+        open(path, 'w').close()
+        return path
+
+    def _run_follow(self, log_file, filters, entries_to_append, capsys):
+        """Run _follow_log with mocked subprocess output."""
+        output_lines = [json.dumps(entry) + '\n' for entry in entries_to_append]
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = iter(output_lines)
+
+        with patch('subprocess.Popen', return_value=mock_proc):
+            SimpleInterceptedRequestsLogger._follow_log(log_file, filters)
+
+        return capsys.readouterr()
+
+    def test_streams_new_entries(self, log_file, capsys):
+        """Entries appended after EOF are printed as NDJSON lines."""
+        entry = {"message": "streamed", "method": "GET", "status_code": 200}
+
+        captured = self._run_follow(log_file, None, [entry], capsys)
+
+        lines = [l for l in captured.out.strip().split('\n') if l]
+        assert len(lines) == 1
+        assert json.loads(lines[0]) == entry
+
+    def test_applies_filters(self, log_file, capsys):
+        """Only entries matching the filter are printed."""
+        entries = [
+            {"message": "keep", "method": "GET"},
+            {"message": "drop", "method": "POST"},
+        ]
+
+        captured = self._run_follow(log_file, {'method': 'GET'}, entries, capsys)
+
+        assert 'keep' in captured.out
+        assert 'drop' not in captured.out
+
+    def test_skips_delimiter_entries(self, log_file, capsys):
+        """Scenario change delimiter entries are never streamed."""
+        delimiter = {
+            "type": "----- Scenario change delimiter -----",
+            "previous_scenario_key": "sk-1",
+            "current_scenario_key": "sk-2",
+        }
+        real_entry = {"message": "after delimiter", "method": "GET"}
+
+        captured = self._run_follow(log_file, None, [delimiter, real_entry], capsys)
+
+        lines = [l for l in captured.out.strip().split('\n') if l]
+        assert len(lines) == 1
+        assert json.loads(lines[0]) == real_entry
+
+    def test_tail_not_found_exits_gracefully(self, log_file, capsys):
+        """Missing tail binary prints an error to stderr and does not raise."""
+        with patch('subprocess.Popen', side_effect=FileNotFoundError):
+            SimpleInterceptedRequestsLogger._follow_log(log_file, None)
+
+        captured = capsys.readouterr()
+        assert 'tail' in captured.err
+
+    def test_keyboard_interrupt_terminates_process(self, log_file):
+        """KeyboardInterrupt causes proc.terminate() to be called."""
+        def raising_iter():
+            raise KeyboardInterrupt
+            yield  # make it a generator
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = raising_iter()
+
+        with patch('subprocess.Popen', return_value=mock_proc):
+            SimpleInterceptedRequestsLogger._follow_log(log_file, None)
+
+        mock_proc.terminate.assert_called_once()

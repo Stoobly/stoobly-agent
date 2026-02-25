@@ -199,6 +199,7 @@ def log_list(**kwargs):
     output_format=kwargs.get('format'),
     select=kwargs.get('select'),
     without_headers=kwargs.get('without_headers', False),
+    follow=kwargs.get('follow', False),
   )
 
 @log.command(name="delete", help="Delete intercepted requests log entries")
