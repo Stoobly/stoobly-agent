@@ -1,10 +1,13 @@
 
+import json
 import os
 import logging
 import logging.handlers
 import queue
 import atexit
 import re
+import subprocess
+import time
 from typing import TYPE_CHECKING, Final, Optional
 
 if TYPE_CHECKING:
@@ -316,7 +319,74 @@ class InterceptedRequestsLogger():
         return file_path
 
     @classmethod
-    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None):
+    def _follow_log_polling(cls, file_path: str, filters: dict) -> None:
+        """Tail the log file using pure-Python polling. Cross-platform fallback.
+
+        Prefer _follow_log (tail -F) on Unix. Use this when subprocess is unavailable
+        or for cross-platform support.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                f.seek(0, 2)  # seek to EOF — only watch for new content
+                while True:
+                    line = f.readline()
+                    if not line:
+                        time.sleep(0.1)
+                        continue
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Skip delimiter entries (scenario change markers)
+                    if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
+                        continue
+
+                    if filters and not cls._entry_matches_filters(entry, filters):
+                        continue
+
+                    print(json.dumps(entry), flush=True)
+
+        except KeyboardInterrupt:
+            pass  # clean Ctrl-C exit
+
+    @classmethod
+    def _follow_log(cls, file_path: str, filters: dict) -> None:
+        """Tail the log file using tail -F, streaming filtered entries as NDJSON.
+
+        Uses tail -F as the read driver (handles rotation/truncation natively),
+        with Python for JSON parsing and filtering. Unix only.
+        """
+        try:
+            proc = subprocess.Popen(['tail', '-F', file_path], stdout=subprocess.PIPE, text=True)
+            try:
+                for line in proc.stdout:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    try:
+                        entry = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Skip delimiter entries (scenario change markers)
+                    if 'type' in entry and 'delimiter' in str(entry.get('type', '')).lower():
+                        continue
+
+                    if filters and not cls._entry_matches_filters(entry, filters):
+                        continue
+
+                    print(json.dumps(entry), flush=True)
+            finally:
+                proc.terminate()
+        except KeyboardInterrupt:
+            pass  # clean Ctrl-C exit
+
+    @classmethod
+    def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None, follow: bool = False):
         """Dump log entries to stdout, optionally filtering by field values and selecting columns.
 
         Args:
@@ -340,7 +410,6 @@ class InterceptedRequestsLogger():
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                import json
                 entries = []
                 for line in f:
                     stripped = line.strip()
@@ -371,56 +440,52 @@ class InterceptedRequestsLogger():
 
                     entries.append(entry)
 
-                # If no formatting requested, everything was already printed inline
-                if not needs_formatting:
-                    return
+                if needs_formatting:
+                    # Default to table format when select is used but format is not specified
+                    if select and not output_format:
+                        output_format = SIMPLE_FORMAT
 
-                # Default to table format when select is used but format is not specified
-                if select and not output_format:
-                    output_format = SIMPLE_FORMAT
+                    # Apply select if provided
+                    if select:
+                        filtered_entries = []
+                        for entry in entries:
+                            filtered_entry = {}
+                            for key in select:
+                                if key in entry:
+                                    filtered_entry[key] = entry[key]
+                            filtered_entries.append(filtered_entry)
+                        entries = filtered_entries
 
-                # Apply select if provided
-                if select:
-                    filtered_entries = []
-                    for entry in entries:
-                        filtered_entry = {}
-                        for key in select:
-                            if key in entry:
-                                filtered_entry[key] = entry[key]
-                        filtered_entries.append(filtered_entry)
-                    entries = filtered_entries
+                    if entries:
+                        if output_format == JSON_FORMAT:
+                            # Print as JSON array
+                            print(json.dumps(entries, indent=2))
+                        else:
+                            # Print as table using tabulate
+                            from tabulate import tabulate
 
-                # Print based on format
-                if not entries:
-                    print(end='')
-                    return
+                            # Build headers and rows
+                            headers = []
+                            rows = []
 
-                if output_format == JSON_FORMAT:
-                    # Print as JSON array
-                    print(json.dumps(entries, indent=2))
-                else:
-                    # Print as table using tabulate
-                    from tabulate import tabulate
+                            for entry in entries:
+                                if not headers:
+                                    headers = list(entry.keys())
 
-                    # Build headers and rows
-                    headers = []
-                    rows = []
+                                row = [entry.get(h, '') for h in headers]
+                                rows.append(row)
 
-                    for entry in entries:
-                        if not headers:
-                            headers = list(entry.keys())
-
-                        row = [entry.get(h, '') for h in headers]
-                        rows.append(row)
-
-                    if without_headers:
-                        print(tabulate(rows, tablefmt='plain'))
-                    else:
-                        print(tabulate(rows, headers=headers, tablefmt='plain'))
+                            if without_headers:
+                                print(tabulate(rows, tablefmt='plain'))
+                            else:
+                                print(tabulate(rows, headers=headers, tablefmt='plain'))
 
         except IOError as e:
             base._logger.error(f"Failed to read log file: {e}")
             print(f"Failed to read log file: {e}")
+
+        if follow:
+            cls._follow_log(file_path, filters)
 
     @classmethod
     def truncate(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:
