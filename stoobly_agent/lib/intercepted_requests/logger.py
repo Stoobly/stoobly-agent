@@ -7,6 +7,7 @@ import queue
 import atexit
 import re
 import subprocess
+import sys
 import time
 from typing import TYPE_CHECKING, Final, Optional
 
@@ -382,8 +383,14 @@ class InterceptedRequestsLogger():
                     print(json.dumps(entry), flush=True)
             finally:
                 proc.terminate()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
         except KeyboardInterrupt:
             pass  # clean Ctrl-C exit
+        except FileNotFoundError:
+            print("Error: 'tail' command not found.", file=sys.stderr)
 
     @classmethod
     def dump_logs(cls, data_dir_path: str = None, filters: dict = None, output_format: str = None, select: list = None, without_headers: bool = False, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None, follow: bool = False):
@@ -398,6 +405,7 @@ class InterceptedRequestsLogger():
             workflow: Workflow name for scaffold-based logging.
             namespace: Workflow namespace for scaffold-based logging.
             workflow_namespace: WorkflowNamespace object for scaffold-based logging.
+            follow: If True, stream new entries after printing history (like tail -f). Blocks until Ctrl-C.
         """
         base = InterceptedRequestsLogger
         file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
@@ -483,9 +491,9 @@ class InterceptedRequestsLogger():
         except IOError as e:
             base._logger.error(f"Failed to read log file: {e}")
             print(f"Failed to read log file: {e}")
-
-        if follow:
-            cls._follow_log(file_path, filters)
+        else:
+            if follow:
+                cls._follow_log(file_path, filters)
 
     @classmethod
     def truncate(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:

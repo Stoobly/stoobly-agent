@@ -868,3 +868,25 @@ class TestFollowLog:
         lines = [l for l in captured.out.strip().split('\n') if l]
         assert len(lines) == 1
         assert json.loads(lines[0]) == real_entry
+
+    def test_tail_not_found_exits_gracefully(self, log_file, capsys):
+        """Missing tail binary prints an error to stderr and does not raise."""
+        with patch('subprocess.Popen', side_effect=FileNotFoundError):
+            SimpleInterceptedRequestsLogger._follow_log(log_file, None)
+
+        captured = capsys.readouterr()
+        assert 'tail' in captured.err
+
+    def test_keyboard_interrupt_terminates_process(self, log_file):
+        """KeyboardInterrupt causes proc.terminate() to be called."""
+        def raising_iter():
+            raise KeyboardInterrupt
+            yield  # make it a generator
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = raising_iter()
+
+        with patch('subprocess.Popen', return_value=mock_proc):
+            SimpleInterceptedRequestsLogger._follow_log(log_file, None)
+
+        mock_proc.terminate.assert_called_once()
