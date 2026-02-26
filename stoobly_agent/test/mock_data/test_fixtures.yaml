@@ -1,0 +1,7 @@
+GET:
+  "/get":
+    path: "test_response.json"
+    status_code: 200
+    headers:
+      Content-Type: application/json
+      X-Test-Header: from-fixtures-file

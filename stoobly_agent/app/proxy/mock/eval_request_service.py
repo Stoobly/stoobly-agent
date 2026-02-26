@@ -164,7 +164,11 @@ def __build_optional_params(request: 'MitmproxyRequest', options: EvalRequestOpt
 
     return optional_params
 
-def __filter_by_match_rules(request: 'MitmproxyRequest', match_rules: List[MatchRule], query_params: RequestResponseShowQueryParams):
+def __filter_by_match_rules(
+    request: 'MitmproxyRequest',
+    match_rules: List[MatchRule],
+    query_params: RequestResponseShowQueryParams,
+):
     components = [request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]
     method = request.method.upper()
 
@@ -183,7 +187,7 @@ def __filter_by_match_rules(request: 'MitmproxyRequest', match_rules: List[Match
 
         if not isinstance(match_rule.components, list):
             continue
- 
+
         for component in components:
             keep[component] = component in match_rule.components
 
