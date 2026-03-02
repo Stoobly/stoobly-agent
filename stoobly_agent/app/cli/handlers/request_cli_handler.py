@@ -152,7 +152,12 @@ def snapshot_handler(kwargs):
     print(f"Error: Could not find request", file=sys.stderr)
     sys.exit(1)
 
-  request.snapshot(request_key, kwargs)
+  response, status = request.snapshot(request_key, kwargs)
+  if status != 200:
+    print(f"Error: Could not snapshot request: {response}", file=sys.stderr)
+    sys.exit(1)
+
+  return response
 
 def test_handler(kwargs: RequestTestOptions):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
