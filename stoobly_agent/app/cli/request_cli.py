@@ -1,5 +1,6 @@
 import click
 
+from stoobly_agent.app.cli.helpers.update_request_snapshot_service import update_request_snapshots
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
@@ -96,9 +97,18 @@ if is_local:
   )
   @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
   @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response body.")
+  @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+  @click.option('--no-verify', is_flag=True, default=False)
   @click.argument('request_key')
   def snapshot(**kwargs):
-    snapshot_handler(kwargs)
+    snapshot_path = snapshot_handler(kwargs)
+
+    update_request_snapshots(
+      file_path=snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False
+    )
 
   @request.command(
       help="Reset a request to its snapshot state"
