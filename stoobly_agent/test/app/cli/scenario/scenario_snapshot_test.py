@@ -49,6 +49,16 @@ class TestScenario():
         assert snapshot_result.exit_code == 0
         return snapshot_result
 
+      def test_it_prints_request_snapshot_paths(self, created_scenario: Scenario, snapshot_result: CliRunner):
+        snapshot = ScenarioSnapshot(created_scenario.uuid)
+        request_snapshots = snapshot.request_snapshots
+
+        request_snapshot_paths = []
+        for request_snapshot in request_snapshots:
+          request_snapshot_paths.append(request_snapshot.path)
+
+        assert sorted(request_snapshot_paths) == sorted(snapshot_result.stdout.strip().split('\n'))
+
       def test_it_snapshots_metadata(self, created_scenario: Scenario):
         snapshot = ScenarioSnapshot(created_scenario.uuid)
 

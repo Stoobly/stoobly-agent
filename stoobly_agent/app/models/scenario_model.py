@@ -67,5 +67,8 @@ class ScenarioModel(Model):
   def snapshot(self, scenario_id: str, **params):
     try:
       return self.adapter.snapshot(scenario_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)   
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise

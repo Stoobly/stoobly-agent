@@ -14,14 +14,38 @@ class SnapshotMigration():
   _snapshot: RequestSnapshot
 
   def __init__(self, snapshot: RequestSnapshot, log_event: LogEvent, log: Log = None):
+    self._dirty = False
     self._event = log_event
+    self._skip = False
     self._log = log or Log()
-    self._request = snapshot.mitmproxy_request
-    self._response = snapshot.mitmproxy_response
+    self._request = None
+    self._response = None
     self._snapshot = snapshot
 
   @property
+  def dirty(self):
+    return self._dirty
+
+  @property
+  def event(self):
+    return self._event
+
+  @property
+  def log(self):
+    return self._log
+
+  @property
+  def skip(self):
+    return self._skip
+
+  @skip.setter
+  def skip(self, v: bool):
+    self._skip = v
+
+  @property
   def request(self):
+    if self._request is None:
+      self._request = self.snapshot.mitmproxy_request
     return self._request
 
   @request.setter
@@ -31,9 +55,12 @@ class SnapshotMigration():
     if not isinstance(v, Request):
       raise TypeError('Invalid type.')
     self._request = v
+    self._dirty = True
 
   @property
   def response(self):
+    if self._response is None:
+      self._response = self.snapshot.mitmproxy_response
     return self._response
 
   @response.setter
@@ -43,6 +70,7 @@ class SnapshotMigration():
     if not isinstance(v, Response):
       raise TypeError('Invalid type.')
     self._response = v
+    self._dirty = True
 
   @property
   def snapshot(self):
@@ -51,18 +79,3 @@ class SnapshotMigration():
   @property
   def uuid(self):
     return self.snapshot.uuid
-
-  def delete(self, log: Log = None):
-    log = log or self._log
-    new_event = self._event.duplicate_as_delete()
-    log.append(str(new_event))
-
-  def save(self, log: Log = None):
-    log = log or self._log
-    request_uuid = self.snapshot.uuid
-    joined_request = join_request_from_request_response(self.request, self.response, id=request_uuid)
-    raw_request = joined_request.build()
-    self.snapshot.write_raw(raw_request)
-    new_event = self._event.duplicate()
-    log.append(str(new_event))
-    return new_event

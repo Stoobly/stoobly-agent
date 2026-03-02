@@ -3,6 +3,7 @@ import pdb
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.cli.helpers.print_service import FORMATS
+from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
@@ -113,9 +114,23 @@ if is_local:
     )
     @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
     @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response bodies.")
+    @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+    @click.option('--no-verify', is_flag=True, default=False)
     @click.argument('scenario_key')
     def snapshot(**kwargs):
-        snapshot_handler(kwargs)
+        scenario_snapshot_path = snapshot_handler(kwargs)
+
+        if scenario_snapshot_path is None:
+            print("Error: Could not snapshot scenario", file=sys.stderr)
+            sys.exit(1)
+
+        update_request_snapshots(
+          action=kwargs['action'],
+          file_path=scenario_snapshot_path,
+          lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+          no_verify=kwargs.get('no_verify', False),
+          with_snapshot=False
+        )
 
     @scenario.command(
         help="Reset a scenario to its snapshot state"
