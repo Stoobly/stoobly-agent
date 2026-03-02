@@ -22,8 +22,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.print_service import FORMATS, print_snapshots, select_print_options
-from .helpers.verify_raw_request_service import verify_raw_request
-from .types.snapshot_migration import SnapshotMigration
+from .helpers.update_request_snapshot_service import update_request_snapshots
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -106,62 +105,6 @@ def _list(**kwargs):
       print_snapshots(formatted_events, **print_options)
 
 @snapshot.command(
-  help="Migrate snapshots."
-)
-@click.option('--scenario-key', help='Apply migration to specific scenario.')
-@click.argument('lifecycle_hooks_path')
-def migrate(**kwargs):
-  from runpy import run_path
-  from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
-
-  scenario_key = None
-  if kwargs['scenario_key']:
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
-
-  try:
-    lifecycle_hooks = run_path(kwargs['lifecycle_hooks_path'])
-  except Exception as e:
-    lifecycle_hooks = {}
-
-  before_migrate_hook = None
-  if BEFORE_MIGRATE not in lifecycle_hooks:
-    sys.exit(1)
-  else:
-    before_migrate_hook = lifecycle_hooks[BEFORE_MIGRATE]
-
-  log = Log()
-
-  request_snapshots = []
-  for event in log.resource_events:
-    if event.is_scenario():
-      # If scenario_key is set, only consider that scenario
-      if scenario_key and event.resource_uuid != scenario_key.id:
-        continue
-
-      scenario_snapshot: ScenarioSnapshot = event.snapshot()
-      _request_snapshots = scenario_snapshot.request_snapshots
-
-      for request_snapshot in _request_snapshots:
-        # Scenario requests will have the same log event
-        request_snapshots.append((request_snapshot, event))
-    elif event.is_request():
-      # If scenario_key is set, only consider that scenario
-      if scenario_key:
-        continue
-
-      request_snapshot: RequestSnapshot = event.snapshot()
-      request_snapshots.append((request_snapshot, event))
-
-  snapshot_migrations = {}
-  for request_snapshot, event in request_snapshots:
-    if request_snapshot.uuid not in snapshot_migrations:
-      snapshot_migration = SnapshotMigration(request_snapshot, event)
-      snapshot_migrations[request_snapshot.uuid] = snapshot_migration
-
-      if before_migrate_hook(snapshot_migration):
-        break
-
-@snapshot.command(
   help="Prune deleted snapshots."
 )
 @click.option('--dry-run', is_flag=True, default=False)
@@ -172,41 +115,15 @@ def prune(**kwargs):
 @snapshot.command(
   help="Update a snapshot.",
 )
-@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
-@click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--no-verify', is_flag=True, default=False)
-@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
-@click.argument('uuid')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.argument('file_path')
 def update(**kwargs):
-  print_options = select_print_options(kwargs)
-
-  log = Log()
-
-  event = None
-  for _event in log.events:
-    if _event.uuid == kwargs['uuid']:
-      event = _event
-      break
-
-  if not event:
-    print(f"Error: {kwargs['uuid']} not found", file=sys.stderr)
-    sys.exit(1)
-
-  if not kwargs['no_verify']:
-    if event.is_request():
-      snapshot: RequestSnapshot = event.snapshot()
-      __verify_request(snapshot)
-    elif event.is_scenario():
-      snapshot: ScenarioSnapshot = event.snapshot()
-      snapshot.iter_request_snapshots(__verify_request)
-
-  new_event = event.duplicate()
-  log.append(str(new_event))
-
-  formatted_events = __format_events([new_event], **kwargs)
-
-  if len(formatted_events):
-    print_snapshots(formatted_events, **print_options)
+  update_request_snapshots(
+    file_path=kwargs['file_path'],
+    lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+    no_verify=kwargs.get('no_verify', False)
+  )
 
 def __format_events(events: List[LogEvent], **kwargs):
   count = 0
@@ -277,15 +194,7 @@ def __format_events(events: List[LogEvent], **kwargs):
 
   return formatted_events
 
-def __verify_request(snapshot: RequestSnapshot):
-  raw_request = snapshot.request
-  if not raw_request:
-    return
 
-  verified_raw_request = verify_raw_request(raw_request)
-
-  if raw_request != verified_raw_request:
-    snapshot.write_raw(verified_raw_request)
 
 def __transform_event(event: LogEvent):
   event_dict = {}
