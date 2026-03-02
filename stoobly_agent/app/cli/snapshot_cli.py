@@ -22,7 +22,7 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.print_service import FORMATS, print_snapshots, select_print_options
-from .helpers.update_request_snapshot_service import update_request_snapshots
+from .helpers.update_request_snapshots_service import update_request_snapshots
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",

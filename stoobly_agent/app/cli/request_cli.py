@@ -1,6 +1,6 @@
 import click
 
-from stoobly_agent.app.cli.helpers.update_request_snapshot_service import update_request_snapshots
+from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger

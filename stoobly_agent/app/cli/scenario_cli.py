@@ -3,7 +3,7 @@ import pdb
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.cli.helpers.print_service import FORMATS
-from stoobly_agent.app.cli.helpers.update_request_snapshot_service import update_request_snapshots
+from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
