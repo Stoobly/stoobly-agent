@@ -166,6 +166,19 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
     for event in reversed(log.target_events):
         if event.resource == resource and event.resource_uuid == resource_uuid:
             return event
+    
+    # If resource is request and no event found, check if it belongs to a scenario event
+    if resource == REQUEST_RESOURCE:
+        for event in reversed(log.target_events):
+            if event.resource != SCENARIO_RESOURCE:
+                continue
+            
+            scenario_snapshot = ScenarioSnapshot(event.resource_uuid)
+            # Check if the request UUID is in this scenario's request snapshots
+            for request_snapshot in scenario_snapshot.request_snapshots:
+                if request_snapshot.uuid == resource_uuid:
+                    return event
+    
     return None
 
 def _print_request_snapshots(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
