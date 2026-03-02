@@ -16,9 +16,10 @@ class SnapshotMigration():
   def __init__(self, snapshot: RequestSnapshot, log_event: LogEvent, log: Log = None):
     self._dirty = False
     self._event = log_event
+    self._skip = False
     self._log = log or Log()
-    self._request = snapshot.mitmproxy_request
-    self._response = snapshot.mitmproxy_response
+    self._request = None
+    self._response = None
     self._snapshot = snapshot
 
   @property
@@ -34,7 +35,17 @@ class SnapshotMigration():
     return self._log
 
   @property
+  def skip(self):
+    return self._skip
+
+  @skip.setter
+  def skip(self, v: bool):
+    self._skip = v
+
+  @property
   def request(self):
+    if self._request is None:
+      self._request = self.snapshot.mitmproxy_request
     return self._request
 
   @request.setter
@@ -48,6 +59,8 @@ class SnapshotMigration():
 
   @property
   def response(self):
+    if self._response is None:
+      self._response = self.snapshot.mitmproxy_response
     return self._response
 
   @response.setter

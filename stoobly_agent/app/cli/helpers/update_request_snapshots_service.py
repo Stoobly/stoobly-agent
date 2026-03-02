@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Callable, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
@@ -8,50 +8,6 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapsh
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import DELETE_ACTION, PUT_ACTION, Action
 from stoobly_agent.config.data_dir import DataDir
-
-def iterate_request_snapshots(
-    request_snapshots: List[Tuple[RequestSnapshot, LogEvent]],
-    lifecycle_hooks_path: str,
-    action: Action = PUT_ACTION,
-    with_snapshot: bool = True
-):
-    """
-    Iterate over request snapshots and apply lifecycle hooks.
-    
-    Args:
-        request_snapshots: List of tuples (request_snapshot, event)
-        lifecycle_hooks_path: Path to lifecycle hooks script
-    """
-    from runpy import run_path
-    from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
-    from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration
-    
-    try:
-        lifecycle_hooks = run_path(lifecycle_hooks_path)
-    except Exception as e:
-        lifecycle_hooks = {}
-    
-    before_migrate_hook: Callable[[SnapshotMigration], bool] = None
-    if BEFORE_MIGRATE not in lifecycle_hooks:
-        sys.exit(1)
-    else:
-        before_migrate_hook = lifecycle_hooks[BEFORE_MIGRATE]
-    
-    snapshot_migrations = {}
-    for request_snapshot, event in request_snapshots:
-        if request_snapshot.uuid not in snapshot_migrations:
-            snapshot_migration = SnapshotMigration(request_snapshot, event)
-            snapshot_migrations[request_snapshot.uuid] = snapshot_migration
-            
-            if before_migrate_hook(snapshot_migration):
-                continue
-            
-            # The following code should be reachable 
-            if action == PUT_ACTION:
-              if snapshot_migration.dirty:
-                _commit_snapshot_migration(snapshot_migration, with_snapshot=with_snapshot)
-            elif action == DELETE_ACTION:
-                _delete_snapshot_migration(snapshot_migration, with_snapshot=with_snapshot)
 
 def update_request_snapshots(
     file_path: str,
@@ -69,6 +25,10 @@ def update_request_snapshots(
         with_snapshot: Whether to clone the event before updating
         no_verify: Whether to skip verification of requests
     """
+    if file_path is None:
+        print("Error: No file path provided", file=sys.stderr)
+        sys.exit(1)
+
     log = Log()
     data_dir = DataDir.instance()
     
@@ -136,30 +96,87 @@ def update_request_snapshots(
         print(f"Error: Path {file_path} is not a valid snapshot path", file=sys.stderr)
         sys.exit(1)
 
+    snapshot_migrations = {}
+
     # Process request snapshots (for both request and scenario snapshots)
     if not lifecycle_hooks_path:
-        # Create new events for each snapshot when no lifecycle hooks are provided
-        for request_snapshot, event in request_snapshots:
-            if with_snapshot:
-                new_event = event.duplicate()
-                log.append(str(new_event))
-
-        _print_request_snapshots(request_snapshots)
+        snapshot_migrations = _apply_print(request_snapshots)
     else:
-        iterate_request_snapshots(
+        snapshot_migrations = _apply_lifecycle_hooks(
             request_snapshots,
-            action=action,
             lifecycle_hooks_path=lifecycle_hooks_path,
-            with_snapshot=with_snapshot
         )
 
-def _delete_snapshot_migration(snapshot_migration, log: Log = None, with_snapshot: bool = True):
-    """Delete a snapshot migration by appending a delete event."""
-    if with_snapshot:
-      log = log or snapshot_migration.log
-      new_event = snapshot_migration.event.duplicate_as_delete()
-      log.append(str(new_event))
-      return new_event
+    for snapshot_migration in snapshot_migrations.values():
+        if snapshot_migration.skip:
+            continue
+
+        if action == PUT_ACTION: 
+            if snapshot_migration.dirty:
+                _commit_snapshot_migration(snapshot_migration)
+
+            if with_snapshot:
+                new_event = snapshot_migration.event.duplicate_as_put()
+                log.append(str(new_event))
+        elif action == DELETE_ACTION:
+            if with_snapshot:
+                new_event = snapshot_migration.event.duplicate_as_delete()
+                log.append(str(new_event))
+
+        # If the event is a scenario, only create new event once
+        if snapshot_migration.event.is_scenario():
+            with_snapshot = False
+
+def _apply_lifecycle_hooks(
+    request_snapshots: List[Tuple[RequestSnapshot, LogEvent]],
+    lifecycle_hooks_path: str,
+):
+    """
+    Iterate over request snapshots and apply lifecycle hooks.
+    
+    Args:
+        request_snapshots: List of tuples (request_snapshot, event)
+        lifecycle_hooks_path: Path to lifecycle hooks script
+    """
+    from runpy import run_path
+    from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
+    from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration
+    
+    try:
+        lifecycle_hooks = run_path(lifecycle_hooks_path)
+    except Exception as e:
+        print(f"Error: Failed to load lifecycle hooks from {lifecycle_hooks_path}: {e}", file=sys.stderr)
+        lifecycle_hooks = {}
+    
+    before_migrate_hook: Callable[[SnapshotMigration], bool] = None
+    if BEFORE_MIGRATE not in lifecycle_hooks:
+        print(f"Error: Lifecycle hook {BEFORE_MIGRATE} not found in {lifecycle_hooks_path}", file=sys.stderr)
+        sys.exit(1)
+    else:
+        before_migrate_hook = lifecycle_hooks[BEFORE_MIGRATE]
+    
+    snapshot_migrations = {}
+    for request_snapshot, event in request_snapshots:
+        if request_snapshot.uuid not in snapshot_migrations:
+            snapshot_migration = SnapshotMigration(request_snapshot, event)
+            snapshot_migrations[request_snapshot.uuid] = snapshot_migration
+            
+            if before_migrate_hook(snapshot_migration):
+                snapshot_migration.skip = True
+
+    return snapshot_migrations
+
+def _apply_print(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
+    from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration
+
+    snapshot_migrations: Dict[str, SnapshotMigration] = {}
+
+    """Print the path to each request snapshot."""
+    for request_snapshot, event in request_snapshots:
+        snapshot_migrations[request_snapshot.uuid] = SnapshotMigration(request_snapshot, event)
+        print(request_snapshot.path)
+
+    return snapshot_migrations
 
 def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) -> LogEvent:
     """Find the most recent event for a given resource UUID."""
@@ -181,12 +198,7 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
     
     return None
 
-def _print_request_snapshots(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
-    """Print the path to each request snapshot."""
-    for request_snapshot, event in request_snapshots:
-        print(request_snapshot.path)
-
-def _commit_snapshot_migration(snapshot_migration, log: Log = None, with_snapshot: bool = True):
+def _commit_snapshot_migration(snapshot_migration, log: Log = None):
     """Save a snapshot migration by writing the request/response and optionally appending a new event."""
     from stoobly_agent.app.proxy.record.join_request_service import join_request_from_request_response
     
@@ -200,12 +212,6 @@ def _commit_snapshot_migration(snapshot_migration, log: Log = None, with_snapsho
     raw_request = joined_request.build()
     snapshot_migration.snapshot.write_raw(raw_request)
     
-    # Create and append a new event if with_snapshot is True
-    if with_snapshot:
-        new_event = snapshot_migration.event.duplicate()
-        log.append(str(new_event))
-        return new_event
-
 def _verify_request(snapshot: RequestSnapshot):
     """Verify and fix a request snapshot if needed."""
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request

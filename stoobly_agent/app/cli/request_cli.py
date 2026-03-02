@@ -103,7 +103,12 @@ if is_local:
   def snapshot(**kwargs):
     snapshot_path = snapshot_handler(kwargs)
 
+    if snapshot_path is None:
+      print("Error: Could not snapshot request", file=sys.stderr)
+      sys.exit(1)
+
     update_request_snapshots(
+      action=kwargs['action'],
       file_path=snapshot_path,
       lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
       no_verify=kwargs.get('no_verify', False),
