@@ -198,11 +198,10 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
     
     return None
 
-def _commit_snapshot_migration(snapshot_migration, log: Log = None):
+def _commit_snapshot_migration(snapshot_migration):
     """Save a snapshot migration by writing the request/response and optionally appending a new event."""
     from stoobly_agent.app.proxy.record.join_request_service import join_request_from_request_response
     
-    log = log or snapshot_migration.log
     request_uuid = snapshot_migration.snapshot.uuid
     joined_request = join_request_from_request_response(
         snapshot_migration.request, 
