@@ -173,7 +173,7 @@ def query(**kwargs):
   query_handler(kwargs)
 
 @click.group(
-  epilog="Run 'stoobly-agent request log COMMAND --help' for more information on a command.",
+  epilog="Run 'stoobly-agent request logs COMMAND --help' for more information on a command.",
   help="Manage intercepted requests logs"
 )
 @click.pass_context
@@ -209,4 +209,4 @@ def log_delete(**kwargs):
   SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
 
 request.add_command(response)
-request.add_command(log)
+request.add_command(log, name='logs')

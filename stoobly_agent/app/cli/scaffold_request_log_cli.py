@@ -16,7 +16,7 @@ def request(ctx):
 
 
 @click.group(
-  epilog="Run 'stoobly-agent scaffold request log COMMAND --help' for more information on a command.",
+  epilog="Run 'stoobly-agent scaffold request logs COMMAND --help' for more information on a command.",
   help="Manage intercepted requests logs for workflows"
 )
 @click.pass_context
@@ -76,4 +76,4 @@ def request_log_delete(**kwargs):
         workflow_namespace=workflow_namespace,
     )
 
-request.add_command(request_log, name="log")
+request.add_command(request_log, name="logs")
