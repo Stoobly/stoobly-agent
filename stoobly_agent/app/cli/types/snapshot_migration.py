@@ -6,7 +6,6 @@ if TYPE_CHECKING:
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
-from stoobly_agent.app.proxy.record.join_request_service import join_request_from_request_response
 
 class SnapshotMigration():
   _request: 'Request'
