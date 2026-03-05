@@ -38,10 +38,11 @@ jobs:
           - PR Base SHA: ${{ github.event.pull_request.base.sha }}
 
           Objectives:
-          1) Re-check existing review comments to avoid duplicates and to resolve fixed issues
-          2) Review the current PR diff focusing on issues in priority order: bugs, security, performance, style
-          3) Flag only clear, high-severity issues with emphasis on the priority areas
-          4) Leave very short inline comments on changed lines only and a brief summary at the end, mention file path and line number
+          1) Re-check existing review comments to avoid duplicates
+          2) Resolve fixed issues
+          3) Review the current PR diff focusing on issues in priority order: bugs, security, performance, style
+          4) Flag only clear, high-severity issues with emphasis on the priority areas
+          5) Leave very short inline comments on changed lines only and a brief summary at the end, mention file path and line number
 
           Review Focus (in priority order):
           1) BUGS: Logic errors, missing error handling, incorrect assumptions, race conditions, null pointer exceptions

@@ -34,8 +34,11 @@ class TestRequestSnapshot():
         assert snapshot_result.exit_code == 0
 
         snapshot = RequestSnapshot(recorded_request.uuid)
-        raw_request = snapshot.request
 
+        # Assert the snapshot path is printed to stdout
+        assert snapshot_result.stdout.strip() == snapshot.path
+
+        raw_request = snapshot.request
         expected_raw_request = JoinedRequestStringAdapter(recorded_request).adapt()
 
         assert raw_request == expected_raw_request
