@@ -26,6 +26,8 @@ class ServiceUpdateCommand(ServiceCommand):
 
     self.service = Service(new_service_name, self.app)
     self.service_config = ServiceConfig(self.service.dir_path)
+    self.service_config.name = new_service_name
+    self.service_config.write()
 
     self.__update_internal_container_specs(new_service_name)
 

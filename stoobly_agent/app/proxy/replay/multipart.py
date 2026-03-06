@@ -3,14 +3,12 @@ import mimetypes
 import re
 import pdb
 
-from multipart import MultipartParser, ParserError
-from urllib.parse import quote
-
-from mitmproxy.net.http import headers
-
 CRLF = b'\r\n'
 
 def encode(head, l):
+    # Lazy import for runtime usage
+    from mitmproxy.net.http import headers
+    from urllib.parse import quote
 
     k = head.get("content-type")
     if k:
@@ -50,6 +48,11 @@ def decode(hdrs, content):
     """
         Takes a multipart boundary encoded string and returns list of (key, value) tuples.
     """
+
+    # Lazy import for runtime usage
+    from multipart import MultipartParser, ParserError
+    from mitmproxy.net.http import headers
+
     if not isinstance(content, bytes) and not isinstance(content, str):
         return content
 

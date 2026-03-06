@@ -3,22 +3,26 @@ import os
 import pdb
 import signal
 
-from mitmproxy.net import tls
+from typing import TYPE_CHECKING
 
-from stoobly_agent.app.cli.scaffold.constants import SERVICE_NAME_ENV
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_MOCK_UI_SERVICE_NAME
-from stoobly_agent.config.mitmproxy import MitmproxyConfig
-
-# Monkey patch for OpenSSL unsafe legacy renegotiation disabled
-# See: https://stackoverflow.com/questions/71603314/ssl-error-unsafe-legacy-renegotiation-disabled
-tls.DEFAULT_OPTIONS |= 0x4 
-
-from mitmproxy.options import Options
-from mitmproxy.tools.dump import DumpMaster
+if TYPE_CHECKING:
+    from stoobly_agent.config.mitmproxy import MitmproxyConfig
 
 INTERCEPT_HANDLER_FILENAME = 'intercept_handler.py'
+INTERCEPT_HANDLER_CONCURRENT_FILENAME = 'intercept_handler_concurrent.py'
 
 def run(**kwargs):
+    from mitmproxy.net import tls
+
+    from stoobly_agent.config.mitmproxy import MitmproxyConfig
+
+    # Monkey patch for OpenSSL unsafe legacy renegotiation disabled
+    # See: https://stackoverflow.com/questions/71603314/ssl-error-unsafe-legacy-renegotiation-disabled
+    tls.DEFAULT_OPTIONS |= 0x4 
+
+    from mitmproxy.options import Options
+    from mitmproxy.tools.dump import DumpMaster
+
     async def main():
         options = Options()
         master = DumpMaster(options)
@@ -55,16 +59,24 @@ def __get_intercept_handler_path():
     script = os.path.join(cwd, INTERCEPT_HANDLER_FILENAME)
     return script
 
-def __with_static_options(config: MitmproxyConfig, cli_options):
+def __get_intercept_handler_concurrent_path():
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    script = os.path.join(cwd, INTERCEPT_HANDLER_CONCURRENT_FILENAME)
+    return script
+
+def __with_static_options(config: 'MitmproxyConfig', cli_options):
+    # Intercept handler concurrent needs to be included second to run background tasks
+    # Set scripts multiple times - mitmproxy expects each script to be set separately
     options = (
         'block_global=false',
         f"scripts={__get_intercept_handler_path()}",
+        f"scripts={__get_intercept_handler_concurrent_path()}",
         'upstream_cert=false'
     )
 
     config.set(options)
 
-def __with_cli_options(config: MitmproxyConfig, cli_options: dict):
+def __with_cli_options(config: 'MitmproxyConfig', cli_options: dict):
     __filter_options(cli_options)
 
     options = []
@@ -92,6 +104,9 @@ def __filter_options(options):
     options['listen_host'] = options['proxy_host']
     options['listen_port'] = options['proxy_port']
     options['mode'] = options['proxy_mode']
+
+    if 'upstream_auth' in options and not options['upstream_auth']:
+        del options['upstream_auth']
 
     if 'api_url' in options:
         del options['api_url']
@@ -139,3 +154,6 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
+    del options['request_log_enable']
+    del options['request_log_level']
+    del options['request_log_append']

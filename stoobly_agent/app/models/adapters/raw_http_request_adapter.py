@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request
 
 from stoobly_agent.lib.utils.decode import decode
 
@@ -38,7 +42,9 @@ class RawHttpRequestAdapter():
     data_lines = req_lines[ind:] if ind < len(req_lines) else None
     self.body = CRLF.join(data_lines)
 
-  def to_request(self) -> requests.Request:
+  def to_request(self) -> 'Request':
+    # Lazy import for runtime usage
+    import requests
     req = requests.Request(
       method=self.method,
       url=self.url,

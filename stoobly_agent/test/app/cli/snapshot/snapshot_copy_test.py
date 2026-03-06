@@ -1,13 +1,13 @@
-import importlib
-import os
 import pdb
 import pytest
 import tempfile
 
 from click.testing import CliRunner
 
+from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.cli import record, request, snapshot
+from stoobly_agent.cli import record
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.orm.request import Request

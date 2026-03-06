@@ -1,3 +1,4 @@
+import os
 import pdb
 import pytest
 import shutil
@@ -7,10 +8,12 @@ from pathlib import Path
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
+  PROXY_MODE_FORWARD,
   SERVICES_NAMESPACE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.context_lock import ContextLock
 from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
   ManagedServicesDockerCompose,
 )
@@ -18,6 +21,7 @@ from stoobly_agent.app.cli.scaffold.service_docker_compose import ServiceDockerC
 from stoobly_agent.app.cli.scaffold.service_workflow_validate_command import (
   ServiceWorkflowValidateCommand,
 )
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import (
   WorkflowValidateCommand,
 )
@@ -91,29 +95,29 @@ class TestScaffoldE2e():
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
-      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
 
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
     def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
-      # Create external user defined service
+      # Create user defined services
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
 
-      # Create local user defined service
+      # Create user defined custom container services
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
 
       # Validate docker-compose path exists
@@ -135,7 +139,7 @@ class TestScaffoldE2e():
       ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
     def test_core_services(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'build'
@@ -145,7 +149,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
@@ -155,7 +159,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': local_service_docker_compose.service_name 
@@ -163,6 +167,103 @@ class TestScaffoldE2e():
 
       command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+
+  class TestRecordWorkflowForward():
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+      yield WORKFLOW_RECORD_TYPE
+
+    @pytest.fixture(scope='class')
+    def managed_services_docker_compose(self, target_workflow_name):
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
+
+    @pytest.fixture(scope='class')
+    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+    
+    @pytest.fixture(scope='class')
+    def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+
+    @pytest.fixture(scope='class')
+    def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, local_service_mock_docker_compose_path):
+      ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
+
+      # Create user defined services
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
+
+      # Create user defined custom container services
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+
+      # Validate docker-compose path exists
+      destination_path = Path(local_service_docker_compose.docker_compose_path)
+      assert destination_path.is_file()
+      # Add user defined Docker Compose file for the custom container service
+      shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
+
+      # Record workflow doesn't have a public folder
+
+      # Generate certs
+      ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
+
+      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+      yield
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+    def test_core_services(self, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'build'
+      }
+
+      command = WorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': external_service_docker_compose.service_name 
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': local_service_docker_compose.service_name 
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
 
   class TestTestWorkflow():
@@ -190,24 +291,24 @@ class TestScaffoldE2e():
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
-      yield ManagedServicesDockerCompose(target_workflow_name=target_workflow_name)
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
     
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname
       )
 
     @pytest.fixture(scope='class')
     def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname
       )
     
     @pytest.fixture(scope='class')
     def assets_service_docker_compose(self, app_dir_path, target_workflow_name, assets_service_name, assets_hostname):
       yield ServiceDockerCompose(
-        app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname
+        app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=assets_service_name, hostname=assets_hostname
       )
 
     @pytest.fixture(scope='class', autouse=True)
@@ -246,7 +347,7 @@ class TestScaffoldE2e():
       shutil.copyfile(assets_mock_path, destination_path)
 
       # Created shared file in fixtures folder
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': external_service_docker_compose.service_name 
@@ -270,13 +371,19 @@ class TestScaffoldE2e():
       else:  # makefile
         ScaffoldCliInvoker.makefile_workflow_down(runner, app_dir_path, target_workflow_name)
 
+      # If --copy-on-workflow-up is enabled, the runtime app data dir should not exist after down
+      app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
+      runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
+      assert not os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should not exist"
+
     @pytest.fixture(scope='class', params=['cli', 'makefile'])
     def workflow_up_method(self, request):
       """Parameterized fixture that alternates between CLI and Makefile workflow up methods."""
       return request.param
 
     def test_no_core_services(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'build'
@@ -286,7 +393,7 @@ class TestScaffoldE2e():
       command.validate()
 
     def test_user_services(self, app_dir_path, target_workflow_name, external_service_docker_compose, local_service_docker_compose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
 
       config = {
         'workflow_name': target_workflow_name,
@@ -307,7 +414,7 @@ class TestScaffoldE2e():
       pass
 
     def test_assets(self, app_dir_path, target_workflow_name):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       config = {
         'workflow_name': target_workflow_name,
         'service_name': 'assets'
@@ -315,3 +422,18 @@ class TestScaffoldE2e():
 
       command = ServiceWorkflowValidateCommand(app, **config)
       command.validate()
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+    def test_copy_on_workflow_up(self, app_dir_path: str, target_workflow_name: str):
+      app = App(app_dir_path)
+      app.denormalize_configure(WorkflowNamespace(app, target_workflow_name))
+      runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
+
+      assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"

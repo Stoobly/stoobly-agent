@@ -1,27 +1,23 @@
 import os
 import pdb
 
-from typing import List
-
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 from ...app_config import AppConfig
 from ...constants import (
-  APP_DIR, SERVICES_NAMESPACE, 
+  APP_DIR, PROXY_MODE_REVERSE, SERVICES_NAMESPACE,
   SERVICE_HOSTNAME, SERVICE_HOSTNAME_ENV,
-  SERVICE_NAME, SERVICE_NAME_ENV, 
-  SERVICE_ID,
-  SERVICE_PORT, SERVICE_PORT_ENV, 
+  SERVICE_ID, SERVICE_PORT, SERVICE_PORT_ENV,
   SERVICE_SCHEME, SERVICE_SCHEME_ENV,
   SERVICE_UPSTREAM_HOSTNAME, SERVICE_UPSTREAM_HOSTNAME_ENV, SERVICE_UPSTREAM_PORT, SERVICE_UPSTREAM_PORT_ENV, SERVICE_UPSTREAM_SCHEME, SERVICE_UPSTREAM_SCHEME_ENV,
-  STOOBLY_HOME_DIR, 
-  WORKFLOW_NAME, WORKFLOW_NAME_ENV, WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
+  STOOBLY_HOME_DIR,
+  WORKFLOW_SCRIPTS, WORKFLOW_TEMPLATE
 )
 from ...service_config import ServiceConfig
 from ...local.service.builder import ServiceBuilder
 from ..app_builder import AppBuilder
 from ..builder import Builder
-from ..constants import DOCKER_COMPOSE_BASE
+from ..constants import APP_DIR_MOUNT_PATH, DOCKER_COMPOSE_BASE
 
 class DockerServiceBuilder(ServiceBuilder, Builder):
 
@@ -122,10 +118,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def build_init_base(self):
     environment = { **self.env_dict() }
-    volumes = [f"{APP_DIR}:/app"]
-
-    if self.config.hostname:
-      self.__with_url_environment(environment)
+    volumes = [f"{APP_DIR}:{APP_DIR_MOUNT_PATH}"]
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
@@ -144,9 +137,6 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
   def build_configure_base(self):
     environment = { **self.env_dict() }
     volumes = []
-
-    if self.config.hostname:
-      self.__with_url_environment(environment)
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
@@ -171,7 +161,9 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
     self.build_configure_base()
 
     if self.config.hostname:
-      self.build_proxy_base()
+      # Only build the proxy base if we are reverse proxying
+      if self.config.app_config.proxy_mode == PROXY_MODE_REVERSE:
+        self.build_proxy_base()
 
     compose = {
       'services': self.services,

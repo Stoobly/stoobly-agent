@@ -1,5 +1,9 @@
 import pdb
-import requests
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Request, Response
 
 from stoobly_agent.app.models.adapters import JoinedRequestAdapter, RawHttpRequestAdapter, RawHttpResponseAdapter
 from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory, PythonResponseAdapterFactory
@@ -35,7 +39,7 @@ def build_params(raw_requests: str, payloads_delimitter = None):
     'joined_request': joined_request,
   }
 
-def build_params_from_python(request: requests.Request, response: requests.Response):
+def build_params_from_python(request: 'Request', response: 'Response'):
   mitmproxy_request = PythonRequestAdapterFactory(request).mitmproxy_request()
   mitmproxy_response = PythonResponseAdapterFactory(response).mitmproxy_response()
 

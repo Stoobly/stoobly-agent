@@ -1,7 +1,9 @@
 import pdb
 
-from requests import Response
-from typing import Callable, Dict, List, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Union
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
@@ -56,7 +58,7 @@ class TraceContext:
     if key:
       self.__remote_project_key = ProjectKey(key)
 
-  def with_replay_context(self, context: ReplayContext, replay: Callable[[], Response]): 
+  def with_replay_context(self, context: ReplayContext, replay: Callable[[], 'Response']): 
     request = context.request
     endpoint = None
 
@@ -211,7 +213,7 @@ class TraceContext:
         if rewrite_handler:
           rewrite_handler(_alias['name'], name, new_value)
 
-  def __create_trace_aliases(self, trace_request: TraceRequest, response: Response, endpoint: EndpointShowResponse):
+  def __create_trace_aliases(self, trace_request: TraceRequest, response: 'Response', endpoint: EndpointShowResponse):
     '''
     1. Parse all aliased properties from response
     2. Create TraceAlias records for each parsed aliased propert

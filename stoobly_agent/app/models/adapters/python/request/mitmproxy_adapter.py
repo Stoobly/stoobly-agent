@@ -1,14 +1,17 @@
 import pdb
-import requests
 
-from mitmproxy.http import Headers, Request as MitmproxyRequest
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from requests import Request
+    from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.lib.utils.decode import decode
 
 class MitmproxyRequestAdapter():
 
-  def __init__(self, request: requests.Request, http_version: str = 'HTTP/1.1'):
+  def __init__(self, request: 'Request', http_version: str = 'HTTP/1.1'):
     self.__http_version = http_version
     self.__request = request
 
@@ -26,6 +29,8 @@ class MitmproxyRequestAdapter():
 
   @property
   def headers(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Headers
     return Headers(**self.__decode_dict(self.__request.headers))
 
   @property
@@ -39,6 +44,8 @@ class MitmproxyRequestAdapter():
     return _data
 
   def adapt(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
     request = MitmproxyRequest.make(
       self.__request.method,
       self.url,

@@ -1,12 +1,13 @@
 import pdb
 
-from requests.structures import CaseInsensitiveDict
-
 from ..replay.body_parser_service import decode_response, encode_response
 
 class TestContextResponse():
 
   def __init__(self):
+    # Lazy import for runtime usage
+    from requests.structures import CaseInsensitiveDict
+
     self._content = ''
     self._headers = CaseInsensitiveDict()
     self._status_code = None
@@ -40,6 +41,9 @@ class TestContextResponse():
     return self
 
   def with_headers(self, headers):
+    # Lazy import for runtime usage
+    from requests.structures import CaseInsensitiveDict
+
     _headers = CaseInsensitiveDict()
 
     for name in headers:

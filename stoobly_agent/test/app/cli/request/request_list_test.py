@@ -7,7 +7,8 @@ from click.testing import CliRunner
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT
-from stoobly_agent.cli import record, request
+from stoobly_agent.app.cli.request_cli import request
+from stoobly_agent.cli import record
 from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.orm.request import Request
 

@@ -2,29 +2,22 @@ import click
 import json
 import os
 import pdb
-import requests
 import sys
 
 from stoobly_agent import VERSION
-from stoobly_agent.app.cli.helpers.context import ReplayContext
-from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response, RAW_FORMAT
+from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
-from stoobly_agent.app.proxy.constants import custom_response_codes
-from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
-from stoobly_agent.app.settings.constants import intercept_mode
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
-
-from .app.api import run as run_api
-from .app.cli import ca_cert, config, endpoint, feature, intercept, MainGroup, request, scenario, scaffold, snapshot, trace
+from .app.cli import MainGroup
 from .app.cli.helpers.feature_flags import local, remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
-from .lib.utils.decode import decode
 
 settings: Settings = Settings.instance()
 is_remote = remote(settings)
@@ -46,30 +39,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def main(ctx):
   ctx.terminal_width = 256
 
-# Attach subcommands to main
-main.add_command(ca_cert)
-main.add_command(config)
-main.add_command(endpoint)
-main.add_command(feature)
-main.add_command(intercept)
-main.add_command(request)
-main.add_command(scaffold)
-main.add_command(scenario)
-main.add_command(snapshot)
-main.add_command(trace)
-
-if settings.cli.features.dev_tools:
-    from .app.cli import dev_tools
-    main.add_command(dev_tools)
-
 if settings.cli.features.exec:
     from .app.cli.decorators.exec import ExecDecorator
     ExecDecorator(main).decorate()
-
-if settings.cli.features.remote:
-    from .app.cli import project, report
-    main.add_command(project)
-    main.add_command(report)
 
 @main.command(
     help="Initialize a new context"
@@ -82,7 +54,7 @@ def init(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--ca-certs-dir-path', default=os.path.join(os.path.expanduser('~'), '.mitmproxy'), help='Path to ca certs directory used to sign SSL certs.')
+@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -107,11 +79,11 @@ def init(**kwargs):
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
-@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
-@click.option('--modify-headers', multiple=True, help='''
-  Header modify pattern of the form "[/flow-filter]/header-name/[@]header-value", where the separator can be any character. The @ allows to provide a file path that is used to read the header value string.
-  An empty header-value removes existing header-name headers. May be passed multiple times.
-''')
+@click.option(
+  '--lifecycle-hooks-path',
+  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+  help='Path to lifecycle hooks script.'
+)
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
@@ -123,11 +95,20 @@ def init(**kwargs):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-directory-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
+@click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
+@click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
+@click.option('--upstream-auth', help='Add HTTP Basic authentication to upstream proxy and reverse proxy requests. Format: username:password')
 def run(**kwargs):
+    import dotenv
+
     from .app.proxy.run import run as run_proxy
+
+    if os.path.exists('.env'):
+      dotenv.load_dotenv('.env')
 
     # Observe config for changes
     settings: Settings = Settings.instance()
@@ -180,6 +161,27 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_PROXY_URL] = proxy_url
       settings.proxy.url = proxy_url
 
+    if kwargs.get('request_log_enable'):
+      from stoobly_agent.app.cli.helpers.workflow import workflow_running
+
+      if os.environ.get(WORKFLOW_NAME_ENV):
+        from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+        RequestLogger = ScaffoldInterceptedRequestsLogger
+      else:
+        from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
+        RequestLogger = SimpleInterceptedRequestsLogger
+
+      # If not appending, do that first (it handles enable internally)
+      if not kwargs.get('request_log_append'):
+        RequestLogger.truncate()
+      else:
+        RequestLogger.enable_logger_file()
+
+      # Set log level after logger is enabled
+      request_log_level = kwargs.get('request_log_level')
+      if request_log_level:
+        RequestLogger.set_log_level(request_log_level)
+
     if kwargs.get('detached'):
       # Run in detached mode with output redirection
       import subprocess
@@ -213,6 +215,8 @@ def run(**kwargs):
       # Run in foreground mode
       if not kwargs.get('headless'):
         settings.commit()
+
+        from .app.api import run as run_api
         run_api(**kwargs)
 
       if not kwargs.get('proxyless'):
@@ -237,6 +241,10 @@ def run(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def mock(**kwargs):
+  from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
+  from stoobly_agent.app.proxy.constants import custom_response_codes
+  from stoobly_agent.lib.utils.decode import decode
+  
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
 
@@ -271,6 +279,8 @@ def mock(**kwargs):
 @click.option('--scenario-key')
 @click.argument('url')
 def record(**kwargs):
+  from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
+  
   response = __replay(mode.RECORD, **kwargs) 
 
   if kwargs['format'] == RAW_FORMAT:
@@ -288,6 +298,8 @@ def record(**kwargs):
         fp.write(content.decode(json.detect_encoding(content))) 
 
 def __build_request_from_curl(**kwargs):
+  import requests
+  
   headers = {}
   for header in kwargs['header']:
     toks = header.split(':')
@@ -305,6 +317,9 @@ def __build_request_from_curl(**kwargs):
   )
 
 def __replay(mode, **kwargs):
+  from stoobly_agent.app.cli.helpers.context import ReplayContext
+  from stoobly_agent.app.proxy.replay.replay_request_service import replay as replay_request
+  
   if kwargs.get('scenario_key'):
     validate_scenario_key(kwargs['scenario_key'])
 

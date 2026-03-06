@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from typing import Tuple
 

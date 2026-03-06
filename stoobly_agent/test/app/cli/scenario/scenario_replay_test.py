@@ -7,10 +7,11 @@ from typing import List
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.cli.types.output import ReplayOutput
-from stoobly_agent.cli import record, scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.utils.decode import decode

@@ -1,6 +1,10 @@
-import requests
 import urllib
 import pdb
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from ..logger import Logger
 from .stoobly_api import StooblyApi
@@ -10,7 +14,7 @@ LOG_ID = 'UsersResource'
 class UsersResource(StooblyApi):
   USERS_ENDPOINT = 'users'
 
-  def profile(self, query_params = {}) -> requests.Response:
+  def profile(self, query_params = {}) -> 'Response':
     url = f"{self.service_url}/{self.USERS_ENDPOINT}/profile"
 
     Logger.instance(LOG_ID).debug(f"{url}?{urllib.parse.urlencode(query_params)}")

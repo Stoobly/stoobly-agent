@@ -18,12 +18,16 @@ class SchemaBuilder:
   def build(self, params):
     params_list = []
     for literal_param in params:
+      # Get value for type inference - support both 'value' (singular) and 'values' (list)
+      values = literal_param.get('values', [])
+      value = values[0] if values else literal_param.get('value', {})
+      
       param: RequestComponentName = {
         'endpoint_id': self.endpoint_id,
         'name': literal_param['name'],
         'query': literal_param['query'],
         'is_required': literal_param['required'],
-        'inferred_type': convert(self.__infer_type(literal_param['value'])),
+        'inferred_type': convert(self.__infer_type(value)),
         'is_deterministic': True,
         'id': literal_param['id'],
         f"{self.param_column_name}_id": literal_param['parent_id']

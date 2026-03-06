@@ -1,7 +1,5 @@
 import pdb
 
-import requests
-
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.settings import Settings
 
@@ -25,21 +23,31 @@ class RequestModel(Model):
   def create(self, **body_params: RequestCreateParams):
     try:
       return self.adapter.create(**body_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      # Lazy import for runtime exception handling
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def show(self, request_id: str, **params: RequestShowParams):
     try:
       return self.adapter.show(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def index_similar(self, params: RequestIndexSimilarParams):
     try:
       local_adapter = RequestResourceFactory(self.settings.remote).local_db()
       return local_adapter.similar(params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def response(self, **query_params):
     return self.adapter.response(**query_params)
@@ -47,29 +55,44 @@ class RequestModel(Model):
   def index(self, **query_params):
     try:
       return self.adapter.index(**query_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def update(self, request_id: str, **params: Request):
     try:
       return self.adapter.update(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def destroy(self, request_id: str, **params: RequestDestroyParams):
     try:
       return self.adapter.destroy(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def destroy_all(self, **params: RequestDestroyAllParams):
     try:
       return self.adapter.destroy_all(**params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def snapshot(self, request_id: str, **params):
     try:
       return self.adapter.snapshot(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise

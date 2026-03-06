@@ -1,18 +1,17 @@
-import json
 import pdb
 import re
 
-from mitmproxy.http import Headers, Request as MitmproxyRequest
-from mitmproxy.coretypes import multidict
-from typing import Callable, List
+from typing import Callable, List, TYPE_CHECKING
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
-from stoobly_agent.lib.utils.decode import decode
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
@@ -27,7 +26,7 @@ class MitmproxyRequestFacade(Request):
     #
     # @return [Hash]
     #
-    def __init__(self, request: MitmproxyRequest):
+    def __init__(self, request: 'MitmproxyRequest'):
         self.__url_rules: List[UrlRule] = []
         self.__parameter_rules: List[ParameterRule] = []
 
@@ -248,10 +247,12 @@ class MitmproxyRequestFacade(Request):
         self.__apply_rewrites(parsed_content, rewrites, handler)
         self.__body.set(parsed_content, content_type)
 
-    def __filter_custom_headers(self, request_headers: Headers):
+    def __filter_custom_headers(self, request_headers: 'Headers'):
         '''
         Remove custom headers
         '''
+
+        from mitmproxy.http import Headers
         _request_headers = Headers(**request_headers)
 
         headers = custom_headers.__dict__
@@ -269,4 +270,5 @@ class MitmproxyRequestFacade(Request):
         return _request_headers
 
     def __is_iterable(self, v):
+        from mitmproxy.coretypes import multidict
         return isinstance(v, dict) or isinstance(v, multidict.MultiDictView) or isinstance(v, list)

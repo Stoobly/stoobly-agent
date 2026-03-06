@@ -1,5 +1,9 @@
-import requests
 import urllib
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.models.types import ScenarioCreateParams
 
@@ -16,14 +20,14 @@ class ScenariosResource(StooblyApi):
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}"
     return self.post(url, headers=self.default_headers, data=params)
 
-  def index(self, **query_params: PaginationQueryParams) -> requests.Response:
+  def index(self, **query_params: PaginationQueryParams) -> 'Response':
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}"
 
     Logger.instance(LOG_ID).debug(f"{url}?{urllib.parse.urlencode(query_params)}")
 
     return self.get(url, headers=self.default_headers, params=query_params)
 
-  def show(self, scenario_id: int, **query_params) -> requests.Response:
+  def show(self, scenario_id: int, **query_params) -> 'Response':
     url = f"{self.service_url}/{self.SCENARIOS_ENDPOINT}/{scenario_id}"
 
     Logger.instance(LOG_ID).debug(f"{url}?{urllib.parse.urlencode(query_params)}")

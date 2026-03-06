@@ -1,28 +1,41 @@
+import base64
+import json
 import os
 import pdb
-import yaml
+import re
 
 from runpy import run_path
-from typing import List, Union
+from typing import List, Optional, Union, TYPE_CHECKING
 
-from mitmproxy.http import Request as MitmproxyRequest
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
+from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.match_rule import MatchRule as MatchRuleClass
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
+from stoobly_agent.app.settings.url_rule import UrlRule as UrlRuleClass
+from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.config.constants import custom_headers, env_vars, mode, request_origin, test_filter
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
+from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
 class InterceptSettings:
 
-  def __init__(self, settings: Settings, request: MitmproxyRequest = None):
+  def __init__(self, settings: Settings, request: 'MitmproxyRequest' = None, cache: Optional[Cache] = None, scenario_model: Optional[ScenarioModel] = None):
     self.__settings = settings
     self.__request = request
-    self.__headers: MitmproxyRequest.headers = request.headers if request else None
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
+    self.__headers: 'MitmproxyRequest.headers' = request.headers if request else None
     self.__for_response = False
+    self.__cache = cache
+    self.__scenario_model = scenario_model
 
     parsed_project_key = self.parsed_project_key
     project_id = parsed_project_key.id if parsed_project_key else None
@@ -43,6 +56,16 @@ class InterceptSettings:
     self._replay_rewrite_rules = None
     self._test_rewrite_rules = None
 
+  def with_cache(self, cache: Cache):
+    """Set cache using fluent interface pattern."""
+    self.__cache = cache
+    return self
+
+  def with_scenario_model(self, scenario_model: ScenarioModel):
+    """Set scenario_model using fluent interface pattern."""
+    self.__scenario_model = scenario_model
+    return self
+
   @property
   def settings(self):
     return self.__settings
@@ -54,8 +77,15 @@ class InterceptSettings:
 
   @property
   def active(self):
+    # If proxy mode is explicitly set, use it to determine if intercept is active
     if self.__headers and custom_headers.PROXY_MODE in self.__headers:
-      return not not self.__headers[custom_headers.PROXY_MODE]
+      if custom_headers.INTERCEPT_ACTIVE in self.__headers and self.__headers[custom_headers.INTERCEPT_ACTIVE] == '0':
+        return False
+      
+      return self.__headers[custom_headers.PROXY_MODE] != mode.NONE
+
+    if self.__headers and custom_headers.INTERCEPT_ACTIVE in self.__headers:
+      return self.__headers[custom_headers.INTERCEPT_ACTIVE] == '1'
 
     return self.__intercept_settings.active
     
@@ -78,12 +108,12 @@ class InterceptSettings:
         return self.__headers[custom_headers.RESPONSE_PROXY_MODE]
 
       access_control_header = self.__headers.get('Access-Control-Request-Headers')
-      do_proxy_header = custom_headers.DO_PROXY
+      intercept_active_header = custom_headers.INTERCEPT_ACTIVE
 
-      if access_control_header and do_proxy_header.lower() in access_control_header:
+      if access_control_header and intercept_active_header.lower() in access_control_header:
           return mode.NONE
 
-      if do_proxy_header in self.__headers:
+      if self.__headers.get(intercept_active_header) == '0':
           return mode.NONE
 
       if custom_headers.PROXY_MODE in self.__headers:
@@ -107,7 +137,14 @@ class InterceptSettings:
 
   @property
   def public_directory_path(self):
-    """Get raw public directory paths string from environment or headers."""
+    """Returns comma-separated list of public directory paths, optionally with origin prefix.
+    
+    Examples:
+      - Single path: '/path/to/public'
+      - Multiple paths: '/path/to/public1,/path/to/public2'
+      - With origin: 'https://example.com:/path/to/public'
+      - Combined: 'https://api.example.com:/public1,/public2,https://other.com:/public3'
+    """
     if self.__headers and custom_headers.PUBLIC_DIRECTORY_PATH in self.__headers:
       return self.__headers[custom_headers.PUBLIC_DIRECTORY_PATH]
     elif os.environ.get(env_vars.AGENT_PUBLIC_DIRECTORY_PATH):
@@ -128,7 +165,14 @@ class InterceptSettings:
 
   @property
   def response_fixtures_path(self):
-    """Returns comma-separated list of response fixtures paths, optionally with origin prefix."""
+    """Returns comma-separated list of response fixtures paths, optionally with origin prefix.
+    
+    Examples:
+      - Single path: '/path/to/fixtures.json'
+      - Multiple paths: '/path/to/fixtures1.json,/path/to/fixtures2.json'
+      - With origin: 'https://example.com:/path/to/fixtures.json'
+      - Combined: 'https://api.example.com:/fixtures1.json,/fixtures2.json,https://other.com:/fixtures3.json'
+    """
     if self.__headers and custom_headers.RESPONSE_FIXTURES_PATH in self.__headers:
       return self.__headers[custom_headers.RESPONSE_FIXTURES_PATH]
 
@@ -147,11 +191,80 @@ class InterceptSettings:
     if self.__headers and custom_headers.SCENARIO_KEY in self.__headers:
         return self.__headers[custom_headers.SCENARIO_KEY]
 
+    # Check if scenario name header is set
+    if self.__headers and custom_headers.SCENARIO_NAME in self.__headers:
+        scenario_name = self.__headers[custom_headers.SCENARIO_NAME]
+        
+        # Check cache first if available
+        if self.__cache:
+            parsed_project_key = self.parsed_project_key
+            project_id = parsed_project_key.id if parsed_project_key else None
+
+            if project_id is None:
+                return None
+
+            cache_key = f'scenario_name_index.{project_id}'
+            cache_data = self.__cache.read(cache_key)
+            
+            # Get existing mapping or create new one
+            if cache_data and cache_data.get('value'):
+                scenario_name_to_key_map = cache_data['value']
+            else:
+                scenario_name_to_key_map = {}
+            
+            # Check if scenario name is already in cache, for None values, allow cache miss
+            # This will ensure that if the user creates a new scenario after a cache miss, it will be cached.
+            if scenario_name in scenario_name_to_key_map and scenario_name_to_key_map[scenario_name]:
+                return scenario_name_to_key_map[scenario_name]
+            
+            # Cache miss, query ScenarioModel if available
+            if self.__scenario_model:
+                try:
+                    scenario_key = None
+                    
+                    if project_id is not None:
+                        response, status = self.__scenario_model.index(
+                          project_id=project_id, q=scenario_name, sort_by='requests_count'
+                        )
+                        if status == 200 and response.get('list') and len(response['list']) > 0:
+                            # Find first scenario that exactly matches the name
+                            for scenario in response['list']:
+                                if scenario.get('name') == scenario_name:
+                                    scenario_key = scenario.get('key')
+                                    break
+                    
+                    # Do not cache if scenario key is not found
+                    # If the user is recording requests, they may create a new scenario after a cache miss
+                    # This would result in a cache miss loop until the agent restarts, so we do not cache the result
+                    if scenario_key:
+                      scenario_name_to_key_map[scenario_name] = scenario_key
+                      self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
+
+                    return scenario_key
+                except Exception as e:
+                    Logger.instance().error(f"Error querying scenario by name: {e}")
+                    return None
+
     return self.__data_rules.scenario_key
+
+  @property
+  def parsed_scenario_key(self):
+    _scenario_key = self.scenario_key
+    if not _scenario_key:
+      return None
+
+    try: 
+      return ScenarioKey(self.scenario_key)
+    except InvalidScenarioKey:
+      pass
 
   @scenario_key.setter
   def scenario_key(self, v):
     self.__data_rules.scenario_key = v
+
+  @property
+  def scenario_model(self):
+    return self.__scenario_model
 
   @property
   def report_key(self) -> Union[str, None]:
@@ -161,6 +274,10 @@ class InterceptSettings:
   @property
   def order(self):
     return self.__order(self.mode)
+
+  @property
+  def order_from_header(self):
+    return self.__order_from_header(self.mode)
 
   @property
   def policy(self):
@@ -184,17 +301,60 @@ class InterceptSettings:
   @property
   def exclude_rules(self) -> List[FirewallRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+    return self.exclude_rules_for_mode(_mode)
 
   @property
   def include_rules(self) -> List[FirewallRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+    return self.include_rules_for_mode(_mode)
 
   @property
   def match_rules(self) -> List[MatchRule]:
     _mode = self.mode
-    return list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    
+    # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
+    # Expected format from stoobly-js:
+    # [
+    #   {
+    #     modes: ['replay', 'mock'],
+    #     components: 'Header'  // Single RequestParameter value
+    #   }
+    # ]
+    if self.__headers and custom_headers.REQUEST_MATCH_RULES in self.__headers and self.__request:
+      value = self.__headers[custom_headers.REQUEST_MATCH_RULES]
+      if value:
+        try:
+          decoded = base64.b64decode(value).decode('utf-8')
+          match_rules_data = json.loads(decoded)
+          if isinstance(match_rules_data, list):
+            for match_rule_data in match_rules_data:
+              if not isinstance(match_rule_data, dict):
+                continue
+              
+              # Get components - stoobly-js sends a single string, but agent expects array
+              components_value = match_rule_data.get('components')
+              if not components_value or not isinstance(components_value, str):
+                continue
+              
+              # Convert single component to array (agent expects List[RequestComponent])
+              components = [components_value.strip()]
+              
+              # Get modes (optional, defaults to current mode)
+              modes = match_rule_data.get('modes', [_mode])
+              if not isinstance(modes, list):
+                modes = [_mode]
+              
+              header_rule = MatchRuleClass({
+                'components': components,
+                'methods': [self.__request.method.upper()],
+                'modes': modes,
+                'pattern': re.escape(self.__request.url),
+              })
+              rules.append(header_rule)
+        except (json.JSONDecodeError, ValueError) as e:
+          Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
+    return rules
 
   # TODO: explore if should support specifying components to ignore
   @property
@@ -277,16 +437,23 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
+  def exclude_rules_for_mode(self, mode: str) -> List[FirewallRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+
+  def include_rules_for_mode(self, mode: str) -> List[FirewallRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+
   def for_response(self):
     self.__for_response = True
 
   def __select_rewrite_rules(self, mode = None):
+    mode = mode or self.mode
     rules = []
 
     # Filter only parameters matching active intercept mode
     for rewrite_rule in self.__rewrite_rules:
       # If url rule applies, then update .url_rules with url_rule
-      url_rules = self.__select_url_rules(rewrite_rule)
+      url_rules = self.__select_url_rules(rewrite_rule, mode)
 
       # If parameters rules apply, then update .parameter_rules with applicable parameter_rules
       parameter_rules = self.__select_parameter_rules(rewrite_rule, mode)
@@ -297,6 +464,65 @@ class InterceptSettings:
         rewrite_rule.url_rules = url_rules
         rewrite_rule.parameter_rules = parameter_rules
         rules.append(rewrite_rule)
+
+    # Append rules from X-Stoobly-Request-Rewrite-Rules header (base64-encoded JSON)
+    # Expected format from stoobly-js (using snake_case):
+    # [
+    #   {
+    #     url_rules: [{path: '/new-path', port: '8080', scheme: 'https'}],
+    #     parameter_rules: [{type: 'header', name: 'foo', value: 'bar'}]
+    #   }
+    # ]
+    if self.__headers and custom_headers.REQUEST_REWRITE_RULES in self.__headers and self.__request:
+      try:
+        value = self.__headers[custom_headers.REQUEST_REWRITE_RULES]
+        if value:
+          decoded = base64.b64decode(value).decode('utf-8')
+          rewrite_rules_data = json.loads(decoded)
+          if isinstance(rewrite_rules_data, list) and len(rewrite_rules_data) > 0:
+            for rewrite_rule_data in rewrite_rules_data:
+              if not isinstance(rewrite_rule_data, dict):
+                continue
+              
+              # Parse parameter rules (using snake_case)
+              parameter_rules = []
+              parameter_rules_data = rewrite_rule_data.get('parameter_rules', [])
+              if isinstance(parameter_rules_data, list):
+                for item in parameter_rules_data:
+                  if isinstance(item, dict) and item.get('type') and item.get('name') is not None and item.get('value') is not None:
+                    parameter_rules.append(ParameterRuleClass({
+                      'modes': [mode],
+                      'name': str(item['name']),
+                      'type': str(item['type']),
+                      'value': str(item['value']),
+                    }))
+              
+              # Parse URL rules (using snake_case)
+              url_rules = []
+              url_rules_data = rewrite_rule_data.get('url_rules', [])
+              if isinstance(url_rules_data, list):
+                for item in url_rules_data:
+                  if isinstance(item, dict):
+                    url_rule_dict = {'modes': [mode]}
+                    if 'path' in item:
+                      url_rule_dict['path'] = str(item['path'])
+                    if 'port' in item:
+                      url_rule_dict['port'] = str(item['port'])
+                    if 'scheme' in item:
+                      url_rule_dict['scheme'] = str(item['scheme'])
+                    url_rules.append(UrlRuleClass(url_rule_dict))
+              
+              # Only create a rewrite rule if we have at least one parameter or URL rule
+              if parameter_rules or url_rules:
+                header_rewrite_rule = RewriteRule({
+                  'methods': [self.__request.method.upper()],
+                  'pattern': re.escape(self.__request.url),
+                  'parameter_rules': [r.to_dict() for r in parameter_rules],
+                  'url_rules': [r.to_dict() for r in url_rules],
+                })
+                rules.append(header_rewrite_rule)
+      except (json.JSONDecodeError, ValueError, KeyError) as e:
+        Logger.instance().warn(f"Invalid X-Stoobly-Request-Rewrite-Rules header: {e}")
 
     return rules
 
@@ -330,8 +556,16 @@ class InterceptSettings:
 
   def __order(self, mode):
     if mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
+        return self.__headers[custom_headers.RECORD_ORDER]
+
       return self.__data_rules.record_order
-    
+
+  def __order_from_header(self, mode):
+    if mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
+        return self.__headers[custom_headers.RECORD_ORDER]
+
   def __policy(self, mode):
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:

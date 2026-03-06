@@ -1,9 +1,11 @@
 import base64
 import json
 import pdb
-import requests
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from requests import Request, Response
 
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.lib.api.interfaces import Header, HeaderShowResponse
@@ -35,7 +37,7 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     name = header['name']
     value = header['value']
 
-    python_response: requests.Response = RawHttpResponseAdapter(response.raw).to_response()
+    python_response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
     headers = python_response.headers
     headers[name] = value
 
@@ -56,7 +58,7 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     if not response:
       return self.__response_not_found()
 
-    response: requests.Response = RawHttpResponseAdapter(response.raw).to_response()
+    response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
 
     headers = []
     for key, val in response.headers.items():
@@ -81,7 +83,7 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     if not decoded_id:
       return self.bad_request('Invalid id')
 
-    response: requests.Request = RawHttpResponseAdapter(response.raw).to_response()
+    response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
     headers = response.headers
 
     header_name = decoded_id['name'] 

@@ -14,7 +14,9 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_TEST_TYPE,
   WORKFLOW_MOCK_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.context_lock import ContextLock
 from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
@@ -78,7 +80,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined services
@@ -116,17 +118,17 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path: str):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -155,6 +157,14 @@ class TestLocalScaffoldE2e():
       _requests = Request.all()
       assert len(_requests) == 1, "Expected 1 request to be recorded"
 
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
 
   class TestMockWorkflow():
     @pytest.fixture(scope='class', autouse=True)
@@ -163,7 +173,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
@@ -195,17 +205,17 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path, external_service_name, local_service_name):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -220,7 +230,7 @@ class TestLocalScaffoldE2e():
 
     def test_public_directory(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
       """Test public directory is created"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
       assert os.path.exists(workflow_command.public_dir_path), "Public directory should be created"
       # Create an index.html file in the public directory
@@ -236,7 +246,7 @@ class TestLocalScaffoldE2e():
 
     def test_response_fixtures(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
       """Test response fixtures are created"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
       assert os.path.exists(workflow_command.response_fixtures_path), "Response fixtures should be created"
 
@@ -263,6 +273,14 @@ class TestLocalScaffoldE2e():
     def test_intercept_mode_active(self, settings: Settings):
       assert settings.proxy.intercept.active
 
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
   class TestTestWorkflow():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
@@ -278,7 +296,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_name: str, app_dir_path: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
-      # Create app with local run-on
+      # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create external user defined service
@@ -311,17 +329,17 @@ class TestLocalScaffoldE2e():
 
     def test_app_configuration(self, app_dir_path: str):
       """Test that the app is configured for local execution"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       assert app.valid, "App should be valid"
       
       # Verify app is configured for local execution
       from stoobly_agent.app.cli.scaffold.app_config import AppConfig
       app_config = AppConfig(app.scaffold_namespace_path)
-      assert app_config.run_on_local, "App should be configured to run locally"
+      assert app_config.runtime_local, "App should be configured to run locally"
 
     def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
       """Test that services are created and configured properly"""
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       services = app.services
       
       # Check that our services were created
@@ -340,3 +358,11 @@ class TestLocalScaffoldE2e():
 
     def test_intercept_mode_active(self, settings: Settings):
       assert settings.proxy.intercept.active
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+      
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"

@@ -1,7 +1,9 @@
 import pdb
 
-from mitmproxy.http import Request as MitmproxyRequest
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.context import ReplayContext
@@ -26,10 +28,12 @@ def handle_request_replay_without_rewrite(replay_context: ReplayContext):
     handle_request_replay(replay_context, **options)
 
 def handle_request_replay(replay_context: ReplayContext, **options: ReplayOptions):
-    request: MitmproxyRequest = replay_context.flow.request
+    # Lazy import for runtime usage
+    from mitmproxy.http import Request as MitmproxyRequest
+    request: 'MitmproxyRequest' = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
-    policy = get_active_mode_policy(request, intercept_settings)
+    policy = get_active_mode_policy(request, intercept_settings, mode.REPLAY)
     if policy != replay_policy.NONE:
         if not options.get('no_rewrite'):
             __rewrite_request(replay_context)
@@ -68,15 +72,6 @@ def __rewrite_response(replay_context: ReplayContext):
     """
     intercept_settings: InterceptSettings = replay_context.intercept_settings
     flow = replay_context.flow
-    request = flow.request
-    response = flow.response
-
-    request_proxy_mode_header = request.headers.get(custom_headers.PROXY_MODE)
-    response_proxy_mode_header = response.headers.get(custom_headers.RESPONSE_PROXY_MODE)
-
-    if request_proxy_mode_header == mode.REPLAY and response_proxy_mode_header == mode.RECORD:
-        if intercept_settings.record_strategy == record_strategy.MINIMAL:
-            minimize_response_headers(flow)
 
     rewrite_rules = intercept_settings.replay_rewrite_rules
 

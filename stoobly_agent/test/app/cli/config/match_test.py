@@ -5,9 +5,9 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import reset
 
+from stoobly_agent.app.cli.config_cli import config
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.cli import config
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 

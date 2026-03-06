@@ -1,8 +1,6 @@
 import os
 import pdb
 
-from stoobly_orator import DatabaseManager, Model
-
 from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.data_dir import DataDir
 
@@ -16,6 +14,8 @@ class ORM():
             raise RuntimeError('Call instance() instead')
         else:
             self.initialize_db()
+
+            from stoobly_orator import Model
             self._model = Model
             
     def initialize_db(self):
@@ -31,7 +31,10 @@ class ORM():
             }
         }
 
+        from stoobly_orator import DatabaseManager
         db = DatabaseManager(config)
+
+        from stoobly_orator import Model
         Model.set_connection_resolver(db)
 
         self._db = db

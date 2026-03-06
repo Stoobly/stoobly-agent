@@ -3,9 +3,10 @@ import pdb
 from typing import TypedDict
 
 from stoobly_agent.app.models.scenario_model import ScenarioModel
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import intercept_mode
 from stoobly_agent.app.settings.constants.intercept_mode import Mode
-from stoobly_agent.app.settings import ProxySettings, Settings
+from stoobly_agent.app.settings.proxy_settings import ProxySettings
 from stoobly_agent.config.constants import record_order
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey

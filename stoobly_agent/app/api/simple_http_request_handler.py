@@ -2,9 +2,12 @@ import json
 import mimetypes
 import os
 import pdb
-import requests
 
 from http.server import BaseHTTPRequestHandler
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def render(self, **kwargs):
@@ -93,7 +96,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         return True
 
-    def pass_on(self, res: requests.Response):
+    def pass_on(self, res: 'Response'):
         self.render(
             headers = res.headers,
             data = res.raw.data,

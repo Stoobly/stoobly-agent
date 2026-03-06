@@ -8,7 +8,6 @@ from stoobly_agent.lib.api.keys.request_key import RequestKey
 from stoobly_agent.lib.utils.decode import decode
 
 from .base import Base
-from .response import Response
 
 class InvalidScenario(Exception):
   pass
@@ -44,14 +43,17 @@ class Request(Base):
 
   @has_one
   def response(self):
+    from .response import Response
     return Response
 
   @has_many
   def replayed_responses(self):
+    from .replayed_response import ReplayedResponse
     return ReplayedResponse
 
   @belongs_to
   def scenario(self):
+    from .scenario import Scenario
     return Scenario
 
   def key(self):
@@ -101,6 +103,8 @@ def handle_created(request):
   pass
 
 def handle_saving(request):
+  from .scenario import Scenario
+
   if hasattr(request, 'is_deleted') and request.is_deleted:
     request.scenario_id = None
 
@@ -124,6 +128,8 @@ def handle_saving(request):
         raise InvalidScenario()
 
 def handle_saved(request):
+  from .scenario import Scenario
+
   request_before = request.get_original()
 
   if not request_before.get('scenario_id'):
@@ -155,6 +161,8 @@ def handle_deleting(request):
     replayed_response.delete()
 
 def handle_deleted(request):
+  from .scenario import Scenario
+
   request_before = request.get_original()
 
   if request_before.get('scenario_id'):
@@ -171,6 +179,3 @@ Request.created(handle_created)
 Request.creating(handle_creating)
 Request.deleted(handle_deleted)
 Request.deleting(handle_deleting)
-
-from .replayed_response import ReplayedResponse
-from .scenario import Scenario

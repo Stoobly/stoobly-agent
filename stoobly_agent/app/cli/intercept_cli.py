@@ -6,11 +6,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from .helpers.handle_config_update_service import handle_intercept_active_update, handle_order_update, handle_strategy_update
-
-settings: Settings = Settings.instance()
-
 mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
+settings: Settings = Settings.instance()
 
 if settings.cli.features.remote:
     mode_options.append(mode.TEST)
@@ -59,6 +56,7 @@ def intercept(ctx):
     help="Enable intercept"
 )
 def enable(**kwargs):
+    from .helpers.handle_config_update_service import handle_intercept_active_update
     settings = Settings.instance()
 
     settings.proxy.intercept.active = True
@@ -73,6 +71,7 @@ def enable(**kwargs):
     help="Disable intercept"
 )
 def disable(**kwargs):
+    from .helpers.handle_config_update_service import handle_intercept_active_update
     settings = Settings.instance()
 
     settings.proxy.intercept.active = False
@@ -100,6 +99,8 @@ def configure(**kwargs):
     if kwargs['mode']:
         if settings.proxy.intercept.mode != kwargs['mode']:
             if settings.proxy.intercept.active:
+                from .helpers.handle_config_update_service import handle_intercept_active_update
+
                 settings.proxy.intercept.active = False
                 handle_intercept_active_update(settings)
 
@@ -120,6 +121,7 @@ def configure(**kwargs):
             print("Error: set --mode to a intercept mode that supports the order option", file=sys.stderr)
             sys.exit(1)
 
+        from .helpers.handle_config_update_service import handle_order_update
         handle_order_update(settings)
 
         print(f"Updating {_mode} order to {kwargs['order']}")
@@ -128,7 +130,7 @@ def configure(**kwargs):
         active_mode = settings.proxy.intercept.mode
         valid_policies = __get_policy_options(active_mode)
 
-        if not kwargs['policy'] in valid_policies:
+        if kwargs['policy'] not in valid_policies:
             print("Error: Valid policies for {active_mode} are {valid_policies}", file=sys.stderr)
             sys.exit(1)
 
@@ -161,6 +163,7 @@ def configure(**kwargs):
             print("Error: set --strategy to a intercept mode that supports the strategy option", file=sys.stderr)
             sys.exit(1)
 
+        from .helpers.handle_config_update_service import handle_strategy_update
         handle_strategy_update(settings)
 
         print(f"Updating {_mode} policy to {kwargs['strategy']}")

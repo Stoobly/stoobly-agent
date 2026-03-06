@@ -1,14 +1,17 @@
 import json
 
-from mitmproxy.http import Request as MitmproxyRequest
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.utils.requests_response_builder import RequestsResponseBuilder
 
 LOG_ID = 'ReversePorxy'
 
-def reverse_proxy(request: MitmproxyRequest, service_url: str, options = {}):
+def reverse_proxy(request: 'MitmproxyRequest', service_url: str, options = {}):
     Logger.instance(LOG_ID).debug(service_url)
 
     uri = urlparse(service_url)

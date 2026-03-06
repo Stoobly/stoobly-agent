@@ -64,11 +64,11 @@ class TestScaffoldCli():
 
     @pytest.fixture(scope='class')
     def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
     def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
-      yield ServiceDockerCompose(app_dir_path=app_dir_path, target_workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def create_setup(self, runner, app_dir_path, app_name, external_service_docker_compose, external_https_service_docker_compose):
@@ -83,7 +83,7 @@ class TestScaffoldCli():
       ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
  
     def test_service_delete(self, runner, app_dir_path, external_service_docker_compose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       service_name = external_service_docker_compose.service_name
       
       ScaffoldCliInvoker.cli_service_delete(runner, app_dir_path, service_name)
@@ -98,7 +98,7 @@ class TestScaffoldCli():
         assert False
 
     def test_service_delete_https(self, runner, app_dir_path, external_https_service_docker_compose):
-      app = App(app_dir_path, SERVICES_NAMESPACE)
+      app = App(app_dir_path)
       service_name = external_https_service_docker_compose.service_name
       hostname = external_https_service_docker_compose.hostname
 

@@ -1,9 +1,10 @@
 import hashlib
 import pdb
-import requests
 
-from mitmproxy.coretypes.multidict import MultiDict
-from typing import List, Dict, TypedDict, Union
+from typing import TYPE_CHECKING, List, Dict, TypedDict, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.coretypes.multidict import MultiDict
 
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils.python_to_ruby_type import type_map
@@ -32,6 +33,9 @@ class RequestHasher():
       return cls._instance
   
   def hash_params(self, params: Union[dict, list], ignored_params: Dict[str, IgnoredParam] = {}) -> str:
+    # Lazy import for runtime isinstance check
+    import requests
+    from mitmproxy.coretypes.multidict import MultiDict
     if isinstance(params, dict) or isinstance(params, list) or isinstance(params, MultiDict) or isinstance(params, requests.structures.CaseInsensitiveDict):
       return self.__serialize(None, params, None, ignored_params)
     else:
@@ -43,8 +47,10 @@ class RequestHasher():
     return hashlib.md5(text.encode() if isinstance(text, str) else text).hexdigest()
  
   def __serialize(
-    self, key: str, value: Union[dict, list, MultiDict, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
+    self, key: str, value: Union[dict, list, 'MultiDict', str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
   ) -> str:
+    # Lazy import for runtime isinstance check
+    from mitmproxy.coretypes.multidict import MultiDict
     if isinstance(value, dict) or isinstance(value, MultiDict):
       return self.__serialize_hash(key, value, query, ignored_params)
     elif isinstance(value, list):
@@ -85,8 +91,10 @@ class RequestHasher():
     return self.__hash_serialized_params(serialized_params)
 
   def __serialize_hash(
-    self, key: str, value: Union[dict, list, str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
+    self, key: str, value: Union[dict, list, 'MultiDict', str], query: str, ignored_params: Dict[str, IgnoredParam] = {}
   ) -> str:
+    # Lazy import for runtime isinstance check
+    from mitmproxy.coretypes.multidict import MultiDict
     serialized_params = []
 
     for k, v in value.items():

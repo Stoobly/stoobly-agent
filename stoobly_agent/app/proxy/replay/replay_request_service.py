@@ -1,9 +1,11 @@
 import os
 import pdb
-import requests
 
 from time import time
-from typing import Callable, TypedDict, Union
+from typing import TYPE_CHECKING, Callable, TypedDict, Union
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.helpers.context import ReplayContext
@@ -24,7 +26,7 @@ class ReplayRequestOptions(TypedDict):
   lifecycle_hooks_path: str
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   before_replay: Union[Callable[[ReplayContext], None], None]
-  after_replay: Union[Callable[[ReplayContext], Union[requests.Response, None]], None]
+  after_replay: Union[Callable[[ReplayContext], Union['Response', None]], None]
   project_key: Union[str, None]
   proxies: dict
   public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix
@@ -45,7 +47,7 @@ def replay_with_trace(context: ReplayContext, trace_context: TraceContext, optio
   trace_context.with_remote_project(options.get('remote_project_key'))
   return trace_context.with_replay_context(context, lambda context: replay(context, options))
 
-def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Response:
+def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
   request = context.request
   headers = request.headers
   method = request.method
@@ -120,8 +122,10 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
   }
 
   now = time()
-  res: requests.Response = None
+  res: 'Response' = None
   if not options.get('proxy'):
+    # Lazy import for runtime usage
+    import requests
     request = requests.Request(**{
       **request_dict,
       'method': method,
@@ -130,6 +134,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> requests.Re
 
     res = simulate_intercept(request, **request_config)
   else:
+    # Lazy import for runtime usage
+    import requests
     settings = Settings.instance()
     handler = getattr(requests, method.lower())
     ca = CertificateAuthority()
@@ -182,7 +188,7 @@ def __handle_mode_option(_mode, request: Request, headers):
 
     headers[custom_headers.MOCK_POLICY] = mock_policy.ALL
 
-def __create_replayed_response(request_id: int, res: requests.Response, latency: int):   
+def __create_replayed_response(request_id: int, res: 'Response', latency: int):   
   replayed_response_model = ReplayedResponseModel(Settings.instance())
   raw = PythonResponseAdapterFactory(res).raw_response()
   return replayed_response_model.create(

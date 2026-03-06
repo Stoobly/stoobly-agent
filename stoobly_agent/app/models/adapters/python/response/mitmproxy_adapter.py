@@ -1,15 +1,18 @@
 import pdb
-import requests
 
-from mitmproxy.http import Headers, Response as MitmproxyResponse
+from typing import TYPE_CHECKING
 from time import time
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import Headers, Response as MitmproxyResponse
 
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import DEFAULT_HTTP_VERSION
 from stoobly_agent.lib.utils.decode import decode
 
 class MitmproxyResponseAdapter():
 
-  def __init__(self, response: requests.Response):
+  def __init__(self, response: 'Response'):
     self.__timestamp_start = time()
 
     if hasattr(response, 'raw'):
@@ -35,6 +38,8 @@ class MitmproxyResponseAdapter():
 
   @property
   def headers(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Headers
     return Headers(**self.__decode_dict(self.__response.headers))
 
   @property
@@ -46,6 +51,8 @@ class MitmproxyResponseAdapter():
     return self.__timestamp_start + self.__latency
 
   def adapt(self):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Response as MitmproxyResponse
     content = self.__response.content
 
     res = MitmproxyResponse.make(

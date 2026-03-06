@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from typing import Union
 
@@ -87,7 +86,9 @@ class TestReplayContext(ReplayContext):
     if not self.has_test_results: 
       response = self.__get_test_expected_response_with_context(test_facade)
 
-      if isinstance(response, requests.Response):
+      # Lazy import for runtime isinstance check
+      from requests import Response
+      if isinstance(response, Response):
         content = decode(response.content)
         content_type = response.headers.get('content-type')
 

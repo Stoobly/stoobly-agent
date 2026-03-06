@@ -12,7 +12,8 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 from stoobly_agent.config.constants import env_vars, test_strategy
 os.environ[env_vars.FEATURE_REMOTE] = '1'
 
-from stoobly_agent.cli import record, scenario
+from stoobly_agent.app.cli.scenario_cli import scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 

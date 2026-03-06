@@ -7,7 +7,7 @@ from typing import List, TypedDict, Union
 from stoobly_agent.app.cli.scaffold.local.service.builder import ServiceBuilder
 
 from .app import App
-from .constants import RUN_ON_DOCKER, WORKFLOW_TEMPLATE_OPTION
+from .constants import WORKFLOW_TEMPLATE_OPTION
 from .docker.service.builder import DockerServiceBuilder
 
 from .docker.workflow.builder import DockerWorkflowBuilder
@@ -42,8 +42,8 @@ class WorkflowCreateCommand(WorkflowCommand):
 
   @property
   def create_docker_files(self):
-    """Determine if Docker files should be created based on app config run-on setting."""
-    return RUN_ON_DOCKER in self.app_config.run_on
+    """Determine if Docker files should be created based on app config runtime setting."""
+    return self.app_config.runtime_docker
 
   def build(self, **kwargs: BuildOptions):
     # Create workflow folder
@@ -52,7 +52,7 @@ class WorkflowCreateCommand(WorkflowCommand):
         shutil.rmtree(dest)
 
     if not os.path.exists(dest):
-      os.makedirs(dest) 
+      os.makedirs(dest, exist_ok=True) 
 
     service_builder = kwargs.get('service_builder')
     workflow_builder = None

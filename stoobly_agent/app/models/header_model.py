@@ -1,5 +1,4 @@
 import pdb
-import requests
 
 from typing import Union
 
@@ -24,23 +23,35 @@ class HeaderModel(Model):
   def create(self, request_id: int, **params: Header):
     try:
       return self.adapter.create(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def index(self, request_id: str, **query_params):
     try:
       return self.adapter.index(request_id, **query_params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def update(self, request_id: int, **params: Header):
     try:
       return self.adapter.update(request_id, **params)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise
 
   def destroy(self, request_id: str, id: str):
     try:
       return self.adapter.destroy(request_id, id)
-    except requests.exceptions.RequestException as e:
-      return self.handle_request_error(e)
+    except Exception as e:
+      import requests
+      if isinstance(e, requests.exceptions.RequestException):
+        return self.handle_request_error(e)
+      raise

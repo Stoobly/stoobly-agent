@@ -1,10 +1,13 @@
 import os
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
 from .snapshot import Snapshot
 from .snapshot_types import RequestSnapshotOptions
+
+LOG_ID = 'RequestSnapshot'
 
 class RequestSnapshot(Snapshot):
 
@@ -88,7 +91,11 @@ class RequestSnapshot(Snapshot):
     adapter = JoinedRequestStringAdapter(request)
 
     if options.get('decode'):
-      adapter.decode_response()
+      try:
+        adapter.decode_response()
+      except Exception as e:
+        Logger.instance(LOG_ID).warning(f"Failed to decode response for request {self.uuid}: {e}. Writing snapshot without decoding.")
+        # Continue without decoding - graceful degradation
 
     text = adapter.adapt()
     self.write_raw(text)

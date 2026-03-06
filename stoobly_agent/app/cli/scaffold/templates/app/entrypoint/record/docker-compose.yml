@@ -1,17 +1,24 @@
+x-base: &base
+  env_file:
+    - .env
+  networks:
+    - app.ingress
+  profiles:
+    - ${WORKFLOW_NAME}
+
 # Define custom services here
 #
 # 1. Uncomment the following
-# 2. Replace <SERVICE-NAME> with the name of the service, this can be found in ../config.yml
-# 3. Extend as needed
+# 2. Replace <URL> with the URL to test
+# 3. Modify as needed
 #
 # To learn more, see https://docs.stoobly.com/core-concepts/scaffold
 
 #services:
-#  <SERVICE-NAME>.<CUSTOM-SERVICE-NAME>:
+#  entrypoint.curl:
+#    <<: *base
 #    depends_on:
-#      <SERVICE-NAME>.configure:
+#      entrypoint.configure:
 #        condition: service_completed_successfully
-#    networks:
-#      app.egress: {}
-#    profiles:
-#      - ${WORKFLOW_NAME}
+#    image: curlimages/curl
+#    command: ["curl", "-x", "http://$APP_PROXY_HOSTNAME:$APP_PROXY_PORT" , "-k", "<URL>"]

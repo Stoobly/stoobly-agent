@@ -1,21 +1,23 @@
 from stoobly_orator.orm import has_many
 
 from .base import Base
-from .trace_alias import TraceAlias
-from .trace_request import TraceRequest
 
 class Trace(Base):
   __fillable__ = []
 
   @has_many
   def trace_aliases(self):
+    from .trace_alias import TraceAlias
     return TraceAlias
 
   @has_many
   def trace_requests(self):
+    from .trace_request import TraceRequest
     return TraceRequest
 
   def clone(self):
+    from .trace_alias import TraceAlias
+
     trace = self.create()
     if not trace:
       return

@@ -1,17 +1,19 @@
 import pdb
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from mitmproxy.http import Response as MitmproxyResponse
-from requests import Response
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+    from mitmproxy.http import Response as MitmproxyResponse
 
 ###
 #
 # Return response headers, body, and status code
 #
-def pass_on(flow: MitmproxyHTTPFlow, res: Response):
-    if not isinstance(res, Response):
-        return
-  
+def pass_on(flow: 'MitmproxyHTTPFlow', res: 'Response'):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Response as MitmproxyResponse
     headers = {}
     for key, value in res.headers.items():
         headers[key.title()] = value
@@ -29,14 +31,18 @@ def pass_on(flow: MitmproxyHTTPFlow, res: Response):
         res.status_code, content, headers,
     )
 
-def bad_request(flow: MitmproxyHTTPFlow, message: str):
+def bad_request(flow: 'MitmproxyHTTPFlow', message: str):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Response as MitmproxyResponse
     flow.response = MitmproxyResponse.make(
         400,  # (optional) status code
         message,
         {'Content-Type': 'text/plain'}  # (optional) headers
     )
 
-def enable_cors(flow: MitmproxyHTTPFlow):
+def enable_cors(flow: 'MitmproxyHTTPFlow'):
+    # Lazy import for runtime usage
+    from mitmproxy.http import Response as MitmproxyResponse
     flow.response = MitmproxyResponse.make(
         200,
         '',
@@ -48,7 +54,14 @@ def enable_cors(flow: MitmproxyHTTPFlow):
     )
 
 # Without deleting this header, causes parsing issues when reading response
-def disable_transfer_encoding(response: MitmproxyResponse) -> None:
+def disable_transfer_encoding(response: 'MitmproxyResponse') -> None:
     header_name = 'Transfer-Encoding'
-    if header_name in response.headers and response.headers[header_name] == 'chunked':
-        del response.headers['Transfer-Encoding']
+    header_values = response.headers.get_all(header_name)
+
+    if len(header_values) > 0:
+        # Remove chunked transfer encoding
+        new_header_values = [v for v in header_values if v.lower() != 'chunked']
+
+        if len(new_header_values) != len(header_values):
+            response.headers.set_all(header_name, new_header_values)
+            response.headers['Content-Length'] = str(len(response.content))

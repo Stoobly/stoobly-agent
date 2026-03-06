@@ -1,4 +1,4 @@
-from stoobly_agent.app.settings import RemoteSettings
+from stoobly_agent.app.settings.remote_settings import RemoteSettings
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 
 from .local_db.replayed_response_adapter import LocalDBReplayedResponseAdapter

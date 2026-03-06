@@ -1,6 +1,9 @@
 import click
 
+from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
+from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
@@ -11,14 +14,14 @@ from .handlers.request_cli_handler import (
   delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler
 )
 from .helpers.feature_flags import local, remote
+from .helpers.log_options import build_log_filters, log_list_options
 from .helpers.print_service import FORMATS
 from .helpers.validations import *
 from .types.request import RequestTestOptions
 
 settings = Settings.instance()
 is_remote = remote(settings)
-is_local = local(settings) 
-
+is_local = local(settings)
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
 @click.group(
@@ -94,9 +97,23 @@ if is_local:
   )
   @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
   @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response body.")
+  @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+  @click.option('--no-verify', is_flag=True, default=False)
   @click.argument('request_key')
   def snapshot(**kwargs):
-    snapshot_handler(kwargs)
+    snapshot_path = snapshot_handler(kwargs)
+
+    if snapshot_path is None:
+      print("Error: Could not snapshot request", file=sys.stderr)
+      sys.exit(1)
+
+    update_request_snapshots(
+      action=kwargs['action'],
+      file_path=snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False
+    )
 
   @request.command(
       help="Reset a request to its snapshot state"
@@ -170,4 +187,41 @@ def get(**kwargs) -> None:
 def query(**kwargs):
   query_handler(kwargs)
 
+@click.group(
+  epilog="Run 'stoobly-agent request logs COMMAND --help' for more information on a command.",
+  help="Manage intercepted requests logs"
+)
+@click.pass_context
+def log(ctx):
+    pass
+
+@log.command(name="path", help="Get intercepted requests log path")
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+def log_path(**kwargs):
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  SimpleInterceptedRequestsLogger.get_log_file_path(data_dir_path=context_dir_path)
+
+@log.command(name="list", help="List intercepted requests log entries")
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+@log_list_options
+def log_list(**kwargs):
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  filters = build_log_filters(kwargs)
+
+  SimpleInterceptedRequestsLogger.dump_logs(
+    data_dir_path=context_dir_path,
+    filters=filters if filters else None,
+    output_format=kwargs.get('format'),
+    select=kwargs.get('select'),
+    without_headers=kwargs.get('without_headers', False),
+    follow=kwargs.get('follow', False),
+  )
+
+@log.command(name="delete", help="Delete intercepted requests log entries")
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+def log_delete(**kwargs):
+  context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+  SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
+
 request.add_command(response)
+request.add_command(log, name='logs')

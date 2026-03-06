@@ -1,12 +1,7 @@
 import pdb
-import requests
 
 from httptools import HttpResponseParser
 from io import BytesIO
-from mitmproxy.net import encoding
-from requests.structures import CaseInsensitiveDict
-from typing import Union
-from urllib3 import HTTPResponse
 
 from stoobly_agent.app.proxy.mitmproxy.response import Response
 from stoobly_agent.lib.utils.decode import decode
@@ -26,6 +21,8 @@ class RawHttpResponseAdapter():
     self.__parse_response_line(req_lines[0])
 
     ind = 1
+    # Lazy import for runtime usage
+    from requests.structures import CaseInsensitiveDict
     self.headers = CaseInsensitiveDict()
     while ind < len(req_lines) and len(req_lines[ind]) > 0:
         colon_ind = req_lines[ind].find(b':')
@@ -47,6 +44,8 @@ class RawHttpResponseAdapter():
     self.body = CRLF.join(data_lines)
 
   def to_response(self):
+    # Lazy import for runtime usage
+    import requests
     response = requests.Response()
     response.status_code = self.status
     response.headers = self.headers
@@ -54,6 +53,7 @@ class RawHttpResponseAdapter():
     # Enforce proper Content-Length header
     response.headers['Content-Length'] = str(len(self.body))
 
+    from urllib3 import HTTPResponse
     response.raw = HTTPResponse(
       body=BytesIO(self.body),
       decode_content=False,
@@ -70,7 +70,10 @@ class RawHttpResponseAdapter():
     parser = self.__new_parser(response_dict)
     response_dict['status_code'] = parser.get_status_code()
 
+    # Lazy import for runtime usage
     requests_response = Response()
+    # Lazy import for runtime usage
+    from requests.structures import CaseInsensitiveDict
     requests_response.headers = CaseInsensitiveDict()
     for key, val in response_dict['headers'].items():
       _key = decode(key) 
@@ -107,6 +110,8 @@ class RawHttpResponseAdapter():
 
   def __decode_body(self, body: bytes, content_encoding):
     if content_encoding:
+      # Lazy import for runtime usage
+      from mitmproxy.net import encoding
       decoded_response = encoding.decode(body, content_encoding)
     else:
       decoded_response = body 

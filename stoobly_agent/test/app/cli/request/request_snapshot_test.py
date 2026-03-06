@@ -1,18 +1,16 @@
 import pdb
 import pytest
-import time
 
 from click.testing import CliRunner
-from typing import List
 
+from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
-from stoobly_agent.cli import record, request, scenario, snapshot
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.scenario import Scenario
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 @pytest.fixture(scope='module')
 def runner():
@@ -36,8 +34,11 @@ class TestRequestSnapshot():
         assert snapshot_result.exit_code == 0
 
         snapshot = RequestSnapshot(recorded_request.uuid)
-        raw_request = snapshot.request
 
+        # Assert the snapshot path is printed to stdout
+        assert snapshot_result.stdout.strip() == snapshot.path
+
+        raw_request = snapshot.request
         expected_raw_request = JoinedRequestStringAdapter(recorded_request).adapt()
 
         assert raw_request == expected_raw_request

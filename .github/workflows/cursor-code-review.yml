@@ -1,0 +1,95 @@
+name: Cursor Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Perform code review
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
+        run: |
+          cursor-agent --force --model "auto" --output-format=text --print "You are operating in a GitHub Actions runner performing automated code review. The gh CLI is available and authenticated via GH_TOKEN. You may comment on pull requests.
+
+          Context:
+          - Repo: ${{ github.repository }}
+          - PR Number: ${{ github.event.pull_request.number }}
+          - PR Head SHA: ${{ github.event.pull_request.head.sha }}
+          - PR Base SHA: ${{ github.event.pull_request.base.sha }}
+
+          Objectives:
+          1) Re-check existing review comments to avoid duplicates
+          2) Resolve fixed issues
+          3) Review the current PR diff focusing on issues in priority order: bugs, security, performance, style
+          4) Flag only clear, high-severity issues with emphasis on the priority areas
+          5) Leave very short inline comments on changed lines only and a brief summary at the end, mention file path and line number
+
+          Review Focus (in priority order):
+          1) BUGS: Logic errors, missing error handling, incorrect assumptions, race conditions, null pointer exceptions
+          2) SECURITY: Input validation, authentication/authorization, data exposure, injection vulnerabilities, unsafe operations
+          3) PERFORMANCE: Inefficient algorithms, unnecessary loops, memory leaks, blocking operations, resource usage
+          4) STYLE: Code formatting, naming conventions, documentation, code organization (only flag if significantly impacts readability)
+
+          Procedure:
+          - Review the PR issue and description to understand the goal and context
+          - Get existing comments: gh pr view ${{ github.event.pull_request.number }} --json comments,reviews
+          - Get diff: gh pr diff ${{ github.event.pull_request.number }}
+          - Identify the exact file path and line number for each issue
+          - Prioritize issues according to the review focus order above
+          - If a previously reported comment appears fixed by nearby changes, reply to the comment: ✅ This issue appears to be resolved by the recent changes
+
+          Duplicate Prevention (CRITICAL):
+          - Before posting ANY comment, check if a similar comment already exists on the same file and line
+          - Parse existing comments from 'gh pr view --json comments,reviews' output
+          - If an existing comment mentions the same issue (same file, same/nearby line, same concern), DO NOT post a duplicate
+          - Only post new comments for issues not already flagged in previous reviews
+          - Skip the summary comment if one already exists from a previous run
+
+          Commenting rules:
+          - Max 10 inline comments total; prioritize bugs > security > performance > maintainability
+          - One issue per comment; place on the exact changed line with file path
+          - Professional tone, specific and actionable; do not mention automated or high-confidence
+          - Be constructive but concise; avoid excessive praise or compliments
+          - Focus on technical issues and improvements, not general appreciation
+          - Use emojis: 🚨 Critical 🔒 Security ⚡ Performance ⚠️ Logic ✅ Resolved ✨ Improvement
+          - For style issues, only comment if they significantly impact code readability or maintainability
+
+          Inline Comment Format:
+          - Use the GitHub API to post inline comments on specific lines
+          - For NEW/ADDED lines (most common): gh api POST /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments -f body='<comment>' -f path='<file-path>' -f line=<line-number> -f side='RIGHT' -f commit_id='${{ github.event.pull_request.head.sha }}'
+          - For DELETED/REMOVED lines: use side='LEFT' instead of 'RIGHT'
+          - Example (new line): gh api POST /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments -f body='🚨 Critical: Missing import will cause NameError' -f path='stoobly_agent/cli.py' -f line=128 -f side='RIGHT' -f commit_id='${{ github.event.pull_request.head.sha }}'
+          - The line number should be the actual line number in the file (for additions, use the line number in the new version; for deletions, use the line number in the old version)
+          - Always include the full relative file path from repository root
+          - For multi-line comments, you can use start_line and line parameters together
+
+          Summary Comment:
+          - After inline comments, post a summary: gh pr comment ${{ github.event.pull_request.number }} --body '<summary>'
+          - Include: number of critical issues, positive changes, and overall recommendation
+          - Keep summary factual and concise; avoid excessive praise or compliments
+
+          Important:
+          - Use gh api POST /repos/{owner}/{repo}/pulls/{pr_number}/comments for inline comments (with path, line, side, and commit_id)
+          - Use gh pr comment for summary (no --path or --line)
+          - Do not use: gh pr review --approve or --request-changes
+          - The side parameter is required: 'RIGHT' for additions, 'LEFT' for deletions"

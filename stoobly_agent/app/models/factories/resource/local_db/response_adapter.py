@@ -1,7 +1,9 @@
 import pdb
-import requests
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.models.adapters.python import PythonResponseAdapterFactory
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
@@ -28,7 +30,7 @@ class LocalDBResponseAdapter(LocalDBAdapter):
     response = request.response
     return self.success([self.__to_show_response(response)])
 
-  def mock(self, request_id) -> Tuple[requests.Response, int]:
+  def mock(self, request_id) -> Tuple['Response', int]:
     request = self.__request_orm.find(request_id)
 
     if not request:

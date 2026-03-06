@@ -1,5 +1,7 @@
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from typing import List
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.app.settings.constants.request_component import REQUEST_COMPONENTS, RESPONSE_COMPONENTS
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
@@ -41,12 +43,12 @@ def select_response_rewrite_rules(rewrite_rules: List[RewriteRule]):
 
   return rules
 
-def rewrite_request_response(flow: MitmproxyHTTPFlow, rewrite_rules: List[RewriteRule]):
+def rewrite_request_response(flow: 'MitmproxyHTTPFlow', rewrite_rules: List[RewriteRule]):
   request = rewrite_request(flow, rewrite_rules)
   response = rewrite_response(flow, rewrite_rules, request)
   return request, response
 
-def rewrite_request(flow: MitmproxyHTTPFlow, rewrite_rules: List[RewriteRule]):
+def rewrite_request(flow: 'MitmproxyHTTPFlow', rewrite_rules: List[RewriteRule]):
   request = None
 
   # Adapt flow.request
@@ -58,7 +60,7 @@ def rewrite_request(flow: MitmproxyHTTPFlow, rewrite_rules: List[RewriteRule]):
 
   return request
 
-def rewrite_response(flow: MitmproxyHTTPFlow, rewrite_rules: List[RewriteRule], request = None):
+def rewrite_response(flow: 'MitmproxyHTTPFlow', rewrite_rules: List[RewriteRule], request = None):
   # Adapt flow.request
   request = request or MitmproxyRequestFacade(flow.request)
 

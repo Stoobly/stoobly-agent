@@ -1,6 +1,7 @@
 import pdb
 import os
 import shutil
+import sys
 
 from stoobly_agent.config.constants.env_vars import ENV
 
@@ -63,7 +64,7 @@ class DataDir:
         tmp_dir_path = os.path.join(self.path, TMP_DIR_NAME)
 
         if not os.path.exists(tmp_dir_path):
-            os.mkdir(tmp_dir_path)
+            os.makedirs(tmp_dir_path, exist_ok=True)
 
         return tmp_dir_path
 
@@ -72,7 +73,7 @@ class DataDir:
         certs_dir_path = os.path.join(self.path, CERTS_DIR_NAME)
 
         if not os.path.exists(certs_dir_path):
-            os.mkdir(certs_dir_path)
+            os.makedirs(certs_dir_path, exist_ok=True)
 
         return certs_dir_path
 
@@ -81,7 +82,7 @@ class DataDir:
         db_dir_path = os.path.join(self.path, 'db')
 
         if not os.path.exists(db_dir_path):
-            os.mkdir(db_dir_path)
+            os.makedirs(db_dir_path, exist_ok=True)
 
         return db_dir_path
 
@@ -102,7 +103,7 @@ class DataDir:
         path = os.path.join(self.path, 'ca_certs')
 
         if not os.path.exists(path):
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
 
         return path
 
@@ -115,7 +116,7 @@ class DataDir:
         snapshots_dir_path = os.path.join(self.path, 'snapshots')
 
         if not os.path.exists(snapshots_dir_path):
-            os.mkdir(snapshots_dir_path)
+            os.makedirs(snapshots_dir_path, exist_ok=True)
 
         return snapshots_dir_path
 
@@ -124,7 +125,7 @@ class DataDir:
         snapshots_history_dir_path = os.path.join(self.snapshots_dir_path, 'history')
 
         if not os.path.exists(snapshots_history_dir_path):
-            os.mkdir(snapshots_history_dir_path)
+            os.makedirs(snapshots_history_dir_path, exist_ok=True)
 
         return snapshots_history_dir_path
 
@@ -140,7 +141,7 @@ class DataDir:
         requests_dir_path = os.path.join(base_path, 'requests')
 
         if not os.path.exists(requests_dir_path):
-            os.mkdir(requests_dir_path)
+            os.makedirs(requests_dir_path, exist_ok=True)
 
         return requests_dir_path
 
@@ -150,7 +151,7 @@ class DataDir:
         scenarios_dir_path = os.path.join(base_path, 'scenarios')
 
         if not os.path.exists(scenarios_dir_path):
-            os.mkdir(scenarios_dir_path)
+            os.makedirs(scenarios_dir_path, exist_ok=True)
 
         return scenarios_dir_path
 
@@ -160,7 +161,7 @@ class DataDir:
         requests_dir_path = os.path.join(base_path, 'requests')
 
         if not os.path.exists(requests_dir_path):
-            os.mkdir(requests_dir_path)
+            os.makedirs(requests_dir_path, exist_ok=True)
 
         return requests_dir_path
 
@@ -184,7 +185,17 @@ class DataDir:
         self.__data_dir_path = os.path.join(directory_path, DATA_DIR_NAME)
 
         if not os.path.exists(self.__data_dir_path):
-            os.mkdir(self.__data_dir_path)
+            try:
+                os.makedirs(self.__data_dir_path, exist_ok=True)
+            except PermissionError as e:
+                from stoobly_agent.lib.logger import Logger
+                parent_dir = os.path.dirname(self.__data_dir_path)
+                logger = Logger.instance('DataDir')
+                logger.error(
+                    f"Permission denied: Cannot create '{self.__data_dir_path}'. "
+                    f"Please ensure you have write permissions to '{parent_dir}' or choose a different location."
+                )
+                sys.exit(1)
 
             # Create the certs_dir_path if it doesn't exist
             self.certs_dir_path

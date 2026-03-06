@@ -1,8 +1,10 @@
+import hashlib
 import os
 import pdb
 
 from .app import App
 from .app_command import AppCommand
+from .app_config import AppConfig
 from .service_config import ServiceConfig
 
 
@@ -31,6 +33,11 @@ class ServiceCommand(AppCommand):
     return self.__config.path
 
   @property
+  def service_id(self):
+    _id = f"{self.app.host_runtime_app_dir_path}.{self.service_config.id}"
+    return hashlib.md5(_id.encode()).hexdigest()
+
+  @property
   def service_name(self):
     return self.__service_name
 
@@ -45,7 +52,7 @@ class ServiceCommand(AppCommand):
   @property
   def service_path(self):
     return os.path.join(
-      self.data_dir_path,
+      self.app.runtime_app_data_dir.path,
       self.service_relative_path
     )
 

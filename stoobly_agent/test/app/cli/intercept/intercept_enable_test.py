@@ -5,7 +5,9 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import reset
 
-from stoobly_agent.cli import config, intercept, scenario
+from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.intercept_cli import intercept
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.lib.orm.scenario import Scenario
 
 from stoobly_agent.config.constants import mode, record_order

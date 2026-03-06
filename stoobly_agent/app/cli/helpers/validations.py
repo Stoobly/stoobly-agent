@@ -4,14 +4,15 @@ import click
 import re
 import sys
 
-from typing import Union
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+  from typing import Alias
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, JSON_FORMAT
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys import InvalidOrganizationKey, InvalidProjectKey, InvalidReportKey, InvalidRequestKey, InvalidScenarioKey
 from stoobly_agent.lib.api.keys import OrganizationKey, ProjectKey, ReportKey, RequestKey, ScenarioKey
-
-from .trace_aliases import adapt_trace_aliases, Alias, parse_aliases
 
 # Print
 
@@ -43,7 +44,7 @@ def handle_missing_key(resource: str, format = DEFAULT_FORMAT):
 
   sys.exit(1)
 
-def handle_invalid_alias(expected_alias: Alias, alias_value: str, format = DEFAULT_FORMAT):
+def handle_invalid_alias(expected_alias: 'Alias', alias_value: str, format = DEFAULT_FORMAT):
   error_message = f"Error: Invalid alias {expected_alias['name']} value, got {alias_value}, expected {expected_alias['value']}"
 
   if format == JSON_FORMAT:
@@ -53,7 +54,7 @@ def handle_invalid_alias(expected_alias: Alias, alias_value: str, format = DEFAU
 
   sys.exit(1)
 
-def handle_missing_alias(expected_alias: Alias, format = DEFAULT_FORMAT):
+def handle_missing_alias(expected_alias: 'Alias', format = DEFAULT_FORMAT):
   error_message = f"Error: Missing alias {expected_alias['name']}"
 
   if format == JSON_FORMAT:
@@ -109,7 +110,9 @@ def validate_scenario_key(scenario_key) -> ScenarioKey:
   except InvalidScenarioKey:
     handle_invalid_key('scenario') if scenario_key else handle_missing_key('scenario')
 
-def validate_aliases(validations, **kwargs) -> Union[Alias, None]:
+def validate_aliases(validations, **kwargs) -> Union['Alias', None]:
+  from .trace_aliases import adapt_trace_aliases, parse_aliases
+
   assigns = kwargs.get('assign')
   trace_id = kwargs.get('trace_id')
 

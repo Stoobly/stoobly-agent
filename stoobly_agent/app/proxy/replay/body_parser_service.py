@@ -3,9 +3,10 @@ import pdb
 import urllib.parse
 
 from email.message import Message
-from mitmproxy.coretypes.multidict import MultiDict
-from mitmproxy.net import encoding
-from typing import Dict, Union
+from typing import TYPE_CHECKING, Dict, Union
+
+if TYPE_CHECKING:
+    from mitmproxy.coretypes.multidict import MultiDict
 
 from stoobly_agent.lib.utils.decode import decode
 
@@ -18,11 +19,13 @@ XML = 'application/xml'
 
 def compress(body: Union[bytes, str], content_encoding: Union[None, str]) -> Union[bytes, str]:
     if content_encoding:
+      # Lazy import for runtime usage
+      from mitmproxy.net import encoding
       return encoding.encode(body, content_encoding)
     else:
       return body
 
-def decode_response(content: Union[bytes, str], content_type: Union[None, str]) -> Union[dict, list, MultiDict]:
+def decode_response(content: Union[bytes, str], content_type: Union[None, str]) -> Union[dict, list, 'MultiDict', bytes, str]:
     if not content_type:
         return content
 
@@ -41,6 +44,8 @@ def decode_response(content: Union[bytes, str], content_type: Union[None, str]) 
 
 def decompress(body: Union[bytes, str], content_encoding: Union[None, str]) -> Union[bytes, str]:
     if content_encoding:
+      # Lazy import for runtime usage
+      from mitmproxy.net import encoding
       return encoding.decode(body, content_encoding)
     else:
       return body
@@ -70,6 +75,8 @@ def parse_json(content):
 
 def parse_multipart_form_data(content, content_type) -> Dict[bytes, bytes]:
     try:
+        # Lazy import for runtime usage
+        from mitmproxy.coretypes.multidict import MultiDict
         headers = {'content-type': content_type}
         decoded_multipart = multipart_decode(headers, content)
 
@@ -89,7 +96,9 @@ def parse_www_form_urlencoded(content):
 def serialize_json(o):
     return json.dumps(o)
 
-def serialize_multipart_form_data(o: MultiDict, content_type: Union[bytes, str]) -> bytes:
+def serialize_multipart_form_data(o: 'MultiDict', content_type: Union[bytes, str]) -> bytes:
+    # Lazy import for runtime usage
+    from mitmproxy.coretypes.multidict import MultiDict
     _o = MultiDict()
     for k, v in o.items():
         if isinstance(k, str):
@@ -115,6 +124,8 @@ def normalize_header(header):
     return __parse_separated_header(header).lower()
 
 def is_traversable(content):
+    # Lazy import for runtime isinstance check
+    from mitmproxy.coretypes.multidict import MultiDict
     return isinstance(content, list) or isinstance(content, dict) or isinstance(content, MultiDict)
 
 def is_json(content_type: str):

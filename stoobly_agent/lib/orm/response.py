@@ -1,7 +1,5 @@
 from stoobly_orator.orm import belongs_to
 
-from stoobly_agent.app.models.schemas.request import Request
-
 from .base import Base
 
 class Response(Base):
@@ -9,4 +7,5 @@ class Response(Base):
 
   @belongs_to
   def request(self):
+    from .request import Request
     return Request

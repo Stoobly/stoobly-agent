@@ -1,8 +1,9 @@
 import pdb
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
-from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
-from requests import Response
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
 from stoobly_agent.lib.api.tests_resource import TestsResource
 from stoobly_agent.app.settings import Settings
@@ -40,9 +41,9 @@ def inject_upload_test(
 def upload_test(
   api: TestsResource,
   intercept_settings: InterceptSettings, 
-  flow: MitmproxyHTTPFlow, 
+  flow: 'MitmproxyHTTPFlow', 
   **kwargs: UploadTestData
-) -> Response:
+) -> 'Response':
     joined_request = join_request_from_flow(flow, intercept_settings=intercept_settings)
 
     Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Uploading{bcolors.ENDC} test results for {joined_request.proxy_request.url()}")

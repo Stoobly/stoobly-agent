@@ -151,6 +151,48 @@ class TestEvalFixturesService():
     def test_it_sets_headers(self, fixtures_response: requests.Response):
       assert fixtures_response.headers['test'] == '1'
       assert fixtures_response.headers['Content-Type'] == 'text/html'
+      # Default CORS headers should always be present
+      assert fixtures_response.headers['Access-Control-Allow-Origin'] == '*'
+      assert fixtures_response.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
+      assert fixtures_response.headers['Access-Control-Allow-Headers'] == '*'
+
+    def test_fixture_headers_merge_with_cors_defaults(
+      self,
+      mitmproxy_request: MitmproxyRequest,
+      not_found_file_path: str,
+    ):
+      """Fixture headers should override defaults but preserve CORS keys."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'override_cors_headers.yml')
+
+      override_fixtures: Fixtures = {
+        'POST': {
+          '/404.html': {
+            'headers': {
+              'Access-Control-Allow-Origin': 'https://example.com',
+              'X-Custom-Header': 'abc',
+            },
+            'path': not_found_file_path,
+            'status_code': 200,
+          },
+        },
+      }
+
+      with open(fixtures_file, 'w') as f:
+        yaml.dump(override_fixtures, f, sort_keys=False)
+
+      res: requests.Response = eval_fixtures(
+        mitmproxy_request, response_fixtures_path=fixtures_file
+      )
+
+      assert res is not None
+      # Overridden origin
+      assert res.headers['Access-Control-Allow-Origin'] == 'https://example.com'
+      # Defaults preserved
+      assert res.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
+      assert res.headers['Access-Control-Allow-Headers'] == '*'
+      # Custom header merged
+      assert res.headers['X-Custom-Header'] == 'abc'
 
     def test_it_sets_status_code(self,  fixtures_response: requests.Response):
       assert fixtures_response.status_code == 404
@@ -682,6 +724,14 @@ class TestEvalFixturesService():
       res = eval_fixtures(mitmproxy_request)
       assert res is not None
       assert res.raw.read() == test_file_contents
+
+    def test_custom_fixture_path_header_sets_cors(self, mitmproxy_request: MitmproxyRequest):
+      """CORS defaults should be applied even when using custom fixture path header."""
+      res = eval_fixtures(mitmproxy_request)
+      assert res is not None
+      assert res.headers['Access-Control-Allow-Origin'] == '*'
+      assert res.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
+      assert res.headers['Access-Control-Allow-Headers'] == '*'
 
     def test_custom_fixture_path_header_nonexistent_file(self, mitmproxy_request: MitmproxyRequest):
       """Test custom fixture path header pointing to nonexistent file."""

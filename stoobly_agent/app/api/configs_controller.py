@@ -2,7 +2,6 @@ import pdb
 
 from mergedeep import merge
 
-from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.handle_config_update_service import (
     context as handle_context, handle_intercept_active_update, handle_order_update, handle_project_update, handle_scenario_update, handle_strategy_update
 ) 
@@ -103,9 +102,16 @@ class ConfigsController:
 
     # PUT /configs
     def update(self, context):
+        new_settings = context.params
         settings = Settings.instance()
 
-        merged_settings = merge(settings.to_dict(), context.params)
+        # UI should not be able to set the API URL if remote is disabled
+        if not settings.cli.features.remote:
+            # Ensure api_url exists in the new settings
+            if 'remote' in new_settings and 'api_url' in new_settings['remote']:
+                del new_settings['remote']['api_url']
+
+        merged_settings = merge(settings.to_dict(), new_settings)
         settings.from_dict(merged_settings)
 
         _handle_context = handle_context()

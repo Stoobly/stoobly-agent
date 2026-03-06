@@ -1,8 +1,6 @@
 import os
 import pdb
 
-from urllib.parse import urlparse
-
 from ...constants import SERVICE_HOSTNAME, SERVICE_PORT, STOOBLY_CERTS_DIR
 from ...local.workflow.builder import WorkflowBuilder
 from .command_decorator import CommandDecorator
@@ -33,14 +31,13 @@ class ReverseProxyDecorator(CommandDecorator):
 
     services = self.workflow_builder.services
     proxy_name = self.workflow_builder.proxy
-    proxy_service = services.get(proxy_name) or {}
+    proxy_service = services.get(proxy_name)
 
     additional_properties = { 'command': command }
 
-    service = { 
-      **proxy_service,
-      **additional_properties,
-    }
-
-    services[proxy_name] = service 
+    if proxy_service:
+      services[proxy_name] = { 
+        **proxy_service,
+        **additional_properties,
+      }
 

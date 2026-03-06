@@ -5,19 +5,22 @@ import subprocess
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli import scaffold
+from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
-
 
 class ScaffoldCliInvoker():
 
   @staticmethod
-  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):
+  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse'):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
+      '--copy-on-workflow-up',
       '--quiet',
+      '--runtime', 'docker',
+      '--proxy-mode', proxy_mode,
       app_name
     ])
 
@@ -117,7 +120,7 @@ class ScaffoldCliInvoker():
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
-      '--yes',
+      '--hostname-install-confirm', 'n',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
@@ -134,6 +137,7 @@ class ScaffoldCliInvoker():
     command = ['workflow', 'down',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
+      '--hostname-uninstall-confirm', 'n',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
@@ -153,7 +157,7 @@ class ScaffoldCliInvoker():
 
     # Run the command using subprocess
     # Instead of piping, print to stdout and stderr
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")
@@ -167,7 +171,8 @@ class ScaffoldCliInvoker():
     command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
       f"{target_workflow_name}/down"
     ]
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
       print(f"Command failed with exit code {result.returncode}")

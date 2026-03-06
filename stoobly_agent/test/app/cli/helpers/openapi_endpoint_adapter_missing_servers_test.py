@@ -56,6 +56,7 @@ class TestOpenApiEndpointAdapterMissingServers():
           'is_deterministic': True,
           'is_required': False,
           'name': 'x-next',
+          'values': [],
         },
       ],
       "response_param_names": [

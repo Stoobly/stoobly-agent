@@ -1,7 +1,11 @@
 import os
 import pdb
-import requests
 import sys
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from requests import Response
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
@@ -142,7 +146,18 @@ def snapshot_handler(kwargs):
   validate_request_key(request_key)
 
   request = RequestFacade(Settings.instance())
-  request.snapshot(request_key, kwargs)
+  status = request.show(request_key, {})[1]
+
+  if status == 404:
+    print(f"Error: Could not find request", file=sys.stderr)
+    sys.exit(1)
+
+  response, status = request.snapshot(request_key, kwargs)
+  if status != 200:
+    print(f"Error: Could not snapshot request: {response}", file=sys.stderr)
+    sys.exit(1)
+
+  return response
 
 def test_handler(kwargs: RequestTestOptions):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
@@ -197,7 +212,7 @@ def test_handler(kwargs: RequestTestOptions):
 
   exit_on_failure(session_context, format=kwargs['format'])
 
-def __replay(handler, kwargs) -> requests.Response:
+def __replay(handler, kwargs) -> 'Response':
   request_key = kwargs['request_key']
   del kwargs['request_key']
 

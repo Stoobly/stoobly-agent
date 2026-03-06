@@ -4,6 +4,7 @@ import os
 import pdb
 import re
 
+from .app_config import AppConfig
 from .config import Config
 from .constants import (
   SERVICE_DETACHED_ENV,
@@ -24,6 +25,7 @@ class ServiceConfig(Config):
   def __init__(self, dir: str, **kwargs):
     super().__init__(dir)
 
+    self.__app_config = AppConfig(self.app_config_dir_path)
     self.__detached = None
     self.__hostname = None
     self.__local = None
@@ -68,6 +70,10 @@ class ServiceConfig(Config):
 
     if 'upstream_scheme' in kwargs:
       self.__upstream_scheme = kwargs.get('upstream_scheme')
+
+  @property
+  def app_config(self):
+    return self.__app_config
 
   @property
   def app_config_dir_path(self):
@@ -122,7 +128,7 @@ class ServiceConfig(Config):
     if not self.__port:
       if self.__scheme == 'https':
         return 443
-      elif self.__scheme == 'http':
+      else:
         return 80
 
     return self.__port
@@ -173,9 +179,11 @@ class ServiceConfig(Config):
     return self.__scheme == 'https'
 
   @property
-  def upstream_hostname(self) -> int:
+  def upstream_hostname(self) -> str:
     if self.local:
-      return 'host.docker.internal'
+      if self.app_config.runtime_docker:
+        return 'host.docker.internal'
+      return 'localhost'
     return self.__upstream_hostname or self.hostname
 
   @upstream_hostname.setter
@@ -241,16 +249,15 @@ class ServiceConfig(Config):
 
   def to_dict(self):
     return {
-      'detached': self.detached,
+      'scheme': self.scheme if self.hostname else '',
       'hostname': self.hostname,
-      'local': self.local,
-      'name': self.name,
       'port': self.port,
       'priority': self.priority,
-      'scheme': self.scheme if self.hostname else '',
+      'local': self.local,
+      'detached': self.detached,
+      'upstream_scheme': self.upstream_scheme,
       'upstream_hostname': self.upstream_hostname,
       'upstream_port': self.upstream_port,
-      'upstream_scheme': self.upstream_scheme,
     }
 
   def write(self):

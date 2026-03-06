@@ -33,7 +33,7 @@ class AppCommand(Command):
   @property
   def networks_compose_path(self):
     return os.path.join(
-      self.data_dir_path,
+      self.app.runtime_app_data_dir.path,
       self.networks_compose_relative_path
     )
 
@@ -75,7 +75,7 @@ class AppCommand(Command):
   def copy_files(self, source_dir: str, src_files: list, dest_dir: str, replace_ok=True):
     # Ensure the destination directory exists
     if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
+        os.makedirs(dest_dir, exist_ok=True)
     
     for file in src_files:
       src_file_path = os.path.join(source_dir, file)

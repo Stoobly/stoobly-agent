@@ -8,11 +8,14 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.intercept_cli import intercept
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.settings.constants import firewall_action, request_component
 from stoobly_agent.config.constants import custom_headers, mode, record_order, record_policy, request_origin
-from stoobly_agent.cli import config, intercept, mock, record, scenario
+from stoobly_agent.cli import mock, record
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response

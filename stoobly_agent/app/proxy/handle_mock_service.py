@@ -1,17 +1,19 @@
 import os
 import pdb
-import requests
 import time
 
-from mitmproxy.http import Request as MitmproxyRequest
-from typing import Callable, TypedDict
+from typing import TYPE_CHECKING, Callable, TypedDict, Union
+
+if TYPE_CHECKING:
+    from requests import Response
+    from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, request_origin
+from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, mode, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
-
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_fixtures_service import eval_fixtures
@@ -51,7 +53,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     request: MitmproxyRequest = context.flow.request
     res = None
 
-    policy = get_active_mode_policy(request, intercept_settings)
+    policy = get_active_mode_policy(request, intercept_settings, mode.MOCK)
     if policy == mock_policy.NONE:
         if handle_error:
             res = handle_error(context)
@@ -116,7 +118,7 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
     infer = bool(options.get('infer'))
     ignored_components = options['ignored_components'] if 'ignored_components' in options else []
 
-    res: requests.Response = eval_request(request, ignored_components)
+    res: 'Response' = eval_request(request, ignored_components)
 
     if res.status_code == custom_response_codes.IGNORE_COMPONENTS:
         ignored_components.append(res.content)
@@ -143,24 +145,25 @@ def handle_request_mock(context: MockContext):
 
 ###
 #
-# 1. Rewrites mock response (if mock found)
-# 2. AFTER_MOCK gets triggered (if mock found)
+# Occurs if mock is found
+# 1. Rewrites mock response
+# 2. AFTER_MOCK gets triggered
 #
 def handle_response_mock(context: MockContext):
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 
-def __handle_mock_failure(context: MockContext) -> None:
+def __handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
     flow = context.flow
     request = flow.request
+    response = context.response
 
-    if request.method.upper() != 'OPTIONS':
-        return False
-        
-    # Default OPTIONS request to allow CORS
-    enable_cors(flow)
+    if request.method.upper() == 'OPTIONS':
+        # Default OPTIONS request to allow CORS
+        enable_cors(flow)
+        return flow.response
 
-    return True
+    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request
@@ -187,15 +190,13 @@ def __handle_mock_success(context: MockContext) -> None:
         request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
         if request_key:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
 
         fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
         if fixture_path:
             Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
-    if os.environ.get(env_vars.AGENT_SIMULATE_LATENCY):
-        response = context.response
-        start_time = context.start_time
-        __simulate_latency(response.headers.get(custom_headers.RESPONSE_LATENCY), start_time)
 
 def __rewrite_request(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -215,34 +216,6 @@ def __rewrite_response(context: MockContext):
     if len(rewrite_rules) > 0:
         rewrite_response(context.flow, rewrite_rules) 
 
-###
-#
-# Try to simulate expected response latency
-#
-# wait_time (seconds) = expected_latency - estimated_rtt_network_latency - api_latency
-#
-# expected_latency = provided value
-# estimated_rtt_network_latency = 15ms
-# api_latency = current_time - start_time of this request
-#
-def __simulate_latency(expected_latency: str, start_time: float) -> float:
-    if not expected_latency:
-        return 0
-
-    estimated_rtt_network_latency = 0.015 # seconds
-    api_latency = (time.time() - start_time)
-    expected_latency = float(expected_latency) / 1000
-
-    wait_time = expected_latency - estimated_rtt_network_latency - api_latency
-
-    Logger.instance(LOG_ID).debug(f"Expected latency: {expected_latency}")
-    Logger.instance(LOG_ID).debug(f"API latency: {api_latency}")
-    Logger.instance(LOG_ID).debug(f"Wait time: {wait_time}")
-
-    if wait_time > 0:
-        time.sleep(wait_time)
-
-    return wait_time
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings

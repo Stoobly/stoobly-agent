@@ -1,9 +1,10 @@
 import pathlib
 import pdb
+import time
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli import scaffold
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 
@@ -16,7 +17,7 @@ class LocalScaffoldCliInvoker():
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
       '--proxy-port', '8081',
-      '--run-on', 'local',
+      '--runtime', 'local',
       '--quiet',
       app_name
     ])
@@ -92,8 +93,9 @@ class LocalScaffoldCliInvoker():
   def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
+      '--ca-certs-install-confirm', 'y',
       '--context-dir-path', app_dir_path,
-      '--yes',
+      '--hostname-install-confirm', 'y',
       target_workflow_name,
     ]
     result = runner.invoke(scaffold, command)
@@ -102,6 +104,8 @@ class LocalScaffoldCliInvoker():
       print(f"Command failed with exit code {result.exit_code}")
       print(f"Output: {result.output}")
       print(f"Exception: {result.exception}")
+    else:
+      time.sleep(0.5) # Provide some time for the process to start
 
     assert result.exit_code == 0
     return result

@@ -1,9 +1,10 @@
 from io import BytesIO
-from requests import Response
 
 class RequestsResponseBuilder():
 
   def __init__(self):
+    # Lazy import for runtime usage
+    from requests import Response
     self.__response = Response()
 
   def with_header(self, name, value):

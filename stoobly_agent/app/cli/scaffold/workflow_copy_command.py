@@ -29,7 +29,7 @@ class WorkflowCopyCommand(WorkflowCommand):
         shutil.rmtree(dest)
 
     if not os.path.exists(dest):
-      os.makedirs(dest) 
+      os.makedirs(dest, exist_ok=True) 
 
     self.app.copy_folders_and_hidden_files(self.workflow_path, dest)
 

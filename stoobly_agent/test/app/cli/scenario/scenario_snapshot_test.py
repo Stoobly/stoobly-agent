@@ -6,10 +6,11 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
+from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.cli import record, scenario
+from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -47,6 +48,16 @@ class TestScenario():
         snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
         assert snapshot_result.exit_code == 0
         return snapshot_result
+
+      def test_it_prints_request_snapshot_paths(self, created_scenario: Scenario, snapshot_result: CliRunner):
+        snapshot = ScenarioSnapshot(created_scenario.uuid)
+        request_snapshots = snapshot.request_snapshots
+
+        request_snapshot_paths = []
+        for request_snapshot in request_snapshots:
+          request_snapshot_paths.append(request_snapshot.path)
+
+        assert sorted(request_snapshot_paths) == sorted(snapshot_result.stdout.strip().split('\n'))
 
       def test_it_snapshots_metadata(self, created_scenario: Scenario):
         snapshot = ScenarioSnapshot(created_scenario.uuid)

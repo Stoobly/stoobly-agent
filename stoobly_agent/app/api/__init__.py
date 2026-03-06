@@ -3,9 +3,7 @@ import pdb
 import threading
 
 from http.server import HTTPServer
-from urllib.parse import urlparse
 
-from stoobly_agent.config.constants import env_vars
 from stoobly_agent.lib.logger import Logger
 
 from .application_http_request_handler import ApplicationHTTPRequestHandler

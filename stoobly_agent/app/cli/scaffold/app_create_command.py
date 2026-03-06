@@ -6,20 +6,22 @@ import shutil
 from typing import TypedDict
 
 from stoobly_agent import VERSION
-from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_WORKFLOW
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE, DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE, DOCKER_COMPOSE_BASE_TEMPLATE, DOCKER_COMPOSE_WORKFLOW
 
 from .app import App
 from .app_command import AppCommand
-from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, RUN_ON_DOCKER, RUN_ON_LOCAL
+from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_REVERSE
 from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
-from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, MAINTAINED_RUN
+from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
+  copy_on_workflow_up: bool
   docker_socket_path: str
   name: str
   plugin: list
+  proxy_mode: str
   proxy_port: int
-  run_on: list
+  runtime: list
   ui_port: int
 
 class AppCreateCommand(AppCommand):
@@ -30,17 +32,23 @@ class AppCreateCommand(AppCommand):
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
 
+        if 'copy_on_workflow_up' in kwargs:
+            self.app_config.copy_on_workflow_up = kwargs['copy_on_workflow_up']
+
         if kwargs.get('docker_socket_path'):
             self.app_config.docker_socket_path = kwargs['docker_socket_path']
 
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
 
+        if kwargs.get('proxy_mode'):
+            self.app_config.proxy_mode = kwargs['proxy_mode']
+
         if kwargs.get('proxy_port'):
             self.app_config.proxy_port = kwargs['proxy_port']
 
-        if kwargs.get('run_on'):
-            self.app_config.run_on = kwargs['run_on']
+        if kwargs.get('runtime'):
+            self.app_config.runtime = kwargs['runtime']
 
         if kwargs.get('ui_port'):
             self.app_config.ui_port = kwargs['ui_port']
@@ -58,8 +66,8 @@ class AppCreateCommand(AppCommand):
         return self.app_config.plugins
 
     @property
-    def app_run_on(self):
-        return self.app_config.run_on
+    def app_runtime(self):
+        return self.app_config.runtime
 
     @property
     def app_proxy_port(self):
@@ -80,18 +88,19 @@ class AppCreateCommand(AppCommand):
         ignore = []
         warnings = []
 
-        if RUN_ON_LOCAL in self.app_run_on:
+        if self.app_config.runtime_local:
             ignore.append(f"{CORE_GATEWAY_SERVICE_NAME}/.*")
             ignore.append(f"{CORE_MOCK_UI_SERVICE_NAME}/.*")
 
-        if RUN_ON_DOCKER in self.app_run_on:
+        if self.app_config.runtime_docker:
+            ignore.append(f".*/{CUSTOM_RUN}")
             ignore.append(f".*/{MAINTAINED_RUN}")
 
         # Copy all app templates
         self.app.copy_folders_and_hidden_files(self.app_templates_root_dir, dest, ignore)
 
         # Remove Docker-specific files if not using Docker
-        if RUN_ON_DOCKER not in self.app_run_on:
+        if not self.app_config.runtime_docker:
             remove_app_docker_files(dest)
             remove_service_docker_files(dest)
 
@@ -103,7 +112,19 @@ class AppCreateCommand(AppCommand):
             if not self.__playwright_initialized(self.app):
                 warnings.append(f"missing playwright.config.(js|ts), please run `npm init playwright@latest` in {self.app.context_dir_path}")
 
-        if RUN_ON_DOCKER in self.app_run_on:
+        if self.app_config.runtime_docker:
+            docker_compose_reverse_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_REVERSE_TEMPLATE)
+            docker_compose_forward_base_path = os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_FORWARD_TEMPLATE)
+
+            if os.path.exists(docker_compose_reverse_base_path) and os.path.exists(docker_compose_forward_base_path):
+                # Rename the reverse or forward base template file to the base template file
+                if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+                    os.rename(docker_compose_reverse_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_forward_base_path)
+                else:
+                    os.rename(docker_compose_forward_base_path, os.path.join(dest, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE_TEMPLATE))
+                    os.remove(docker_compose_reverse_base_path)
+
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
                     [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
@@ -174,7 +195,7 @@ class AppCreateCommand(AppCommand):
                 if os.path.exists(old_scaffold_namespace_path):
                     shutil.move(old_scaffold_namespace_path, new_scaffold_namespace_path)
                 else:
-                    os.makedirs(new_scaffold_namespace_path)
+                    os.makedirs(new_scaffold_namespace_path, exist_ok=True)
 
             # For each file in self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>/bin 
             # move it to self.scaffold_namespace_path/<SERVICE-NAME>/<WORKFLOW-NAME>
