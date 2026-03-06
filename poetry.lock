@@ -1302,8 +1302,8 @@ files = [
     {file = "mitmproxy_linux-0.12.9-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b4413e27c692f30036ad6d73432826e728ede026fac8e51651d0c545dd0177f2"},
     {file = "mitmproxy_linux-0.12.9-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ee842865a05f69196004ddcb29d50af0602361d9d6acee04f370f7e01c3674e8"},
     {file = "mitmproxy_linux-0.12.9.tar.gz", hash = "sha256:94b10fee02aa42287739623cef921e1a53955005d45c9e2fa309ae9f0bf8d37d"},
-]
 
+]
 [[package]]
 name = "mitmproxy-macos"
 version = "0.12.9"
