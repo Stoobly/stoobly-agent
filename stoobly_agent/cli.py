@@ -130,9 +130,9 @@ def run(**kwargs):
     if kwargs.get('lifecycle_hooks_path'):
       os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
 
-    if kwargs.get('public_directory_path'):
+    if kwargs.get('public_dir_path'):
       # Join multiple paths with commas
-      public_dirs = kwargs['public_directory_path']
+      public_dirs = kwargs['public_dir_path']
       if isinstance(public_dirs, (list, tuple)):
         os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = ','.join(public_dirs)
       else:

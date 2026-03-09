@@ -71,8 +71,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
   if options.get('project_key'):
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
-  if options.get('public_directory_path'):
-    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_directory_path'], headers)
+  if options.get('public_dir_path'):
+    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_dir_path'], headers)
 
   if options.get('record_strategy'):
     headers[custom_headers.RECORD_STRATEGY] = options['record_strategy']

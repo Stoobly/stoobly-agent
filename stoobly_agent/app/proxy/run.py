@@ -138,8 +138,8 @@ def __filter_options(options):
     if 'proxyless' in options:
         del options['proxyless']
 
-    if 'public_directory_path' in options:
-        del options['public_directory_path']
+    if 'public_dir_path' in options:
+        del options['public_dir_path']
 
     if 'response_fixtures_path' in options:
         del options['response_fixtures_path']

@@ -59,7 +59,7 @@ class ReplayFacade():
       'host': cli_options.get('host'),
       'lifecycle_hooks_path': cli_options.get('lifecycle_hooks_path'),
       'overwrite': cli_options.get('overwrite'),
-      'public_directory_path': cli_options.get('public_directory_path'),
+      'public_dir_path': cli_options.get('public_dir_path'),
       'request_origin': request_origin.CLI,
       'response_fixtures_path': cli_options.get('response_fixtures_path'),
       'save': cli_options.get('save'),
