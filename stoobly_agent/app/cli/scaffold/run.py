@@ -30,7 +30,7 @@ def iter_commands(
     url = command.service_config.url
     if url:
       if os.path.exists(command.public_dir_path):
-        public_directory_paths.append('--public-directory-path')
+        public_directory_paths.append('--public-dir-path')
 
         if containerized:
           public_dir_path = os.path.relpath(command.public_dir_path, command.context_dir_path)
