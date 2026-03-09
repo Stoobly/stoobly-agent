@@ -30,10 +30,10 @@ def iter_commands(
     url = command.service_config.url
     if url:
       if os.path.exists(command.public_dir_path):
-        public_directory_paths.append('--public-directory-path')
+        public_directory_paths.append('--public-dir-path')
 
         if containerized:
-          public_dir_path = os.path.relpath(command.public_dir_path, command.context_dir_path)
+          public_dir_path = os.path.relpath(command.public_dir_path, command.app.context_dir_path)
         else:
           public_dir_path = command.public_dir_path
 
@@ -43,7 +43,7 @@ def iter_commands(
         response_fixtures_paths.append('--response-fixtures-path')
 
         if containerized:
-          response_fixtures_path = os.path.relpath(command.response_fixtures_path, command.context_dir_path)
+          response_fixtures_path = os.path.relpath(command.response_fixtures_path, command.app.context_dir_path)
         else:
           response_fixtures_path = command.response_fixtures_path
 

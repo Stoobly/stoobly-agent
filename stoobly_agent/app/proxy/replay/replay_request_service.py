@@ -29,7 +29,7 @@ class ReplayRequestOptions(TypedDict):
   after_replay: Union[Callable[[ReplayContext], Union['Response', None]], None]
   project_key: Union[str, None]
   proxies: dict
-  public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix
+  public_dir_path: str  # Comma-separated list of paths, optionally with origin prefix
   remote_project_key: str
   report_key: Union[str, None] 
   request_origin: Union[request_origin.CLI, None] 
@@ -71,8 +71,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
   if options.get('project_key'):
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
-  if options.get('public_directory_path'):
-    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_directory_path'], headers)
+  if options.get('public_dir_path'):
+    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_dir_path'], headers)
 
   if options.get('record_strategy'):
     headers[custom_headers.RECORD_STRATEGY] = options['record_strategy']

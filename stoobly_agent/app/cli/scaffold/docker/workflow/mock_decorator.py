@@ -25,7 +25,7 @@ class MockDecorator(CommandDecorator):
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
-      '--public-directory-path', 'public',
+      '--public-dir-path', 'public',
       '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure'
     ]
