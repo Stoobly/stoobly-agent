@@ -118,7 +118,7 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def build_init_base(self):
     environment = { **self.env_dict() }
-    volumes = [f"{APP_DIR}:{APP_DIR_MOUNT_PATH}"]
+    volumes = [f"{APP_DIR}:{APP_DIR_MOUNT_PATH}:ro"]
 
     if self.config.detached:
       self.__with_detached_volumes(volumes)
