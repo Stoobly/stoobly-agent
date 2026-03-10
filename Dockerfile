@@ -1,4 +1,4 @@
-FROM python:3.12.3-slim
+FROM python:3.14.3-slim
 
 RUN useradd -mU stoobly
 
