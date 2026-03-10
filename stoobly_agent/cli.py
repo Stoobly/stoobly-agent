@@ -6,6 +6,7 @@ import sys
 
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
+from stoobly_agent.app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
@@ -132,17 +133,14 @@ def run(**kwargs):
 
     if kwargs.get('public_dir_path'):
       # Join multiple paths with commas
-      public_dirs = kwargs['public_dir_path']
-      if isinstance(public_dirs, (list, tuple)):
-        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = ','.join(public_dirs)
-      else:
-        os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = public_dirs
+      os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = normalize_public_dir_path(
+        kwargs['public_dir_path']
+      )
 
     if kwargs.get('response_fixtures_path'):
-      response_fixtures_paths = kwargs.get('response_fixtures_path', ())
-      if response_fixtures_paths:
-        response_fixtures = ','.join(response_fixtures_paths)
-        os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = response_fixtures
+      os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = normalize_response_fixtures_path(
+        kwargs['response_fixtures_path']
+      )
 
     if not os.getenv(env_vars.LOG_LEVEL):
       os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']

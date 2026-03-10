@@ -281,7 +281,7 @@ class TestPathHeaders():
     """Get path to public directory."""
     return str(mock_data_dir / 'scaffold')
 
-  def test_it_uses_response_fixtures_from_specified_file(self, runner: CliRunner, response_fixtures_path, mock_data_dir):
+  def test_it_uses_response_fixtures_from_specified_file_with_header(self, runner: CliRunner, response_fixtures_path, mock_data_dir):
     """Test that mock uses actual response fixtures from the specified file and returns fixture data."""
     # Mock request matching the fixture URL
     mock_result = runner.invoke(mock, [
@@ -303,12 +303,53 @@ class TestPathHeaders():
     assert expected_json in output, \
            f"Expected fixture content not found. Expected: {expected_json}, Output: {output}"
 
-  def test_it_serves_static_file_from_public_directory(self, runner: CliRunner, public_dir_path, mock_data_dir):
+  def test_it_uses_response_fixtures_from_specified_file_with_options(self, runner: CliRunner, response_fixtures_path, mock_data_dir):
+    """Test that mock uses actual response fixtures from the specified file and returns fixture data."""
+    # Mock request matching the fixture URL
+    mock_result = runner.invoke(mock, [
+      '--response-fixtures-path', response_fixtures_path,
+      self.fixtures_url,
+    ])
+    
+    # Should succeed
+    assert mock_result.exit_code == 0, \
+           f"Command failed. Output: {mock_result.output}"
+    
+    # Read the actual test_response.json file and verify the response matches
+    test_response_path = mock_data_dir / 'test_response.json'
+    with open(test_response_path, 'r') as f:
+      expected_json = f.read().strip()
+    
+    output = mock_result.output
+    # Verify the response contains the exact content from the fixture file
+    assert expected_json in output, \
+           f"Expected fixture content not found. Expected: {expected_json}, Output: {output}"
+
+  def test_it_serves_static_file_from_public_directory_with_header(self, runner: CliRunner, public_dir_path, mock_data_dir):
     """Test that mock serves actual static files from public directory and returns file content."""
     # Mock request for index.html from public directory
     mock_result = runner.invoke(mock, [
       self.public_file_url,
       '-H', f"{custom_headers.PUBLIC_DIRECTORY_PATH}: {public_dir_path}"
+    ])
+    
+    # Should succeed
+    assert mock_result.exit_code == 0
+    
+    # Read the actual index.html file and verify the response contains its content
+    index_html_path = mock_data_dir / 'scaffold' / 'index.html'
+    with open(index_html_path, 'r') as f:
+      expected_content = f.read()
+    
+    output = mock_result.output
+    assert output == expected_content
+
+  def test_it_serves_static_file_from_public_directory_with_options(self, runner: CliRunner, public_dir_path, mock_data_dir):
+    """Test that mock serves actual static files from public directory and returns file content."""
+    # Mock request for index.html from public directory
+    mock_result = runner.invoke(mock, [
+      '--public-dir-path', public_dir_path,
+      self.public_file_url,
     ])
     
     # Should succeed
