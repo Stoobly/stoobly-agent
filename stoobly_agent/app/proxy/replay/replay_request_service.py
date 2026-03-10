@@ -4,6 +4,8 @@ import pdb
 from time import time
 from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
+from stoobly_agent.app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path
+
 if TYPE_CHECKING:
     from requests import Response
 
@@ -72,7 +74,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
     headers[custom_headers.PROJECT_KEY] = options['project_key']
 
   if options.get('public_dir_path'):
-    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, options['public_dir_path'], headers)
+    public_dir_path = normalize_public_dir_path(options['public_dir_path'])
+    __handle_path_header(custom_headers.PUBLIC_DIRECTORY_PATH, public_dir_path, headers)
 
   if options.get('record_strategy'):
     headers[custom_headers.RECORD_STRATEGY] = options['record_strategy']
@@ -87,7 +90,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
     headers[custom_headers.REQUEST_ORIGIN] = request_origin.CLI
 
   if options.get('response_fixtures_path'):
-    __handle_path_header(custom_headers.RESPONSE_FIXTURES_PATH, options['response_fixtures_path'], headers)
+    response_fixtures_path = normalize_response_fixtures_path(options['response_fixtures_path'])
+    __handle_path_header(custom_headers.RESPONSE_FIXTURES_PATH, response_fixtures_path, headers)
 
   if options.get('response_mode'):
     headers[custom_headers.RESPONSE_PROXY_MODE] = options['response_mode']
