@@ -2,7 +2,7 @@
 # This stage is discarded after the build — Golang does NOT appear in the final image.
 # Building from source lets us control the Go version and avoid CVEs
 # in the pre-compiled release binaries. https://github.com/tianon/gosu
-FROM golang:1.24.13-alpine AS gosu-builder
+FROM golang:1.25.8-alpine AS gosu-builder
 ENV GOSU_VERSION=1.19
 WORKDIR /go/src/github.com/tianon
 RUN apk add --no-cache git
