@@ -18,7 +18,10 @@ FROM python:3.14.3-slim
 RUN useradd -mU stoobly
 
 COPY --from=gosu-builder /go/src/github.com/tianon/gosu/gosu /usr/local/bin/gosu
-RUN chmod +x /usr/local/bin/gosu && gosu --version && gosu nobody true
+RUN chmod +x /usr/local/bin/gosu; \
+# Verify that the binary works
+	gosu --version; \
+	gosu nobody true
 
 # Install dependencies
 COPY . /tmp/stoobly-agent
