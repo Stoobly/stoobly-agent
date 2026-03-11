@@ -1,37 +1,24 @@
+# Stage 1 (build only): compile gosu from source
+# This stage is discarded after the build — Golang does NOT appear in the final image.
+# Building from source lets us control the Go version and avoid CVEs
+# in the pre-compiled release binaries. https://github.com/tianon/gosu
+FROM golang:1.24.13-alpine AS gosu-builder
+ENV GOSU_VERSION=1.19
+WORKDIR /go/src/github.com/tianon
+RUN apk add --no-cache git
+RUN git clone https://github.com/tianon/gosu.git --branch $GOSU_VERSION
+WORKDIR /go/src/github.com/tianon/gosu
+RUN go mod download
+RUN go build
+
+# Stage 2 (final image): Python runtime only
+# Only the compiled gosu binary is copied from Stage 1 — no Go toolchain included.
 FROM python:3.14.3-slim
 
 RUN useradd -mU stoobly
 
-# Install gosu for easy step-down from root: https://github.com/tianon/gosu/releases
-# See: https://github.com/tianon/gosu/blob/master/INSTALL.md
-ENV GOSU_VERSION=1.19
-RUN set -eux; \
-# Save list of currently installed packages for later so we can clean up
-	savedAptMark="$(apt-mark showmanual)"; \
-	apt-get update; \
-	apt-get install -y --no-install-recommends ca-certificates gnupg wget; \
-	rm -rf /var/lib/apt/lists/*; \
-	\
-	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
-	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
-	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
-	\
-# Verify the signature
-	export GNUPGHOME="$(mktemp -d)"; \
-	gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
-	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
-	gpgconf --kill all; \
-	rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc; \
-	\
-# Clean up fetch dependencies
-	apt-mark auto '.*' > /dev/null; \
-	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
-	\
-	chmod +x /usr/local/bin/gosu; \
-# Verify that the binary works
-	gosu --version; \
-	gosu nobody true
+COPY --from=gosu-builder /go/src/github.com/tianon/gosu/gosu /usr/local/bin/gosu
+RUN chmod +x /usr/local/bin/gosu && gosu --version && gosu nobody true
 
 # Install dependencies
 COPY . /tmp/stoobly-agent
