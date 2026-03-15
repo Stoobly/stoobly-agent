@@ -153,18 +153,30 @@ class Settings:
         settings = self.to_dict()
         self.write(settings)
 
-    def from_dict(self, settings):
+    def from_dict(self, settings: dict, preserve_existing: bool = False):
         self.__settings = settings
         if settings:
             from .cli_settings import CLISettings
             from .proxy_settings import ProxySettings
             from .remote_settings import RemoteSettings
             from .ui_settings import UISettings
+            from mergedeep import merge
 
-            self.__cli_settings = CLISettings(settings.get('cli'))
-            self.__proxy_settings = ProxySettings(settings.get('proxy'))
-            self.__remote_settings = RemoteSettings(settings.get('remote'))
-            self.__ui_settings = UISettings(settings.get('ui'))
+            if not preserve_existing:
+                self.__cli_settings = CLISettings(settings.get('cli') or {})
+                self.__proxy_settings = ProxySettings(settings.get('proxy') or {})
+                self.__remote_settings = RemoteSettings(settings.get('remote') or {})
+                self.__ui_settings = UISettings(settings.get('ui') or {})
+            else:
+                existing_cli = self.__cli_settings.to_dict() if self.__cli_settings else {}
+                existing_proxy = self.__proxy_settings.to_dict() if self.__proxy_settings else {}
+                existing_remote = self.__remote_settings.to_dict() if self.__remote_settings else {}
+                existing_ui = self.__ui_settings.to_dict() if self.__ui_settings else {}
+
+                self.__cli_settings = CLISettings(merge({}, existing_cli, settings.get('cli') or {}))
+                self.__proxy_settings = ProxySettings(merge({}, existing_proxy, settings.get('proxy') or {}))
+                self.__remote_settings = RemoteSettings(merge({}, existing_remote, settings.get('remote') or {}))
+                self.__ui_settings = UISettings(merge({}, existing_ui, settings.get('ui') or {}))
 
     def load(self):
         self.__load_settings()
