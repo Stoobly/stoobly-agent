@@ -4,7 +4,7 @@ scenario_key=$1
 
 if [ "$scenario_key" ]; then 
     echo "Using scenario $scenario_key"
-    stoobly-agent config scenario set "$scenario_key"
+    stoobly-agent setting scenario set "$scenario_key"
 fi
 
 stoobly-agent intercept enable

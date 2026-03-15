@@ -8,6 +8,6 @@ if [ ! "$scenario_key" ]; then
     exit
 fi
 
-stoobly-agent config scenario set "$scenario_key"
+stoobly-agent setting scenario set "$scenario_key"
 stoobly-agent intercept configure --mode record --order overwrite
 stoobly-agent intercept disable
