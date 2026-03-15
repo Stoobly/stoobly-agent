@@ -29,7 +29,7 @@ class TestResponseGet():
   def test_it_returns_correct_response(self, runner: CliRunner):
     _request = Request.last()
 
-    request_result = runner.invoke(request, ['response', 'get', _request.key()])
+    request_result = runner.invoke(request, ['response', 'show', _request.key()])
     assert request_result.exit_code == 0
 
     output = request_result.stdout

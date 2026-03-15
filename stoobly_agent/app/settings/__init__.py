@@ -168,7 +168,7 @@ class Settings:
         settings = self.to_dict()
         self.write(settings)
 
-    def from_dict(self, settings: dict, preserve_existing: bool = False):
+    def from_dict(self, settings: dict | None, preserve_existing: bool = False):
         self.__settings = settings
         if settings:
             from .cli_settings import CLISettings

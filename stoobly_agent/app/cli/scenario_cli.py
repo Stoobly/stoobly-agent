@@ -92,7 +92,7 @@ def list(**kwargs):
     list_handler(kwargs)    
 
 @scenario.command(
-    help="Describe scenario"
+    help="Show a scenario"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
