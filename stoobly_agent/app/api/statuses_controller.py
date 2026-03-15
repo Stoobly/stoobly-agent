@@ -27,6 +27,8 @@ class StatusesController:
             version = int(context.params.get('version'))
         except ValueError as e:
             pass
+        except TypeError as e:
+            pass
 
         cache = Cache.instance()
         statuses = []
