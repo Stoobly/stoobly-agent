@@ -83,13 +83,13 @@ def disable(**kwargs):
     print("Intercept disabled!")
 
 @intercept.command(
-    help="Configure intercept"
+    help="Set intercept options"
 )
 @click.option('--mode', type=click.Choice(mode_options))
 @click.option('--order', help=f"Order to use for recording. Valid options: {order_options}")
 @click.option('--policy', help=f"Policy to use for recording. Valid options: {policy_options}")
 @click.option('--strategy', help=f"Strategy to use for recording. Valid options: {strategy_options}")
-def configure(**kwargs):
+def set(**kwargs):
     settings: Settings = Settings.instance()
 
     if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy'] and not kwargs['strategy']:
@@ -166,10 +166,24 @@ def configure(**kwargs):
         from .helpers.handle_config_update_service import handle_strategy_update
         handle_strategy_update(settings)
 
-        print(f"Updating {_mode} policy to {kwargs['strategy']}")
+        print(f"Updating {_mode} strategy to {kwargs['strategy']}")
 
 
     settings.commit()
+
+# Backward compatibility: configure is hidden but still works
+@intercept.command(
+    help="Configure intercept (deprecated: use 'set' instead)",
+    hidden=True
+)
+@click.option('--mode', type=click.Choice(mode_options))
+@click.option('--order', help=f"Order to use for recording. Valid options: {order_options}")
+@click.option('--policy', help=f"Policy to use for recording. Valid options: {policy_options}")
+@click.option('--strategy', help=f"Strategy to use for recording. Valid options: {strategy_options}")
+@click.pass_context
+def configure(ctx, **kwargs):
+    # Invoke the set command with the same kwargs
+    ctx.invoke(set, **kwargs)
 
 @intercept.command(
     help="Show intercept"
