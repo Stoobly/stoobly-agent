@@ -90,6 +90,21 @@ class Settings:
         return self.__remote_settings
 
     def watch(self):
+        """
+        Start watching the settings file for changes and automatically reload when modified.
+        
+        Sets up a file system watcher using watchdog that monitors the settings.yml file.
+        When the file is modified, it automatically triggers a reload of the settings with
+        preserve_existing=True to merge changes rather than replace all settings.
+        
+        The reload mechanism:
+        1. Uses a load lock to prevent concurrent reloads
+        2. Reloads settings with preserve_existing=True to merge new values with existing ones
+        3. If UI is active, publishes the settings change notification
+        
+        Returns:
+            bool: True if watching was successfully started, False if already watching
+        """
         if self.__watching:
             return False
 
@@ -179,6 +194,16 @@ class Settings:
                 self.__ui_settings = UISettings(merge({}, existing_ui, settings.get('ui') or {}))
 
     def load(self):
+        """
+        Manually reload settings from the settings file.
+        
+        This method reloads all settings from settings.yml, replacing existing settings
+        with values from the file. Use this when you want to manually refresh settings
+        without file watching enabled.
+        
+        Note: This replaces all settings (preserve_existing=False). For merging behavior,
+        use from_dict() with preserve_existing=True.
+        """
         self.__load_settings()
 
     def reset(self):
@@ -218,6 +243,18 @@ class Settings:
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
     def __load_settings(self, preserve_existing: bool = False):
+        """
+        Load settings from the settings.yml file.
+        
+        Reads the YAML settings file and applies the settings using from_dict().
+        If the file appears empty on first read, waits 1 second and retries (handles
+        cases where the file is being written).
+        
+        Args:
+            preserve_existing (bool): If True, merges new settings with existing ones.
+                                     If False, replaces all settings with new values.
+                                     Defaults to False.
+        """
         with open(self.__settings_file_path, 'r') as stream:
             try:
                 settings = yaml.safe_load(stream)
@@ -230,6 +267,22 @@ class Settings:
                 Logger.instance().error(exc)
 
     def __reload_settings(self, event):
+        """
+        Reload settings when the settings file is modified.
+        
+        This method is called automatically by the file system watcher when settings.yml
+        is modified. It:
+        1. Uses a load lock to prevent concurrent reloads
+        2. Reloads settings with preserve_existing=True to merge changes with existing settings
+        3. If the UI is active, publishes a settings modified notification
+        
+        The preserve_existing=True ensures that only changed values are updated while
+        preserving other existing settings, which is important for hot-reloading during
+        runtime without losing current state.
+        
+        Args:
+            event: The file system event from watchdog (not used, but required by the API)
+        """
         if not self.__load_lock:
             from stoobly_agent.app.proxy.utils.publish_change_service import publish_settings_modified
 
