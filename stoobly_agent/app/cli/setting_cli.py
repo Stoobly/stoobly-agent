@@ -2,9 +2,6 @@ import click
 import json
 import os
 import sys
-import time
-
-from typing import List
 
 from stoobly_agent.app.cli.validators.scaffold import validate_hostname
 from stoobly_agent.app.settings import Settings
@@ -43,11 +40,11 @@ def setting(ctx):
 config = setting
 
 @setting.command(
-    help="Display settings contents"
+    name="list",
+    help="List settings"
 )
 @click.option('--dir', is_flag=True, help='To only show the path of the data directory being used.')
-@click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
-def dump(**kwargs):
+def list_settings(**kwargs):
     if kwargs['dir']:
         output = DataDir.instance().path
         print(output)
@@ -58,16 +55,7 @@ def dump(**kwargs):
 
     output = json.dumps(settings.to_dict(), indent=2, sort_keys=True)
 
-    if kwargs['save_to_file']:
-        timestamp = str(int(time.time() * 1000))
-        config_dump_file_name = f"stoobly_agent_config_dump_{timestamp}.json"
-
-        with open(config_dump_file_name, 'w') as output_file:
-            output_file.write(output)
-
-        print(f"Settings successfully dumped to {config_dump_file_name}")
-    else:
-        print(output)
+    print(output)
 
 @setting.command(
     help="Reset settings to defaults"
@@ -88,7 +76,7 @@ def scenario(ctx):
     pass
 
 @scenario.command(
-    help="Show scenario details"
+    help="Show active scenario settings"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
@@ -116,7 +104,7 @@ def show(**kwargs):
     print_scenarios([scenario_response], **print_options)
 
 @scenario.command(
-    help="Set active scenario"
+    help="Set active scenario settings"
 )
 @click.argument('scenario_key')
 def set(**kwargs):
