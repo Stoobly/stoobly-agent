@@ -1,6 +1,6 @@
-from http.server import SimpleHTTPRequestHandler
 import pdb
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.utils.decode import decode
 
