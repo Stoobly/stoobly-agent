@@ -217,7 +217,7 @@ class Settings:
         self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or self.__data_dir.settings_file_path
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
-    def __load_settings(self):
+    def __load_settings(self, preserve_existing: bool = False):
         with open(self.__settings_file_path, 'r') as stream:
             try:
                 settings = yaml.safe_load(stream)
@@ -225,7 +225,7 @@ class Settings:
                     time.sleep(1) # TODO: Sometimes it takes a bit to read, should look into this
                     settings = yaml.safe_load(stream)
 
-                self.from_dict(settings)
+                self.from_dict(settings, preserve_existing=preserve_existing)
             except yaml.YAMLError as exc:
                 Logger.instance().error(exc)
 
@@ -236,7 +236,7 @@ class Settings:
             self.__load_lock = True
 
             Logger.instance(LOG_ID).debug('Reloading settings')
-            self.__load_settings()
+            self.__load_settings(preserve_existing=True)
 
             if self.__ui_settings.active:
                 publish_settings_modified(self.__settings)
