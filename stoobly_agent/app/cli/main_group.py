@@ -59,14 +59,14 @@ class MainGroup(click.Group):
     """Lazy load a command module only when it's requested."""
     command_map = {
       'ca-cert': ('ca_cert_cli', 'ca_cert'),
-      'config': ('config_cli', 'config'),  # Backward compatibility: hidden but still works
+      'config': ('setting_cli', 'config'),  # Backward compatibility: hidden but still works
       'endpoint': ('endpoint_cli', 'endpoint'),
       'feature': ('feature_cli', 'feature'),
       'intercept': ('intercept_cli', 'intercept'),
       'request': ('request_cli', 'request'),
       'scaffold': ('scaffold_cli', 'scaffold'),
       'scenario': ('scenario_cli', 'scenario'),
-      'setting': ('config_cli', 'setting'),
+      'setting': ('setting_cli', 'setting'),
       'snapshot': ('snapshot_cli', 'snapshot'),
     }
     

@@ -6,7 +6,7 @@ import pytest
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.settings import Settings
@@ -50,7 +50,7 @@ class TestInterceptConfigure():
 
       @pytest.fixture(scope='class', autouse=True)
       def configure(self, runner: CliRunner, scenario: Scenario):
-        configure_result = runner.invoke(config, ['scenario', 'set', scenario.key()])
+        configure_result = runner.invoke(setting, ['scenario', 'set', scenario.key()])
         assert configure_result.exit_code == 0
 
         configure_result = runner.invoke(intercept, ['set', '--mode', mode.RECORD ,'--order', record_order.OVERWRITE])

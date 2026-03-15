@@ -88,7 +88,7 @@ def scenario(ctx):
     pass
 
 @scenario.command(
-    help="Describe scenario"
+    help="Show scenario details"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
@@ -109,49 +109,40 @@ def show(**kwargs):
     scenario = ScenarioFacade(settings)
 
     try:
-        scenario_response = scenario.show(scenario_key)
+        scenario_response = scenario.show(scenario_key)[0]
     except AssertionError as e:
         return print(e, file=sys.stderr)
 
     print_scenarios([scenario_response], **print_options)
 
 @scenario.command(
-    help="Set active scenario."
+    help="Set active scenario"
 )
 @click.argument('scenario_key')
 def set(**kwargs):
-    validate_scenario_key(kwargs['scenario_key'])
-    scenario_key = ScenarioKey(kwargs['scenario_key'])
+    if not kwargs['scenario_key']:
+        __clear_scenario()
 
-    settings = Settings.instance()
-    project_key = __project_key(settings)
+        print("Scenario cleared!")
+    else:
+        validate_scenario_key(kwargs['scenario_key'])
+        scenario_key = ScenarioKey(kwargs['scenario_key'])
 
-    if scenario_key.project_id != project_key.id:
-        return print("Please provide a scenario that belongs to the current project.\n")
+        settings = Settings.instance()
+        project_key = __project_key(settings)
 
-    data_rule = settings.proxy.data.data_rules(project_key.id)
+        if scenario_key.project_id != project_key.id:
+            return print("Please provide a scenario that belongs to the current project.\n")
 
-    data_rule.scenario_key = kwargs['scenario_key']
+        data_rule = settings.proxy.data.data_rules(project_key.id)
 
-    handle_scenario_update(settings)
+        data_rule.scenario_key = kwargs['scenario_key']
 
-    settings.commit()
+        handle_scenario_update(settings)
 
-    print("Scenario updated!")
+        settings.commit()
 
-@scenario.command(
-    help="Clear active scenario."
-)
-def clear(**kwargs):
-    settings = Settings.instance()
-
-    project_key = __project_key(settings) 
-
-    data_rule = settings.proxy.data.data_rules(project_key.id)
-    data_rule.scenario_key = ''
-    settings.commit()
-
-    print("Scenario cleared!")
+        print("Scenario updated!")
 
 ### UI
 
@@ -204,10 +195,15 @@ def enable(**kwargs):
 def set(**kwargs):
     settings = Settings.instance()
 
+    if kwargs['url'] == None:
+        print("Error: Missing option '--url'", file=sys.stderr)
+        sys.exit(1)
+
     if kwargs['url']:
         settings.ui.url = kwargs['url']
         settings.commit()
-        print("UI settings updated!")
+
+    print("UI settings updated!")
 
 ### Rewrite
 
@@ -515,4 +511,13 @@ def __set_project_key(project_key: str):
 
     handle_project_update(settings)
 
+    settings.commit()
+
+def __clear_scenario():
+    settings = Settings.instance()
+
+    project_key = __project_key(settings) 
+
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.scenario_key = ''
     settings.commit()

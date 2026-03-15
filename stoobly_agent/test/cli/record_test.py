@@ -8,7 +8,7 @@ from urllib.parse import parse_qs
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
@@ -51,7 +51,7 @@ class TestRecording():
       header_name = 'foo'
       header_value = 'bar'
 
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
           'rewrite', 'set', 
           '--method', 'GET', '--mode', mode.MOCK, '--name', header_name, '--value', header_value, '--pattern', '.*?', '--type', request_component.HEADER
         ]
@@ -72,7 +72,7 @@ class TestRecording():
         header_name = 'foo'
         header_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', header_name, '--value', header_value, '--pattern', '.*?', '--type', request_component.HEADER
           ]
@@ -93,7 +93,7 @@ class TestRecording():
         query_param = 'foo'
         query_param_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', query_param, '--value', query_param_value, '--pattern', '.*?', '--type', request_component.QUERY_PARAM
           ]
@@ -116,7 +116,7 @@ class TestRecording():
         body_param = 'foo'
         body_param_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', body_param, '--value', body_param_value, '--pattern', '.*?', '--type', request_component.BODY_PARAM
           ]
@@ -141,7 +141,7 @@ class TestRecording():
         header_name = 'foo'
         header_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', header_name, '--value', header_value, '--pattern', '.*?', '--type', request_component.RESPONSE_HEADER
           ]
@@ -162,7 +162,7 @@ class TestRecording():
         body_param = 'foo'
         body_param_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', body_param, '--value', body_param_value, '--pattern', '.*?', '--type', request_component.RESPONSE_PARAM
           ]
@@ -182,7 +182,7 @@ class TestRecording():
         body_param = 'foo'
         body_param_value = 'bar'
 
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--name', body_param, '--value', body_param_value, '--pattern', '.*?', '--type', request_component.RESPONSE_PARAM
           ]
@@ -208,7 +208,7 @@ class TestRecording():
     class TestWhenCli():
 
       def test_it_does_not_exclude(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'firewall', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
           ]
@@ -221,7 +221,7 @@ class TestRecording():
         assert Request.count() ==  1
 
       def test_it_includes(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'firewall', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', firewall_action.INCLUDE
           ]
@@ -241,7 +241,7 @@ class TestRecording():
     class TestWhenNotCli():
 
       def test_it_excludes(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'firewall', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
           ]
@@ -254,7 +254,7 @@ class TestRecording():
         assert Request.count() == 0
 
       def test_it_checks_mode(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'firewall', 'set', 
             '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
           ]
@@ -267,7 +267,7 @@ class TestRecording():
         assert Request.count() == 1
 
       def test_it_includes(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'firewall', 'set', 
             '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', firewall_action.INCLUDE
           ]
@@ -383,7 +383,7 @@ class TestRecording():
       config_results = runner.invoke(intercept, ['set', '--mode', mode.RECORD, '--order', record_order.OVERWRITE])
       assert config_results.exit_code == 0
 
-      set_results = runner.invoke(config, ['scenario', 'set', created_scenario.key()])
+      set_results = runner.invoke(setting, ['scenario', 'set', created_scenario.key()])
       assert set_results.exit_code == 0
       return config_results
 
