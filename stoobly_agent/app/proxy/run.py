@@ -157,3 +157,5 @@ def __filter_options(options):
     del options['request_log_enable']
     del options['request_log_level']
     del options['request_log_append']
+    del options['settings_commit']
+    del options['settings_watch']
