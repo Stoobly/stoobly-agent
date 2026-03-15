@@ -302,7 +302,7 @@ class TestRecording():
   class TestNotFoundPolicy():
 
     def test_it_records_only_not_found_requests(self, runner: CliRunner):
-      intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.NOT_FOUND])
+      intercept_result = runner.invoke(intercept, ['set', '--policy', record_policy.NOT_FOUND])
       assert intercept_result.exit_code == 0
 
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
@@ -326,7 +326,7 @@ class TestRecording():
       return reset()
 
     def test_it_does_not_record_any_requests(self, runner: CliRunner):
-      intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])
+      intercept_result = runner.invoke(intercept, ['set', '--policy', record_policy.FOUND])
       assert intercept_result.exit_code == 0
 
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
@@ -345,7 +345,7 @@ class TestRecording():
 
       assert Request.count() == 1
 
-      intercept_result = runner.invoke(intercept, ['configure', '--policy', record_policy.FOUND])
+      intercept_result = runner.invoke(intercept, ['set', '--policy', record_policy.FOUND])
       assert intercept_result.exit_code == 0
 
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
@@ -380,7 +380,7 @@ class TestRecording():
       _created_scenario = Scenario.find(created_scenario.id)
       assert _created_scenario.requests_count == len(recorded_requests)
 
-      config_results = runner.invoke(intercept, ['configure', '--mode', mode.RECORD, '--order', record_order.OVERWRITE])
+      config_results = runner.invoke(intercept, ['set', '--mode', mode.RECORD, '--order', record_order.OVERWRITE])
       assert config_results.exit_code == 0
 
       set_results = runner.invoke(config, ['scenario', 'set', created_scenario.key()])

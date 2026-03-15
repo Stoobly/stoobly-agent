@@ -41,7 +41,7 @@ class TestInterceptEnable():
         configure_result = runner.invoke(config, ['scenario', 'set', scenario.key()])
         assert configure_result.exit_code == 0
 
-        configure_result = runner.invoke(intercept, ['configure', '--mode', mode.RECORD ,'--order', record_order.OVERWRITE])
+        configure_result = runner.invoke(intercept, ['set', '--mode', mode.RECORD ,'--order', record_order.OVERWRITE])
 
       def test_enabling_sets_overwritable(self, runner: CliRunner, scenario: Scenario):
         enable_result = runner.invoke(intercept, ['enable'])
