@@ -46,7 +46,7 @@ class StatusesController:
     # GET /statuses/:id
     def get(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
-            'id': 4
+            'id': 1
         })
 
         cache = Cache.instance()
@@ -69,7 +69,7 @@ class StatusesController:
     # PUT /statuses/:id
     def update(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
-            'id': 2
+            'id': 1
         })
 
         cache = Cache.instance()
