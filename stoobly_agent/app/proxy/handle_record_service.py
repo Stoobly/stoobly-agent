@@ -71,7 +71,6 @@ def handle_response_record(context: RecordContext):
     handle_response_replay(context)
 
     # Lazy import for runtime usage
-    from mitmproxy.http import Request as MitmproxyRequest
     request: 'MitmproxyRequest' = flow.request
     request_model = RequestModel(intercept_settings.settings)
 
