@@ -33,14 +33,14 @@ def request(ctx):
     pass
 
 @request.command(
-  help="Delete recorded request"
+  help="Delete a request"
 )
 @click.argument('request_key')
 def delete(**kwargs):
   delete_handler(kwargs)
 
 @request.command(
-  help="Show recorded requests"
+  help="Show all requests"
 )
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--page', default=0)
@@ -176,7 +176,7 @@ def response(ctx):
   help="Retrieve mocked response"
 )
 @click.argument('request_key')
-def get(**kwargs) -> None:
+def show(**kwargs) -> None:
   get_handler(kwargs)
 
 @response.command(
