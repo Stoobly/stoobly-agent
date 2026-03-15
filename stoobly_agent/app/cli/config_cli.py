@@ -1,7 +1,8 @@
 import click
 import json
-import time
 import os
+import sys
+import time
 
 from typing import List
 
@@ -31,15 +32,18 @@ settings = Settings.instance()
 is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
 
 @click.group(
-    epilog="Run 'stoobly-agent config COMMAND --help' for more information on a command.",
-    help="Manage proxy config"
+    epilog="Run 'stoobly-agent setting COMMAND --help' for more information on a command.",
+    help="Manage settings"
 )
 @click.pass_context
-def config(ctx):
+def setting(ctx):
     pass
 
-@config.command(
-    help="Display config contents"
+# Backward compatibility: config is an alias for setting
+config = setting
+
+@setting.command(
+    help="Display settings contents"
 )
 @click.option('--dir', is_flag=True, help='To only show the path of the data directory being used.')
 @click.option('--save-to-file', is_flag=True, default=False, help='To save to a file or not.')
@@ -61,12 +65,12 @@ def dump(**kwargs):
         with open(config_dump_file_name, 'w') as output_file:
             output_file.write(output)
 
-        print(f"Config successfully dumped to {config_dump_file_name}")
+        print(f"Settings successfully dumped to {config_dump_file_name}")
     else:
         print(output)
 
-@config.command(
-    help="Reset config to defaults"
+@setting.command(
+    help="Reset settings to defaults"
 )
 def reset():
     settings = Settings.instance()
@@ -148,6 +152,62 @@ def clear(**kwargs):
     settings.commit()
 
     print("Scenario cleared!")
+
+### UI
+
+@click.group(
+    help="Manage UI settings"
+)
+@click.pass_context
+def ui(ctx):
+    pass
+
+@ui.command(
+    help="Display UI settings"
+)
+def show(**kwargs):
+    settings = Settings.instance()
+
+    active = settings.ui.active
+    url = settings.ui.url
+
+    print(f"Active: {active}, URL: {url if url else '(not set)'}")
+
+@ui.command(
+    help="Disable UI."
+)
+def disable(**kwargs):
+    settings = Settings.instance()
+
+    settings.ui.active = False
+
+    settings.commit()
+
+    print("UI disabled!")
+
+@ui.command(
+    help="Enable UI."
+)
+def enable(**kwargs):
+    settings = Settings.instance()
+
+    settings.ui.active = True
+
+    settings.commit()
+
+    print("UI enabled!")
+
+@ui.command(
+    help="Set UI settings."
+)
+@click.option('--url', default='', help='UI URL.')
+def set(**kwargs):
+    settings = Settings.instance()
+
+    if kwargs['url']:
+        settings.ui.url = kwargs['url']
+        settings.commit()
+        print("UI settings updated!")
 
 ### Rewrite
 
@@ -346,8 +406,8 @@ def set(**kwargs):
 
 ### Validate
 
-@config.command(
-    help="Check config validity"
+@setting.command(
+    help="Check settings validity"
 )
 def validate(**kwargs):
     Settings.instance().validate()
@@ -430,16 +490,17 @@ if is_remote:
         print("Project updated!")
 
 if is_remote:
-    config.add_command(api_key)
+    setting.add_command(api_key)
 
-config.add_command(firewall)
-config.add_command(match)
+setting.add_command(firewall)
+setting.add_command(match)
 
 if is_remote:
-    config.add_command(project)
+    setting.add_command(project)
 
-config.add_command(rewrite)
-config.add_command(scenario)
+setting.add_command(rewrite)
+setting.add_command(scenario)
+setting.add_command(ui)
 
 def __project_key(settings):
     project_key = settings.proxy.intercept.project_key
