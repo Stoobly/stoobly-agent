@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 from pathlib import Path
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
@@ -204,7 +204,7 @@ class TestReplayRewriteRulesInRecordMode():
       header_value = 'replay-rewrite-value'
 
       # Configure a replay mode rewrite rule
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
         '--mode', mode.REPLAY,
@@ -232,7 +232,7 @@ class TestReplayRewriteRulesInRecordMode():
       header_value = 'replay-response-value'
 
       # Configure a replay mode response header rewrite rule
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
         '--mode', mode.REPLAY,
@@ -262,7 +262,7 @@ class TestReplayRewriteRulesInRecordMode():
       record_header_value = 'from-record-rule'
 
       # Configure a replay mode rewrite rule
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
         '--mode', mode.REPLAY,
@@ -274,7 +274,7 @@ class TestReplayRewriteRulesInRecordMode():
       assert rewrite_result.exit_code == 0
 
       # Configure a record mode rewrite rule
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
         '--mode', mode.RECORD,

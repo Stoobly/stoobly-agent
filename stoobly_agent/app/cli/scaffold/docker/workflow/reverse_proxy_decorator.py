@@ -22,7 +22,8 @@ class ReverseProxyDecorator(CommandDecorator):
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
-      '--ssl-insecure'
+      '--ssl-insecure',
+      '--settings-watch'
     ]
 
     if config.scheme == 'https':

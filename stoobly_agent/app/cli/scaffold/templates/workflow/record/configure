@@ -5,14 +5,14 @@
 origin=$1 # e.g. https://docs.stoobly.com
 
 # Uncomment the following example to include or exclude requests
-# stoobly-agent config firewall set \
+# stoobly-agent setting firewall set \
 #   --action include \
 #   --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
 #   --mode record \
 #   --pattern "$origin/index.html"
 
 # Uncomment the following example to modify parts of a request
-# stoobly-agent config rewrite set \
+# stoobly-agent setting rewrite set \
 #   --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
 #   --mode record \
 #   --name etag \

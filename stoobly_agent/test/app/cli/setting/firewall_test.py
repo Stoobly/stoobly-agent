@@ -5,7 +5,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import reset
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action
 from stoobly_agent.config.constants import mode
@@ -24,7 +24,7 @@ class TestFirewall():
     _mode = mode.MOCK
     pattern = '.*?'
 
-    firewall_result = runner.invoke(config, [
+    firewall_result = runner.invoke(setting, [
         'firewall', 'set', 
         '--method', method, '--mode', _mode, '--pattern', pattern, '--action', firewall_action.EXCLUDE
       ]

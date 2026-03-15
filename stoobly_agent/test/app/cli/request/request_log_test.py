@@ -106,7 +106,7 @@ class TestRequestLogE2e():
     def configure_mock_policy(self, settings):
         """Set mock policy to ALL so unmatched requests return 499 instead of proxying upstream."""
         runner = CliRunner()
-        result = runner.invoke(intercept, ['configure', '--mode', 'mock', '--policy', 'all'])
+        result = runner.invoke(intercept, ['set', '--mode', 'mock', '--policy', 'all'])
         assert result.exit_code == 0
 
     @pytest.fixture(scope='class', autouse=True)

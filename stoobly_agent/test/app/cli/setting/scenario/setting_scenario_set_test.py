@@ -5,7 +5,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.cli import record
@@ -19,7 +19,7 @@ from stoobly_agent.lib.api.keys import ProjectKey
 def runner():
     return CliRunner()
 
-class TestConfigScenarioSet():
+class TestSettingsScenarioSet():
 
   @pytest.fixture(scope='class', autouse=True)
   def settings(self):
@@ -57,7 +57,7 @@ class TestConfigScenarioSet():
       data_rule.record_order = record_order.OVERWRITE
       settings.commit()
 
-      set_results = runner.invoke(config, ['scenario', 'set', new_scenario.key()])
+      set_results = runner.invoke(setting, ['scenario', 'set', new_scenario.key()])
       assert set_results.exit_code == 0
 
     def test_it_sets_new_scenario_overwritable(self, new_scenario: Scenario):

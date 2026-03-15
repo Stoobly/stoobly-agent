@@ -24,8 +24,8 @@ class MainGroup(click.Group):
     
     # Add lazy-loadable commands
     lazy_commands = [
-      'ca-cert', 'config', 'endpoint', 'feature', 'intercept',
-      'request', 'scaffold', 'scenario', 'snapshot'
+      'ca-cert', 'endpoint', 'feature', 'intercept',
+      'request', 'scaffold', 'scenario', 'setting', 'snapshot'
     ]
     
     if self.__settings.cli.features.dev_tools:
@@ -59,13 +59,14 @@ class MainGroup(click.Group):
     """Lazy load a command module only when it's requested."""
     command_map = {
       'ca-cert': ('ca_cert_cli', 'ca_cert'),
-      'config': ('config_cli', 'config'),
+      'config': ('setting_cli', 'config'),  # Backward compatibility: hidden but still works
       'endpoint': ('endpoint_cli', 'endpoint'),
       'feature': ('feature_cli', 'feature'),
       'intercept': ('intercept_cli', 'intercept'),
       'request': ('request_cli', 'request'),
       'scaffold': ('scaffold_cli', 'scaffold'),
       'scenario': ('scenario_cli', 'scenario'),
+      'setting': ('setting_cli', 'setting'),
       'snapshot': ('snapshot_cli', 'snapshot'),
     }
     
@@ -100,7 +101,7 @@ class MainGroup(click.Group):
       },
       {
         'name': 'Proxy Commands',
-        'commands': ['ca-cert', 'config', 'intercept', 'run'],
+        'commands': ['ca-cert', 'intercept', 'run', 'setting'],
       },
       {
         'name': 'Resource Commands',

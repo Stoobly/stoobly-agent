@@ -15,13 +15,14 @@ class TestCliCommandsLoad:
     COMMANDS = [
         [],  # root help
         ['ca-cert'],
-        ['config'],
+        ['config'],  # Backward compatibility: hidden but still works
         ['endpoint'],
         ['feature'],
         ['intercept'],
         ['request'],
         ['scaffold'],
         ['scenario'],
+        ['setting'],
         ['snapshot'],
     ]
 

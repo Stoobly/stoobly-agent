@@ -1,5 +1,6 @@
 import pdb
 
+from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.utils.decode import decode
 
@@ -19,12 +20,14 @@ class StatusesController:
 
         return cls._instance
 
-    def index(self, context):
+    def index(self, context: SimpleHTTPRequestHandler):
         version = -1
 
         try:
             version = int(context.params.get('version'))
         except ValueError as e:
+            pass
+        except TypeError as e:
             pass
 
         cache = Cache.instance()
@@ -41,9 +44,9 @@ class StatusesController:
         )
 
     # GET /statuses/:id
-    def get(self, context):
+    def get(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
-            'id': 4
+            'id': 1
         })
 
         cache = Cache.instance()
@@ -64,9 +67,9 @@ class StatusesController:
             )
 
     # PUT /statuses/:id
-    def update(self, context):
+    def update(self, context: SimpleHTTPRequestHandler):
         context.parse_path_params({
-            'id': 2
+            'id': 1
         })
 
         cache = Cache.instance()

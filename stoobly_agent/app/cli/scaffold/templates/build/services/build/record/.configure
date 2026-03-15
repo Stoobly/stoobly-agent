@@ -10,6 +10,10 @@ fi
 echo "Configuring intercept..."
 stoobly-agent intercept configure --mode record --policy all
 
+echo "Configuring UI..."
+stoobly-agent setting ui set --url http://local.stoobly.com:4200
+stoobly-agent setting ui disable
+
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then

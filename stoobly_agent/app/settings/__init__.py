@@ -90,6 +90,21 @@ class Settings:
         return self.__remote_settings
 
     def watch(self):
+        """
+        Start watching the settings file for changes and automatically reload when modified.
+        
+        Sets up a file system watcher using watchdog that monitors the settings.yml file.
+        When the file is modified, it automatically triggers a reload of the settings with
+        preserve_existing=True to merge changes rather than replace all settings.
+        
+        The reload mechanism:
+        1. Uses a load lock to prevent concurrent reloads
+        2. Reloads settings with preserve_existing=True to merge new values with existing ones
+        3. If UI is active, publishes the settings change notification
+        
+        Returns:
+            bool: True if watching was successfully started, False if already watching
+        """
         if self.__watching:
             return False
 
@@ -153,20 +168,42 @@ class Settings:
         settings = self.to_dict()
         self.write(settings)
 
-    def from_dict(self, settings):
+    def from_dict(self, settings: dict, preserve_existing: bool = False):
         self.__settings = settings
         if settings:
             from .cli_settings import CLISettings
             from .proxy_settings import ProxySettings
             from .remote_settings import RemoteSettings
             from .ui_settings import UISettings
+            from mergedeep import merge
 
-            self.__cli_settings = CLISettings(settings.get('cli'))
-            self.__proxy_settings = ProxySettings(settings.get('proxy'))
-            self.__remote_settings = RemoteSettings(settings.get('remote'))
-            self.__ui_settings = UISettings(settings.get('ui'))
+            if not preserve_existing:
+                self.__cli_settings = CLISettings(settings.get('cli') or {})
+                self.__proxy_settings = ProxySettings(settings.get('proxy') or {})
+                self.__remote_settings = RemoteSettings(settings.get('remote') or {})
+                self.__ui_settings = UISettings(settings.get('ui') or {})
+            else:
+                existing_cli = self.__cli_settings.to_dict() if self.__cli_settings else {}
+                existing_proxy = self.__proxy_settings.to_dict() if self.__proxy_settings else {}
+                existing_remote = self.__remote_settings.to_dict() if self.__remote_settings else {}
+                existing_ui = self.__ui_settings.to_dict() if self.__ui_settings else {}
+
+                self.__cli_settings = CLISettings(merge({}, existing_cli, settings.get('cli') or {}))
+                self.__proxy_settings = ProxySettings(merge({}, existing_proxy, settings.get('proxy') or {}))
+                self.__remote_settings = RemoteSettings(merge({}, existing_remote, settings.get('remote') or {}))
+                self.__ui_settings = UISettings(merge({}, existing_ui, settings.get('ui') or {}))
 
     def load(self):
+        """
+        Manually reload settings from the settings file.
+        
+        This method reloads all settings from settings.yml, replacing existing settings
+        with values from the file. Use this when you want to manually refresh settings
+        without file watching enabled.
+        
+        Note: This replaces all settings (preserve_existing=False). For merging behavior,
+        use from_dict() with preserve_existing=True.
+        """
         self.__load_settings()
 
     def reset(self):
@@ -205,7 +242,19 @@ class Settings:
         self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or self.__data_dir.settings_file_path
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
-    def __load_settings(self):
+    def __load_settings(self, preserve_existing: bool = False):
+        """
+        Load settings from the settings.yml file.
+        
+        Reads the YAML settings file and applies the settings using from_dict().
+        If the file appears empty on first read, waits 1 second and retries (handles
+        cases where the file is being written).
+        
+        Args:
+            preserve_existing (bool): If True, merges new settings with existing ones.
+                                     If False, replaces all settings with new values.
+                                     Defaults to False.
+        """
         with open(self.__settings_file_path, 'r') as stream:
             try:
                 settings = yaml.safe_load(stream)
@@ -213,18 +262,34 @@ class Settings:
                     time.sleep(1) # TODO: Sometimes it takes a bit to read, should look into this
                     settings = yaml.safe_load(stream)
 
-                self.from_dict(settings)
+                self.from_dict(settings, preserve_existing=preserve_existing)
             except yaml.YAMLError as exc:
                 Logger.instance().error(exc)
 
     def __reload_settings(self, event):
+        """
+        Reload settings when the settings file is modified.
+        
+        This method is called automatically by the file system watcher when settings.yml
+        is modified. It:
+        1. Uses a load lock to prevent concurrent reloads
+        2. Reloads settings with preserve_existing=True to merge changes with existing settings
+        3. If the UI is active, publishes a settings modified notification
+        
+        The preserve_existing=True ensures that only changed values are updated while
+        preserving other existing settings, which is important for hot-reloading during
+        runtime without losing current state.
+        
+        Args:
+            event: The file system event from watchdog (not used, but required by the API)
+        """
         if not self.__load_lock:
             from stoobly_agent.app.proxy.utils.publish_change_service import publish_settings_modified
 
             self.__load_lock = True
 
             Logger.instance(LOG_ID).debug('Reloading settings')
-            self.__load_settings()
+            self.__load_settings(preserve_existing=True)
 
             if self.__ui_settings.active:
                 publish_settings_modified(self.__settings)

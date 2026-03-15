@@ -6,7 +6,7 @@ from typing import List
 
 from stoobly_agent.test.test_helper import reset
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule
@@ -51,7 +51,7 @@ class TestRewrite():
 
     @pytest.fixture(autouse=True, scope='class')
     def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, header_name, header_value, pattern, _type):
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
           'rewrite', 'set', 
           '--method', method, '--mode', _mode, '--name', header_name, '--value', header_value, '--pattern', pattern, '--type', _type
         ]
@@ -132,7 +132,7 @@ class TestRewrite():
 
     @pytest.fixture(autouse=True, scope='class')
     def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, path, pattern, scheme, hostname, port):
-      rewrite_result = runner.invoke(config, [
+      rewrite_result = runner.invoke(setting, [
           'rewrite', 'set', 
           '--method', method, '--mode', _mode, '--pattern', pattern, '--hostname', hostname, '--path', path, '--port', port, '--scheme', scheme,
         ]

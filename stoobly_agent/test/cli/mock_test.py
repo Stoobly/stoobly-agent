@@ -9,7 +9,7 @@ from pathlib import Path
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-from stoobly_agent.app.cli.config_cli import config
+from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants import mode, custom_headers
 from stoobly_agent.cli import mock, record
@@ -44,7 +44,7 @@ class TestMocking():
 
       def test_it_fails_when_enabled(self, runner: CliRunner):
         # Enforce matching by headers only
-        match_result = runner.invoke(config, [
+        match_result = runner.invoke(setting, [
           'match', 'set',
           '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
         ])
@@ -55,7 +55,7 @@ class TestMocking():
         assert mock_result.exit_code == 1
 
       def test_it_succeeds_after_rewrite(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.MOCK, '--name', self.header_name, '--value', self.header_value, '--pattern', '.*?', '--type', request_component.HEADER
           ]
@@ -82,7 +82,7 @@ class TestMocking():
 
       def test_it_fails_when_enabled(self, runner: CliRunner):
         # Enforce matching by query params only
-        match_result = runner.invoke(config, [
+        match_result = runner.invoke(setting, [
           'match', 'set',
           '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.QUERY_PARAM
         ])
@@ -93,7 +93,7 @@ class TestMocking():
         assert mock_result.exit_code == 1
 
       def test_it_succeeds_after_rewrites(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.MOCK, '--name', self.query_param_name, '--value', self.query_param_value, '--pattern', '.*?', '--type', request_component.QUERY_PARAM
           ]
@@ -125,7 +125,7 @@ class TestMocking():
 
       def test_it_fails_when_enabled(self, runner: CliRunner):
         # Enforce matching by bodyy params only
-        match_result = runner.invoke(config, [
+        match_result = runner.invoke(setting, [
           'match', 'set',
           '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.BODY_PARAM
         ])
@@ -136,7 +136,7 @@ class TestMocking():
         assert mock_result.exit_code == 1
 
       def test_it_succeeds_after_rewrites(self, runner: CliRunner):
-        rewrite_result = runner.invoke(config, [
+        rewrite_result = runner.invoke(setting, [
             'rewrite', 'set', 
             '--method', 'GET', '--mode', mode.MOCK, '--name', self.body_param_name, '--value', self.body_param_value, '--pattern', '.*?', '--type', request_component.BODY_PARAM
           ]
@@ -171,7 +171,7 @@ class TestRequestRulesHeaders():
     def test_it_fails_without_match_header_when_mismatch(self, runner: CliRunner):
       """Test that mock fails when headers don't match and no match rules header is provided."""
       # Set up strict header matching via config
-      match_result = runner.invoke(config, [
+      match_result = runner.invoke(setting, [
         'match', 'set',
         '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
       ])
@@ -213,7 +213,7 @@ class TestRequestRulesHeaders():
     def test_it_fails_without_rewrite_header_when_mismatch(self, runner: CliRunner):
       """Test that mock fails when headers don't match and no rewrite rules header is provided."""
       # Set up strict header matching
-      match_result = runner.invoke(config, [
+      match_result = runner.invoke(setting, [
         'match', 'set',
         '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
       ])
