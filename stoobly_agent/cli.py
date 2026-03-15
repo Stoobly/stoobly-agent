@@ -99,6 +99,8 @@ def init(**kwargs):
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
+@click.option('--settings-commit', is_flag=True, default=False, help='Commit options to the settings.yml file.')
+@click.option('--settings-watch', is_flag=True, default=False, help='Watch and apply changes in the settings.yml file.')
 @click.option('--ssl-insecure', is_flag=True, default=False, help='Do not verify upstream server SSL/TLS certificates.')
 @click.option('--ui-host', default='0.0.0.0', help='Address to bind UI to.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
@@ -111,9 +113,10 @@ def run(**kwargs):
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
 
-    # Observe config for changes
     settings: Settings = Settings.instance()
-    settings.watch()
+    if kwargs.get('settings_watch'):
+      # Observe config for changes
+      settings.watch()
 
     if not os.path.exists(kwargs.get('ca_certs_dir_path')):
       kwargs['ca_certs_dir_path'] = DataDir.instance().ca_certs_dir_path
@@ -153,6 +156,8 @@ def run(**kwargs):
       os.environ[env_vars.AGENT_UI_URL] = ui_url
       settings.ui.active = True
       settings.ui.url = ui_url
+    else:
+      settings.ui.active = False
 
     if not kwargs.get('proxyless'):
       proxy_url = f"http://{kwargs['proxy_host']}:{kwargs['proxy_port']}"
@@ -210,10 +215,11 @@ def run(**kwargs):
       print(process.pid)
       return
     else:
-      # Run in foreground mode
-      if not kwargs.get('headless'):
+      if kwargs.get('settings_commit'):
         settings.commit()
 
+      # Run in foreground mode
+      if not kwargs.get('headless'):
         from .app.api import run as run_api
         run_api(**kwargs)
 
@@ -278,7 +284,7 @@ def mock(**kwargs):
 @click.argument('url')
 def record(**kwargs):
   from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
-  
+
   response = __replay(mode.RECORD, **kwargs) 
 
   if kwargs['format'] == RAW_FORMAT:
