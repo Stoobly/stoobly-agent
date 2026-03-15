@@ -27,7 +27,8 @@ class MockDecorator(CommandDecorator):
       '--proxy-port', f"{SERVICE_PORT}",
       '--public-dir-path', 'public',
       '--response-fixtures-path', 'fixtures.yml',
-      '--ssl-insecure'
+      '--ssl-insecure',
+      '--settings-watch'
     ]
 
     if config.scheme == 'https':
