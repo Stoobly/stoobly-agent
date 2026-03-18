@@ -276,9 +276,9 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
         self.validate_internal_hostname(url)
 
     # Only validate init Docker containers for Docker runtime
-    # Local workflows execute init/configure scripts directly, not via Docker containers
+    # Local workflows execute init scripts directly, not via Docker containers
     if self.service_config.app_config.runtime_docker:
-      self.validate_init_containers(self.service_docker_compose.init_container_name, self.service_docker_compose.configure_container_name)
+      self.validate_init_containers(self.service_docker_compose.init_container_name)
 
       # Service init containers have a mounted dist folder unlike the core init container
       init_container = self.docker_client.containers.get(self.service_docker_compose.init_container_name)
