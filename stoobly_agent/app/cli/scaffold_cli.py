@@ -468,7 +468,7 @@ def down(**kwargs):
             )
 
   # Execute the workflow down
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"Step {service_name}") }
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
   workflow_command.down(
     **command_args,
     **kwargs

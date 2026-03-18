@@ -4,7 +4,7 @@ import pdb
 from typing import List, Union
 
 from ...constants import (
-  WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE, WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME
+  WORKFLOW_CONTAINER_INIT_TEMPLATE, WORKFLOW_CONTAINER_PROXY_TEMPLATE, WORKFLOW_NAME
 )
 from ...local.workflow.builder import WorkflowBuilder
 from ..builder import Builder
@@ -30,10 +30,6 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
   @property
   def base_compose_file_path(self):
     return os.path.relpath(self.service_builder.compose_file_path, self.dir_path)
-
-  @property
-  def configure(self):
-    return WORKFLOW_CONTAINER_CONFIGURE_TEMPLATE.format(service_name=self.namespace)
 
   @property
   def context(self):
@@ -66,10 +62,9 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
 
     # Services
     self.build_init()
-    self.build_configure()
 
     if self.config.hostname:
-      self.build_proxy() # Depends on configure, must call build_configure first
+      self.build_proxy() # Depends on init
 
   def build_init(self):
     # If the init_base service does not exist, we can't extend from it, return
@@ -82,26 +77,6 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
     }
 
     self.with_service(self.init, service)
-
-  def build_configure(self):
-    # If the configure_base service does not exist, we can't extend from it, return
-    if not self.service_builder.configure_base_service:
-      return
-
-    depends_on = {}
-
-    service = {
-      'depends_on': depends_on,
-      'extends': self.service_builder.build_extends_configure_base(self.dir_path),
-      'profiles': self.profiles,
-    }
-
-    if self.init in self.services:
-      depends_on[self.init] = {
-        'condition': 'service_completed_successfully',
-      }
-
-    self.with_service(self.configure, service)
 
   def build_proxy(self):
     # If the proxy_base service does not exist, we can't extend from it, return
@@ -119,8 +94,8 @@ class DockerWorkflowBuilder(Builder, WorkflowBuilder):
       'profiles': self.profiles,
     }
 
-    if self.configure in self.services:
-      depends_on[self.configure] = {
+    if self.init in self.services:
+      depends_on[self.init] = {
         'condition': 'service_completed_successfully',
       }
 

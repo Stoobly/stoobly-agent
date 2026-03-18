@@ -12,6 +12,12 @@ if [ "${WORKFLOW_ACCESS_COUNT:-1}" == "1" ]; then
   stoobly-agent snapshot apply
 fi
 
+echo "Configuring intercept..."
+stoobly-agent intercept configure --mode mock --policy all
+
+echo "Enabling intercept..."
+stoobly-agent intercept enable
+
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then

@@ -38,14 +38,6 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
     return f"{self.service_name}.app_base"
 
   @property
-  def configure_base(self):
-    return f"{self.service_name}.configure_base"
-
-  @property
-  def configure_base_service(self):
-    return self.services.get(self.configure_base)
-
-  @property
   def extends_service(self):
     if self.config.detached:
       return self.app_builder.stoobly_base
@@ -70,9 +62,6 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
 
   def build_extends_init_base(self, source_dir: str):
     return self.build_extends(self.init_base, source_dir)
-
-  def build_extends_configure_base(self, source_dir: str):
-    return self.build_extends(self.configure_base, source_dir)
 
   def build_extends_proxy_base(self, source_dir: str):
     return self.build_extends(self.proxy_base, source_dir)
@@ -134,31 +123,8 @@ class DockerServiceBuilder(ServiceBuilder, Builder):
       'working_dir': self.working_dir,
     })
 
-  def build_configure_base(self):
-    environment = { **self.env_dict() }
-    volumes = []
-
-    if self.config.detached:
-      self.__with_detached_volumes(volumes)
-
-    base = {
-      'command': [f"{WORKFLOW_SCRIPTS}/{WORKFLOW_TEMPLATE}/.configure", 'configure'],
-      'environment': environment,
-      'extends': {
-        'file': os.path.relpath(self.app_builder.compose_file_path, self.dir_path),
-        'service': self.extends_service
-      },
-      'working_dir': self.working_dir,
-    }
-
-    if len(volumes):
-      base['volumes'] = volumes
-
-    self.with_service(self.configure_base, base)
-
   def write(self):
     self.build_init_base()
-    self.build_configure_base()
 
     if self.config.hostname:
       # Only build the proxy base if we are reverse proxying

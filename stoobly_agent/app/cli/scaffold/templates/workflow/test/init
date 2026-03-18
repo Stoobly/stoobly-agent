@@ -1,6 +1,8 @@
 #! /bin/bash
 
-# Add custom initialization here
+# Add custom initialization and Stoobly configuration here.
+#
+# To learn more: https://docs.stoobly.com/core-concepts/agent/proxy-settings
 
 app_path=$APP_DIR_MOUNT # Path to application source files
 

@@ -102,14 +102,6 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
       error_message = self._ValidateCommand__generate_container_not_found_error(core_entrypoint_init_container_name)
       raise ScaffoldValidateException(error_message)
     
-    core_entrypoint_configure_container_name = None
-    try:
-      core_entrypoint_configure_container_name = self.managed_services_docker_compose.entrypoint_configure_container_name
-      entrypoint_configure_container = self.docker_client.containers.get(core_entrypoint_configure_container_name)
-    except docker_errors.NotFound:
-      error_message = self._ValidateCommand__generate_container_not_found_error(core_entrypoint_configure_container_name)
-      raise ScaffoldValidateException(error_message)
-
     # NOTE: we should check the correct workflow mode is enabled one day
     # That's not currently queryable
 
@@ -153,7 +145,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     else:
       self.validate_gateway_service()
       self.validate_mock_ui_service()
-      self.validate_init_containers(self.managed_services_docker_compose.init_container_name, self.managed_services_docker_compose.configure_container_name)
+      self.validate_init_containers(self.managed_services_docker_compose.init_container_name)
       self.validate_entrypoint_service()
 
   # Local workflow validation methods
