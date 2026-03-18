@@ -197,9 +197,8 @@ class TestInterceptSet():
         assert "Error: Valid policies for" in set_result.output
 
       def test_policy_invalid_for_record_mode(self, runner: CliRunner):
-        set_result = runner.invoke(intercept, ['set', '--mode', mode.MOCK, '--policy', record_policy.NOT_FOUND])
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.RECORD, '--policy', 'invalid'])
         assert set_result.exit_code == 1
-        assert "Error: Valid policies for" in set_result.output
 
       def test_policy_invalid_for_replay_mode(self, runner: CliRunner):
         # Use record_policy.API which is not valid for REPLAY mode

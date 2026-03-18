@@ -63,7 +63,7 @@ class ValidateCommand():
       init_exit_message = f"{bcolors.FAIL}init container {init_container_name} exited with: {init_container.attrs['State']['ExitCode']}{bcolors.ENDC}"
       suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'{bcolors.ENDC}"
       error_message = f"{init_exit_message}\n\n{suggestion_message}"
-      pdb.set_trace()
+
       raise ScaffoldValidateException(error_message)
   
   def validate_detached(self, container: Container) -> None:
