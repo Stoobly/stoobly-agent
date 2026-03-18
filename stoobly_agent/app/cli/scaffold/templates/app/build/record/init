@@ -1,3 +1,21 @@
 #! /bin/bash
 
 # Add custom initialization here
+# Or add custom Stoobly configuration here, to learn more: https://docs.stoobly.com/core-concepts/agent/proxy-settings
+
+echo "Configuring rewrite rules..."
+stoobly-agent setting rewrite set \
+  --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
+  --mode record \
+  --name authorization \
+  --pattern ".*" \
+  --type Header \
+  --value ''
+
+stoobly-agent setting rewrite set \
+  --method GET --method POST --method OPTIONS --method PATCH --method PUT --method DELETE \
+  --mode record \
+  --name cookie \
+  --pattern ".*" \
+  --type Header \
+  --value ''

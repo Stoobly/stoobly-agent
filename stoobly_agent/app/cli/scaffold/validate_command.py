@@ -30,7 +30,7 @@ class ValidateCommand():
 
     return error_message
 
-  # Some containers like init and configure can take longer than expected to finish so retry
+  # Some containers like init can take longer than expected to finish so retry
   def __get_container_with_retries(self, container_name: str) -> Container:
     tries = 30
     for _ in range(tries):
@@ -43,8 +43,8 @@ class ValidateCommand():
     error_message = self.__generate_container_not_found_error(container_name)
     raise ScaffoldValidateException(error_message)
 
-  def validate_init_containers(self, init_container_name, configure_container_name) -> None:
-    print(f"Validating setup containers: {init_container_name}, {configure_container_name}")
+  def validate_init_containers(self, init_container_name, retry = 0) -> None:
+    print(f"Validating setup container: {init_container_name}")
 
     init_container = self.__get_container_with_retries(init_container_name)
     logs = init_container.logs()
@@ -56,18 +56,15 @@ class ValidateCommand():
       raise ScaffoldValidateException(error_message)
 
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
+      if retry < 5:
+        sleep(1)
+        return self.validate_init_containers(init_container_name, retry + 1)
+
       init_exit_message = f"{bcolors.FAIL}init container {init_container_name} exited with: {init_container.attrs['State']['ExitCode']}{bcolors.ENDC}"
       suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'{bcolors.ENDC}"
       error_message = f"{init_exit_message}\n\n{suggestion_message}"
+
       raise ScaffoldValidateException(error_message)
-
-    configure_container = self.__get_container_with_retries(configure_container_name)
-
-    configure_container_ran = False
-    if configure_container.status == 'exited' and configure_container.attrs['State']['ExitCode'] == 0:
-      configure_container_ran = True
-    if not configure_container_ran:
-      raise ScaffoldValidateException(f"configure container {configure_container_name} exited with: {configure_container.attrs['State']['ExitCode']}")
   
   def validate_detached(self, container: Container) -> None:
     print(f"Validating detached for: {container.name}")

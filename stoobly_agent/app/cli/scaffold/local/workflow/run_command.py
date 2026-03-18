@@ -8,7 +8,7 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_CONFIGURE, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_CONFIGURE, MAINTAINED_INIT, MAINTAINED_RUN
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
@@ -110,7 +110,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # If service is build or entrypoint, use path in templates/build/services/SERVICE_NAME/.init
     if service_name in [CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME]:
       init_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_INIT)
-      configure_script_path = os.path.join(self.service_templates_root_dir, service_name, workflow_template, MAINTAINED_CONFIGURE)
       run_script_path = os.path.join(self.workflow_path, MAINTAINED_RUN)
       
       if not os.path.exists(run_script_path):
@@ -120,14 +119,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.init
       init_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_INIT)
 
-      # Absolute path to workflow .configure script
-      # e.g. stoobly_agent/app/cli/scaffold/templates/build/workflows/record/.configure
-      configure_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_CONFIGURE)
-
       run_script_path = os.path.join(self.workflow_templates_build_dir, MAINTAINED_RUN)
 
     self.exec_service_script(init_script_path, [CUSTOM_INIT])
-    self.exec_service_script(configure_script_path, [CUSTOM_CONFIGURE])
 
     # Run script is the entrypoint, run in current working directory
     entrypoint_path = os.path.join(DATA_DIR_NAME, self.workflow_relative_path, CUSTOM_RUN)

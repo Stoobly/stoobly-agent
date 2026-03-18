@@ -1,15 +1,4 @@
 services:
-  entrypoint.configure:
-    depends_on:
-      entrypoint.init:
-        condition: service_completed_successfully
-    extends:
-      file: ../.docker-compose.base.yml
-      service: entrypoint.configure_base
-    image: stoobly.${USER_ID}
-    profiles:
-      - ${WORKFLOW_NAME}
-    volumes: []
   entrypoint.init:
     extends:
       file: ../.docker-compose.base.yml

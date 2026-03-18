@@ -8,7 +8,6 @@ class ServiceDockerCompose():
     self.container_name = f"{namespace}-{service_name}-1"
     self.proxy_container_name = f"{namespace}-{service_name}.proxy-1"
     self.init_container_name = f"{namespace}-{service_name}.init-1"
-    self.configure_container_name = f"{namespace}-{service_name}.configure-1"
 
     data_dir_path = DataDir.instance(app_dir_path).path
     self.docker_compose_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/docker-compose.yml"
