@@ -18,7 +18,7 @@ x-base: &base
 #  entrypoint.curl:
 #    <<: *base
 #    depends_on:
-#      entrypoint.configure:
+#      entrypoint.init:
 #        condition: service_completed_successfully
 #    image: curlimages/curl
 #    command: ["curl", "-x", "http://$APP_PROXY_HOSTNAME:$APP_PROXY_PORT" , "-k", "<URL>"]

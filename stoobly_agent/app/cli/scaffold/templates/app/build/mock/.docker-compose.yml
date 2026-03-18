@@ -6,13 +6,3 @@ services:
     image: stoobly.${USER_ID}
     profiles:
       - ${WORKFLOW_NAME}
-  build.configure:
-    depends_on:
-      build.init:
-        condition: service_completed_successfully
-    extends:
-      file: ../.docker-compose.base.yml
-      service: build.configure_base
-    image: stoobly.${USER_ID}
-    profiles:
-      - ${WORKFLOW_NAME}

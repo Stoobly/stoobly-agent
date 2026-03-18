@@ -19,5 +19,5 @@ x-base: &base
 #  <SERVICE-NAME>.<CUSTOM-SERVICE-NAME>:
 #    <<: *base
 #    depends_on:
-#      <SERVICE-NAME>.configure:
+#      <SERVICE-NAME>.init:
 #        condition: service_completed_successfully
