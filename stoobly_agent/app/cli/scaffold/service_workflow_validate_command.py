@@ -41,6 +41,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
 
     self.workflow_name = kwargs['workflow_name']
     self.__namespace = kwargs.get('namespace') or self.workflow_name
+    self.__hosts_file_path = kwargs.get('hosts_file_path')
     self.hostname = self.service_config.hostname
     self.service_docker_compose = ServiceDockerCompose(
       app_dir_path=app.dir_path, namespace=self.__namespace, workflow_name=self.workflow_name, service_name=self.service_name, hostname=self.hostname
@@ -144,7 +145,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def hostname_exists(self, hostname: str) -> bool:
     print(f"Validating hostname exists in hosts file for hostname: {hostname}")
 
-    hosts_file_manager = HostsFileManager()
+    hosts_file_manager = HostsFileManager(hosts_file_path=self.__hosts_file_path)
     host_mapping = hosts_file_manager.find_host(hostname)
     if host_mapping:
       print(f"Correct hosts mapping found for {hostname}")
