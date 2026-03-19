@@ -1,7 +1,11 @@
 import pdb
 import pytest
 
-from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
+from stoobly_agent.app.cli.scaffold.hosts_file_manager import (
+  HostsFileManager,
+  SCAFFOLD_HOSTS_DELIMITTER_BEGIN,
+  SCAFFOLD_HOSTS_DELIMITTER_END,
+)
 
 
 class TestHostsFileManager():
@@ -15,6 +19,13 @@ class TestHostsFileManager():
 
     # Test runners are all Linux distros for now
     assert hosts_file_path == '/etc/hosts'
+
+  def test_get_hosts_file_path_custom(self, tmp_path):
+    dest_path = tmp_path / "hosts"
+    dest_path.write_text("127.0.0.1 localhost\n")
+
+    hosts_file_manager = HostsFileManager(hosts_file_path=str(dest_path))
+    assert hosts_file_manager.get_hosts_file_path() == str(dest_path)
 
   def test_get_hosts(self, hosts_file_manager):
     hosts = hosts_file_manager.get_hosts()
@@ -76,4 +87,26 @@ class TestHostsFileManager():
       assert split[2] == 'example2.com'
       assert split[3] == 'example3.com'
 
+
+class TestHostsFileManagerInstallUninstall():
+  def test_install_uninstall_custom_destination(self, tmp_path):
+    dest_path = tmp_path / "hosts"
+    dest_path.write_text("127.0.0.1 localhost\n")
+
+    manager = HostsFileManager(hosts_file_path=str(dest_path))
+
+    manager.install_hostnames(["example.com"])
+
+    contents = dest_path.read_text()
+    assert SCAFFOLD_HOSTS_DELIMITTER_BEGIN in contents
+    assert SCAFFOLD_HOSTS_DELIMITTER_END in contents
+    assert "127.0.0.1 example.com\n" in contents
+    assert "::1       example.com\n" in contents
+
+    manager.uninstall_hostnames(["example.com"])
+
+    contents_after = dest_path.read_text()
+    assert "example.com" not in contents_after
+    assert SCAFFOLD_HOSTS_DELIMITTER_BEGIN not in contents_after
+    assert SCAFFOLD_HOSTS_DELIMITTER_END not in contents_after
 

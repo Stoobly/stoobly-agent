@@ -9,6 +9,10 @@ SCAFFOLD_HOSTS_DELIMITTER_BEGIN = "##### STOOBLY SCAFFOLD HOSTS BEGIN #####\n"
 SCAFFOLD_HOSTS_DELIMITTER_END = "##### STOOBLY SCAFFOLD HOSTS END #####\n"
 
 class HostsFileManager():
+  def __init__(self, hosts_file_path: str = '/etc/hosts'):
+    # Allows callers to write scaffold-hostname entries to a non-system hosts file
+    # (e.g. a file inside a container filesystem, or an alternate path mounted into runtime).
+    self.hosts_file_path = hosts_file_path
 
   @dataclass
   class IpAddressToHostnames:
@@ -21,10 +25,27 @@ class HostsFileManager():
     return ip_addr_hosts_split
 
   def get_hosts_file_path(self) -> str:
-    file_path = '/etc/hosts'
+    file_path = os.path.abspath(self.hosts_file_path or '/etc/hosts')
+
+    # Historically we required /etc/hosts to exist; keep that invariant.
     if not os.path.exists(file_path):
-      print(f"Error: File {file_path} not found.", file=sys.stderr)
-      sys.exit(1)
+      if file_path == '/etc/hosts':
+        print(f"Error: File {file_path} not found.", file=sys.stderr)
+        sys.exit(1)
+
+      # For non-system destinations, try to create the file (useful for tests/containers).
+      try:
+        parent = os.path.dirname(file_path)
+        if parent and not os.path.exists(parent):
+          os.makedirs(parent, exist_ok=True)
+        open(file_path, 'a').close()
+      except PermissionError:
+        print(f"Error: Permission denied creating hosts file at {file_path}.", file=sys.stderr)
+        raise
+      except OSError as e:
+        print(f"Error: Could not create hosts file at {file_path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
     return file_path
 
   # Parses hosts file and returns a mapping of IP address to hostnames in a list.

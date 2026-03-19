@@ -1,5 +1,6 @@
 import os
 import pathlib
+import datetime
 import pdb
 import subprocess
 
@@ -8,6 +9,23 @@ from click.testing import CliRunner
 from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
+
+TMP_E2E_LOG_PATH = "/tmp/stoobly-e2e.log"
+
+
+def _append_error_to_tmp_log(lines):
+  """Append e2e failure details to a stable location for debugging."""
+  try:
+    timestamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + "Z"
+    with open(TMP_E2E_LOG_PATH, 'a', encoding='utf-8') as f:
+      f.write(f"[{timestamp}] e2e error\n")
+      for line in lines:
+        f.write(f"{line}\n")
+      f.write("\n")
+  except Exception:
+    # Avoid masking the original failure if logging itself fails.
+    pass
+
 
 class ScaffoldCliInvoker():
 
@@ -25,9 +43,11 @@ class ScaffoldCliInvoker():
     ])
 
     if result.exit_code != 0:
-      print(f"Command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_app_create failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
 
     assert result.exit_code == 0
     output = result.stdout
@@ -126,9 +146,11 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      print(f"Command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_workflow_up failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
 
     assert result.exit_code == 0
 
@@ -143,9 +165,11 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      print(f"Down command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_workflow_down failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
 
     assert result.exit_code == 0
 
@@ -155,14 +179,15 @@ class ScaffoldCliInvoker():
       target_workflow_name,
     ]
 
-    # Run the command using subprocess
-    # Instead of piping, print to stdout and stderr
+    # Run the command using subprocess and capture output for debugging.
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
-      print(f"Command failed with exit code {result.returncode}")
-      print(f"Output: {result.stdout}")
-      print(f"Exception: {result.stderr}")
+      _append_error_to_tmp_log([
+        f"makefile_workflow_up failed with exit code {result.returncode}",
+        f"Output: {result.stdout}",
+        f"Exception: {result.stderr}",
+      ])
 
     assert result.returncode == 0
 
@@ -175,8 +200,10 @@ class ScaffoldCliInvoker():
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=app_dir_path)
 
     if result.returncode != 0:
-      print(f"Command failed with exit code {result.returncode}")
-      print(f"Output: {result.stdout}")
-      print(f"Exception: {result.stderr}")
+      _append_error_to_tmp_log([
+        f"makefile_workflow_down failed with exit code {result.returncode}",
+        f"Output: {result.stdout}",
+        f"Exception: {result.stderr}",
+      ])
 
     assert result.returncode == 0
