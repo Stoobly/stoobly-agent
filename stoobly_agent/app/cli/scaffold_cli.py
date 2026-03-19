@@ -821,27 +821,13 @@ def __get_hostnames(**kwargs):
 
   return hostnames
 
-def __run_hostname_command_with_sudo(action: str, **kwargs):
-  """Run hostname install/uninstall command with sudo if not root."""
-  import subprocess
-
-  cmd = [
-    "sudo", sys.executable, sys.argv[0],
-    "scaffold", "hostname", action,
-    "--app-dir-path", kwargs['app_dir_path'],
-    f"--hostname-{action}-confirm", 'y',
-  ]
-  for workflow_name in kwargs.get('workflow', []):
-    cmd.extend(["--workflow", workflow_name])
-  for service_name in kwargs.get('service', []):
-    cmd.extend(["--service", service_name])
-
-  result = subprocess.run(cmd)
-  if result.returncode != 0:
-    sys.exit(result.returncode)
-
 def __hostname_install_with_prompt(
-  workflow: tuple, app_dir_path: str, service: tuple, hostname_install_confirm: str = None, validate: bool = False
+  workflow: tuple,
+  app_dir_path: str,
+  service: tuple,
+  hostname_install_confirm: str = None,
+  validate: bool = False,
+  hosts_file_path: str = '/etc/hosts',
 ):
   """Prompt user to install hostnames and install them if confirmed."""
 
@@ -857,7 +843,7 @@ def __hostname_install_with_prompt(
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
       return
 
-    hosts_file_manager = HostsFileManager()
+    hosts_file_manager = HostsFileManager(hosts_file_path=hosts_file_path)
     if hosts_file_manager.hostname_installed(hostnames):
       return
 
@@ -867,12 +853,24 @@ def __hostname_install_with_prompt(
   if hostname_install_confirm:
     confirm = hostname_install_confirm
   else:
-    confirm = input(f"Do you want to install hostname(s) in /etc/hosts? (y/N) ")
+    confirm = input(f"Do you want to install hostname(s) in {hosts_file_path}? (y/N) ")
 
   if confirm == "y" or confirm == "Y":
-    __hostname_install(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=workflow)
+    __hostname_install(
+      app_dir_path=app_dir_path,
+      hostnames=hostnames,
+      service=service,
+      workflow=workflow,
+    )
 
-def __hostname_uninstall_with_prompt(workflow: tuple, app_dir_path: str, service: tuple, hostname_uninstall_confirm: str = None, validate: bool = False):
+def __hostname_uninstall_with_prompt(
+  workflow: tuple,
+  app_dir_path: str,
+  service: tuple,
+  hostname_uninstall_confirm: str = None,
+  validate: bool = False,
+  hosts_file_path: str = '/etc/hosts',
+):
   """Prompt user to uninstall hostnames and uninstall them if confirmed."""
 
   hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=workflow)
@@ -885,7 +883,7 @@ def __hostname_uninstall_with_prompt(workflow: tuple, app_dir_path: str, service
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
       return
 
-    hosts_file_manager = HostsFileManager()
+    hosts_file_manager = HostsFileManager(hosts_file_path=hosts_file_path)
     if not hosts_file_manager.hostname_installed(hostnames):
       return
 
@@ -895,40 +893,96 @@ def __hostname_uninstall_with_prompt(workflow: tuple, app_dir_path: str, service
   if hostname_uninstall_confirm:
     confirm = hostname_uninstall_confirm
   else:
-    confirm = input(f"Do you want to uninstall hostname(s) in /etc/hosts? (y/N) ")
+    confirm = input(f"Do you want to uninstall hostname(s) in {hosts_file_path}? (y/N) ")
 
   if confirm == "y" or confirm == "Y":
-    __hostname_uninstall(app_dir_path=app_dir_path, hostnames=hostnames, service=service, workflow=workflow)
+    __hostname_uninstall(
+      app_dir_path=app_dir_path,
+      hostnames=hostnames,
+      service=service,
+      workflow=workflow,
+      hosts_file_path=hosts_file_path,
+    )
+
+def __prepare_temp_hosts(hosts_file_path: str) -> str:
+  """Create a temp hosts file seeded from the destination, readable even if destination requires sudo."""
+  import shutil
+  import subprocess
+  import tempfile
+
+  tmp_dir = tempfile.gettempdir()
+  temp_hosts_path = os.path.join(tmp_dir, f"stoobly-hosts-{os.getpid()}")
+
+  # Seed temp hosts file with the current destination contents.
+  if os.path.exists(hosts_file_path):
+    try:
+      shutil.copy2(hosts_file_path, temp_hosts_path)
+    except PermissionError:
+      # If we can't read the destination, fall back to `sudo cp` for just the read/copy.
+      subprocess.run(["sudo", "cp", hosts_file_path, temp_hosts_path], check=True)
+  else:
+    open(temp_hosts_path, 'a').close()
+
+  return temp_hosts_path
+
+def __sudo_backup_and_replace(hosts_file_path: str, temp_hosts_path: str):
+  """Backup destination (if /etc/hosts) and copy temp file into place via sudo."""
+  import subprocess
+  import tempfile
+  import os
+
+  # Safety: keep a backup of /etc/hosts before overwriting it.
+  # Only do this for the real /etc/hosts destination (not for custom paths).
+  if hosts_file_path == '/etc/hosts' and os.path.exists(hosts_file_path):
+    backup_path = os.path.join(tempfile.gettempdir(), f"hosts.bak")
+    try:
+      subprocess.run(["cp", hosts_file_path, backup_path], check=True)
+    except Exception as e:
+      print(f"WARNING: Could not create backup of {hosts_file_path} at {backup_path}, using sudo", file=sys.stderr)
+      subprocess.run(["sudo", "cp", hosts_file_path, backup_path], check=True)
+
+  # Replace destination from temp
+  subprocess.run(["sudo", "cp", temp_hosts_path, hosts_file_path], check=True)
 
 def __hostname_install(**kwargs):
   hostnames = kwargs.get('hostnames')
   if not hostnames:
     return
 
-  if os.geteuid() != 0:
-    __run_hostname_command_with_sudo("install", **kwargs)
-  else:
+  hosts_file_path = os.path.abspath(kwargs.get('hosts_file_path') or '/etc/hosts')
+  temp_hosts_path = __prepare_temp_hosts(hosts_file_path)
+  try:
+    # Apply changes to the temp file (not the destination).
+    hosts_file_manager = HostsFileManager(hosts_file_path=temp_hosts_path)
+    hosts_file_manager.install_hostnames(hostnames)
+    # Backup (if needed) and replace destination from temp
+    __sudo_backup_and_replace(hosts_file_path, temp_hosts_path)
+  finally:
     try:
-      hosts_file_manager = HostsFileManager()
-      hosts_file_manager.install_hostnames(hostnames)
-    except PermissionError:
-      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-      sys.exit(1)
+      if os.path.exists(temp_hosts_path):
+        os.remove(temp_hosts_path)
+    except OSError:
+      pass
 
 def __hostname_uninstall(**kwargs):
   hostnames = kwargs.get('hostnames')
   if not hostnames:
     return
 
-  if os.geteuid() != 0:
-    __run_hostname_command_with_sudo("uninstall", **kwargs)
-  else:
+  hosts_file_path = os.path.abspath(kwargs.get('hosts_file_path') or '/etc/hosts')
+  temp_hosts_path = __prepare_temp_hosts(hosts_file_path)
+  try:
+    # Apply changes to the temp file (not the destination).
+    hosts_file_manager = HostsFileManager(hosts_file_path=temp_hosts_path)
+    hosts_file_manager.uninstall_hostnames(hostnames)
+    # Backup (if needed) and replace destination from temp
+    __sudo_backup_and_replace(hosts_file_path, temp_hosts_path)
+  finally:
     try:
-      hosts_file_manager = HostsFileManager()
-      hosts_file_manager.uninstall_hostnames(hostnames)
-    except PermissionError:
-      print("Permission denied. Please run this command with sudo.", file=sys.stderr)
-      sys.exit(1)
+      if os.path.exists(temp_hosts_path):
+        os.remove(temp_hosts_path)
+    except OSError:
+      pass
 
 def __print_header(text: str):
   Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}{text}{bcolors.ENDC}")
