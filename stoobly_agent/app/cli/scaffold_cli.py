@@ -858,6 +858,7 @@ def __hostname_install_with_prompt(
   if confirm == "y" or confirm == "Y":
     __hostname_install(
       app_dir_path=app_dir_path,
+      hosts_file_path=hosts_file_path,
       hostnames=hostnames,
       service=service,
       workflow=workflow,
@@ -898,10 +899,10 @@ def __hostname_uninstall_with_prompt(
   if confirm == "y" or confirm == "Y":
     __hostname_uninstall(
       app_dir_path=app_dir_path,
+      hosts_file_path=hosts_file_path,
       hostnames=hostnames,
       service=service,
       workflow=workflow,
-      hosts_file_path=hosts_file_path,
     )
 
 def __prepare_temp_hosts(hosts_file_path: str) -> str:
@@ -931,18 +932,27 @@ def __sudo_backup_and_replace(hosts_file_path: str, temp_hosts_path: str):
   import tempfile
   import os
 
-  # Safety: keep a backup of /etc/hosts before overwriting it.
-  # Only do this for the real /etc/hosts destination (not for custom paths).
-  if hosts_file_path == '/etc/hosts' and os.path.exists(hosts_file_path):
-    backup_path = os.path.join(tempfile.gettempdir(), f"hosts.bak")
-    try:
-      subprocess.run(["cp", hosts_file_path, backup_path], check=True)
-    except Exception as e:
-      print(f"WARNING: Could not create backup of {hosts_file_path} at {backup_path}, using sudo", file=sys.stderr)
-      subprocess.run(["sudo", "cp", hosts_file_path, backup_path], check=True)
+  if not os.path.exists(hosts_file_path):
+    return
+
+  # Backup hosts file
+  backup_path = os.path.join(tempfile.gettempdir(), f"hosts.bak")
+  is_readable = os.access(hosts_file_path, os.R_OK)
+  if not is_readable:
+    subprocess.run(["sudo", "cp", hosts_file_path, backup_path], check=True)
+  else:
+    subprocess.run(["cp", hosts_file_path, backup_path], check=True)
 
   # Replace destination from temp
-  subprocess.run(["sudo", "cp", temp_hosts_path, hosts_file_path], check=True)
+  # Use sudo only when necessary: if destination is /etc/hosts or not writable
+  dest_exists = os.path.exists(hosts_file_path)
+  dest_dir = os.path.dirname(hosts_file_path) or "."
+  is_writable = os.access(hosts_file_path, os.W_OK) if dest_exists else os.access(dest_dir, os.W_OK)
+
+  if not is_writable:
+    subprocess.run(["sudo", "cp", temp_hosts_path, hosts_file_path], check=True)
+  else:
+    subprocess.run(["cp", temp_hosts_path, hosts_file_path], check=True)
 
 def __hostname_install(**kwargs):
   hostnames = kwargs.get('hostnames')
