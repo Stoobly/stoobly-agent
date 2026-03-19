@@ -1,4 +1,5 @@
 import pathlib
+import datetime
 import pdb
 import time
 
@@ -6,6 +7,22 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
+
+TMP_E2E_LOG_PATH = "/tmp/stoobly-e2e.log"
+
+
+def _append_error_to_tmp_log(lines):
+  """Append e2e failure details to a stable location for debugging."""
+  try:
+    timestamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + "Z"
+    with open(TMP_E2E_LOG_PATH, 'a', encoding='utf-8') as f:
+      f.write(f"[{timestamp}] e2e error\n")
+      for line in lines:
+        f.write(f"{line}\n")
+      f.write("\n")
+  except Exception:
+    # Avoid masking the original failure if logging itself fails.
+    pass
 
 
 class LocalScaffoldCliInvoker():
@@ -101,9 +118,11 @@ class LocalScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      print(f"Command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_workflow_up failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
     else:
       time.sleep(0.5) # Provide some time for the process to start
 
@@ -119,9 +138,11 @@ class LocalScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      print(f"Logs command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_workflow_logs failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
 
     assert result.exit_code == 0
     return result
@@ -136,9 +157,11 @@ class LocalScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      print(f"Down command failed with exit code {result.exit_code}")
-      print(f"Output: {result.output}")
-      print(f"Exception: {result.exception}")
+      _append_error_to_tmp_log([
+        f"cli_workflow_down failed with exit code {result.exit_code}",
+        f"Output: {result.output}",
+        f"Exception: {result.exception}",
+      ])
 
     assert result.exit_code == 0
     return result
