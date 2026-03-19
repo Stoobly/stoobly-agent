@@ -932,16 +932,14 @@ def __sudo_backup_and_replace(hosts_file_path: str, temp_hosts_path: str):
   import tempfile
   import os
 
-  if not os.path.exists(hosts_file_path):
-    return
-
-  # Backup hosts file
-  backup_path = os.path.join(tempfile.gettempdir(), f"hosts.bak")
-  is_readable = os.access(hosts_file_path, os.R_OK)
-  if not is_readable:
-    subprocess.run(["sudo", "cp", hosts_file_path, backup_path], check=True)
-  else:
-    subprocess.run(["cp", hosts_file_path, backup_path], check=True)
+  if os.path.exists(hosts_file_path):
+    # Backup hosts file
+    backup_path = os.path.join(tempfile.gettempdir(), f"hosts.bak")
+    is_readable = os.access(hosts_file_path, os.R_OK)
+    if not is_readable:
+      subprocess.run(["sudo", "cp", hosts_file_path, backup_path], check=True)
+    else:
+      subprocess.run(["cp", hosts_file_path, backup_path], check=True)
 
   # Replace destination from temp
   # Use sudo only when necessary: if destination is /etc/hosts or not writable
