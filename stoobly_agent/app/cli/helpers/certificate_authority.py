@@ -78,13 +78,18 @@ class CertificateAuthority():
         subprocess.run("sudo update-ca-certificates".split(), check=True)
 
     # https://www.dssw.co.uk/reference/security.html
-    def handle_darwin(self):
-        system_keychain_path = '/Library/Keychains/System.keychain'
-
+    def handle_darwin(self, system=False):
         ca_cert_path = self.ca_cert_path('.pem')
         self.__ensure_exists(ca_cert_path)
 
-        subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k {system_keychain_path} {ca_cert_path}".split(), check=True)
+        if system:
+            # System-wide trust: affects all users, requires sudo
+            system_keychain_path = '/Library/Keychains/System.keychain'
+            subprocess.run(f"sudo security add-trusted-cert -d -p ssl -p basic -k {system_keychain_path} {ca_cert_path}".split(), check=True)
+        else:
+            # Per-user trust: login keychain only, no sudo required
+            login_keychain_path = os.path.join(os.path.expanduser('~'), 'Library', 'Keychains', 'login.keychain-db')
+            subprocess.run(f"security add-trusted-cert -r trustRoot -p ssl -p basic -k {login_keychain_path} {ca_cert_path}".split(), check=True)
 
     def handle_rhel(self):
         ca_trust_dir = '/etc/pki/ca-trust/source/anchors'
@@ -92,7 +97,7 @@ class CertificateAuthority():
         ca_cert_path = self.ca_cert_path('.cer')
         self.__ensure_exists(ca_cert_path)
 
-        ca_trust_crt_absolute_path = os.path.join(ca_trust_dir, self.crt_file_name)
+        ca_trust_crt_absolute_path = os.path.join(ca_trust_dir, self.ca_cert_file_name('.crt'))
 
         subprocess.run(f"sudo cp {ca_cert_path} {ca_trust_crt_absolute_path}".split(), check=True)
         subprocess.run("sudo update-ca-trust extract".split(), check=True)
@@ -108,9 +113,10 @@ class CertificateAuthority():
             self.handle_debian()
         # MacOS
         elif distro.id() == 'darwin':
-            self.handle_darwin()
-        # elif distro.id() == 'rhel':
-        #     return
+            self.handle_darwin(system=False)
+        # RHEL, CentOS, Fedora, Rocky Linux, AlmaLinux, etc.
+        elif 'rhel' in distro.like() or 'fedora' in distro.like() or distro.id() in ('rhel', 'centos', 'fedora', 'rocky', 'almalinux'):
+            self.handle_rhel()
         else:
             raise TypeError(
                 f"{distro_name} is not supported yet for automatic installation. For manual installation, see https://docs.mitmproxy.org/stable/concepts-certificates/"
