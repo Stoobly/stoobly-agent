@@ -79,9 +79,6 @@ class TestScaffoldCli():
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
       ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
 
-      # Generate certs
-      ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
- 
     def test_service_delete(self, runner, app_dir_path, external_service_docker_compose):
       app = App(app_dir_path)
       service_name = external_service_docker_compose.service_name

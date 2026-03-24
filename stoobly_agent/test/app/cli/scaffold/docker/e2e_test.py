@@ -126,11 +126,6 @@ class TestScaffoldE2e():
       # Add user defined Docker Compose file for the custom container service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
 
-      # Record workflow doesn't have a public folder
-
-      # Generate certs
-      ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
-
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
 
     @pytest.fixture(scope="class", autouse=True)
@@ -214,11 +209,6 @@ class TestScaffoldE2e():
       assert destination_path.is_file()
       # Add user defined Docker Compose file for the custom container service
       shutil.copyfile(local_service_mock_docker_compose_path, destination_path)
-
-      # Record workflow doesn't have a public folder
-
-      # Generate certs
-      ScaffoldCliInvoker.cli_app_mkcert(runner, app_dir_path)
 
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
 

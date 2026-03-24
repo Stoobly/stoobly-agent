@@ -82,7 +82,7 @@ class TestRequestLogE2e():
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
-        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
     def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
@@ -545,7 +545,7 @@ class TestRequestLogFromDifferentWorkingDirectory():
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
-        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
     def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):

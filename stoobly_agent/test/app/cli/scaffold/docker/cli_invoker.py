@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
-TMP_E2E_LOG_PATH = "/tmp/stoobly-e2e.log"
+TMP_E2E_LOG_PATH = "/tmp/stoobly-agent-test/e2e.log"
 
 
 def _append_error_to_tmp_log(lines):
@@ -48,17 +48,6 @@ class ScaffoldCliInvoker():
         f"Output: {result.output}",
         f"Exception: {result.exception}",
       ])
-
-    assert result.exit_code == 0
-    output = result.stdout
-    assert not output
-
-  @staticmethod
-  def cli_app_mkcert(runner: CliRunner, app_dir_path: str):
-    result = runner.invoke(scaffold, ['app', 'mkcert',
-      '--app-dir-path', app_dir_path,
-      '--context-dir-path', app_dir_path,
-    ])
 
     assert result.exit_code == 0
     output = result.stdout

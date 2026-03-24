@@ -51,7 +51,7 @@ class TestLocalScaffoldE2e():
 
   @pytest.fixture(scope='class')
   def https_service_hostname(self):
-    yield "secure.example.com"
+    yield "docs.stoobly.com"
   
   @pytest.fixture(scope='class')
   def external_service_name(self):
@@ -222,10 +222,16 @@ class TestLocalScaffoldE2e():
       assert external_service_name in services, f"External service {external_service_name} should exist"
       assert local_service_name in services, f"Local service {local_service_name} should exist"
 
-    def test_workflow_up(self, proxy_url: str):
+    def test_workflow_firewall(self, proxy_url: str):
       """Test workflow up command for local execution"""
       # Use http send request with proxy, do this in python, make the following not check ssl cert
-      res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+      res = requests.get('https://www.google.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+      assert res.status_code == 200, "Non-scaffold service should be accessible"
+
+    def test_workflow_up(self, hostname, proxy_url: str):
+      """Test workflow up command for local execution"""
+      # Use http send request with proxy, do this in python, make the following not check ssl cert
+      res = requests.get('http://' + hostname, proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
       assert res.status_code == 499, "HTTP request with HTTP_PROXY and HTTPS_PROXY set to the local service should succeed"
 
     def test_public_directory(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
