@@ -91,9 +91,6 @@ ca-cert/install: stoobly/install
 			echo "You can install the CA certificate later by running: stoobly-agent ca-cert install"; \
 		fi \
 	fi
-certs:
-	@export EXEC_COMMAND=scaffold/.mkcert EXEC_OPTIONS="" EXEC_ARGS="" && \
-	$(stoobly_exec)
 dotenv: workflow/namespace
 	@if [ -f "$(dotenv_file)" ]; then cp "$(dotenv_file)" $(workflow_namespace_dir)/.env; fi
 nameservers: workflow/namespace

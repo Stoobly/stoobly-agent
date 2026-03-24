@@ -7,32 +7,13 @@ if [ -f .env ]; then
   set -a; . ./.env; set +a;
 fi
 
-if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ] ; then
-  stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
+if [ "$APP_PROXY_MODE" = "reverse" ]; then
+  if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ]; then
+    stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
+  fi
 fi
 
 entrypoint=$1
-
-port=$SERVICE_PORT
-scheme=$SERVICE_SCHEME
-service_origin="$scheme://$SERVICE_HOSTNAME"
-
-if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
-  service_origin="$service_origin:$port"
-fi
-
-port=$SERVICE_UPSTREAM_PORT
-scheme=$SERVICE_UPSTREAM_SCHEME
-upstream_origin="$scheme://$SERVICE_UPSTREAM_HOSTNAME"
-
-if [ "$scheme" = 'http' -a "$port" != '80' ] || [ "$scheme" = 'https' -a "$port" != '443' ]; then
-  upstream_origin="$upstream_origin:$port"
-fi
-
-if [ "$service_origin" != "$upstream_origin" ] && [ "$SERVICE_UPSTREAM_HOSTNAME" != "host.docker.internal" ]; then
-  service_origin="$upstream_origin"
-fi
-
 if [ -e "$entrypoint" ]; then
-  ./"$entrypoint" "$service_origin"
+  ./"$entrypoint"
 fi

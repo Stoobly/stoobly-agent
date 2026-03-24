@@ -7,8 +7,10 @@ if [ -f .env ]; then
   set -a; . ./.env; set +a;
 fi
 
-if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ]; then
-  stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
+if [ "$APP_PROXY_MODE" = "reverse" ]; then
+  if [ -n "$SERVICE_HOSTNAME" ] && [ "$SERVICE_SCHEME" = "https" ]; then
+    stoobly-agent ca-cert mkcert $SERVICE_HOSTNAME
+  fi
 fi
 
 entrypoint=$1
