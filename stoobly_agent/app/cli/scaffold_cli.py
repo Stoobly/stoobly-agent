@@ -1056,8 +1056,7 @@ def __services_firewall(app: App, services, workflow_name: str):
   mode_map = {
     WORKFLOW_MOCK_TYPE: mode.MOCK,
     WORKFLOW_RECORD_TYPE: mode.RECORD,
-    WORKFLOW_TEST_TYPE: mode.TEST,
-    mode.REPLAY: mode.REPLAY,
+    WORKFLOW_TEST_TYPE: mode.MOCK,
   }
 
   for service_name in services:
