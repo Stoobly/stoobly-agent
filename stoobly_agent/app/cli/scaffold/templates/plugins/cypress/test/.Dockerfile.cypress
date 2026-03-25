@@ -1,5 +1,22 @@
-ARG CYPRESS_IMAGE
+ARG CYPRESS_IMAGE=cypress/browsers:22.11.0
+ARG GOLANG_IMAGE=golang:1.25.8-alpine
+
+FROM ${GOLANG_IMAGE} AS gosu-builder
+
+ARG GOSU_VERSION=1.19
+WORKDIR /go/src/github.com/tianon
+RUN apk add --no-cache git
+RUN git clone https://github.com/tianon/gosu.git --branch ${GOSU_VERSION}
+WORKDIR /go/src/github.com/tianon/gosu
+RUN go mod download
+RUN go build
+
 FROM ${CYPRESS_IMAGE}
+
+COPY --from=gosu-builder /go/src/github.com/tianon/gosu/gosu /usr/local/bin/gosu
+RUN set -eux; \
+    chmod +x /usr/local/bin/gosu; \
+    gosu --version;
 
 # Change user id of stoobly user to that of host's user id
 ARG USER_ID

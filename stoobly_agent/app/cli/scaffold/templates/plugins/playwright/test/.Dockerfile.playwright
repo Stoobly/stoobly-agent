@@ -1,11 +1,20 @@
-ARG PLAYWRIGHT_IMAGE
-FROM ${PLAYWRIGHT_IMAGE} 
+ARG GOLANG_IMAGE=golang:1.25.8-alpine
+ARG PLAYWRIGHT_IMAGE=mcr.microsoft.com/playwright:v1.46.1-jammy
 
+FROM ${GOLANG_IMAGE} AS gosu-builder
+
+ARG GOSU_VERSION=1.19
+WORKDIR /go/src/github.com/tianon
+RUN apk add --no-cache git
+RUN git clone https://github.com/tianon/gosu.git --branch ${GOSU_VERSION}
+WORKDIR /go/src/github.com/tianon/gosu
+RUN go mod download
+RUN go build
+
+FROM ${PLAYWRIGHT_IMAGE}
+
+COPY --from=gosu-builder /go/src/github.com/tianon/gosu/gosu /usr/local/bin/gosu
 RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates wget; \
-    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
-    wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/1.16/gosu-$dpkgArch"; \
     chmod +x /usr/local/bin/gosu; \
     gosu --version;
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
