@@ -68,12 +68,12 @@ class LocalScaffoldCliInvoker():
     assert not output
 
   @staticmethod
-  def cli_service_create_local(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str):
+  def cli_service_create_local(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool = False):
     """Create a local service (not external)"""
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--hostname', hostname,
-      '--scheme', 'http',
+      '--scheme', 'https' if https else 'http',
       '--port', '3000',  
       '--quiet',
       '--workflow', 'mock',

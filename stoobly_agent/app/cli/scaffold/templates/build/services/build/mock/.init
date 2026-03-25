@@ -16,6 +16,11 @@ echo "Configuring intercept..."
 stoobly-agent intercept configure --mode mock --policy all
 stoobly-agent intercept enable
 
+if [ "$APP_PROXY_MODE" = "forward" ]; then
+  echo "Configuring firewall..."
+  stoobly-agent scaffold workflow firewall "$WORKFLOW_NAME"
+fi
+
 entrypoint=$1
 
 if [ -e "$entrypoint" ]; then

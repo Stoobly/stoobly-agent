@@ -3,6 +3,7 @@ services:
     command: 
     - ${SERVICE_SCRIPTS}/${SERVICE_NAME}/${WORKFLOW_TEMPLATE}/.init
     - init
+    - ${APP_DIR_MOUNT}
     extends:
       file: ../.docker-compose.base.yml
       service: context_base

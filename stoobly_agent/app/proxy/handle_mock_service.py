@@ -58,7 +58,9 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         if handle_error:
             res = handle_error(context)
 
-        return pass_on(context.flow, res)
+            if res:
+                return pass_on(context.flow, res)
+        return
 
     if policy not in [mock_policy.ALL, mock_policy.FOUND]:
         if handle_error:
