@@ -37,6 +37,12 @@ from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowVal
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import firewall_action
 from stoobly_agent.app.settings.firewall_rule import FirewallRule
+from stoobly_agent.app.cli.scaffold.workflow_firewall import (
+  HTTP_METHODS,
+  build_include_firewall_rule_for_service_url,
+  upsert_firewall_rule,
+  workflow_template_to_firewall_mode,
+)
 from stoobly_agent.config.constants import env_vars, method, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
@@ -1045,13 +1051,7 @@ def __services_firewall(app: App, services, workflow_name: str):
   settings = Settings.instance()
   project_key = ProjectKey(settings.proxy.intercept.project_key)
   project_id = project_key.id
-  methods = [method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS]
   firewall_rules = settings.proxy.firewall.firewall_rules(project_id)
-  mode_map = {
-    WORKFLOW_MOCK_TYPE: mode.MOCK,
-    WORKFLOW_RECORD_TYPE: mode.RECORD,
-    WORKFLOW_TEST_TYPE: mode.MOCK,
-  }
 
   for service_name in services:
     service = Service(service_name, app)
@@ -1060,32 +1060,19 @@ def __services_firewall(app: App, services, workflow_name: str):
     workflow_dir_path = service.workflow_dir_path(workflow_name)
     workflow_config = WorkflowConfig(workflow_dir_path)
     workflow_template = workflow_config.template or workflow_name
-    firewall_mode = mode_map.get(workflow_template) # For custom workflows, template is set using the --template option
-    if not firewall_mode:
-      raise ValueError(f"Unsupported workflow template for firewall mode mapping: '{workflow_template}'")
+    # For custom workflows, template is set using the --template option
+    firewall_mode = workflow_template_to_firewall_mode(workflow_template)
 
     service_config = ServiceConfig(service.dir_path)
     if not service_config.url:
       continue
 
-    pattern = f'{service_config.url}/?.*?'
-    firewall_rule = FirewallRule({
-      'action': firewall_action.INCLUDE,
-      'methods': methods,
-      'modes': [firewall_mode],
-      'pattern': pattern,
-    })
-
-    index = -1
-    for i, rule in enumerate(firewall_rules):
-      if rule.pattern == pattern and rule.methods == methods:
-        index = i
-        break
-
-    if index == -1:
-      firewall_rules.append(firewall_rule)
-    else:
-      firewall_rules[index] = firewall_rule
+    new_rule = build_include_firewall_rule_for_service_url(
+      service_url=service_config.url,
+      firewall_mode=firewall_mode,
+      methods=HTTP_METHODS,
+    )
+    upsert_firewall_rule(firewall_rules=firewall_rules, new_rule=new_rule)
 
   settings.proxy.firewall.set_firewall_rules(project_id, firewall_rules)
   settings.commit()
