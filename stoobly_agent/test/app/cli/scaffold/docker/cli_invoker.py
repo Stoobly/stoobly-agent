@@ -128,6 +128,7 @@ class ScaffoldCliInvoker():
   def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
+      '--ca-certs-install-confirm', 'n',
       '--context-dir-path', app_dir_path,
       '--hostname-install-confirm', 'n',
       target_workflow_name,
