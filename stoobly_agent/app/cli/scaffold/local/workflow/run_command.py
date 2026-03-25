@@ -335,7 +335,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     self.write_env(**options)
 
     # Build the stoobly-agent run command
-    command = ['stoobly-agent', 'run', '--settings-watch']
+    command = ['stoobly-agent', 'run']
 
     # Use the log file path as the detached output file
     command.extend(['--detached', self.log_file_path])

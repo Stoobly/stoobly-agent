@@ -4,4 +4,4 @@
 #
 # To learn more: https://docs.stoobly.com/core-concepts/agent/proxy-settings
 
-app_path=$1 # Path to application source files
+app_path=$APP_DIR_MOUNT # Path to application source files
