@@ -98,7 +98,7 @@ def run_options(app_config: AppConfig, **extra_options):
   options.extend(['--ui-port', f"{app_config.ui_port}"])
   options.extend(['--request-log-enable'])
   options.extend(['--settings-watch'])
-  options.extend(['--ssl-insecure'])
+  options.extend(['--ssl-insecure']) # For local self-signed HTTPS services, insecure SSL/TLS certificates are allowed
 
   if extra_options.get('public_directory_paths'):
     options.extend(extra_options['public_directory_paths'])

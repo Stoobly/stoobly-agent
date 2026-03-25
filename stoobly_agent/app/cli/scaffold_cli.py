@@ -1067,7 +1067,7 @@ def __services_firewall(app: App, services, workflow_name: str):
     workflow_dir_path = service.workflow_dir_path(workflow_name)
     workflow_config = WorkflowConfig(workflow_dir_path)
     workflow_template = workflow_config.template or workflow_name
-    firewall_mode = mode_map.get(workflow_template)
+    firewall_mode = mode_map.get(workflow_template) # For custom workflows, template is set using the --template option
     if not firewall_mode:
       raise ValueError(f"Unsupported workflow template for firewall mode mapping: '{workflow_template}'")
 
