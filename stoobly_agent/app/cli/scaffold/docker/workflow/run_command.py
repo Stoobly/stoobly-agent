@@ -370,9 +370,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
     if not options.get('attached'):
       command.append('-d')
-
-    # Add all remaining arguments
-    command.append('"$@"')
+    else:
+      # Add all remaining arguments
+      # e.g. docker_compose_options="--exit-code-from entrypoint.playwright --attach entrypoint.playwright"
+      command.append('"$@"')
 
     self.write_env(**options)
 
@@ -404,9 +405,6 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     command.append('down')
     command.append('--volumes')
     command.append('--rmi local')
-
-    # Add all remaining arguments
-    command.append('"$@"')
 
     self.write_env(**options)
 

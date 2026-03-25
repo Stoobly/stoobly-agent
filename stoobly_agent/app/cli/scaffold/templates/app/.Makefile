@@ -179,7 +179,7 @@ workflow/down: dotenv
 	@export EXEC_COMMAND=scaffold/.down EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/down/run:
-	@bash "$(app_dir)/$(workflow_script)"
+	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/hostname: stoobly/install
 	@CURRENT_VERSION="$$(stoobly-agent --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"; \
 	REQUIRED_VERSION="1.13.0"; \
@@ -194,7 +194,7 @@ workflow/logs:
 	@export EXEC_COMMAND=scaffold/.logs EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/logs/run:
-	@bash "$(app_dir)/$(workflow_script)"
+	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/mock:
 	$(eval workflow=mock)
 workflow/namespace: tmpdir
@@ -221,4 +221,4 @@ workflow/up: dotenv
 	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/up/run:
-	@bash "$(app_dir)/$(workflow_script)"
+	@cd "$(app_dir)" && bash "$(workflow_script)" $(docker_compose_options)
