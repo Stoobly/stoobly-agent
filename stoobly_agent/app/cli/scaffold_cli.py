@@ -665,13 +665,7 @@ def mkcert(**kwargs):
 @click.argument('workflow_name')
 def firewall(**kwargs):
   containerized = kwargs['containerized']
-  app_dir_path = context_dir_path if containerized else kwargs['app_dir_path']
-
-  if containerized:
-    # Intentionally not passing kwargs to ContainerizedApp to avoid overriding path options.
-    app = ContainerizedApp(app_dir_path)
-  else:
-    app = App(app_dir_path, **kwargs)
+  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
 
   __validate_app(app)
 
