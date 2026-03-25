@@ -2,11 +2,13 @@ services:
   entrypoint.playwright:
     build:
       args:
+        GOLANG_IMAGE: ${GOLANG_IMAGE:-golang:1.25.8-alpine}
+        GOSU_VERSION: ${GOSU_VERSION:-1.19}
         PLAYWRIGHT_IMAGE: ${PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.46.1-jammy}
         USER_ID: ${USER_ID}
       context: ./
       dockerfile: ./.Dockerfile.playwright
-    command: npx playwright test --reporter dot
+    command: ${PLAYWRIGHT_COMMAND:-npx playwright test --reporter dot}
     depends_on:
       entrypoint.init:
         condition: service_completed_successfully
