@@ -117,6 +117,8 @@ class GatewayBase():
         public_directory_paths=public_directory_paths,
         response_fixtures_paths=response_fixtures_paths,
       )
+      options.append('--headless')
+
       compose['command'] = options
 
     # Iterate through commands and add run options to the compose command

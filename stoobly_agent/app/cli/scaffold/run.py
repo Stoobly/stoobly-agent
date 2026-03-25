@@ -78,6 +78,16 @@ def iter_commands(
         handle_before_entrypoint(public_directory_paths, response_fixtures_paths)
 
 def run_options(app_config: AppConfig, **extra_options):
+  """
+  Base run options for forward proxy mode for local and docker runtimes.
+
+  Args:
+    app_config: AppConfig object
+    extra_options: Extra options to add to the run options
+
+  Returns:
+    List of run options
+  """
   options = []
 
   # Add log level if provided
@@ -87,6 +97,8 @@ def run_options(app_config: AppConfig, **extra_options):
   options.extend(['--proxy-port', f"{app_config.proxy_port}"])
   options.extend(['--ui-port', f"{app_config.ui_port}"])
   options.extend(['--request-log-enable'])
+  options.extend(['--settings-watch'])
+  options.extend(['--ssl-insecure'])
 
   if extra_options.get('public_directory_paths'):
     options.extend(extra_options['public_directory_paths'])
