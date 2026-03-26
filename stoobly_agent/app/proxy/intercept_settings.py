@@ -234,8 +234,24 @@ class InterceptSettings:
                                     break
                     
                     # Do not cache if scenario key is not found
-                    # If the user is recording requests, they may create a new scenario after a cache miss
-                    # This would result in a cache miss loop until the agent restarts, so we do not cache the result
+                    # If the user is recording requests, they may create a new scenario after a cache miss.
+                    # Normally this avoids a cache-miss loop; however, when `X-Stoobly-Scenario-Create-If-Missing`
+                    # is enabled, we cache the newly created scenario key to prevent repeated creation.
+                    if not scenario_key and self.__headers and custom_headers.SCENARIO_CREATE_IF_MISSING in self.__headers:
+                        create_header_value = str(self.__headers[custom_headers.SCENARIO_CREATE_IF_MISSING] or '')
+                        create_if_missing_enabled = create_header_value.lower() in ['1', 'true', 'yes', 'on']
+
+                        if create_if_missing_enabled:
+                            created_scenario, create_status = self.__scenario_model.create(
+                                name=scenario_name,
+                                description='',
+                                priority=0,
+                            )
+
+                            created_key = created_scenario.get('key') if created_scenario else None
+                            if create_status == 200 and created_key:
+                                scenario_key = created_key
+
                     if scenario_key:
                       scenario_name_to_key_map[scenario_name] = scenario_key
                       self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
