@@ -137,13 +137,11 @@ class TestUpdate:
             Request.find(trashed_request.id).update({'is_deleted': False, 'scenario_id': None})
 
         def test_it_assigns_scenario_id_without_is_deleted(self, adapter, trashed_request: Request, scenario: Scenario):
-            """UI sends only scenario_id without is_deleted — server should auto-restore.
-            Currently FAILS: handle_saving clears scenario_id because is_deleted is True in the DB.
-            """
+            """UI sends only scenario_id without is_deleted — server should auto-restore."""
             response_body, status = adapter.update(trashed_request.id, scenario_id=scenario.id)
             refreshed = Request.find(trashed_request.id)
             assert status == 200
-            assert response_body['scenario_id'] == scenario.id   # fails here
+            assert response_body['scenario_id'] == scenario.id
             assert refreshed.scenario_id == scenario.id
 
         def test_it_auto_restores_is_deleted_when_scenario_id_assigned(self, adapter, trashed_request: Request, scenario: Scenario):
