@@ -14,6 +14,58 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import reset
 
+class TestIndex():
+  @pytest.fixture(autouse=True, scope='class')
+  def settings(self):
+    return reset()
+
+  @pytest.fixture(scope='class')
+  def adapter(self):
+    return LocalDBRequestAdapter(request_orm=Request, response_orm=Response)
+
+  @pytest.fixture(autouse=True, scope='class')
+  def active_request(self, settings: Settings):
+    status = RequestBuilder(
+      method='GET',
+      request_body='',
+      request_headers={},
+      response_body='',
+      status_code=200,
+      url='https://petstore.swagger.io/v2/pets',
+    ).with_settings(settings).build()[1]
+    assert status == 200
+    record = Request.last()
+    yield record
+    record.delete()
+
+  @pytest.fixture(autouse=True, scope='class')
+  def trashed_request(self, settings: Settings, active_request: Request):
+    status = RequestBuilder(
+      method='GET',
+      request_body='',
+      request_headers={},
+      response_body='',
+      status_code=200,
+      url='https://petstore.swagger.io/v2/trashed',
+    ).with_settings(settings).build()[1]
+    assert status == 200
+    record = Request.last()
+    record.update({'is_deleted': True})
+    yield record
+    record.delete()
+
+  def test_it_excludes_trashed_by_default(self, adapter: LocalDBRequestAdapter, active_request: Request, trashed_request: Request):
+    body, status = adapter.index()
+    assert status == 200
+    assert body['total'] == 1
+
+  class TestWhenFilterIsDeleted():
+    def test_it_returns_only_trashed(self, adapter: LocalDBRequestAdapter, active_request: Request, trashed_request: Request):
+      body, status = adapter.index(filter='is_deleted')
+      assert status == 200
+      assert body['total'] == 1
+
+
 class TestLocalDBRequestAdapter():
   @pytest.fixture(autouse=True, scope='class')
   def settings(self):
