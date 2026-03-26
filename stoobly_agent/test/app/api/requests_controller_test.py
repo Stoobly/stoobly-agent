@@ -169,3 +169,50 @@ class TestUpdate:
             adapter.update(trashed_request.id, is_deleted=False, scenario_id=scenario.id)
 
             assert Scenario.find(scenario.id).requests_count == count_before + 1
+
+    class TestWhenRestoringFromScenarioTrashBackToScenario:
+        """Round-trip: request was in a scenario, trashed, then restored back into a scenario."""
+
+        @pytest.fixture(autouse=True, scope='class')
+        def scenario(self):
+            record = Scenario.create(name='round-trip scenario')
+            yield record
+            record.delete()
+
+        @pytest.fixture(autouse=True, scope='class')
+        def trashed_request(self, settings: Settings, scenario: Scenario):
+            status = RequestBuilder(
+                method='GET',
+                request_body='',
+                request_headers={},
+                response_body='',
+                status_code=200,
+                url='https://petstore.swagger.io/v2/round-trip-pets',
+            ).with_settings(settings).build()[1]
+            assert status == 200
+
+            record = Request.last()
+            # Put into scenario, then trash — simulates the UI delete flow
+            Request.find(record.id).update({'scenario_id': scenario.id})
+            Request.find(record.id).update({'is_deleted': True})
+            yield record
+            record.delete()
+
+        @pytest.fixture(autouse=True)
+        def ensure_trashed(self, trashed_request: Request):
+            Request.find(trashed_request.id).update({'is_deleted': True, 'scenario_id': None})
+            yield
+            Request.find(trashed_request.id).update({'is_deleted': False, 'scenario_id': None})
+
+        def test_it_assigns_scenario_id(self, adapter, trashed_request: Request, scenario: Scenario):
+            response_body, status = adapter.update(trashed_request.id, scenario_id=scenario.id)
+            refreshed = Request.find(trashed_request.id)
+            assert status == 200
+            assert response_body['scenario_id'] == scenario.id
+            assert refreshed.scenario_id == scenario.id
+
+        def test_it_restores_requests_count(self, adapter, trashed_request: Request, scenario: Scenario):
+            """After round-trip (scenario → trash → scenario), count should be back to pre-trash value."""
+            count_before = Scenario.find(scenario.id).requests_count
+            adapter.update(trashed_request.id, scenario_id=scenario.id)
+            assert Scenario.find(scenario.id).requests_count == count_before + 1
