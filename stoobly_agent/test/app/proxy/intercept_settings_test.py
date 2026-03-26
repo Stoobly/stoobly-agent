@@ -280,6 +280,132 @@ class TestScenarioKey:
         # ScenarioModel should not be called when SCENARIO_KEY header is present
         scenario_model.index.assert_not_called()
 
+    def test_create_if_missing_creates_scenario_when_not_found(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that X-Stoobly-Scenario-Create-If-Missing creates a scenario when the name does not resolve."""
+        scenario_name = 'Test Scenario'
+        created_scenario_key = 'created_scenario_key'
+
+        scenario_model.index.return_value = ({
+            'list': [],
+            'total': 0
+        }, 200)
+
+        scenario_model.create.return_value = ({
+            'key': created_scenario_key,
+            'name': scenario_name,
+        }, 200)
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result == created_scenario_key
+        scenario_model.index.assert_called_once_with(project_id='1', q=scenario_name, sort_by='requests_count')
+        scenario_model.create.assert_called_once_with(name=scenario_name, description='', priority=0)
+
+        cache_data = cache.read('scenario_name_index.1')
+        assert cache_data is not None
+        assert cache_data['value'][scenario_name] == created_scenario_key
+
+    def test_create_if_missing_not_called_when_scenario_found(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that scenario is not created when the name already resolves to an existing scenario."""
+        scenario_name = 'Test Scenario'
+        existing_scenario_key = 'existing_scenario_key'
+
+        scenario_model.index.return_value = ({
+            'list': [{'key': existing_scenario_key, 'name': scenario_name}],
+            'total': 1
+        }, 200)
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result == existing_scenario_key
+        scenario_model.create.assert_not_called()
+
+    def test_create_if_missing_does_not_cache_on_create_failure(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that a failed create does not populate the scenario-name cache mapping."""
+        scenario_name = 'Test Scenario'
+
+        scenario_model.index.return_value = ({
+            'list': [],
+            'total': 0
+        }, 200)
+
+        scenario_model.create.return_value = ({}, 500)
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result is None
+        scenario_model.create.assert_called_once()
+
+        cache_data = cache.read('scenario_name_index.1')
+        assert cache_data is None
+
+    def test_create_if_missing_ignored_when_scenario_key_header_present(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that SCENARIO_KEY still takes priority over SCENARIO_NAME create-if-missing."""
+        scenario_key_header = 'header_scenario_key'
+        scenario_name = 'Test Scenario'
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_KEY: scenario_key_header,
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result == scenario_key_header
+        scenario_model.index.assert_not_called()
+        scenario_model.create.assert_not_called()
+
+    def test_create_if_missing_returns_none_when_no_project_id(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that create-if-missing does not attempt resolution/creation when project_id is not available."""
+        scenario_name = 'Test Scenario'
+
+        mock_settings.proxy.intercept.project_key = None
+        scenario_model.index.return_value = ({
+            'list': [],
+            'total': 0
+        }, 200)
+        scenario_model.create.return_value = ({
+            'key': 'created_key',
+            'name': scenario_name,
+        }, 200)
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result is None
+        scenario_model.index.assert_not_called()
+        scenario_model.create.assert_not_called()
+
 
 class TestRequestMatchRules:
 
