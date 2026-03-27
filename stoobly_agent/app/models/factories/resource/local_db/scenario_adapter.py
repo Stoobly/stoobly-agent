@@ -17,10 +17,47 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
   def __init__(self, scenario_orm: Scenario.__class__ = Scenario):
     self.__scenario_orm = scenario_orm
 
+  class __DuplicateScenarioNameError(Exception):
+    pass
+
+  def __is_duplicate_scenario_name_error(self, e: Exception) -> bool:
+    """
+    Detect unique-index violations for `scenarios.name`.
+
+    The underlying driver error is wrapped by `stoobly_orator` as `QueryException`
+    and stored in `previous` (or embedded into its string representation).
+    """
+    msg = f"{e} {getattr(e, 'previous', None)}".lower()
+    return (
+      'scenarios_name_unique' in msg or
+      'unique constraint failed' in msg and 'scenarios.name' in msg or
+      ('unique' in msg and 'scenarios' in msg and 'name' in msg)
+    )
+
   def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
-    with ORM.instance().db.transaction():
-      scenario_record = self.__scenario_orm.create(params)
-      return self.success(scenario_record.to_dict())
+    try:
+      with ORM.instance().db.transaction():
+        try:
+          scenario_record = self.__scenario_orm.create(params)
+        except Exception as e:
+          # Catch ORM/DB unique constraint violations and translate them into
+          # a proper 409 Conflict for the API/CLI layer.
+          try:
+            from stoobly_orator.exceptions.query import QueryException
+          except Exception:
+            QueryException = None
+
+          if QueryException and isinstance(e, QueryException) and self.__is_duplicate_scenario_name_error(e):
+            raise self.__DuplicateScenarioNameError() from e
+
+          raise
+
+        return self.success(scenario_record.to_dict())
+    except self.__DuplicateScenarioNameError:
+      name = params.get('name') or ''
+      if name:
+        return self.conflict(f'Scenario name "{name}" already exists')
+      return self.conflict('Scenario name already exists')
 
   def show(self, scenario_id: str) -> Tuple[ScenarioShowResponse, int]:
     scenario_record = self.__scenario(scenario_id)

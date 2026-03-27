@@ -245,7 +245,7 @@ class TestInterceptSet():
         data_rule = settings.proxy.data.data_rules(project_key.id)
         assert data_rule.record_strategy == record_strategy.MINIMAL
 
-    @pytest.mark.skip(reason="Switching modes during tests is finnicky and leads to test failures")
+    @pytest.mark.skip(reason="Skip until test mode enabled")
     class TestTestStrategy():
 
       def test_strategy_test_mode_contract(self, runner: CliRunner):

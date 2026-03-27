@@ -42,7 +42,7 @@ class TestSettingsScenarioSet():
 
     @pytest.fixture(scope='class')
     def new_scenario(self, runner: CliRunner):
-      scenario_create_result = runner.invoke(scenario, ['create', 'test'])
+      scenario_create_result = runner.invoke(scenario, ['create', 'test-new'])
       assert scenario_create_result.exit_code == 0
 
       return Scenario.last() 
