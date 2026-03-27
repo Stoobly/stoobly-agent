@@ -65,6 +65,73 @@ class TestUpdate:
             _, status = adapter.update(99999, is_deleted=False)
             assert status == 404
 
+    class TestWhenMovingToTrash:
+
+        @pytest.fixture(autouse=True, scope='class')
+        def active_request(self, settings: Settings):
+            status = RequestBuilder(
+                method='GET',
+                request_body='',
+                request_headers={},
+                response_body='',
+                status_code=200,
+                url='https://petstore.swagger.io/v2/plain-pets',
+            ).with_settings(settings).build()[1]
+            assert status == 200
+
+            record = Request.last()
+            yield record
+            record.delete()
+
+        @pytest.fixture(autouse=True)
+        def ensure_active(self, active_request: Request):
+            Request.find(active_request.id).update({'is_deleted': False, 'scenario_id': None})
+            yield
+            Request.find(active_request.id).update({'is_deleted': False, 'scenario_id': None})
+
+        def test_it_sets_is_deleted(self, adapter, active_request: Request):
+            _, status = adapter.update(active_request.id, is_deleted=True)
+            refreshed = Request.find(active_request.id)
+            assert status == 200
+            assert refreshed.is_deleted == True
+
+        def test_it_does_not_set_scenario_id(self, adapter, active_request: Request):
+            adapter.update(active_request.id, is_deleted=True)
+            refreshed = Request.find(active_request.id)
+            assert refreshed.scenario_id is None
+
+    class TestWhenTrashingAlreadyTrashedRequest:
+
+        @pytest.fixture(autouse=True, scope='class')
+        def trashed_request(self, settings: Settings):
+            status = RequestBuilder(
+                method='GET',
+                request_body='',
+                request_headers={},
+                response_body='',
+                status_code=200,
+                url='https://petstore.swagger.io/v2/idempotent-pets',
+            ).with_settings(settings).build()[1]
+            assert status == 200
+
+            record = Request.last()
+            yield record
+            record.delete()
+
+        @pytest.fixture(autouse=True)
+        def ensure_trashed(self, trashed_request: Request):
+            Request.find(trashed_request.id).update({'is_deleted': True, 'scenario_id': None})
+            yield
+            Request.find(trashed_request.id).update({'is_deleted': False, 'scenario_id': None})
+
+        def test_it_is_idempotent(self, adapter, trashed_request: Request):
+            """Trashing an already-trashed request should not re-fire handle_saving side effects."""
+            _, status = adapter.update(trashed_request.id, is_deleted=True)
+            refreshed = Request.find(trashed_request.id)
+            assert status == 200
+            assert refreshed.is_deleted == True
+            assert refreshed.scenario_id is None
+
     class TestWhenMovingToTrashFromScenario:
 
         @pytest.fixture(autouse=True, scope='class')
