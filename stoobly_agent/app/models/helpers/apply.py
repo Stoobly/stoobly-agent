@@ -267,6 +267,8 @@ class Apply():
     scenario, status = search()
     if status == 200:
       return scenario, status
+    elif status != 404:
+      return scenario, status
 
     return search('is_deleted')
 
