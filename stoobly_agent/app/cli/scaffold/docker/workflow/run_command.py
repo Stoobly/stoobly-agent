@@ -310,13 +310,15 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def create_egress_network(self):
     """Create Docker egress network."""
+    # In most cases, the network exists or is created
+    # In the case where the network cannot be created, the failure will occur during the up command
     network_name = APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)
-    return f"docker network inspect {network_name} &> /dev/null || docker network create {network_name} &> /dev/null"
+    return f"docker network create {network_name} &> /dev/null || true"
 
   def create_ingress_network(self):
     """Create Docker ingress network."""
     network_name = APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)
-    return f"docker network inspect {network_name} &> /dev/null || docker network create {network_name} &> /dev/null"
+    return f"docker network create {network_name} &> /dev/null || true"
 
   def remove_egress_network(self):
     """Remove Docker egress network."""
