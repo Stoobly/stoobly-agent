@@ -75,13 +75,13 @@ class TestReplayIntegration():
 
             @pytest.fixture(scope='class')
             def source_scenario(self, runner: CliRunner):
-                create_result = runner.invoke(scenario, ['create', 'test'])
+                create_result = runner.invoke(scenario, ['create', 'test-source'])
                 assert create_result.exit_code == 0
                 return Scenario.last()
 
             @pytest.fixture(scope='class')
             def destination_scenario(self, runner: CliRunner):
-                create_result = runner.invoke(scenario, ['create', 'test'])
+                create_result = runner.invoke(scenario, ['create', 'test-destination'])
                 assert create_result.exit_code == 0
                 return Scenario.last()
 
