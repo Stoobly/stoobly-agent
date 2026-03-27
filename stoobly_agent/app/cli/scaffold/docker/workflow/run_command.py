@@ -310,11 +310,13 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def create_egress_network(self):
     """Create Docker egress network."""
-    return f"docker network create {APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
+    network_name = APP_EGRESS_NETWORK_TEMPLATE.format(network=self.network)
+    return f"docker network inspect {network_name} &> /dev/null || docker network create {network_name} &> /dev/null"
 
   def create_ingress_network(self):
     """Create Docker ingress network."""
-    return f"docker network create {APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)} &> /dev/null"
+    network_name = APP_INGRESS_NETWORK_TEMPLATE.format(network=self.network)
+    return f"docker network inspect {network_name} &> /dev/null || docker network create {network_name} &> /dev/null"
 
   def remove_egress_network(self):
     """Remove Docker egress network."""
