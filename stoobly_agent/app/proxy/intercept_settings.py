@@ -223,19 +223,29 @@ class InterceptSettings:
                     scenario_key = None
                     
                     if project_id is not None:
-                        response, status = self.__scenario_model.index(
-                          project_id=project_id, q=scenario_name, sort_by='requests_count'
-                        )
-                        if status == 200 and response.get('list') and len(response['list']) > 0:
-                            # Find first scenario that exactly matches the name
-                            for scenario in response['list']:
-                                if scenario.get('name') == scenario_name:
-                                    scenario_key = scenario.get('key')
-                                    break
+                        scenario_key = self.__find_exact_scenario_key_by_name(project_id, scenario_name)
                     
                     # Do not cache if scenario key is not found
-                    # If the user is recording requests, they may create a new scenario after a cache miss
-                    # This would result in a cache miss loop until the agent restarts, so we do not cache the result
+                    # If the user is recording requests, they may create a new scenario after a cache miss.
+                    # Normally this avoids a cache-miss loop; however, when `X-Stoobly-Scenario-Create-If-Missing`
+                    # is enabled, we cache the newly created scenario key to prevent repeated creation.
+                    if not scenario_key and self.__headers and custom_headers.SCENARIO_CREATE_IF_MISSING in self.__headers:
+                        create_header_value = str(self.__headers[custom_headers.SCENARIO_CREATE_IF_MISSING] or '')
+                        create_if_missing_enabled = create_header_value.lower() in ['1', 'true', 'yes', 'on']
+
+                        if create_if_missing_enabled:
+                            created_scenario, create_status = self.__scenario_model.create(
+                                name=scenario_name,
+                                description='',
+                                priority=0,
+                            )
+
+                            created_key = created_scenario.get('key') if created_scenario else None
+                            if create_status == 200 and created_key:
+                                scenario_key = created_key
+                            elif create_status == 409:
+                                scenario_key = self.__find_exact_scenario_key_by_name(project_id, scenario_name)
+
                     if scenario_key:
                       scenario_name_to_key_map[scenario_name] = scenario_key
                       self.__cache.write(cache_key, scenario_name_to_key_map, timeout=None)
@@ -553,6 +563,26 @@ class InterceptSettings:
         self.__lifecycle_hooks = run_path(script_path)
     except Exception as e:
         return Logger.instance().error(e)
+
+  def __find_exact_scenario_key_by_name(self, project_id: int, scenario_name: str):
+    if project_id is None or not scenario_name or not self.__scenario_model:
+      return None
+
+    response, status = self.__scenario_model.index(
+      project_id=project_id,
+      q=scenario_name,
+      sort_by='requests_count',
+    )
+
+    if status != 200:
+      return None
+
+    scenarios = response.get('list') or []
+    for scenario in scenarios:
+      if scenario.get('name') == scenario_name:
+        return scenario.get('key')
+
+    return None
 
   def __order(self, mode):
     if mode == intercept_mode.RECORD:

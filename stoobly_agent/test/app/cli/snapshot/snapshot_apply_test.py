@@ -206,6 +206,48 @@ class TestApply():
         assert_orm_request_equivalent(requests[1], created_scenario_requests[1])
 
     class TestWhenMergingScenario():
+      class TestWhenScenarioNameAlreadyExists():
+        @pytest.fixture(scope='class')
+        def source_scenario(self, runner: CliRunner):
+          create_result = runner.invoke(scenario, ['create', 'test'])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def put_event(self, runner: CliRunner, source_scenario: Scenario):
+          snapshot_result = runner.invoke(scenario, ['snapshot', source_scenario.key()])
+          assert snapshot_result.exit_code == 0
+
+          log = Log()
+          events = log.events
+          return events[len(events) - 1]
+
+        @pytest.fixture(scope='class')
+        def duplicate_named_scenario(self, runner: CliRunner, source_scenario: Scenario):
+          source_scenario.delete()
+          assert Scenario.find(source_scenario.id) == None
+
+          create_result = runner.invoke(scenario, ['create', source_scenario.name])
+          assert create_result.exit_code == 0
+          return Scenario.last()
+
+        @pytest.fixture(scope='class')
+        def apply_result(self, runner: CliRunner):
+          return runner.invoke(snapshot, ['apply'])
+
+        def test_it_updates_existing_scenario_with_snapshot_uuid(
+          self,
+          source_scenario: Scenario,
+          duplicate_named_scenario: Scenario,
+          apply_result,
+        ):
+          assert apply_result.exit_code == 0
+
+          updated_scenario = Scenario.find_by(uuid=source_scenario.uuid)
+          assert updated_scenario != None
+          assert updated_scenario.id == duplicate_named_scenario.id
+          assert updated_scenario.name == source_scenario.name
+
 
       class TestWhenAdditionalRequestExists():
         '''
