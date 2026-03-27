@@ -198,6 +198,15 @@ class Apply():
         'uuid': uuid,
       })
 
+      if status == 409:
+        existing_scenario, existing_status = self.__find_scenario_by_name(metadata.get('name'))
+        if existing_status == 200 and existing_scenario:
+          res, status = self.scenario_model.update(existing_scenario['uuid'], **{
+            **metadata,
+            'uuid': uuid,
+            'is_deleted': False,
+          })
+
       if self.__logger:
         if status == 200:
           self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}") 
@@ -219,6 +228,47 @@ class Apply():
       return res, status
     else:
       return self.__apply_put_scenario_requests(res, snapshot)
+
+  def __find_scenario_by_name(self, name: str):
+    if not name:
+      return None, 404
+
+    def search(filter: str = None):
+      page = 0
+      size = 100
+
+      while True:
+        params = {
+          'q': name,
+          'page': page,
+          'size': size,
+        }
+
+        if filter:
+          params['filter'] = filter
+
+        res, status = self.scenario_model.index(**params)
+        if status != 200:
+          return None, status
+
+        scenarios = res.get('list') or []
+        for scenario in scenarios:
+          if scenario.get('name') == name:
+            return scenario, 200
+
+        total = res.get('total') or len(scenarios)
+        if (page + 1) * size >= total:
+          break
+
+        page += 1
+
+      return None, 404
+
+    scenario, status = search()
+    if status == 200:
+      return scenario, status
+
+    return search('is_deleted')
 
   def __apply_put_scenario_requests(self, scenario, snapshot: ScenarioSnapshot = None):
     if not snapshot:

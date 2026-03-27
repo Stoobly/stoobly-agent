@@ -360,6 +360,39 @@ class TestScenarioKey:
         cache_data = cache.read('scenario_name_index.1')
         assert cache_data is None
 
+    def test_create_if_missing_uses_existing_scenario_when_create_conflicts(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
+        """Test that a 409 create conflict resolves and caches an existing scenario key by exact name."""
+        scenario_name = 'Test Scenario'
+        existing_scenario_key = 'existing_scenario_key'
+
+        scenario_model.index.side_effect = [
+            ({
+                'list': [],
+                'total': 0
+            }, 200),
+            ({
+                'list': [{'key': existing_scenario_key, 'name': scenario_name}],
+                'total': 1
+            }, 200),
+        ]
+        scenario_model.create.return_value = ({'error': 'Scenario name already exists'}, 409)
+
+        mock_request.headers = Headers(**{
+            custom_headers.SCENARIO_NAME: scenario_name,
+            custom_headers.SCENARIO_CREATE_IF_MISSING: '1',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request, cache=cache, scenario_model=scenario_model)
+        result = intercept_settings.scenario_key
+
+        assert result == existing_scenario_key
+        scenario_model.create.assert_called_once_with(name=scenario_name, description='', priority=0)
+
+        cache_data = cache.read('scenario_name_index.1')
+        assert cache_data is not None
+        assert cache_data['value'][scenario_name] == existing_scenario_key
+
     def test_create_if_missing_ignored_when_scenario_key_header_present(self, mock_settings, mock_data_rules, mock_request, cache, scenario_model):
         """Test that SCENARIO_KEY still takes priority over SCENARIO_NAME create-if-missing."""
         scenario_key_header = 'header_scenario_key'
