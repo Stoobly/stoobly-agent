@@ -259,18 +259,4 @@ def diff_handler(kwargs):
     sys.exit(1)
 
   full = kwargs.get('full', False)
-  # Prefer the current request key if available; fallback to uuid
-  try:
-    request_key_str = current_request.key()
-  except Exception:
-    request_key_str = request_uuid
-
-  did_print = print_request_diff(snapshot, current_request, full=full)
-  if not did_print:
-    print("=== Request Snapshot")
-    print(snapshot.path)
-    print()
-    print("\n--- Request Key")
-    print(request_key_str)
-    print()
-    print('No differences.')
+  print_request_diff(snapshot, current_request, full=full)

@@ -296,6 +296,3 @@ def diff_handler(kwargs):
       any_diffs = True
   
   snapshot.iter_request_snapshots(handle_request)
-
-  if not any_diffs:
-    print('No differences.')

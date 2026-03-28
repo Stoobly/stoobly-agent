@@ -49,6 +49,8 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
       adapter = RawHttpRequestAdapter(current_request.raw)
       current_req_body = adapter.body
       current_req_headers = adapter.headers
+      # Prefer raw URL from the request line to avoid URL-encoding differences
+      current_url = adapter.url
     except Exception:
       current_req_body = None
       current_req_headers = None
@@ -71,19 +73,15 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
       print()
       printed_header = True
 
-  # Always print URL section FIRST (before Request Snapshot header)
-  print('=== Request')
-  if snapshot_url is not None and current_url is not None:
-    if snapshot_url != current_url:
-      any_diffs = True
-      print(diff_strings(snapshot_url, current_url))
-    else:
-      print(current_url)
-  else:
-    print(current_url or snapshot_url or '')
-  print()
-  # Then print Request Snapshot header (path + key)
-  header_once()
+  # URL section: only print if there is a difference
+  url_before = snapshot_url or ''
+  url_after = current_url or ''
+  if url_before != url_after:
+    print('=== Request')
+    print(diff_strings(url_before, url_after))
+    print()
+    # Then print Request Snapshot header (path + key)
+    header_once()
 
   # Normalize headers to sorted "Key: Value" lines for stable diffs
   def headers_to_string(h):
