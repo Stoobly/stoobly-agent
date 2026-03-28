@@ -10,8 +10,11 @@ if TYPE_CHECKING:
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
+from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
@@ -21,6 +24,8 @@ from ..helpers.print_service import print_requests, select_print_options
 from ..helpers.request_facade import RequestFacade
 from ..helpers.validations import *
 from ..types.request import RequestTestOptions
+from ..helpers.diff_request_print import print_request_diff
+
 
 def delete_handler(kwargs):
   validate_request_key(kwargs['request_key'])
@@ -233,3 +238,39 @@ def __assign_default_origin(kwargs):
 
     if not kwargs.get('scheme'):
         kwargs['scheme'] = os.environ.get(env_vars.AGENT_REPLAY_SCHEME)
+
+def diff_handler(kwargs):
+  request_key = validate_request_key(kwargs['request_key'])
+  request_uuid = request_key.id
+
+  snapshot = RequestSnapshot(request_uuid)
+  if not snapshot.exists:
+    print('Error: Snapshot not found for this request.', file=sys.stderr)
+    sys.exit(1)
+
+  snapshot_raw = snapshot.request
+  if snapshot_raw is None:
+    print('Error: Snapshot file is empty or unreadable.', file=sys.stderr)
+    sys.exit(1)
+
+  current_request = snapshot.find_resource()
+  if not current_request or not current_request.response:
+    print('Error: Current request or response not found.', file=sys.stderr)
+    sys.exit(1)
+
+  full = kwargs.get('full', False)
+  # Prefer the current request key if available; fallback to uuid
+  try:
+    request_key_str = current_request.key()
+  except Exception:
+    request_key_str = request_uuid
+
+  did_print = print_request_diff(snapshot, current_request, full=full)
+  if not did_print:
+    print("=== Request Snapshot")
+    print(snapshot.path)
+    print()
+    print("\n--- Request Key")
+    print(request_key_str)
+    print()
+    print('No differences.')
