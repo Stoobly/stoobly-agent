@@ -82,6 +82,7 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
     print()
     # Then print Request Snapshot header (path + key)
     header_once()
+    any_diffs = True
 
   # Normalize headers to sorted "Key: Value" lines for stable diffs
   def headers_to_string(h):
@@ -113,10 +114,10 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
     print()
     any_diffs = True
 
-  if snapshot_req_body is not None and current_req_body is not None and snapshot_req_body != current_req_body:
+  if (snapshot_req_body or '') != (current_req_body or ''):
     header_once()
     print('--- Request body')
-    print(diff_strings(snapshot_req_body, current_req_body))
+    print(diff_strings(snapshot_req_body or '', current_req_body or ''))
     print()
     any_diffs = True
 
@@ -137,10 +138,10 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
     print()
     any_diffs = True
 
-  if snapshot_res_body is not None and current_res_body is not None and snapshot_res_body != current_res_body:
+  if (snapshot_res_body or '') != (current_res_body or ''):
     header_once()
     print('--- Response body')
-    print(diff_strings(snapshot_res_body, current_res_body))
+    print(diff_strings(snapshot_res_body or '', current_res_body or ''))
     print()
     any_diffs = True
 
