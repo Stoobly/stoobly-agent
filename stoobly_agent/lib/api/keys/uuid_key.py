@@ -20,7 +20,7 @@ class UuidKey(ResourceKey):
   def id(self) -> str:
     try:
       u = uuid.UUID(self.get('i'))
-    except TypeError:
+    except (TypeError, ValueError):
       return ''
     return str(u)
 
