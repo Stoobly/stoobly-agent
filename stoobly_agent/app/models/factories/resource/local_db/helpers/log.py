@@ -60,6 +60,11 @@ class Log():
 
   @property
   def target_events(self):
+    """
+    Returns the deduplicated list of events preserving only the most recent
+    action per resource. Earlier events for the same resource are collapsed
+    away so downstream consumers operate on the latest intent.
+    """
     events = self.events
     return self.collapse(events)
 
@@ -74,6 +79,14 @@ class Log():
 
   @property
   def unprocessed_events(self) -> List[LogEvent]:
+    """
+    Returns events that have not yet been processed according to the current
+    version file. This:
+    - Finds the divergence point between the stored version UUID list and
+      the current event stream.
+    - Collapses events to keep only the latest action per resource.
+    - Filters out dangling DELETEs that should not be applied yet.
+    """
     events = self.events
 
     events_count = len(events)
@@ -89,6 +102,11 @@ class Log():
 
   @property
   def resource_events(self) -> List[LogEvent]:
+    """
+    Returns the latest non-DELETE events per resource, after removing dangling
+    deletes. Useful for enumerating the current target resource set (e.g.,
+    which requests/scenarios exist according to the log).
+    """
     events = self.target_events
     events = self.remove_dangling_events(events, events)
 

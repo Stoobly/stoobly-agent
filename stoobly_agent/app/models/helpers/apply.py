@@ -14,6 +14,24 @@ from ..scenario_model import ScenarioModel
 from .create_request_params_service import build_params
 
 class Apply():
+  """
+  Applies recorded snapshot events to bring local request and scenario state up to date.
+  
+  This helper coordinates between snapshot files on disk and the backing models:
+  - Processes unprocessed `Log` events (`all()`), updating requests and scenarios accordingly.
+  - Applies a single event by UUID (`single()`).
+  - Applies PUT/DELETE operations for individual requests (`request()`) and scenarios (`scenario()`).
+  
+  Behavior:
+  - Uses `RequestModel` and `ScenarioModel` to create, update, or delete records based on snapshots
+    from `RequestSnapshot` and `ScenarioSnapshot`.
+  - When creating or updating requests, raw HTTP bytes are joined via `JoinedRequestAdapter` and
+    transformed into model params by `build_params`.
+  - Maintains a moving `Log.version`: when all unprocessed events succeed, advances to the next
+    version; on partial failure, advances to the last successfully processed event.
+  - Respects a `force` flag for destructive operations to bypass protections in the models.
+  - Optionally emits human-friendly log lines via a provided `logger` callable.
+  """
 
   def __init__(self, **options):
     self.__force = options.get('force') or False

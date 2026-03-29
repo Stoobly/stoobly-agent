@@ -65,7 +65,6 @@ def apply(**kwargs):
 @snapshot.command(
   help="Reset requests and scenarios that have snapshots to their last snapshot state."
 )
-@click.option('--force', is_flag=True, default=False, help="Toggles whether resources are hard deleted.")
 @click.option('--hard', is_flag=True, default=False, help='Delete all requests and scenarios before resetting.')
 @click.option('--lock-timeout', default=60, type=int, help='Lock timeout in seconds (default: 60).')
 @click.option('--yes', is_flag=True, default=False, help='Proceed without confirmation.')
@@ -77,7 +76,7 @@ def reset(**kwargs):
   try:
     with lock:
       log = Log()
-      apply_service = Apply(force=kwargs['force']).with_logger(print)
+      apply_service = Apply().with_logger(print)
 
       # Determine unique resources to be reset for confirmation
       request_ids = set()
@@ -102,7 +101,7 @@ def reset(**kwargs):
           return
 
       if kwargs.get('hard'):
-        __hard_delete_all(kwargs['force'])
+        __hard_delete_all(force=True)
 
       processed_requests = set()
       processed_scenarios = set()
@@ -428,6 +427,7 @@ def __hard_delete_all(force: bool):
   settings = Settings.instance()
 
   request_model = RequestModel(settings)
+  request_model.as_local()
   # Delete all requests first
   while True:
     res, status = request_model.index(page=0, size=100)
@@ -441,6 +441,7 @@ def __hard_delete_all(force: bool):
       request_model.destroy(r['uuid'], force=force)
 
   scenario_model = ScenarioModel(settings)
+  scenario_model.as_local()
   # Then delete all scenarios
   while True:
     res, status = scenario_model.index(page=0, size=100)

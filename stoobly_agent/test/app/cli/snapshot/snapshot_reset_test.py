@@ -43,21 +43,21 @@ class TestSnapshotResetConfirmation():
     # Delete one request to observe change if reset proceeds
     requests = created_scenario.requests
     assert len(requests) == 2
-    deleted_request_id = requests[1].id
+    deleted_request_uuid = requests[1].uuid
     requests[1].delete()
-    assert Request.find(deleted_request_id) is None
+    assert Request.find_by(uuid=deleted_request_uuid) is None
 
     # Decline confirmation
     result = runner.invoke(snapshot, ['reset'], input='n\n')
     assert result.exit_code == 0
     # No changes: request remains deleted
-    assert Request.find(deleted_request_id) is None
+    assert Request.find_by(uuid=deleted_request_uuid) is None
 
     # Accept confirmation
     result = runner.invoke(snapshot, ['reset'], input='y\n')
     assert result.exit_code == 0
     # Request restored from snapshot
-    assert Request.find(deleted_request_id) is not None
+    assert Request.find_by(uuid=deleted_request_uuid) is not None
 
 class TestSnapshotResetYesFlag():
   @pytest.fixture(scope='class')
@@ -84,13 +84,13 @@ class TestSnapshotResetYesFlag():
     # Change then reset
     requests = created_scenario.requests
     assert len(requests) == 2
-    deleted_request_id = requests[0].id
+    deleted_request_uuid = requests[0].uuid
     requests[0].delete()
-    assert Request.find(deleted_request_id) is None
+    assert Request.find_by(uuid=deleted_request_uuid) is None
 
     result = runner.invoke(snapshot, ['reset', '--yes'])
     assert result.exit_code == 0
-    assert Request.find(deleted_request_id) is not None
+    assert Request.find_by(uuid=deleted_request_uuid) is not None
 
 class TestSnapshotResetHard():
   @pytest.fixture(scope='class')
