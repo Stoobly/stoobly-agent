@@ -93,7 +93,10 @@ def reset(**kwargs):
 
       if not kwargs.get('yes'):
         total = len(request_ids) + len(scenario_ids)
-        message = f"This will reset {len(request_ids)} request(s) and {len(scenario_ids)} scenario(s) to their last snapshot state ({total} total). Continue?"
+        message = f"This will reset {len(request_ids)} request(s) and {len(scenario_ids)} scenario(s) to their last snapshot state ({total} total)."
+        if kwargs.get('hard'):
+          message += " WARNING: --hard is set and will delete ALL requests and scenarios before resetting."
+        message += " Continue?"
         if not click.confirm(message, default=False):
           print("Aborted.")
           return
@@ -429,7 +432,8 @@ def __hard_delete_all(force: bool):
   while True:
     res, status = request_model.index(page=0, size=100)
     if status != 200:
-      break
+      print(f"Error: Failed to list requests for hard delete (status: {status}).", file=sys.stderr)
+      sys.exit(1)
     requests = res.get('list') or []
     if not requests:
       break
@@ -441,7 +445,8 @@ def __hard_delete_all(force: bool):
   while True:
     res, status = scenario_model.index(page=0, size=100)
     if status != 200:
-      break
+      print(f"Error: Failed to list scenarios for hard delete (status: {status}).", file=sys.stderr)
+      sys.exit(1)
     scenarios = res.get('list') or []
     if not scenarios:
       break
