@@ -129,7 +129,8 @@ class TestSnapshotResetHard():
     # Sanity: resources exist
     assert Scenario.find(primary_scenario.id) is not None
     assert Scenario.find(extra_scenario.id) is not None
-    assert Request.find(extra_request.id) is not None
+    extra_request_uuid = extra_request.uuid
+    assert Request.find_by(uuid=extra_request_uuid) is not None
 
     # Hard reset
     result = runner.invoke(snapshot, ['reset', '--hard', '--yes'])
@@ -137,7 +138,7 @@ class TestSnapshotResetHard():
 
     # Extra (non-snapshotted) scenario/request are removed
     assert Scenario.find(extra_scenario.id) is None
-    assert Request.find(extra_request.id) is None
+    assert Request.find_by(uuid=extra_request_uuid) is None
 
     # Primary scenario restored from snapshot
     restored = Scenario.find_by(uuid=primary_scenario.uuid)
