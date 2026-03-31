@@ -82,7 +82,7 @@ Each log entry includes:
 - `level` - Log level (INFO, ERROR, etc.)
 - `message` - Log message ("Mock success", "Mock failure", etc.)
 - `method` - HTTP method (GET, POST, etc.)
-- `url` - Request URL (truncated to 100 chars)
+- `url` - Request URL
 - `status_code` - HTTP response status code
 - `latency_ms` - Request latency in milliseconds
 - `user_agent` - User-Agent header value
