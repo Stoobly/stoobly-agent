@@ -11,7 +11,7 @@ from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .handlers.request_cli_handler import (
-  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler
+  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler
 )
 from .helpers.feature_flags import local, remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -122,6 +122,14 @@ if is_local:
   @click.argument('request_key')
   def reset(**kwargs):
     reset_handler(kwargs)
+
+  @request.command(
+    help="Show diff between current request and its snapshot"
+  )
+  @click.option('--full', is_flag=True, default=False, help='Show full raw diff.')
+  @click.argument('request_key')
+  def diff(**kwargs):
+    diff_handler(kwargs)
 
 @request.command(
   help="Test a request"

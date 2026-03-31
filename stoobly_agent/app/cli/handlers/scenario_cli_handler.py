@@ -12,9 +12,12 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
 from stoobly_agent.lib import logger
 
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from ..helpers.scenario_facade import ScenarioFacade
 from ..helpers.validations import *
 from ..types.scenario import ScenarioTestOptions
+from ..helpers.diff_request_print import print_request_diff
 
 def create_handler(kwargs):
   print_options = select_print_options(kwargs)
@@ -236,3 +239,60 @@ def __assign_default_origin(kwargs):
 
     if not kwargs.get('scheme'):
         kwargs['scheme'] = os.environ.get(env_vars.AGENT_REPLAY_SCHEME)
+
+def diff_handler(kwargs):
+  scenario_key = validate_scenario_key(kwargs['scenario_key'])
+  scenario_uuid = scenario_key.id
+
+  snapshot = ScenarioSnapshot(scenario_uuid)
+  if not snapshot.exists:
+    print('Error: Snapshot not found for this scenario.', file=sys.stderr)
+    sys.exit(1)
+
+  # Track whether any diff was printed
+  any_diffs = False
+
+  # Diff scenario metadata (name/description) if possible
+  current_scenario = snapshot.find_resource()
+  if not current_scenario:
+    print('Error: Current scenario not found.', file=sys.stderr)
+    sys.exit(1)
+
+  snapshot_meta = snapshot.metadata
+  current_meta_text = None
+  snapshot_meta_text = None
+
+  try:
+    # Normalize to comparable JSON strings
+    import json
+    current_meta_text = json.dumps({
+      'name': current_scenario.name,
+      'description': current_scenario.description,
+    }, indent=2)
+    snapshot_meta_text = json.dumps({
+      'name': snapshot_meta.get('name'),
+      'description': snapshot_meta.get('description'),
+    }, indent=2)
+  except Exception:
+    current_meta_text = f"{current_scenario.name}\n{current_scenario.description}"
+    snapshot_meta_text = f"{snapshot_meta.get('name')}\n{snapshot_meta.get('description')}"
+
+  if snapshot_meta_text != current_meta_text:
+    any_diffs = True
+    print('=== Scenario metadata')
+    print(snapshot.metadata_path)
+    print(diff_strings(snapshot_meta_text, current_meta_text))
+
+  # Diff each request in the scenario snapshot
+  def handle_request(request_snapshot):
+    nonlocal any_diffs
+    current_request = request_snapshot.find_resource()
+    if not current_request or not current_request.response:
+      return
+
+    full = kwargs.get('full', False)
+    did_print = print_request_diff(request_snapshot, current_request, full=full)
+    if did_print:
+      any_diffs = True
+  
+  snapshot.iter_request_snapshots(handle_request)

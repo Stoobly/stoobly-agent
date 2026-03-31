@@ -11,7 +11,7 @@ from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .handlers.scenario_cli_handler import (
-    create_handler, delete_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler
+    create_handler, delete_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler
 )
 from .helpers.feature_flags import local, remote
 from .helpers.validations import *
@@ -139,6 +139,14 @@ if is_local:
     @click.argument('scenario_key')
     def reset(**kwargs):
         reset_handler(kwargs)
+
+    @scenario.command(
+        help="Show diff between current scenario and its snapshot"
+    )
+    @click.option('--full', is_flag=True, default=False, help='Show full raw diffs for each request.')
+    @click.argument('scenario_key')
+    def diff(**kwargs):
+        diff_handler(kwargs)
 
 @scenario.command(
     help="Replay and test a scenario"
