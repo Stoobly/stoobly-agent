@@ -216,9 +216,10 @@ class TestJSONFormatter:
                     return
             pytest.fail("JSON test message entry not found")
 
-    def test_truncates_long_urls(self, mock_mitmproxy_request):
-        """URLs >100 chars are truncated."""
-        mock_mitmproxy_request.pretty_url = 'https://example.com/' + 'a' * 200
+    def test_preserves_long_urls(self, mock_mitmproxy_request):
+        """URLs are not truncated, regardless of length."""
+        long_url = 'https://example.com/' + 'a' * 200
+        mock_mitmproxy_request.pretty_url = long_url
 
         with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
             mock_intercept.return_value.scenario_key = None
@@ -231,8 +232,7 @@ class TestJSONFormatter:
             for line in lines:
                 entry = json.loads(line.strip())
                 if entry.get('message') == 'Long URL test':
-                    assert len(entry['url']) == 103  # 100 + '...'
-                    assert entry['url'].endswith('...')
+                    assert entry['url'] == long_url
                     return
             pytest.fail("Long URL test entry not found")
 
