@@ -59,10 +59,6 @@ class JSONFormatter(logging.Formatter):
 
       url = request.pretty_url
 
-      # Truncate URL to 100 characters
-      if len(url) > 100:
-        url = url[:100] + '...'
-
       log_entry.update({
         "method": request.method,
         "url": url,
