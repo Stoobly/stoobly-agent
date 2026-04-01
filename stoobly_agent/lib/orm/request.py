@@ -105,7 +105,31 @@ def handle_created(request):
 def handle_saving(request):
   from .scenario import Scenario
 
-  if hasattr(request, 'is_deleted') and request.is_deleted:
+  # Invariant: is_deleted=True and scenario_id are mutually exclusive.
+  # We enforce this by detecting which field is *changing* in this update,
+  # then adjusting the other field to keep the invariant intact.
+  original = request.get_original()
+
+  # True when scenario_id is being set to a new non-null value
+  scenario_id_changing = (
+    hasattr(request, 'scenario_id') and
+    request.scenario_id and
+    request.scenario_id != original.get('scenario_id')
+  )
+  # True when is_deleted is being flipped from False → True
+  is_deleted_changing_to_true = (
+    hasattr(request, 'is_deleted') and
+    request.is_deleted and
+    not original.get('is_deleted')
+  )
+
+  if scenario_id_changing and original.get('is_deleted'):
+    # Client assigned a scenario_id on a trashed request (e.g. UI moving the request from
+    # trash into a scenario). Auto-restore: clear is_deleted as a side effect.
+    request.is_deleted = False
+  elif is_deleted_changing_to_true:
+    # Client is soft-deleting the request. Clear scenario_id so the request
+    # leaves its scenario and lands in the trash with no association.
     request.scenario_id = None
 
   if hasattr(request, 'scenario_id') and request.scenario_id:
