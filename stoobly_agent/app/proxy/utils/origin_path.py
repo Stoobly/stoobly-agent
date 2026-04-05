@@ -1,7 +1,6 @@
 import ipaddress
 import re
 
-from os.path import expanduser
 from typing import List, Tuple, Dict, Optional, Literal
 
 from ..mock.types import LifecycleHooksPath, PublicDirectoryPath, ResponseFixturesPath
@@ -24,7 +23,6 @@ def parse_origin_path_item(path_item: str) -> Tuple[str, str]:
       colon_before_scheme = s.rfind(':', 0, scheme_idx)
       if colon_before_scheme != -1:
         path = s[:colon_before_scheme].strip()
-        path = expanduser(path)
         origin = s[colon_before_scheme + 1:].strip()
         return (path, origin)
     return (s, None)
@@ -34,12 +32,11 @@ def parse_origin_path_item(path_item: str) -> Tuple[str, str]:
   if len(colons) >= 2:
     first = colons[0]
     path = s[:first].strip()
-    path = expanduser(path)
     origin = s[first + 1:].strip()
     return (path, origin)
 
   # No origin specified
-  return (expanduser(s), None)
+  return (s, None)
 
 def parse_origin_paths(
   raw: str,

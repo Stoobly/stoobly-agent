@@ -42,14 +42,3 @@ class TestParseOriginPathItem():
         assert parse_origin_path_item("") == (None, None)
         assert parse_origin_path_item("   ") == (None, None)
 
-    def test_expands_user_home_without_origin(self):
-        inp = "~/just/a/path"
-        path, origin = parse_origin_path_item(inp)
-        assert path == expanduser(inp)
-        assert origin is None
-
-    def test_expands_user_home_with_scheme_origin(self):
-        inp = "~/dir:https://api.example.com"
-        path, origin = parse_origin_path_item(inp)
-        assert path == expanduser("~/dir")
-        assert origin == "https://api.example.com"

@@ -99,17 +99,13 @@ class InterceptSettings:
     elif os.environ.get(env_vars.AGENT_LIFECYCLE_HOOKS_PATH):
       raw_value = os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH]
     else:
-      return None
-
-    # If there's only a single value without commas and without origin spec, return as-is
-    if raw_value and ',' not in raw_value and ':' not in raw_value:
       return raw_value
 
     # Parse list of paths with optional origins
     from .utils.origin_path import parse_lifecycle_hooks_script_paths, request_origin_from_request, origin_matches
     items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(raw_value)
     if not items:
-      return None
+      return raw_value
 
     if self.__request:
       # With request context, try to match origin first
