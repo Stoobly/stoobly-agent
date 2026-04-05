@@ -280,12 +280,12 @@ class TestLocalScaffoldE2e():
       # Ensure public dir serves a simple page to trigger a 200 response
       if not os.path.exists(workflow_command.public_dir_path):
         os.makedirs(workflow_command.public_dir_path, exist_ok=True)
-        
+
       with open(os.path.join(workflow_command.public_dir_path, 'index.html'), 'w') as f:
         f.write('Hello Hooks!')
 
       # Create a temporary lifecycle hooks file that mutates the response in after_mock
-      hooks_file_path = os.path.join(app_dir_path, 'lifecycle_hooks_temp.py')
+      hooks_file_path = workflow_command.lifecycle_hooks_path
       hooks_content = "\n".join([
         "AFTER_MOCK_RESPONSE_HEADER_NAME = 'X-After-Mock-Response-Header'",
         "AFTER_MOCK_RESPONSE_HEADER_VALUE = 'after-mock-response-value'",

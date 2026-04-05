@@ -1,3 +1,4 @@
+import ipaddress
 import re
 
 from os.path import expanduser
@@ -67,7 +68,7 @@ def parse_origin_paths(
   elif kind == 'public':
     return [PublicDirectoryPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: ignore
   elif kind == 'fixtures':
-    return [ResponseFixturesPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: 
+    return [ResponseFixturesPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: ignore
   else:
     return items
 
@@ -101,6 +102,14 @@ def request_origin_from_url(url: str) -> str:
     if not parsed.scheme or not parsed.hostname:
       return ''
     host = parsed.hostname
+    # Bracket IPv6 literals when constructing origins that may include ports
+    try:
+      ip_obj = ipaddress.ip_address(host)
+      if ip_obj.version == 6:
+        host = f"[{host}]"
+    except ValueError:
+      # Not an IP literal; leave host as-is (domain names must not be bracketed)
+      pass
     port = parsed.port
     return f"{parsed.scheme}://{host}" + (f":{port}" if port else "")
   except Exception:
