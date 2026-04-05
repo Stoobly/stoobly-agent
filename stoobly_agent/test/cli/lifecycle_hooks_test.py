@@ -433,7 +433,6 @@ class TestLifecycleHooksOriginSelection():
     def test_picks_origin_specific_when_matches(self, runner: CliRunner, scripts):
       origin = 'https://dog.ceo'
       result = runner.invoke(mock, [
-        '--lifecycle-hooks-path', scripts['default'],
         '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
         '--output', '/dev/null',
         DETERMINISTIC_GET_REQUEST_URL,
@@ -443,10 +442,8 @@ class TestLifecycleHooksOriginSelection():
       assert 'default_selected' not in result.stdout
 
     def test_picks_default_when_no_origin_match(self, runner: CliRunner, scripts):
-      non_matching_origin = 'https://example.invalid'
       result = runner.invoke(mock, [
         '--lifecycle-hooks-path', scripts['default'],
-        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
         '--output', '/dev/null',
         DETERMINISTIC_GET_REQUEST_URL,
       ])
@@ -457,7 +454,6 @@ class TestLifecycleHooksOriginSelection():
     def test_picks_origin_specific_when_matches(self, runner: CliRunner, scripts):
       origin = 'https://dog.ceo'
       result = runner.invoke(record, [
-        '--lifecycle-hooks-path', scripts['default'],
         '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
         '--output', '/dev/null',
         DETERMINISTIC_GET_REQUEST_URL,
@@ -467,10 +463,8 @@ class TestLifecycleHooksOriginSelection():
       assert 'default_selected' not in result.stdout
 
     def test_picks_default_when_no_origin_match(self, runner: CliRunner, scripts):
-      non_matching_origin = 'https://example.com'
       result = runner.invoke(record, [
         '--lifecycle-hooks-path', scripts['default'],
-        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
         '--output', '/dev/null',
         DETERMINISTIC_GET_REQUEST_URL,
       ])
@@ -488,7 +482,6 @@ class TestLifecycleHooksOriginSelection():
       recorded_request = Request.last()
       result = runner.invoke(request, [
         'test', '--format', 'json',
-        '--lifecycle-hooks-path', scripts['default'],
         '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
         recorded_request.key(),
       ])
@@ -505,8 +498,6 @@ class TestLifecycleHooksOriginSelection():
       recorded_request = Request.last()
       result = runner.invoke(request, [
         'test', '--format', 'json',
-        # Put origin-specific first to verify fallback picks the first without origin
-        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
         '--lifecycle-hooks-path', scripts['default'],
         recorded_request.key(),
       ])

@@ -112,7 +112,7 @@ class InterceptSettings:
       return None
 
     if self.__request:
-      # With request context, try to match origin first; fallback to first without origin; finally first item
+      # With request context, try to match origin first
       req_origin = request_origin_from_request(self.__request)
       for item in items:
         origin = item.get('origin')
