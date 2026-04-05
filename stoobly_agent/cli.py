@@ -82,8 +82,8 @@ def init(**kwargs):
 ''')
 @click.option(
   '--lifecycle-hooks-path',
-  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-  help='Path to lifecycle hooks script.'
+  multiple=True,
+  help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
 )
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
@@ -109,6 +109,7 @@ def run(**kwargs):
     import dotenv
 
     from .app.proxy.run import run as run_proxy
+    from .app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path, normalize_lifecycle_hooks_path
 
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
@@ -132,7 +133,9 @@ def run(**kwargs):
       settings.proxy.intercept.mode = kwargs['intercept_mode']
 
     if kwargs.get('lifecycle_hooks_path'):
-      os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
+      os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = normalize_lifecycle_hooks_path(
+        kwargs['lifecycle_hooks_path']
+      )
 
     if kwargs.get('public_dir_path'):
       # Join multiple paths with commas

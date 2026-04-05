@@ -14,6 +14,7 @@ from stoobly_agent.config.constants import custom_headers, env_vars
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.test.test_helper import reset
+from pathlib import Path
 
 
 @pytest.fixture(autouse=True)
@@ -734,3 +735,109 @@ class TestResponseFixturesPath:
         
         intercept_settings = InterceptSettings(mock_settings, mock_request)
         assert intercept_settings.response_fixtures_path == header_path
+
+
+class TestLifecycleHooksPath:
+    def _base_settings(self, mock_settings, mock_data_rules):
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        return mock_settings
+
+    def test_header_takes_precedence_over_env_single_value(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Header value should override env var for single simple path."""
+        header_path = '/header/lifecycle_hooks.py'
+        env_path = '/env/lifecycle_hooks.py'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, env_path)
+
+        mock_request.headers = Headers(**{custom_headers.LIFECYCLE_HOOKS_PATH: header_path})
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path == header_path
+
+    def test_env_used_when_header_not_set_single_value(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Env var used when header not present for single simple path."""
+        env_path = '/env/lifecycle_hooks.py'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, env_path)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path == env_path
+
+    def test_returns_none_when_neither_header_nor_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """Returns None when no header or env provided."""
+        monkeypatch.delenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raising=False)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path is None
+
+    def test_multi_without_request_prefers_first_without_origin(self, mock_settings, mock_data_rules, monkeypatch):
+        """When no request provided, prefer first item without origin; else first item."""
+        raw = '/path/with-origin.py:https://a.example.com,/preferred/no-origin.py,/other.py:https://b.example.com'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings)
+        assert intercept_settings.lifecycle_hooks_path == '/preferred/no-origin.py'
+
+    def test_multi_without_request_fallback_first_item_when_all_have_origin(self, mock_settings, mock_data_rules, monkeypatch):
+        raw = '/first.py:https://a.example.com,/second.py:https://b.example.com'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings)
+        assert intercept_settings.lifecycle_hooks_path == '/first.py'
+
+    def test_multi_with_request_matches_regex_origin_first(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        """With request, select item whose origin regex matches request origin."""
+        # mock_request fixture yields https://example.com:443/test => origin 'https://example.com:443'
+        raw = '/match.py:https://example\\.com(:443)?,/fallback.py'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        # Ensure PROXY_MODE is set so InterceptSettings doesn't default to NONE path influences
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path == '/match.py'
+
+    def test_multi_with_request_fallback_to_first_without_origin_when_no_match(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        raw = '/unmatched1.py:https://a.example.com,/no-origin.py,/unmatched2.py:https://b.example.com'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path == '/no-origin.py'
+
+    def test_multi_with_request_final_fallback_first_item_when_all_have_origin_and_no_match(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        raw = '/first.py:https://a.example.com,/second.py:https://b.example.com'
+        monkeypatch.setenv(env_vars.AGENT_LIFECYCLE_HOOKS_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks_path == '/first.py'
+
+    def test_initialize_lifecycle_hooks_loads_when_file_exists(self, mock_settings, mock_data_rules, mock_request, tmp_path):
+        """Verify __initialize_lifecycle_hooks loads module dict from script path."""
+        # Create a temporary hooks script
+        script_path = tmp_path / 'lifecycle_hooks.py'
+        script_path.write_text('VALUE = 42\n')
+
+        mock_request.headers = Headers(**{custom_headers.LIFECYCLE_HOOKS_PATH: str(script_path)})
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        # Access lifecycle_hooks to ensure it loaded
+        hooks = intercept_settings.lifecycle_hooks
+        assert isinstance(hooks, dict)
+        assert hooks.get('VALUE') == 42
+
+    def test_initialize_lifecycle_hooks_silent_when_file_missing(self, mock_settings, mock_data_rules, mock_request, tmp_path):
+        """Missing file should not raise and lifecycle_hooks should be empty dict."""
+        missing_path = tmp_path / 'does_not_exist.py'
+        mock_request.headers = Headers(**{custom_headers.LIFECYCLE_HOOKS_PATH: str(missing_path)})
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.lifecycle_hooks == {}
