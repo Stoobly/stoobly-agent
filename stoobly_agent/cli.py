@@ -316,7 +316,7 @@ def __build_request_from_curl(**kwargs):
   
   headers = {}
   for header in kwargs['header']:
-    toks = header.split(':')
+    toks = header.split(':', 1)
 
     if len(toks) != 2:
       continue

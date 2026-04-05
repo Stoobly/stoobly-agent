@@ -122,7 +122,6 @@ class InterceptSettings:
     for item in items:
       if not item.get('origin'):
         return item['path']
-    return items[0]['path']
 
   @property
   def lifecycle_hooks(self):

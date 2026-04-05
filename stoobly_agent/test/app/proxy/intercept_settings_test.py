@@ -784,7 +784,7 @@ class TestLifecycleHooksPath:
         self._base_settings(mock_settings, mock_data_rules)
 
         intercept_settings = InterceptSettings(mock_settings)
-        assert intercept_settings.lifecycle_hooks_path == '/first.py'
+        assert intercept_settings.lifecycle_hooks_path is None
 
     def test_multi_with_request_matches_regex_origin_first(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
         """With request, select item whose origin regex matches request origin."""
@@ -814,7 +814,7 @@ class TestLifecycleHooksPath:
 
         mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
         intercept_settings = InterceptSettings(mock_settings, mock_request)
-        assert intercept_settings.lifecycle_hooks_path == '/first.py'
+        assert intercept_settings.lifecycle_hooks_path is None
 
     def test_initialize_lifecycle_hooks_loads_when_file_exists(self, mock_settings, mock_data_rules, mock_request, tmp_path):
         """Verify __initialize_lifecycle_hooks loads module dict from script path."""

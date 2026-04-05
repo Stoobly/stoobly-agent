@@ -10,6 +10,7 @@ from pathlib import Path
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.cli.setting_cli import setting
+from stoobly_agent.app.proxy.utils.origin_path import request_origin_from_url
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants import mode, custom_headers
 from stoobly_agent.cli import mock, record
@@ -281,13 +282,25 @@ class TestPathHeaders():
     """Get path to public directory."""
     return str(mock_data_dir / 'scaffold')
 
-  def test_it_uses_response_fixtures_from_specified_file_with_header(self, runner: CliRunner, response_fixtures_path, mock_data_dir):
-    """Test that mock uses actual response fixtures from the specified file and returns fixture data."""
+  @pytest.mark.parametrize("use_header", [True, False])
+  @pytest.mark.parametrize("append_origin", [False, True])
+  def test_it_uses_response_fixtures_from_specified_file(self, runner: CliRunner, response_fixtures_path, mock_data_dir, use_header, append_origin):
+    """Test that mock uses response fixtures from the specified file via header or option, with and without origin."""
+    origin_suffix = f":{request_origin_from_url(self.fixtures_url)}" if append_origin else ""
+    path_with_optional_origin = f"{response_fixtures_path}{origin_suffix}"
+    # Build args depending on whether we pass via header or option
+    if use_header:
+      args = [
+        self.fixtures_url,
+        '-H', f"{custom_headers.RESPONSE_FIXTURES_PATH}: {path_with_optional_origin}"
+      ]
+    else:
+      args = [
+        '--response-fixtures-path', path_with_optional_origin,
+        self.fixtures_url,
+      ]
     # Mock request matching the fixture URL
-    mock_result = runner.invoke(mock, [
-      self.fixtures_url,
-      '-H', f"{custom_headers.RESPONSE_FIXTURES_PATH}: {response_fixtures_path}"
-    ])
+    mock_result = runner.invoke(mock, args)
     
     # Should succeed
     assert mock_result.exit_code == 0, \
@@ -303,35 +316,25 @@ class TestPathHeaders():
     assert expected_json in output, \
            f"Expected fixture content not found. Expected: {expected_json}, Output: {output}"
 
-  def test_it_uses_response_fixtures_from_specified_file_with_options(self, runner: CliRunner, response_fixtures_path, mock_data_dir):
-    """Test that mock uses actual response fixtures from the specified file and returns fixture data."""
-    # Mock request matching the fixture URL
-    mock_result = runner.invoke(mock, [
-      '--response-fixtures-path', response_fixtures_path,
-      self.fixtures_url,
-    ])
-    
-    # Should succeed
-    assert mock_result.exit_code == 0, \
-           f"Command failed. Output: {mock_result.output}"
-    
-    # Read the actual test_response.json file and verify the response matches
-    test_response_path = mock_data_dir / 'test_response.json'
-    with open(test_response_path, 'r') as f:
-      expected_json = f.read().strip()
-    
-    output = mock_result.output
-    # Verify the response contains the exact content from the fixture file
-    assert expected_json in output, \
-           f"Expected fixture content not found. Expected: {expected_json}, Output: {output}"
-
-  def test_it_serves_static_file_from_public_directory_with_header(self, runner: CliRunner, public_dir_path, mock_data_dir):
-    """Test that mock serves actual static files from public directory and returns file content."""
+  @pytest.mark.parametrize("use_header", [True, False])
+  @pytest.mark.parametrize("append_origin", [False, True])
+  def test_it_serves_static_file_from_public_directory(self, runner: CliRunner, public_dir_path, mock_data_dir, use_header, append_origin):
+    """Test that mock serves static files from public directory via header or option, with and without origin."""
+    origin_suffix = f":{request_origin_from_url(self.public_file_url)}" if append_origin else ""
+    path_with_optional_origin = f"{public_dir_path}{origin_suffix}"
+    # Build args depending on whether we pass via header or option
+    if use_header:
+      args = [
+        self.public_file_url,
+        '-H', f"{custom_headers.PUBLIC_DIRECTORY_PATH}: {path_with_optional_origin}"
+      ]
+    else:
+      args = [
+        '--public-dir-path', path_with_optional_origin,
+        self.public_file_url,
+      ]
     # Mock request for index.html from public directory
-    mock_result = runner.invoke(mock, [
-      self.public_file_url,
-      '-H', f"{custom_headers.PUBLIC_DIRECTORY_PATH}: {public_dir_path}"
-    ])
+    mock_result = runner.invoke(mock, args)
     
     # Should succeed
     assert mock_result.exit_code == 0
@@ -344,32 +347,25 @@ class TestPathHeaders():
     output = mock_result.output
     assert output == expected_content
 
-  def test_it_serves_static_file_from_public_directory_with_options(self, runner: CliRunner, public_dir_path, mock_data_dir):
-    """Test that mock serves actual static files from public directory and returns file content."""
-    # Mock request for index.html from public directory
-    mock_result = runner.invoke(mock, [
-      '--public-dir-path', public_dir_path,
-      self.public_file_url,
-    ])
-    
-    # Should succeed
-    assert mock_result.exit_code == 0
-    
-    # Read the actual index.html file and verify the response contains its content
-    index_html_path = mock_data_dir / 'scaffold' / 'index.html'
-    with open(index_html_path, 'r') as f:
-      expected_content = f.read()
-    
-    output = mock_result.output
-    assert output == expected_content
-
-  def test_it_executes_lifecycle_hooks_from_specified_file(self, runner: CliRunner, recorded_request, lifecycle_hooks_path):
-    """Test that mock executes actual lifecycle hooks from the specified file and verifies behavior."""
-    # Mock request with the lifecycle hooks path header pointing to actual file
-    mock_result = runner.invoke(mock, [
-      self.url,
-      '-H', f"{custom_headers.LIFECYCLE_HOOKS_PATH}: {lifecycle_hooks_path}"
-    ])
+  @pytest.mark.parametrize("use_header", [True, False])
+  @pytest.mark.parametrize("append_origin", [False, True])
+  def test_it_executes_lifecycle_hooks_from_specified_file(self, runner: CliRunner, recorded_request, lifecycle_hooks_path, use_header, append_origin):
+    """Test that mock executes lifecycle hooks from the specified file, with/without origin, via header or option."""
+    origin_suffix = f":{request_origin_from_url(self.url)}" if append_origin else ""
+    path_with_optional_origin = f"{lifecycle_hooks_path}{origin_suffix}"
+    # Build args depending on whether we pass via header or option
+    if use_header:
+      args = [
+        self.url,
+        '-H', f"{custom_headers.LIFECYCLE_HOOKS_PATH}: {path_with_optional_origin}"
+      ]
+    else:
+      args = [
+        '--lifecycle-hooks-path', path_with_optional_origin,
+        self.url,
+      ]
+    # Mock request with the lifecycle hooks path passed appropriately
+    mock_result = runner.invoke(mock, args)
     
     # Should succeed
     assert mock_result.exit_code == 0
