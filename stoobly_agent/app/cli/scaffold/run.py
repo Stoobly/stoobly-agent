@@ -21,10 +21,11 @@ def iter_commands(
   Args:
     commands: List of command objects to process
     handle_command: Callback function called for each command.
-                   Receives (command,  public_directory_paths, response_fixtures_paths)
+                   Receives (command,  public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths)
   """
   public_directory_paths = []
   response_fixtures_paths = []
+  lifecycle_hooks_paths = []
 
   for command in commands:
     url = command.service_config.url
@@ -48,6 +49,18 @@ def iter_commands(
           response_fixtures_path = command.response_fixtures_path
 
         response_fixtures_paths.append(f"{response_fixtures_path}:{url}")
+
+      # Resolve lifecycle hooks script path from command property
+      lifecycle_hooks_path = command.lifecycle_hooks_path
+      if os.path.exists(lifecycle_hooks_path):
+        lifecycle_hooks_paths.append('--lifecycle-hooks-path')
+
+        if containerized:
+          relative_hooks_path = os.path.relpath(lifecycle_hooks_path, command.app.context_dir_path)
+        else:
+          relative_hooks_path = lifecycle_hooks_path
+
+        lifecycle_hooks_paths.append(f"{relative_hooks_path}:{url}")
 
   for command in commands:
     if handle_command:
@@ -75,7 +88,7 @@ def iter_commands(
     # If second from last command, run up_command i.e. right before entrypoint
     if len(commands) >= 2 and command == commands[-2]:
       if handle_before_entrypoint:
-        handle_before_entrypoint(public_directory_paths, response_fixtures_paths)
+        handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths)
 
 def run_options(app_config: AppConfig, **extra_options):
   """
@@ -105,5 +118,8 @@ def run_options(app_config: AppConfig, **extra_options):
 
   if extra_options.get('response_fixtures_paths'):
     options.extend(extra_options['response_fixtures_paths'])
+
+  if extra_options.get('lifecycle_hooks_paths'):
+    options.extend(extra_options['lifecycle_hooks_paths'])
 
   return options

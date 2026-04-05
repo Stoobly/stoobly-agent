@@ -8,6 +8,7 @@ from .app import App
 from .constants import BIN_FOLDER_NAME, CONFIG_FILE, DOTENV_FILE, FIXTURES_FILE_NAME, PUBLIC_FOLDER_NAME
 from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW
 from .service_command import ServiceCommand
+from .templates.constants import CUSTOM_LIFECYCLE_HOOKS
 from .workflow_config import WorkflowConfig
 
 LOG_ID = 'WorkflowCommand'
@@ -97,6 +98,10 @@ class WorkflowCommand(ServiceCommand):
   @property
   def response_fixtures_path(self):
     return os.path.join(self.workflow_path, FIXTURES_FILE_NAME)
+
+  @property
+  def lifecycle_hooks_path(self):
+    return os.path.join(self.workflow_path, CUSTOM_LIFECYCLE_HOOKS)
 
   @property
   def workflow_config(self):

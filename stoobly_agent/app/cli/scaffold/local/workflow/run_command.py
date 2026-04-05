@@ -141,8 +141,13 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     def on_service_up(command):
       command.service_up(**options)
 
-    def on_before_entrypoint(public_directory_paths, response_fixtures_paths):
-      self.__up_command(public_directory_paths, response_fixtures_paths, **options)
+    def on_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
+      self.__up_command(
+        lifecycle_hooks_paths,
+        public_directory_paths, 
+        response_fixtures_paths,
+        **options
+      )
 
     iter_commands(
       commands,
@@ -330,7 +335,12 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           if handle_stale:
             handle_stale(folder, pid, pid_file_path)
 
-  def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
+  def __up_command(self,
+    lifecycle_hooks_paths: List[str],
+    public_directory_paths: List[str],
+    response_fixtures_paths: List[str],
+    **options: WorkflowUpOptions
+  ):
     # Write .env before starting proxy so it can load WORKFLOW_NAME, etc.
     self.write_env(**options)
 
@@ -343,6 +353,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     options = run_options(
       self.app_config,
       log_level=options.get('log_level'),
+      lifecycle_hooks_paths=lifecycle_hooks_paths,
       public_directory_paths=public_directory_paths,
       response_fixtures_paths=response_fixtures_paths,
     )
