@@ -20,8 +20,11 @@ def iter_commands(
   
   Args:
     commands: List of command objects to process
-    handle_command: Callback function called for each command.
-                   Receives (command,  public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths)
+    handle_before_entrypoint: Optional callback invoked once before the entrypoint
+                              (on the second-to-last command). Receives
+                              (public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths).
+    handle_command: Optional callback invoked for each command. Receives (command).
+    containerized: Whether to compute relative paths for containerized runs.
   """
   public_directory_paths = []
   response_fixtures_paths = []

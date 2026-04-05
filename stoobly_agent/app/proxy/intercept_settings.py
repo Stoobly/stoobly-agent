@@ -101,11 +101,20 @@ class InterceptSettings:
     else:
       return raw_value
 
+    # Normalize whitespace; treat empty/whitespace-only as unset
+    if isinstance(raw_value, str):
+      normalized_value = raw_value.strip()
+    else:
+      normalized_value = str(raw_value).strip() if raw_value is not None else ''
+
+    if not normalized_value:
+      return None
+
     # Parse list of paths with optional origins
     from .utils.origin_path import parse_lifecycle_hooks_script_paths, request_origin_from_request, origin_matches
-    items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(raw_value)
+    items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(normalized_value)
     if not items:
-      return raw_value
+      return None
 
     if self.__request:
       # With request context, try to match origin first
