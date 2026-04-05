@@ -391,3 +391,125 @@ class TestTestModifications():
       )
       # The after_test hook prints this marker if it sees the before_test header
       assert BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER in test_result.stdout
+
+class TestLifecycleHooksOriginSelection():
+  """
+  Verify lifecycle hooks selection honors origin-specific entries:
+  - When an origin-qualified entry matches the request origin, it is selected.
+  - When no origin-qualified entry matches, the first entry without origin is selected.
+  """
+
+  @pytest.fixture(scope='function', autouse=True)
+  def settings(self):
+    return reset()
+
+  @pytest.fixture(scope='function')
+  def scripts(self, tmp_path: Path):
+    # Create two simple lifecycle hooks scripts with distinct markers
+    default_script = tmp_path / 'lifecycle_hooks_default.py'
+    origin_script = tmp_path / 'lifecycle_hooks_origin.py'
+
+    default_script.write_text(
+      "\n".join([
+        "from stoobly_agent.app.proxy.context import InterceptContext",
+        "def handle_before_request(context: InterceptContext):",
+        "  print('default_selected')",
+      ])
+    )
+    origin_script.write_text(
+      "\n".join([
+        "from stoobly_agent.app.proxy.context import InterceptContext",
+        "def handle_before_request(context: InterceptContext):",
+        "  print('origin_selected')",
+      ])
+    )
+
+    return {
+      'default': str(default_script),
+      'origin': str(origin_script),
+    }
+
+  class TestMock():
+    def test_picks_origin_specific_when_matches(self, runner: CliRunner, scripts):
+      origin = 'https://dog.ceo'
+      result = runner.invoke(mock, [
+        '--lifecycle-hooks-path', scripts['default'],
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
+        '--output', '/dev/null',
+        DETERMINISTIC_GET_REQUEST_URL,
+      ])
+      # Some environments may return NOT_FOUND for mock; still verify hook selection
+      assert 'origin_selected' in result.stdout
+      assert 'default_selected' not in result.stdout
+
+    def test_picks_default_when_no_origin_match(self, runner: CliRunner, scripts):
+      non_matching_origin = 'https://example.invalid'
+      result = runner.invoke(mock, [
+        '--lifecycle-hooks-path', scripts['default'],
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
+        '--output', '/dev/null',
+        DETERMINISTIC_GET_REQUEST_URL,
+      ])
+      assert 'default_selected' in result.stdout
+      assert 'origin_selected' not in result.stdout
+
+  class TestRecord():
+    def test_picks_origin_specific_when_matches(self, runner: CliRunner, scripts):
+      origin = 'https://dog.ceo'
+      result = runner.invoke(record, [
+        '--lifecycle-hooks-path', scripts['default'],
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
+        '--output', '/dev/null',
+        DETERMINISTIC_GET_REQUEST_URL,
+      ])
+      assert result.exit_code == 0
+      assert 'origin_selected' in result.stdout
+      assert 'default_selected' not in result.stdout
+
+    def test_picks_default_when_no_origin_match(self, runner: CliRunner, scripts):
+      non_matching_origin = 'https://example.com'
+      result = runner.invoke(record, [
+        '--lifecycle-hooks-path', scripts['default'],
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
+        '--output', '/dev/null',
+        DETERMINISTIC_GET_REQUEST_URL,
+      ])
+      assert result.exit_code == 0
+      assert 'default_selected' in result.stdout
+      assert 'origin_selected' not in result.stdout
+
+  class TestRequestTest():
+    def test_picks_origin_specific_when_matches(self, runner: CliRunner, scripts):
+      from stoobly_agent.app.cli.request_cli import request
+      origin = 'https://dog.ceo'
+      # First record to create a request to test
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+      recorded_request = Request.last()
+      result = runner.invoke(request, [
+        'test', '--format', 'json',
+        '--lifecycle-hooks-path', scripts['default'],
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{origin}",
+        recorded_request.key(),
+      ])
+      assert result.exit_code == 0
+      assert 'origin_selected' in result.stdout.split('{')[0]
+      assert 'default_selected' not in result.stdout.split('{')[0]
+
+    def test_picks_default_when_no_origin_match(self, runner: CliRunner, scripts):
+      from stoobly_agent.app.cli.request_cli import request
+      non_matching_origin = 'https://example.invalid'
+      # First record to create a request to test
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+      recorded_request = Request.last()
+      result = runner.invoke(request, [
+        'test', '--format', 'json',
+        # Put origin-specific first to verify fallback picks the first without origin
+        '--lifecycle-hooks-path', f"{scripts['origin']}:{non_matching_origin}",
+        '--lifecycle-hooks-path', scripts['default'],
+        recorded_request.key(),
+      ])
+      assert result.exit_code == 0
+      assert 'default_selected' in result.stdout.split('{')[0]
+      assert 'origin_selected' not in result.stdout.split('{')[0]

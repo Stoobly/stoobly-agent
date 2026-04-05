@@ -4,7 +4,11 @@ import pdb
 from time import time
 from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
-from stoobly_agent.app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path
+from stoobly_agent.app.cli.helpers.options import (
+  normalize_public_dir_path,
+  normalize_response_fixtures_path,
+  normalize_lifecycle_hooks_path,
+)
 
 if TYPE_CHECKING:
     from requests import Response
@@ -65,7 +69,8 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
     headers[custom_headers.ALIAS_RESOLVE_STRATEGY] = options['alias_resolve_strategy']
 
   if options.get('lifecycle_hooks_path'):
-    __handle_path_header(custom_headers.LIFECYCLE_HOOKS_PATH, options['lifecycle_hooks_path'], headers) 
+    lifecycle_hooks_path = normalize_lifecycle_hooks_path(options['lifecycle_hooks_path'])
+    __handle_path_header(custom_headers.LIFECYCLE_HOOKS_PATH, lifecycle_hooks_path, headers) 
 
   if options.get('mode'):
     __handle_mode_option(options['mode'], request, headers)
@@ -174,13 +179,29 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
   return res
 
 def __handle_path_header(header_name: str, script_path: str, headers):
+  """
+  Set header value for path-like options.
+  - Supports single or comma-separated list
+  - Preserves optional ':<ORIGIN>' suffix per item
+  - Absolutizes each path item individually
+  """
   if not script_path:
     return
 
-  if not os.path.isabs(script_path):
-    script_path = os.path.join(os.path.abspath('.'), script_path)
+  def absolutize_item(item: str) -> str:
+    from stoobly_agent.app.proxy.utils.origin_path import parse_origin_path_item
+    path, origin = parse_origin_path_item(item)
+    if not path:
+      return item
+    if not os.path.isabs(path):
+      path = os.path.join(os.path.abspath('.'), path)
+    return f"{path}:{origin}" if origin else path
 
-  headers[header_name] = script_path
+  if ',' in script_path:
+    items = [i.strip() for i in script_path.split(',') if i.strip()]
+    headers[header_name] = ','.join(absolutize_item(i) for i in items)
+  else:
+    headers[header_name] = absolutize_item(script_path)
 
 def __handle_mode_option(_mode, request: Request, headers):
   headers[custom_headers.PROXY_MODE] = _mode

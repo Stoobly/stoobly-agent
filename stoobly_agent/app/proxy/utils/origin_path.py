@@ -97,7 +97,12 @@ def request_origin_from_url(url: str) -> str:
   try:
     from urllib.parse import urlparse
     parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")
+    # Guard against malformed URLs where hostname or scheme may be missing
+    if not parsed.scheme or not parsed.hostname:
+      return ''
+    host = parsed.hostname
+    port = parsed.port
+    return f"{parsed.scheme}://{host}" + (f":{port}" if port else "")
   except Exception:
     return ''
 
@@ -112,7 +117,14 @@ def request_origin_from_request(request) -> str:
 
 def origin_matches(pattern: str, req_origin: str) -> bool:
   """
-  Regex match origin pattern to request origin. Falls back to equality on invalid regex.
+  Regex match origin pattern to request origin.
+  
+  Security note:
+  - The `pattern` is expected to come from a trusted configuration source, not untrusted user input.
+  - Catastrophic backtracking in regular expressions can cause performance issues; if the pattern
+    is untrusted, validate or constrain it before use.
+  
+  Falls back to equality on invalid regex.
   """
   try:
     return bool(re.fullmatch(pattern, req_origin))
