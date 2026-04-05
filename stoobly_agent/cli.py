@@ -6,7 +6,6 @@ import sys
 
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
-from stoobly_agent.app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV

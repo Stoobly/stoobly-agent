@@ -1,11 +1,10 @@
 import base64
 import json
-import os
 import re
 import pytest
-from unittest.mock import MagicMock, Mock
 
 from mitmproxy.http import Headers, Request as MitmproxyRequest
+from unittest.mock import MagicMock
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
@@ -14,7 +13,6 @@ from stoobly_agent.config.constants import custom_headers, env_vars
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.test.test_helper import reset
-from pathlib import Path
 
 
 @pytest.fixture(autouse=True)

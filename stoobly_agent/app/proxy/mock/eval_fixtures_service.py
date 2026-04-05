@@ -5,8 +5,7 @@ import re
 import yaml
 
 from io import BytesIO
-from typing import TYPE_CHECKING, List, Optional, Union
-from urllib.parse import urlparse
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from requests import Response
@@ -15,7 +14,7 @@ if TYPE_CHECKING:
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
-from .types import MockOptions, PublicDirectoryPath, ResponseFixturesPath
+from .types import MockOptions
 from ..utils.origin_path import parse_public_directory_paths, parse_response_fixtures_paths, request_origin_from_request, origin_matches
 
 LOG_ID = 'Fixture'
