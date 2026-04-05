@@ -238,15 +238,11 @@ def run(**kwargs):
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
-@click.option(
-  '--lifecycle-hooks-path',
-  multiple=True,
-  help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
-)
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
-@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--public-dir-path', help='Path to public files. Used for mocking requests.')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
@@ -282,11 +278,7 @@ def mock(**kwargs):
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
-@click.option(
-  '--lifecycle-hooks-path',
-  multiple=True,
-  help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
-)
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('-X', '--request', default='GET', help='Specify request command to use')

@@ -54,7 +54,7 @@ def create(**kwargs):
 @click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
 @ConditionalDecorator(lambda f: click.option('--group-by', help='Repeat for each alias name.')(f), is_remote)
 @click.option('--host', help='Rewrite request host.')
-@click.option('--lifecycle-hooks-path', multiple=True, help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
     help=f'''
@@ -168,7 +168,7 @@ if is_local:
 @click.option('--format', type=click.Choice([JSON_FORMAT]), help='Format replay response.')
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--host', help='Rewrite request host.')
-@click.option('--lifecycle-hooks-path', multiple=True, help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option(
     '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), 
     help=f'''
@@ -181,10 +181,10 @@ if is_local:
     Configure which tests to print. Defaults to {test_output_level.PASSED}.
   '''
 )
-@click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--public-dir-path', help='Path to public files. Used for mocking requests.')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote)
 @ConditionalDecorator(lambda f: click.option('--report-key', help='Save results to report.')(f), is_remote)
-@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Save results.')(f), is_remote)
 @click.option('--scheme', help='Rewrite request scheme.')
 @click.option(
