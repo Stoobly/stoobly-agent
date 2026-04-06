@@ -280,7 +280,14 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def __handle_up_active(self, folder: str, pid: str, pid_file_path: str):
     # Allow re-running the same workflow, bring workflow down first
     if pid_file_path == self.pid_file_path and os.path.exists(pid_file_path):
+      # Important: At this point, the app has already been denormalized 
+      # Set copy_on_workflow_up to False to prevent the denormalize.down from being called
+      # Otherwise the app will not be denormalized after this
+      copy_on_workflow_up = self.app_config.copy_on_workflow_up
+      self.app_config.copy_on_workflow_up = False
       self.down()
+      # Restore copy_on_workflow_up
+      self.app_config.copy_on_workflow_up = copy_on_workflow_up
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name
@@ -346,6 +353,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
+    # Uncomment the following line for local development
+    #command = ['poetry', '-C', '<PATH-TO-STOOBLY-AGENT-REPO>', 'run', 'stoobly-agent', 'run']
 
     # Use the log file path as the detached output file
     command.extend(['--detached', self.log_file_path])
@@ -380,11 +389,12 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # Execute directly
       try:
         # Run the command with --detached option
+        # cwd has to be the context dir path since the workflow path is mounted as a volume
         result = subprocess.run(
           command,
           capture_output=True,
           text=True,
-          cwd=self.workflow_path,
+          cwd=self.context_dir_path,
         )
 
         # Provide some time for the process to start
