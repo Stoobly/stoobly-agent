@@ -37,7 +37,12 @@ def iter_commands(
         public_directory_paths.append('--public-dir-path')
 
         if containerized:
-          public_dir_path = os.path.relpath(command.public_dir_path, command.app.context_dir_path)
+          # denormalized paths are mounted as volumes in the container as normalized paths
+          # Since this is containerized, use the normalized path 
+          public_dir_path = os.path.relpath(
+            command.normalize_path(command.public_dir_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
         else:
           public_dir_path = command.public_dir_path
 
@@ -47,7 +52,10 @@ def iter_commands(
         response_fixtures_paths.append('--response-fixtures-path')
 
         if containerized:
-          response_fixtures_path = os.path.relpath(command.response_fixtures_path, command.app.context_dir_path)
+          response_fixtures_path = os.path.relpath(
+            command.normalize_path(command.response_fixtures_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
         else:
           response_fixtures_path = command.response_fixtures_path
 
@@ -59,7 +67,10 @@ def iter_commands(
         lifecycle_hooks_paths.append('--lifecycle-hooks-path')
 
         if containerized:
-          relative_hooks_path = os.path.relpath(lifecycle_hooks_path, command.app.context_dir_path)
+          relative_hooks_path = os.path.relpath(
+            command.normalize_path(lifecycle_hooks_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
         else:
           relative_hooks_path = lifecycle_hooks_path
 

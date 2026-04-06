@@ -155,3 +155,6 @@ class WorkflowCommand(ServiceCommand):
     _config.update(self.workflow_config)
     _config.update(_c)
     return _config
+  
+  def normalize_path(self, path: str):
+    return path.replace(self.app.runtime_app_data_dir.path, self.app.app_data_dir.path)
