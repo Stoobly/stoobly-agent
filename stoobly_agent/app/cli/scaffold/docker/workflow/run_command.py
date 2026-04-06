@@ -7,10 +7,10 @@ import time
 from typing import List
 from types import FunctionType
 
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME
+from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_REVERSE, WORKFLOW_CONTAINER_SERVICE, WORKFLOW_NAME
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_SERVICES_DOCKER
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_SERVICES_DOCKER
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
@@ -208,17 +208,33 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     
     # Filter services based on options
     filtered_services = []
-    for service in self.services:
-      if len(options.get('service', [])) == 0:
-        # If no filter is specified, ignore CORE_SERVICES  
-        if service in CORE_SERVICES_DOCKER:
-          continue
-      else:
-        # If a filter is specified, ignore all other services
-        if service not in options.get('service', []):
-          continue
-      filtered_services.append(service)
-    
+
+    if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+      for service in self.services:
+        if len(options.get('service', [])) == 0:
+          # If no filter is specified, ignore CORE_SERVICES  
+          if service in CORE_SERVICES_DOCKER:
+            continue
+        else:
+          # If a filter is specified, ignore all other services
+          if service not in options.get('service', []):
+            continue
+
+        filtered_services.append(CORE_GATEWAY_SERVICE_NAME)
+    else:
+      options['container'] = [WORKFLOW_CONTAINER_SERVICE]
+      for service in self.services:
+        if len(options.get('service', [])) == 0:
+          # If no filter is specified, ignore all other services except the gateway
+          if service != CORE_GATEWAY_SERVICE_NAME:
+            continue 
+        else:
+          # If a filter is specified, ignore all other services
+          if service not in options.get('service', []):
+            continue
+
+        filtered_services.append(service)
+
     # Create individual service commands and get their log commands
     commands = []
     for service in filtered_services:

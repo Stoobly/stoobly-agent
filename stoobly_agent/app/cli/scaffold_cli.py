@@ -489,7 +489,7 @@ def logs(**kwargs):
     kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
 
   services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+    app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
   script = __build_script(app, **kwargs)
