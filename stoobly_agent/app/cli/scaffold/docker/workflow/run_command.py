@@ -7,7 +7,7 @@ import time
 from typing import List
 from types import FunctionType
 
-from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_REVERSE, WORKFLOW_CONTAINER_SERVICE, WORKFLOW_NAME
+from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_REVERSE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_CONTAINER_SERVICE, WORKFLOW_NAME
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_SERVICES_DOCKER
@@ -210,6 +210,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     filtered_services = []
 
     if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+      if len(options.get('container', [])) == 0:
+        options['container'] = [WORKFLOW_CONTAINER_PROXY]
+
       for service in self.services:
         if len(options.get('service', [])) == 0:
           # If no filter is specified, ignore CORE_SERVICES  
@@ -222,7 +225,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
         filtered_services.append(service)
     else:
-      options['container'] = [WORKFLOW_CONTAINER_SERVICE]
+      if len(options.get('container', [])) == 0:
+        options['container'] = [WORKFLOW_CONTAINER_SERVICE]
+
       for service in self.services:
         if len(options.get('service', [])) == 0:
           # If no filter is specified, ignore all other services except the gateway
