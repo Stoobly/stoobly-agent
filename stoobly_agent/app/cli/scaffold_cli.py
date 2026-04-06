@@ -117,6 +117,13 @@ def create(**kwargs):
     click.echo(error_message, err=True)
     sys.exit(1)
 
+  # Validate copy-on-workflow-up can only be used with docker runtime
+  # This flag is meant to support parallel workflow runs. However ports will conflict for local runtime.
+  if kwargs.get('runtime') != RUNTIME_DOCKER and kwargs.get('copy_on_workflow_up'):
+    error_message = f"Error: --copy-on-workflow-up is only supported for {RUNTIME_DOCKER} runtime."
+    click.echo(error_message, err=True)
+    sys.exit(1)
+
   __validate_app_dir(kwargs['app_dir_path'])
 
   app = App(kwargs['app_dir_path'])

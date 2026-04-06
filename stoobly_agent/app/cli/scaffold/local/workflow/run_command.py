@@ -391,12 +391,13 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # Execute directly
       try:
         # Run the command with --detached option
-        # cwd has to be the context dir path since the workflow path is mounted as a volume
+        # TODO: cwd should be the context_dir_path since the workflow path is mounted as a volume
+        # This is ok so long as --copy-on-workflow-up is not used
         result = subprocess.run(
           command,
           capture_output=True,
           text=True,
-          cwd=self.context_dir_path,
+          cwd=self.workflow_path,
         )
 
         # Provide some time for the process to start
