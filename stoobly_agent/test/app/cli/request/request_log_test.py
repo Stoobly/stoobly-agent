@@ -78,6 +78,17 @@ def find_log_entry(output: str, message: str, method: str = None) -> Optional[di
     return None
 
 
+def wait_for_log_output(runner: CliRunner, retries: int = 10, delay_s: float = 0.2) -> str:
+    """Poll request logs until output is available, reducing async logger race conditions."""
+    for _ in range(retries):
+        result = runner.invoke(request, ['logs', 'list'])
+        if result.exit_code == 0 and result.output.strip():
+            return result.output
+        time.sleep(delay_s)
+
+    # Return the latest output to keep failure messages informative.
+    return runner.invoke(request, ['logs', 'list']).output
+
 @pytest.mark.e2e
 class TestRequestLogE2e():
     """E2e tests for non-scaffold request log commands using stoobly-agent run."""
@@ -162,12 +173,9 @@ class TestRequestLogE2e():
 
         assert res.status_code == NOT_FOUND
 
-        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
 
-        result = runner.invoke(request, ['logs', 'list'])
-        assert result.exit_code == 0
-
-        output = result.output
+        output = wait_for_log_output(runner)
         assert output, "Log output should not be empty"
 
         entry = find_log_entry(output, 'Mock failure')
@@ -189,11 +197,10 @@ class TestRequestLogE2e():
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
-        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
 
-        result = runner.invoke(request, ['logs', 'list'])
-        assert result.exit_code == 0
-        assert result.output.strip(), "Log should have entries before delete"
+        output = wait_for_log_output(runner)
+        assert output.strip(), "Log should have entries before delete"
 
         delete_result = runner.invoke(request, ['logs', 'delete'])
         assert delete_result.exit_code == 0
