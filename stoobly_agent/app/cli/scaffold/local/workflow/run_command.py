@@ -285,9 +285,11 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # Otherwise the app will not be denormalized after this
       copy_on_workflow_up = self.app_config.copy_on_workflow_up
       self.app_config.copy_on_workflow_up = False
-      self.down()
-      # Restore copy_on_workflow_up
-      self.app_config.copy_on_workflow_up = copy_on_workflow_up
+      try:
+        self.down()
+      finally:
+        # Restore copy_on_workflow_up
+        self.app_config.copy_on_workflow_up = copy_on_workflow_up
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name
