@@ -220,7 +220,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
           if service not in options.get('service', []):
             continue
 
-        filtered_services.append(CORE_GATEWAY_SERVICE_NAME)
+        filtered_services.append(service)
     else:
       options['container'] = [WORKFLOW_CONTAINER_SERVICE]
       for service in self.services:
