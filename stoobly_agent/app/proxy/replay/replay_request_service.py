@@ -183,7 +183,13 @@ def __handle_path_header(header_name: str, script_path: str, headers):
   Set header value for path-like options.
   - Supports single or comma-separated list
   - Preserves optional ':<ORIGIN>' suffix per item
-  - Absolutizes each path item individually
+  - Absolutizes each filesystem path item individually
+  - Preserves URI-like values (contains '://') as-is
+
+  Why absolutize:
+  - Parsed header items are consumed later as filesystem paths.
+  - Relative paths should resolve from the CLI invocation context, not
+    whichever working directory the proxy process uses.
   """
   if not script_path:
     return
@@ -193,6 +199,9 @@ def __handle_path_header(header_name: str, script_path: str, headers):
     path, origin = parse_origin_path_item(item)
     if not path:
       return item
+    # Keep URI-like values intact (for example: https://example.com/hooks.js).
+    if '://' in path:
+      return f"{path}:{origin}" if origin else path
     if not os.path.isabs(path):
       path = os.path.join(os.path.abspath('.'), path)
     return f"{path}:{origin}" if origin else path
