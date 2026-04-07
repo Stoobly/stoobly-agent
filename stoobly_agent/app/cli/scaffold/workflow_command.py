@@ -8,6 +8,7 @@ from .app import App
 from .constants import BIN_FOLDER_NAME, CONFIG_FILE, DOTENV_FILE, FIXTURES_FILE_NAME, PUBLIC_FOLDER_NAME
 from .docker.constants import DOCKER_COMPOSE_CUSTOM, DOCKER_COMPOSE_WORKFLOW
 from .service_command import ServiceCommand
+from .templates.constants import CUSTOM_LIFECYCLE_HOOKS
 from .workflow_config import WorkflowConfig
 
 LOG_ID = 'WorkflowCommand'
@@ -99,6 +100,10 @@ class WorkflowCommand(ServiceCommand):
     return os.path.join(self.workflow_path, FIXTURES_FILE_NAME)
 
   @property
+  def lifecycle_hooks_path(self):
+    return os.path.join(self.workflow_path, CUSTOM_LIFECYCLE_HOOKS)
+
+  @property
   def workflow_config(self):
     return self.__config
 
@@ -150,3 +155,10 @@ class WorkflowCommand(ServiceCommand):
     _config.update(self.workflow_config)
     _config.update(_c)
     return _config
+  
+  def normalize_path(self, path: str):
+    runtime_app_context_dir_path = self.app.runtime_app_data_dir.context_dir_path
+    if path.startswith(runtime_app_context_dir_path):
+      return path.replace(runtime_app_context_dir_path, self.app.context_dir_path)
+    else:
+      return path

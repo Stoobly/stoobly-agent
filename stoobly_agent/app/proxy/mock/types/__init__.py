@@ -8,6 +8,10 @@ class Fixtures(TypedDict):
   GET: Route
   POST: Route
   PUT: Route
+  
+class LifecycleHooksPath(TypedDict):
+  origin: Optional[str]
+  path: str
 
 class PublicDirectoryPath(TypedDict):
   """Represents a public directory path with optional origin specification.

@@ -20,11 +20,15 @@ def iter_commands(
   
   Args:
     commands: List of command objects to process
-    handle_command: Callback function called for each command.
-                   Receives (command,  public_directory_paths, response_fixtures_paths)
+    handle_before_entrypoint: Optional callback invoked once before the entrypoint
+                              (on the second-to-last command). Receives
+                              (public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths).
+    handle_command: Optional callback invoked for each command. Receives (command).
+    containerized: Whether to compute relative paths for containerized runs.
   """
   public_directory_paths = []
   response_fixtures_paths = []
+  lifecycle_hooks_paths = []
 
   for command in commands:
     url = command.service_config.url
@@ -33,7 +37,12 @@ def iter_commands(
         public_directory_paths.append('--public-dir-path')
 
         if containerized:
-          public_dir_path = os.path.relpath(command.public_dir_path, command.app.context_dir_path)
+          # denormalized paths are mounted as volumes in the container as normalized paths
+          # Since this is containerized, use the normalized path 
+          public_dir_path = os.path.relpath(
+            command.normalize_path(command.public_dir_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
         else:
           public_dir_path = command.public_dir_path
 
@@ -43,11 +52,29 @@ def iter_commands(
         response_fixtures_paths.append('--response-fixtures-path')
 
         if containerized:
-          response_fixtures_path = os.path.relpath(command.response_fixtures_path, command.app.context_dir_path)
+          response_fixtures_path = os.path.relpath(
+            command.normalize_path(command.response_fixtures_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
         else:
           response_fixtures_path = command.response_fixtures_path
 
         response_fixtures_paths.append(f"{response_fixtures_path}:{url}")
+
+      # Resolve lifecycle hooks script path from command property
+      lifecycle_hooks_path = command.lifecycle_hooks_path
+      if os.path.exists(lifecycle_hooks_path):
+        lifecycle_hooks_paths.append('--lifecycle-hooks-path')
+
+        if containerized:
+          relative_hooks_path = os.path.relpath(
+            command.normalize_path(lifecycle_hooks_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
+        else:
+          relative_hooks_path = lifecycle_hooks_path
+
+        lifecycle_hooks_paths.append(f"{relative_hooks_path}:{url}")
 
   for command in commands:
     if handle_command:
@@ -75,7 +102,7 @@ def iter_commands(
     # If second from last command, run up_command i.e. right before entrypoint
     if len(commands) >= 2 and command == commands[-2]:
       if handle_before_entrypoint:
-        handle_before_entrypoint(public_directory_paths, response_fixtures_paths)
+        handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths)
 
 def run_options(app_config: AppConfig, **extra_options):
   """
@@ -105,5 +132,8 @@ def run_options(app_config: AppConfig, **extra_options):
 
   if extra_options.get('response_fixtures_paths'):
     options.extend(extra_options['response_fixtures_paths'])
+
+  if extra_options.get('lifecycle_hooks_paths'):
+    options.extend(extra_options['lifecycle_hooks_paths'])
 
   return options

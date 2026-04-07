@@ -9,6 +9,7 @@ from typing import List, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
+    from .mock.types import LifecycleHooksPath
 
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
@@ -91,11 +92,41 @@ class InterceptSettings:
     
   @property
   def lifecycle_hooks_path(self):
+    """Return selected lifecycle hooks path, supporting multiple values with optional origin."""
+    raw_value = None
     if self.__headers and custom_headers.LIFECYCLE_HOOKS_PATH in self.__headers:
-      return self.__headers[custom_headers.LIFECYCLE_HOOKS_PATH]
+      raw_value = self.__headers[custom_headers.LIFECYCLE_HOOKS_PATH]
+    elif os.environ.get(env_vars.AGENT_LIFECYCLE_HOOKS_PATH):
+      raw_value = os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH]
+    else:
+      return raw_value
 
-    if os.environ.get(env_vars.AGENT_LIFECYCLE_HOOKS_PATH):
-      return os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] 
+    # Normalize whitespace; treat empty/whitespace-only as unset
+    if isinstance(raw_value, str):
+      normalized_value = raw_value.strip()
+    else:
+      normalized_value = str(raw_value).strip() if raw_value is not None else ''
+
+    if not normalized_value:
+      return None
+
+    # Parse list of paths with optional origins
+    from .utils.origin_path import parse_lifecycle_hooks_script_paths, request_origin_from_request, origin_matches
+    items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(normalized_value)
+    if not items:
+      return None
+
+    if self.__request:
+      # With request context, try to match origin first
+      req_origin = request_origin_from_request(self.__request)
+      for item in items:
+        origin = item.get('origin')
+        if origin and req_origin and origin_matches(origin, req_origin):
+          return item['path']
+
+    for item in items:
+      if not item.get('origin'):
+        return item['path']
 
   @property
   def lifecycle_hooks(self):

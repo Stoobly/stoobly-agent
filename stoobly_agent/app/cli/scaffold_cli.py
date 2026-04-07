@@ -13,9 +13,8 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
-from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.service import Service
@@ -35,15 +34,13 @@ from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWor
 from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.constants import firewall_action
-from stoobly_agent.app.settings.firewall_rule import FirewallRule
 from stoobly_agent.app.cli.scaffold.workflow_firewall import (
   HTTP_METHODS,
   build_include_firewall_rule_for_service_url,
   upsert_firewall_rule,
   workflow_template_to_firewall_mode,
 )
-from stoobly_agent.config.constants import env_vars, method, mode
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
@@ -114,6 +111,13 @@ def create(**kwargs):
   # Validate that reverse proxy mode is only used with docker runtime
   if kwargs.get('runtime') == RUNTIME_LOCAL and kwargs.get('proxy_mode') == PROXY_MODE_REVERSE:
     error_message = f"Error: {PROXY_MODE_REVERSE.capitalize()} proxy mode is only supported for {RUNTIME_DOCKER} runtime."
+    click.echo(error_message, err=True)
+    sys.exit(1)
+
+  # Validate copy-on-workflow-up can only be used with docker runtime
+  # This flag is meant to support parallel workflow runs. However ports will conflict for local runtime.
+  if kwargs.get('runtime') != RUNTIME_DOCKER and kwargs.get('copy_on_workflow_up'):
+    error_message = f"Error: --copy-on-workflow-up is only supported for {RUNTIME_DOCKER} runtime."
     click.echo(error_message, err=True)
     sys.exit(1)
 
@@ -463,7 +467,7 @@ def down(**kwargs):
 @workflow.command()
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option(
-  '--container', multiple=True, help=f"Select which containers to log. Defaults to '{WORKFLOW_CONTAINER_PROXY}'"
+  '--container', multiple=True, help=f"Select which containers to log."
 )
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
@@ -484,12 +488,8 @@ def logs(**kwargs):
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
-
-  if len(kwargs['container']) == 0:
-    kwargs['container'] = [WORKFLOW_CONTAINER_PROXY]
-
   services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+    app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
   script = __build_script(app, **kwargs)

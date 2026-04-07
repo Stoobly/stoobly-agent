@@ -141,8 +141,13 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     def on_service_up(command):
       command.service_up(**options)
 
-    def on_before_entrypoint(public_directory_paths, response_fixtures_paths):
-      self.__up_command(public_directory_paths, response_fixtures_paths, **options)
+    def on_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
+      self.__up_command(
+        lifecycle_hooks_paths,
+        public_directory_paths, 
+        response_fixtures_paths,
+        **options
+      )
 
     iter_commands(
       commands,
@@ -275,7 +280,16 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def __handle_up_active(self, folder: str, pid: str, pid_file_path: str):
     # Allow re-running the same workflow, bring workflow down first
     if pid_file_path == self.pid_file_path and os.path.exists(pid_file_path):
-      self.down()
+      # Important: At this point, the app has already been denormalized 
+      # Set copy_on_workflow_up to False to prevent the denormalize.down from being called
+      # Otherwise the app will not be denormalized after this
+      copy_on_workflow_up = self.app_config.copy_on_workflow_up
+      self.app_config.copy_on_workflow_up = False
+      try:
+        self.down()
+      finally:
+        # Restore copy_on_workflow_up
+        self.app_config.copy_on_workflow_up = copy_on_workflow_up
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name
@@ -330,12 +344,19 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
           if handle_stale:
             handle_stale(folder, pid, pid_file_path)
 
-  def __up_command(self, public_directory_paths: List[str], response_fixtures_paths: List[str], **options: WorkflowUpOptions):
+  def __up_command(self,
+    lifecycle_hooks_paths: List[str],
+    public_directory_paths: List[str],
+    response_fixtures_paths: List[str],
+    **options: WorkflowUpOptions
+  ):
     # Write .env before starting proxy so it can load WORKFLOW_NAME, etc.
     self.write_env(**options)
 
     # Build the stoobly-agent run command
     command = ['stoobly-agent', 'run']
+    # Uncomment the following line for local development
+    #command = ['poetry', '-C', '<PATH-TO-STOOBLY-AGENT-REPO>', 'run', 'stoobly-agent', 'run']
 
     # Use the log file path as the detached output file
     command.extend(['--detached', self.log_file_path])
@@ -343,6 +364,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     options = run_options(
       self.app_config,
       log_level=options.get('log_level'),
+      lifecycle_hooks_paths=lifecycle_hooks_paths,
       public_directory_paths=public_directory_paths,
       response_fixtures_paths=response_fixtures_paths,
     )
@@ -369,6 +391,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       # Execute directly
       try:
         # Run the command with --detached option
+        # TODO: cwd should be the context_dir_path since the workflow path is mounted as a volume
+        # This is ok so long as --copy-on-workflow-up is not used
         result = subprocess.run(
           command,
           capture_output=True,

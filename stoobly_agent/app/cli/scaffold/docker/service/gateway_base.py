@@ -111,9 +111,10 @@ class GatewayBase():
       yaml.dump(compose, fp) 
 
   def with_run_options(self, compose: dict):
-    def handle_before_entrypoint(public_directory_paths, response_fixtures_paths):
+    def handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
       options = run_options(
         self.app_config,
+        lifecycle_hooks_paths=lifecycle_hooks_paths,
         public_directory_paths=public_directory_paths,
         response_fixtures_paths=response_fixtures_paths,
       )

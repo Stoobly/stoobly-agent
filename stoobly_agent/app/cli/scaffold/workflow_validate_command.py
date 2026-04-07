@@ -65,7 +65,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     
     mock_ui_container_name = self.managed_services_docker_compose.mock_ui_container_name
 
-    # The stoobly-ui service does not run in test workflows
+    # The stoobly_ui service does not run in test workflows
     if self.workflow_name == WORKFLOW_TEST_TYPE:
       try:
         mock_ui_container = self.docker_client.containers.get(mock_ui_container_name)

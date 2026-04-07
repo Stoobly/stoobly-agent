@@ -143,7 +143,6 @@ def __record_request(context: RecordContext, request_model: RequestModel):
             thread = threading.Thread(
                 target=__record_handler,
                 args=[context, request_model],
-                daemon=True  # Mark as daemon to avoid blocking shutdown
             )
             thread.start()
 

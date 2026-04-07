@@ -3,13 +3,13 @@ import pdb
 import pytest
 import requests
 import time
+import yaml
 
 from click.testing import CliRunner
-import yaml
+from pathlib import Path
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
-  SERVICES_NAMESPACE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
   WORKFLOW_MOCK_TYPE,
@@ -271,6 +271,38 @@ class TestLocalScaffoldE2e():
     def test_workflow_logs(self, runner, app_dir_path, target_workflow_name):
       """Test workflow logs command for local execution"""
       LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+
+    def test_lifecycle_hooks(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
+      """Write a lifecycle hooks file, send a request, and assert response mutated by hooks."""
+      app = App(app_dir_path)
+      workflow_command = WorkflowCommand(app, service_name=local_service_name, workflow_name=target_workflow_name)
+
+      # Ensure public dir serves a simple page to trigger a 200 response
+      if not os.path.exists(workflow_command.public_dir_path):
+        os.makedirs(workflow_command.public_dir_path, exist_ok=True)
+
+      with open(os.path.join(workflow_command.public_dir_path, 'index.html'), 'w') as f:
+        f.write('Hello Hooks!')
+
+      # Create a temporary lifecycle hooks file that mutates the response in after_mock
+      hooks_file_path = workflow_command.lifecycle_hooks_path
+      hooks_content = "\n".join([
+        "AFTER_MOCK_RESPONSE_HEADER_NAME = 'X-After-Mock-Response-Header'",
+        "AFTER_MOCK_RESPONSE_HEADER_VALUE = 'after-mock-response-value'",
+        "def handle_after_mock(context):",
+        "  context.flow.response.headers[AFTER_MOCK_RESPONSE_HEADER_NAME] = AFTER_MOCK_RESPONSE_HEADER_VALUE",
+      ])
+      with open(hooks_file_path, 'w') as f:
+        f.write(hooks_content)
+
+      res = requests.get(
+        workflow_command.service_config.url,      
+        proxies={'http': proxy_url, 'https': proxy_url}, verify=False
+      )
+      assert res.status_code == 200
+
+      # After mock hook should add a response header
+      assert res.headers.get('X-After-Mock-Response-Header') == 'after-mock-response-value'
 
     def test_intercept_mode_mock(self, settings: Settings):
       # Check starts with Mock

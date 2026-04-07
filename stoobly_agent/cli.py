@@ -6,7 +6,6 @@ import sys
 
 from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
-from stoobly_agent.app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
@@ -82,8 +81,8 @@ def init(**kwargs):
 ''')
 @click.option(
   '--lifecycle-hooks-path',
-  type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-  help='Path to lifecycle hooks script.'
+  multiple=True,
+  help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
 )
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
@@ -109,6 +108,7 @@ def run(**kwargs):
     import dotenv
 
     from .app.proxy.run import run as run_proxy
+    from .app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path, normalize_lifecycle_hooks_path
 
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
@@ -132,7 +132,9 @@ def run(**kwargs):
       settings.proxy.intercept.mode = kwargs['intercept_mode']
 
     if kwargs.get('lifecycle_hooks_path'):
-      os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = kwargs['lifecycle_hooks_path']
+      os.environ[env_vars.AGENT_LIFECYCLE_HOOKS_PATH] = normalize_lifecycle_hooks_path(
+        kwargs['lifecycle_hooks_path']
+      )
 
     if kwargs.get('public_dir_path'):
       # Join multiple paths with commas
@@ -239,8 +241,8 @@ def run(**kwargs):
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
-@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--public-dir-path', help='Path to public files. Used for mocking requests.')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
@@ -306,7 +308,7 @@ def __build_request_from_curl(**kwargs):
   
   headers = {}
   for header in kwargs['header']:
-    toks = header.split(':')
+    toks = header.split(':', 1)
 
     if len(toks) != 2:
       continue
