@@ -157,8 +157,8 @@ class WorkflowCommand(ServiceCommand):
     return _config
   
   def normalize_path(self, path: str):
-    runtime_app_data_dir_path = self.app.runtime_app_data_dir.path
-    if path.startswith(runtime_app_data_dir_path):
-      return path.replace(runtime_app_data_dir_path, self.app.app_data_dir.path)
+    runtime_app_context_dir_path = self.app.runtime_app_data_dir.context_dir_path
+    if path.startswith(runtime_app_context_dir_path):
+      return path.replace(runtime_app_context_dir_path, self.app.context_dir_path)
     else:
       return path
