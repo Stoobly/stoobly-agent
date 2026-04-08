@@ -7,5 +7,5 @@ services:
       file: ../.docker-compose.base.yml
       service: context_base
     volumes:
-    - ${APP_DIR}:/app
+    - ${APP_DIR}:/app:ro
     working_dir: /home/stoobly/.stoobly/services/${SERVICE_NAME}/${WORKFLOW_NAME}
