@@ -4,7 +4,7 @@ from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERV
 
 from .config import Config
 from .constants import (
-  APP_COPY_ON_WORKFLOW_UP_ENV, APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_MODE_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
+  APP_COPY_ON_WORKFLOW_UP_ENV, APP_DOCKER_SOCKET_PATH_ENV, APP_NAME_ENV, APP_PLUGINS_DELMITTER, APP_PLUGINS_ENV, APP_PROXY_MODE_ENV, APP_PROXY_PORT_ENV, APP_RUNTIME_ENV, APP_UI_PORT_ENV, APP_VERSION_ENV, APP_SNAPSHOT_ON_RECORD_DOWN_ENV, RUNTIME_DOCKER, RUNTIME_LOCAL
 )
 
 class AppConfig(Config):
@@ -20,6 +20,7 @@ class AppConfig(Config):
     self.__proxy_mode = None
     self.__proxy_port = None
     self.__runtime = None
+    self.__snapshot_on_record_down = False
     self.__ui_port = None
 
     self.load()
@@ -31,6 +32,14 @@ class AppConfig(Config):
   @copy_on_workflow_up.setter
   def copy_on_workflow_up(self, v):
     self.__copy_on_workflow_up = v
+
+  @property
+  def snapshot_on_record_down(self):
+    return self.__snapshot_on_record_down
+
+  @snapshot_on_record_down.setter
+  def snapshot_on_record_down(self, v):
+    self.__snapshot_on_record_down = v
 
   @property
   def docker_socket_path(self):
@@ -125,6 +134,7 @@ class AppConfig(Config):
     self.name = config.get(APP_NAME_ENV)
     self.proxy_mode = config.get(APP_PROXY_MODE_ENV)
     self.proxy_port = config.get(APP_PROXY_PORT_ENV)
+    self.snapshot_on_record_down = config.get(APP_SNAPSHOT_ON_RECORD_DOWN_ENV, False)
     self.ui_port = config.get(APP_UI_PORT_ENV)
     self.version = config.get(APP_VERSION_ENV)
 
@@ -139,6 +149,7 @@ class AppConfig(Config):
     config = {}
 
     config[APP_COPY_ON_WORKFLOW_UP_ENV] = self.copy_on_workflow_up
+    config[APP_SNAPSHOT_ON_RECORD_DOWN_ENV] = self.snapshot_on_record_down
 
     if self.docker_socket_path:
       config[APP_DOCKER_SOCKET_PATH_ENV] = self.docker_socket_path
