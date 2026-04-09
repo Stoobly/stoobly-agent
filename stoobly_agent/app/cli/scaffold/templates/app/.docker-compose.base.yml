@@ -3,9 +3,7 @@ services:
     extends:
       service: stoobly_base
     volumes:
-      - ${CONTEXT_DIR}/.stoobly/db:/home/stoobly/.stoobly/db
-      - ${CONTEXT_DIR}/.stoobly/settings.yml:/home/stoobly/.stoobly/settings.yml
-      - ${CONTEXT_DIR}/.stoobly/snapshots:/home/stoobly/.stoobly/snapshots
+      - ${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly
       - ${APP_DIR}/.stoobly/ca_certs:/home/stoobly/.stoobly/ca_certs
       - ${APP_DIR}/.stoobly/certs:/home/stoobly/.stoobly/certs
       - ${APP_DIR}/.stoobly/tmp:/home/stoobly/.stoobly/tmp

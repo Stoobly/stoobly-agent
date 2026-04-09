@@ -94,7 +94,7 @@ def reset(**kwargs):
         total = len(request_ids) + len(scenario_ids)
         message = f"This will reset {len(request_ids)} request(s) and {len(scenario_ids)} scenario(s) to their last snapshot state ({total} total)."
         if kwargs.get('hard'):
-          message += " WARNING: --hard is set and will delete ALL requests and scenarios before resetting."
+          message += "\nWARNING: --hard is set and will delete ALL requests and scenarios before resetting."
         message += " Continue?"
         if not click.confirm(message, default=False):
           print("Aborted.")
@@ -162,11 +162,11 @@ def copy(**kwargs):
 @click.option('--pending', default=False, is_flag=True, help='Lists not yet processed snapshots.')
 @click.option(
   '--resource',
-  default=REQUEST_RESOURCE,
+  default=SCENARIO_RESOURCE,
   type=click.Choice([REQUEST_RESOURCE, SCENARIO_RESOURCE]),
-  help=f"Defaults to {REQUEST_RESOURCE}."
+  help=f"Defaults to {SCENARIO_RESOURCE}."
 )
-@click.option('--scenario', help='Scenario name regex pattern to filter snapshots by')
+@click.option('--scenario', help='Scenario name regex pattern to filter request snapshots by')
 @click.option('--search', help='Regex pattern to filter snapshots by.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--size', default=10, help='Number of rows to display.')

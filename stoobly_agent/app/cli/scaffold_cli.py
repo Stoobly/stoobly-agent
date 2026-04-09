@@ -4,7 +4,7 @@ import os
 import pdb
 import sys
 
-from datetime import datetime
+from datetime import datetime, timezone
 from docker import errors as docker_errors
 
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
@@ -33,6 +33,7 @@ from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_scenarios_since_service import snapshot_scenarios_since
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.cli.scaffold.workflow_firewall import (
   HTTP_METHODS,
@@ -105,7 +106,6 @@ def hostname(ctx):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
-@click.option('--snapshot-on-record-down', is_flag=True, help='Create scenario snapshot(s) on record down.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
@@ -423,6 +423,8 @@ def down(**kwargs):
   if app_config.copy_on_workflow_up:
     app.denormalize_configure(workflow_namespace)
 
+  workflow_up_file = None
+
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
@@ -431,6 +433,8 @@ def down(**kwargs):
       script=script,
       **kwargs
     )
+
+    workflow_up_file = workflow_command.pid_file_path
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
@@ -439,6 +443,27 @@ def down(**kwargs):
       script=script,
       **kwargs
     )
+
+    workflow_up_file = workflow_command.timestamp_file_path
+
+  # Based on timestamp file creation time, snapshot scenarios if configured
+  if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+    if os.path.exists(workflow_up_file):
+      # Get the timestamp of the timestamp file creation time
+      timestamp = datetime.fromtimestamp(
+        os.path.getctime(workflow_up_file),
+        tz=timezone.utc
+      ).isoformat()
+      snapshot_results = snapshot_scenarios_since(timestamp)
+
+      for snapshot_result in snapshot_results:
+        scenario = snapshot_result[0]
+        scenario_key = scenario.get('key')
+        scenario_name = scenario.get('name')
+        
+        Logger.instance(LOG_ID).info(
+          f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
+        )
 
   if not containerized and not kwargs['dry_run']:
     if app_config.runtime_docker:

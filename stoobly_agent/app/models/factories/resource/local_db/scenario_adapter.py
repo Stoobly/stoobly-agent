@@ -71,6 +71,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     size = int(query_params.get('size') or 20)
     sort_by = query_params.get('sort_by') or 'id'
     sort_order = query_params.get('sort_order') or 'desc'
+    updated_since = query_params.get('updated_since')
 
     filter = query_params.get('filter')
     is_deleted = filter == 'is_deleted'
@@ -90,6 +91,9 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
     if query:
       scenarios = search_scenario(scenarios, query)
+
+    if updated_since:
+      scenarios = scenarios.where('updated_at', '>=', updated_since)
 
     total = scenarios.count()
     scenarios = scenarios.offset(page * size).limit(size).order_by(sort_by, sort_order).get()
