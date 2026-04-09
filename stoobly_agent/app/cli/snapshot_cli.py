@@ -162,9 +162,9 @@ def copy(**kwargs):
 @click.option('--pending', default=False, is_flag=True, help='Lists not yet processed snapshots.')
 @click.option(
   '--resource',
-  default=SCENARIO_RESOURCE,
+  default=REQUEST_RESOURCE,
   type=click.Choice([REQUEST_RESOURCE, SCENARIO_RESOURCE]),
-  help=f"Defaults to {SCENARIO_RESOURCE}."
+  help=f"Defaults to {REQUEST_RESOURCE}."
 )
 @click.option('--scenario', help='Scenario name regex pattern to filter request snapshots by')
 @click.option('--search', help='Regex pattern to filter snapshots by.')

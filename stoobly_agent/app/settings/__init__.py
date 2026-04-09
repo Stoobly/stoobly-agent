@@ -283,7 +283,6 @@ class Settings:
         Args:
             event: The file system event from watchdog (not used, but required by the API)
         """
-        Logger.instance(LOG_ID).info('Reloading settings')
         if not self.__load_lock:
             from stoobly_agent.app.proxy.utils.publish_change_service import publish_settings_modified
 
