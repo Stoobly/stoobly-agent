@@ -22,7 +22,6 @@ class AppCreateOptions(TypedDict):
   proxy_mode: str
   proxy_port: int
   runtime: list
-  snapshot_on_record_down: bool
   ui_port: int
 
 class AppCreateCommand(AppCommand):
@@ -50,9 +49,6 @@ class AppCreateCommand(AppCommand):
 
         if kwargs.get('runtime'):
             self.app_config.runtime = kwargs['runtime']
-
-        if 'snapshot_on_record_down' in kwargs:
-            self.app_config.snapshot_on_record_down = kwargs['snapshot_on_record_down']
 
         if kwargs.get('ui_port'):
             self.app_config.ui_port = kwargs['ui_port']
