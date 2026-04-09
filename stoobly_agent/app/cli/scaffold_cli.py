@@ -447,7 +447,7 @@ def down(**kwargs):
     workflow_up_file = workflow_command.timestamp_file_path
 
   # Based on timestamp file creation time, snapshot scenarios if configured
-  if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+  if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
     if os.path.exists(workflow_up_file):
       # Get the timestamp of the timestamp file creation time
       timestamp = datetime.fromtimestamp(
