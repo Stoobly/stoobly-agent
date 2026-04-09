@@ -63,18 +63,8 @@ def test_snapshot_scenarios_since_collects_snapshots_with_pagination(monkeypatch
     ('scenario-c', {'action': snapshot_scenarios_since_service.PUT_ACTION}),
   ]
   assert snapshots == [
-    ({
-      'list': [
-        {'uuid': 'scenario-a'},
-        {'id': 'scenario-b'},
-        {'name': 'missing-id'},
-      ],
-      'total': 101
-    }, '/tmp/a.yml'),
-    ({
-      'list': [{'uuid': 'scenario-c'}],
-      'total': 101
-    }, '/tmp/c.yml'),
+    ({'uuid': 'scenario-a'}, '/tmp/a.yml'),
+    ({'uuid': 'scenario-c'}, '/tmp/c.yml'),
   ]
 
 
