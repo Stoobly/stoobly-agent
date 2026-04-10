@@ -423,7 +423,11 @@ def down(**kwargs):
   if app_config.copy_on_workflow_up:
     app.denormalize_configure(workflow_namespace)
 
-  workflow_up_file = None
+  # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
+  # Local: PID file ctime (approximates when the marker was written for the detached run).
+  # Docker: Unix epoch seconds from the workflow .timestamp file (see DockerWorkflowRunCommand.__create_timestamp_file);
+  #   if read/parse fails, falls back to that file's ctime. Left unset when the marker file is absent.
+  workflow_up_timestamp = None
 
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
@@ -434,7 +438,12 @@ def down(**kwargs):
       **kwargs
     )
 
-    workflow_up_file = workflow_command.pid_file_path
+    pid_file_path = workflow_command.pid_file_path
+    if os.path.exists(pid_file_path):
+      workflow_up_timestamp = datetime.fromtimestamp(
+        os.path.getctime(pid_file_path),
+        tz=timezone.utc
+      ).isoformat()
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
@@ -444,17 +453,22 @@ def down(**kwargs):
       **kwargs
     )
 
-    workflow_up_file = workflow_command.timestamp_file_path
+    timestamp_file_path = workflow_command.timestamp_file_path
+    if os.path.exists(timestamp_file_path):
+      try:
+        with open(timestamp_file_path, 'r') as f:
+          unix_ts = float(f.read().strip())
+      except (OSError, ValueError) as e:
+        Logger.instance(LOG_ID).warning(
+          f"Could not read workflow timestamp from {timestamp_file_path}: {e}; using file ctime"
+        )
+        unix_ts = os.path.getctime(timestamp_file_path)
+      workflow_up_timestamp = datetime.fromtimestamp(unix_ts, tz=timezone.utc).isoformat()
 
-  # Based on timestamp file creation time, snapshot scenarios if configured
+  # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
   if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
-    if os.path.exists(workflow_up_file):
-      # Get the timestamp of the timestamp file creation time
-      timestamp = datetime.fromtimestamp(
-        os.path.getctime(workflow_up_file),
-        tz=timezone.utc
-      ).isoformat()
-      snapshot_results = snapshot_scenarios_since(timestamp)
+    if workflow_up_timestamp:
+      snapshot_results = snapshot_scenarios_since(workflow_up_timestamp)
 
       for snapshot_result in snapshot_results:
         scenario = snapshot_result[0]

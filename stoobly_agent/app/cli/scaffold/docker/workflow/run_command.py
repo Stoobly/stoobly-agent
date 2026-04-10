@@ -513,7 +513,8 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
           handle_active(folder, timestamp_file_path)
 
   def __create_timestamp_file(self):
-    # Create timestamp file to indicate workflow is starting
+    # Marker file: workflow is up. Contents are Unix epoch seconds (float as string); scaffold workflow down
+    # reads this for scenario snapshot updated_since (falls back to file ctime if unreadable).
     timestamp_file = self.timestamp_file_path
 
     try:
