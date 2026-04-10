@@ -4,7 +4,7 @@ import os
 import pdb
 import sys
 
-from datetime import datetime
+from datetime import datetime, timezone
 from docker import errors as docker_errors
 
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
@@ -33,6 +33,7 @@ from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkflowRunCommand
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_scenarios_since_service import snapshot_scenarios_since
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.cli.scaffold.workflow_firewall import (
   HTTP_METHODS,
@@ -422,6 +423,12 @@ def down(**kwargs):
   if app_config.copy_on_workflow_up:
     app.denormalize_configure(workflow_namespace)
 
+  # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
+  # Local: PID file ctime (approximates when the marker was written for the detached run).
+  # Docker: Unix epoch seconds from the workflow .timestamp file (see DockerWorkflowRunCommand.__create_timestamp_file);
+  #   if read/parse fails, falls back to that file's ctime. Left unset when the marker file is absent.
+  workflow_up_timestamp = None
+
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
@@ -430,6 +437,13 @@ def down(**kwargs):
       script=script,
       **kwargs
     )
+
+    pid_file_path = workflow_command.pid_file_path
+    if os.path.exists(pid_file_path):
+      workflow_up_timestamp = datetime.fromtimestamp(
+        os.path.getctime(pid_file_path),
+        tz=timezone.utc
+      ).isoformat()
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
@@ -439,28 +453,67 @@ def down(**kwargs):
       **kwargs
     )
 
-  if not containerized and not kwargs['dry_run']:
-    if app_config.runtime_docker:
-      # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
-      # Entrypoint container will be within the container network
-      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-          # Prompt confirm to install hostnames
-          __hostname_uninstall_with_prompt(
-              app_dir_path=kwargs['app_dir_path'],
-              hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
-              service=kwargs['service'],
-              validate=True,
-              workflow=[kwargs['workflow_name']],
+    timestamp_file_path = workflow_command.timestamp_file_path
+    if os.path.exists(timestamp_file_path):
+      try:
+        with open(timestamp_file_path, 'r') as f:
+          unix_ts = float(f.read().strip())
+      except (OSError, ValueError) as e:
+        Logger.instance(LOG_ID).warning(
+          f"Could not read workflow timestamp from {timestamp_file_path}: {e}; using file ctime"
+        )
+        unix_ts = os.path.getctime(timestamp_file_path)
+      workflow_up_timestamp = datetime.fromtimestamp(unix_ts, tz=timezone.utc).isoformat()
+
+  # Snapshot / hostname steps must not skip workflow teardown: down() runs in finally.
+  try:
+    # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
+      if workflow_up_timestamp:
+        try:
+          snapshot_results = snapshot_scenarios_since(workflow_up_timestamp)
+
+          for snapshot_result in snapshot_results:
+            scenario = snapshot_result[0]
+            scenario_key = scenario.get('key')
+            scenario_name = scenario.get('name')
+
+            Logger.instance(LOG_ID).info(
+              f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
+            )
+        except Exception as e:
+          Logger.instance(LOG_ID).warning(
+            f"Snapshotting scenarios before workflow down failed: {e}"
+          )
+
+    if not containerized and not kwargs['dry_run']:
+      if app_config.runtime_docker:
+        # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+        # Entrypoint container will be within the container network
+        if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+          try:
+            # Prompt confirm to install hostnames
+            __hostname_uninstall_with_prompt(
+                app_dir_path=kwargs['app_dir_path'],
+                hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
+                service=kwargs['service'],
+                validate=True,
+                workflow=[kwargs['workflow_name']],
+              )
+          except Exception as e:
+            Logger.instance(LOG_ID).warning(
+              f"Hostname uninstall before workflow down failed: {e}"
             )
 
-  # Execute the workflow down
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
-  workflow_command.down(
-    **command_args,
-    **kwargs
-  )
+  finally:
+    # Execute the workflow down
+    command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+    workflow_command.down(
+      **command_args,
+      **kwargs
+    )
 
-  # Options are no longer valid
+  # Options are no longer valid (after successful down; still run if pre-down work failed)
   if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
 
