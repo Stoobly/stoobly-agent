@@ -31,7 +31,7 @@ class TestCopy():
 
       @pytest.fixture(autouse=True, scope='class')
       def snapshot_result(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
         return snapshot_result
 

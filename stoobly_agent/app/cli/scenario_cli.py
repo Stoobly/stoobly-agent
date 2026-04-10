@@ -1,10 +1,12 @@
+import sys
+
 import click
-import pdb
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
-from stoobly_agent.app.cli.helpers.print_service import FORMATS
+from stoobly_agent.app.cli.helpers.print_service import FORMATS, print_snapshots, select_print_options
+from stoobly_agent.app.cli.helpers.snapshot_list_service import list_snapshots, snapshot_list_options
 from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION, SCENARIO_RESOURCE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
 from stoobly_agent.lib import logger
@@ -109,15 +111,24 @@ def delete(**kwargs):
     delete_handler(kwargs)
 
 if is_local:
-    @scenario.command(
-        help="Snapshot a scenario"
+    @click.group(
+        epilog="Run 'stoobly-agent scenario snapshot COMMAND --help' for more information on a command.",
+        help="Manage scenario snapshots"
+    )
+    @click.pass_context
+    def snapshot(ctx):
+        pass
+
+    @snapshot.command(
+        name='create',
+        help="Create a scenario snapshot"
     )
     @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
     @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response bodies.")
     @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
     @click.option('--no-verify', is_flag=True, default=False)
     @click.argument('scenario_key')
-    def snapshot(**kwargs):
+    def snapshot_create(**kwargs):
         scenario_snapshot_path = snapshot_handler(kwargs)
 
         if scenario_snapshot_path is None:
@@ -132,7 +143,8 @@ if is_local:
           with_snapshot=False
         )
 
-    @scenario.command(
+    @snapshot.command(
+        name='reset',
         help="Reset a scenario to its snapshot state"
     )
     @click.option('--force', default=False, is_flag=True, help="Toggles whether resources are hard deleted.")
@@ -140,13 +152,33 @@ if is_local:
     def reset(**kwargs):
         reset_handler(kwargs)
 
-    @scenario.command(
+    @snapshot.command(
+        name='diff',
         help="Show diff between current scenario and its snapshot"
     )
     @click.option('--full', is_flag=True, default=False, help='Show full raw diffs for each request.')
     @click.argument('scenario_key')
     def diff(**kwargs):
         diff_handler(kwargs)
+
+    @snapshot.command(
+        name='list',
+        help='List scenario snapshots'
+    )
+    @snapshot_list_options
+    def snapshot_list(**kwargs):
+        print_options = select_print_options(kwargs)
+        rows = list_snapshots(
+            resource=SCENARIO_RESOURCE,
+            pending=kwargs.get('pending', False),
+            scenario_key=kwargs.get('scenario_key'),
+            search=kwargs.get('search'),
+            size=kwargs.get('size'),
+        )
+        if len(rows):
+            print_snapshots(rows, **print_options)
+
+    scenario.add_command(snapshot)
 
 @scenario.command(
     help="Replay and test a scenario"

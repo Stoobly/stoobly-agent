@@ -16,6 +16,6 @@ def settings():
 
 class TestRequestDiffCli:
   def test_it_gracefully_errors_on_bad_key(self, runner: CliRunner):
-    res = runner.invoke(request, ['diff', 'p0.iBADBADBADBADBADBADBADBADBADBADB'])
+    res = runner.invoke(request, ['snapshot', 'diff', 'p0.iBADBADBADBADBADBADBADBADBADBADB'])
     assert res.exit_code == 1
     assert 'Error: Invalid request key' in res.output

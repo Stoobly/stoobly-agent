@@ -1,10 +1,12 @@
+import sys
+
 import click
 
 from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
 from stoobly_agent.lib import logger
@@ -15,7 +17,8 @@ from .handlers.request_cli_handler import (
 )
 from .helpers.feature_flags import local, remote
 from .helpers.log_options import build_log_filters, log_list_options
-from .helpers.print_service import FORMATS
+from .helpers.print_service import FORMATS, print_snapshots, select_print_options
+from .helpers.snapshot_list_service import list_snapshots, snapshot_list_options
 from .helpers.validations import *
 from .types.request import RequestTestOptions
 
@@ -92,15 +95,24 @@ def replay(**kwargs):
   replay_handler(kwargs)
 
 if is_local:
-  @request.command(
-    help="Snapshot a request"
+  @click.group(
+    epilog="Run 'stoobly-agent request snapshot COMMAND --help' for more information on a command.",
+    help="Manage request snapshots"
+  )
+  @click.pass_context
+  def snapshot(ctx):
+    pass
+
+  @snapshot.command(
+    name='create',
+    help="Create a request snapshot"
   )
   @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
   @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response body.")
   @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
   @click.option('--no-verify', is_flag=True, default=False)
   @click.argument('request_key')
-  def snapshot(**kwargs):
+  def snapshot_create(**kwargs):
     snapshot_path = snapshot_handler(kwargs)
 
     if snapshot_path is None:
@@ -115,21 +127,42 @@ if is_local:
       with_snapshot=False
     )
 
-  @request.command(
-      help="Reset a request to its snapshot state"
+  @snapshot.command(
+    name='reset',
+    help="Reset a request to its snapshot state"
   )
   @click.option('--force', default=False, is_flag=True, help="Toggles whether request are hard deleted.")
   @click.argument('request_key')
-  def reset(**kwargs):
+  def snapshot_reset(**kwargs):
     reset_handler(kwargs)
 
-  @request.command(
+  @snapshot.command(
+    name='diff',
     help="Show diff between current request and its snapshot"
   )
   @click.option('--full', is_flag=True, default=False, help='Show full raw diff.')
   @click.argument('request_key')
-  def diff(**kwargs):
+  def snapshot_diff(**kwargs):
     diff_handler(kwargs)
+
+  @snapshot.command(
+    name='list',
+    help='List request snapshots'
+  )
+  @snapshot_list_options
+  def snapshot_list(**kwargs):
+    print_options = select_print_options(kwargs)
+    rows = list_snapshots(
+      resource=REQUEST_RESOURCE,
+      pending=kwargs.get('pending', False),
+      scenario_key=kwargs.get('scenario_key'),
+      search=kwargs.get('search'),
+      size=kwargs.get('size'),
+    )
+    if len(rows):
+      print_snapshots(rows, **print_options)
+
+  request.add_command(snapshot)
 
 @request.command(
   help="Test a request"

@@ -26,7 +26,7 @@ class TestRequestSnapshot():
 
   @pytest.fixture(scope='class', autouse=True)
   def snapshot_result(self, runner: CliRunner, recorded_request: Request):
-    snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+    snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
 
@@ -34,7 +34,7 @@ class TestRequestSnapshot():
     original_path = recorded_request.path
     recorded_request.update(path='/test')
 
-    snapshot_result = runner.invoke(request, ['reset', recorded_request.key()])
+    snapshot_result = runner.invoke(request, ['snapshot', 'reset', recorded_request.key()])
     assert snapshot_result.exit_code == 0
 
     _request = Request.find(recorded_request.id)

@@ -45,7 +45,7 @@ class TestScenario():
 
       @pytest.fixture(scope='class', autouse=True)
       def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
         return snapshot_result
 
@@ -85,7 +85,7 @@ class TestScenario():
         assert len(unprocessed_events) == 1
 
       def test_it_deletes(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
