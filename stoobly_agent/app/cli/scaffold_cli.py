@@ -465,42 +465,55 @@ def down(**kwargs):
         unix_ts = os.path.getctime(timestamp_file_path)
       workflow_up_timestamp = datetime.fromtimestamp(unix_ts, tz=timezone.utc).isoformat()
 
-  # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
-  if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
-    if workflow_up_timestamp:
-      snapshot_results = snapshot_scenarios_since(workflow_up_timestamp)
+  # Snapshot / hostname steps must not skip workflow teardown: down() runs in finally.
+  try:
+    # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
+    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
+      if workflow_up_timestamp:
+        try:
+          snapshot_results = snapshot_scenarios_since(workflow_up_timestamp)
 
-      for snapshot_result in snapshot_results:
-        scenario = snapshot_result[0]
-        scenario_key = scenario.get('key')
-        scenario_name = scenario.get('name')
-        
-        Logger.instance(LOG_ID).info(
-          f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
-        )
+          for snapshot_result in snapshot_results:
+            scenario = snapshot_result[0]
+            scenario_key = scenario.get('key')
+            scenario_name = scenario.get('name')
 
-  if not containerized and not kwargs['dry_run']:
-    if app_config.runtime_docker:
-      # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
-      # Entrypoint container will be within the container network
-      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-          # Prompt confirm to install hostnames
-          __hostname_uninstall_with_prompt(
-              app_dir_path=kwargs['app_dir_path'],
-              hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
-              service=kwargs['service'],
-              validate=True,
-              workflow=[kwargs['workflow_name']],
+            Logger.instance(LOG_ID).info(
+              f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
+            )
+        except Exception as e:
+          Logger.instance(LOG_ID).warning(
+            f"Snapshotting scenarios before workflow down failed: {e}"
+          )
+
+    if not containerized and not kwargs['dry_run']:
+      if app_config.runtime_docker:
+        # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+        # Entrypoint container will be within the container network
+        if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+          try:
+            # Prompt confirm to install hostnames
+            __hostname_uninstall_with_prompt(
+                app_dir_path=kwargs['app_dir_path'],
+                hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
+                service=kwargs['service'],
+                validate=True,
+                workflow=[kwargs['workflow_name']],
+              )
+          except Exception as e:
+            Logger.instance(LOG_ID).warning(
+              f"Hostname uninstall before workflow down failed: {e}"
             )
 
-  # Execute the workflow down
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
-  workflow_command.down(
-    **command_args,
-    **kwargs
-  )
+  finally:
+    # Execute the workflow down
+    command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+    workflow_command.down(
+      **command_args,
+      **kwargs
+    )
 
-  # Options are no longer valid
+  # Options are no longer valid (after successful down; still run if pre-down work failed)
   if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
 
