@@ -16,7 +16,7 @@ def settings():
 
 class TestScenarioDiffCli:
   def test_it_gracefully_errors_on_bad_key(self, runner: CliRunner):
-    res = runner.invoke(scenario, ['diff', 'p0.sBADBADBADBADBADBADBADBADBADBADB'])
+    res = runner.invoke(scenario, ['snapshot', 'diff', 'p0.sBADBADBADBADBADBADBADBADBADBADB'])
     # scenario diff handler prints error and exits(1)
     assert res.exit_code == 1
     assert 'Error: Invalid scenario key' in res.output

@@ -35,7 +35,7 @@ class TestSnapshotResetConfirmation():
 
   @pytest.fixture(scope='class', autouse=True)
   def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
-    snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+    snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
 
@@ -76,7 +76,7 @@ class TestSnapshotResetYesFlag():
 
   @pytest.fixture(scope='class', autouse=True)
   def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
-    snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+    snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
 
@@ -109,7 +109,7 @@ class TestSnapshotResetHard():
 
   @pytest.fixture(scope='class', autouse=True)
   def primary_snapshot(self, runner: CliRunner, primary_scenario: Scenario):
-    snapshot_result = runner.invoke(scenario, ['snapshot', primary_scenario.key()])
+    snapshot_result = runner.invoke(scenario, ['snapshot', 'create', primary_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
 

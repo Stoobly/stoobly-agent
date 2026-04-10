@@ -30,7 +30,7 @@ class TestRequestSnapshot():
         return Request.last()
 
       def test_it_snapshots(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         snapshot = RequestSnapshot(recorded_request.uuid)
@@ -52,7 +52,7 @@ class TestRequestSnapshot():
         assert len(unprocessed_events) == 1
 
       def test_it_replaces(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         snapshot = RequestSnapshot(recorded_request.uuid)
@@ -71,7 +71,7 @@ class TestRequestSnapshot():
         assert len(unprocessed_events) == 1
 
       def test_it_deletes(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -97,10 +97,10 @@ class TestRequestSnapshot():
         return Request.last()
 
       def test_it_appends(self, runner: CliRunner, recorded_request_one: Request, recorded_request_two: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request_one.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_one.key()])
         assert snapshot_result.exit_code == 0
 
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request_two.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_two.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -112,7 +112,7 @@ class TestRequestSnapshot():
         assert len(unprocessed_events) == 2
 
       def test_it_deletes(self, runner: CliRunner, recorded_request_one: Request, recorded_request_two: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request_one.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request_one.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -136,7 +136,7 @@ class TestRequestSnapshot():
         return Request.last()
 
       def test_initial_delete(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -148,7 +148,7 @@ class TestRequestSnapshot():
         assert len(unprocessed_events) == 0
 
       def test_puts(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', PUT_ACTION, recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', PUT_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -161,7 +161,7 @@ class TestRequestSnapshot():
         assert unprocessed_events[0].action == PUT_ACTION
 
       def test_final_delete(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()

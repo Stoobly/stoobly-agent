@@ -70,6 +70,8 @@ class TestCliSubcommandsLoad:
         ['scaffold', 'workflow', 'up'],
         ['scaffold', 'workflow', 'validate'],
         ['scenario', 'list'],
+        ['request', 'snapshot', 'create'],
+        ['scenario', 'snapshot', 'create'],
     ]
 
     @pytest.mark.parametrize('command', SUBCOMMANDS)

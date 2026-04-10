@@ -1,3 +1,5 @@
+import sys
+
 import click
 
 from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
@@ -92,15 +94,24 @@ def replay(**kwargs):
   replay_handler(kwargs)
 
 if is_local:
-  @request.command(
-    help="Snapshot a request"
+  @click.group(
+    epilog="Run 'stoobly-agent request snapshot COMMAND --help' for more information on a command.",
+    help="Manage request snapshots"
+  )
+  @click.pass_context
+  def snapshot(ctx):
+    pass
+
+  @snapshot.command(
+    name='create',
+    help="Create a request snapshot"
   )
   @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
   @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response body.")
   @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
   @click.option('--no-verify', is_flag=True, default=False)
   @click.argument('request_key')
-  def snapshot(**kwargs):
+  def snapshot_create(**kwargs):
     snapshot_path = snapshot_handler(kwargs)
 
     if snapshot_path is None:
@@ -115,21 +126,25 @@ if is_local:
       with_snapshot=False
     )
 
-  @request.command(
-      help="Reset a request to its snapshot state"
+  @snapshot.command(
+    name='reset',
+    help="Reset a request to its snapshot state"
   )
   @click.option('--force', default=False, is_flag=True, help="Toggles whether request are hard deleted.")
   @click.argument('request_key')
-  def reset(**kwargs):
+  def snapshot_reset(**kwargs):
     reset_handler(kwargs)
 
-  @request.command(
+  @snapshot.command(
+    name='diff',
     help="Show diff between current request and its snapshot"
   )
   @click.option('--full', is_flag=True, default=False, help='Show full raw diff.')
   @click.argument('request_key')
-  def diff(**kwargs):
+  def snapshot_diff(**kwargs):
     diff_handler(kwargs)
+
+  request.add_command(snapshot)
 
 @request.command(
   help="Test a request"
