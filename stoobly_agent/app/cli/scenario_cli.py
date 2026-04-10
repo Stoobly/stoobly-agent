@@ -3,9 +3,10 @@ import sys
 import click
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
-from stoobly_agent.app.cli.helpers.print_service import FORMATS
+from stoobly_agent.app.cli.helpers.print_service import FORMATS, print_snapshots, select_print_options
+from stoobly_agent.app.cli.helpers.snapshot_list_service import list_snapshots, snapshot_list_options
 from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION, SCENARIO_RESOURCE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
 from stoobly_agent.lib import logger
@@ -159,6 +160,23 @@ if is_local:
     @click.argument('scenario_key')
     def diff(**kwargs):
         diff_handler(kwargs)
+
+    @snapshot.command(
+        name='list',
+        help='List scenario snapshots'
+    )
+    @snapshot_list_options
+    def snapshot_list(**kwargs):
+        print_options = select_print_options(kwargs)
+        rows = list_snapshots(
+            resource=SCENARIO_RESOURCE,
+            pending=kwargs.get('pending', False),
+            scenario_key=kwargs.get('scenario_key'),
+            search=kwargs.get('search'),
+            size=kwargs.get('size'),
+        )
+        if len(rows):
+            print_snapshots(rows, **print_options)
 
     scenario.add_command(snapshot)
 
