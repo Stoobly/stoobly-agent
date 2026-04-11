@@ -157,7 +157,7 @@ if is_local:
         help="Show diff between current scenario and its snapshot"
     )
     @click.option('--full', is_flag=True, default=False, help='Show full raw diffs for each request.')
-    @click.argument('scenario_key')
+    @click.option('--scenario-key', help='Show diffs only for this scenario key.')
     def diff(**kwargs):
         diff_handler(kwargs)
 

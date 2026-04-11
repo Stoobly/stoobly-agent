@@ -3,8 +3,6 @@ import os
 import shutil
 import sys
 
-from stoobly_agent.config.constants.env_vars import ENV
-
 CERTS_DIR_NAME = 'certs'
 DATA_DIR_NAME = '.stoobly'
 DB_FILE_NAME = 'stoobly_agent.sqlite3'
@@ -75,6 +73,12 @@ class DataDir:
         if not os.path.exists(certs_dir_path):
             os.makedirs(certs_dir_path, exist_ok=True)
 
+            keep_file_path = os.path.join(certs_dir_path, '.keep')
+
+            # Preserve creating empty dir with git 
+            with open(keep_file_path, 'a') as fp:
+                pass
+
         return certs_dir_path
 
     @property
@@ -104,6 +108,12 @@ class DataDir:
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
+
+            keep_file_path = os.path.join(path, '.keep')
+
+            # Preserve creating empty dir with git 
+            with open(keep_file_path, 'a') as fp:
+                pass
 
         return path
 

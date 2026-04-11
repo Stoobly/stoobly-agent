@@ -95,14 +95,14 @@ def test_request_body_one_sided_and_diff_detection(snap_body, cur_body, expected
   old = sys.stdout
   sys.stdout = buf
   try:
-    any_diffs = print_request_diff(snapshot, current, full=False)
+    any_diffs = print_request_diff(snapshot, current, full=True)
   finally:
     sys.stdout = old
   out = buf.getvalue()
 
   assert any_diffs is expected_any
   if expected_any:
-    assert '--- Request body' in out
+    assert '~ Request body' in out
   else:
     assert out == ''
 
@@ -130,4 +130,4 @@ def test_url_diff_sets_any_diffs_true_and_prints(monkeypatch):
   out = buf.getvalue()
 
   assert any_diffs is True
-  assert '=== Request' in out
+  assert '--- http://b' in out
