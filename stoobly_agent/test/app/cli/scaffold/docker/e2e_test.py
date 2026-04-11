@@ -2,6 +2,7 @@ import os
 import pdb
 import pytest
 import shutil
+import yaml
 
 from click.testing import CliRunner
 from pathlib import Path
@@ -13,6 +14,8 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_BASE
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
 from stoobly_agent.app.cli.scaffold.context_lock import ContextLock
 from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
   ManagedServicesDockerCompose,
@@ -252,8 +255,31 @@ class TestScaffoldE2e():
       app = App(app_dir_path)
       context_lock = ContextLock(app)
       access_count = context_lock.access_count()
-      
+
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+    def test_gateway_base_compose_has_env_file(self, app_dir_path: str, target_workflow_name: str):
+      """WORKFLOW_NAME must be injected into the gateway container via env_file so that
+      ScaffoldInterceptedRequestsLogger is used instead of SimpleInterceptedRequestsLogger."""
+      # copy_on_workflow_up shifts runtime_app_data_dir; derive the path the same way GatewayBase does.
+      app = App(app_dir_path)
+      workflow_namespace = WorkflowNamespace(app, target_workflow_name)
+      app.denormalize_configure(workflow_namespace)
+      gateway_base_compose_path = os.path.join(
+        app.runtime_app_data_dir.path, SERVICES_NAMESPACE, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE
+      )
+
+      assert os.path.exists(gateway_base_compose_path), f"Gateway base compose not found: {gateway_base_compose_path}"
+
+      with open(gateway_base_compose_path, 'r') as f:
+        compose = yaml.safe_load(f)
+
+      gateway_base = compose.get('services', {}).get('gateway_base', {})
+      assert 'env_file' in gateway_base, (
+        "gateway_base service missing env_file — WORKFLOW_NAME won't be set in the container, "
+        "causing SimpleInterceptedRequestsLogger to be used instead of ScaffoldInterceptedRequestsLogger"
+      )
+      assert gateway_base['env_file'] == [f'{target_workflow_name}/.env']
 
 
   class TestTestWorkflow():

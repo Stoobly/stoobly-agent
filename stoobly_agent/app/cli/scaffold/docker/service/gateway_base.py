@@ -129,6 +129,12 @@ class GatewayBase():
       handle_before_entrypoint=handle_before_entrypoint
     )
 
+    # Inject env_file so WORKFLOW_NAME is available in the container.
+    # Path is relative to the base compose file's directory, matching where write_env() writes.
+    if self.commands:
+      workflow_name = self.commands[0].workflow_name
+      compose['env_file'] = [f'{workflow_name}/.env']
+
   def __to_traefik_log_level(self):
     log_level = self.log_level
 
