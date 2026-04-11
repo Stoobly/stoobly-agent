@@ -130,4 +130,99 @@ def test_url_diff_sets_any_diffs_true_and_prints(monkeypatch):
   out = buf.getvalue()
 
   assert any_diffs is True
-  assert '--- http://b' in out
+  assert '--- Request http://b' in out
+
+
+def test_request_headers_diff_printed_when_full(monkeypatch):
+  h_snap = {'Content-Type': 'application/json'}
+  h_cur = {'Content-Type': 'text/plain'}
+  snapshot = _StubSnapshot(
+    py_req=_StubPythonRequest(url='http://u', data='same', headers=h_snap),
+  )
+  current = _StubCurrentReq(url='http://u', body='same', headers=h_cur)
+  current.raw = b'X'
+
+  from stoobly_agent.app.models.adapters.orm import OrmResponseAdapterFactory
+
+  class _FakeRespAdapter:
+    def __init__(self, *_args, **_kwargs):
+      pass
+
+    def python_response(self):
+      return None
+
+  monkeypatch.setattr('stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory', _FakeRespAdapter)
+
+  class _FakeRawReqAdapter:
+    def __init__(self, raw):
+      self.body = 'same'
+      self.headers = h_cur
+      self.url = 'http://u'
+
+  monkeypatch.setattr(
+    'stoobly_agent.app.models.adapters.raw_http_request_adapter.RawHttpRequestAdapter',
+    _FakeRawReqAdapter,
+  )
+
+  buf = io.StringIO()
+  old = sys.stdout
+  sys.stdout = buf
+  try:
+    any_diffs = print_request_diff(snapshot, current, full=True)
+  finally:
+    sys.stdout = old
+  out = buf.getvalue()
+
+  assert any_diffs is True
+  assert '~ Request headers' in out
+
+
+def test_response_headers_diff_printed_when_full(monkeypatch):
+  h_snap = {'X-Old': '1'}
+  h_cur = {'X-New': '2'}
+  snapshot = _StubSnapshot(
+    py_req=_StubPythonRequest(url='http://u', data='same', headers={'H': 'v'}),
+    py_res=_StubPythonResponse(content=b'same', headers=h_snap),
+  )
+  current = _StubCurrentReq(
+    url='http://u',
+    body='same',
+    headers={'H': 'v'},
+    res_content=b'same',
+    res_headers=h_cur,
+  )
+  current.raw = b'X'
+
+  from stoobly_agent.app.models.adapters.orm import OrmResponseAdapterFactory
+
+  class _FakeRespAdapter:
+    def __init__(self, *_args, **_kwargs):
+      pass
+
+    def python_response(self):
+      return _StubPythonResponse(content=b'same', headers=h_cur)
+
+  monkeypatch.setattr('stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory', _FakeRespAdapter)
+
+  class _FakeRawReqAdapter:
+    def __init__(self, raw):
+      self.body = 'same'
+      self.headers = {'H': 'v'}
+      self.url = 'http://u'
+
+  monkeypatch.setattr(
+    'stoobly_agent.app.models.adapters.raw_http_request_adapter.RawHttpRequestAdapter',
+    _FakeRawReqAdapter,
+  )
+
+  buf = io.StringIO()
+  old = sys.stdout
+  sys.stdout = buf
+  try:
+    any_diffs = print_request_diff(snapshot, current, full=True)
+  finally:
+    sys.stdout = old
+  out = buf.getvalue()
+
+  assert any_diffs is True
+  assert '~ Response headers' in out

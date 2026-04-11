@@ -13,6 +13,12 @@ class RequestDiffAnalysis:
   current_req_body: Any
   snapshot_res_body: Any
   current_res_body: Any
+  snapshot_req_headers_str: Optional[str]
+  current_req_headers_str: Optional[str]
+  snapshot_res_headers_str: Optional[str]
+  current_res_headers_str: Optional[str]
+  request_headers_has_diff: bool
+  response_headers_has_diff: bool
   request_body_has_diff: bool
   response_body_has_diff: bool
   has_diff: bool
@@ -121,6 +127,12 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
     current_req_body=current_req_body,
     snapshot_res_body=snapshot_res_body,
     current_res_body=current_res_body,
+    snapshot_req_headers_str=snapshot_req_headers_str,
+    current_req_headers_str=current_req_headers_str,
+    snapshot_res_headers_str=snapshot_res_headers_str,
+    current_res_headers_str=current_res_headers_str,
+    request_headers_has_diff=request_headers_has_diff,
+    response_headers_has_diff=response_headers_has_diff,
     request_body_has_diff=request_body_has_diff,
     response_body_has_diff=response_body_has_diff,
     has_diff=has_diff,
@@ -146,9 +158,19 @@ def emit_request_diff(
     emit=emit,
   )
 
+  if full and analysis.request_headers_has_diff:
+    emit("~ Request headers")
+    emit(diff_strings(analysis.snapshot_req_headers_str or "", analysis.current_req_headers_str or ""))
+    emit("")
+
   if full and analysis.request_body_has_diff:
     emit("~ Request body")
     emit(diff_strings(analysis.snapshot_req_body or "", analysis.current_req_body or ""))
+    emit("")
+
+  if full and analysis.response_headers_has_diff:
+    emit("~ Response headers")
+    emit(diff_strings(analysis.snapshot_res_headers_str or "", analysis.current_res_headers_str or ""))
     emit("")
 
   if full and analysis.response_body_has_diff:
@@ -162,7 +184,7 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
   Print diffs for a single request, returning True if any diffs were printed.
   Follows formatting used by scenario diffs:
     - Header: --- URL, ~ Request Key, ~ Snapshot Path
-    - When full=True: ~ Request body / ~ Response body with unified diffs
+    - When full=True: ~ Request headers / ~ Request body / ~ Response headers / ~ Response body with unified diffs
   Snapshot is treated as previous, current as next.
   """
   analysis = analyze_request_diff(request_snapshot, current_request)
