@@ -141,7 +141,7 @@ if is_local:
     help="Show diff between current request and its snapshot"
   )
   @click.option('--full', is_flag=True, default=False, help='Show full raw diff.')
-  @click.argument('request_key')
+  @click.option('--request-key', help='Show diffs only for this request key.')
   def snapshot_diff(**kwargs):
     diff_handler(kwargs)
 

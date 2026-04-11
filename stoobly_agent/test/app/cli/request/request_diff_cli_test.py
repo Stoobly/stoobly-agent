@@ -15,7 +15,11 @@ def settings():
 
 
 class TestRequestDiffCli:
+  def test_it_defaults_to_all_requests_when_key_not_set(self, runner: CliRunner):
+    res = runner.invoke(request, ['snapshot', 'diff'])
+    assert res.exit_code == 0
+
   def test_it_gracefully_errors_on_bad_key(self, runner: CliRunner):
-    res = runner.invoke(request, ['snapshot', 'diff', 'p0.iBADBADBADBADBADBADBADBADBADBADB'])
+    res = runner.invoke(request, ['snapshot', 'diff', '--request-key', 'p0.iBADBADBADBADBADBADBADBADBADBADB'])
     assert res.exit_code == 1
     assert 'Error: Invalid request key' in res.output
