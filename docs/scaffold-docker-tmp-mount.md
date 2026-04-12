@@ -77,9 +77,23 @@ If two runs use the **same `--namespace`** but **different `--context-dir-path`*
 | **CONTEXT_DIR == APP_DIR** (default) | Parallel containers already share `CONTEXT_DIR/.stoobly/tmp/options.json` — conflict pre-existed | No change |
 | **Different CONTEXT_DIRs, same APP_DIR** | Each container writes to its own `CONTEXT_DIR/.stoobly/tmp/options.json` — no conflict | All containers write to `APP_DIR/.stoobly/tmp/options.json` — **new conflict introduced** |
 
+### What `options.json` contains
+
+`MitmproxyConfig.dump()` is called at **agent startup** (`run.py`), immediately after applying all CLI arguments. It writes the full mitmproxy options snapshot for that run — every key mitmproxy knows about, including `listen_host`, `listen_port`, `mode`, `confdir`, `ssl_insecure`, `block_global`, `scripts`, `upstream_cert`, `certs`, `connection_strategy`, etc.
+
+Notably, this is a **write-only-at-startup** operation. The file is not read back to initialize the agent; the agent already has all options in memory from CLI args.
+
+### What actually gets read back
+
+Only one key is ever retrieved via `MitmproxyConfig.get()`:
+
+- **`ssl_insecure`** — read by `replay_request_service.py` and `proxy_controller.py` to decide whether to skip upstream TLS verification.
+
+`get()` falls back to reading the file **only when `__master` is `None`** (no live mitmproxy instance). During a running workflow, the singleton has a live master and reads from in-memory `master.options` directly, never from disk.
+
 ### Practical impact
 
-Inside a running container, mitmproxy reads options from the in-memory `master.options` object, not from disk. `options.json` is only read at startup when no live master exists. So a clobber between parallel containers only matters if a container reads stale options written by a peer. Because containers start independently and do not restart mid-run, the risk is low but real.
+Because `options.json` is overwritten fresh at every agent startup from CLI args and the only value read back (`ssl_insecure`) is typically consistent across runs sharing the same APP_DIR, **the conflict risk is very low in practice**. A clobber would only matter if a container's API or replay code ran `get('ssl_insecure')` without a live master while a parallel container had already overwritten the file with a different `ssl_insecure` value — a narrow edge case.
 
 ### Mitigation
 
@@ -129,5 +143,5 @@ When `CONTEXT_DIR ≠ APP_DIR`, the **old** mount (`CONTEXT_DIR/.stoobly` only) 
 | **Mount alignment** | Bind `APP_DIR/.stoobly/tmp` into the container’s `.stoobly/tmp` when CONTEXT_DIR can differ from APP_DIR |
 | **Parallel runs** | Use distinct `--namespace` values; access files remain per-CONTEXT_DIR via hash |
 | **`.access` file** | Host-only; keyed by CONTEXT_DIR hash; `FileLock` on `.lock`; no new conflicts from the APP_DIR `tmp` mount |
-| **`options.json`** | Cross-boundary (container writes, host deletes); new conflict when parallel runs use different CONTEXT_DIRs; low practical impact but unresolved until file is namespace-scoped |
+| **`options.json`** | Written fresh at every agent startup; only `ssl_insecure` is ever read back, and only without a live master; conflict risk is very low in practice |
 | **Gotcha** | Reusing the same namespace across different CONTEXT_DIRs in parallel can clobber shared namespace dir contents |
