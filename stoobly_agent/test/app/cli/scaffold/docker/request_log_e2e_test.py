@@ -1,0 +1,303 @@
+import json
+import pdb
+import pytest
+import requests
+import socket
+import time
+
+from click.testing import CliRunner
+from typing import Optional
+
+from stoobly_agent.app.cli.scaffold_cli import scaffold
+from stoobly_agent.app.cli.scaffold.constants import (
+    PROXY_MODE_FORWARD,
+    WORKFLOW_MOCK_TYPE,
+    WORKFLOW_RECORD_TYPE,
+)
+from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
+from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.test_helper import reset
+
+
+def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
+    """Find a log entry matching the given message and optional method."""
+    for line in output.strip().split('\n'):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+            if entry.get('message') == message:
+                if method is None or entry.get('method') == method:
+                    return entry
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def wait_for_port(host: str, port: int, timeout: float = 120.0, interval: float = 1.0) -> bool:
+    """Block until TCP port accepts connections or timeout expires. Returns True if ready."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=2.0):
+                return True
+        except (socket.error, OSError):
+            time.sleep(interval)
+    return False
+
+
+def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_retries=20, interval=1.0):
+    """Poll scaffold request logs list until a matching entry appears."""
+    for _ in range(max_retries):
+        time.sleep(interval)
+        result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', workflow_name,
+            '--context-dir-path', context_dir_path
+        ])
+        if result.exit_code == 0 and result.output.strip():
+            entry = find_log_entry(result.output, message)
+            if entry is not None:
+                return entry
+    return None
+
+
+@pytest.mark.e2e
+class TestDockerRequestLogE2e():
+
+    @pytest.fixture(scope='module', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class', autouse=True)
+    def temp_dir(self):
+        data_dir_path = DataDir.instance().path
+        tmp_path = data_dir_path[:data_dir_path.rfind('/')]
+        yield tmp_path
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self, temp_dir):
+        yield temp_dir
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "http.badssl.com"
+
+    class TestForwardProxyMockRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-forward"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_MOCK_TYPE
+
+        @pytest.fixture(scope='class')
+        def proxy_url(self):
+            yield "http://localhost:8080"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 8080), "Forward proxy did not become ready on port 8080"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_mock_failure_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Make an unrecorded request through the forward proxy and verify a Mock failure log entry appears."""
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Mock failure')
+            assert entry is not None, "Expected 'Mock failure' log entry but none appeared"
+            assert entry['level'] == 'ERROR'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry['status_code'] == NOT_FOUND
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                f'http://{hostname}/another-unrecorded',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Mock failure')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+    class TestReverseProxyMockRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-reverse"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_MOCK_TYPE
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
+            time.sleep(3)  # Allow per-service stoobly proxy to fully initialise behind Traefik
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_mock_failure_logged(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Make an unrecorded request via Host header and verify a Mock failure log entry appears."""
+            requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Mock failure')
+            assert entry is not None, "Expected 'Mock failure' log entry but none appeared"
+
+            assert entry['level'] == 'ERROR'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry['status_code'] == NOT_FOUND
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                'http://localhost:80/another-unrecorded',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Mock failure')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+
+@pytest.mark.skip(reason="Record workflow request logging not yet implemented")
+@pytest.mark.e2e
+class TestDockerRecordRequestLogE2e():
+
+    @pytest.fixture(scope='module', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class', autouse=True)
+    def temp_dir(self):
+        data_dir_path = DataDir.instance().path
+        tmp_path = data_dir_path[:data_dir_path.rfind('/')]
+        yield tmp_path
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self, temp_dir):
+        yield temp_dir
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "http.badssl.com"
+
+    class TestReverseProxyRecordRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-record"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_RECORD_TYPE
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Make a request through the record proxy and verify a Record success log entry appears."""
+            requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected 'Record success' log entry but none appeared"
+
+            assert entry['level'] == 'INFO'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
