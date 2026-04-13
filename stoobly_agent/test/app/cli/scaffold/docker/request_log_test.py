@@ -47,6 +47,31 @@ def wait_for_port(host: str, port: int, timeout: float = 120.0, interval: float 
     return False
 
 
+def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
+    """Poll until the forward proxy is intercepting (returns 499 for unrecorded requests).
+
+    The stoobly proxy starts before its settings file is written, so there is a brief
+    window where requests are forwarded instead of intercepted.  This function waits
+    until the proxy is in mock-intercept mode before the test proceeds.
+    """
+    from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+            if resp.status_code == NOT_FOUND:
+                return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
 def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_retries=20, interval=1.0):
     """Poll scaffold request logs list until a matching entry appears."""
     for _ in range(max_retries):
@@ -111,9 +136,9 @@ class TestDockerRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_port('localhost', 8080), "Forward proxy did not become ready on port 8080"
+            assert wait_for_forward_proxy_intercept(proxy_url, hostname), "Forward proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
