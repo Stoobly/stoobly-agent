@@ -47,7 +47,7 @@ class TestApply():
 
       @pytest.fixture(autouse=True, scope='class')
       def events(self, runner: CliRunner, recorded_request: Request, log: Log):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         events = log.events
@@ -56,7 +56,7 @@ class TestApply():
 
         time.sleep(1)
 
-        snapshot_result = runner.invoke(request, ['snapshot', '--action', DELETE_ACTION, recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         return log.events
@@ -82,7 +82,7 @@ class TestApply():
 
       @pytest.fixture(autouse=True, scope='function')
       def put_event(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -121,7 +121,7 @@ class TestApply():
 
       @pytest.fixture(autouse=True, scope='class')
       def events(self, runner: CliRunner, created_scenario: Scenario, log: Log):
-        snapshot_result = runner.invoke(scenario, ['snapshot',  created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create',  created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         events = log.events
@@ -130,7 +130,7 @@ class TestApply():
 
         time.sleep(1)
 
-        snapshot_result = runner.invoke(scenario, ['snapshot', '--action', DELETE_ACTION, created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', '--action', DELETE_ACTION, created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         return log.events
@@ -167,7 +167,7 @@ class TestApply():
 
       @pytest.fixture(scope='class', autouse=True)
       def put_event(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -215,7 +215,7 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def put_event(self, runner: CliRunner, source_scenario: Scenario):
-          snapshot_result = runner.invoke(scenario, ['snapshot', source_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', source_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           log = Log()
@@ -277,7 +277,7 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def put_event(self, runner: CliRunner, created_scenario: Scenario):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           log = Log()
@@ -349,13 +349,13 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def delete_event(self, runner: CliRunner, created_scenario: Scenario):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           last_request = created_scenario.requests.last()
           last_request.delete()
 
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           # Re-create the request
@@ -412,13 +412,13 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def snapshot_one_result(self, runner: CliRunner, recorded_request_one: Request):
-          snapshot_result = runner.invoke(request, ['snapshot', recorded_request_one.key()])
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_one.key()])
           assert snapshot_result.exit_code == 0
           return snapshot_result
 
         @pytest.fixture(scope='class', autouse=True)
         def snapshot_two_result(self, runner: CliRunner, recorded_request_two: Request):
-          snapshot_result = runner.invoke(request, ['snapshot', recorded_request_two.key()])
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_two.key()])
           assert snapshot_result.exit_code == 0
           return snapshot_result
 
@@ -451,7 +451,7 @@ class TestApply():
 
       @pytest.fixture(scope='class', autouse=True)
       def put_event(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -485,7 +485,7 @@ class TestApply():
 
       @pytest.fixture(scope='class', autouse=True)
       def put_event(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -518,7 +518,7 @@ class TestApply():
 
       @pytest.fixture(autouse=True, scope='class')
       def put_event(self, runner: CliRunner, recorded_request: Request):
-        snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -564,7 +564,7 @@ class TestApply():
 
       @pytest.fixture(scope='class', autouse=True)
       def put_event(self, runner: CliRunner, created_scenario: Scenario):
-        snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
@@ -627,13 +627,13 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def delete_event(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           time.sleep(0.5) # So events do not have the same uuid
 
           created_request = created_scenario_requests[1]
-          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', created_request.key(), '--action', DELETE_ACTION])
           assert snapshot_result.exit_code == 0
 
           log = Log()
@@ -695,7 +695,7 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def put_event_one(self, runner: CliRunner, created_scenario_one: Scenario, created_scenario_request: Request):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario_one.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario_one.key()])
           assert snapshot_result.exit_code == 0
 
           log = Log()
@@ -706,7 +706,7 @@ class TestApply():
         def put_event_two(self, runner: CliRunner, created_scenario_two: Scenario, created_scenario_request: Request):
           created_scenario_request.update(scenario_id=created_scenario_two.id)
 
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario_two.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario_two.key()])
           assert snapshot_result.exit_code == 0
 
           log = Log()
@@ -771,11 +771,11 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def snapshots(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           created_request = created_scenario_requests[1]
-          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', created_request.key(), '--action', DELETE_ACTION])
           assert snapshot_result.exit_code == 0
 
         def test_events(self):
@@ -826,7 +826,7 @@ class TestApply():
 
         @pytest.fixture(scope='class', autouse=True)
         def apply_result(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
-          snapshot_result = runner.invoke(scenario, ['snapshot', created_scenario.key()])
+          snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
           created_scenario = Scenario.find(created_scenario.id)
@@ -835,7 +835,7 @@ class TestApply():
           assert apply_result.exit_code == 0
 
           created_request = created_scenario_requests[1]
-          snapshot_result = runner.invoke(request, ['snapshot', created_request.key(), '--action', DELETE_ACTION])
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', created_request.key(), '--action', DELETE_ACTION])
           assert snapshot_result.exit_code == 0
 
           return apply_result

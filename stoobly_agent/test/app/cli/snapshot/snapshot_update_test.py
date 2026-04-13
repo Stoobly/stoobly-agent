@@ -37,7 +37,7 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     def put_event(self, runner: CliRunner, recorded_request: Request):
-      snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+      snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
       log = Log()
@@ -87,7 +87,7 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     def put_event(self, runner: CliRunner, recorded_request: Request):
-      snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+      snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
       log = Log()
@@ -149,7 +149,7 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     def put_event(self, runner: CliRunner, recorded_request: Request):
-      snapshot_result = runner.invoke(request, ['snapshot', recorded_request.key()])
+      snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
       log = Log()
@@ -234,7 +234,7 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     def put_event(self, runner: CliRunner, recorded_request_one: Request):
-      snapshot_result = runner.invoke(scenario, ['snapshot', recorded_request_one.scenario.key()])
+      snapshot_result = runner.invoke(scenario, ['snapshot', 'create', recorded_request_one.scenario.key()])
       assert snapshot_result.exit_code == 0
 
       log = Log()
@@ -243,7 +243,7 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     def put_event_two(self, runner: CliRunner, recorded_request_two: Request):
-      snapshot_result = runner.invoke(request, ['snapshot', recorded_request_two.key()])
+      snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_two.key()])
       assert snapshot_result.exit_code == 0
 
       log = Log()

@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -238,23 +240,50 @@ def __assign_default_origin(kwargs):
         kwargs['scheme'] = os.environ.get(env_vars.AGENT_REPLAY_SCHEME)
 
 def diff_handler(kwargs):
-  request_key = validate_request_key(kwargs['request_key'])
-  request_uuid = request_key.id
-
-  snapshot = RequestSnapshot(request_uuid)
-  if not snapshot.exists:
-    print('Error: Snapshot not found for this request.', file=sys.stderr)
-    sys.exit(1)
-
-  snapshot_raw = snapshot.request
-  if snapshot_raw is None:
-    print('Error: Snapshot file is empty or unreadable.', file=sys.stderr)
-    sys.exit(1)
-
-  current_request = snapshot.find_resource()
-  if not current_request or not current_request.response:
-    print('Error: Current request or response not found.', file=sys.stderr)
-    sys.exit(1)
-
+  request_key = kwargs.get('request_key')
   full = kwargs.get('full', False)
-  print_request_diff(snapshot, current_request, full=full)
+
+  if request_key:
+    _request_key = validate_request_key(request_key)
+    request_uuid = _request_key.id
+
+    snapshot = RequestSnapshot(request_uuid)
+    if not snapshot.exists:
+      print('Error: Snapshot not found for this request.', file=sys.stderr)
+      sys.exit(1)
+
+    snapshot_raw = snapshot.request
+    if snapshot_raw is None:
+      print('Error: Snapshot file is empty or unreadable.', file=sys.stderr)
+      sys.exit(1)
+
+    current_request = snapshot.find_resource()
+    if not current_request or not current_request.response:
+      print('Error: Current request or response not found.', file=sys.stderr)
+      sys.exit(1)
+
+    print_request_diff(snapshot, current_request, full=full)
+    return
+
+  log = Log()
+  visited_request_ids = set()
+  for event in log.target_events:
+    if event.action != PUT_ACTION:
+      continue
+    if event.resource != REQUEST_RESOURCE:
+      continue
+    if event.resource_uuid in visited_request_ids:
+      continue
+
+    visited_request_ids.add(event.resource_uuid)
+    snapshot = RequestSnapshot(event.resource_uuid)
+    if not snapshot.exists:
+      continue
+    if snapshot.request is None:
+      continue
+
+    current_request = snapshot.find_resource()
+    if not current_request or not current_request.response:
+      continue
+
+    print_request_diff(snapshot, current_request, full=full)

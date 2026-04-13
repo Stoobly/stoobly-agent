@@ -7,17 +7,19 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import SCENARIO_RESOURCE, PUT_ACTION
+from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
-from stoobly_agent.lib import logger
+from stoobly_agent.lib.logger import bcolors, Logger
 
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from ..helpers.scenario_facade import ScenarioFacade
 from ..helpers.validations import *
 from ..types.scenario import ScenarioTestOptions
-from ..helpers.diff_request_print import print_request_diff
+from ..helpers.diff_request_print import analyze_request_diff, emit_request_diff, emit_request_diff_header
 
 def create_handler(kwargs):
   print_options = select_print_options(kwargs)
@@ -173,7 +175,7 @@ def snapshot_handler(kwargs):
 
 def test_handler(kwargs: ScenarioTestOptions):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
-  logger.Logger.reload()
+  Logger.reload()
 
   settings = Settings.instance()
   scenario_key = validate_scenario_key(kwargs['key'])
@@ -241,58 +243,111 @@ def __assign_default_origin(kwargs):
         kwargs['scheme'] = os.environ.get(env_vars.AGENT_REPLAY_SCHEME)
 
 def diff_handler(kwargs):
-  scenario_key = validate_scenario_key(kwargs['scenario_key'])
-  scenario_uuid = scenario_key.id
+  scenario_key = kwargs.get('scenario_key')
+  full = kwargs.get('full', False)
 
-  snapshot = ScenarioSnapshot(scenario_uuid)
-  if not snapshot.exists:
-    print('Error: Snapshot not found for this scenario.', file=sys.stderr)
-    sys.exit(1)
+  if scenario_key:
+    resolved_scenario_key = validate_scenario_key(scenario_key)
+    snapshot = ScenarioSnapshot(resolved_scenario_key.id)
+    if not snapshot.exists:
+      print('Error: Snapshot not found for this scenario.', file=sys.stderr)
+      sys.exit(1)
 
-  # Track whether any diff was printed
-  any_diffs = False
+    _print_scenario_diff(snapshot=snapshot, full=full, strict=True)
+    return
 
+  log = Log()
+  visited_scenario_ids = set()
+  for event in log.target_events:
+    if event.action != PUT_ACTION:
+      continue
+    if event.resource != SCENARIO_RESOURCE:
+      continue
+    if event.resource_uuid in visited_scenario_ids:
+      continue
+
+    visited_scenario_ids.add(event.resource_uuid)
+    snapshot = ScenarioSnapshot(event.resource_uuid)
+    if not snapshot.exists:
+      continue
+
+    _print_scenario_diff(snapshot=snapshot, full=full, strict=False)
+
+def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   # Diff scenario metadata (name/description) if possible
   current_scenario = snapshot.find_resource()
   if not current_scenario:
-    print('Error: Current scenario not found.', file=sys.stderr)
-    sys.exit(1)
+    if strict:
+      print('Error: Current scenario not found.', file=sys.stderr)
+      sys.exit(1)
+    return
 
   snapshot_meta = snapshot.metadata
-  current_meta_text = None
-  snapshot_meta_text = None
 
-  try:
-    # Normalize to comparable JSON strings
-    import json
-    current_meta_text = json.dumps({
-      'name': current_scenario.name,
-      'description': current_scenario.description,
-    }, indent=2)
-    snapshot_meta_text = json.dumps({
-      'name': snapshot_meta.get('name'),
-      'description': snapshot_meta.get('description'),
-    }, indent=2)
-  except Exception:
-    current_meta_text = f"{current_scenario.name}\n{current_scenario.description}"
-    snapshot_meta_text = f"{snapshot_meta.get('name')}\n{snapshot_meta.get('description')}"
+  snapshot_name = snapshot_meta.get('name')
+  snapshot_description = snapshot_meta.get('description')
+  current_name = getattr(current_scenario, 'name', None)
+  current_description = getattr(current_scenario, 'description', None)
 
-  if snapshot_meta_text != current_meta_text:
-    any_diffs = True
-    print('=== Scenario metadata')
-    print(snapshot.metadata_path)
-    print(diff_strings(snapshot_meta_text, current_meta_text))
+  name_differs = (snapshot_name or '') != (current_name or '')
+  description_differs = (snapshot_description or '') != (current_description or '')
+  metadata_has_diff = name_differs or description_differs
 
-  # Diff each request in the scenario snapshot
-  def handle_request(request_snapshot):
-    nonlocal any_diffs
+  request_snapshots = []
+  snapshot.iter_request_snapshots(lambda request_snapshot: request_snapshots.append(request_snapshot))
+
+  request_analyses = []
+  for request_snapshot in request_snapshots:
     current_request = request_snapshot.find_resource()
     if not current_request or not current_request.response:
-      return
+      request_analyses.append((request_snapshot, None))
+      continue
+    request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
 
-    full = kwargs.get('full', False)
-    did_print = print_request_diff(request_snapshot, current_request, full=full)
-    if did_print:
-      any_diffs = True
-  
-  snapshot.iter_request_snapshots(handle_request)
+  snapshot_request_uuids = set([request_snapshot.uuid for request_snapshot in request_snapshots])
+  current_requests = current_scenario.requests or []
+  requests_missing_snapshot = list(filter(
+    lambda request: request.uuid not in snapshot_request_uuids, current_requests
+  ))
+
+  has_any_diff = (
+    metadata_has_diff
+    or any(analysis and analysis.has_diff for _, analysis in request_analyses)
+    or len(requests_missing_snapshot) > 0
+  )
+  if not has_any_diff:
+    return
+
+  try:
+    scenario_key_str = current_scenario.key()
+  except Exception:
+    scenario_key_str = snapshot.uuid
+
+  # Title line: inline colored diff for the scenario name when it changed; avoid repeating name in JSON below.
+  print('=== Scenario ', end='')
+  if name_differs:
+    name_diff_text = diff_strings(str(snapshot_name or ''), str(current_name or '')).rstrip('\n')
+    if '\n' in name_diff_text:
+      name_diff_text = name_diff_text.replace('\n', ' ')
+    print(name_diff_text, end='')
+  else:
+    print(current_name or snapshot_name or '', end='')
+  print(f' {scenario_key_str}')
+  print()
+
+  if full:
+    print('~ Description')
+    print(diff_strings(str(snapshot_description or ''), str(current_description or '')))
+    print()
+
+  for _, analysis in request_analyses:
+    if not analysis or not analysis.has_diff:
+      continue
+    emit_request_diff(analysis, full=full)
+
+  for request in requests_missing_snapshot:
+    emit_request_diff_header(
+      request.url or "",
+      request.key(),
+      f"{bcolors.FAIL}No snapshot found{bcolors.ENDC}",
+    )
