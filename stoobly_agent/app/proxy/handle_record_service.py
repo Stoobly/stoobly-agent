@@ -16,6 +16,7 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.config.constants.env_vars import ENV
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mode, record_order, record_policy, record_strategy
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
@@ -119,10 +120,15 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
 
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
-    inject_upload_request(request_model, intercept_settings)(flow_copy)
+    res = inject_upload_request(request_model, intercept_settings)(flow_copy)
 
     __record_hook(lifecycle_hooks.AFTER_RECORD, context)
     context.flow = flow # Reset flow
+
+    if res:
+        InterceptedRequestsLogger.info("Record success", request=flow_copy.request, response=flow_copy.response)
+    else:
+        InterceptedRequestsLogger.error("Record failure", request=flow_copy.request, response=flow_copy.response)
 
 def __record_request(context: RecordContext, request_model: RequestModel):
     if os.environ.get(ENV) == TEST:

@@ -15,6 +15,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
@@ -257,7 +258,6 @@ class TestDockerRequestLogE2e():
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
 
-@pytest.mark.skip(reason="Record workflow request logging not yet implemented")
 @pytest.mark.e2e
 class TestDockerRecordRequestLogE2e():
 
@@ -283,6 +283,85 @@ class TestDockerRecordRequestLogE2e():
     def hostname(self):
         yield "http.badssl.com"
 
+    class TestForwardProxyRecordRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-forward-record"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service-record"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_RECORD_TYPE
+
+        @pytest.fixture(scope='class')
+        def proxy_url(self):
+            yield "http://localhost:8080"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname, settings):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 8080), "Forward proxy did not become ready on port 8080"
+            settings.load()
+            settings.proxy.intercept.active = True
+            settings.commit()
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Make a request through the forward proxy record workflow and verify a Record success log entry appears."""
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            
+            pdb.set_trace()
+
+            assert entry is not None, "Expected 'Record success' log entry but none appeared"
+            assert entry['level'] == 'INFO'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
     class TestReverseProxyRecordRequestLog():
 
         @pytest.fixture(scope='class')
@@ -303,8 +382,13 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, settings):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
+            time.sleep(3)  # Allow per-service stoobly proxy to fully initialise behind Traefik
+            settings.load()
+            settings.proxy.intercept.active = True
+            settings.commit()
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -312,7 +396,7 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
-            """Make a request through the record proxy and verify a Record success log entry appears."""
+            """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
             requests.get(
                 'http://localhost:80/',
                 headers={'Host': hostname},
@@ -326,3 +410,26 @@ class TestDockerRecordRequestLogE2e():
             assert hostname in entry.get('url', '')
             assert entry.get('timestamp'), "timestamp should exist and not be empty"
             assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                'http://localhost:80/another-path',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"

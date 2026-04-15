@@ -494,6 +494,120 @@ class TestRequestLogWithTestWorkflowE2e():
 
 
 @pytest.mark.e2e
+class TestRequestLogWithRecordWorkflowE2e():
+    """Test that request logging works in the record scaffold workflow."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class')
+    def app_name(self):
+        yield "request-log-record-workflow-app"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "dog.ceo"
+
+    @pytest.fixture(scope='class')
+    def service_name(self):
+        yield "dog-api-record"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def proxy_url(self):
+        return "http://localhost:8081"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+        LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def record_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+        """Start record workflow for testing."""
+        # Pre-generate CA certs so workflow up skips sudo cert install
+        CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
+
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
+        time.sleep(1)
+        settings.load()
+
+        # Enable intercept so requests are recorded (not just forwarded)
+        settings.proxy.intercept.active = True
+        settings.commit()
+        time.sleep(1)
+        settings.load()
+
+        yield
+
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
+        time.sleep(1)
+
+    def test_successful_record_logged_at_info_level(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
+        """Test that successfully recorded requests are logged at INFO level."""
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+
+        res = requests.get(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        assert list_result.exit_code == 0
+
+        if res.status_code != 200:
+            assert False, f"Expected successful record (200), got {res.status_code}. Response: {res.text}."
+
+        output = list_result.output
+        entry = find_log_entry(output, 'Record success')
+        assert entry is not None, f"Expected 'Record success' log entry, got:\n{output}"
+
+        assert entry['level'] == 'INFO'
+        assert entry['method'] == 'GET'
+        assert 'dog.ceo' in entry.get('url', '')
+        assert entry['status_code'] == 200
+
+        assert entry.get('timestamp'), "timestamp should exist and not be empty"
+        assert entry.get('user_agent'), "user_agent should exist and not be empty"
+        assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+    def test_options_request_not_logged_as_failure(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
+        """Test that OPTIONS requests are not logged as record failures."""
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+
+        # In record mode, OPTIONS is forwarded to the real server (e.g. dog.ceo returns 405).
+        # Unlike mock mode, there is no synthetic CORS 200 — status code is not relevant here.
+        requests.options(
+            'https://dog.ceo/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        assert list_result.exit_code == 0
+
+        entry = find_log_entry(list_result.output, 'Record failure', method='OPTIONS')
+        assert entry is None, f"OPTIONS request should not be logged as Record failure, got log output:\n{list_result.output}"
+
+
+@pytest.mark.e2e
 class TestRequestLogFromDifferentWorkingDirectory():
     """Test that --context-dir-path flag allows viewing logs from a different working directory."""
 
