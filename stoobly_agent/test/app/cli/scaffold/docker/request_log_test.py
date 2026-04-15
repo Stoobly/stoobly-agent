@@ -72,6 +72,28 @@ def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: flo
     return False
 
 
+def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval: float = 1.0) -> bool:
+    """Poll until the stoobly proxy behind Traefik is handling requests (non-502/503 response).
+
+    Traefik becomes ready before the per-service stoobly proxy is fully initialised.
+    This function waits until actual requests reach the stoobly proxy.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                f'http://localhost:80/',
+                headers={'Host': hostname},
+                timeout=5.0,
+            )
+            if resp.status_code not in (502, 503):
+                return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
 def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_retries=20, interval=1.0):
     """Poll scaffold request logs list until a matching entry appears."""
     for _ in range(max_retries):
@@ -380,10 +402,10 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, settings):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, settings):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
-            time.sleep(3)  # Allow per-service stoobly proxy to fully initialise behind Traefik
+            assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
             settings.load()
             settings.proxy.intercept.active = True
             settings.commit()
@@ -396,7 +418,7 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
-            requests.get(
+            res = requests.get(
                 'http://localhost:80/',
                 headers={'Host': hostname},
             )
