@@ -136,7 +136,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['POST'],
-      'pattern': '.*?/users(?:\?.*)?',
+      'pattern': r'.*?/users(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
