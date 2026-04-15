@@ -94,6 +94,35 @@ def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval:
     return False
 
 
+def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 60.0, interval: float = 1.0) -> bool:
+    """Poll until the forward proxy is actively recording.
+
+    After settings.commit() sets active=True, the --settings-watch watchdog needs time
+    to detect and reload the settings file. This function confirms the proxy has picked
+    up the change by verifying a request gets a 'Record success' log entry.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+        except Exception:
+            pass
+        time.sleep(interval)
+        result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', workflow_name,
+            '--context-dir-path', context_dir_path
+        ])
+        if result.exit_code == 0 and result.output.strip():
+            if find_log_entry(result.output, 'Record success'):
+                return True
+    return False
+
+
 def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_retries=20, interval=1.0):
     """Poll scaffold request logs list until a matching entry appears."""
     for _ in range(max_retries):
@@ -334,7 +363,7 @@ class TestDockerRecordRequestLogE2e():
             settings.load()
             settings.proxy.intercept.active = True
             settings.commit()
-            time.sleep(3)  # Wait for --settings-watch watchdog to reload settings
+            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record-active mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
