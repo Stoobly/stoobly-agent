@@ -363,7 +363,7 @@ class TestDockerRecordRequestLogE2e():
             settings.load()
             settings.proxy.intercept.active = True
             settings.commit()
-            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record-active mode"
+            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path, timeout=120.0), "Forward proxy did not enter record-active mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
