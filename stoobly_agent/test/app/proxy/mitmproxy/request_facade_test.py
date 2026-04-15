@@ -96,7 +96,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -116,7 +116,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -136,7 +136,7 @@ class TestRewriteParams():
     }
     rewrite_rule = RewriteRule({
       'methods': ['POST'],
-      'pattern': '.*?/users(?:\?.*)?',
+      'pattern': r'.*?/users(?:\?.*)?',
       'parameter_rules': [parameter_rule]
     })
 
@@ -158,7 +158,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -179,7 +179,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -202,7 +202,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -225,7 +225,7 @@ class TestRewriteUrl():
     }
     rewrite_rule = RewriteRule({
       'methods': ['GET'],
-      'pattern': '.*?/requests(?:\?.*)?',
+      'pattern': r'.*?/requests(?:\?.*)?',
       'url_rules': [url_rule]
     })
 
@@ -255,7 +255,7 @@ class TestRewriteUrl():
       }
       rewrite_rule = RewriteRule({
         'methods': ['GET'],
-        'pattern': '.*?/requests(?:\?.*)?',
+        'pattern': r'.*?/requests(?:\?.*)?',
         'url_rules': [url_rule1, url_rule2]
       })
 
