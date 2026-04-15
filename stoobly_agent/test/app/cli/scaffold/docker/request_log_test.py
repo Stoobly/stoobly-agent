@@ -1,5 +1,4 @@
 import json
-import pdb
 import pytest
 import requests
 import socket
@@ -313,6 +312,7 @@ class TestDockerRecordRequestLogE2e():
             settings.load()
             settings.proxy.intercept.active = True
             settings.commit()
+            time.sleep(3)  # Wait for --settings-watch watchdog to reload settings
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -321,15 +321,13 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
             """Make a request through the forward proxy record workflow and verify a Record success log entry appears."""
-            requests.get(
+            res = requests.get(
                 f'http://{hostname}/',
                 proxies={'http': proxy_url, 'https': proxy_url},
                 verify=False
             )
 
             entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
-            
-            pdb.set_trace()
 
             assert entry is not None, "Expected 'Record success' log entry but none appeared"
             assert entry['level'] == 'INFO'
@@ -389,6 +387,7 @@ class TestDockerRecordRequestLogE2e():
             settings.load()
             settings.proxy.intercept.active = True
             settings.commit()
+            time.sleep(3)  # Wait for --settings-watch watchdog to reload settings
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
