@@ -90,7 +90,7 @@ class TestCliMockIntegration():
 
         @pytest.fixture(scope='class')
         def search_endpoint(self, spies):
-            return spies[2]
+            return spies[0]
 
         @pytest.fixture(scope='class')
         def handle_request_not_found(self, spies):
@@ -98,7 +98,7 @@ class TestCliMockIntegration():
 
         @pytest.fixture(scope='class')
         def ignored_components(self, spies):
-            return spies[0]
+            return spies[2]
 
         def test_it_calls_handle_request_not_found_spy_once(self, handle_request_not_found: MagicMock):
             assert handle_request_not_found.call_count == 1
