@@ -42,7 +42,7 @@ flowchart TB
 
   subgraph opt_retry [Options inside eval_request on retry]
     CP{Add COMPUTE=1?}
-    CP -->|yes| WCOMP["COMPUTE=1: local resource ∧ remote project key ∧ retry option ∧ ignored_components non-empty"]
+    CP -->|yes| WCOMP["COMPUTE=1: local resource AND remote project key AND retry option AND ignored_components non-empty"]
     CP -->|no| NOCOMP[Query without COMPUTE]
     WCOMP --> RES2[response]
     NOCOMP --> RES2
@@ -68,15 +68,7 @@ flowchart TB
   KEEP499 --> OUT
 ```
 
-**1st vs retry:** The first call never passes `retry`/`infer` into [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Only if the first response is **498** does the handler append `res.content` and call `eval_request` again with `retry=1` and optional `infer` (at most **one** retry; a second **498** is returned as-is — there is no third lookup).
-
-**498:** Local DB [`response`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) found no matching row; `endpoint_promise` (remote endpoint search) returned a non-empty ignore list → [`IgnoreComponentsResponseBuilder`](../stoobly_agent/app/proxy/mock/ignored_components_response_builder.py).
-
-**499:** [`CustomNotFoundResponseBuilder`](../stoobly_agent/app/proxy/mock/custom_not_found_response_builder.py) — e.g. no row and `endpoint_promise` missing or returned no ignores, missing response row, or invalid project/scenario key ([`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) returns 499 before hitting the DB). After the final `eval_request` (first or single retry), if status is **499**, [`eval_fixtures`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py) may supply a fixture response.
-
-**`compute`:** Set inside `eval_request` only when **`retry`** is truthy **and** `ignored_components` is non-empty **and** the resource is local with a **remote project key** ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py) = `'1'`). That matches the retry path after **498** (and not the first attempt, even if ignore rules pre-filled `ignored_components`). See also [Remote project key and `compute`](#remote-project-key-and-compute).
-
-Outer mock policy **`FOUND`** may still forward upstream on **499**; hooks and `pass_on` apply after this function returns.
+Supplements the diagram (not drawn above): **498** is “no row yet, but remote endpoint search returned suggested ignores” → [`IgnoreComponentsResponseBuilder`](../stoobly_agent/app/proxy/mock/ignored_components_response_builder.py) in [`request_adapter.response`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py). **499** is the custom not-found response ([`CustomNotFoundResponseBuilder`](../stoobly_agent/app/proxy/mock/custom_not_found_response_builder.py)) for cases such as no usable match / no ignores from `endpoint_promise`, missing response row, or **invalid project or scenario key** before the DB path runs ([`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py)). If the **retry** response is still **498**, there is **no** third lookup. **`COMPUTE`** conditions and behavior are covered under [Remote project key and `compute`](#remote-project-key-and-compute) and in the diagram’s **Add COMPUTE=1?** branch. Outer mock policy **`FOUND`** may still **forward upstream** on **499** ([`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py)); lifecycle hooks and `pass_on` apply there.
 
 ---
 
