@@ -1,16 +1,14 @@
 # Mock request matching
 
+## Background
+
 How an **incoming proxied request** is matched to a **recorded row** in the local DB for mocks: **hash-based** identity, optional **match rules** that drop hash dimensions, and optional **`compute`** to re-hash stored `raw` when **ignored components** change between record time and the retry path. Custom status codes: **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** ([`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py)) — not standard HTTP 404/498.
 
----
-
-## Remote project key and `compute`
+### Remote project key and `compute`
 
 When **local** + **remote project key**: **`compute='1'`** is attached only if **`retry`** and non-empty **`ignored_components`** after [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py)). That widens the ORM query and runs [`filter_requests_by_hashes`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) so stored **`raw`** is re-hashed with the same ignores as the live request.
 
----
-
-## Hash dimensions
+### Hash dimensions
 
 [`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py): MD5 over **headers**, **query params** (multi-value), **body** as params or raw text per [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Typed **ignored components** (`HEADER`, `QUERY_PARAM`, `BODY_PARAM`, …) exclude matching parts before hashing.
 
@@ -60,7 +58,7 @@ flowchart TB
 
   D499{status 499?}
 
-  D499 -->|yes| EF[eval_fixtures(...)]
+  D499 -->|yes| EF["eval_fixtures(...)"]
   D499 -->|no| OUT[Return res]
 
   EF --> FX{fixture returned?}
@@ -108,7 +106,6 @@ flowchart TB
   EP2 -->|yes| R498[498 IgnoreComponentsResponseBuilder]
   EP2 -->|no| R499[499 CustomNotFoundResponseBuilder]
 ```
-
 
 ---
 
