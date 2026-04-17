@@ -4,43 +4,70 @@ How an **incoming proxied request** is matched to a **recorded row** in the loca
 
 ---
 
+## Remote project key and `compute`
+
+When **local** + **remote project key**: **`compute='1'`** is attached only if **`retry`** and non-empty **`ignored_components`** after [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py)). That widens the ORM query and runs [`filter_requests_by_hashes`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) so stored **`raw`** is re-hashed with the same ignores as the live request.
+
+---
+
+## Hash dimensions
+
+[`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py): MD5 over **headers**, **query params** (multi-value), **body** as params or raw text per [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Typed **ignored components** (`HEADER`, `QUERY_PARAM`, `BODY_PARAM`, …) exclude matching parts before hashing.
+
+---
+
 ## Diagram: mock handler, ignored components, and `eval_request_with_retry`
 
 [`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py) merges **ignore rules** into `ignored_components` earlier in [`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) (same list used for both attempts).
 
 ```mermaid
 flowchart TB
-  subgraph prep [Optional prep]
-    IR["ignore_rules → merge into ignored_components"]
+  subgraph prep [Optional prep — handle_request_mock_generic]
+    IG{ignore_rules non-empty?}
+    IG -->|yes| MERGE[Merge rewrite → ignored_components]
+    IG -->|no| IG0[Use ignored_components as-is]
+    MERGE --> INIT
+    IG0 --> INIT
+    INIT["infer ← bool options.infer<br/>used only on retry path"]
   end
 
-  subgraph attempt1 [1st attempt]
-    E1["eval_request(request, ignored_components)"]
-    P1["Options: no retry, no infer → compute not set in eval_request"]
-    E1 --> P1
+  INIT --> E1["eval_request(request, ignored_components)"]
+
+  E1 --> K1{kwargs include retry?}
+  K1 -->|no — first call| D498{status 498?}
+
+  subgraph retry_once [Retry at most once — only after 498]
+    APP[Append res.content to ignored_components]
+    E2["eval_request(..., infer=infer, retry=1)"]
+    APP --> E2
   end
 
-  subgraph attempt2 [Retry at most once — only after 498]
-    A["Append res.content (JSON list) to ignored_components"]
-    E2["eval_request(..., infer=options.infer, retry=1)"]
-    P2["If local + remote project key: compute=1 when retry and ignored_components non-empty"]
-    A --> E2 --> P2
+  subgraph opt_retry [Options inside eval_request on retry]
+    CP{Add COMPUTE=1?}
+    CP -->|yes| WCOMP["COMPUTE=1: local resource ∧ remote project key ∧ retry option ∧ ignored_components non-empty"]
+    CP -->|no| NOCOMP[Query without COMPUTE]
+    WCOMP --> RES2[response]
+    NOCOMP --> RES2
   end
 
-  IR --> E1
-  P1 --> R1{status 498?}
+  E2 --> CP
 
-  R1 -->|yes| A
-  R1 -->|no| RES[Candidate response from 1st attempt]
+  D498 -->|yes| APP
+  D498 -->|no| RES1[res from first attempt]
 
-  P2 --> RES2[Response from 2nd attempt — no further 498 loop]
+  RES1 --> D499
+  RES2 --> D499
 
-  RES --> NF{status 499?}
-  RES2 --> NF
+  D499{status 499?}
 
-  NF -->|yes| FX["eval_fixtures may replace res"]
-  NF -->|no| OUT[Return res to caller]
-  FX --> OUT
+  D499 -->|yes| EF[eval_fixtures(...)]
+  D499 -->|no| OUT[Return res]
+
+  EF --> FX{fixture returned?}
+  FX -->|yes| USEFX[res ← fixture]
+  FX -->|no| KEEP499[Keep 499 response]
+  USEFX --> OUT
+  KEEP499 --> OUT
 ```
 
 **1st vs retry:** The first call never passes `retry`/`infer` into [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Only if the first response is **498** does the handler append `res.content` and call `eval_request` again with `retry=1` and optional `infer` (at most **one** retry; a second **498** is returned as-is — there is no third lookup).
@@ -82,17 +109,6 @@ flowchart TB
   EP2 -->|no| R499[499 CustomNotFoundResponseBuilder]
 ```
 
----
-
-## Remote project key and `compute`
-
-When **local** + **remote project key**: **`compute='1'`** is attached only if **`retry`** and non-empty **`ignored_components`** after [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py)). That widens the ORM query and runs [`filter_requests_by_hashes`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) so stored **`raw`** is re-hashed with the same ignores as the live request.
-
----
-
-## Hash dimensions
-
-[`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py): MD5 over **headers**, **query params** (multi-value), **body** as params or raw text per [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Typed **ignored components** (`HEADER`, `QUERY_PARAM`, `BODY_PARAM`, …) exclude matching parts before hashing.
 
 ---
 
