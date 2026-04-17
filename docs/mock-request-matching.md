@@ -56,35 +56,66 @@ Behavior in code terms:
 
 [`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) also enforces **mock policy** (`NONE` skips mock, invalid policy yields 400), rewrites, hooks, and—when policy is **`FOUND`**—may **proxy upstream** if the response is still 499 after `__after_mock_not_found`. That outer behavior is omitted from the diagram above, which only covers `eval_request_with_retry`.
 
-## `eval_request` parameter pipeline
+### When retry happens
 
-```mermaid
-flowchart LR
-  subgraph scope [Scoping]
-    PK[project_key scenario_key]
-  end
-  subgraph identity [Identity and hashes]
-    Core[host path port method]
-    HH[HashedRequestDecorator with ignored_components]
-    H1[headers_hash query_params_hash body hashes]
-  end
-  subgraph rules [Match rules]
-    MR[URL regex plus method]
-    Drop[Drop hash keys not in rule components]
-  end
-  subgraph remote [Local plus remote project]
-    EP[endpoint_promise search_endpoint API]
-    C1[compute equals 1 if retry and ignores and remote key]
-  end
-  subgraph persistLayer [Persistence call]
-    RM[request_model.response query_params]
-  end
-  PK --> Core
-  Core --> HH --> H1
-  H1 --> MR --> Drop
-  Drop --> EP
-  EP --> C1 --> RM
-```
+Retry exists only inside [`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py). There is **at most one** repeat of `eval_request`.
+
+| Call | Trigger | `eval_request` arguments |
+|------|---------|---------------------------|
+| First | Always | `eval_request(request, ignored_components)` — no `retry` or `infer` in `**options` |
+| Second | First response has **status 498** | `eval_request(request, ignored_components, infer=infer, retry=1)` where `infer` comes from mock `**options` (e.g. [`MockOptions`](../stoobly_agent/app/proxy/handle_mock_service.py)) |
+
+So **`retry=1` is only present on the second call**. It is not an HTTP query string on the client request; it becomes a lookup field (see below) and is **stripped** before the ORM query.
+
+### How **498** (`IGNORE_COMPONENTS`) is handled
+
+- **Meaning:** The local adapter could not match a row, but an **`endpoint_promise`** (remote endpoints lookup) returned a non-empty **`ignored_components`** list, so the client should retry with those rules applied to hashing ([`IgnoreComponentsResponseBuilder`](../stoobly_agent/app/proxy/mock/ignored_components_response_builder.py) → status **498**, body JSON array of components).
+- **Handler:** [`ignored_components.append(res.content)`](../stoobly_agent/app/proxy/handle_mock_service.py) (bytes body, same JSON as the builder wrote), then the second `eval_request` as above.
+- **Not** a standard HTTP 498; it is a custom code in [`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py).
+
+### How **499** (`NOT_FOUND`) is handled
+
+- **Constant:** `NOT_FOUND = 499` — again a **custom** code, not HTTP 404.
+- **Produced by [`CustomNotFoundResponseBuilder`](../stoobly_agent/app/proxy/custom_not_found_response_builder.py) when:**
+  - No matching request row after lookup (including after compute path), and `endpoint_promise` is missing or yields no `ignored_components` to send ([`__handle_request_not_found`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py)), **or**
+  - Invalid `project_key` / `scenario_key` at the start of [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) (early return).
+- **After `eval_request_with_retry`:** If the **final** response is still **499**, [`eval_fixtures`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py) may replace it with a fixture response; otherwise **499** is returned to the generic mock handler, which may then run failure hooks or (**`FOUND`** policy only) attempt upstream proxying.
+
+### How **ignored_components** are built
+
+[`__build_ignored_components`](../stoobly_agent/app/proxy/mock/eval_request_service.py) normalizes the list passed into `eval_request`:
+
+- **Strings / bytes:** `json.loads` into a list of dicts (e.g. body from a **498** response).
+- **Lists:** concatenated (nested lists flattened into the component list).
+- **Dicts:** appended as single component specs.
+
+**Sources of items before/during the two `eval_request` calls:**
+
+1. **Mock ignore rules** — [`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) may merge [`rewrite_rules_to_ignored_components`](../stoobly_agent/app/proxy/utils/rewrite_rules_to_ignored_components_service.py) into `options['ignored_components']` before any `eval_request`.
+2. **498 retry** — After the first response is **498**, `res.content` is **appended** to the same list (second call hashes with a larger ignore set).
+
+Those structures are fed to [`HashedRequestDecorator.with_ignored_components`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py) when computing **`headers_hash`**, **`query_params_hash`**, and body hashes in [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py).
+
+**Remote endpoint metadata (separate from the list):** When `request_model.is_local` and **`parsed_remote_project_key`** is set, [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) attaches an **`endpoint_promise`** callable that hits [`search_endpoint(..., ignored_components=1)`](../stoobly_agent/app/proxy/mock/search_endpoint.py). The local DB uses that promise in [`__ignored_components`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) when deciding **498** vs **499** on not-found and when running the **compute** filter (see [Remote project key and `compute`](#remote-project-key-and-compute)).
+
+### Lookup parameters attached to `request_model.response` (local DB)
+
+[`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) builds a single **`query_params`** dict via [`ParamBuilder`](../stoobly_agent/lib/api/param_builder.py), then calls `request_model.response(**query_params)`. These are **adapter keyword arguments**, not query parameters on the original HTTP request.
+
+| Field | How it is set | Role |
+|--------|----------------|------|
+| `project_id` | `with_resource_scoping` from project/scenario keys | Scoping; **removed** from ORM filter columns in [`__filter_request_response_columns`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
+| `scenario_id` | From scenario key when present | ORM match |
+| `host`, `path`, `port`, `method` | [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py) | ORM match |
+| `headers_hash`, `query_params_hash`, `body_params_hash` or `body_text_hash` | `HashedRequestDecorator` + optional removal by [`__filter_by_match_rules`](../stoobly_agent/app/proxy/mock/eval_request_service.py) | Match (or dropped by match rules) |
+| `retry` | [`__build_optional_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py) only if `options.get('retry')` | **Stripped** from ORM columns (not a DB column) |
+| `infer` | Same, only with `retry` | **Stripped** from ORM columns |
+| `request_id` | Header [`MOCK_REQUEST_ID`](../stoobly_agent/config/constants/custom_headers.py) if set | Forces lookup by id branch |
+| `session_id` | Header / constant [`SESSION_ID`](../stoobly_agent/config/constants/query_params.py) | **Stripped** from ORM columns; used for scenario tie-break |
+| `endpoint_promise` | Callable when local + remote project key | **Stripped** from ORM columns; kept on `query_params` for not-found / compute |
+| `compute` | `'1'` when `retry` and non-empty `ignored_components` and remote key | **Stripped** from ORM columns after `should_compute` is read |
+
+[`__filter_by_match_rules`](../stoobly_agent/app/proxy/mock/eval_request_service.py) runs **after** the dict is built and may **delete** hash keys entirely based on URL/method and match rules.
 
 ## Local DB `response` lookup without `request_id`
 
@@ -96,7 +127,7 @@ flowchart TB
   Comp{compute equals 1?}
   Col --> Snap --> Comp
   Comp -->|no| ORM1[where_for includes hash columns]
-  ORM1 --> Rows1[List requests]
+  ORM1 --> Rows1[Matched requests]
   Comp -->|yes| Strip[Remove hash keys from request_columns]
   Strip --> ORM2[where_for coarse match only]
   ORM2 --> Rows2[List candidates]
@@ -110,40 +141,14 @@ flowchart TB
   Found -->|no| NFD[handle_request_not_found]
 ```
 
-## `filter_requests_by_hashes` per candidate
+## `eval_request` pipeline (order of operations)
 
-```mermaid
-flowchart LR
-  subgraph cand [Each ORM Request row]
-    Raw[Stored raw bytes]
-    Parse[RawHttpRequestAdapter to Request]
-    Mitm[PythonRequestAdapterFactory mitmproxy_request]
-    Facade[MitmproxyRequestFacade]
-    Dec[HashedRequestDecorator with_ignored_components]
-    H2[Recompute four hashes]
-  end
-  subgraph compare [Equality]
-    Inc[Incoming component_hashes from query]
-    Eq[All present keys equal]
-  end
-  Raw --> Parse --> Mitm --> Facade --> Dec --> H2
-  H2 --> Eq
-  Inc --> Eq
-```
-
-## Entry: mock handler → `eval_request`
-
-[`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) may add **ignored components** derived from **ignore rules**, then invokes [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) via [`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py). See [Mock handler and retry loop](#mock-handler-and-retry-loop) for status **498** / **499** handling, **`eval_fixtures`**, and policy-specific behavior upstream of `pass_on`.
-
-## Building lookup parameters (`eval_request`)
-
-- **Scoping** — `project_key` / `scenario_key` via `ParamBuilder.with_resource_scoping` (invalid keys → custom not found).
-- **Core identity** — `host`, `path`, `port`, `method` from [`MitmproxyRequestFacade`](../stoobly_agent/app/proxy/mitmproxy/request_facade.py).
-- **Hashes** — [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py) uses [`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py) for MD5 hashes; ignored component names exclude those parts before hashing.
-- **Match rules** — [`__filter_by_match_rules`](../stoobly_agent/app/proxy/mock/eval_request_service.py): URL regex and method can **omit** `headers_hash`, `query_params_hash`, and/or body hashes from the lookup.
-- **Optional** — `request_id`, `session_id`, `retry`, `infer` from headers or options.
-- **Remote endpoint metadata** — When the request model is **local** and a **remote project key** is set, an **`endpoint_promise`** may be attached. When evaluated, it calls the remote endpoints API ([`search_endpoint`](../stoobly_agent/app/proxy/mock/search_endpoint.py)), e.g. with `ignored_components=1`, to obtain ignore metadata for that method/URL.
-- **`compute=1`** — Set under the conditions in [Remote project key and `compute`](#remote-project-key-and-compute); triggers the local DB recomputation path.
+1. **`ParamBuilder.with_resource_scoping`** — Sets `project_id` and optionally `scenario_id`. Invalid keys → immediate **499** via [`CustomNotFoundResponseBuilder`](../stoobly_agent/app/proxy/mock/custom_not_found_response_builder.py).
+2. **`__build_request_params`** — `host`, `path`, `port`, `method`, and hashes from [`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py) with [`__build_ignored_components`](../stoobly_agent/app/proxy/mock/eval_request_service.py).
+3. **`__build_optional_params`** — `retry` / `infer` only when the **second** call passes `retry` (see [When retry happens](#when-retry-happens)); `request_id` / `session_id` from [`X-Stoobly-Request-Id` / `X-Stoobly-Session-Id`](../stoobly_agent/config/constants/custom_headers.py) when present.
+4. **Local + remote** — Optionally `endpoint_promise` and `compute` (see [Lookup parameters](#lookup-parameters-attached-to-request_modelresponse-local-db) and [Remote project key and `compute`](#remote-project-key-and-compute)).
+5. **`ParamBuilder.build()`** then **`__filter_by_match_rules`** — May remove hash keys by URL/method.
+6. **`request_model.response(**query_params)`** — Dispatches to the adapter (local DB behavior in [Local DB resolution](#local-db-resolution-localdbrequestadapterresponse)).
 
 ## Local DB resolution (`LocalDBRequestAdapter.response`)
 
