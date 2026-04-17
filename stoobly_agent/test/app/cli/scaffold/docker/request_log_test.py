@@ -94,15 +94,25 @@ def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval:
     return False
 
 
-def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 60.0, interval: float = 1.0) -> bool:
+def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, settings, timeout: float = 120.0, interval: float = 1.0, recommit_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively recording.
 
-    After settings.commit() sets active=True, the --settings-watch watchdog needs time
-    to detect and reload the settings file. This function confirms the proxy has picked
-    up the change by verifying a request gets a 'Record success' log entry.
+    Clears stale log entries first, then commits settings and polls until a 'Record
+    success' entry appears. Periodically recommits settings to handle the race where
+    PollingObserver starts after the initial settings.commit().
     """
+    runner.invoke(scaffold, [
+        'request', 'logs', 'delete', workflow_name,
+        '--context-dir-path', context_dir_path
+    ])
+    settings.commit()
+    last_commit = time.time()
+
     deadline = time.time() + timeout
     while time.time() < deadline:
+        if time.time() - last_commit >= recommit_interval:
+            settings.commit()
+            last_commit = time.time()
         try:
             requests.get(
                 f'http://{hostname}/',
@@ -123,15 +133,25 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     return False
 
 
-def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 60.0, interval: float = 1.0) -> bool:
+def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, settings, timeout: float = 120.0, interval: float = 1.0, recommit_interval: float = 10.0) -> bool:
     """Poll until the reverse proxy is actively recording.
 
-    After settings.commit() sets active=True, the --settings-watch watchdog needs time
-    to detect and reload the settings file. This function confirms the proxy has picked
-    up the change by verifying a request gets a 'Record success' log entry.
+    Clears stale log entries first, then commits settings and polls until a 'Record
+    success' entry appears. Periodically recommits settings to handle the race where
+    PollingObserver starts after the initial settings.commit().
     """
+    runner.invoke(scaffold, [
+        'request', 'logs', 'delete', workflow_name,
+        '--context-dir-path', context_dir_path
+    ])
+    settings.commit()
+    last_commit = time.time()
+
     deadline = time.time() + timeout
     while time.time() < deadline:
+        if time.time() - last_commit >= recommit_interval:
+            settings.commit()
+            last_commit = time.time()
         try:
             requests.get(
                 'http://localhost:80/',
@@ -390,9 +410,8 @@ class TestDockerRecordRequestLogE2e():
             assert wait_for_port('localhost', 8080), "Forward proxy did not become ready on port 8080"
             settings.load()
             settings.proxy.intercept.active = True
-            settings.commit()
-            is_active = wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path, timeout=120.0), "Forward proxy did not enter record-active mode"
-            assert is_active
+            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path, settings), \
+                "Forward proxy did not enter record-active mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -466,8 +485,7 @@ class TestDockerRecordRequestLogE2e():
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
             settings.load()
             settings.proxy.intercept.active = True
-            settings.commit()
-            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path), \
+            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, settings), \
                 "Reverse proxy did not enter record-active mode"
 
         @pytest.fixture(scope='class', autouse=True)

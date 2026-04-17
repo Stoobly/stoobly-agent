@@ -1,5 +1,4 @@
 import os
-import pdb
 import time
 import yaml
 
@@ -122,11 +121,8 @@ class Settings:
         )
         event_handler.on_modified = self.__reload_settings
 
-        # from watchdog.observers import Observer
-        # observer = Observer()
-
-        from watchdog.observers.polling import PollingObserver
-        observer = PollingObserver(timeout=0.1)
+        from watchdog.observers import Observer
+        observer = Observer()
 
         watch_dir = os.path.dirname(self.__settings_file_path)
 
