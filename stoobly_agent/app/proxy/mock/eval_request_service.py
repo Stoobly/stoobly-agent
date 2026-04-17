@@ -71,8 +71,12 @@ def eval_request(
         # If project_key or scenario_key are invalid, assume custom not found
         return CustomNotFoundResponseBuilder().build()
 
+    ignored_components = __build_ignored_components(ignored_components_list or [])
+    query_params_builder.with_params(__build_request_params(request, ignored_components))
+    query_params_builder.with_params(__build_optional_params(request, options))
+
     # Tease out API returning ignored components on custom not found
-    if request_model.is_local and not options.get('retry'):
+    if request_model.is_local:
         remote_project_key = intercept_settings.parsed_remote_project_key
 
         if remote_project_key:
@@ -82,9 +86,10 @@ def eval_request(
 
             query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)
 
-    ignored_components = __build_ignored_components(ignored_components_list or [])
-    query_params_builder.with_params(__build_request_params(request, ignored_components))
-    query_params_builder.with_params(__build_optional_params(request, options))
+            # Only trigger DB-side recomputation when matching with ignored components.
+            # Checking for retry is somewhat redundant since ignored_components is only set when retry is true.
+            if options.get('retry') and len(ignored_components) > 0:
+                query_params_builder.with_param(request_query_params.COMPUTE, '1')
 
     query_params = query_params_builder.build()
     __filter_by_match_rules(request, intercept_settings.match_rules, query_params)
