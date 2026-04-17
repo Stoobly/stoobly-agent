@@ -154,6 +154,7 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
+    del options['remote_project_key']
     del options['request_log_enable']
     del options['request_log_level']
     del options['request_log_append']

@@ -192,6 +192,9 @@ class InterceptSettings:
     if self.__headers and custom_headers.REMOTE_PROJECT_KEY in self.__headers:
       return self.__headers[custom_headers.REMOTE_PROJECT_KEY]
 
+    if os.environ.get(env_vars.AGENT_REMOTE_PROJECT_KEY):
+      return os.environ[env_vars.AGENT_REMOTE_PROJECT_KEY] 
+
     return self.__settings.remote.project_key
 
   @property
