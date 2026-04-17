@@ -36,13 +36,13 @@ flowchart TB
 
   subgraph retry_once [Retry at most once — only after 498]
     APP[Append res.content to ignored_components]
-    E2["eval_request(..., infer=infer, retry=1)"]
+    E2["eval_request(..., retry=1)"]
     APP --> E2
   end
 
   subgraph opt_retry [Options inside eval_request on retry]
     CP{Add COMPUTE=1?}
-    CP -->|yes| WCOMP["COMPUTE=1: local resource AND remote project key AND retry option AND ignored_components non-empty"]
+    CP -->|yes| WCOMP["COMPUTE=1: local resource AND remote project key"]
     CP -->|no| NOCOMP[Query without COMPUTE]
     WCOMP --> RES2[response]
     NOCOMP --> RES2
