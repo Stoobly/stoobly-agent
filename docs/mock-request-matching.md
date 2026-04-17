@@ -26,22 +26,35 @@ That flag selects the **compute path** in `LocalDBRequestAdapter.response`: the 
 
 ## Mock handler and retry loop
 
+[`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py) implements the retry logic. Custom status codes are defined in [`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py): **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** (these are not standard HTTP 404/200).
+
 ```mermaid
 flowchart TB
   subgraph entry [Mock handler]
     HMG[handle_request_mock_generic]
-    Rules[ignore_rules to ignored_components]
+    Rules[optional ignore_rules to ignored_components]
     EvalRetry[eval_request_with_retry]
   end
   HMG --> Rules --> EvalRetry
-  EvalRetry --> FirstTry[eval_request no retry]
-  FirstTry --> Status{HTTP status}
-  Status -->|"200"| Done[Return mocked response]
-  Status -->|"498 IGNORE_COMPONENTS"| Append[Append ignored_components from response body]
-  Append --> SecondTry[eval_request retry equals 1 infer optional]
-  SecondTry --> Done2[Return response]
-  Status -->|"404 NOT_FOUND"| NF[Fixtures or not found handling]
+  EvalRetry --> FirstTry[eval_request no retry kwarg]
+  FirstTry --> D1{status 498?}
+  D1 -->|yes| Append[append res.content to ignored_components]
+  Append --> SecondTry[eval_request infer retry equals 1]
+  D1 -->|no| Merge[Same response object]
+  SecondTry --> Merge
+  Merge --> D2{status 499 NOT_FOUND?}
+  D2 -->|yes| Fixtures[eval_fixtures may replace response]
+  D2 -->|no| Out[Return res to caller]
+  Fixtures --> Out
 ```
+
+Behavior in code terms:
+
+- **498** — At most **one** retry: append response body (`res.content`, JSON list from [`IgnoreComponentsResponseBuilder`](../stoobly_agent/app/proxy/mock/ignored_components_response_builder.py)) to `ignored_components`, then call `eval_request` again with `retry=1`.
+- **499** — After the optional retry, [`eval_fixtures`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py) runs and may substitute a fixture response; there is no standard **404** in this path.
+- **Other statuses** — Returned as-is (typical successful mocks use normal 2xx/3xx codes from the recorded response, not 200 as a special branch).
+
+[`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) also enforces **mock policy** (`NONE` skips mock, invalid policy yields 400), rewrites, hooks, and—when policy is **`FOUND`**—may **proxy upstream** if the response is still 499 after `__after_mock_not_found`. That outer behavior is omitted from the diagram above, which only covers `eval_request_with_retry`.
 
 ## `eval_request` parameter pipeline
 
@@ -120,12 +133,7 @@ flowchart LR
 
 ## Entry: mock handler → `eval_request`
 
-[`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) may add **ignored components** derived from **ignore rules**, then invokes [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py).
-
-**Retry loop** ([`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py)):
-
-1. First attempt: `eval_request(request, ignored_components)` (no `retry`).
-2. If the response status is **498** (`IGNORE_COMPONENTS`), the client appends JSON from the response body to `ignored_components` and calls again with `retry=1` and optional `infer`.
+[`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) may add **ignored components** derived from **ignore rules**, then invokes [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) via [`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py). See [Mock handler and retry loop](#mock-handler-and-retry-loop) for status **498** / **499** handling, **`eval_fixtures`**, and policy-specific behavior upstream of `pass_on`.
 
 ## Building lookup parameters (`eval_request`)
 
