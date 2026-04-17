@@ -42,7 +42,7 @@ flowchart TB
 
   subgraph opt_retry [Options inside eval_request on retry]
     CP{Add COMPUTE=1?}
-    CP -->|yes| WCOMP["COMPUTE=1: local resource AND remote project key"]
+    CP -->|yes| WCOMP["COMPUTE=1: local resource AND remote project key AND len(ignored_components) > 0"]
     CP -->|no| NOCOMP[Query without COMPUTE]
     WCOMP --> RES2[response]
     NOCOMP --> RES2
@@ -74,29 +74,34 @@ Supplements the diagram (not drawn above): **498** is “no row yet, but remote 
 
 ## Diagram: local DB `response` when no `request_id`
 
+[`LocalDBRequestAdapter.response`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) reads **`retry`** from `query_params` (used only when **no row** matches). **`COMPUTE`** is stripped from ORM columns in [`__filter_request_response_columns`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py).
+
 ```mermaid
 flowchart TB
   Start[response kwargs]
   Col[request_columns copy strip internal keys]
   Snap[component_hashes from kwargs]
-  Comp{compute equals 1?}
+  Comp{COMPUTE equals 1?}
   Start --> Col --> Snap --> Comp
   Comp -->|no| ORM1[where_for with hash columns]
-  ORM1 --> Rows1[rows]
-  Comp -->|yes| Strip[drop hash keys from request_columns]
-  Strip --> ORM2[where_for coarse only]
+  ORM1 --> Rows1[rows as list]
+  Comp -->|yes| Strip[drop component hash keys from request_columns]
+  Strip --> ORM2[where_for coarse candidates]
   ORM2 --> Rows2[candidates]
-  Rows2 --> Res[endpoint_promise to ignored_components]
-  Res --> Filt[filter_requests_by_hashes on raw]
-  Filt --> Rows3[rows]
+  Rows2 --> IG[ignored_components from ENDPOINT_PROMISE]
+  IG --> Filt[filter_requests_by_hashes on raw]
+  Filt --> CLR[clear ENDPOINT_PROMISE in query_params]
+  CLR --> Rows3[rows]
   Rows1 --> Pick[pick row or scenario tiebreak]
   Rows3 --> Pick
   Pick --> Got{row found?}
   Got -->|yes| OK[transform stored response]
-  Got -->|no| NFD[handle_request_not_found]
-  NFD --> EP2{endpoint_promise yields ignores?}
+  Got -->|no| NFD[no matching row]
+  NFD --> RY{retry truthy?}
+  RY -->|yes| R499[499 CustomNotFoundResponseBuilder]
+  RY -->|no| EP2{endpoint_promise yields ignores?}
   EP2 -->|yes| R498[498 IgnoreComponentsResponseBuilder]
-  EP2 -->|no| R499[499 CustomNotFoundResponseBuilder]
+  EP2 -->|no| R499
 ```
 
 ---
