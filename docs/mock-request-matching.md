@@ -6,68 +6,52 @@ How an **incoming proxied request** is matched to a **recorded row** in the loca
 
 ## Diagram: mock handler, ignored components, and `eval_request_with_retry`
 
-[`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py) · [`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) may prepend items from **ignore rules** into `ignored_components` before the first `eval_request`.
+[`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py) merges **ignore rules** into `ignored_components` earlier in [`handle_request_mock_generic`](../stoobly_agent/app/proxy/handle_mock_service.py) (same list used for both attempts).
 
 ```mermaid
 flowchart TB
-  IR[ignore_rules to ignored_components] --> E1["first eval_request no retry or infer in options"]
-  E1 --> S1{status 498?}
-  S1 -->|yes| App[append res.content JSON to ignored_components]
-  App --> E2["second eval_request retry equals 1 infer optional"]
-  S1 -->|no| M[use first response]
-  E2 --> M
-  M --> S2{final status 499?}
-  S2 -->|yes| FX[eval_fixtures may replace res]
-  S2 -->|no| OUT[return res]
+  subgraph prep [Optional prep]
+    IR["ignore_rules → merge into ignored_components"]
+  end
+
+  subgraph attempt1 [1st attempt]
+    E1["eval_request(request, ignored_components)"]
+    P1["Options: no retry, no infer → compute not set in eval_request"]
+    E1 --> P1
+  end
+
+  subgraph attempt2 [Retry at most once — only after 498]
+    A["Append res.content (JSON list) to ignored_components"]
+    E2["eval_request(..., infer=options.infer, retry=1)"]
+    P2["If local + remote project key: compute=1 when retry and ignored_components non-empty"]
+    A --> E2 --> P2
+  end
+
+  IR --> E1
+  P1 --> R1{status 498?}
+
+  R1 -->|yes| A
+  R1 -->|no| RES[Candidate response from 1st attempt]
+
+  P2 --> RES2[Response from 2nd attempt — no further 498 loop]
+
+  RES --> NF{status 499?}
+  RES2 --> NF
+
+  NF -->|yes| FX["eval_fixtures may replace res"]
+  NF -->|no| OUT[Return res to caller]
   FX --> OUT
 ```
 
-**498** = no DB row but `endpoint_promise` returned ignores (`IgnoreComponentsResponseBuilder`). **499** = `CustomNotFoundResponseBuilder` (no row and nothing to ignore, or invalid project/scenario key before DB). **Retry:** at most one second `eval_request`, only after **498**; outer handler may still apply **`FOUND`** upstream proxy, hooks, `pass_on`.
+**1st vs retry:** The first call never passes `retry`/`infer` into [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Only if the first response is **498** does the handler append `res.content` and call `eval_request` again with `retry=1` and optional `infer` (at most **one** retry; a second **498** is returned as-is — there is no third lookup).
 
----
+**498:** Local DB [`response`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) found no matching row; `endpoint_promise` (remote endpoint search) returned a non-empty ignore list → [`IgnoreComponentsResponseBuilder`](../stoobly_agent/app/proxy/mock/ignored_components_response_builder.py).
 
-## Diagram: `eval_request` → kwargs → `request_model.response`
+**499:** [`CustomNotFoundResponseBuilder`](../stoobly_agent/app/proxy/mock/custom_not_found_response_builder.py) — e.g. no row and `endpoint_promise` missing or returned no ignores, missing response row, or invalid project/scenario key ([`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) returns 499 before hitting the DB). After the final `eval_request` (first or single retry), if status is **499**, [`eval_fixtures`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py) may supply a fixture response.
 
-[`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) builds one dict, then **`__filter_by_match_rules`** may delete hash keys before calling [`request_model.response(**query_params)`](../stoobly_agent/app/models/request_model.py).
+**`compute`:** Set inside `eval_request` only when **`retry`** is truthy **and** `ignored_components` is non-empty **and** the resource is local with a **remote project key** ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py) = `'1'`). That matches the retry path after **498** (and not the first attempt, even if ignore rules pre-filled `ignored_components`). See also [Remote project key and `compute`](#remote-project-key-and-compute).
 
-```mermaid
-flowchart TB
-  subgraph build [Build query_params dict]
-    PB[ParamBuilder.with_resource_scoping]
-    PB --> VK{project and scenario keys valid?}
-    VK -->|no| NF499[return 499 CustomNotFoundResponseBuilder]
-    VK -->|yes| BP[__build_request_params HashedRequestDecorator plus __build_ignored_components]
-    BP --> OP[__build_optional_params retry infer if options.retry plus request_id session_id from headers]
-    OP --> LR{is_local and remote_project_key?}
-    LR -->|yes| EP[endpoint_promise search_endpoint ignored_components equals 1]
-    LR -->|no| BLD[ParamBuilder.build]
-    EP --> CMP{retry and nonempty ignored_components?}
-    CMP -->|yes| CP[compute equals 1]
-    CMP -->|no| BLD
-    CP --> BLD
-  end
-  BLD --> MR[__filter_by_match_rules may drop hash keys]
-  MR --> RM[request_model.response query_params]
-```
-
----
-
-## Diagram: kwargs vs `request_columns` vs `component_hashes`
-
-[`__filter_request_response_columns`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) mutates the **`request_columns`** copy (drops `endpoint_promise`, `infer`, `project_id`, `retry`, `session_id`, `compute`). [`component_hashes(query_params)`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) reads hash fields from the **original** `response` kwargs.
-
-```mermaid
-flowchart TB
-  KW[response kwargs]
-  KW --> RC[request_columns is_deleted plus kwargs]
-  RC --> FC[__filter_request_response_columns]
-  FC --> COL[stripped columns]
-  KW --> CH[component_hashes from kwargs]
-  COL --> CMP{compute equals 1?}
-  CMP -->|yes| STRIP[delete hash keys from request_columns]
-  CMP -->|no| WF[where_for]
-  STRIP --> WF
-```
+Outer mock policy **`FOUND`** may still forward upstream on **499**; hooks and `pass_on` apply after this function returns.
 
 ---
 
