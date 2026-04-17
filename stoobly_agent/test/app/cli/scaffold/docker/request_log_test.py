@@ -98,8 +98,12 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     """Poll until the forward proxy is actively recording.
 
     Clears stale log entries first, then commits settings and polls until a 'Record
-    success' entry appears. Periodically recommits settings to handle the race where
-    PollingObserver starts after the initial settings.commit().
+    success' or 'Record failure' entry appears. Either confirms the proxy reloaded
+    settings and entered record mode — 'Record failure' occurs when the upstream is
+    unreachable (e.g. in CI) but the proxy is still intercepting.
+
+    Periodically recommits settings to handle the race where PollingObserver starts
+    after the initial settings.commit().
     """
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
@@ -128,7 +132,7 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
             '--context-dir-path', context_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
-            if find_log_entry(result.output, 'Record success'):
+            if find_log_entry(result.output, 'Record success') or find_log_entry(result.output, 'Record failure'):
                 return True
     return False
 
@@ -137,8 +141,12 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
     """Poll until the reverse proxy is actively recording.
 
     Clears stale log entries first, then commits settings and polls until a 'Record
-    success' entry appears. Periodically recommits settings to handle the race where
-    PollingObserver starts after the initial settings.commit().
+    success' or 'Record failure' entry appears. Either confirms the proxy reloaded
+    settings and entered record mode — 'Record failure' occurs when the upstream is
+    unreachable (e.g. in CI) but the proxy is still intercepting.
+
+    Periodically recommits settings to handle the race where PollingObserver starts
+    after the initial settings.commit().
     """
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
@@ -166,7 +174,7 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
             '--context-dir-path', context_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
-            if find_log_entry(result.output, 'Record success'):
+            if find_log_entry(result.output, 'Record success') or find_log_entry(result.output, 'Record failure'):
                 return True
     return False
 
