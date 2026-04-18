@@ -141,6 +141,9 @@ def __filter_options(options):
     if 'public_dir_path' in options:
         del options['public_dir_path']
 
+    if 'remote_project_key' in options:
+        del options['remote_project_key']
+
     if 'response_fixtures_path' in options:
         del options['response_fixtures_path']
 
@@ -151,10 +154,10 @@ def __filter_options(options):
         del options['ui_port']
 
     del options['log_level']
+    del options['openapi_specification_path']
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
-    del options['remote_project_key']
     del options['request_log_enable']
     del options['request_log_level']
     del options['request_log_append']

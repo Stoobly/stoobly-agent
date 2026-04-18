@@ -1,8 +1,9 @@
 import json
-import pdb
 import re
 
 from typing import TYPE_CHECKING, List, TypedDict, Union
+
+from stoobly_agent.app.proxy.mock.search_open_api_endpoint import inject_search_open_api_endpoint
 
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
@@ -32,8 +33,8 @@ class EvalRequestOptions(TypedDict):
     retry: int
 
 def inject_eval_request(
-    request_model: RequestModel,
-    intercept_settings: InterceptSettings,
+    request_model: Union[RequestModel, None],
+    intercept_settings: Union[InterceptSettings, None],
 ):
     settings = Settings.instance()
 
@@ -41,7 +42,7 @@ def inject_eval_request(
         request_model = RequestModel(settings)
 
     if not intercept_settings:
-        intercept_settings = InterceptSettings(intercept_settings)
+        intercept_settings = InterceptSettings(settings)
 
     return lambda request, ignored_components, **options: eval_request(
         request_model, intercept_settings, request, ignored_components or [], **options 
@@ -77,13 +78,22 @@ def eval_request(
 
     # Tease out API returning ignored components on custom not found
     if request_model.is_local:
-        remote_project_key = intercept_settings.parsed_remote_project_key
+        endpoint_promise = None
 
-        if remote_project_key:
-            search_endpoint = inject_search_endpoint(intercept_settings)
-            remote_project_id = remote_project_key.id
-            endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
+        if intercept_settings.is_remote:
+            remote_project_key = intercept_settings.parsed_remote_project_key
+            if remote_project_key:
+                search_endpoint = inject_search_endpoint(intercept_settings)
+                remote_project_id = remote_project_key.id
+                endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
 
+        if not endpoint_promise:
+            openapi_specification_path = intercept_settings.openapi_specification_path
+            if openapi_specification_path:
+                search_endpoint = inject_search_open_api_endpoint(intercept_settings)
+                endpoint_promise = lambda: search_endpoint(request.method, request.url, ignored_components=1) 
+
+        if endpoint_promise:
             query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)
 
             # Only trigger DB-side recomputation when matching with ignored components.

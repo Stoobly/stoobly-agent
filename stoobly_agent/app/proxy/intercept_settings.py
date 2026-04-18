@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
     from .mock.types import LifecycleHooksPath
 
+from stoobly_agent.app.cli.helpers.feature_flags import remote
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
@@ -89,6 +90,10 @@ class InterceptSettings:
       return self.__headers[custom_headers.INTERCEPT_ACTIVE] == '1'
 
     return self.__intercept_settings.active
+
+  @property
+  def is_remote(self):
+    return remote(self.__settings)
     
   @property
   def lifecycle_hooks_path(self):
@@ -211,7 +216,25 @@ class InterceptSettings:
       return self.__headers[custom_headers.RESPONSE_FIXTURES_PATH]
 
     if os.environ.get(env_vars.AGENT_RESPONSE_FIXTURES_PATH):
-      return os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] 
+      return os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH]
+
+  @property
+  def openapi_specification_path(self):
+    """Filesystem path to an OpenAPI spec; from header or environment variable only."""
+    raw_value = None
+    if self.__headers and custom_headers.OPENAPI_SPECIFICATION_PATH in self.__headers:
+      raw_value = self.__headers[custom_headers.OPENAPI_SPECIFICATION_PATH]
+    elif os.environ.get(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH):
+      raw_value = os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH]
+    else:
+      return None
+
+    if isinstance(raw_value, str):
+      normalized = raw_value.strip()
+    else:
+      normalized = str(raw_value).strip() if raw_value is not None else ''
+
+    return normalized if normalized else None
 
   @property
   def parsed_remote_project_key(self):

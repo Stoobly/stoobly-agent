@@ -1,6 +1,5 @@
 import importlib
 import os
-import pdb
 import pytest
 
 from click.testing import CliRunner
@@ -9,15 +8,32 @@ from unittest.mock import MagicMock
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-# Enable remote feature
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent import cli
+import stoobly_agent.cli as cli
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
+from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.settings.constants import intercept_mode, request_component
+from stoobly_agent.app.settings.match_rule import MatchRule
+
+
+@pytest.fixture(scope='module', autouse=True)
+def _remote_cli_options():
+    """Register remote-only flags on stoobly_agent.cli without leaking is_remote=True to the rest of the suite."""
+    previous = os.environ.get(env_vars.FEATURE_REMOTE)
+    os.environ[env_vars.FEATURE_REMOTE] = '1'
+    importlib.reload(cli)
+    yield
+    if previous is None:
+        os.environ.pop(env_vars.FEATURE_REMOTE, None)
+    else:
+        os.environ[env_vars.FEATURE_REMOTE] = previous
+    importlib.reload(cli)
+
 
 @pytest.fixture(scope='module')
 def runner():
@@ -25,9 +41,6 @@ def runner():
 
 @pytest.fixture(scope='module')
 def mock():
-    os.environ[env_vars.FEATURE_REMOTE] = '1'
-    importlib.reload(cli)
-    del [env_vars.FEATURE_REMOTE]
     return cli.mock
 
 class TestCliMockIntegration():
@@ -63,12 +76,29 @@ class TestCliMockIntegration():
             assert type(args[0]) is InterceptSettings
 
     class TestWhenNotFound():
+        @pytest.fixture(scope='class', autouse=True)
+        def enable_match_rules(self, settings):
+            # Empty proxy.match in test settings makes __filter_by_match_rules drop all hashes, so no
+            # ENDPOINT_PROMISE reaches __handle_request_not_found. Enable a catch-all mock rule that
+            # keeps all request components so ignored-components handling runs.
+            rule = MatchRule({
+                'pattern': '.*?',
+                'methods': ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT'],
+                'modes': [intercept_mode.MOCK],
+                'components': [
+                    request_component.HEADER,
+                    request_component.QUERY_PARAM,
+                    request_component.BODY_PARAM,
+                ],
+            })
+            Settings.instance().proxy.match.set_match_rules('0', [rule])
+
         @pytest.fixture(scope='class')
         def project_key(self):
             return ProjectKey(ProjectKey.encode(1, 1))
 
         @pytest.fixture(scope='class')
-        def spies(self, runner: CliRunner, mock, project_key: ProjectKey):
+        def spies(self, runner: CliRunner, mock, project_key: ProjectKey, enable_match_rules):
             @patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint')
             @patch.object(
                 LocalDBRequestAdapter,
@@ -80,7 +110,7 @@ class TestCliMockIntegration():
                 '_LocalDBRequestAdapter__ignored_components', 
                 wraps=LocalDBRequestAdapter(Request, Response)._LocalDBRequestAdapter__ignored_components
             )
-            def spy_on(search_endpoint, handle_request_not_found, ignored_components: MagicMock):
+            def spy_on(ignored_components, handle_request_not_found, search_endpoint):
                 search_endpoint.return_value = lambda a, b, c: {}
                 test_result = runner.invoke(mock, ['--remote-project-key', project_key.raw, DETERMINISTIC_GET_REQUEST_URL])
                 assert test_result.exit_code == 1

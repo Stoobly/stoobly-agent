@@ -14,7 +14,9 @@ COMPONENT_TYPES = {
     'PATH_SEGMENT': 2,
     'QUERY_PARAM': 3,
     'BODY_PARAM': 4,
-    'RESPONSE': 5
+    'RESPONSE': 5,
+    'BODY': 6,
+    'RESPONSE_HEADER': 7,
 }
 
 LOG_ID = 'HashedRequest'
