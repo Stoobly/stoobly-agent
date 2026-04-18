@@ -42,7 +42,7 @@ def inject_eval_request(
         request_model = RequestModel(settings)
 
     if not intercept_settings:
-        intercept_settings = InterceptSettings(intercept_settings)
+        intercept_settings = InterceptSettings(settings)
 
     return lambda request, ignored_components, **options: eval_request(
         request_model, intercept_settings, request, ignored_components or [], **options 
