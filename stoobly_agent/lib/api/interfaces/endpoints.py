@@ -1,4 +1,4 @@
-from typing import List, Optional, TypedDict, Union
+from typing import List, NotRequired, Optional, TypedDict, Union
 
 from .pagination_query_params import PaginationQueryParams
 
@@ -29,11 +29,18 @@ class ResponseParamName(RequestComponentName):
   inferred_type: str
   query: str
 
+class IgnoredComponent(TypedDict):
+  """Matches stoobly-api endpoints/_ignored_component.json.jbuilder (name, query, type)."""
+
+  name: str
+  query: str
+  type: int
+
 class EndpointShowResponse(TypedDict):
   id: int
   method: str
   host: str
-  ignored_components: Optional[list]
+  ignored_components: NotRequired[Optional[List[IgnoredComponent]]]
   port: str
   path: str
   match_pattern: Optional[str]
