@@ -1,3 +1,4 @@
+import importlib
 import os
 import pytest
 
@@ -7,11 +8,8 @@ from unittest.mock import MagicMock
 
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
-# Enable remote feature (must be set before cli import; see scenario_test_integration_test.py)
 from stoobly_agent.config.constants import env_vars
-os.environ[env_vars.FEATURE_REMOTE] = '1'
-
-from stoobly_agent import cli
+import stoobly_agent.cli as cli
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -21,6 +19,21 @@ from stoobly_agent.app.models.factories.resource.local_db.request_adapter import
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import intercept_mode, request_component
 from stoobly_agent.app.settings.match_rule import MatchRule
+
+
+@pytest.fixture(scope='module', autouse=True)
+def _remote_cli_options():
+    """Register remote-only flags on stoobly_agent.cli without leaking is_remote=True to the rest of the suite."""
+    previous = os.environ.get(env_vars.FEATURE_REMOTE)
+    os.environ[env_vars.FEATURE_REMOTE] = '1'
+    importlib.reload(cli)
+    yield
+    if previous is None:
+        os.environ.pop(env_vars.FEATURE_REMOTE, None)
+    else:
+        os.environ[env_vars.FEATURE_REMOTE] = previous
+    importlib.reload(cli)
+
 
 @pytest.fixture(scope='module')
 def runner():
