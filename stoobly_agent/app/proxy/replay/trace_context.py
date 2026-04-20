@@ -8,12 +8,11 @@ if TYPE_CHECKING:
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
 from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 from stoobly_agent.app.models.schemas.request import Request
-from stoobly_agent.app.proxy.mock.search_endpoint import search_endpoint
+from stoobly_agent.app.proxy.mock.endpoint_cache import EndpointCache
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.config.constants import alias_resolve_strategy, custom_headers
-from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import Alias, EndpointShowResponse, RequestComponentName, ResponseParamName
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.logger import bcolors, Logger
@@ -24,11 +23,20 @@ from stoobly_agent.lib.utils import jmespath
 
 AliasMap = Dict[str, RequestComponentName]
 LOG_ID = 'Trace'
+TRACE_PROJECT_INDEX_PARAMS = {
+  'aliases': True,
+  'filter': 'alias_id',
+  'path_segment_names': True,
+  'query_param_names': True,
+  'header_names': True,
+  'body_param_names': True,
+  'response_param_names': True,
+}
 
 class TraceContext:
 
-  def __init__(self, endpoints_resource: EndpointsResource, trace = None):
-    self.__endpoints_resource = endpoints_resource
+  def __init__(self, endpoint_cache: EndpointCache, trace = None):
+    self.__endpoint_cache = endpoint_cache
     self.__trace = trace or Trace.create()
 
     self.__alias_resolver = AliasResolver(self.__trace, alias_resolve_strategy.NONE)
@@ -51,8 +59,8 @@ class TraceContext:
     return self.__trace
 
   @property
-  def endpoints_resource(self):
-    return self.__endpoints_resource
+  def endpoint_cache(self):
+    return self.__endpoint_cache
 
   def with_remote_project(self, key: str):
     if key:
@@ -64,14 +72,10 @@ class TraceContext:
 
     if request.endpoint_id:
       endpoint = self.__get_endpoint(request.endpoint_id)
-    elif self.__remote_project_key:
-      endpoint = search_endpoint(
-        self.endpoints_resource, 
-        self.__remote_project_key.id,
-        request.method,
-        request.url,
-        **self.__endpoint_query_params(),
-      )
+    else:
+      # Prefetch specific project endpoints (e.g. replay CLI)
+      self.__endpoint_cache.with_project_endpoints(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
+      endpoint = self.__endpoint_cache.search(request.method, request.url)
 
     if endpoint:
       Logger.instance(LOG_ID).debug(f"\tMatched Endpoint: {endpoint}")
@@ -265,24 +269,8 @@ class TraceContext:
     return jmespath.flatten(value, query)
 
   def __get_endpoint(self, endpoint_id: int) -> Union[EndpointShowResponse, None]:
-    res = self.__endpoints_resource.show(
-      endpoint_id,
-      **self.__endpoint_query_params()
-    )
-
-    if res.ok:
-      return res.json()
-
-  def __endpoint_query_params(self):
-    return {
-      'aliases': True,
-      'filter': 'alias_id',
-      'path_segment_names': True,
-      'query_param_names': True,
-      'header_names': True,
-      'body_param_names': True,
-      'response_param_names': True
-    }
+    self.__endpoint_cache.with_project_endpoints(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
+    return self.__endpoint_cache.show(endpoint_id)
 
   def __dump_trace_aliases(self):
     aliases = self.__trace.trace_aliases()

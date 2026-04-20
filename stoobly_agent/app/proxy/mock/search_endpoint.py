@@ -1,30 +1,20 @@
-import pdb
+from stoobly_agent.app.proxy.mock.endpoint_cache import endpoint_cache
 
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 
-def inject_search_endpoint(intercept_settings: InterceptSettings):
-  remote = intercept_settings.settings.remote
-  resource = EndpointsResource(remote.api_url, remote.api_key)
-  return lambda project_id, method, url, **query_params: search_endpoint(resource, project_id, method, url, **query_params)
+def inject_search_endpoint(project_id):
+  project_id = str(project_id)
 
-def search_endpoint(endpoints_resource: EndpointsResource, project_id: int, method: str, url: str, **query_params):
-  res = endpoints_resource.index(
-    **{
-      'method': method,
-      'project_id': project_id,
-      'q': url,
-      'size': 1,
-    },
-    **query_params
-  )
+  def _search(method: str, url: str, **query_params):
+    return search_endpoint(project_id, method, url, **query_params)
 
-  if res.status_code != 200:
-    return None
+  return _search
 
-  endpoints = res.json()
 
-  if len(endpoints) == 0:
-    return None
-
-  return endpoints[0]
+def search_endpoint(
+  project_id,
+  method: str,
+  url: str,
+  **query_params,
+):
+  endpoint_cache.with_project_endpoints(str(project_id), **query_params)
+  return endpoint_cache.search(method, url)
