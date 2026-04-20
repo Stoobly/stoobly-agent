@@ -15,6 +15,7 @@ class ReplayCliOptions(TypedDict):
   group_by: str
   host: str
   lifecycle_hooks_path: str
+  openapi_specification_path: str
   on_response: Callable
   project_key: str
   public_directory_path: str  # Comma-separated list of paths, optionally with origin prefix
@@ -58,6 +59,7 @@ class ReplayFacade():
       'group_by': cli_options.get('group_by'),
       'host': cli_options.get('host'),
       'lifecycle_hooks_path': cli_options.get('lifecycle_hooks_path'),
+      'openapi_specification_path': cli_options.get('openapi_specification_path'),
       'overwrite': cli_options.get('overwrite'),
       'public_dir_path': cli_options.get('public_dir_path'),
       'request_origin': request_origin.CLI,
