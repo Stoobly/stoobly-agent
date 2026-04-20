@@ -241,7 +241,7 @@ class EndpointCache:
       if ik:
         p = ProjectKey(ik)
         if not p.is_local:
-          self.with_project_endpoints(str(p.id))
+          self.with_project(str(p.id))
     except InvalidProjectKey:
       pass
     try:
@@ -249,7 +249,7 @@ class EndpointCache:
       if rk:
         p = ProjectKey(rk)
         if not p.is_local:
-          self.with_project_endpoints(str(p.id))
+          self.with_project(str(p.id))
     except InvalidProjectKey:
       pass
 
@@ -327,7 +327,7 @@ class EndpointCache:
   def with_openapi_specification(self, path: str) -> "EndpointCache":
     return self._merge_openapi_specification(path)
 
-  def with_project_endpoints(
+  def with_project(
     self,
     project: Optional[Union[str, ProjectKey]] = None,
     **index_params: Any,
@@ -341,9 +341,10 @@ class EndpointCache:
 
     Index params are passed through as-is for the API request.
     """
-    if not remote_feature(Settings.instance()):
-      return self
     if project is None:
+      return self
+
+    if not remote_feature(Settings.instance()):
       return self
 
     pk = _optional_project_key(project)

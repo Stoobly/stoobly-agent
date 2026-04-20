@@ -74,7 +74,7 @@ class TraceContext:
       endpoint = self.__get_endpoint(request.endpoint_id)
     else:
       # Prefetch specific project endpoints (e.g. replay CLI)
-      self.__endpoint_cache.with_project_endpoints(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
+      self.__endpoint_cache.with_project(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
       endpoint = self.__endpoint_cache.search(request.method, request.url)
 
     if endpoint:
@@ -269,7 +269,7 @@ class TraceContext:
     return jmespath.flatten(value, query)
 
   def __get_endpoint(self, endpoint_id: int) -> Union[EndpointShowResponse, None]:
-    self.__endpoint_cache.with_project_endpoints(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
+    self.__endpoint_cache.with_project(self.__remote_project_key, **TRACE_PROJECT_INDEX_PARAMS)
     return self.__endpoint_cache.show(endpoint_id)
 
   def __dump_trace_aliases(self):

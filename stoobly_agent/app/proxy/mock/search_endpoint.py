@@ -16,5 +16,5 @@ def search_endpoint(
   url: str,
   **query_params,
 ):
-  endpoint_cache.with_project_endpoints(str(project_id), **query_params)
+  endpoint_cache.with_project(str(project_id), **query_params)
   return endpoint_cache.search(method, url)

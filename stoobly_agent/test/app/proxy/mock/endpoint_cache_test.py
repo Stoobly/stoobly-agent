@@ -36,14 +36,14 @@ class TestEndpointCache:
 
     with patch.object(endpoint_cache_module, "remote_feature", return_value=True), patch.object(
       endpoint_cache_module.Settings, "instance", return_value=settings
-    ), patch.object(endpoint_cache_module.EndpointCache, "with_project_endpoints") as with_project_endpoints:
+    ), patch.object(endpoint_cache_module.EndpointCache, "with_project") as with_project:
       endpoint_cache_module.EndpointCache.instance()
 
-      assert with_project_endpoints.call_count == 2
-      with_project_endpoints.assert_any_call("101")
-      with_project_endpoints.assert_any_call("202")
+      assert with_project.call_count == 2
+      with_project.assert_any_call("101")
+      with_project.assert_any_call("202")
 
-  def test_with_project_endpoints_is_idempotent_for_same_project_key(self):
+  def test_with_project_is_idempotent_for_same_project_key(self):
     settings = _make_settings()
     project_key = ProjectKey.encode(303, 1).decode()
     remote_endpoint = [{"id": "1", "method": "GET", "host": "api.example.com", "port": "443", "match_pattern": "/project"}]
@@ -53,8 +53,8 @@ class TestEndpointCache:
     ), patch.object(endpoint_cache_module.EndpointCache, "_fetch_project_endpoints", return_value=remote_endpoint) as fetch:
       cache = endpoint_cache_module.EndpointCache()
 
-      cache.with_project_endpoints(project_key)
-      cache.with_project_endpoints(project_key)
+      cache.with_project(project_key)
+      cache.with_project(project_key)
 
       assert fetch.call_count == 1
       assert cache.show("1") is not None
@@ -86,7 +86,7 @@ class TestEndpointCache:
     ), patch.object(endpoint_cache_module.EndpointCache, "_fetch_project_endpoints", return_value=remote_endpoint):
       cache = endpoint_cache_module.EndpointCache()
       cache.with_openapi_specification("tmp/spec.yaml")
-      cache.with_project_endpoints(project_key)
+      cache.with_project(project_key)
 
       assert cache.search("GET", "https://api.example.com/openapi")["id"] == "100"
       assert cache.search("GET", "https://api.example.com/project")["id"] == "200"
@@ -104,7 +104,7 @@ class TestEndpointCache:
     ), patch.object(endpoint_cache_module.EndpointCache, "_fetch_project_endpoints", return_value=remote_endpoint):
       cache = endpoint_cache_module.EndpointCache()
       cache.with_openapi_specification("tmp/spec.yaml")
-      cache.with_project_endpoints(project_key)
+      cache.with_project(project_key)
 
       # Colliding ids overwrite in the shared endpoint-id map; latest merge is returned.
       assert cache.search("GET", "https://api.example.com/items")["id"] == "777"
