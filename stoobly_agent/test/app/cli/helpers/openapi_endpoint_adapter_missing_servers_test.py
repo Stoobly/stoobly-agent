@@ -5,7 +5,12 @@ import pytest
 
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
   OpenApiEndpointAdapter,
+  compute_openapi_endpoint_id,
+  compute_openapi_service_id,
 )
+
+_DEFAULT_SERVER_SID = compute_openapi_service_id("", "0")
+_DEFAULT_SERVER_GET_PETS_EID = compute_openapi_endpoint_id(_DEFAULT_SERVER_SID, "/pets", "GET")
 
 
 @pytest.mark.openapi
@@ -27,7 +32,8 @@ class TestOpenApiEndpointAdapterMissingServers():
   @pytest.fixture(scope='class')
   def expected_get_pets_endpoint(self) -> Dict:
     return {
-      "id": 1,
+      "id": _DEFAULT_SERVER_GET_PETS_EID,
+      "service_id": _DEFAULT_SERVER_SID,
       "method": "GET",
       "host": "-",
       "match_pattern": "/pets",
@@ -35,7 +41,7 @@ class TestOpenApiEndpointAdapterMissingServers():
       "port": "0",
       "query_param_names": [
         {
-          "endpoint_id": 1,
+          "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,
           "inferred_type": "Integer",
           "is_required": False,
           "is_deterministic": True,
@@ -61,7 +67,7 @@ class TestOpenApiEndpointAdapterMissingServers():
       ],
       "response_param_names": [
         {
-          "endpoint_id": 1,
+          "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,
           "name": "Element",
           "query": "[*]",
           "is_required": False,
@@ -71,7 +77,7 @@ class TestOpenApiEndpointAdapterMissingServers():
           "response_param_name_id": None
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,
           "name": "id",
           "query": "[*].id",
           "is_required": True,
@@ -84,7 +90,7 @@ class TestOpenApiEndpointAdapterMissingServers():
           ]
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,
           "name": "name",
           "query": "[*].name",
           "is_required": True,
@@ -97,7 +103,7 @@ class TestOpenApiEndpointAdapterMissingServers():
           ]
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,
           "name": "tag",
           "query": "[*].tag",
           "is_required": False,
