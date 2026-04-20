@@ -7,6 +7,8 @@ import time
 from click.testing import CliRunner
 from typing import Optional
 
+from stoobly_agent.test.test_helper import reset  # must be first: calls reset() at module level to initialise settings before other CLI modules import
+from stoobly_agent.app.cli.intercept_cli import intercept as intercept_cli
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     PROXY_MODE_FORWARD,
@@ -17,7 +19,6 @@ from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
-from stoobly_agent.test.test_helper import reset
 
 
 def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
@@ -94,6 +95,31 @@ def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval:
     return False
 
 
+def wait_for_forward_proxy_ready(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
+    """Poll until the forward proxy is accepting and processing HTTP requests.
+
+    wait_for_port confirms TCP is open but mitmproxy may still be initializing.
+    Retries on ProxyError (connection reset = not ready yet) and returns True once
+    any response is received, proving mitmproxy is fully up and handling requests.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+            return True
+        except requests.exceptions.ProxyError:
+            pass  # connection reset — mitmproxy still starting
+        except Exception:
+            return True  # upstream error means proxy processed the request
+        time.sleep(interval)
+    return False
+
+
 def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
     """Poll until the reverse proxy is intercepting in mock mode (returns 499 for unrecorded requests).
 
@@ -116,29 +142,28 @@ def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, inter
     return False
 
 
-def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, settings, timeout: float = 120.0, interval: float = 1.0, recommit_interval: float = 10.0) -> bool:
+def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively recording.
 
-    Clears stale log entries first, then commits settings and polls until a 'Record
-    success' or 'Record failure' entry appears. Either confirms the proxy reloaded
-    settings and entered record mode — 'Record failure' occurs when the upstream is
-    unreachable (e.g. in CI) but the proxy is still intercepting.
+    Clears stale log entries, enables intercept via CLI (as a user would), then polls
+    until a 'Record success' or 'Record failure' entry appears. Either confirms the proxy
+    reloaded settings and entered record mode — 'Record failure' occurs when the upstream
+    is unreachable (e.g. in CI) but the proxy is still intercepting.
 
-    Periodically recommits settings to handle the race where PollingObserver starts
-    after the initial settings.commit().
+    Periodically re-calls intercept enable to handle inotify delivery delays.
     """
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
         '--context-dir-path', context_dir_path
     ])
-    settings.commit()
-    last_commit = time.time()
+    runner.invoke(intercept_cli, ['enable'])
+    last_enable = time.time()
 
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if time.time() - last_commit >= recommit_interval:
-            settings.commit()
-            last_commit = time.time()
+        if time.time() - last_enable >= reenable_interval:
+            runner.invoke(intercept_cli, ['enable'])
+            last_enable = time.time()
         try:
             requests.get(
                 f'http://{hostname}/',
@@ -159,29 +184,28 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     return False
 
 
-def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, settings, timeout: float = 120.0, interval: float = 1.0, recommit_interval: float = 10.0) -> bool:
+def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
     """Poll until the reverse proxy is actively recording.
 
-    Clears stale log entries first, then commits settings and polls until a 'Record
-    success' or 'Record failure' entry appears. Either confirms the proxy reloaded
-    settings and entered record mode — 'Record failure' occurs when the upstream is
-    unreachable (e.g. in CI) but the proxy is still intercepting.
+    Clears stale log entries, enables intercept via CLI (as a user would), then polls
+    until a 'Record success' or 'Record failure' entry appears. Either confirms the proxy
+    reloaded settings and entered record mode — 'Record failure' occurs when the upstream
+    is unreachable (e.g. in CI) but the proxy is still intercepting.
 
-    Periodically recommits settings to handle the race where PollingObserver starts
-    after the initial settings.commit().
+    Periodically re-calls intercept enable to handle inotify delivery delays.
     """
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
         '--context-dir-path', context_dir_path
     ])
-    settings.commit()
-    last_commit = time.time()
+    runner.invoke(intercept_cli, ['enable'])
+    last_enable = time.time()
 
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if time.time() - last_commit >= recommit_interval:
-            settings.commit()
-            last_commit = time.time()
+        if time.time() - last_enable >= reenable_interval:
+            runner.invoke(intercept_cli, ['enable'])
+            last_enable = time.time()
         try:
             requests.get(
                 'http://localhost:80/',
@@ -434,13 +458,10 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname, settings):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_port('localhost', 8080), "Forward proxy did not become ready on port 8080"
-            settings.load()
-            settings.proxy.intercept.active = True
-            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path, settings), \
-                "Forward proxy did not enter record-active mode"
+            assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
+            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -508,14 +529,11 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, settings):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
-            settings.load()
-            settings.proxy.intercept.active = True
-            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, settings), \
-                "Reverse proxy did not enter record-active mode"
+            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path), "Reverse proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
