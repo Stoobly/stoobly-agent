@@ -2,13 +2,13 @@ import json
 import pytest
 import requests
 import socket
+import subprocess
 import time
 
 from click.testing import CliRunner
 from typing import Optional
 
 from stoobly_agent.test.test_helper import reset  # must be first: calls reset() at module level to initialise settings before other CLI modules import
-from stoobly_agent.app.cli.intercept_cli import intercept as intercept_cli
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     PROXY_MODE_FORWARD,
@@ -142,27 +142,42 @@ def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, inter
     return False
 
 
+def _enable_intercept_in_container(container_name: str) -> bool:
+    """Run 'stoobly-agent intercept enable' inside the named Docker container.
+
+    Writing from inside the container avoids host-to-container inotify delivery
+    issues on CI environments (GitHub Actions runners / nested VMs). The proxy
+    process and the write both happen inside the same container, so the inotify
+    event is always delivered.
+    """
+    result = subprocess.run(
+        ['docker', 'exec', '--user', 'stoobly', container_name, 'stoobly-agent', 'intercept', 'enable'],
+        capture_output=True,
+        timeout=30,
+    )
+    return result.returncode == 0
+
+
 def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively recording.
 
-    Clears stale log entries, enables intercept via CLI (as a user would), then polls
-    until a 'Record success' or 'Record failure' entry appears. Either confirms the proxy
-    reloaded settings and entered record mode — 'Record failure' occurs when the upstream
-    is unreachable (e.g. in CI) but the proxy is still intercepting.
-
-    Periodically re-calls intercept enable to handle inotify delivery delays.
+    Clears stale log entries, enables intercept inside the proxy container (avoiding
+    host-to-container inotify issues in CI), then polls until a 'Record success' or
+    'Record failure' entry appears — proof the proxy has reloaded settings and is
+    intercepting. Periodically re-enables to handle any delivery delays.
     """
+    container_name = f'{workflow_name}-gateway.service-1'
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
         '--context-dir-path', context_dir_path
     ])
-    runner.invoke(intercept_cli, ['enable'])
+    _enable_intercept_in_container(container_name)
     last_enable = time.time()
 
     deadline = time.time() + timeout
     while time.time() < deadline:
         if time.time() - last_enable >= reenable_interval:
-            runner.invoke(intercept_cli, ['enable'])
+            _enable_intercept_in_container(container_name)
             last_enable = time.time()
         try:
             requests.get(
@@ -184,27 +199,26 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     return False
 
 
-def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
+def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, service_name: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
     """Poll until the reverse proxy is actively recording.
 
-    Clears stale log entries, enables intercept via CLI (as a user would), then polls
-    until a 'Record success' or 'Record failure' entry appears. Either confirms the proxy
-    reloaded settings and entered record mode — 'Record failure' occurs when the upstream
-    is unreachable (e.g. in CI) but the proxy is still intercepting.
-
-    Periodically re-calls intercept enable to handle inotify delivery delays.
+    Clears stale log entries, enables intercept inside the proxy container (avoiding
+    host-to-container inotify issues in CI), then polls until a 'Record success' or
+    'Record failure' entry appears — proof the proxy has reloaded settings and is
+    intercepting. Periodically re-enables to handle any delivery delays.
     """
+    container_name = f'{workflow_name}-{service_name}.proxy-1'
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
         '--context-dir-path', context_dir_path
     ])
-    runner.invoke(intercept_cli, ['enable'])
+    _enable_intercept_in_container(container_name)
     last_enable = time.time()
 
     deadline = time.time() + timeout
     while time.time() < deadline:
         if time.time() - last_enable >= reenable_interval:
-            runner.invoke(intercept_cli, ['enable'])
+            _enable_intercept_in_container(container_name)
             last_enable = time.time()
         try:
             requests.get(
@@ -529,11 +543,11 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, service_name):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
-            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path), "Reverse proxy did not enter record mode"
+            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, service_name), "Reverse proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
