@@ -110,3 +110,25 @@ class TestEndpointCache:
       assert cache.search("GET", "https://api.example.com/items")["id"] == "777"
       assert cache.show("777")["id"] == "777"
       assert "ignored_components" not in cache.show("777")
+
+  def test_search_prefers_latest_merge_for_same_contract_with_different_ids(self):
+    settings = _make_settings()
+    project_key = ProjectKey.encode(606, 1).decode()
+    openapi_endpoint = [{"id": "openapi-1", "method": "GET", "host": "api.example.com", "port": "443", "match_pattern": "/items"}]
+    remote_endpoint = [{"id": "project-1", "method": "GET", "host": "api.example.com", "port": "443", "match_pattern": "/items"}]
+
+    with patch.object(endpoint_cache_module, "remote_feature", return_value=True), patch.object(
+      endpoint_cache_module.Settings, "instance", return_value=settings
+    ), patch.object(
+      endpoint_cache_module, "load_openapi_endpoints_from_file", return_value=openapi_endpoint
+    ), patch.object(endpoint_cache_module.EndpointCache, "_fetch_project_endpoints", return_value=remote_endpoint):
+      cache = endpoint_cache_module.EndpointCache()
+
+      cache.with_openapi_specification("tmp/spec.yaml")
+      cache.with_project(project_key)
+      assert cache.search("GET", "https://api.example.com/items")["id"] == "project-1"
+
+      cache.clear_cache()
+      cache.with_project(project_key)
+      cache.with_openapi_specification("tmp/spec.yaml")
+      assert cache.search("GET", "https://api.example.com/items")["id"] == "openapi-1"
