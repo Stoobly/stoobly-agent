@@ -207,6 +207,7 @@ if is_local:
         Configure which logs to print. Defaults to {logger.WARNING}.
     '''
 )
+@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option(
   '--output-level', default=test_output_level.PASSED, type=click.Choice([test_output_level.FAILED, test_output_level.SKIPPED, test_output_level.PASSED]),
   help=f'''
