@@ -94,6 +94,28 @@ def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval:
     return False
 
 
+def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
+    """Poll until the reverse proxy is intercepting in mock mode (returns 499 for unrecorded requests).
+
+    Traefik can be up (non-502/503) but the stoobly proxy may not yet have applied settings.
+    This function waits until the proxy returns 499, which proves mock-intercept mode is active.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+                timeout=5.0,
+            )
+            if resp.status_code == NOT_FOUND:
+                return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
 def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, settings, timeout: float = 120.0, interval: float = 1.0, recommit_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively recording.
 
@@ -313,10 +335,9 @@ class TestDockerRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
-            time.sleep(3)  # Allow per-service stoobly proxy to fully initialise behind Traefik
+            assert wait_for_reverse_proxy_intercept(hostname), "Reverse proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
