@@ -84,6 +84,7 @@ def init(**kwargs):
   multiple=True,
   help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
 )
+@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
@@ -94,6 +95,7 @@ def init(**kwargs):
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
@@ -136,11 +138,17 @@ def run(**kwargs):
         kwargs['lifecycle_hooks_path']
       )
 
+    if kwargs.get('openapi_specification_path'):
+      os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = kwargs['openapi_specification_path']
+
     if kwargs.get('public_dir_path'):
       # Join multiple paths with commas
       os.environ[env_vars.AGENT_PUBLIC_DIRECTORY_PATH] = normalize_public_dir_path(
         kwargs['public_dir_path']
       )
+
+    if kwargs.get('remote_project_key'):
+      os.environ[env_vars.AGENT_REMOTE_PROJECT_KEY] = kwargs['remote_project_key']
 
     if kwargs.get('response_fixtures_path'):
       os.environ[env_vars.AGENT_RESPONSE_FIXTURES_PATH] = normalize_response_fixtures_path(
@@ -235,13 +243,14 @@ def run(**kwargs):
   help="Mock request"
 )
 @click.option('-d', '--data', default='', help='HTTP POST data')
-@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_remote and is_local)
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
 @click.option('--public-dir-path', help='Path to public files. Used for mocking requests.')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
 @click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
@@ -253,6 +262,9 @@ def mock(**kwargs):
   
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
+
+  if kwargs.get('openapi_specification_path'):
+    os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = kwargs['openapi_specification_path']
 
   response = __replay(mode.MOCK, **kwargs)
 

@@ -1,13 +1,16 @@
 import pdb
 import pytest
+import requests
 
 from urllib.parse import urlparse
 
+from stoobly_agent.app.models.adapters.python import PythonRequestAdapterFactory
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import (
   LocalDBRequestAdapter,
 )
 from stoobly_agent.app.models.types.request import RequestIndexSimilarParams
+from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.settings import Settings
@@ -302,3 +305,73 @@ class TestLocalDBRequestAdapter():
           host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
         )
         assert response.status_code == 201
+
+    class TestComputeMode():
+      @pytest.fixture(scope='function')
+      def created_request(self, settings: Settings):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={'x-token': 'abc'},
+          response_body='ok',
+          status_code=200,
+          url='https://example.com/v1/search?a=1&b=2',
+        ).with_settings(settings).build()[1]
+        assert status == 200
+
+        request = Request.last()
+        yield request
+        request.delete()
+
+      def test_it_recomputes_hashes_when_compute_is_enabled(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request
+      ):
+        ignored_components = [
+          {'type': 3, 'name': 'b'},
+        ]
+
+        python_request = requests.Request(
+          method='GET',
+          url='https://example.com/v1/search?a=1&b=3',
+          headers={'x-token': 'abc'},
+        )
+        mitmproxy_request = PythonRequestAdapterFactory(python_request).mitmproxy_request()
+        hashed_request = HashedRequestDecorator(mitmproxy_request).with_ignored_components(ignored_components)
+
+        response = local_db_request_adapter.response(
+          host='example.com',
+          method='GET',
+          path='/v1/search',
+          port=443,
+          query_params_hash=hashed_request.query_params_hash(),
+          compute=1,
+          endpoint_promise=lambda: { 'ignored_components': ignored_components }
+        )
+
+        assert response.status_code == 200
+
+      def test_it_does_not_recompute_hashes_when_compute_is_disabled(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request
+      ):
+        ignored_components = [
+          {'type': 3, 'name': 'b'},
+        ]
+
+        python_request = requests.Request(
+          method='GET',
+          url='https://example.com/v1/search?a=1&b=2',
+          headers={'x-token': 'abc'},
+        )
+        mitmproxy_request = PythonRequestAdapterFactory(python_request).mitmproxy_request()
+        hashed_request = HashedRequestDecorator(mitmproxy_request).with_ignored_components(ignored_components)
+
+        response = local_db_request_adapter.response(
+          host='example.com',
+          method='GET',
+          path='/v1/search',
+          port=443,
+          query_params_hash=hashed_request.query_params_hash(),
+          endpoint_promise=lambda: { 'ignored_components': ignored_components }
+        )
+
+        assert response.status_code == 498

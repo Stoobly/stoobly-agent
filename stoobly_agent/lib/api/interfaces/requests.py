@@ -11,6 +11,7 @@ class RequestCreateParams(TypedDict):
 class RequestResponseShowQueryParams(TypedDict):
   body_params_hash: str
   body_text_hash: str
+  compute: int
   headers_hash: str
   host: str
   infer: str

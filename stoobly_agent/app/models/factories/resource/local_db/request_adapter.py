@@ -23,6 +23,7 @@ from stoobly_agent.lib.orm.transformers import ORMToRequestTransformer, ORMToReq
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams, RequestsIndexResponse, RequestShowResponse
 
 from .helpers.create_request_columns_service import build_request_columns, build_response_columns
+from .helpers.filter_requests_by_hashes_service import component_hashes, filter_requests_by_hashes
 from .helpers.search import search_request
 from .helpers.snapshot_service import snapshot_request
 from .helpers.tiebreak_scenario_request import access_request, generate_session_id, tiebreak_scenario_request
@@ -76,17 +77,28 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     self.__adapt_scenario_id(query_params)
 
     request = None
+    retry = bool(query_params.get('retry'))
+    should_compute = bool(query_params.get(request_query_params.COMPUTE))
 
     if not query_params.get('request_id'):
       request_columns = { 'is_deleted': False, **query_params }
-
       self.__filter_request_response_columns(request_columns)
+
+      _component_hashes = component_hashes(query_params)
+
+      if should_compute:
+        for key in _component_hashes:
+          if key in request_columns:
+            del request_columns[key]
 
       # Find most recent matching record
       requests = self.__request_orm.where_for(**request_columns).get()
 
-      if 'scenario_id' in query_params:
-        if len(requests) > 1:
+      if should_compute:
+        ignored_components = self.__ignored_components(query_params.get(request_query_params.ENDPOINT_PROMISE))
+        requests = filter_requests_by_hashes(requests, _component_hashes, ignored_components)
+
+      if len(requests) > 1 and 'scenario_id' in query_params:
           session_id = query_params.get(request_query_params.SESSION_ID)
           request_session_id_components = { **request_columns }
 
@@ -97,10 +109,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
           request_session_id = generate_session_id(request_session_id_components)
           request = tiebreak_scenario_request(request_session_id, requests)
           access_request(request_session_id, request.id)
-        else:
-          request = requests.last()
       else:
-        request = requests.last()
+        request = requests[-1] if len(requests) > 0 else None
     else:
       request = self.__request_orm.find(query_params.get('request_id'))
       
@@ -108,7 +118,11 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
-      endpoint_promise = query_params.get(request_query_params.ENDPOINT_PROMISE)
+      endpoint_promise = None
+      # Only attempt to provide ignored components when not retrying 
+      # and there are component hashes to re-compute. Otherwise matching by hostname and path already
+      if not retry and component_hashes(query_params):
+        endpoint_promise = query_params.get(request_query_params.ENDPOINT_PROMISE)
       return self.__handle_request_not_found(endpoint_promise) 
 
     response_record = request.response
@@ -353,6 +367,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     if request_columns.get(request_query_params.SESSION_ID):
       del request_columns[request_query_params.SESSION_ID]
 
+    if request_columns.get(request_query_params.COMPUTE):
+      del request_columns[request_query_params.COMPUTE]
+
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):
       return self.__request_orm.find_by(uuid=request_id)
@@ -375,6 +392,9 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       params['scenario_id'] = scenario.id
 
   def __ignored_components(self, endpoint_promise):
+    if not endpoint_promise:
+      return []
+
     endpoint = endpoint_promise()
 
     if endpoint:

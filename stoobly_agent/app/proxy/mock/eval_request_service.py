@@ -1,8 +1,9 @@
 import json
-import pdb
 import re
 
 from typing import TYPE_CHECKING, List, TypedDict, Union
+
+from stoobly_agent.app.proxy.mock.search_open_api_endpoint import inject_search_open_api_endpoint
 
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
@@ -32,8 +33,8 @@ class EvalRequestOptions(TypedDict):
     retry: int
 
 def inject_eval_request(
-    request_model: RequestModel,
-    intercept_settings: InterceptSettings,
+    request_model: Union[RequestModel, None],
+    intercept_settings: Union[InterceptSettings, None],
 ):
     settings = Settings.instance()
 
@@ -41,7 +42,7 @@ def inject_eval_request(
         request_model = RequestModel(settings)
 
     if not intercept_settings:
-        intercept_settings = InterceptSettings(intercept_settings)
+        intercept_settings = InterceptSettings(settings)
 
     return lambda request, ignored_components, **options: eval_request(
         request_model, intercept_settings, request, ignored_components or [], **options 
@@ -71,20 +72,34 @@ def eval_request(
         # If project_key or scenario_key are invalid, assume custom not found
         return CustomNotFoundResponseBuilder().build()
 
-    # Tease out API returning ignored components on custom not found
-    if request_model.is_local and not options.get('retry'):
-        remote_project_key = intercept_settings.parsed_remote_project_key
-
-        if remote_project_key:
-            search_endpoint = inject_search_endpoint(intercept_settings)
-            remote_project_id = remote_project_key.id
-            endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
-
-            query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)
-
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params_builder.with_params(__build_request_params(request, ignored_components))
     query_params_builder.with_params(__build_optional_params(request, options))
+
+    # Tease out API returning ignored components on custom not found
+    if request_model.is_local:
+        endpoint_promise = None
+
+        if intercept_settings.is_remote:
+            remote_project_key = intercept_settings.parsed_remote_project_key
+            if remote_project_key:
+                search_endpoint = inject_search_endpoint(intercept_settings)
+                remote_project_id = remote_project_key.id
+                endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
+
+        if not endpoint_promise:
+            openapi_specification_path = intercept_settings.openapi_specification_path
+            if openapi_specification_path:
+                search_endpoint = inject_search_open_api_endpoint(intercept_settings)
+                endpoint_promise = lambda: search_endpoint(request.method, request.url, ignored_components=1) 
+
+        if endpoint_promise:
+            query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)
+
+            # Only trigger DB-side recomputation when matching with ignored components.
+            # Checking for retry is somewhat redundant since ignored_components is only set when retry is true.
+            if options.get('retry') and len(ignored_components) > 0:
+                query_params_builder.with_param(request_query_params.COMPUTE, '1')
 
     query_params = query_params_builder.build()
     __filter_by_match_rules(request, intercept_settings.match_rules, query_params)
