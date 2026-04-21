@@ -236,17 +236,21 @@ class TestConfigsController:
             assert kwargs['status'] == 200
 
         def test_update_strips_api_url_when_remote_disabled(self, settings, controller, mock_context):
-            settings.cli.features.remote = False
+            original_remote = settings.cli.features.remote
             original_api_url = settings.remote.api_url
 
-            mock_context.params = {'remote': {'api_url': 'http://malicious.example.com'}}
+            try:
+                settings.cli.features.remote = False
+                mock_context.params = {'remote': {'api_url': 'http://malicious.example.com'}}
 
-            with patch.object(settings, 'write'):
-                controller.update(mock_context)
+                with patch.object(settings, 'write'):
+                    controller.update(mock_context)
 
-            _, kwargs = mock_context.render.call_args
-            assert kwargs['json']['remote']['api_url'] != 'http://malicious.example.com'
-            assert kwargs['json']['remote']['api_url'] == original_api_url
+                _, kwargs = mock_context.render.call_args
+                assert kwargs['json']['remote']['api_url'] != 'http://malicious.example.com'
+                assert kwargs['json']['remote']['api_url'] == original_api_url
+            finally:
+                settings.cli.features.remote = original_remote
 
     class TestPrivateMethods:
 
