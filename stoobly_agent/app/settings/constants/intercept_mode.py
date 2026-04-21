@@ -5,4 +5,4 @@ RECORD = 'record'
 REPLAY = 'replay'
 TEST = 'test'
 
-Mode = Literal[MOCK, RECORD, TEST]
+Mode = Literal[MOCK, RECORD, REPLAY, TEST]

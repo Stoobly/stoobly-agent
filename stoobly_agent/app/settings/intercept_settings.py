@@ -1,9 +1,11 @@
 import os
 import pdb
+from typing import Optional
 
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.constants import mode
 
+from .constants.intercept_mode import Mode
 from .types.proxy_settings import InterceptSettings as IInterceptSettings
 
 class InterceptSettings:
@@ -18,11 +20,11 @@ class InterceptSettings:
     self.__upstream_url = self.__intercept_settings.get('upstream_url')
 
   @property
-  def active(self):
+  def active(self) -> bool:
     if os.environ.get(env_vars.AGENT_INTERCEPT_ACTIVE):
-      return os.environ[env_vars.AGENT_INTERCEPT_ACTIVE]
+      return os.environ[env_vars.AGENT_INTERCEPT_ACTIVE] == '1'
 
-    return self.__active
+    return bool(self.__active)
 
   @active.setter
   def active(self, v):
@@ -30,17 +32,17 @@ class InterceptSettings:
     self.__intercept_settings['active'] = bool(v)
 
   @property
-  def mode_before_change(self):
+  def mode_before_change(self) -> Mode:
     return self.__intercept_settings.get('mode') or mode.NONE
 
   @property
-  def mode(self):
+  def mode(self) -> Mode:
     if self.__mode != self.mode_before_change:
       return self.__mode
 
     if os.environ.get(env_vars.AGENT_INTERCEPT_MODE):
         return os.environ[env_vars.AGENT_INTERCEPT_MODE]
-        
+
     return self.__mode
 
   @mode.setter
@@ -50,7 +52,7 @@ class InterceptSettings:
       self.__intercept_settings['mode'] = v
 
   @property
-  def project_key(self):
+  def project_key(self) -> Optional[str]:
     return self.__project_key
 
   @project_key.setter
@@ -59,7 +61,7 @@ class InterceptSettings:
     self.__intercept_settings['project_key'] = v
 
   @property
-  def upstream_url(self):
+  def upstream_url(self) -> Optional[str]:
     return self.__upstream_url
 
   def to_dict(self) -> IInterceptSettings:
