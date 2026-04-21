@@ -1,6 +1,6 @@
 import os
 import pdb
-from typing import Optional
+from typing import Literal, Optional, Union
 
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.constants import mode
@@ -32,7 +32,7 @@ class InterceptSettings:
     self.__intercept_settings['active'] = bool(v)
 
   @property
-  def mode_before_change(self) -> Mode:
+  def mode_before_change(self) -> Union[Mode, mode.NONE]:
     return self.__intercept_settings.get('mode') or mode.NONE
 
   @property
