@@ -28,7 +28,7 @@ def iterate_group_by(alias_name: str, trace_context: TraceContext, handler: Call
       _trace_alias.trace_request_id = trace_request.id
       _trace_alias.save()
 
-    trace_context = TraceContext(trace_context.endpoints_resource, trace)
+    trace_context = TraceContext(trace_context.endpoint_cache, trace)
 
     handler(trace_context)
 

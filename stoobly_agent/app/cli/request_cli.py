@@ -180,6 +180,7 @@ if is_local:
 @click.option('--group-by', help='Repeat for each alias name.')
 @click.option('--host', help='Rewrite request host.')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option(
   '--log-level', default=logger.WARNING, type=click.Choice(log_levels), 
   help=f'''

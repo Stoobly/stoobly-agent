@@ -83,15 +83,15 @@ def eval_request(
         if intercept_settings.is_remote:
             remote_project_key = intercept_settings.parsed_remote_project_key
             if remote_project_key:
-                search_endpoint = inject_search_endpoint(intercept_settings)
                 remote_project_id = remote_project_key.id
-                endpoint_promise = lambda: search_endpoint(remote_project_id, request.method, request.url, ignored_components=1) 
+                search_endpoint = inject_search_endpoint(remote_project_id)
+                endpoint_promise = lambda: search_endpoint(request.method, request.url, ignored_components=1) 
 
         if not endpoint_promise:
             openapi_specification_path = intercept_settings.openapi_specification_path
             if openapi_specification_path:
-                search_endpoint = inject_search_open_api_endpoint(intercept_settings)
-                endpoint_promise = lambda: search_endpoint(request.method, request.url, ignored_components=1) 
+                search_endpoint = inject_search_open_api_endpoint(openapi_specification_path)
+                endpoint_promise = lambda: search_endpoint(request.method, request.url)
 
         if endpoint_promise:
             query_params_builder.with_param(request_query_params.ENDPOINT_PROMISE, endpoint_promise)

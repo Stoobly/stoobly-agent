@@ -9,7 +9,7 @@ class EndpointsIndexQueryParams(PaginationQueryParams):
   q: str
 
 class RequestComponentName(TypedDict):
-  id: int 
+  id: int
   alias_id: int
   is_deterministic: bool
   is_required: bool
@@ -37,7 +37,7 @@ class IgnoredComponent(TypedDict):
   type: int
 
 class EndpointShowResponse(TypedDict):
-  id: int
+  id: Union[int, str]
   method: str
   host: str
   ignored_components: NotRequired[Optional[List[IgnoredComponent]]]
@@ -51,6 +51,9 @@ class EndpointShowResponse(TypedDict):
   query_param_names: List[RequestComponentName]
   response_param_names: List[ResponseParamName]
   response_header_names: List[RequestComponentName]
+  service_id: str
+
+class OpenApiEndpointShowResponse(EndpointShowResponse):
   literal_query_params: Optional[dict]
   literal_body_params: Optional[dict]
   literal_response_params: Optional[dict]

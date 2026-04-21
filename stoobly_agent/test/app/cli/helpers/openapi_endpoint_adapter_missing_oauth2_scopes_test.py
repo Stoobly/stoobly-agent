@@ -5,7 +5,12 @@ import pytest
 
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
   OpenApiEndpointAdapter,
+  compute_openapi_endpoint_id,
+  compute_openapi_service_id,
 )
+
+_MISSING_OAUTH2_SID = compute_openapi_service_id("petstore.swagger.io", "80")
+_MISSING_OAUTH2_EID = compute_openapi_endpoint_id(_MISSING_OAUTH2_SID, "/v1/pets", "GET")
 
 
 @pytest.mark.openapi
@@ -27,7 +32,8 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
   @pytest.fixture(scope='class')
   def expected_get_pets_endpoint(self) -> Dict:
     return {
-      "id": 1,
+      "id": _MISSING_OAUTH2_EID,
+      "service_id": _MISSING_OAUTH2_SID,
       "method": "GET",
       "host": "petstore.swagger.io",
       "match_pattern": "/v1/pets",
@@ -35,7 +41,7 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
       "port": "80",
       "query_param_names": [
         {
-          "endpoint_id": 1,
+          "endpoint_id": _MISSING_OAUTH2_EID,
           "inferred_type": "Integer",
           "is_required": False,
           "is_deterministic": True,
@@ -65,7 +71,7 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
       ],
       "response_param_names": [
         {
-          "endpoint_id": 1,
+          "endpoint_id": _MISSING_OAUTH2_EID,
           "name": "Element",
           "query": "[*]",
           "is_required": False,
@@ -75,7 +81,7 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
           "response_param_name_id": None
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _MISSING_OAUTH2_EID,
           "name": "id",
           "query": "[*].id",
           "is_required": True,
@@ -88,7 +94,7 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
           ]
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _MISSING_OAUTH2_EID,
           "name": "name",
           "query": "[*].name",
           "is_required": True,
@@ -101,7 +107,7 @@ class TestOpenApiEndpointAdapterMissingOauthScopes():
           ]
         },
         {
-          "endpoint_id": 1,
+          "endpoint_id": _MISSING_OAUTH2_EID,
           "name": "tag",
           "query": "[*].tag",
           "is_required": False,

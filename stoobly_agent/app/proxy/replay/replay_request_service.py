@@ -33,6 +33,7 @@ class ReplayRequestOptions(TypedDict):
   mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
   before_replay: Union[Callable[[ReplayContext], None], None]
   after_replay: Union[Callable[[ReplayContext], Union['Response', None]], None]
+  openapi_specification_path: str
   project_key: Union[str, None]
   proxies: dict
   public_dir_path: str  # Comma-separated list of paths, optionally with origin prefix
@@ -74,6 +75,9 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
 
   if options.get('mode'):
     __handle_mode_option(options['mode'], request, headers)
+
+  if options.get('openapi_specification_path'):
+    __handle_path_header(custom_headers.OPENAPI_SPECIFICATION_PATH, options['openapi_specification_path'], headers)
 
   if options.get('project_key'):
     headers[custom_headers.PROJECT_KEY] = options['project_key']
