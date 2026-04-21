@@ -18,8 +18,6 @@ from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import 
 
 from stoobly_agent.app.proxy.test.helpers.test_results_builder import TestResultsBuilder
 from stoobly_agent.config.constants import custom_headers
-from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
 
 from .context_response import TestContextResponse
@@ -45,7 +43,6 @@ class TestContext(TestContextABC):
     self.__skipped = False
 
     # Optional
-    self.__endpoints_resource: EndpointsResource = None
     self.__test_id = None
     self.__test_results = None
 
@@ -71,13 +68,12 @@ class TestContext(TestContextABC):
 
   @property
   def endpoint(self) -> EndpointFacade:
-    resource = self.__endpoints_resource
     endpoint_id = self.mock_request_endpoint_id
 
-    if not resource or not endpoint_id:
-      return 
+    if not endpoint_id:
+      return
 
-    return EndpointFacade(resource, endpoint_id)
+    return EndpointFacade(endpoint_id)
 
   @property
   def end_time(self):
@@ -255,10 +251,6 @@ class TestContext(TestContextABC):
       return
 
     return Trace.find(trace_id)
-
-  def with_endpoints_resource(self, resource: EndpointShowResponse):
-    self.__endpoints_resource = resource
-    return self 
 
   def with_test_id(self, test_id: str):
     self.__test_id = test_id

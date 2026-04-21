@@ -9,7 +9,6 @@ from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.request_component_names_facade import RequestComponentNamesFacade
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.test.helpers.test_results_builder import TestResultsBuilder
-from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse
 from stoobly_agent.lib.orm.trace import Trace
 
 from .context_response import TestContextResponse
@@ -196,10 +195,6 @@ class TestContextABC(abc.ABC):
   @property
   @abc.abstractmethod
   def trace(self) -> Union[Trace, None]:
-    pass
-
-  @abc.abstractmethod
-  def with_endpoints_resource(self, resource: EndpointShowResponse):
     pass
 
   @abc.abstractmethod

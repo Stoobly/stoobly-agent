@@ -14,6 +14,7 @@ from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestD
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import reset
 
@@ -305,6 +306,45 @@ class TestLocalDBRequestAdapter():
           host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
         )
         assert response.status_code == 201
+
+    class TestMockRequestEndpointIdHeader():
+      @pytest.fixture(scope='function')
+      def created_request(self, settings: Settings):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='ok',
+          status_code=200,
+          url='https://example.com/v1/items',
+        ).with_settings(settings).build()[1]
+        assert status == 200
+
+        request = Request.last()
+        yield request
+        request.delete()
+
+      def test_it_omits_endpoint_id_without_endpoint_promise(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request
+      ):
+        response = local_db_request_adapter.response(request_id=created_request.id)
+
+        assert response.status_code == 200
+        assert custom_headers.MOCK_REQUEST_ENDPOINT_ID not in response.headers
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request.id)
+
+      def test_it_includes_endpoint_id_when_endpoint_promise_provides_id(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request
+      ):
+        endpoint_id = 'openapi-endpoint-abc'
+        response = local_db_request_adapter.response(
+          request_id=created_request.id,
+          endpoint_promise=lambda: {'id': endpoint_id},
+        )
+
+        assert response.status_code == 200
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ENDPOINT_ID) == endpoint_id
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request.id)
 
     class TestComputeMode():
       @pytest.fixture(scope='function')
