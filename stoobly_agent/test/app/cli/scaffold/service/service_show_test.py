@@ -18,7 +18,7 @@ class TestScaffoldServiceShow:
 
     @pytest.fixture(scope='module')
     def runner(self):
-        return CliRunner()
+        return CliRunner(mix_stderr=False)
 
     @pytest.fixture(scope='class')
     def temp_dir(self):
