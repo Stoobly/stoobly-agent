@@ -2,8 +2,8 @@ import pdb
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
+from stoobly_agent.app.proxy.mock.endpoint_cache import endpoint_cache
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces import RequestsIndexQueryParams
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -16,15 +16,14 @@ PAGE_SIZE = '25'
 def inject_replay():
   settings = Settings.instance()
   request_model = RequestModel(settings)
-  endpoints_resource = EndpointsResource(settings.remote.api_url, settings.remote.api_key)
 
-  return lambda scenario_key, options: replay(scenario_key, request_model, endpoints_resource, options)
+  return lambda scenario_key, options: replay(scenario_key, request_model, options)
 
 def replay(
-  scenario_key: str, request_model: RequestModel, endpoints_resource: EndpointsResource, options: ReplayRequestOptions
+  scenario_key: str, request_model: RequestModel, options: ReplayRequestOptions
 ):
   scenario_key = ScenarioKey(scenario_key)
-  trace_context = options.get('trace_context') or TraceContext(endpoints_resource)
+  trace_context = options.get('trace_context') or TraceContext(endpoint_cache)
 
   page = 0
   count = 0

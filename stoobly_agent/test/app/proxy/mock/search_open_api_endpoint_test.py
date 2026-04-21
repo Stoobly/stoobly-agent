@@ -4,25 +4,28 @@ from unittest.mock import patch
 import pytest
 
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import COMPONENT_TYPES
-from stoobly_agent.app.proxy.mock.search_open_api_endpoint import (
+from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
+  compute_openapi_endpoint_id,
+  compute_openapi_service_id,
+)
+from stoobly_agent.app.proxy.mock.endpoint_cache import (
   build_ignored_components_from_openapi_endpoint,
-  inject_search_open_api_endpoint,
   load_openapi_endpoints_from_file,
-  search_open_api_endpoint,
   sql_like,
 )
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import env_vars
+from stoobly_agent.app.proxy.mock.search_open_api_endpoint import (
+  inject_search_open_api_endpoint,
+  search_open_api_endpoint,
+)
 
 
 @pytest.fixture(autouse=True)
-def clear_openapi_endpoint_cache():
-  from stoobly_agent.app.proxy.mock import search_open_api_endpoint as mod
+def reset_endpoint_cache():
+  from stoobly_agent.app.proxy.mock.endpoint_cache import endpoint_cache
 
-  mod._endpoint_cache._by_path.clear()
+  endpoint_cache.clear_cache()
   yield
-  mod._endpoint_cache._by_path.clear()
+  endpoint_cache.clear_cache()
 
 
 @pytest.fixture
@@ -54,7 +57,9 @@ class TestSearchOpenApiEndpoint:
     )
     assert ep is not None
     assert ep["method"] == "GET"
-    assert ep["id"] == 1
+    petstore_sid = compute_openapi_service_id("petstore.swagger.io", "443")
+    assert ep["service_id"] == petstore_sid
+    assert ep["id"] == compute_openapi_endpoint_id(petstore_sid, "/v2/pets", "GET")
     assert ep["match_pattern"] == "/v2/pets"
 
   def test_returns_none_when_no_match(self, petstore_expanded_path):
@@ -69,7 +74,7 @@ class TestSearchOpenApiEndpoint:
 
   def test_lazy_load_parses_spec_once(self, petstore_expanded_path):
     with patch(
-      "stoobly_agent.app.proxy.mock.search_open_api_endpoint.load_openapi_endpoints_from_file",
+      "stoobly_agent.app.proxy.mock.endpoint_cache.load_openapi_endpoints_from_file",
       wraps=load_openapi_endpoints_from_file,
     ) as load:
       search_open_api_endpoint(
@@ -84,18 +89,14 @@ class TestSearchOpenApiEndpoint:
       )
       assert load.call_count == 1
 
-  def test_inject_search_open_api_endpoint_delegates(self, petstore_expanded_path, monkeypatch):
-    monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, str(petstore_expanded_path))
-    settings = Settings.instance()
-    inject = inject_search_open_api_endpoint(InterceptSettings(settings))
+  def test_inject_search_open_api_endpoint_delegates(self, petstore_expanded_path):
+    inject = inject_search_open_api_endpoint(str(petstore_expanded_path))
     ep = inject("GET", "https://petstore.swagger.io/v2/pets")
     assert ep is not None
     assert ep["method"] == "GET"
 
-  def test_inject_returns_none_when_openapi_spec_path_unset(self, monkeypatch):
-    monkeypatch.delenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, raising=False)
-    settings = Settings.instance()
-    inject = inject_search_open_api_endpoint(InterceptSettings(settings))
+  def test_inject_returns_none_when_openapi_spec_path_unset(self):
+    inject = inject_search_open_api_endpoint(None)
     assert inject("GET", "https://petstore.swagger.io/v2/pets") is None
 
   def test_matches_when_server_netloc_includes_port_but_request_url_omits_explicit_port(

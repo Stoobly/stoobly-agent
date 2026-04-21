@@ -9,7 +9,49 @@ import pytest
 
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
   OpenApiEndpointAdapter,
+  compute_openapi_endpoint_id,
+  compute_openapi_service_id,
 )
+
+_PETSTORE_EXPANDED_SID = compute_openapi_service_id("petstore.swagger.io", "443")
+_PETSTORE_EXPANDED_EID_GET_PETS = compute_openapi_endpoint_id(_PETSTORE_EXPANDED_SID, "/v2/pets", "GET")
+_PETSTORE_EXPANDED_EID_POST_PETS = compute_openapi_endpoint_id(_PETSTORE_EXPANDED_SID, "/v2/pets", "POST")
+_PETSTORE_EXPANDED_EID_GET_PETS_ID = compute_openapi_endpoint_id(_PETSTORE_EXPANDED_SID, "/v2/pets/%", "GET")
+_PETSTORE_EXPANDED_EID_DELETE_PETS_ID = compute_openapi_endpoint_id(_PETSTORE_EXPANDED_SID, "/v2/pets/%", "DELETE")
+
+_USPTO_SID_HTTPS = compute_openapi_service_id("developer.uspto.gov", "443")
+_USPTO_SID_HTTP = compute_openapi_service_id("developer.uspto.gov", "80")
+_USPTO_EID_GET_ROOT_HTTPS = compute_openapi_endpoint_id(_USPTO_SID_HTTPS, "/ds-api/", "GET")
+_USPTO_EID_GET_FIELDS_HTTPS = compute_openapi_endpoint_id(_USPTO_SID_HTTPS, "/ds-api/%/%/fields", "GET")
+_USPTO_EID_POST_RECORDS_HTTPS = compute_openapi_endpoint_id(_USPTO_SID_HTTPS, "/ds-api/%/%/records", "POST")
+_USPTO_EID_GET_ROOT_HTTP = compute_openapi_endpoint_id(_USPTO_SID_HTTP, "/ds-api/", "GET")
+_USPTO_EID_GET_FIELDS_HTTP = compute_openapi_endpoint_id(_USPTO_SID_HTTP, "/ds-api/%/%/fields", "GET")
+_USPTO_EID_POST_RECORDS_HTTP = compute_openapi_endpoint_id(_USPTO_SID_HTTP, "/ds-api/%/%/records", "POST")
+
+_PETSTORE_REF_SID = compute_openapi_service_id("petstore.swagger.io", "80")
+_PETSTORE_REF_EID_POST_V1 = compute_openapi_endpoint_id(_PETSTORE_REF_SID, "/v1/pets", "POST")
+_PETSTORE_REF_EID_POST_V2 = compute_openapi_endpoint_id(_PETSTORE_REF_SID, "/v2/pets", "POST")
+
+_SWAGGER_IO_SID = compute_openapi_service_id("", "0")
+_SWAGGER_IO_EID_PUT_PET = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet", "PUT")
+_SWAGGER_IO_EID_POST_PET = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet", "POST")
+_SWAGGER_IO_EID_GET_FIND_BY_STATUS = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/findByStatus", "GET")
+_SWAGGER_IO_EID_GET_FIND_BY_TAGS = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/findByTags", "GET")
+_SWAGGER_IO_EID_GET_PET_BY_ID = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/%", "GET")
+_SWAGGER_IO_EID_POST_PET_BY_ID = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/%", "POST")
+_SWAGGER_IO_EID_DELETE_PET_BY_ID = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/%", "DELETE")
+_SWAGGER_IO_EID_POST_UPLOAD_IMAGE = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/%/uploadImage", "POST")
+_SWAGGER_IO_EID_GET_STORE_INVENTORY = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/store/inventory", "GET")
+_SWAGGER_IO_EID_POST_STORE_ORDER = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/store/order", "POST")
+_SWAGGER_IO_EID_GET_ORDER_BY_ID = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/store/order/%", "GET")
+_SWAGGER_IO_EID_DELETE_ORDER_BY_ID = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/store/order/%", "DELETE")
+_SWAGGER_IO_EID_POST_USER = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user", "POST")
+_SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/createWithList", "POST")
+_SWAGGER_IO_EID_GET_USER_LOGIN = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/login", "GET")
+_SWAGGER_IO_EID_GET_USER_LOGOUT = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/logout", "GET")
+_SWAGGER_IO_EID_GET_USER_BY_NAME = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/%", "GET")
+_SWAGGER_IO_EID_PUT_USER_BY_NAME = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/%", "PUT")
+_SWAGGER_IO_EID_DELETE_USER_BY_NAME = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/user/%", "DELETE")
 
 
 @pytest.mark.openapi
@@ -53,7 +95,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_v2_get_pets_endpoint(self) -> Dict:
       return {
-        'id': 1,
+        'id': _PETSTORE_EXPANDED_EID_GET_PETS,
+        'service_id': _PETSTORE_EXPANDED_SID,
         'method': 'GET',
         'host': 'petstore.swagger.io',
         'port': '443',
@@ -61,7 +104,7 @@ class TestOpenApiEndpointAdapter():
         'path': '/v2/pets',
         'query_param_names': [
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 1,
             'inferred_type': 'Array',
             'is_deterministic': True,
@@ -71,7 +114,7 @@ class TestOpenApiEndpointAdapter():
             'query_param_name_id': None,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -81,7 +124,7 @@ class TestOpenApiEndpointAdapter():
             'query_param_name_id': 1,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 3,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -103,7 +146,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 1,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -113,7 +156,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -124,7 +167,7 @@ class TestOpenApiEndpointAdapter():
             'values': ['']
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 3,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -134,7 +177,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 1
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS,
             'id': 4,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -150,7 +193,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_v2_post_pets_endpoint(self) -> Dict:
       return {
-        'id': 2,
+        'id': _PETSTORE_EXPANDED_EID_POST_PETS,
+        'service_id': _PETSTORE_EXPANDED_SID,
         'method': 'POST',
         'host': 'petstore.swagger.io',
         'port': '443',
@@ -159,7 +203,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_POST_PETS,
             'id': 1,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -170,7 +214,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_EXPANDED_EID_POST_PETS,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -191,7 +235,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
           {
-              'endpoint_id': 2,
+              'endpoint_id': _PETSTORE_EXPANDED_EID_POST_PETS,
               'id': 1,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -202,7 +246,7 @@ class TestOpenApiEndpointAdapter():
               'values': [''],
           },
           {
-              'endpoint_id': 2,
+              'endpoint_id': _PETSTORE_EXPANDED_EID_POST_PETS,
               'id': 2,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -212,7 +256,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': None,
           },
           {
-              'endpoint_id': 2,
+              'endpoint_id': _PETSTORE_EXPANDED_EID_POST_PETS,
               'id': 3,
               'inferred_type': 'Integer',
               'is_deterministic': True,
@@ -228,7 +272,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_v2_get_pets_id_endpoint(self) -> Dict:
       return {
-        'id': 3,
+        'id': _PETSTORE_EXPANDED_EID_GET_PETS_ID,
+        'service_id': _PETSTORE_EXPANDED_SID,
         'method': 'GET',
         'host': 'petstore.swagger.io',
         'port': '443',
@@ -251,7 +296,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
             {
-                'endpoint_id': 3,
+                'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS_ID,
                 'id': 1,
                 'inferred_type': 'String',
                 'is_deterministic': True,
@@ -262,7 +307,7 @@ class TestOpenApiEndpointAdapter():
                 'values': [''],
             },
             {
-                'endpoint_id': 3,
+                'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS_ID,
                 'id': 2,
                 'inferred_type': 'String',
                 'is_deterministic': True,
@@ -272,7 +317,7 @@ class TestOpenApiEndpointAdapter():
                 'response_param_name_id': None,
             },
             {
-                'endpoint_id': 3,
+                'endpoint_id': _PETSTORE_EXPANDED_EID_GET_PETS_ID,
                 'id': 3,
                 'inferred_type': 'Integer',
                 'is_deterministic': True,
@@ -288,7 +333,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_v2_delete_pets_id_endpoint(self) -> Dict:
       return {
-        'id': 4,
+        'id': _PETSTORE_EXPANDED_EID_DELETE_PETS_ID,
+        'service_id': _PETSTORE_EXPANDED_SID,
         'method': 'DELETE',
         'host': 'petstore.swagger.io',
         'path': '/v2/pets/{id}',
@@ -335,7 +381,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_get_root_https(self) -> Dict:
       return {
-        'id': 1,
+        'id': _USPTO_EID_GET_ROOT_HTTPS,
+        'service_id': _USPTO_SID_HTTPS,
         'method': 'GET',
         'host': 'developer.uspto.gov',
         'port': '443',
@@ -349,7 +396,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
           {
-            'endpoint_id': 1,
+            'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
             'id': 1,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -359,7 +406,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
             'id': 2,
             'inferred_type': 'Array',
             'is_deterministic': True,
@@ -369,7 +416,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
               'id': 3,
               'inferred_type': 'Hash',
               'is_deterministic': True,
@@ -379,7 +426,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 2,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
               'id': 4,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -389,7 +436,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 3,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
               'id': 5,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -399,7 +446,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 3,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
               'id': 6,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -409,7 +456,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 3,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _USPTO_EID_GET_ROOT_HTTPS,
               'id': 7,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -424,16 +471,18 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_get_root_http(self, expected_get_root_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_get_root_https)
-      http_endpoint_version['id'] = 4
+      http_endpoint_version['id'] = _USPTO_EID_GET_ROOT_HTTP
+      http_endpoint_version['service_id'] = _USPTO_SID_HTTP
       http_endpoint_version['port'] = '80'
       for response_param_name in http_endpoint_version['response_param_names']:
-        response_param_name['endpoint_id'] = 4
+        response_param_name['endpoint_id'] = _USPTO_EID_GET_ROOT_HTTP
       return http_endpoint_version
 
     @pytest.fixture(scope='class')
     def expected_get_dataset_version_fields_https(self) -> Dict:
       return {
-        'id': 2,
+        'id': _USPTO_EID_GET_FIELDS_HTTPS,
+        'service_id': _USPTO_SID_HTTPS,
         'method': 'GET',
         'host': 'developer.uspto.gov',
         'port': '443',
@@ -463,14 +512,16 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_get_dataset_version_fields_http(self, expected_get_dataset_version_fields_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_get_dataset_version_fields_https)
-      http_endpoint_version['id'] = 5
+      http_endpoint_version['id'] = _USPTO_EID_GET_FIELDS_HTTP
+      http_endpoint_version['service_id'] = _USPTO_SID_HTTP
       http_endpoint_version['port'] = '80'
       return http_endpoint_version
 
     @pytest.fixture(scope='class')
     def expected_post_dataset_version_records_https(self) -> Dict:
       return {
-        'id': 3,
+        'id': _USPTO_EID_POST_RECORDS_HTTPS,
+        'service_id': _USPTO_SID_HTTPS,
         'method': 'POST',
         'host': 'developer.uspto.gov',
         'port': '443',
@@ -480,7 +531,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 3,
+            'endpoint_id': _USPTO_EID_POST_RECORDS_HTTPS,
             'id': 1,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -491,7 +542,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 3,
+            'endpoint_id': _USPTO_EID_POST_RECORDS_HTTPS,
             'id': 2,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -501,7 +552,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 3,
+            'endpoint_id': _USPTO_EID_POST_RECORDS_HTTPS,
             'id': 3,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -530,7 +581,7 @@ class TestOpenApiEndpointAdapter():
         ],
      'response_param_names': [
           {
-              'endpoint_id': 3,
+              'endpoint_id': _USPTO_EID_POST_RECORDS_HTTPS,
               'id': 1,
               'inferred_type': 'Hash',
               'is_deterministic': True,
@@ -545,12 +596,13 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_post_dataset_version_records_http(self, expected_post_dataset_version_records_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_post_dataset_version_records_https)
-      http_endpoint_version['id'] = 6
+      http_endpoint_version['id'] = _USPTO_EID_POST_RECORDS_HTTP
+      http_endpoint_version['service_id'] = _USPTO_SID_HTTP
       http_endpoint_version['port'] = '80'
-      http_endpoint_version['body_param_names'][0]['endpoint_id'] = 6
-      http_endpoint_version['body_param_names'][1]['endpoint_id'] = 6
-      http_endpoint_version['body_param_names'][2]['endpoint_id'] = 6
-      http_endpoint_version['response_param_names'][0]['endpoint_id'] = 6
+      http_endpoint_version['body_param_names'][0]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
+      http_endpoint_version['body_param_names'][1]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
+      http_endpoint_version['body_param_names'][2]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
+      http_endpoint_version['response_param_names'][0]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
       return http_endpoint_version
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, uspto_file_path, expected_get_root_https, expected_get_root_http, expected_get_dataset_version_fields_https, expected_get_dataset_version_fields_http, expected_post_dataset_version_records_https, expected_post_dataset_version_records_http):
@@ -581,7 +633,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_get_v1_pets_ref(self) -> Dict:
       return {
-        'id': 1,
+        'id': _PETSTORE_REF_EID_POST_V1,
+        'service_id': _PETSTORE_REF_SID,
         'method': 'POST',
         'host': 'petstore.swagger.io',
         'port': '80',
@@ -590,7 +643,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 1,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -601,7 +654,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -611,7 +664,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 3,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -622,7 +675,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 4,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -633,7 +686,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 5,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -643,7 +696,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 5,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 6,
             'inferred_type': 'Boolean',
             'is_deterministic': True,
@@ -654,7 +707,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 5,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -664,7 +717,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 8,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -690,7 +743,8 @@ class TestOpenApiEndpointAdapter():
     def expected_get_v2_pets_ref(self) -> Dict:
       return {
         'host': 'petstore.swagger.io',
-        'id': 2,
+        'id': _PETSTORE_REF_EID_POST_V2,
+        'service_id': _PETSTORE_REF_SID,
         'match_pattern': '/v2/pets',
         'method': 'POST',
         'path': '/v2/pets',
@@ -698,7 +752,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 1,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -708,7 +762,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -719,7 +773,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 3,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -729,7 +783,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 4,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -739,7 +793,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 4,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 5,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -750,7 +804,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 4,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 6,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -761,7 +815,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 4,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 7,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -771,7 +825,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 7,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 8,
             'inferred_type': 'Boolean',
             'is_deterministic': True,
@@ -782,7 +836,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 7,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 9,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -792,7 +846,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 2,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V2,
             'id': 10,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -833,7 +887,8 @@ class TestOpenApiEndpointAdapter():
     def expected_put_v3_pets_ref(self) -> Dict:
       return {
         'host': '-',
-        'id': 1,
+        'id': _SWAGGER_IO_EID_PUT_PET,
+        'service_id': _SWAGGER_IO_SID,
         'match_pattern': '/v3/pet',
         'method': 'PUT',
         'path': '/v3/pet',
@@ -841,7 +896,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 1,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -851,7 +906,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -862,7 +917,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 3,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -872,7 +927,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 3,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 4,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -882,7 +937,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 3,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 5,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -892,7 +947,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 6,
             'inferred_type': 'Array',
             'is_deterministic': True,
@@ -903,7 +958,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 6,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -913,7 +968,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 8,
             'inferred_type': 'Array',
             'is_deterministic': True,
@@ -923,7 +978,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 8,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 9,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -933,7 +988,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 9,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 10,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -943,7 +998,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 9,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 11,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -953,7 +1008,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 12,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -974,7 +1029,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 1,
               'inferred_type': 'Integer',
               'is_deterministic': True,
@@ -984,7 +1039,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': None,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 2,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -995,7 +1050,7 @@ class TestOpenApiEndpointAdapter():
               'values': [''],
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 3,
               'inferred_type': 'Hash',
               'is_deterministic': True,
@@ -1005,7 +1060,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': None,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 4,
               'inferred_type': 'Integer',
               'is_deterministic': True,
@@ -1015,7 +1070,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 3,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 5,
               'inferred_type': 'String',
               'is_deterministic': True,
@@ -1025,7 +1080,7 @@ class TestOpenApiEndpointAdapter():
               'response_param_name_id': 3,
           },
           {
-              'endpoint_id': 1,
+              'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
               'id': 6,
               'inferred_type': 'Array',
               'is_deterministic': True,
@@ -1036,7 +1091,7 @@ class TestOpenApiEndpointAdapter():
               'values': [[]],
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1046,7 +1101,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 6,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 8,
             'inferred_type': 'Array',
             'is_deterministic': True,
@@ -1056,7 +1111,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 9,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -1066,7 +1121,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 8,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 10,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -1076,7 +1131,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 9,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 11,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1086,7 +1141,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': 9,
           },
           {
-            'endpoint_id': 1,
+            'endpoint_id': _SWAGGER_IO_EID_PUT_PET,
             'id': 12,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1102,7 +1157,8 @@ class TestOpenApiEndpointAdapter():
     def expected_post_v3_user_createwithlist(self) -> Dict:
       return {
         'host': '-',
-        'id': 14,
+        'id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
+        'service_id': _SWAGGER_IO_SID,
         'match_pattern': '/v3/user/createWithList',
         'method': 'POST',
         'path': '/v3/user/createWithList',
@@ -1110,7 +1166,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 1,
             'inferred_type': 'Hash',
             'is_deterministic': True,
@@ -1120,7 +1176,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 2,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -1130,7 +1186,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 3,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1140,7 +1196,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 4,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1150,7 +1206,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 5,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1160,7 +1216,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 6,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1170,7 +1226,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1180,7 +1236,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 8,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1190,7 +1246,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': 1,
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 9,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -1215,7 +1271,7 @@ class TestOpenApiEndpointAdapter():
         ],
         'response_param_names': [
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 1,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -1225,7 +1281,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1235,7 +1291,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 3,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1245,7 +1301,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 4,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1255,7 +1311,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 5,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1265,7 +1321,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 6,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1275,7 +1331,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 7,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1285,7 +1341,7 @@ class TestOpenApiEndpointAdapter():
             'response_param_name_id': None,
           },
           {
-            'endpoint_id': 14,
+            'endpoint_id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
             'id': 8,
             'inferred_type': 'Integer',
             'is_deterministic': True,
@@ -1324,7 +1380,8 @@ class TestOpenApiEndpointAdapter():
     @pytest.fixture(scope='class')
     def expected_post_pets_with_path_ref(self) -> Dict:
       return {
-        'id': 1,
+        'id': _PETSTORE_REF_EID_POST_V1,
+        'service_id': _PETSTORE_REF_SID,
         'method': 'POST',
         'host': 'petstore.swagger.io',
         'port': '80',
@@ -1333,7 +1390,7 @@ class TestOpenApiEndpointAdapter():
         'body_param_names': [
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 1,
             'inferred_type': 'String',
             'is_deterministic': True,
@@ -1344,7 +1401,7 @@ class TestOpenApiEndpointAdapter():
           },
           {
             'body_param_name_id': None,
-            'endpoint_id': 1,
+            'endpoint_id': _PETSTORE_REF_EID_POST_V1,
             'id': 2,
             'inferred_type': 'String',
             'is_deterministic': True,

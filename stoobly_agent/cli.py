@@ -263,9 +263,6 @@ def mock(**kwargs):
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
 
-  if kwargs.get('openapi_specification_path'):
-    os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = kwargs['openapi_specification_path']
-
   response = __replay(mode.MOCK, **kwargs)
 
   if response.status_code == custom_response_codes.NOT_FOUND:

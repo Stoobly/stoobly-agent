@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import itertools
 import logging
 import re
@@ -15,12 +16,40 @@ logger = logging.getLogger(__name__)
 
 from stoobly_agent.lib.api.interfaces.endpoints import (
   Alias,
-  EndpointShowResponse,
+  OpenApiEndpointShowResponse,
   RequestComponentName,
 )
 from stoobly_agent.lib.utils.python_to_ruby_type import convert_reverse
 
 from .schema_builder import SchemaBuilder
+
+
+def _md5_hex(value: str) -> str:
+  return hashlib.md5(value.encode('utf-8')).hexdigest()
+
+
+def _endpoint_service_id(parsed_url, port_str: str) -> str:
+  hostname = parsed_url.hostname or ""
+  if hostname:
+    hostname = hostname.lower()
+  return _md5_hex(f"{hostname}:{port_str}")
+
+
+def compute_openapi_service_id(hostname: str, port: str) -> str:
+  """MD5 hex of ``{hostname}:{port}`` (hostname lowercased). Used by tests and callers."""
+  hn = (hostname or "").lower()
+  return _md5_hex(f"{hn}:{port}")
+
+
+def compute_openapi_endpoint_id(service_id: str, match_pattern: str, method: str) -> str:
+  """
+  MD5 hex of ``service_id``, ``match_pattern``, and HTTP ``method`` (concatenated).
+
+  ``method`` is included so operations that share the same ``match_pattern`` (e.g. GET vs POST)
+  do not receive the same ``id``.
+  """
+  return _md5_hex(f"{service_id}{match_pattern or ''}{method}")
+
 
 class OpenApiEndpointAdapter():
   def __init__(self, strict_refs=False):
@@ -34,7 +63,7 @@ class OpenApiEndpointAdapter():
     self.spec = None
     self.strict_refs = strict_refs
 
-  def adapt_from_file(self, file_path) -> List[EndpointShowResponse]:
+  def adapt_from_file(self, file_path) -> List[OpenApiEndpointShowResponse]:
     spec = {}
 
     with open(file_path, "r") as stream:
@@ -52,10 +81,9 @@ class OpenApiEndpointAdapter():
 
     return self.adapt(spec)
 
-  def adapt(self, spec: SchemaPath) -> List[EndpointShowResponse]:
+  def adapt(self, spec: SchemaPath) -> List[OpenApiEndpointShowResponse]:
     self.spec = spec  # Store spec for use in __dereference
     endpoints = []
-    endpoint_counter = 0
     components = spec.get("components", {})
     schemas = components.get("schemas", {})
     paths = spec.getkey('paths')
@@ -81,11 +109,8 @@ class OpenApiEndpointAdapter():
           if http_method not in path:
             continue
 
-          endpoint_counter += 1
-
           parsed_url = urlparse(url)
-          endpoint: EndpointShowResponse = {}
-          endpoint['id'] = endpoint_counter
+          endpoint: OpenApiEndpointShowResponse = {}
           endpoint['method'] = http_method.upper()
           endpoint['host'] = '-' if parsed_url.netloc == '' else parsed_url.netloc
 
@@ -123,6 +148,10 @@ class OpenApiEndpointAdapter():
               endpoint['port'] = '0'
           else:
             endpoint['port'] = str(parsed_url.port)
+
+          endpoint['service_id'] = _endpoint_service_id(parsed_url, endpoint['port'])
+          mp = endpoint.get('match_pattern') or ''
+          endpoint['id'] = _md5_hex(endpoint['service_id'] + mp + endpoint['method'])
 
           alias_counter = 0
           header_param_counter = 0
@@ -465,7 +494,7 @@ class OpenApiEndpointAdapter():
     
     return current 
   
-  def __convert_literal_component_param(self, endpoint: EndpointShowResponse,
+  def __convert_literal_component_param(self, endpoint: OpenApiEndpointShowResponse,
       required_component_params: List[str], literal_component_params: Union[dict, list],
       component_name: str, literal_component_name: str) -> None:
 
@@ -603,7 +632,7 @@ class OpenApiEndpointAdapter():
     
     return result
 
-  def __parse_responses(self, endpoint: EndpointShowResponse, responses: SchemaPath, components: SchemaPath):
+  def __parse_responses(self, endpoint: OpenApiEndpointShowResponse, responses: SchemaPath, components: SchemaPath):
     for response_code, response_definition in responses.items():
       # Only support status code 200 for now
       if response_code != '200':
