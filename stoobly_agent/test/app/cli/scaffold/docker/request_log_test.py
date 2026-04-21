@@ -485,6 +485,8 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
             """Make a request through the forward proxy record workflow and verify a Record success log entry appears."""
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+
             res = requests.get(
                 f'http://{hostname}/',
                 proxies={'http': proxy_url, 'https': proxy_url},
@@ -557,6 +559,8 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+
             res = requests.get(
                 'http://localhost:80/',
                 headers={'Host': hostname},

@@ -120,10 +120,13 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
 
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 
-    res = inject_upload_request(request_model, intercept_settings)(flow_copy)
-
-    __record_hook(lifecycle_hooks.AFTER_RECORD, context)
-    context.flow = flow # Reset flow
+    try:
+        res = inject_upload_request(request_model, intercept_settings)(flow_copy)
+    except Exception:
+        res = None
+    finally:
+        __record_hook(lifecycle_hooks.AFTER_RECORD, context)
+        context.flow = flow # Reset flow
 
     if res:
         InterceptedRequestsLogger.info("Record success", request=flow_copy.request, response=flow_copy.response)
