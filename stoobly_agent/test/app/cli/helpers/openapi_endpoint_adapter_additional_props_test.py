@@ -5,7 +5,12 @@ import pytest
 
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
   OpenApiEndpointAdapter,
+  compute_openapi_endpoint_id,
+  compute_openapi_service_id,
 )
+
+_ADDITIONAL_PROPS_SID = compute_openapi_service_id("petstore.swagger.io", "80")
+_ADDITIONAL_PROPS_EID = compute_openapi_endpoint_id(_ADDITIONAL_PROPS_SID, "/v1/pets", "POST")
 
 
 @pytest.mark.openapi
@@ -27,7 +32,8 @@ class TestOpenApiEndpointAdapterAdditionalProps():
   @pytest.fixture(scope='class')
   def expected_post_pets_endpoint(self) -> Dict:
     return {
-      "id": 1,
+      "id": _ADDITIONAL_PROPS_EID,
+      "service_id": _ADDITIONAL_PROPS_SID,
       "method": "POST",
       "host": "petstore.swagger.io",
       "match_pattern": "/v1/pets",
@@ -35,7 +41,7 @@ class TestOpenApiEndpointAdapterAdditionalProps():
       "port": "80",
       "body_param_names": [
         {
-          "endpoint_id": 1,
+          "endpoint_id": _ADDITIONAL_PROPS_EID,
           "inferred_type": "String",
           "is_required": False,
           "is_deterministic": True,

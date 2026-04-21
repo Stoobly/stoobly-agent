@@ -76,9 +76,16 @@ class LocalDBRequestAdapter(LocalDBAdapter):
   def response(self, **query_params: RequestColumns) -> 'Response':
     self.__adapt_scenario_id(query_params)
 
+    endpoint = None
     request = None
     retry = bool(query_params.get('retry'))
     should_compute = bool(query_params.get(request_query_params.COMPUTE))
+    endpoint_promise = query_params.get(request_query_params.ENDPOINT_PROMISE)
+
+    if endpoint_promise:
+      endpoint = endpoint_promise()
+
+    ignored_components = endpoint.get('ignored_components') if endpoint else []
 
     if not query_params.get('request_id'):
       request_columns = { 'is_deleted': False, **query_params }
@@ -94,8 +101,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       # Find most recent matching record
       requests = self.__request_orm.where_for(**request_columns).get()
 
-      if should_compute:
-        ignored_components = self.__ignored_components(query_params.get(request_query_params.ENDPOINT_PROMISE))
+      if should_compute and ignored_components:
         requests = filter_requests_by_hashes(requests, _component_hashes, ignored_components)
 
       if len(requests) > 1 and 'scenario_id' in query_params:
@@ -118,18 +124,20 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         request = None
 
     if not request:
-      endpoint_promise = None
       # Only attempt to provide ignored components when not retrying 
       # and there are component hashes to re-compute. Otherwise matching by hostname and path already
-      if not retry and component_hashes(query_params):
-        endpoint_promise = query_params.get(request_query_params.ENDPOINT_PROMISE)
-      return self.__handle_request_not_found(endpoint_promise) 
+      if endpoint and not retry and component_hashes(query_params):
+        if ignored_components:
+          return IgnoreComponentsResponseBuilder().build(ignored_components)
+      return CustomNotFoundResponseBuilder().build()
 
     response_record = request.response
     if not response_record:
       return CustomNotFoundResponseBuilder().build()
 
     headers = {}
+    if endpoint:
+      headers[custom_headers.MOCK_REQUEST_ENDPOINT_ID] = str(endpoint.get('id'))
     headers[custom_headers.MOCK_REQUEST_ID] = str(request.id)
     headers[custom_headers.MOCK_REQUEST_KEY] = request.key()
     headers[custom_headers.RESPONSE_LATENCY] = str(request.latency)
@@ -139,15 +147,6 @@ class LocalDBRequestAdapter(LocalDBAdapter):
         .with_headers(headers)
         .transform()
     )
-
-  def __handle_request_not_found(self, endpoint_promise):
-    if endpoint_promise:
-      ignored_components = self.__ignored_components(endpoint_promise)
-
-      if ignored_components:
-        return IgnoreComponentsResponseBuilder().build(ignored_components)
-
-    return CustomNotFoundResponseBuilder().build()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     self.__adapt_scenario_id(query_params)
@@ -390,16 +389,3 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     scenario = self.__scenario_orm.find_by(uuid=scenario_id)
     if scenario:
       params['scenario_id'] = scenario.id
-
-  def __ignored_components(self, endpoint_promise):
-    if not endpoint_promise:
-      return []
-
-    endpoint = endpoint_promise()
-
-    if endpoint:
-      ignored_components = endpoint.get('ignored_components')
-
-      if ignored_components:
-        return ignored_components
-    return []

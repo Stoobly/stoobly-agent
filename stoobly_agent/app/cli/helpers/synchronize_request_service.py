@@ -42,7 +42,7 @@ class SynchronizeRequestService():
   local_db_request_adapter: LocalDBRequestAdapter
 
   def synchronize_request(self, request: Request, endpoint: EndpointShowResponse, lifecycle_hooks = {}):
-    facade = EndpointFacade(None, -1).with_show_response(endpoint)
+    facade = EndpointFacade(-1).with_show_response(endpoint)
     mitmproxy_request = OrmRequestAdapterFactory(request).mitmproxy_request()
 
     # Query Params

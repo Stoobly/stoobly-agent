@@ -12,10 +12,9 @@ from stoobly_agent.config.constants import env_vars
 import stoobly_agent.cli as cli
 from stoobly_agent.lib.api.keys import ProjectKey
 from stoobly_agent.lib.orm.request import Request
-from stoobly_agent.lib.orm.response import Response
 
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
+from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
+from stoobly_agent.app.proxy.mock.ignored_components_response_builder import IgnoreComponentsResponseBuilder
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import intercept_mode, request_component
 from stoobly_agent.app.settings.match_rule import MatchRule
@@ -62,6 +61,12 @@ class TestCliMockIntegration():
         @pytest.fixture(scope='class')
         def search_endpoint(self, runner: CliRunner, mock, project_key: ProjectKey):
             with patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint') as spy:
+                # inject_search_endpoint returns a callable; its result is used as the endpoint dict
+                # for headers. A bare MagicMock breaks mitmproxy (header values must be str/bytes).
+                spy.return_value = lambda method, url, **query_params: {
+                    'id': '1',
+                    'ignored_components': [],
+                }
                 mock_result = runner.invoke(mock, ['--remote-project-key', project_key.raw, DETERMINISTIC_GET_REQUEST_URL])
                 assert mock_result.exit_code == 0
 
@@ -70,10 +75,10 @@ class TestCliMockIntegration():
         def test_it_calls_search_endpoint_once(self, search_endpoint: MagicMock):
             assert search_endpoint.call_count == 1
 
-        def test_search_endpoint_has_intercept_settings_call_arg(self, search_endpoint: MagicMock):
+        def test_search_endpoint_has_project_id_call_arg(self, search_endpoint: MagicMock, project_key: ProjectKey):
             args = search_endpoint.call_args[0]
             assert len(args) == 1
-            assert type(args[0]) is InterceptSettings
+            assert str(args[0]) == str(project_key.id)
 
     class TestWhenNotFound():
         @pytest.fixture(scope='class', autouse=True)
@@ -101,20 +106,23 @@ class TestCliMockIntegration():
         def spies(self, runner: CliRunner, mock, project_key: ProjectKey, enable_match_rules):
             @patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint')
             @patch.object(
-                LocalDBRequestAdapter,
-                '_LocalDBRequestAdapter__handle_request_not_found',
-                wraps=LocalDBRequestAdapter(Request, Response)._LocalDBRequestAdapter__handle_request_not_found # Mock, but preserve implementation
+                CustomNotFoundResponseBuilder,
+                'build',
+                wraps=CustomNotFoundResponseBuilder.build,
             )
             @patch.object(
-                LocalDBRequestAdapter,
-                '_LocalDBRequestAdapter__ignored_components', 
-                wraps=LocalDBRequestAdapter(Request, Response)._LocalDBRequestAdapter__ignored_components
+                IgnoreComponentsResponseBuilder,
+                'build',
+                wraps=IgnoreComponentsResponseBuilder.build,
             )
-            def spy_on(ignored_components, handle_request_not_found, search_endpoint):
-                search_endpoint.return_value = lambda a, b, c: {}
+            def spy_on(ignore_components_build, custom_not_found_build, search_endpoint):
+                search_endpoint.return_value = lambda method, url, **query_params: {
+                    'id': '1',
+                    'ignored_components': [],
+                }
                 test_result = runner.invoke(mock, ['--remote-project-key', project_key.raw, DETERMINISTIC_GET_REQUEST_URL])
                 assert test_result.exit_code == 1
-                return [search_endpoint, handle_request_not_found, ignored_components]
+                return [search_endpoint, custom_not_found_build, ignore_components_build]
 
             return spy_on()
 
@@ -123,15 +131,15 @@ class TestCliMockIntegration():
             return spies[0]
 
         @pytest.fixture(scope='class')
-        def handle_request_not_found(self, spies):
+        def custom_not_found_build(self, spies):
             return spies[1]
 
         @pytest.fixture(scope='class')
-        def ignored_components(self, spies):
+        def ignore_components_build(self, spies):
             return spies[2]
 
-        def test_it_calls_handle_request_not_found_spy_once(self, handle_request_not_found: MagicMock):
-            assert handle_request_not_found.call_count == 1
+        def test_it_calls_custom_not_found_once(self, custom_not_found_build: MagicMock):
+            assert custom_not_found_build.call_count == 1
 
-        def test_it_calls_ignored_components_once(self, ignored_components: MagicMock):
-            assert ignored_components.call_count == 1
+        def test_it_does_not_call_ignore_components_when_list_empty(self, ignore_components_build: MagicMock):
+            assert ignore_components_build.call_count == 0

@@ -31,7 +31,7 @@ class ConfigsController:
     # GET /configs/policies
     def policies(self, context):
         settings = Settings.instance()
-        active_mode = settings.proxy.intercept.active
+        active_mode = settings.proxy.intercept.mode
 
         if active_mode in [mode.MOCK, mode.TEST]:
             context.render(
