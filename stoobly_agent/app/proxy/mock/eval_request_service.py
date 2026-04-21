@@ -59,7 +59,9 @@ def eval_request(
     scenario_key = intercept_settings.scenario_key
 
     if not scenario_key:
-        Logger.instance(LOG_ID).info(f"{bcolors.WARNING}Missing{bcolors.ENDC} scenario key, defaulting to all requests for mocking")
+        request_id = intercept_settings.request_id
+        if not request_id:
+            Logger.instance(LOG_ID).info(f"{bcolors.WARNING}Missing{bcolors.ENDC} scenario key, defaulting to all requests for mocking")
 
     try:
         query_params_builder.with_resource_scoping(intercept_settings.project_key, scenario_key)

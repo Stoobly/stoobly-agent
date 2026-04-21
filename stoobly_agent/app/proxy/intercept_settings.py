@@ -325,6 +325,13 @@ class InterceptSettings:
     except InvalidScenarioKey:
       pass
 
+  @property
+  def request_id(self):
+    if self.__headers and custom_headers.MOCK_REQUEST_ID in self.__headers:
+      return self.__headers[custom_headers.MOCK_REQUEST_ID]
+
+    return None
+
   @scenario_key.setter
   def scenario_key(self, v):
     self.__data_rules.scenario_key = v
