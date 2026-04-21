@@ -7,6 +7,7 @@ from stoobly_agent.app.models.factories.resource.local_db.request_adapter import
   LocalDBRequestAdapter,
 )
 from stoobly_agent.app.models.schemas.request import Request as RequestSchema
+from stoobly_agent.app.proxy.mock.endpoint_cache import endpoint_cache
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
 from stoobly_agent.cli import record
 from stoobly_agent.config.constants import alias_resolve_strategy
@@ -51,7 +52,7 @@ class TestTraceContext():
 
       @pytest.fixture(scope='class')
       def trace_context(self):
-        context = TraceContext(None, None)
+        context = TraceContext(endpoint_cache)
         context.alias_resolve_strategy = alias_resolve_strategy.FIFO
         return context
 

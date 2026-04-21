@@ -11,10 +11,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import disable_transfer_encoding
-from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, request_origin
-from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
-from stoobly_agent.lib.api.interfaces.tests import TestShowResponse
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
@@ -121,9 +118,6 @@ def __handle_mock_success(test_context: TestContext) -> None:
     # Lazy import for runtime usage
     from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
     flow: 'MitmproxyHTTPFlow' = test_context.flow
-    settings: Settings = Settings.instance()
-
-    test_context.with_endpoints_resource(EndpointsResource(settings.remote.api_url, settings.remote.api_key))
 
     __rewrite_request(test_context.replay_context)
     __rewrite_response(test_context.replay_context)

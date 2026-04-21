@@ -4,9 +4,24 @@
 
 How an **incoming proxied request** is matched to a **recorded row** in the local DB for mocks: **hash-based** identity, optional **match rules** that drop hash dimensions, and optional **`compute`** to re-hash stored `raw` when **ignored components** change between record time and the retry path. Custom status codes: **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** ([`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py)) — not standard HTTP 404/498.
 
-### Remote project key and `compute`
+### Endpoint lookup and `compute`
 
-When **local** + **remote project key**: **`compute='1'`** is attached only if **`retry`** and non-empty **`ignored_components`** after [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py)). That widens the ORM query and runs [`filter_requests_by_hashes`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) so stored **`raw`** is re-hashed with the same ignores as the live request.
+When mocking against **local DB**, [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) may attach an `endpoint_promise` from either:
+
+- remote project endpoint search via [`search_endpoint`](../stoobly_agent/app/proxy/mock/search_endpoint.py), or
+- OpenAPI endpoint search via [`search_open_api_endpoint`](../stoobly_agent/app/proxy/mock/search_open_api_endpoint.py).
+
+If `endpoint_promise` exists, and the request is on **retry** with non-empty ignored components, **`compute='1'`** is attached ([`COMPUTE`](../stoobly_agent/config/constants/query_params.py)). That widens the ORM query and runs [`filter_requests_by_hashes`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) so stored **`raw`** is re-hashed with the same ignores as the live request.
+
+### Endpoint cache behavior (remote + OpenAPI)
+
+[`endpoint_cache`](../stoobly_agent/app/proxy/mock/endpoint_cache.py) is a singleton used by both search paths. It:
+
+- caches parsed OpenAPI specs by normalized absolute path,
+- caches remote endpoint index calls by `(project_id, index_params)`,
+- merges both layers into one endpoint-id map, where **latest merge wins** on ID collisions,
+- returns OpenAPI-derived ignored components from optional/nondeterministic fields (query/header/body/response-header),
+- prefetches remote endpoints from settings when remote mode is enabled.
 
 ### Hash dimensions
 
@@ -22,7 +37,7 @@ When **local** + **remote project key**: **`compute='1'`** is attached only if *
 flowchart TB
   subgraph prep [Optional prep — handle_request_mock_generic]
     IG{ignore_rules non-empty?}
-    IG -->|yes| MERGE[Merge rewrite → ignored_components]
+    IG -->|yes| MERGE[Merge ignore rules → ignored_components]
     IG -->|no| IG0[Use ignored_components as-is]
     MERGE --> INIT
     IG0 --> INIT
@@ -42,7 +57,7 @@ flowchart TB
 
   subgraph opt_retry [Options inside eval_request on retry]
     CP{Add compute=1?}
-    CP -->|yes| WCOMP["compute=1: local resource AND remote project key AND len(ignored_components) > 0"]
+    CP -->|yes| WCOMP["compute=1: local resource AND endpoint_promise AND retry AND len(ignored_components) > 0"]
     CP -->|no| NOCOMP[Query without compute]
     WCOMP --> RES2[response]
     NOCOMP --> RES2
@@ -87,9 +102,10 @@ flowchart TB
   Strip --> ORM2[where_for coarse candidates]
   ORM2 --> Rows2[candidates]
   Rows2 --> IG[ignored_components from ENDPOINT_PROMISE]
-  IG --> Filt[filter_requests_by_hashes on raw]
-  Filt --> CLR[clear ENDPOINT_PROMISE in query_params]
-  CLR --> Rows3[rows]
+  IG --> CF{ignored_components non-empty?}
+  CF -->|yes| Filt[filter_requests_by_hashes on raw]
+  CF -->|no| Rows3[rows]
+  Filt --> Rows3[rows]
   Rows1 --> Pick[pick row or scenario tiebreak]
   Rows3 --> Pick
   Pick --> Got{row found?}
@@ -97,7 +113,7 @@ flowchart TB
   Got -->|no| NFD[no matching row]
   NFD --> RY{retry truthy?}
   RY -->|yes| R499[499 CustomNotFoundResponseBuilder]
-  RY -->|no| EP2{endpoint_promise yields ignores?}
+  RY -->|no| EP2{not retry AND component hashes exist AND endpoint yields ignores?}
   EP2 -->|yes| R498[498 IgnoreComponentsResponseBuilder]
   EP2 -->|no| R499
 ```
@@ -110,6 +126,9 @@ flowchart TB
 |--------|----------|
 | Mock entry, retry, fixtures | [`handle_mock_service.py`](../stoobly_agent/app/proxy/handle_mock_service.py) |
 | Query / hashes / match rules / `compute` | [`eval_request_service.py`](../stoobly_agent/app/proxy/mock/eval_request_service.py) |
+| Endpoint cache + OpenAPI ignored-component derivation | [`endpoint_cache.py`](../stoobly_agent/app/proxy/mock/endpoint_cache.py) |
+| Remote endpoint search adapter | [`search_endpoint.py`](../stoobly_agent/app/proxy/mock/search_endpoint.py) |
+| OpenAPI endpoint search adapter | [`search_open_api_endpoint.py`](../stoobly_agent/app/proxy/mock/search_open_api_endpoint.py) |
 | Local DB lookup, strip columns, not found 498/499 | [`request_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
 | Candidate filtering | [`filter_requests_by_hashes_service.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) |
 | Hashing | [`hashed_request_decorator.py`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py) |
