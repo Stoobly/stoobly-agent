@@ -60,7 +60,7 @@ class ValidateCommand():
         sleep(1)
         return self.validate_init_containers(init_container_name, retry + 1)
 
-      init_exit_message = f"{bcolors.FAIL}init container {init_container_name} exited with: {init_container.attrs['State']['ExitCode']}{bcolors.ENDC}"
+      init_exit_message = f"{bcolors.FAIL}init container {init_container_name} {init_container.status} with: {init_container.attrs['State']['ExitCode']}{bcolors.ENDC}"
       suggestion_message = f"{bcolors.BOLD}Run 'docker logs {init_container_name}'{bcolors.ENDC}"
       error_message = f"{init_exit_message}\n\n{suggestion_message}"
 
