@@ -50,9 +50,8 @@ class RawHttpResponseAdapter():
     response.status_code = self.status
     response.headers = self.headers
 
-    # Set Content-Length from body length only when not already provided (e.g. chunked responses)
-    if 'Content-Length' not in response.headers:
-      response.headers['Content-Length'] = str(len(self.body))
+    # Enforce proper Content-Length header
+    response.headers['Content-Length'] = str(len(self.body))
 
     from urllib3 import HTTPResponse
     response.raw = HTTPResponse(

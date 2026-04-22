@@ -28,6 +28,10 @@ class TestRawResponseAdapter():
     assert _response.status_code == response.status_code
 
     for key, val in response.headers.items():
+      # mitmproxy 12.2.2+ stores the decoded body in raw_content; Content-Length is
+      # recalculated to match the decoded body size rather than the original wire value
+      if key.lower() == 'content-length':
+        continue
       assert val == _response.headers.get(key), key
 
 
