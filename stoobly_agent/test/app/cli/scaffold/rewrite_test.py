@@ -1,14 +1,18 @@
 from types import SimpleNamespace
 
 from stoobly_agent.app.cli.scaffold.rewrite import apply_upstream_url_rewrite
+from stoobly_agent.config.constants import method, mode
+from stoobly_agent.lib.api.keys.project_key import ProjectKey
 import stoobly_agent.app.cli.scaffold.rewrite as rewrite_module
 
+organization_id = "org-id"
+project_id = "project-id"
 
-def _settings_with_project_id(project_id: str = "project-id"):
+def _settings_with_project_id(project_id: str = project_id):
   return SimpleNamespace(
     proxy=SimpleNamespace(
       intercept=SimpleNamespace(
-        project_key=f"org/{project_id}"
+        project_key=ProjectKey.encode(project_id, organization_id=organization_id)
       )
     )
   )
@@ -52,6 +56,16 @@ def test_apply_upstream_url_rewrite_applies_when_upstream_differs(monkeypatch):
   apply_upstream_url_rewrite(service_config)
 
   assert len(called) == 1
+  args, kwargs = called[0]
+  assert args == (project_id,)
+  assert kwargs == {
+    "pattern": "https://api.example.test/?.*?",
+    "method": [method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
+    "mode": [mode.REPLAY],
+    "hostname": "upstream.example.test",
+    "port": 8443,
+    "scheme": "https",
+  }
 
 
 def test_apply_upstream_url_rewrite_skips_when_upstream_matches_service(monkeypatch):

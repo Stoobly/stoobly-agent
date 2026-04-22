@@ -23,7 +23,7 @@ from .helpers.print_service import FORMATS, print_projects, print_scenarios, sel
 from .helpers.set_rewrite_rule_service import set_rewrite_rule
 from .helpers.validations import *
 
-LOG_ID = 'ConfigCLI'
+LOG_ID = 'SettingCLI'
 
 settings = Settings.instance()
 is_remote = settings.cli.features.remote or not not os.environ.get(env_vars.FEATURE_REMOTE)
