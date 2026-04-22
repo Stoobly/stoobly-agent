@@ -104,11 +104,29 @@ class GatewayBase():
           self.with_traefik_config(gateway_base)
         else:
           self.with_run_options(gateway_base)
+          self.with_extra_hosts_for_local_services(gateway_base)
 
         self.with_networks(hostnames, gateway_base) 
 
     with open(docker_compose_dest_path, 'w') as fp:
       yaml.dump(compose, fp) 
+
+  def with_extra_hosts_for_local_services(self, gateway_base: dict):
+    """Map host.docker.internal to the host gateway when any workflow service is local (forward proxy only)."""
+    if self.proxy_mode == PROXY_MODE_REVERSE:
+      return
+
+    for path in self.service_paths:
+      config = ServiceConfig(path)
+      if not config.local:
+        continue
+
+      host_mapping = 'host.docker.internal:host-gateway'
+      if 'extra_hosts' not in gateway_base:
+        gateway_base['extra_hosts'] = []
+      if host_mapping not in gateway_base['extra_hosts']:
+        gateway_base['extra_hosts'].append(host_mapping)
+      return
 
   def with_run_options(self, compose: dict):
     def handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
@@ -134,20 +152,6 @@ class GatewayBase():
     if self.commands:
       workflow_name = self.commands[0].workflow_name
       compose['env_file'] = [f'{workflow_name}/.env']
-
-  def __to_traefik_log_level(self):
-    log_level = self.log_level
-
-    if log_level == 'debug':
-      log_level = 'DEBUG'
-    elif log_level == 'warning':
-      log_level = 'WARN'
-    elif log_level == 'error':
-      log_level = 'ERROR'
-    else:
-      log_level = 'INFO'
-
-    return log_level
 
   def with_traefik_config(self, compose: dict):
     config_dest = '/etc/traefik/traefik.yml'
@@ -235,3 +239,17 @@ class GatewayBase():
         hostnames.append(config.hostname) 
 
     return hostnames, ports
+
+  def __to_traefik_log_level(self):
+    log_level = self.log_level
+
+    if log_level == 'debug':
+      log_level = 'DEBUG'
+    elif log_level == 'warning':
+      log_level = 'WARN'
+    elif log_level == 'error':
+      log_level = 'ERROR'
+    else:
+      log_level = 'INFO'
+
+    return log_level
