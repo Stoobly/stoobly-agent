@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.rewrite import apply_upstream_url_rewrite
 import stoobly_agent.app.cli.scaffold.rewrite as rewrite_module
 
@@ -33,23 +32,38 @@ def _service_config(**overrides):
   return config
 
 
-def test_apply_upstream_url_rewrite_skips_for_local_test_workflow(monkeypatch):
+def test_apply_upstream_url_rewrite_skips_when_service_url_missing(monkeypatch):
   called = []
   monkeypatch.setattr(rewrite_module.Settings, "instance", lambda: _settings_with_project_id())
   monkeypatch.setattr(rewrite_module, "set_rewrite_rule", lambda *args, **kwargs: called.append((args, kwargs)))
 
-  service_config = _service_config(local=True)
-  apply_upstream_url_rewrite(service_config, WORKFLOW_TEST_TYPE)
+  service_config = _service_config(url=None)
+  apply_upstream_url_rewrite(service_config)
 
   assert called == []
 
 
-def test_apply_upstream_url_rewrite_applies_for_local_non_test_workflow(monkeypatch):
+def test_apply_upstream_url_rewrite_applies_when_upstream_differs(monkeypatch):
   called = []
   monkeypatch.setattr(rewrite_module.Settings, "instance", lambda: _settings_with_project_id())
   monkeypatch.setattr(rewrite_module, "set_rewrite_rule", lambda *args, **kwargs: called.append((args, kwargs)))
 
-  service_config = _service_config(local=True)
-  apply_upstream_url_rewrite(service_config, WORKFLOW_RECORD_TYPE)
+  service_config = _service_config()
+  apply_upstream_url_rewrite(service_config)
 
   assert len(called) == 1
+
+
+def test_apply_upstream_url_rewrite_skips_when_upstream_matches_service(monkeypatch):
+  called = []
+  monkeypatch.setattr(rewrite_module.Settings, "instance", lambda: _settings_with_project_id())
+  monkeypatch.setattr(rewrite_module, "set_rewrite_rule", lambda *args, **kwargs: called.append((args, kwargs)))
+
+  service_config = _service_config(
+    upstream_hostname="api.example.test",
+    upstream_port=443,
+    upstream_scheme="https",
+  )
+  apply_upstream_url_rewrite(service_config)
+
+  assert called == []
