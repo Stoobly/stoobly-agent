@@ -5,7 +5,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import method, mode
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-def apply_upstream_url_rewrite(service_config: ServiceConfig, workflow_name: str) -> None:
+def apply_upstream_url_rewrite(service_config: ServiceConfig) -> None:
   """
   If effective upstream hostname, port, or scheme differs from the service's public
   hostname, port, or scheme, persist a replay-mode URL rewrite rule mapping the service URL to upstream.

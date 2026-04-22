@@ -1121,22 +1121,25 @@ def __services_mkcert(app: App, services):
       ca.sign(hostname, app.certs_dir_path)
 
 def __services_rewrite(app: App, services, workflow_name: str):
-  workflow_dir_path = service.workflow_dir_path(workflow_name)
-  workflow_config = WorkflowConfig(workflow_dir_path)
-  workflow_template = workflow_config.template or workflow_name
-
   for service_name in services:
     service = Service(service_name, app)
     __validate_service_dir(service.dir_path)
 
+    workflow_dir_path = service.workflow_dir_path(workflow_name)
+    workflow_config = WorkflowConfig(workflow_dir_path)
+    workflow_template = workflow_config.template or workflow_name
+
     # Skip rewrite for docker runtime local services in test workflows
     # In such a case, UPSTREAM_HOSTNAME will be set to host.docker.internal
     service_config = ServiceConfig(service.dir_path)
-    if app.config.runtime == RUNTIME_DOCKER:
-      if service_config.local and workflow_name == WORKFLOW_TEST_TYPE:
-        continue
+    if (
+      workflow_template == WORKFLOW_TEST_TYPE and
+      service_config.local and
+      service_config.app_config.runtime == RUNTIME_DOCKER
+    ):
+      continue
 
-    apply_upstream_url_rewrite(service_config, workflow_template)
+    apply_upstream_url_rewrite(service_config)
 
 def __services_firewall(app: App, services, workflow_name: str):
   settings = Settings.instance()
