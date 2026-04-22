@@ -2,13 +2,8 @@ import os
 
 from typing import List, Callable
 
-from stoobly_agent.app.cli.helpers.set_rewrite_rule_service import set_rewrite_rule
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
-from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import method, mode
-from stoobly_agent.lib.api.keys.project_key import ProjectKey
-
 def iter_commands(
   commands: List[WorkflowRunCommand],
   handle_before_entrypoint: Callable = None,
@@ -79,25 +74,6 @@ def iter_commands(
   for command in commands:
     if handle_command:
       handle_command(command)
-
-    upstream_hostname = command.service_config.upstream_hostname
-    upstream_port = command.service_config.upstream_port
-    upstream_scheme = command.service_config.upstream_scheme
-
-    # If upstream hostname, port, scheme, or url is different from service hostname, port, scheme, or url,
-    # update settings rewrite rules to rewrite url to upstream url
-    if upstream_hostname != command.service_config.hostname or upstream_port != command.service_config.port or upstream_scheme != command.service_config.scheme:
-      settings: Settings = Settings.instance()
-      project_key = ProjectKey(settings.proxy.intercept.project_key)
-      set_rewrite_rule(
-        project_key.id,
-        pattern=f'{command.service_config.url}/?.*?',
-        method=[method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
-        mode=[mode.REPLAY],
-        hostname=upstream_hostname,
-        port=upstream_port,
-        scheme=upstream_scheme
-      )
 
     # If second from last command, run up_command i.e. right before entrypoint
     if len(commands) >= 2 and command == commands[-2]:
