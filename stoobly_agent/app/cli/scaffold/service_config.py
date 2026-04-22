@@ -140,8 +140,6 @@ class ServiceConfig(Config):
     else:
       v = int(v)
       if v > 0 and v <= 65535:
-        if v == self.__upstream_port and self.local:
-          raise ValueError('port cannot be the same as upstream port')
         self.__port = v
 
   @property
@@ -201,8 +199,6 @@ class ServiceConfig(Config):
     else:
       v = int(v)
       if v > 0 and v <= 65535:
-        if v == self.__port and self.local:
-          raise ValueError('upstream port cannot be the same as port')
         self.__upstream_port = v
       else:
         raise ValueError('upstream port must be between 0 and 65535')

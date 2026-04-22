@@ -1,10 +1,25 @@
 import pytest
+import yaml
 
 from unittest.mock import MagicMock
 
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
-from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_FORWARD
+from stoobly_agent.app.cli.scaffold.constants import (
+  APP_PROXY_MODE_ENV,
+  APP_PROXY_PORT_ENV,
+  APP_RUNTIME_ENV,
+  PROXY_MODE_FORWARD,
+  RUNTIME_DOCKER,
+  SERVICE_HOSTNAME_ENV,
+  SERVICE_LOCAL_ENV,
+  SERVICE_NAME_ENV,
+  SERVICE_PORT_ENV,
+  SERVICE_SCHEME_ENV,
+  SERVICES_NAMESPACE,
+)
+from stoobly_agent.app.cli.scaffold.docker.constants import DOCKER_COMPOSE_BASE
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_GATEWAY_SERVICE_NAME
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 
@@ -68,3 +83,118 @@ class TestGatewayBaseWithRunOptions():
       "gateway_base compose missing env_file — WORKFLOW_NAME won't be set in the container"
     )
     assert compose['env_file'] == [f'{workflow_name}/.env']
+
+
+class TestGatewayBaseExtraHostsForLocal():
+
+  @pytest.fixture
+  def workflow_name(self):
+    return 'record'
+
+  def test_configure_adds_extra_hosts_when_forward_and_local_service(self, tmp_path, workflow_name):
+    scaffold = tmp_path / 'scaffold'
+    (scaffold / 'gateway').mkdir(parents=True)
+    (scaffold / 'myservice').mkdir(parents=True)
+    runtime_root = tmp_path / 'runtime'
+    (runtime_root / SERVICES_NAMESPACE / CORE_GATEWAY_SERVICE_NAME).mkdir(parents=True)
+
+    with open(scaffold / '.config.yml', 'w') as f:
+      yaml.dump(
+        {
+          APP_PROXY_MODE_ENV: PROXY_MODE_FORWARD,
+          APP_RUNTIME_ENV: RUNTIME_DOCKER,
+          APP_PROXY_PORT_ENV: 8080,
+        },
+        f,
+      )
+
+    with open(scaffold / 'myservice' / '.config.yml', 'w') as f:
+      yaml.dump(
+        {
+          SERVICE_HOSTNAME_ENV: 'api.example.test',
+          SERVICE_PORT_ENV: 4000,
+          SERVICE_SCHEME_ENV: 'http',
+          SERVICE_LOCAL_ENV: True,
+          SERVICE_NAME_ENV: 'myservice',
+        },
+        f,
+      )
+
+    with open(scaffold / 'gateway' / '.docker-compose.base.template.yml', 'w') as f:
+      yaml.dump({'services': {'gateway_base': {'image': 'busybox'}}}, f)
+
+    wf_ns = MagicMock(spec=WorkflowNamespace)
+    wf_ns.app.runtime_app_data_dir.path = str(runtime_root)
+
+    app_config = AppConfig(str(scaffold))
+    gb = GatewayBase(wf_ns, [str(scaffold / 'myservice')])
+    gb.with_app_config(app_config)
+    gb.no_publish = True
+
+    stub = MagicMock()
+    stub.workflow_name = workflow_name
+    stub.service_config = MagicMock(url=None)
+    gb.with_commands([stub])
+
+    gb.configure()
+
+    out_path = runtime_root / SERVICES_NAMESPACE / CORE_GATEWAY_SERVICE_NAME / DOCKER_COMPOSE_BASE
+    assert out_path.is_file()
+    with open(out_path) as f:
+      out = yaml.safe_load(f)
+    gateway_svc = out['services']['gateway_base']
+    assert 'extra_hosts' in gateway_svc
+    assert 'host.docker.internal:host-gateway' in gateway_svc['extra_hosts']
+
+  def test_configure_skips_extra_hosts_when_no_local_service(self, tmp_path, workflow_name):
+    scaffold = tmp_path / 'scaffold2'
+    (scaffold / 'gateway').mkdir(parents=True)
+    (scaffold / 'remote').mkdir(parents=True)
+    runtime_root = tmp_path / 'runtime2'
+    (runtime_root / SERVICES_NAMESPACE / CORE_GATEWAY_SERVICE_NAME).mkdir(parents=True)
+
+    with open(scaffold / '.config.yml', 'w') as f:
+      yaml.dump(
+        {
+          APP_PROXY_MODE_ENV: PROXY_MODE_FORWARD,
+          APP_RUNTIME_ENV: RUNTIME_DOCKER,
+          APP_PROXY_PORT_ENV: 8080,
+        },
+        f,
+      )
+
+    with open(scaffold / 'remote' / '.config.yml', 'w') as f:
+      yaml.dump(
+        {
+          SERVICE_HOSTNAME_ENV: 'api.example.test',
+          SERVICE_PORT_ENV: 4000,
+          SERVICE_SCHEME_ENV: 'http',
+          SERVICE_NAME_ENV: 'remote',
+        },
+        f,
+      )
+
+    with open(scaffold / 'gateway' / '.docker-compose.base.template.yml', 'w') as f:
+      yaml.dump({'services': {'gateway_base': {'image': 'busybox'}}}, f)
+
+    wf_ns = MagicMock(spec=WorkflowNamespace)
+    wf_ns.app.runtime_app_data_dir.path = str(runtime_root)
+
+    app_config = AppConfig(str(scaffold))
+    gb = GatewayBase(wf_ns, [str(scaffold / 'remote')])
+    gb.with_app_config(app_config)
+    gb.no_publish = True
+
+    stub = MagicMock()
+    stub.workflow_name = workflow_name
+    stub.service_config = MagicMock(url=None)
+    gb.with_commands([stub])
+
+    gb.configure()
+
+    out_path = runtime_root / SERVICES_NAMESPACE / CORE_GATEWAY_SERVICE_NAME / DOCKER_COMPOSE_BASE
+    with open(out_path) as f:
+      out = yaml.safe_load(f)
+    gateway_svc = out['services']['gateway_base']
+    extra = gateway_svc.get('extra_hosts') or []
+    assert 'host.docker.internal:host-gateway' not in extra
