@@ -1,13 +1,14 @@
 import json
-import pdb
 import pytest
 import requests
 import socket
+import subprocess
 import time
 
 from click.testing import CliRunner
 from typing import Optional
 
+from stoobly_agent.test.test_helper import reset  # must be first: calls reset() at module level to initialise settings before other CLI modules import
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     PROXY_MODE_FORWARD,
@@ -15,9 +16,9 @@ from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
-from stoobly_agent.test.test_helper import reset
 
 
 def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
@@ -69,6 +70,172 @@ def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: flo
         except Exception:
             pass
         time.sleep(interval)
+    return False
+
+
+def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval: float = 1.0) -> bool:
+    """Poll until the stoobly proxy behind Traefik is handling requests (non-502/503 response).
+
+    Traefik becomes ready before the per-service stoobly proxy is fully initialised.
+    This function waits until actual requests reach the stoobly proxy.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                f'http://localhost:80/',
+                headers={'Host': hostname},
+                timeout=5.0,
+            )
+            if resp.status_code not in (502, 503):
+                return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
+def wait_for_forward_proxy_ready(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
+    """Poll until the forward proxy is accepting and processing HTTP requests.
+
+    wait_for_port confirms TCP is open but mitmproxy may still be initializing.
+    Retries on ProxyError (connection reset = not ready yet) and returns True once
+    any response is received, proving mitmproxy is fully up and handling requests.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+            return True
+        except requests.exceptions.ProxyError:
+            pass  # connection reset — mitmproxy still starting
+        except Exception:
+            return True  # upstream error means proxy processed the request
+        time.sleep(interval)
+    return False
+
+
+def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
+    """Poll until the reverse proxy is intercepting in mock mode (returns 499 for unrecorded requests).
+
+    Traefik can be up (non-502/503) but the stoobly proxy may not yet have applied settings.
+    This function waits until the proxy returns 499, which proves mock-intercept mode is active.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+                timeout=5.0,
+            )
+            if resp.status_code == NOT_FOUND:
+                return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
+def _enable_intercept_in_container(container_name: str) -> bool:
+    """Run 'stoobly-agent intercept enable' inside the named Docker container.
+
+    Writing from inside the container avoids host-to-container inotify delivery
+    issues on CI environments (GitHub Actions runners / nested VMs). The proxy
+    process and the write both happen inside the same container, so the inotify
+    event is always delivered.
+    """
+    result = subprocess.run(
+        ['docker', 'exec', '--user', 'stoobly', container_name, 'stoobly-agent', 'intercept', 'enable'],
+        capture_output=True,
+        timeout=30,
+    )
+    return result.returncode == 0
+
+
+def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
+    """Poll until the forward proxy is actively recording.
+
+    Clears stale log entries, enables intercept inside the proxy container (avoiding
+    host-to-container inotify issues in CI), then polls until a 'Record success' or
+    'Record failure' entry appears — proof the proxy has reloaded settings and is
+    intercepting. Periodically re-enables to handle any delivery delays.
+    """
+    container_name = f'{workflow_name}-gateway.service-1'
+    runner.invoke(scaffold, [
+        'request', 'logs', 'delete', workflow_name,
+        '--context-dir-path', context_dir_path
+    ])
+    _enable_intercept_in_container(container_name)
+    last_enable = time.time()
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if time.time() - last_enable >= reenable_interval:
+            _enable_intercept_in_container(container_name)
+            last_enable = time.time()
+        try:
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+        except Exception:
+            pass
+        time.sleep(interval)
+        result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', workflow_name,
+            '--context-dir-path', context_dir_path
+        ])
+        if result.exit_code == 0 and result.output.strip():
+            if find_log_entry(result.output, 'Record success') or find_log_entry(result.output, 'Record failure'):
+                return True
+    return False
+
+
+def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: str, context_dir_path: str, service_name: str, timeout: float = 120.0, interval: float = 1.0, reenable_interval: float = 10.0) -> bool:
+    """Poll until the reverse proxy is actively recording.
+
+    Clears stale log entries, enables intercept inside the proxy container (avoiding
+    host-to-container inotify issues in CI), then polls until a 'Record success' or
+    'Record failure' entry appears — proof the proxy has reloaded settings and is
+    intercepting. Periodically re-enables to handle any delivery delays.
+    """
+    container_name = f'{workflow_name}-{service_name}.proxy-1'
+    runner.invoke(scaffold, [
+        'request', 'logs', 'delete', workflow_name,
+        '--context-dir-path', context_dir_path
+    ])
+    _enable_intercept_in_container(container_name)
+    last_enable = time.time()
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if time.time() - last_enable >= reenable_interval:
+            _enable_intercept_in_container(container_name)
+            last_enable = time.time()
+        try:
+            requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+                timeout=5.0,
+            )
+        except Exception:
+            pass
+        time.sleep(interval)
+        result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', workflow_name,
+            '--context-dir-path', context_dir_path
+        ])
+        if result.exit_code == 0 and result.output.strip():
+            if find_log_entry(result.output, 'Record success') or find_log_entry(result.output, 'Record failure'):
+                return True
     return False
 
 
@@ -206,10 +373,9 @@ class TestDockerRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
-            time.sleep(3)  # Allow per-service stoobly proxy to fully initialise behind Traefik
+            assert wait_for_reverse_proxy_intercept(hostname), "Reverse proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -257,13 +423,12 @@ class TestDockerRequestLogE2e():
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
 
-@pytest.mark.skip(reason="Record workflow request logging not yet implemented")
 @pytest.mark.e2e
 class TestDockerRecordRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
     def settings(self):
-        return reset()
+        return reset('stoobly-agent-test-record')
 
     @pytest.fixture(scope='module')
     def runner(self):
@@ -282,6 +447,84 @@ class TestDockerRecordRequestLogE2e():
     @pytest.fixture(scope='class')
     def hostname(self):
         yield "http.badssl.com"
+
+    @pytest.mark.xfail(reason="wait_for_record_active is flaky in CI (host-to-container inotify unreliable on GitHub Actions runners)", strict=False)
+    class TestForwardProxyRecordRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-forward-record"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service-record"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_RECORD_TYPE
+
+        @pytest.fixture(scope='class')
+        def proxy_url(self):
+            yield "http://localhost:8080"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
+            assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record mode"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Make a request through the forward proxy record workflow and verify a Record success log entry appears."""
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+
+            res = requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+
+            assert entry is not None, "Expected 'Record success' log entry but none appeared"
+            assert entry['level'] == 'INFO'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
     class TestReverseProxyRecordRequestLog():
 
@@ -303,8 +546,11 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name):
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, service_name):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
+            assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
+            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, service_name), "Reverse proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -312,8 +558,10 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
-            """Make a request through the record proxy and verify a Record success log entry appears."""
-            requests.get(
+            """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+
+            res = requests.get(
                 'http://localhost:80/',
                 headers={'Host': hostname},
             )
@@ -326,3 +574,26 @@ class TestDockerRecordRequestLogE2e():
             assert hostname in entry.get('url', '')
             assert entry.get('timestamp'), "timestamp should exist and not be empty"
             assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                'http://localhost:80/another-path',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"

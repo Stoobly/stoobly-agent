@@ -209,6 +209,125 @@ class TestRequestLogE2e():
         assert 'tmp/logs/requests.json' in result.output
 
 
+@pytest.mark.e2e
+class TestRequestLogRecordE2e():
+    """E2e tests for non-scaffold request log in record mode using stoobly-agent run."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "dog.ceo"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def proxy_port(self):
+        yield 8082
+
+    @pytest.fixture(scope='class', autouse=True)
+    def proxy_url(self, proxy_port):
+        return f"http://localhost:{proxy_port}"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def configure_record_policy(self, settings):
+        """Set record policy to ALL so requests are intercepted for recording."""
+        runner = CliRunner()
+        result = runner.invoke(intercept, ['set', '--mode', 'record', '--policy', 'all'])
+        assert result.exit_code == 0
+
+    @pytest.fixture(scope='class', autouse=True)
+    def proxy_pid(self, settings, proxy_port, configure_record_policy):
+        """Start stoobly-agent run in detached mode with request logging enabled in record mode."""
+        log_output_path = os.path.join(os.getcwd(), 'proxy-run.log')
+
+        result = subprocess.run(
+            [
+                sys.executable, '-m', 'stoobly_agent',
+                'run',
+                '--detached', log_output_path,
+                '--request-log-enable',
+                '--intercept',
+                '--intercept-mode', 'record',
+                '--headless',
+                '--proxy-port', str(proxy_port),
+                '--ssl-insecure',
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, f"Failed to start proxy: {result.stderr}"
+        pid = int(result.stdout.strip())
+
+        max_attempts = 20
+        for attempt in range(max_attempts):
+            try:
+                with socket.create_connection(('localhost', proxy_port), timeout=1):
+                    break
+            except (socket.timeout, socket.error):
+                if attempt == max_attempts - 1:
+                    raise RuntimeError(f"Proxy did not start listening on port {proxy_port} within {max_attempts * 0.5}s")
+                time.sleep(0.5)
+
+        yield pid
+
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    def test_log_list_shows_record_entry(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
+        """Test that record attempts are logged when proxy is in record mode."""
+        res = requests.get(
+            f'https://{hostname}/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+
+        time.sleep(0.5)
+
+        result = runner.invoke(request, ['logs', 'list'])
+        assert result.exit_code == 0
+
+        output = result.output
+        assert output, "Log output should not be empty"
+
+        # Record mode logs either 'Record success' (upload ok) or 'Record failure' (upload error)
+        entry = find_log_entry(output, 'Record success') or find_log_entry(output, 'Record failure')
+        assert entry is not None, f"Expected a record log entry but none found:\n{output}"
+
+        assert entry['method'] == 'GET'
+        assert hostname in entry.get('url', '')
+        assert entry.get('timestamp'), "timestamp should exist and not be empty"
+        assert entry.get('user_agent'), "user_agent should exist and not be empty"
+        assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+    def test_log_delete_clears_log_entries(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
+        """Test that request log delete clears all log entries."""
+        requests.get(
+            f'https://{hostname}/api/breeds/list/all',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False
+        )
+        time.sleep(0.5)
+
+        result = runner.invoke(request, ['logs', 'list'])
+        assert result.exit_code == 0
+        assert result.output.strip(), "Log should have entries before delete"
+
+        delete_result = runner.invoke(request, ['logs', 'delete'])
+        assert delete_result.exit_code == 0
+
+        list_result = runner.invoke(request, ['logs', 'list'])
+        assert list_result.exit_code == 0
+        assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+
 class TestRequestLogListFiltering:
     """Unit tests for request log list filtering via CLI options."""
 
