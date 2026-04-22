@@ -14,6 +14,10 @@ class MitmproxyConfig():
         self.__master = master 
 
   @classmethod
+  def reset(cls):
+      cls.__instance = None
+
+  @classmethod
   def instance(cls, master = None):
       if cls.__instance is None:
         cls.__instance = cls(master)

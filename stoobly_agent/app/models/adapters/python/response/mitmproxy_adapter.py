@@ -61,7 +61,12 @@ class MitmproxyResponseAdapter():
       self.headers,
     )
 
-    # After reading .content, .raw.data will be empty
+    # mitmproxy 12.2.2+ recalculates Content-Length to len(decoded body); restore the wire value
+    # so recorded headers match what the server sent. The serving path corrects this before transmitting.
+    if 'Content-Length' in self.__response.headers:
+      res.headers['Content-Length'] = self.__response.headers['Content-Length']
+
+    # After reading .content, .raw.data will be empty.
     # However, setting ._body will set .raw.data
     self.__response.raw._body = res.raw_content
 
