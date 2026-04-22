@@ -16,8 +16,8 @@ def get_workflow_decorators(workflow: str, service_config: ServiceConfig):
         workflow_decorators.append(ReverseProxyDecorator)
         workflow_decorators.append(DnsDecorator)
 
-      if service_config.local:
-        workflow_decorators.append(LocalDecorator)
+        if service_config.local:
+          workflow_decorators.append(LocalDecorator)
   elif workflow == WORKFLOW_MOCK_TYPE or workflow == WORKFLOW_TEST_TYPE:
      if service_config.hostname:
       if service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:

@@ -66,6 +66,7 @@ class TestCliSubcommandsLoad:
         ['scaffold', 'workflow', 'firewall'],
         ['scaffold', 'workflow', 'logs'],
         ['scaffold', 'workflow', 'mkcert'],
+        ['scaffold', 'workflow', 'rewrite'],
         ['scaffold', 'workflow', 'show'],
         ['scaffold', 'workflow', 'up'],
         ['scaffold', 'workflow', 'validate'],

@@ -17,6 +17,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
+from stoobly_agent.app.cli.scaffold.rewrite import apply_upstream_url_rewrite
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.cli.scaffold.service_create_command import ServiceCreateCommand
@@ -715,6 +716,25 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
+  help="Sync replay rewrite rules from service upstream hostname, port, and scheme"
+)
+@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
+@click.argument('workflow_name')
+def rewrite(**kwargs):
+  containerized = kwargs['containerized']
+  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+
+  __validate_app(app)
+
+  services = __get_services(
+    app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+  )
+  __services_rewrite(app, services, kwargs['workflow_name'])
+
+@workflow.command(
   help="Configure include firewall rules for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
@@ -1099,6 +1119,27 @@ def __services_mkcert(app: App, services):
     if not ca.signed(hostname, app.certs_dir_path):
       Logger.instance(LOG_ID).info(f"Creating cert for {hostname}")
       ca.sign(hostname, app.certs_dir_path)
+
+def __services_rewrite(app: App, services, workflow_name: str):
+  for service_name in services:
+    service = Service(service_name, app)
+    __validate_service_dir(service.dir_path)
+
+    workflow_dir_path = service.workflow_dir_path(workflow_name)
+    workflow_config = WorkflowConfig(workflow_dir_path)
+    workflow_template = workflow_config.template or workflow_name
+
+    # Skip rewrite for docker runtime local services in test workflows
+    # In such a case, UPSTREAM_HOSTNAME will be set to host.docker.internal
+    service_config = ServiceConfig(service.dir_path)
+    if (
+      workflow_template == WORKFLOW_TEST_TYPE and
+      service_config.local and
+      service_config.app_config.runtime == RUNTIME_DOCKER
+    ):
+      continue
+
+    apply_upstream_url_rewrite(service_config)
 
 def __services_firewall(app: App, services, workflow_name: str):
   settings = Settings.instance()

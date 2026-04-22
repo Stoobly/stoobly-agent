@@ -1,9 +1,10 @@
 import os
 import pdb
 import socket
-from typing import Optional
+import time
 
 from docker import errors as docker_errors
+from typing import Optional
 
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.managed_services_docker_compose import (
@@ -59,7 +60,7 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     except docker_errors.NotFound:
       raise ScaffoldValidateException(error_message)
 
-  def validate_mock_ui_service(self):
+  def validate_mock_ui_service(self, retry: int = 0):
     if self.app_config.runtime_local:
       return
     
@@ -87,6 +88,10 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
     try:
       mock_ui_container = self.docker_client.containers.get(mock_ui_container_name)
       if not mock_ui_container or (mock_ui_container.status != 'running'):
+        if retry < 1:
+          time.sleep(1)
+          return self.validate_mock_ui_service(retry + 1)
+
         raise ScaffoldValidateException(mock_ui_missing_error_message)
     except docker_errors.NotFound:
       raise ScaffoldValidateException(mock_ui_missing_error_message)

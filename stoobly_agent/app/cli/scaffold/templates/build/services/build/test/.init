@@ -19,6 +19,9 @@ stoobly-agent intercept enable
 if [ "$APP_PROXY_MODE" = "forward" ]; then
   echo "Configuring firewall..."
   stoobly-agent scaffold workflow firewall "$WORKFLOW_NAME"
+
+  echo "Configuring rewrite..."
+  stoobly-agent scaffold workflow rewrite "$WORKFLOW_NAME"
 fi
 
 entrypoint=$1
