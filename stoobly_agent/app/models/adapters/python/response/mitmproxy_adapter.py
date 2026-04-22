@@ -65,7 +65,7 @@ class MitmproxyResponseAdapter():
     if 'Content-Length' in self.__response.headers:
       res.headers['Content-Length'] = self.__response.headers['Content-Length']
 
-    # After reading .content, .raw.data will be empty
+    # After reading .content, .raw.data will be empty.
     # However, setting ._body will set .raw.data
     self.__response.raw._body = res.raw_content
 
