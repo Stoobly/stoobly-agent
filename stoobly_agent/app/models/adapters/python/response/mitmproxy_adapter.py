@@ -61,7 +61,8 @@ class MitmproxyResponseAdapter():
       self.headers,
     )
 
-    # mitmproxy 12.2.2+ recalculates Content-Length for the decoded body; restore the wire value
+    # mitmproxy 12.2.2+ recalculates Content-Length to len(decoded body); restore the wire value
+    # so recorded headers match what the server sent. The serving path corrects this before transmitting.
     if 'Content-Length' in self.__response.headers:
       res.headers['Content-Length'] = self.__response.headers['Content-Length']
 

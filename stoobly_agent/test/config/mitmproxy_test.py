@@ -9,9 +9,9 @@ from stoobly_agent.config.mitmproxy import MitmproxyConfig
 
 @pytest.fixture(autouse=True)
 def reset_singleton():
-    MitmproxyConfig._MitmproxyConfig__instance = None
+    MitmproxyConfig.reset()
     yield
-    MitmproxyConfig._MitmproxyConfig__instance = None
+    MitmproxyConfig.reset()
 
 
 class TestMitmproxyConfig:
