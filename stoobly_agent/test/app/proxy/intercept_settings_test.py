@@ -839,3 +839,62 @@ class TestLifecycleHooksPath:
 
         intercept_settings = InterceptSettings(mock_settings, mock_request)
         assert intercept_settings.lifecycle_hooks == {}
+
+
+class TestOpenapiSpecificationPath:
+    def _base_settings(self, mock_settings, mock_data_rules):
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        return mock_settings
+
+    def test_header_takes_precedence_over_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        header_path = '/header/openapi.yaml'
+        env_path = '/env/openapi.yaml'
+        monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, env_path)
+
+        mock_request.headers = Headers(**{custom_headers.OPENAPI_SPECIFICATION_PATH: header_path})
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path == header_path
+
+    def test_env_used_when_header_not_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        env_path = '/env/openapi.yaml'
+        monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, env_path)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path == env_path
+
+    def test_returns_none_when_neither_header_nor_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        monkeypatch.delenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, raising=False)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path is None
+
+    def test_multi_with_request_matches_origin_first(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        raw = '/match-openapi.yaml:https://example\\.com(:443)?,/fallback-openapi.yaml'
+        monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path == '/match-openapi.yaml'
+
+    def test_multi_with_request_falls_back_to_no_origin(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        raw = '/unmatched-openapi.yaml:https://a.example.com,/fallback-openapi.yaml'
+        monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path == '/fallback-openapi.yaml'
+
+    def test_multi_with_request_returns_none_when_all_origins_unmatched(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        raw = '/first-openapi.yaml:https://a.example.com,/second-openapi.yaml:https://b.example.com'
+        monkeypatch.setenv(env_vars.AGENT_OPENAPI_SPECIFICATION_PATH, raw)
+        self._base_settings(mock_settings, mock_data_rules)
+
+        mock_request.headers = Headers(**{custom_headers.PROXY_MODE: 'mock'})
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.openapi_specification_path is None
