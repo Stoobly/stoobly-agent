@@ -146,3 +146,33 @@ class TestScaffoldServiceUpdate:
             service_config = ServiceConfig(new_service.dir_path)
             assert service_config.name != service_name
             assert service_config.name == new_service_name
+
+    class TestUpdateOpenapiSpecification:
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            return 'openapi-update-service'
+
+        @pytest.fixture(scope='class')
+        def hostname(self):
+            return 'openapi-update.example.com'
+
+        @pytest.fixture(scope='class')
+        @pytest.fixture(scope='class', autouse=True)
+        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
+            LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        def test_update_openapi_specification(self, runner: CliRunner, app_dir_path: str, service_name: str):
+            result = runner.invoke(scaffold, [
+                'service', 'update',
+                '--app-dir-path', app_dir_path,
+                '--openapi-specification',
+                'true',
+                service_name
+            ])
+            assert result.exit_code == 0
+
+            app = App(app_dir_path)
+            service = Service(service_name, app)
+            service_config = ServiceConfig(service.dir_path)
+            assert service_config.openapi_specification is True
