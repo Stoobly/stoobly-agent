@@ -12,6 +12,7 @@ from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.project_facade import ProjectFacade
 from .helpers.scenario_facade import ScenarioFacade
@@ -223,12 +224,12 @@ def rewrite(ctx):
 @click.option('--path', help='Request URL path to rewrite to.')
 @click.option('--pattern', required=True, help='URLs to rewrite.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Request URL port to rewrite to.')
-@click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
     type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM, request_component.RESPONSE_HEADER, request_component.RESPONSE_PARAM]), 
     help='Request component type.'
 )
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add rewrite rule to.')(f), is_remote)
 @click.option(
     '--scheme', 
     type=click.Choice(['http', 'https']), 
@@ -270,6 +271,12 @@ def match(ctx):
     help="Set match rule"
 )
 @click.option(
+    '--component', 
+    multiple=True,
+    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
+    help='Request component type.'
+)
+@click.option(
     '--method', 
     multiple=True, 
     required=True,
@@ -283,13 +290,7 @@ def match(ctx):
     type=click.Choice([mode.MOCK] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--project_key', help='Project to add rewrite rule to.')
-@click.option(
-    '--component', 
-    multiple=True,
-    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
-    help='Request component type.'
-)
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add match rule to.')(f), is_remote)
 def set(**kwargs):
     settings = Settings.instance()
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
@@ -335,6 +336,12 @@ def firewall(ctx):
     help="Set firewall rule."
 )
 @click.option(
+    '--action', 
+    required=True,
+    type=click.Choice([firewall_action.EXCLUDE, firewall_action.INCLUDE]), 
+    help='Action to take on match.'
+)
+@click.option(
     '--method', 
     multiple=True, 
     required=True,
@@ -348,13 +355,7 @@ def firewall(ctx):
     type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--project_key', help='Project to add firewall rule to.')
-@click.option(
-    '--action', 
-    required=True,
-    type=click.Choice([firewall_action.EXCLUDE, firewall_action.INCLUDE]), 
-    help='Action to take on match.'
-)
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add firewall rule to.')(f), is_remote)
 def set(**kwargs):
     settings = Settings.instance()
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
