@@ -236,9 +236,11 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--detached', type=bool, default=None, help='Use isolated and non-persistent context directory.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
-@click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
+@click.option('--local', type=bool, default=None, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
+@click.option('--openapi-specification', type=bool, default=None, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
