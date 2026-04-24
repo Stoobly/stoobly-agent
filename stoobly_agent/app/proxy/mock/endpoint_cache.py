@@ -89,11 +89,15 @@ def _port_matches(endpoint: EndpointShowResponse, request_port: str) -> bool:
   port = endpoint.get("port") or ""
   if not port or port == "%":
     return True
+  if port == "-":
+    return True
   return port == request_port
 
 
 def _path_matches(endpoint: EndpointShowResponse, request_path: str) -> bool:
   match_pattern = endpoint.get("match_pattern") or ""
+  if match_pattern == "" or match_pattern == "/":
+    return request_path == "" or request_path == "/"
   like_pattern = f"%{match_pattern}"
   return sql_like(request_path, like_pattern)
 
