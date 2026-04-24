@@ -258,16 +258,24 @@ def update(**kwargs):
 
   service_config = ServiceConfig(service.dir_path)
 
-  service_config.local = kwargs['local']
+  # If false and service_config.detached is True, then ask for confirmation
+  if kwargs['detached'] != None:
+      service_config.detached = kwargs['detached']
 
   if kwargs['hostname']:
     service_config.hostname = kwargs['hostname']
+
+  if kwargs['local'] != None:
+    service_config.local = kwargs['local']
 
   if kwargs['port']:
     service_config.port = kwargs['port']
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
+
+  if kwargs['openapi_specification'] != None:
+    service_config.openapi_specification = kwargs['openapi_specification']
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
