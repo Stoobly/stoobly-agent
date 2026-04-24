@@ -146,6 +146,7 @@ def create(**kwargs):
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
+@click.option('--openapi-specification', is_flag=True, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
