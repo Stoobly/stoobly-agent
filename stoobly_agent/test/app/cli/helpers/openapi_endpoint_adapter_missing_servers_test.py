@@ -9,7 +9,7 @@ from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
   compute_openapi_service_id,
 )
 
-_DEFAULT_SERVER_SID = compute_openapi_service_id("", "0")
+_DEFAULT_SERVER_SID = compute_openapi_service_id("", "-")
 _DEFAULT_SERVER_GET_PETS_EID = compute_openapi_endpoint_id(_DEFAULT_SERVER_SID, "/pets", "GET")
 
 
@@ -38,7 +38,7 @@ class TestOpenApiEndpointAdapterMissingServers():
       "host": "-",
       "match_pattern": "/pets",
       "path": "/pets",
-      "port": "0",
+      "port": "-",
       "query_param_names": [
         {
           "endpoint_id": _DEFAULT_SERVER_GET_PETS_EID,

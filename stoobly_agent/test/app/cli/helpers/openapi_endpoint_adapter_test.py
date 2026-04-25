@@ -32,7 +32,7 @@ _PETSTORE_REF_SID = compute_openapi_service_id("petstore.swagger.io", "80")
 _PETSTORE_REF_EID_POST_V1 = compute_openapi_endpoint_id(_PETSTORE_REF_SID, "/v1/pets", "POST")
 _PETSTORE_REF_EID_POST_V2 = compute_openapi_endpoint_id(_PETSTORE_REF_SID, "/v2/pets", "POST")
 
-_SWAGGER_IO_SID = compute_openapi_service_id("", "0")
+_SWAGGER_IO_SID = compute_openapi_service_id("", "-")
 _SWAGGER_IO_EID_PUT_PET = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet", "PUT")
 _SWAGGER_IO_EID_POST_PET = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet", "POST")
 _SWAGGER_IO_EID_GET_FIND_BY_STATUS = compute_openapi_endpoint_id(_SWAGGER_IO_SID, "/v3/pet/findByStatus", "GET")
@@ -892,7 +892,7 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/v3/pet',
         'method': 'PUT',
         'path': '/v3/pet',
-        'port': '0',
+        'port': '-',
         'body_param_names': [
           {
             'body_param_name_id': None,
@@ -1162,7 +1162,7 @@ class TestOpenApiEndpointAdapter():
         'match_pattern': '/v3/user/createWithList',
         'method': 'POST',
         'path': '/v3/user/createWithList',
-        'port': '0',
+        'port': '-',
         'body_param_names': [
           {
             'body_param_name_id': None,

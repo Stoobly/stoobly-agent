@@ -129,10 +129,16 @@ class GatewayBase():
       return
 
   def with_run_options(self, compose: dict):
-    def handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
+    def handle_before_entrypoint(
+      lifecycle_hooks_paths,
+      openapi_specification_paths,
+      public_directory_paths,
+      response_fixtures_paths,
+    ):
       options = run_options(
         self.app_config,
         lifecycle_hooks_paths=lifecycle_hooks_paths,
+        openapi_specification_paths=openapi_specification_paths,
         public_directory_paths=public_directory_paths,
         response_fixtures_paths=response_fixtures_paths,
       )

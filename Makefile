@@ -18,7 +18,7 @@ clean:
 	rm -rf stoobly.egg-info
 
 test:
-	poetry install --only test
+	poetry install --with test
 	poetry run pytest --maxfail=1 -m "not e2e" stoobly_agent/test/
 
 test/build:
@@ -27,7 +27,7 @@ test/build:
 	docker cp $$(pwd) stoobly.test:${TEST_DIR}
 
 test/e2e:
-	poetry install --only test
+	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e stoobly_agent/test/
 
 test/python: test/build

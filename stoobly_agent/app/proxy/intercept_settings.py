@@ -106,32 +106,8 @@ class InterceptSettings:
     else:
       return raw_value
 
-    # Normalize whitespace; treat empty/whitespace-only as unset
-    if isinstance(raw_value, str):
-      normalized_value = raw_value.strip()
-    else:
-      normalized_value = str(raw_value).strip() if raw_value is not None else ''
-
-    if not normalized_value:
-      return None
-
-    # Parse list of paths with optional origins
-    from .utils.origin_path import parse_lifecycle_hooks_script_paths, request_origin_from_request, origin_matches
-    items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(normalized_value)
-    if not items:
-      return None
-
-    if self.__request:
-      # With request context, try to match origin first
-      req_origin = request_origin_from_request(self.__request)
-      for item in items:
-        origin = item.get('origin')
-        if origin and req_origin and origin_matches(origin, req_origin):
-          return item['path']
-
-    for item in items:
-      if not item.get('origin'):
-        return item['path']
+    from .utils.origin_path import parse_lifecycle_hooks_script_paths
+    return self.__resolve_origin_scoped_path(raw_value, parse_lifecycle_hooks_script_paths)
 
   @property
   def lifecycle_hooks(self):
@@ -220,7 +196,7 @@ class InterceptSettings:
 
   @property
   def openapi_specification_path(self):
-    """Filesystem path to an OpenAPI spec; from header or environment variable only."""
+    """Return selected OpenAPI spec path, supporting multiple values with optional origin."""
     raw_value = None
     if self.__headers and custom_headers.OPENAPI_SPECIFICATION_PATH in self.__headers:
       raw_value = self.__headers[custom_headers.OPENAPI_SPECIFICATION_PATH]
@@ -229,12 +205,8 @@ class InterceptSettings:
     else:
       return None
 
-    if isinstance(raw_value, str):
-      normalized = raw_value.strip()
-    else:
-      normalized = str(raw_value).strip() if raw_value is not None else ''
-
-    return normalized if normalized else None
+    from .utils.origin_path import parse_openapi_specification_paths
+    return self.__resolve_origin_scoped_path(raw_value, parse_openapi_specification_paths)
 
   @property
   def parsed_remote_project_key(self):
@@ -648,6 +620,11 @@ class InterceptSettings:
 
     return None
 
+  def __normalize_path_raw_value(self, raw_value):
+    if isinstance(raw_value, str):
+      return raw_value.strip()
+    return str(raw_value).strip() if raw_value is not None else ''
+
   def __order(self, mode):
     if mode == intercept_mode.RECORD:
       if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
@@ -678,3 +655,26 @@ class InterceptSettings:
       return self.__data_rules.test_policy
     elif mode == intercept_mode.REPLAY:
       return self.__data_rules.replay_policy
+
+  def __resolve_origin_scoped_path(self, raw_value, parse_paths_fn):
+    normalized_value = self.__normalize_path_raw_value(raw_value)
+    if not normalized_value:
+      return None
+
+    items = parse_paths_fn(normalized_value)
+    if not items:
+      return None
+
+    from .utils.origin_path import request_origin_from_request, origin_matches
+    if self.__request:
+      request_origin = request_origin_from_request(self.__request)
+      for item in items:
+        origin = item.get('origin')
+        if origin and request_origin and origin_matches(origin, request_origin):
+          return item['path']
+
+    for item in items:
+      if not item.get('origin'):
+        return item['path']
+
+    return None

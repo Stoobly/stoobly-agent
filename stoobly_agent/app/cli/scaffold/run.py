@@ -17,13 +17,14 @@ def iter_commands(
     commands: List of command objects to process
     handle_before_entrypoint: Optional callback invoked once before the entrypoint
                               (on the second-to-last command). Receives
-                              (public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths).
+                              (public_directory_paths, response_fixtures_paths, openapi_specification_paths, lifecycle_hooks_paths).
     handle_command: Optional callback invoked for each command. Receives (command).
     containerized: Whether to compute relative paths for containerized runs.
   """
+  lifecycle_hooks_paths = []
+  openapi_specification_paths = []
   public_directory_paths = []
   response_fixtures_paths = []
-  lifecycle_hooks_paths = []
 
   for command in commands:
     url = command.service_config.url
@@ -56,6 +57,18 @@ def iter_commands(
 
         response_fixtures_paths.append(f"{response_fixtures_path}:{url}")
 
+      openapi_specification_path = command.openapi_specification_path
+      if openapi_specification_path and os.path.exists(openapi_specification_path):
+        openapi_specification_paths.append('--openapi-specification-path')
+
+        if containerized:
+          openapi_specification_path = os.path.relpath(
+            command.normalize_path(openapi_specification_path),
+            command.normalize_path(command.app.context_dir_path)
+          )
+
+        openapi_specification_paths.append(f"{openapi_specification_path}:{url}")
+
       # Resolve lifecycle hooks script path from command property
       lifecycle_hooks_path = command.lifecycle_hooks_path
       if os.path.exists(lifecycle_hooks_path):
@@ -78,7 +91,12 @@ def iter_commands(
     # If second from last command, run up_command i.e. right before entrypoint
     if len(commands) >= 2 and command == commands[-2]:
       if handle_before_entrypoint:
-        handle_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths)
+        handle_before_entrypoint(
+          lifecycle_hooks_paths,
+          openapi_specification_paths,
+          public_directory_paths,
+          response_fixtures_paths,
+        )
 
 def run_options(app_config: AppConfig, **extra_options):
   """
@@ -108,6 +126,9 @@ def run_options(app_config: AppConfig, **extra_options):
 
   if extra_options.get('response_fixtures_paths'):
     options.extend(extra_options['response_fixtures_paths'])
+
+  if extra_options.get('openapi_specification_paths'):
+    options.extend(extra_options['openapi_specification_paths'])
 
   if extra_options.get('lifecycle_hooks_paths'):
     options.extend(extra_options['lifecycle_hooks_paths'])

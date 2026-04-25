@@ -213,7 +213,7 @@ workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)
 workflow/test:
-	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options) --no-publish)
+	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options))
 workflow/up: dotenv
 	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec_run)

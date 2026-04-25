@@ -8,6 +8,7 @@ from click.testing import CliRunner
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
+    OPENAPI_SPECIFICATION_FILE_NAME,
     WORKFLOW_MOCK_TYPE,
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
@@ -147,6 +148,35 @@ class TestScaffoldServiceCreate:
             service = Service(service_name, app)
             service_config = ServiceConfig(service.dir_path)
             assert service_config.scheme == scheme
+
+    class TestCreateWithOpenapiSpecification:
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            return 'openapi-spec-service'
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+            result = runner.invoke(scaffold, [
+                'service', 'create',
+                '--app-dir-path', app_dir_path,
+                '--openapi-specification',
+                '--quiet',
+                service_name,
+            ])
+            assert result.exit_code == 0
+
+        def test_openapi_specification_is_set(self, app_dir_path: str, service_name: str):
+            app = App(app_dir_path)
+            service = Service(service_name, app)
+            service_config = ServiceConfig(service.dir_path)
+            assert service_config.openapi_specification is True
+
+        def test_openapi_specification_file_is_created(self, app_dir_path: str, service_name: str):
+            app = App(app_dir_path)
+            service = Service(service_name, app)
+            openapi_specification_path = os.path.join(service.dir_path, OPENAPI_SPECIFICATION_FILE_NAME)
+            assert os.path.exists(openapi_specification_path)
 
     class TestCreateWithSingleWorkflow:
 

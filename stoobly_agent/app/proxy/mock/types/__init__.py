@@ -29,6 +29,14 @@ class ResponseFixturesPath(TypedDict):
   origin: Optional[str]  # Optional origin (e.g., "https://api.example.com:8080")
   path: str              # File system path to the response fixtures file
 
+class OpenapiSpecificationPath(TypedDict):
+  """Represents an OpenAPI specification path with optional origin specification.
+  
+  Format: <FILE-PATH>:<ORIGIN> where ORIGIN is scheme:hostname:port
+  """
+  origin: Optional[str]  # Optional origin (e.g., "https://api.example.com:8080")
+  path: str              # File system path to the OpenAPI specification file
+
 class MockOptions(TypedDict):
   """Options for mock service."""
   public_directory_path: str

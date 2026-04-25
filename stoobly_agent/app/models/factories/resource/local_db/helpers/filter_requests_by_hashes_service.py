@@ -35,7 +35,7 @@ def filter_requests_by_hashes(requests: List[Request], component_hashes: dict, i
 def __request_hashes(request: Request, ignored_components: list):
   python_request = RawHttpRequestAdapter(request.raw).to_request()
   http_version = request.http_version
-  if isinstance(http_version, float):
+  if isinstance(http_version, float) or isinstance(http_version, int):
     http_version = f"HTTP/{http_version}"
   if not http_version:
     http_version = 'HTTP/1.1'

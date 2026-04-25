@@ -54,6 +54,8 @@ class ServiceCreateCommand(ServiceCommand):
 
     service_builder.write()
 
+    self.__create_openapi_specification_file()
+
     workflow_kwargs = {
       'app_dir_path': self.app_dir_path,
       'namespace': self.scaffold_namespace, 
@@ -96,3 +98,15 @@ class ServiceCreateCommand(ServiceCommand):
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_TEST_TYPE, self.service_config)
     mock_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
+
+  def __create_openapi_specification_file(self):
+    if not self.service_config.openapi_specification:
+      return
+
+    openapi_specification_path = self.service_config.openapi_specification_path
+    if os.path.exists(openapi_specification_path):
+      return
+
+    os.makedirs(os.path.dirname(openapi_specification_path), exist_ok=True)
+    with open(openapi_specification_path, 'w'):
+      pass

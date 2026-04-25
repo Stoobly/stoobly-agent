@@ -145,7 +145,7 @@ class OpenApiEndpointAdapter():
             elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
             else:
-              endpoint['port'] = '0'
+              endpoint['port'] = '-'
           else:
             endpoint['port'] = str(parsed_url.port)
 

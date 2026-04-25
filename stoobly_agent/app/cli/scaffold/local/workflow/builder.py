@@ -8,6 +8,7 @@ class WorkflowBuilder():
   def __init__(self, workflow_path: str, service_builder: ServiceBuilder):
     self._env = [SERVICE_NAME_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV]
     self._service_builder = service_builder
+    self._workflow_path = workflow_path
     self._workflow_name = os.path.basename(workflow_path)
 
   @property
@@ -21,6 +22,10 @@ class WorkflowBuilder():
   @property
   def service_path(self):
     return self._service_builder.dir_path
+
+  @property
+  def workflow_path(self):
+    return self._workflow_path
 
   @property
   def workflow_name(self):
