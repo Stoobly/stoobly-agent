@@ -155,7 +155,6 @@ class TestScaffoldServiceCreate:
         def service_name(self):
             return 'openapi-spec-service'
 
-        @pytest.fixture(scope='class')
         @pytest.fixture(scope='class', autouse=True)
         def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
