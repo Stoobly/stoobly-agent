@@ -157,7 +157,6 @@ class TestScaffoldServiceUpdate:
         def hostname(self):
             return 'openapi-update.example.com'
 
-        @pytest.fixture(scope='class')
         @pytest.fixture(scope='class', autouse=True)
         def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
