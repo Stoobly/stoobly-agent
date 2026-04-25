@@ -107,5 +107,6 @@ class ServiceCreateCommand(ServiceCommand):
     if os.path.exists(openapi_specification_path):
       return
 
+    os.makedirs(os.path.dirname(openapi_specification_path), exist_ok=True)
     with open(openapi_specification_path, 'w'):
       pass
