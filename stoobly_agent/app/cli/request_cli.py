@@ -15,7 +15,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .handlers.request_cli_handler import (
   delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler
 )
-from .helpers.feature_flags import local, remote
+from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
 from .helpers.print_service import FORMATS, print_snapshots, select_print_options
 from .helpers.snapshot_list_service import list_snapshots, snapshot_list_options
@@ -23,8 +23,8 @@ from .helpers.validations import *
 from .types.request import RequestTestOptions
 
 settings = Settings.instance()
-is_remote = remote(settings)
-is_local = local(settings)
+is_remote = feature_is_remote(settings)
+is_local = feature_is_local(settings)
 log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 
 @click.group(

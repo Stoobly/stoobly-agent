@@ -5,7 +5,7 @@ import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
-from stoobly_agent.app.cli.helpers.feature_flags import remote as remote_feature
+from stoobly_agent.app.cli.helpers.feature_flags import is_remote as remote_feature
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import OpenApiEndpointAdapter
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import COMPONENT_TYPES
 from stoobly_agent.app.settings import Settings

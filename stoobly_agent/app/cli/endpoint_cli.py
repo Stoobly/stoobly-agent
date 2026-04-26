@@ -8,12 +8,12 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .helpers.endpoint_facade import EndpointFacade
 from .helpers.endpoints_apply_context import EndpointsApplyContext
 from .helpers.endpoints_import_context import EndpointsImportContext
-from .helpers.feature_flags import local, remote
+from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.validations import validate_project_key, validate_scenario_key
 
 settings = Settings.instance()
-is_remote = remote(settings)
-is_local = local(settings)
+is_remote = feature_is_remote(settings)
+is_local = feature_is_local(settings)
 
 @click.group(
   epilog="Run 'stoobly-agent feature COMMAND --help' for more information on a command.",

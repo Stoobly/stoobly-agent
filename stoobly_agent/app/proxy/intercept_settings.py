@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
     from .mock.types import LifecycleHooksPath
 
-from stoobly_agent.app.cli.helpers.feature_flags import remote
+from stoobly_agent.app.cli.helpers.feature_flags import is_remote
 from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
 from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
@@ -93,7 +93,7 @@ class InterceptSettings:
 
   @property
   def is_remote(self):
-    return remote(self.__settings)
+    return is_remote(self.__settings)
     
   @property
   def lifecycle_hooks_path(self):
