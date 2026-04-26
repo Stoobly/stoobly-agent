@@ -9,7 +9,7 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.config.constants import lifecycle_hooks, replay_policy, custom_headers, mode, record_strategy
 
-from .utils.allowed_request_service import get_active_mode_policy
+from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.minimize_headers import minimize_response_headers
 from .utils.rewrite import rewrite_request, rewrite_response
 
@@ -33,7 +33,7 @@ def handle_request_replay(replay_context: ReplayContext, **options: ReplayOption
     request: 'MitmproxyRequest' = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
-    policy = get_active_mode_policy(request, intercept_settings, mode.REPLAY)
+    policy = get_intercept_mode_policy(request, intercept_settings, mode.REPLAY)
     if policy != replay_policy.NONE:
         if not options.get('no_rewrite'):
             __rewrite_request(replay_context)

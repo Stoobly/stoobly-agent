@@ -18,7 +18,7 @@ from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
-from .utils.allowed_request_service import get_active_mode_policy
+from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, enable_cors, pass_on
 from .utils.rewrite import rewrite_request, rewrite_response
@@ -81,7 +81,7 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     request: MitmproxyRequest = context.flow.request
     res = None
 
-    policy = get_active_mode_policy(request, intercept_settings, mode.MOCK)
+    policy = get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
     if policy == mock_policy.NONE:
         if handle_error:
             res = handle_error(context)
