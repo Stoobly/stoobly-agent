@@ -59,7 +59,7 @@ class TestConfigsController:
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[test_policy.FOUND],
+                json=[test_policy.FOUND, test_policy.NONE],
                 status=200
             )
 

@@ -55,7 +55,8 @@ def handle_before_mock(context: MockContext):
   """Verify after_replay changes are visible, and modify request."""
   print(BEFORE_MOCK_CALLED_MARKER)
   # Verify after_replay changes are visible
-  if context.flow.response.headers.get(AFTER_REPLAY_RESPONSE_HEADER_NAME) == AFTER_REPLAY_RESPONSE_HEADER_VALUE:
+  response = context.flow.response
+  if response and response.headers.get(AFTER_REPLAY_RESPONSE_HEADER_NAME) == AFTER_REPLAY_RESPONSE_HEADER_VALUE:
     print(AFTER_REPLAY_VISIBLE_IN_BEFORE_MOCK_MARKER)
   
   # Modify request

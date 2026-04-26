@@ -14,7 +14,7 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
-from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding, pass_on
+from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, request_origin, test_policy
 from stoobly_agent.lib.logger import Logger, bcolors
 
@@ -77,10 +77,6 @@ def handle_response_test(context: ReplayContext) -> None:
         # To achieve this, copy the flow to prevent modifications from persisting
         mock_flow = flow.copy() if intercept_settings.mock_policy == mock_policy.NONE else flow
 
-        # Because we are testing, we the mock to deterine expected response
-        # Therefore, we set mock policy to ALL
-        mock_flow.request.headers[custom_headers.MOCK_POLICY] = mock_policy.ALL
-
         test_context: TestContext = None
         def build_test_context(mock_context: MockContext):
             nonlocal test_context  # Bind to outer scope variable so modifications are visible after callback execution
@@ -104,6 +100,7 @@ def handle_response_test(context: ReplayContext) -> None:
             MockContext(mock_flow, context.intercept_settings),
             error=handle_mock_error,
             failure=handle_mock_failure,
+            policy_override=mock_policy.ALL, # Because we are testing, we need the mock to determine expected response
             success=handle_mock_success
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
