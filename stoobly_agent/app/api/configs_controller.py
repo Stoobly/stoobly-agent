@@ -40,7 +40,7 @@ class ConfigsController:
             )
         elif active_mode == mode.TEST:
             context.render(
-                json = [test_policy.FOUND],
+                json = [test_policy.FOUND, test_policy.NONE],
                 status = 200
             )
         elif active_mode == mode.RECORD:

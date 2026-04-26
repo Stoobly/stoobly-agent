@@ -15,7 +15,7 @@ LOG_ID = 'Firewall'
 
 def get_intercept_mode_policy(request: 'MitmproxyRequest', intercept_settings: InterceptSettings, mode = None) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
-        return intercept_settings.policy 
+        return intercept_settings.policy_for_mode(mode or intercept_settings.mode)
 
     if allowed_request(request, intercept_settings, mode):
         return intercept_settings.policy_for_mode(mode or intercept_settings.mode)
