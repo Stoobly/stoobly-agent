@@ -327,13 +327,13 @@ class InterceptSettings:
 
   @property
   def policy(self):
-    return self.__policy(self.mode)
+    return self.policy_for_mode(self.mode)
 
   @property
   def response_policy(self):
     if self.__headers and custom_headers.RESPONSE_PROXY_MODE in self.__headers:
       mode = self.__headers[custom_headers.RESPONSE_PROXY_MODE]
-      return self.__policy(mode)
+      return self.policy_for_mode(mode)
 
     return self.policy
 
@@ -419,6 +419,10 @@ class InterceptSettings:
     return self._record_rewrite_rules
 
   @property
+  def mock_policy(self):
+    return self.policy_for_mode(mode.MOCK)
+
+  @property
   def mock_rewrite_rules(self) -> List[RewriteRule]:
     if not self._mock_rewrite_rules:
       self._mock_rewrite_rules = self.__select_rewrite_rules(mode.MOCK)
@@ -456,6 +460,10 @@ class InterceptSettings:
     return test_filter.ALL
 
   @property
+  def test_policy(self):
+    return self.policy_for_mode(mode.TEST)
+
+  @property
   def test_save_results(self):
     if self.__headers and custom_headers.TEST_SAVE_RESULTS in self.__headers:
       return not not int(self.__headers[custom_headers.TEST_SAVE_RESULTS])
@@ -491,6 +499,25 @@ class InterceptSettings:
 
   def for_response(self):
     self.__for_response = True
+
+  def policy_for_mode(self, mode):
+    if mode == intercept_mode.MOCK:
+      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
+        return self.__headers[custom_headers.MOCK_POLICY]
+
+      return self.__data_rules.mock_policy
+    elif mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
+        return self.__headers[custom_headers.RECORD_POLICY]
+
+      return self.__data_rules.record_policy
+    elif mode == intercept_mode.TEST:
+      if self.__headers and custom_headers.TEST_POLICY in self.__headers:
+        return self.__headers[custom_headers.TEST_POLICY]
+
+      return self.__data_rules.test_policy
+    elif mode == intercept_mode.REPLAY:
+      return self.__data_rules.replay_policy
 
   def __select_rewrite_rules(self, mode = None):
     mode = mode or self.mode
@@ -636,25 +663,6 @@ class InterceptSettings:
     if mode == intercept_mode.RECORD:
       if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
         return self.__headers[custom_headers.RECORD_ORDER]
-
-  def __policy(self, mode):
-    if mode == intercept_mode.MOCK:
-      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
-        return self.__headers[custom_headers.MOCK_POLICY]
-
-      return self.__data_rules.mock_policy
-    elif mode == intercept_mode.RECORD:
-      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
-        return self.__headers[custom_headers.RECORD_POLICY]
-
-      return self.__data_rules.record_policy
-    elif mode == intercept_mode.TEST:
-      if self.__headers and custom_headers.TEST_POLICY in self.__headers:
-        return self.__headers[custom_headers.TEST_POLICY]
-
-      return self.__data_rules.test_policy
-    elif mode == intercept_mode.REPLAY:
-      return self.__data_rules.replay_policy
 
   def __resolve_origin_scoped_path(self, raw_value, parse_paths_fn):
     normalized_value = self.__normalize_path_raw_value(raw_value)
