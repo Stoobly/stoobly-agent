@@ -52,15 +52,21 @@ def handle_request_test(context: ReplayContext) -> None:
 
 ###
 #
-# 1.  AFTER_REPLAY gets triggered
-# 2.  BEFORE_MOCK gets triggered
-# 3.  AFTER_MOCK gets triggered
-# 4.  Rewrites test request and response (response from live service) to obtain expected test results
-# 5.  BEFORE_TEST gets triggered
-# 6.  Tests against rewritten test response and mock response (expected response)
-# 7.  AFTER_TEST gets triggered 
-# 8.  BEFORE_RECORD gets triggered (if not from CLI)
-# 9.  AFTER_RECORD gets triggered (if not from CLI)
+# Lifecycle hook order for standard test_policy=found path:
+# 1.  BEFORE_REQUEST gets triggered
+# 2.  BEFORE_REPLAY gets triggered
+# 3.  AFTER_REPLAY gets triggered
+# 4.  BEFORE_MOCK gets triggered
+# 5.  AFTER_MOCK gets triggered
+# 6.  BEFORE_TEST gets triggered
+# 7.  AFTER_TEST gets triggered
+# 8.  BEFORE_RESPONSE gets triggered
+#
+# Additional notes:
+# - After step 4: rewrites test request/response (live response) to obtain expected test results.
+# - After step 6: tests rewritten test response against mock response (expected response).
+# - These are internal processing steps, not lifecycle hooks.
+# - BEFORE_RECORD and AFTER_RECORD can run conditionally during non-standard test result upload flows.
 #
 def handle_response_test(context: ReplayContext) -> None:
     # Lazy import for runtime usage
@@ -68,6 +74,9 @@ def handle_response_test(context: ReplayContext) -> None:
 
     flow: 'MitmproxyHTTPFlow' = context.flow
     intercept_settings: InterceptSettings = context.intercept_settings
+
+    # Mock policy is used for response handling
+    # Exception is request_origin is CLI, then a custom response is returned for the CLI to process
 
     if intercept_settings.test_policy == test_policy.FOUND:
         disable_transfer_encoding(flow.response)
@@ -100,7 +109,7 @@ def handle_response_test(context: ReplayContext) -> None:
             MockContext(mock_flow, context.intercept_settings),
             error=handle_mock_error,
             failure=handle_mock_failure,
-            policy_override=mock_policy.ALL, # Because we are testing, we need the mock to determine expected response
+            policy_override=mock_policy.ALL, # Because we are testing, we need mocking to determine expected response
             success=handle_mock_success
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
@@ -133,18 +142,22 @@ def __handle_mock_failure(test_context: TestContext) -> None:
         return build_response(False, 'No test found')
 
 def __handle_mock_success(test_context: TestContext) -> None:
+    request_id = test_context.mock_request_id
+
+    # Only test if request ID header is present, fixtures won't have a request ID
+    if not request_id:
+        return
+
     flow: 'MitmproxyHTTPFlow' = test_context.flow
     intercept_settings = test_context.intercept_settings
     mock_response = test_context.mock_context.response
     request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY) if mock_response else None
-
     if request_key:
         Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Testing{bcolors.ENDC} {request_key} from {intercept_settings.request_origin}")
 
     __rewrite_request(test_context.replay_context)
     __rewrite_response(test_context.replay_context)
     __test_hook(lifecycle_hooks.BEFORE_TEST, test_context)
-
 
     if intercept_settings.test_skip:
         passed, log = (False, '')
@@ -156,55 +169,52 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
 
-    # Only test if request ID header is present, fixtures won't have a request ID
-    request_id = test_context.mock_request_id
-    if request_id:
-        is_cli = intercept_settings.request_origin == request_origin.CLI
-        expected = test_context.cached_rewritten_expected_response_content
-        upload_test_data = {
-            'log': log,
-            'passed': passed,
-            'request_id': request_id,
-            'skipped': skipped,
-            'status': flow.response.status_code,
-            'strategy': test_context.strategy
-        }
-        settings = Settings.instance()
+    is_cli = intercept_settings.request_origin == request_origin.CLI
+    expected = test_context.cached_rewritten_expected_response_content
+    upload_test_data = {
+        'log': log,
+        'passed': passed,
+        'request_id': request_id,
+        'skipped': skipped,
+        'status': flow.response.status_code,
+        'strategy': test_context.strategy
+    }
+    settings = Settings.instance()
 
-        # Upload handling
-        if not is_local(settings):
-            # Upload for every non-CLI request, or for CLI when save is enabled.
-            if test_context.save or not is_cli:
-                # Re-serialize expected response since it was rewritten
-                upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
+    # Upload handling
+    if not is_local(settings):
+        # Upload for every non-CLI request, or for CLI when save is enabled.
+        if test_context.save or not is_cli:
+            # Re-serialize expected response since it was rewritten
+            upload_test_data['expected_response'] = encode_response(expected, test_context.expected_response.content_type)
 
-                res = __record_handler(test_context, upload_test_data)
+            res = __record_handler(test_context, upload_test_data)
 
-                if is_cli:
-                    # This CLI path implies save was on; record success as test id, or clear save intent after a failed upload.
-                    if res.ok:
-                        response = res.json()
-                        test_context.with_test_id(response.get('id'))
-                    else:
-                        Logger.instance().warning(f"{LOG_ID}:TestStatus: Failed to upload results")
-                        test_context.save = False
+            if is_cli:
+                # This CLI path implies save was on; record success as test id, or clear save intent after a failed upload.
+                if res.ok:
+                    response = res.json()
+                    test_context.with_test_id(response.get('id'))
+                else:
+                    Logger.instance().warning(f"{LOG_ID}:TestStatus: Failed to upload results")
+                    test_context.save = False
 
-        # Response handling
-        if is_cli:
-            # Always attach TestResultsBuilder for the response body 
-            upload_test_data['expected_response'] = expected
-            received = test_context.decoded_response_content
+    # Response handling
+    if is_cli:
+        # Always attach TestResultsBuilder for the response body 
+        upload_test_data['expected_response'] = expected
+        received = test_context.decoded_response_content
 
-            builder = TestResultsBuilder(
-                **{ 
-                    'expected_latency': test_context.expected_latency,
-                    'expected_status_code': test_context.expected_status_code,
-                    'received_response': received
-                },
-                **upload_test_data
-            )
+        builder = TestResultsBuilder(
+            **{ 
+                'expected_latency': test_context.expected_latency,
+                'expected_status_code': test_context.expected_status_code,
+                'received_response': received
+            },
+            **upload_test_data
+        )
 
-            test_context.with_test_results(builder)
+        test_context.with_test_results(builder)
 
 def __handle_invalid_policy(context: InterceptContext):
     return bad_request(
