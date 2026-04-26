@@ -19,7 +19,7 @@ def get_active_mode_policy(request: 'MitmproxyRequest', intercept_settings: Inte
         return intercept_settings.policy 
 
     if allowed_request(request, intercept_settings, mode):
-        return intercept_settings.policy
+        return intercept_settings.policy_for_mode(mode)
     else:
         # If the request path does not match accepted paths, do not intercept
         return intercept_policy.NONE
