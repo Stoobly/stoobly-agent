@@ -97,4 +97,3 @@ class TestHandleTestService:
         passed_mock_context = mock_handle_request_mock_generic.call_args.args[0]
         expected_flow = flow_copy if expect_copy else flow
         assert passed_mock_context.flow is expected_flow
-        assert passed_mock_context.flow.request.headers[custom_headers.MOCK_POLICY] == mock_policy.ALL

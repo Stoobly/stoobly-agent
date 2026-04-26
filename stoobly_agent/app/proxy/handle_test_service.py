@@ -156,6 +156,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     __test_hook(lifecycle_hooks.AFTER_TEST, test_context)
 
+    # Only test if request ID header is present, fixtures won't have a request ID
     request_id = test_context.mock_request_id
     if request_id:
         is_cli = intercept_settings.request_origin == request_origin.CLI
