@@ -218,7 +218,7 @@ def rewrite(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
 )
 @click.option('--name', help='Name of the request component.')
 @click.option('--path', help='Request URL path to rewrite to.')
@@ -287,7 +287,7 @@ def match(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add match rule to.')(f), is_remote)
@@ -352,7 +352,7 @@ def firewall(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add firewall rule to.')(f), is_remote)

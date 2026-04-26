@@ -1,6 +1,5 @@
 import pdb
 
-from threading import local
 from typing import TYPE_CHECKING, Union
 
 from stoobly_agent.app.cli.helpers.feature_flags import is_local

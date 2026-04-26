@@ -6,11 +6,8 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
+mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
 settings: Settings = Settings.instance()
-
-if settings.cli.features.remote:
-    mode_options.append(mode.TEST)
 
 active_mode = settings.proxy.intercept.mode
 
