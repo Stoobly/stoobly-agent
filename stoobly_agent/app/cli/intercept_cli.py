@@ -3,7 +3,7 @@ import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
+from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
 mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY]
@@ -22,13 +22,13 @@ def __get_order_options(active_mode: str) -> list[str]:
 
 def __get_policy_options(active_mode: str) -> list[str]:
     if active_mode == mode.MOCK:
-        return [mock_policy.ALL, mock_policy.FOUND]
+        return [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE]
     elif active_mode == mode.RECORD:
         return [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND]
     elif active_mode == mode.REPLAY:
         return [replay_policy.ALL]
     elif active_mode == mode.TEST:
-        return [mock_policy.FOUND]
+        return [test_policy.FOUND, test_policy.NONE]
     else:
         return []
 
