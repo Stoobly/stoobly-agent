@@ -28,6 +28,7 @@ class MockOptions(TypedDict):
     ignored_components: list 
     infer: bool
     no_rewrite: bool
+    policy_override: str
     success: Callable
 
 def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
@@ -76,20 +77,23 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     intercept_settings = context.intercept_settings
+    policy_override = options['policy_override'] if 'policy_override' in options else None
     request: MitmproxyRequest = context.flow.request
     res = None
 
     # If policy override is set, use it, otherwise use the intercept mode policy
-    policy = get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
+    policy = policy_override or get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
     if policy == mock_policy.NONE:
-        return
-
-    if policy not in [mock_policy.ALL, mock_policy.FOUND]:
         if handle_error:
             res = handle_error(context)
 
             if res:
                 return pass_on(context.flow, res)
+        return
+
+    if policy not in [mock_policy.ALL, mock_policy.FOUND]:
+        if handle_error:
+            res = handle_error(context)
 
         return bad_request(
             context.flow,

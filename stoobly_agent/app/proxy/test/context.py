@@ -9,7 +9,7 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.alias_resolver import AliasResolver
-from stoobly_agent.app.proxy.replay.body_parser_service import is_traversable
+from stoobly_agent.app.proxy.replay.body_parser_service import encode_response, is_traversable
 from stoobly_agent.app.proxy.replay.rewrite_params_service import build_id_to_alias_map, rewrite_params
 from stoobly_agent.app.proxy.test.helpers.endpoint_facade import EndpointFacade
 from stoobly_agent.app.proxy.test.helpers.mitmproxy_response_adapter import MitmproxyResponseAdapter
@@ -33,8 +33,7 @@ class TestContext(TestContextABC):
     self.__replay_context = replay_context
 
     mock_response = self.__mock_context.response
-    if mock_response:
-      self.__expected_response = RequestsResponseAdapter(mock_response).adapt()
+    self.__expected_response = RequestsResponseAdapter(mock_response).adapt()
 
     upstream_response = self.__flow.response
     self.__response = MitmproxyResponseAdapter(upstream_response).adapt()
@@ -85,7 +84,7 @@ class TestContext(TestContextABC):
     return self.__mock_context.response.headers.get(custom_headers.RESPONSE_LATENCY)
 
   @property
-  def expected_response(self) -> Union[TestContextResponse, None]:
+  def expected_response(self):
     return self.__expected_response
 
   @property
