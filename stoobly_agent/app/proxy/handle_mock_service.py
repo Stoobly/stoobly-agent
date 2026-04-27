@@ -1,6 +1,4 @@
-import os
 import pdb
-import time
 
 from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
@@ -11,7 +9,7 @@ if TYPE_CHECKING:
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
-from stoobly_agent.config.constants import custom_headers, env_vars, lifecycle_hooks, mock_policy, mode, request_origin
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from .constants import custom_response_codes

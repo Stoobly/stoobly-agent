@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
-from stoobly_agent.config.constants import custom_headers, mock_policy, test_policy
+from stoobly_agent.config.constants import mock_policy, test_policy
 
 
 class TestHandleTestService:
