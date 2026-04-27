@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from stoobly_agent.test.test_helper import reset
 from stoobly_agent.app.api.configs_controller import ConfigsController
-from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
+from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -49,7 +49,7 @@ class TestConfigsController:
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[mock_policy.ALL, mock_policy.FOUND],
+                json=[mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
                 status=200
             )
 
@@ -59,7 +59,7 @@ class TestConfigsController:
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[mock_policy.ALL, mock_policy.FOUND],
+                json=[test_policy.FOUND, test_policy.NONE],
                 status=200
             )
 

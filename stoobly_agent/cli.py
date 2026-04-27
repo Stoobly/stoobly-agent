@@ -14,14 +14,14 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .app.cli import MainGroup
-from .app.cli.helpers.feature_flags import local, remote
+from .app.cli.helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
 
 settings: Settings = Settings.instance()
-is_remote = remote(settings)
-is_local = local(settings)
+is_remote = feature_is_remote(settings)
+is_local = feature_is_local(settings)
 
 # Makes sure database is up to date
 migrate_database(VERSION)

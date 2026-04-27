@@ -15,13 +15,13 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .handlers.scenario_cli_handler import (
     create_handler, delete_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler
 )
-from .helpers.feature_flags import local, remote
+from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.validations import *
 from .types.scenario import ScenarioTestOptions
 
 settings = Settings.instance()
-is_remote = remote(settings)
-is_local = local(settings)
+is_remote = feature_is_remote(settings)
+is_local = feature_is_local(settings)
 
 @click.group(
     epilog="Run 'stoobly-agent scenario COMMAND --help' for more information on a command.",

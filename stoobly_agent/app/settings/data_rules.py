@@ -1,4 +1,4 @@
-from stoobly_agent.config.constants import mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
+from stoobly_agent.config.constants import mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy, test_policy
 
 from .types.proxy_settings import DataRules as IDataRules
 
@@ -13,7 +13,7 @@ class DataRules:
     self.__record_strategy = self.__data_rules.get('record_strategy') or record_strategy.FULL
     self.__replay_policy = self.__data_rules.get('replay_policy') or replay_policy.ALL
     self.__scenario_key = self.__data_rules.get('scenario_key')
-    self.__test_policy = self.__data_rules.get('test_policy') or mock_policy.FOUND
+    self.__test_policy = self.__data_rules.get('test_policy') or test_policy.FOUND
     self.__test_strategy = self.__data_rules.get('test_strategy') or test_strategy.DIFF
 
   @property
@@ -86,6 +86,10 @@ class DataRules:
 
   @test_policy.setter
   def test_policy(self, v):
+    valid_policies = [test_policy.FOUND, test_policy.NONE]
+    if v not in valid_policies:
+      raise TypeError(f"test_policy has to be one of {valid_policies}, got {v}")
+
     self.__test_policy = v
     self.__data_rules['test_policy'] = v
 

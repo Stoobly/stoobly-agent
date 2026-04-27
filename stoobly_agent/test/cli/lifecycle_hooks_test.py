@@ -8,9 +8,11 @@ from stoobly_agent.app.cli.setting_cli import setting
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.cli import mock, record
-from stoobly_agent.config.constants import mode
+from stoobly_agent.config.constants import mode, record_policy, test_policy
+from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
@@ -56,6 +58,14 @@ class TestLifecycleHooks():
     assert test_result.exit_code == 0
     return test_result
 
+  @pytest.fixture(scope='class')
+  def replay_result(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+    replay_result = runner.invoke(request, [
+      'replay', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key()
+    ])
+    assert replay_result.exit_code == 0
+    return replay_result
+
   def test_calls_record_hooks(self, record_result):
     expected_stdout = ['before_request', 'before_replay', 'after_replay', 'before_record', 'after_record', 'before_response']
     assert record_result.stdout.strip() == "\n".join(expected_stdout)
@@ -63,6 +73,12 @@ class TestLifecycleHooks():
   def test_calls_mock_hooks(self, mock_result):
     expected_stdout = ['before_request', 'before_mock', 'after_mock', 'before_response']
     assert mock_result.stdout.strip() == "\n".join(expected_stdout)
+
+  def test_calls_replay_hooks(self, replay_result):
+    expected_stdout = ['before_request', 'before_replay', 'after_replay', 'before_response']
+    stdout = replay_result.stdout
+    lifecycle_hooks_output = stdout.split('{')[0]
+    assert lifecycle_hooks_output.strip() == "\n".join(expected_stdout)
 
   def test_calls_test_hooks(self, test_result):
      expected_stdout = [
@@ -310,17 +326,32 @@ class TestTestModifications():
 
   @pytest.fixture(scope='class')
   def lifecycle_hooks_path(self):
-    return str(Path(__file__).parent.parent / 'mock_data' / 'lifecycle_hooks_test_modify.py')
+    from stoobly_agent.test.mock_data import lifecycle_hooks_test_modify
+    return str(Path(lifecycle_hooks_test_modify.__file__).resolve())
 
   @pytest.fixture(scope='class')
   def recorded_request(self, runner: CliRunner):
+    # Keep this fixture independent from policy mutations in earlier tests.
+    settings = Settings.instance()
+    project_key = ProjectKey(settings.proxy.intercept.project_key)
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.record_policy = record_policy.ALL
+    data_rule.test_policy = test_policy.FOUND
+    settings.commit()
+
     # First record a request to test against
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def test_result(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+  def test_result_found(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+    settings = Settings.instance()
+    project_key = ProjectKey(settings.proxy.intercept.project_key)
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.test_policy = test_policy.FOUND
+    settings.commit()
+
     # Don't use --output /dev/null so we can verify stdout contains lifecycle hook prints
     test_result = runner.invoke(request, [
       'test', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key()
@@ -328,69 +359,99 @@ class TestTestModifications():
     assert test_result.exit_code == 0
     return test_result
 
+  @pytest.fixture(scope='class')
+  def test_result_none(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+    settings = Settings.instance()
+    project_key = ProjectKey(settings.proxy.intercept.project_key)
+    data_rule = settings.proxy.data.data_rules(project_key.id)
+    data_rule.test_policy = test_policy.NONE
+    settings.commit()
+
+    test_result = runner.invoke(request, [
+      'test', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key()
+    ])
+    assert test_result.exit_code != 0
+    return test_result
+
   class TestBeforeReplayChanges():
     """Test that changes in before_replay are visible in after_replay."""
 
-    def test_before_replay_changes_visible_in_after_replay(self, test_result):
+    def test_before_replay_changes_visible_in_after_replay(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         BEFORE_REPLAY_VISIBLE_IN_AFTER_REPLAY_MARKER
       )
       # The after_replay hook prints this marker if it sees the before_replay header
-      assert BEFORE_REPLAY_VISIBLE_IN_AFTER_REPLAY_MARKER in test_result.stdout
+      assert BEFORE_REPLAY_VISIBLE_IN_AFTER_REPLAY_MARKER in test_result_found.stdout
 
   class TestAfterReplayChanges():
     """Test that changes in after_replay are visible in both before_mock and before_test."""
 
-    def test_after_replay_changes_visible_in_before_mock(self, test_result):
+    def test_after_replay_changes_visible_in_before_mock(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         AFTER_REPLAY_VISIBLE_IN_BEFORE_MOCK_MARKER
       )
       # The before_mock hook prints this marker if it sees the after_replay header
-      assert AFTER_REPLAY_VISIBLE_IN_BEFORE_MOCK_MARKER in test_result.stdout
+      assert AFTER_REPLAY_VISIBLE_IN_BEFORE_MOCK_MARKER in test_result_found.stdout
 
-    def test_after_replay_changes_visible_in_before_test(self, test_result):
+    def test_after_replay_changes_visible_in_before_test(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         AFTER_REPLAY_VISIBLE_IN_BEFORE_TEST_MARKER
       )
       # The before_test hook prints this marker if it sees the after_replay header
-      assert AFTER_REPLAY_VISIBLE_IN_BEFORE_TEST_MARKER in test_result.stdout
+      assert AFTER_REPLAY_VISIBLE_IN_BEFORE_TEST_MARKER in test_result_found.stdout
 
   class TestBeforeMockChanges():
     """Test that changes in before_mock are visible in after_mock."""
 
-    def test_before_mock_changes_visible_in_after_mock(self, test_result):
+    def test_before_mock_changes_visible_in_after_mock(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         BEFORE_MOCK_VISIBLE_IN_AFTER_MOCK_MARKER
       )
       # The after_mock hook prints this marker if it sees the before_mock header
-      assert BEFORE_MOCK_VISIBLE_IN_AFTER_MOCK_MARKER in test_result.stdout
+      assert BEFORE_MOCK_VISIBLE_IN_AFTER_MOCK_MARKER in test_result_found.stdout
 
   class TestMockChangesDoNotAffectTest():
     """Test that changes in before_mock and after_mock are NOT visible in before_test."""
 
-    def test_before_mock_changes_not_visible_in_before_test(self, test_result):
+    def test_calls_none_policy_test_hooks(self, test_result_none):
+      from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
+        BEFORE_REQUEST_CALLED_MARKER,
+        AFTER_MOCK_CALLED_MARKER,
+        BEFORE_TEST_CALLED_MARKER,
+        AFTER_TEST_CALLED_MARKER,
+        BEFORE_RESPONSE_CALLED_MARKER,
+      )
+
+      assert test_result_none.exit_code != 0
+      assert BEFORE_REQUEST_CALLED_MARKER in test_result_none.stdout
+      assert AFTER_MOCK_CALLED_MARKER in test_result_none.stdout
+      assert BEFORE_RESPONSE_CALLED_MARKER in test_result_none.stdout
+      assert BEFORE_TEST_CALLED_MARKER not in test_result_none.stdout
+      assert AFTER_TEST_CALLED_MARKER not in test_result_none.stdout
+
+    def test_before_mock_changes_not_visible_in_before_test(self, test_result_none):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         BEFORE_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER
       )
-      # The before_test hook prints this marker if it does NOT see the before_mock header
-      assert BEFORE_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER in test_result.stdout
+      # With test_policy=none, before_test does not run, so this marker is absent.
+      assert BEFORE_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER not in test_result_none.stdout
 
-    def test_after_mock_changes_not_visible_in_before_test(self, test_result):
+    def test_after_mock_changes_not_visible_in_before_test(self, test_result_none):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         AFTER_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER
       )
-      # The before_test hook prints this marker if it does NOT see the after_mock header
-      assert AFTER_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER in test_result.stdout
+      # With test_policy=none, before_test does not run, so this marker is absent.
+      assert AFTER_MOCK_NOT_VISIBLE_IN_BEFORE_TEST_MARKER not in test_result_none.stdout
 
   class TestBeforeTestChanges():
     """Test that changes in before_test are visible in after_test."""
 
-    def test_before_test_changes_visible_in_after_test(self, test_result):
+    def test_before_test_changes_visible_in_after_test(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
         BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER
       )
       # The after_test hook prints this marker if it sees the before_test header
-      assert BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER in test_result.stdout
+      assert BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER in test_result_found.stdout
 
 class TestLifecycleHooksOriginSelection():
   """

@@ -26,7 +26,7 @@ from .record.overwrite_scenario_service import overwrite_scenario, overwrite_sce
 from .record.upload_request_service import inject_upload_request
 from .replay.context import ReplayContext
 from .replay.body_parser_service import is_json, is_xml
-from .utils.allowed_request_service import get_active_mode_policy
+from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.minimize_headers import minimize_headers
 from .utils.response_handler import bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
@@ -75,7 +75,7 @@ def handle_response_record(context: RecordContext):
     request: 'MitmproxyRequest' = flow.request
     request_model = RequestModel(intercept_settings.settings)
 
-    active_record_policy = get_active_mode_policy(request, intercept_settings, mode.RECORD)
+    active_record_policy = get_intercept_mode_policy(request, intercept_settings, mode.RECORD)
     Logger.instance(LOG_ID).debug(f"RecordPolicy: {active_record_policy}")
 
     if active_record_policy == record_policy.ALL:

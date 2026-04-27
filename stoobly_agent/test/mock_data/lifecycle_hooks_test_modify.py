@@ -28,9 +28,15 @@ BEFORE_TEST_REQUEST_HEADER_NAME = 'X-Before-Test-Request-Header'
 BEFORE_TEST_REQUEST_HEADER_VALUE = 'before-test-request-value'
 
 BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER = 'before-test-visible-in-after-test'
+BEFORE_REQUEST_CALLED_MARKER = 'before-request-called'
+BEFORE_MOCK_CALLED_MARKER = 'before-mock-called'
+AFTER_MOCK_CALLED_MARKER = 'after-mock-called'
+BEFORE_TEST_CALLED_MARKER = 'before-test-called'
+AFTER_TEST_CALLED_MARKER = 'after-test-called'
+BEFORE_RESPONSE_CALLED_MARKER = 'before-response-called'
 
 def handle_before_request(context: InterceptContext):
-  pass
+  print(BEFORE_REQUEST_CALLED_MARKER)
 
 def handle_before_replay(context: ReplayContext):
   """Modify request in before_replay."""
@@ -47,8 +53,10 @@ def handle_after_replay(context: ReplayContext):
 
 def handle_before_mock(context: MockContext):
   """Verify after_replay changes are visible, and modify request."""
+  print(BEFORE_MOCK_CALLED_MARKER)
   # Verify after_replay changes are visible
-  if context.flow.response.headers.get(AFTER_REPLAY_RESPONSE_HEADER_NAME) == AFTER_REPLAY_RESPONSE_HEADER_VALUE:
+  response = context.flow.response
+  if response and response.headers.get(AFTER_REPLAY_RESPONSE_HEADER_NAME) == AFTER_REPLAY_RESPONSE_HEADER_VALUE:
     print(AFTER_REPLAY_VISIBLE_IN_BEFORE_MOCK_MARKER)
   
   # Modify request
@@ -56,6 +64,7 @@ def handle_before_mock(context: MockContext):
 
 def handle_after_mock(context: MockContext):
   """Verify before_mock changes are visible, and modify response."""
+  print(AFTER_MOCK_CALLED_MARKER)
   # Verify before_mock changes are visible
   if context.flow.request.headers.get(BEFORE_MOCK_REQUEST_HEADER_NAME) == BEFORE_MOCK_REQUEST_HEADER_VALUE:
     print(BEFORE_MOCK_VISIBLE_IN_AFTER_MOCK_MARKER)
@@ -65,6 +74,7 @@ def handle_after_mock(context: MockContext):
 
 def handle_before_test(context: TestContext):
   """Verify after_replay changes are visible, verify mock changes are NOT visible, and modify request."""
+  print(BEFORE_TEST_CALLED_MARKER)
   # Verify after_replay changes are visible
   if context.flow.response.headers.get(AFTER_REPLAY_RESPONSE_HEADER_NAME) == AFTER_REPLAY_RESPONSE_HEADER_VALUE:
     print(AFTER_REPLAY_VISIBLE_IN_BEFORE_TEST_MARKER)
@@ -82,10 +92,11 @@ def handle_before_test(context: TestContext):
 
 def handle_after_test(context: TestContext):
   """Verify before_test changes are visible."""
+  print(AFTER_TEST_CALLED_MARKER)
   # Verify before_test changes are visible
   if context.flow.request.headers.get(BEFORE_TEST_REQUEST_HEADER_NAME) == BEFORE_TEST_REQUEST_HEADER_VALUE:
     print(BEFORE_TEST_VISIBLE_IN_AFTER_TEST_MARKER)
 
 def handle_before_response(context: InterceptContext):
-  pass
+  print(BEFORE_RESPONSE_CALLED_MARKER)
 

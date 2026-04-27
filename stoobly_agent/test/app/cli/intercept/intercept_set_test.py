@@ -14,7 +14,7 @@ from stoobly_agent.test.test_helper import reset
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from stoobly_agent.config.constants import env_vars, mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_strategy
+from stoobly_agent.config.constants import env_vars, mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_policy, test_strategy
 
 @pytest.fixture(scope='module')
 def runner():
@@ -87,6 +87,15 @@ class TestInterceptSet():
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
         assert data_rule.mock_policy == mock_policy.FOUND
+
+      def test_policy_mock_mode_none(self, runner: CliRunner):
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.MOCK, '--policy', mock_policy.NONE])
+        assert set_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.mock_policy == mock_policy.NONE
 
       def test_policy_without_mode_mock_existing(self, runner: CliRunner):
         runner.invoke(intercept, ['set', '--mode', mode.MOCK])
@@ -169,23 +178,32 @@ class TestInterceptSet():
 
     class TestTestPolicy():
       def test_policy_test_mode_found(self, runner: CliRunner, intercept_cli: Group):
-        set_result = runner.invoke(intercept_cli, ['set', '--mode', mode.TEST, '--policy', mock_policy.FOUND])
+        set_result = runner.invoke(intercept_cli, ['set', '--mode', mode.TEST, '--policy', test_policy.FOUND])
         assert set_result.exit_code == 0
 
         settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        assert data_rule.test_policy == mock_policy.FOUND
+        assert data_rule.test_policy == test_policy.FOUND
+
+      def test_policy_test_mode_none(self, runner: CliRunner, intercept_cli: Group):
+        set_result = runner.invoke(intercept_cli, ['set', '--mode', mode.TEST, '--policy', test_policy.NONE])
+        assert set_result.exit_code == 0
+
+        settings = Settings.instance()
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        assert data_rule.test_policy == test_policy.NONE
 
       def test_policy_without_mode_test_existing(self, runner: CliRunner):
         runner.invoke(intercept, ['set', '--mode', mode.TEST])
-        set_result = runner.invoke(intercept, ['set', '--policy', mock_policy.FOUND])
+        set_result = runner.invoke(intercept, ['set', '--policy', test_policy.FOUND])
         assert set_result.exit_code == 0
 
         settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        assert data_rule.test_policy == mock_policy.FOUND
+        assert data_rule.test_policy == test_policy.FOUND
 
     class TestInvalidPolicyInput():
       # Since all modes use 'all', we need to check what's unique to each mode

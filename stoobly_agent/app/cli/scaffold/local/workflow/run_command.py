@@ -146,7 +146,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       openapi_specification_paths, 
       public_directory_paths, 
       response_fixtures_paths, 
-      **options: WorkflowUpOptions
     ):
       self.__up_command(
         lifecycle_hooks_paths,

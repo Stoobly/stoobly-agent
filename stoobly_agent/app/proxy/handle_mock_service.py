@@ -18,7 +18,7 @@ from .constants import custom_response_codes
 from .mock.context import MockContext
 from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
-from .utils.allowed_request_service import get_active_mode_policy
+from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.request_handler import reverse_proxy
 from .utils.response_handler import bad_request, enable_cors, pass_on
 from .utils.rewrite import rewrite_request, rewrite_response
@@ -30,7 +30,36 @@ class MockOptions(TypedDict):
     ignored_components: list 
     infer: bool
     no_rewrite: bool
+    policy_override: str
     success: Callable
+
+def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
+    flow = context.flow
+    request = flow.request
+    response = context.response
+
+    if request.method.upper() == 'OPTIONS':
+        # Default OPTIONS request to allow CORS
+        enable_cors(flow)
+        return flow.response
+
+    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
+
+def handle_mock_success(context: MockContext) -> None:
+    response = context.response
+
+    if response:
+        request = context.flow.request
+
+        request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
+        if request_key:
+            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
+
+        fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
+        if fixture_path:
+            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
+            InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
 def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
     options['no_rewrite'] = True
@@ -50,10 +79,12 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
     handle_failure = options['failure'] if 'failure' in options and callable(options['failure']) else None
     handle_success = options['success'] if 'success' in options and callable(options['success']) else None
     intercept_settings = context.intercept_settings
+    policy_override = options['policy_override'] if 'policy_override' in options else None
     request: MitmproxyRequest = context.flow.request
     res = None
 
-    policy = get_active_mode_policy(request, intercept_settings, mode.MOCK)
+    # If policy override is set, use it, otherwise use the intercept mode policy
+    policy = policy_override or get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
     if policy == mock_policy.NONE:
         if handle_error:
             res = handle_error(context)
@@ -141,8 +172,8 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
 def handle_request_mock(context: MockContext):
     handle_request_mock_generic(
         context,
-        failure=lambda context: __handle_mock_failure(context),
-        success=lambda context: __handle_mock_success(context)
+        failure=handle_mock_failure,
+        success=handle_mock_success,
     )
 
 ###
@@ -154,18 +185,6 @@ def handle_request_mock(context: MockContext):
 def handle_response_mock(context: MockContext):
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
-
-def __handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
-    flow = context.flow
-    request = flow.request
-    response = context.response
-
-    if request.method.upper() == 'OPTIONS':
-        # Default OPTIONS request to allow CORS
-        enable_cors(flow)
-        return flow.response
-
-    InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
 def __handle_found_policy(context: MockContext) -> None:
     req = context.flow.request
@@ -182,23 +201,6 @@ def __handle_found_policy(context: MockContext) -> None:
     Logger.instance(LOG_ID).debug(f"UpstreamUrl: {upstream_url}")
 
     reverse_proxy(req, upstream_url, {})
-
-def __handle_mock_success(context: MockContext) -> None:
-    response = context.response
-
-    if response:
-        request = context.flow.request
-
-        request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
-        if request_key:
-            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
-            InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
-
-        fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
-        if fixture_path:
-            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
-            InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
-
 
 def __rewrite_request(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -217,7 +219,6 @@ def __rewrite_response(context: MockContext):
 
     if len(rewrite_rules) > 0:
         rewrite_response(context.flow, rewrite_rules) 
-
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings

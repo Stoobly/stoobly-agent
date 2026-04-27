@@ -7,7 +7,7 @@ from ..constants.request_component import RequestComponent
 Method = Literal['DELETE,GET,OPTIONS,POST,PUT']
 MockPolicy = Literal['all', 'found', 'none']
 RecordPolicy = Literal['all','found','none']
-TestPolicy = Literal['all','found','none']
+TestPolicy = Literal['found','none']
 
 class ParameterRule(TypedDict):
   modes: List[Mode]

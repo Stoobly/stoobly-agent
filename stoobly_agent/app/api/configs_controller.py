@@ -8,7 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_config_update_service import (
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
+from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -33,9 +33,14 @@ class ConfigsController:
         settings = Settings.instance()
         active_mode = settings.proxy.intercept.mode
 
-        if active_mode in [mode.MOCK, mode.TEST]:
+        if active_mode == mode.MOCK:
             context.render(
-                json = [mock_policy.ALL, mock_policy.FOUND],
+                json = [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
+                status = 200
+            )
+        elif active_mode == mode.TEST:
+            context.render(
+                json = [test_policy.FOUND, test_policy.NONE],
                 status = 200
             )
         elif active_mode == mode.RECORD:

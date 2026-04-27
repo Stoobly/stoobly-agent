@@ -29,7 +29,7 @@ mode: enum('mock', 'record', 'replay', 'test')
 project_id: str()
 record_policy: enum('all', 'found', 'not_found', 'none')
 replay_policy: enum('all', 'none')
-test_policy: enum('all', 'found', 'none')
+test_policy: enum('found', 'none')
 test_strategy: enum('custom', 'diff', 'fuzzy')
 
 data_rules:
