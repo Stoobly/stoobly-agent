@@ -3,10 +3,11 @@ import pdb
 from typing import TYPE_CHECKING, Union
 
 from stoobly_agent.app.cli.helpers.feature_flags import is_local
+from stoobly_agent.app.proxy.utils.allowed_request_service import get_intercept_mode_policy
 from stoobly_agent.app.settings import Settings
 
 if TYPE_CHECKING:
-    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -15,7 +16,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, request_origin, test_policy
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, request_origin, test_policy
 from stoobly_agent.lib.logger import Logger, bcolors
 
 from .handle_mock_service import (
@@ -37,7 +38,11 @@ LOG_ID = 'Test'
 
 ###
 #
-# 1. BEFORE_REPLAY gets triggered
+# Lifecycle hook order for standard test_policy=found path:
+#
+# 1.  BEFORE_REQUEST gets triggered
+# 2.  BEFORE_REPLAY gets triggered
+# 3.  AFTER_REPLAY gets triggered
 #
 def handle_request_test(context: ReplayContext) -> None:
     if context.intercept_settings.policy == test_policy.FOUND:
@@ -52,10 +57,6 @@ def handle_request_test(context: ReplayContext) -> None:
 
 ###
 #
-# Lifecycle hook order for standard test_policy=found path:
-# 1.  BEFORE_REQUEST gets triggered
-# 2.  BEFORE_REPLAY gets triggered
-# 3.  AFTER_REPLAY gets triggered
 # 4.  BEFORE_MOCK gets triggered
 # 5.  AFTER_MOCK gets triggered
 # 6.  BEFORE_TEST gets triggered
@@ -74,17 +75,29 @@ def handle_response_test(context: ReplayContext) -> None:
 
     flow: 'MitmproxyHTTPFlow' = context.flow
     intercept_settings: InterceptSettings = context.intercept_settings
+    request: MitmproxyRequest = context.flow.request
+
+    policy = get_intercept_mode_policy(request, intercept_settings, mode.TEST)
 
     # Mock policy is used for response handling
     # Exception is request_origin is CLI, then a custom response is returned for the CLI to process
 
-    if intercept_settings.test_policy == test_policy.FOUND:
+    if policy == test_policy.NONE:
+        handle_response_mock(MockContext(flow, intercept_settings))
+    elif policy == test_policy.FOUND:
         disable_transfer_encoding(flow.response)
         handle_response_replay(context)
 
-        # If mock policy is NONE, we return live request response
-        # To achieve this, copy the flow to prevent modifications from persisting
-        mock_flow = flow.copy() if intercept_settings.mock_policy == mock_policy.NONE else flow
+        if intercept_settings.mock_policy == mock_policy.NONE:
+            # If mock policy is NONE, we return live request response
+            # To achieve this, copy the flow to prevent modifications from persisting
+            mock_flow = flow.copy()
+
+            # Because we are testing, we need mocking to determine expected response
+            policy_override = mock_policy.ALL
+        else:
+            mock_flow = flow
+            policy_override = intercept_settings.mock_policy
 
         test_context: TestContext = None
         def build_test_context(mock_context: MockContext):
@@ -109,8 +122,8 @@ def handle_response_test(context: ReplayContext) -> None:
             MockContext(mock_flow, context.intercept_settings),
             error=handle_mock_error,
             failure=handle_mock_failure,
-            policy_override=mock_policy.ALL, # Because we are testing, we need mocking to determine expected response
-            success=handle_mock_success
+            success=handle_mock_success,
+            policy_override=policy_override,
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
 
@@ -122,8 +135,6 @@ def handle_response_test(context: ReplayContext) -> None:
             # Apply test ID from flow.copy() to the original flow that will returned to the client
             if test_context.test_id:
                 __decorate_test_id(flow, test_context.test_id)
-    else:
-        handle_response_mock(MockContext(flow, intercept_settings))
 
 def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
     if test_id:
