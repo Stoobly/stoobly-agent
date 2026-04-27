@@ -109,7 +109,6 @@ def handle_response_test(context: ReplayContext) -> None:
             MockContext(mock_flow, context.intercept_settings),
             error=handle_mock_error,
             failure=handle_mock_failure,
-            policy_override=mock_policy.ALL, # Because we are testing, we need mocking to determine expected response
             success=handle_mock_success
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
