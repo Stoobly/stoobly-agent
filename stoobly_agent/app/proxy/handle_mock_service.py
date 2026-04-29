@@ -2,6 +2,9 @@ import pdb
 
 from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
+from stoobly_agent.app.proxy.handle_replay_service import handle_request_replay, handle_response_replay
+from stoobly_agent.app.proxy.replay.context import ReplayContext
+
 if TYPE_CHECKING:
     from requests import Response
     from mitmproxy.http import Request as MitmproxyRequest, Response as MitmproxyResponse
@@ -167,7 +170,12 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
 
     return res
 
+###
+# 
+# 1. BEFORE_REPLAY gets triggered
+#
 def handle_request_mock(context: MockContext):
+    handle_request_replay(ReplayContext(context.flow, context.intercept_settings))
     handle_request_mock_generic(
         context,
         failure=handle_mock_failure,
@@ -177,10 +185,12 @@ def handle_request_mock(context: MockContext):
 ###
 #
 # Occurs if mock is found
-# 1. Rewrites mock response
-# 2. AFTER_MOCK gets triggered
+# 1. AFTER_RESPONSE gets triggered
+# 3. Rewrites mock response
+# 3. AFTER_MOCK gets triggered
 #
 def handle_response_mock(context: MockContext):
+    handle_response_replay(ReplayContext(context.flow, context.intercept_settings))
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 

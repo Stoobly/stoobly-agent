@@ -30,7 +30,7 @@ class TestReplay():
 
         def test_it_matches(self, runner, recorded_request: Request):
             replay_result = runner.invoke(request, ['test', '--strategy', test_strategy.DIFF, recorded_request.key()])
-            assert replay_result.exit_code == 0
+            assert replay_result.exit_code == 0, replay_result.stdout
 
     class TestWhenContractStrategy():
 
