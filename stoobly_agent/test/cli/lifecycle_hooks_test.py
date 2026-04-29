@@ -71,7 +71,7 @@ class TestLifecycleHooks():
     assert record_result.stdout.strip() == "\n".join(expected_stdout)
 
   def test_calls_mock_hooks(self, mock_result):
-    expected_stdout = ['before_request', 'before_mock', 'after_mock', 'before_response']
+    expected_stdout = ['before_request', 'before_replay', 'before_mock', 'after_replay', 'after_mock', 'before_response']
     assert mock_result.stdout.strip() == "\n".join(expected_stdout)
 
   def test_calls_replay_hooks(self, replay_result):
@@ -81,12 +81,49 @@ class TestLifecycleHooks():
     assert lifecycle_hooks_output.strip() == "\n".join(expected_stdout)
 
   def test_calls_test_hooks(self, test_result):
+    # In a test_policy=found flow, 
+    # before_replay and after_replay are called twice for mock flow and test flow respectively
      expected_stdout = [
-       'before_request', 'before_replay', 'after_replay', 'before_mock', 'after_mock', 'before_test', 'after_test', 'before_response'
+       'before_request', 'before_replay', 'after_replay', 'before_mock', 'after_replay', 'after_mock', 'before_test', 'after_test', 'before_response'
      ]
      stdout = test_result.stdout
      lifecycle_hooks_output = stdout.split('{')[0]
      assert lifecycle_hooks_output.strip() == "\n".join(expected_stdout)
+
+  class TestWithTestPolicyNone():
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+      return reset()
+
+    @pytest.fixture(scope='class')
+    def lifecycle_hooks_path(self):
+      return str(Path(__file__).parent.parent / 'mock_data' / 'lifecycle_hooks.py')
+
+    @pytest.fixture(scope='class')
+    def test_result(self, runner: CliRunner, lifecycle_hooks_path: str):
+      settings = Settings.instance()
+      project_key = ProjectKey(settings.proxy.intercept.project_key)
+      data_rule = settings.proxy.data.data_rules(project_key.id)
+      data_rule.record_policy = record_policy.ALL
+      data_rule.test_policy = test_policy.NONE
+      settings.commit()
+
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+      recorded_request = Request.last()
+
+      test_result = runner.invoke(request, [
+        'test', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key()
+      ])
+      return test_result
+
+    def test_calls_test_hooks(self, test_result):
+      expected_stdout = [
+        'before_request', 'before_replay', 'before_mock', 'after_replay', 'after_mock', 'before_response'
+      ]
+      stdout = test_result.stdout
+      lifecycle_hooks_output = stdout.split('{')[0]
+      assert lifecycle_hooks_output.strip() == "\n".join(expected_stdout)
 
 
 class TestRecordModifications():

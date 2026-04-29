@@ -90,7 +90,7 @@ class ConfigsController:
 
         remote_project_id = self.__remote_project_id(settings)
 
-        modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY] if not context.params.get('agent') else [mode.RECORD, mode.MOCK, mode.REPLAY]
+        modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
 
         context.render(
             json = {

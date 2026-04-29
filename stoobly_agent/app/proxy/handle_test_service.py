@@ -3,10 +3,11 @@ import pdb
 from typing import TYPE_CHECKING, Union
 
 from stoobly_agent.app.cli.helpers.feature_flags import is_local
+from stoobly_agent.app.proxy.utils.allowed_request_service import get_intercept_mode_policy
 from stoobly_agent.app.settings import Settings
 
 if TYPE_CHECKING:
-    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -15,7 +16,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, request_origin, test_policy
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
 from stoobly_agent.lib.logger import Logger, bcolors
 
 from .handle_mock_service import (
@@ -37,7 +38,11 @@ LOG_ID = 'Test'
 
 ###
 #
-# 1. BEFORE_REPLAY gets triggered
+# Lifecycle hook order for standard test_policy=found path:
+#
+# 1.  BEFORE_REQUEST gets triggered
+# 2.  BEFORE_REPLAY gets triggered
+# 3.  AFTER_REPLAY gets triggered
 #
 def handle_request_test(context: ReplayContext) -> None:
     if context.intercept_settings.policy == test_policy.FOUND:
@@ -52,10 +57,6 @@ def handle_request_test(context: ReplayContext) -> None:
 
 ###
 #
-# Lifecycle hook order for standard test_policy=found path:
-# 1.  BEFORE_REQUEST gets triggered
-# 2.  BEFORE_REPLAY gets triggered
-# 3.  AFTER_REPLAY gets triggered
 # 4.  BEFORE_MOCK gets triggered
 # 5.  AFTER_MOCK gets triggered
 # 6.  BEFORE_TEST gets triggered
@@ -74,19 +75,26 @@ def handle_response_test(context: ReplayContext) -> None:
 
     flow: 'MitmproxyHTTPFlow' = context.flow
     intercept_settings: InterceptSettings = context.intercept_settings
+    request: MitmproxyRequest = context.flow.request
+
+    # If test policy is NONE, then use mock flow
+    _test_policy = get_intercept_mode_policy(request, intercept_settings, mode.TEST)
+    if _test_policy == test_policy.NONE:
+        handle_response_mock(MockContext(flow, intercept_settings))
+        return
+
+    # Else use test flow
+    disable_transfer_encoding(flow.response)
+    handle_response_replay(context)
 
     # Mock policy is used for response handling
     # Exception is request_origin is CLI, then a custom response is returned for the CLI to process
+    _mock_policy = get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
 
-    if intercept_settings.test_policy == test_policy.FOUND:
-        disable_transfer_encoding(flow.response)
-        handle_response_replay(context)
+    mock_flow = flow.copy()
+    test_context: TestContext = None
 
-        # If mock policy is NONE, we return live request response
-        # To achieve this, copy the flow to prevent modifications from persisting
-        mock_flow = flow.copy() if intercept_settings.mock_policy == mock_policy.NONE else flow
-
-        test_context: TestContext = None
+    if _test_policy == test_policy.FOUND:
         def build_test_context(mock_context: MockContext):
             nonlocal test_context  # Bind to outer scope variable so modifications are visible after callback execution
             # Deep copy flow to prevent modifications from persisting
@@ -105,25 +113,37 @@ def handle_response_test(context: ReplayContext) -> None:
             handle_response_mock(mock_context)
             return __handle_mock_success(build_test_context(mock_context))
 
+        if _mock_policy == mock_policy.NONE:
+            # Because we are testing, we can't use mock policy NONE
+            # we need mocking to determine expected response
+            mock_policy_override = mock_policy.ALL
+        else:
+            mock_policy_override = _mock_policy
+
         handle_request_mock_generic(
             MockContext(mock_flow, context.intercept_settings),
             error=handle_mock_error,
             failure=handle_mock_failure,
-            policy_override=mock_policy.ALL, # Because we are testing, we need mocking to determine expected response
-            success=handle_mock_success
+            success=handle_mock_success,
+            policy_override=mock_policy_override,
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
 
-        # If test context was built, and it has test results, override response with test results
-        if test_context:
-            if test_context.test_results:
-                __override_response(flow, test_context.test_results.serialize())
+    # If test context was built, and it has test results, override response with test results
+    if test_context:
+        if test_context.test_results:
+            __override_response(flow, test_context.test_results.serialize())
 
-            # Apply test ID from flow.copy() to the original flow that will returned to the client
-            if test_context.test_id:
-                __decorate_test_id(flow, test_context.test_id)
-    else:
-        handle_response_mock(MockContext(flow, intercept_settings))
+        # Apply test ID from flow.copy() to the original flow that will returned to the client
+        if test_context.test_id:
+            __decorate_test_id(flow, test_context.test_id)
+
+    # If response was not overridden
+    if not test_context or not test_context.test_results:
+        # If mock policy is not NONE, return mock response
+        # else we return live request response
+        if _mock_policy != mock_policy.NONE:
+            flow.response = mock_flow.response
 
 def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
     if test_id:
@@ -190,7 +210,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
             res = __record_handler(test_context, upload_test_data)
 
-            if is_cli:
+            if res and is_cli:
                 # This CLI path implies save was on; record success as test id, or clear save intent after a failed upload.
                 if res.ok:
                     response = res.json()
@@ -231,23 +251,32 @@ def __override_response(flow: 'MitmproxyHTTPFlow', content: bytes):
     flow.response.status_code = 200
 
 def __record_handler(context: TestContext, upload_test_data):
-    flow = context.flow.copy() # Deep copy flow to prevent response modifications from persisting
+    flow = context.flow
     intercept_settings = context.intercept_settings
-    record_context = RecordContext(flow, intercept_settings)
+    request: MitmproxyRequest = flow.request
 
-    # Since we are "uploading" the request, use record_write_rules
-    rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules)
-    __test_hook(lifecycle_hooks.BEFORE_RECORD, record_context)
+    _record_policy = get_intercept_mode_policy(request, intercept_settings, mode.RECORD)
+    if _record_policy == record_policy.NONE:
+        return None
+    else:
+        # Deep copy flow to prevent response modifications from persisting
+        record_context = RecordContext(flow.copy(), intercept_settings)
 
-    # Commit test to API
-    upload_test = inject_upload_test(None, intercept_settings)
-    res = upload_test(
-        record_context.flow, **upload_test_data
-    )
+        # TODO: apply other record policies
 
-    __test_hook(lifecycle_hooks.AFTER_RECORD, record_context)
+        # Since we are "uploading" the request, use record_write_rules
+        rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules)
+        __test_hook(lifecycle_hooks.BEFORE_RECORD, record_context)
 
-    return res
+        # Commit test to API
+        upload_test = inject_upload_test(None, intercept_settings)
+        res = upload_test(
+            record_context.flow, **upload_test_data
+        )
+
+        __test_hook(lifecycle_hooks.AFTER_RECORD, record_context)
+
+        return res
 
 def __rewrite_request(context: ReplayContext):
     """
