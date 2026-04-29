@@ -131,7 +131,7 @@ class TestConfigsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.REPLAY]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
             assert response_data['modes'] == expected_modes
 
         def test_summary_without_agent_param(self, controller, mock_context):
