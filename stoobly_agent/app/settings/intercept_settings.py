@@ -33,8 +33,7 @@ class InterceptSettings:
 
   @property
   def mode_before_change(self) -> Union[Mode, mode.NONE]:
-    raw = self.__intercept_settings.get('mode') or mode.NONE
-    return raw or mode.NONE
+    return self.__intercept_settings.get('mode') or mode.NONE
 
   @property
   def mode(self) -> Mode:

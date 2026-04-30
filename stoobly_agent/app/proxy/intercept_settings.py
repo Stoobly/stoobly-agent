@@ -354,8 +354,8 @@ class InterceptSettings:
 
   @property
   def match_rules(self) -> List[MatchRule]:
-    _mode = self.mode
-    rules = list(filter(lambda rule: self.__rule_modes_match(_mode, rule.modes), self.__match_rules))
+    _mode = mode.MOCK # Only mock rules are supported
+    rules = list(filter(lambda rule: self.__mode_in_modes(_mode, rule.modes), self.__match_rules))
     
     # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
     # Expected format from stoobly-js:
@@ -489,18 +489,11 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
-  def __rule_modes_match(self, active_mode: str, rule_modes: List[str]) -> bool:
-    if not rule_modes:
-      return False
-    if active_mode in rule_modes:
-      return True
-    return False
-
   def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: self.__rule_modes_match(mode, rule.modes) and rule.action == filter_action.EXCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.EXCLUDE, self.__filter_rules))
 
   def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: self.__rule_modes_match(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
 
   def for_response(self):
     self.__for_response = True
@@ -607,14 +600,14 @@ class InterceptSettings:
   def __select_parameter_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda parameter: self.__rule_modes_match(mode, parameter.modes) and parameter.name,
+      lambda parameter: self.__mode_in_modes(mode, parameter.modes) and parameter.name,
       rewrite_rule.parameter_rules or []
     ))
 
   def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda url: self.__rule_modes_match(mode, url.modes),
+      lambda url: self.__mode_in_modes(mode, url.modes),
       rewrite_rule.url_rules or []
     ))
 
@@ -691,3 +684,10 @@ class InterceptSettings:
         return item['path']
 
     return None
+
+  def __mode_in_modes(self, active_mode: str, rule_modes: List[str]) -> bool:
+    if not rule_modes:
+      return False
+    if active_mode in rule_modes:
+      return True
+    return False
