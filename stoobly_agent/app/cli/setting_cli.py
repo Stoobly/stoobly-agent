@@ -326,13 +326,14 @@ def set(**kwargs):
 ### Filter
 
 @click.group(
+    'filter',
     help="Manage filter rules"
 )
 @click.pass_context
-def filter(ctx):
+def _filter(ctx):
     pass
 
-@filter.command(
+@_filter.command(
     help="Set filter rule."
 )
 @click.option(
@@ -477,7 +478,7 @@ if is_remote:
 if is_remote:
     setting.add_command(api_key)
 
-setting.add_command(filter)
+setting.add_command(_filter)
 setting.add_command(match)
 
 if is_remote:

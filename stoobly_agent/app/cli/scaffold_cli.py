@@ -399,7 +399,9 @@ def show(**kwargs):
     if len(found_workflows) > 1:
       click.echo()  # Blank line between multiple workflows
 
-@workflow.command()
+@workflow.command(
+  help="Stop and tear down a scaffold workflow",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
@@ -529,7 +531,9 @@ def down(**kwargs):
   if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
 
-@workflow.command()
+@workflow.command(
+  help="Show or follow logs from workflow service(s)",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option(
   '--container', multiple=True, help=f"Select which containers to log."
@@ -585,7 +589,9 @@ def logs(**kwargs):
     **kwargs
   )
 
-@workflow.command()
+@workflow.command(
+  help="Start a scaffold workflow and bring up service(s)",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
@@ -706,7 +712,7 @@ def up(**kwargs):
   )
 
 @workflow.command(
-  help="Scaffold workflow service certs"
+  help="Generate SSL certs for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
@@ -746,6 +752,7 @@ def rewrite(**kwargs):
   __services_rewrite(app, services, kwargs['workflow_name'])
 
 @workflow.command(
+  'filter',
   help="Configure include filter rules for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
@@ -753,7 +760,7 @@ def rewrite(**kwargs):
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
-def filter(**kwargs):
+def _filter(**kwargs):
   containerized = kwargs['containerized']
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
 
