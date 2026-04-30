@@ -5,7 +5,7 @@ cli:
     remote: bool()
 proxy:
   data: map(include('data_rules'), key=include('project_id'))
-  firewall: map(list(include('firewall_rule')), key=include('project_id'))
+  filter: map(list(include('filter_rule')), key=include('project_id'))
   match: map(list(include('match_rule')), key=include('project_id'), required=False)
   rewrite: map(list(include('rewrite_rule')), key=include('project_id'))
   intercept:
@@ -22,7 +22,7 @@ ui:
   url: str()
 ---
 component: enum('Body Param', 'Header', 'Query Param')
-firewall_action: enum('exclude', 'include')
+filter_action: enum('exclude', 'include')
 method: enum('DELETE', 'GET', 'OPTIONS', 'POST', 'PUT')
 mock_policy: enum('all', 'found', 'none')
 mode: enum('mock', 'record', 'replay', 'test')
@@ -56,8 +56,8 @@ url_rule:
   path: str()
   port: str()
   scheme: str()
-firewall_rule:
-  action: include('firewall_action')
+filter_rule:
+  action: include('filter_action')
   methods: list(include('method'))
   modes: list(include('mode'), min=1, max=4)
   pattern: str()

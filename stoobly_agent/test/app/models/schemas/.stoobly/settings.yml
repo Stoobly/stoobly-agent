@@ -19,7 +19,7 @@ proxy:
       scenario_key: null
       test_policy: found
       test_strategy: diff
-  firewall: {}
+  filter: {}
   intercept:
     active: false
     mode: record

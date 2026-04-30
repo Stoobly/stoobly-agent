@@ -1,16 +1,16 @@
 from typing import List
 
-from .types.proxy_settings import FirewallRule as IFirewallRule
+from .types.proxy_settings import FilterRule as IFilterRule
 
-class FirewallRule:
+class FilterRule:
 
-  def __init__(self, firewall_rule: IFirewallRule):
-    self.__firewall_rule = firewall_rule
+  def __init__(self, filter_rule: IFilterRule):
+    self.__filter_rule = filter_rule
 
-    self.__action = self.__firewall_rule.get('action')
-    self.__methods = self.__firewall_rule.get('methods') or []
-    self.__modes = self.__firewall_rule.get('modes') or []
-    self.__pattern = self.__firewall_rule.get('pattern')
+    self.__action = self.__filter_rule.get('action')
+    self.__methods = self.__filter_rule.get('methods') or []
+    self.__modes = self.__filter_rule.get('modes') or []
+    self.__pattern = self.__filter_rule.get('pattern')
 
 
   @property 
