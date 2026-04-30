@@ -104,7 +104,7 @@ def eval_request(
                 query_params_builder.with_param(request_query_params.COMPUTE, '1')
 
     query_params = query_params_builder.build()
-    __filter_by_match_rules(request, intercept_settings.match_rules, query_params)
+    __filter_by_match_rules(request, intercept_settings.mock_match_rules, query_params)
 
     return request_model.response(**query_params)
 
