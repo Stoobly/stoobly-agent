@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from stoobly_agent.test.test_helper import reset
 from stoobly_agent.app.api.configs_controller import ConfigsController
-from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy, test_policy
+from stoobly_agent.config.constants import mock_policy, mode, normalize_policy, record_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -73,13 +73,13 @@ class TestConfigsController:
                 status=200
             )
 
-        def test_policies_replay_mode(self, settings, controller, mock_context):
-            settings.proxy.intercept.mode = mode.REPLAY
+        def test_policies_normalize_mode(self, settings, controller, mock_context):
+            settings.proxy.intercept.mode = mode.NORMALIZE
 
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[replay_policy.ALL],
+                json=[normalize_policy.ALL],
                 status=200
             )
 
@@ -131,7 +131,7 @@ class TestConfigsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
             assert response_data['modes'] == expected_modes
 
         def test_summary_without_agent_param(self, controller, mock_context):
@@ -142,7 +142,7 @@ class TestConfigsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
             assert response_data['modes'] == expected_modes
 
         @patch('stoobly_agent.app.api.configs_controller.ScenarioModel')

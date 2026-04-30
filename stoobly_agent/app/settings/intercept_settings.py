@@ -8,6 +8,13 @@ from stoobly_agent.config.constants import mode
 from .constants.intercept_mode import Mode
 from .types.proxy_settings import InterceptSettings as IInterceptSettings
 
+_LEGACY_INTERCEPT_MODE_ALIASES = {'replay': mode.NORMALIZE}
+
+def coerce_intercept_mode_value(v: Union[str, None]) -> Union[str, None]:
+  if v is None:
+    return v
+  return _LEGACY_INTERCEPT_MODE_ALIASES.get(v, v)
+
 class InterceptSettings:
   __intercept_settings = None
 
@@ -33,7 +40,8 @@ class InterceptSettings:
 
   @property
   def mode_before_change(self) -> Union[Mode, mode.NONE]:
-    return self.__intercept_settings.get('mode') or mode.NONE
+    raw = self.__intercept_settings.get('mode') or mode.NONE
+    return coerce_intercept_mode_value(raw) or mode.NONE
 
   @property
   def mode(self) -> Mode:
@@ -41,13 +49,14 @@ class InterceptSettings:
       return self.__mode
 
     if os.environ.get(env_vars.AGENT_INTERCEPT_MODE):
-        return os.environ[env_vars.AGENT_INTERCEPT_MODE]
+        return coerce_intercept_mode_value(os.environ[env_vars.AGENT_INTERCEPT_MODE])
 
     return self.__mode
 
   @mode.setter
   def mode(self, v):
-    if v in [mode.MOCK, mode.NONE, mode.RECORD, mode.REPLAY, mode.TEST]:
+    v = coerce_intercept_mode_value(v)
+    if v in [mode.MOCK, mode.NONE, mode.NORMALIZE, mode.RECORD, mode.TEST]:
       self.__mode = v
       self.__intercept_settings['mode'] = v
 

@@ -136,6 +136,7 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
+      pdb.set_trace()
       _append_error_to_tmp_log([
         f"cli_workflow_up failed with exit code {result.exit_code}",
         f"Output: {result.output}",

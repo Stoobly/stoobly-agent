@@ -733,7 +733,7 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
-  help="Sync replay rewrite rules from service upstream hostname, port, and scheme"
+  help="Sync normalize rewrite rules from service upstream hostname, port, and scheme"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')

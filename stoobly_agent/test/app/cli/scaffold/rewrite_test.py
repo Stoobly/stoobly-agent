@@ -61,7 +61,7 @@ def test_apply_upstream_url_rewrite_applies_when_upstream_differs(monkeypatch):
   assert kwargs == {
     "pattern": "https://api.example.test/?.*?",
     "method": [method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
-    "mode": [mode.REPLAY],
+    "mode": [mode.NORMALIZE],
     "hostname": "upstream.example.test",
     "port": 8443,
     "scheme": "https",

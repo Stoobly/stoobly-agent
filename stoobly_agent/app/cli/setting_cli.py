@@ -218,7 +218,7 @@ def rewrite(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE])
 )
 @click.option('--name', help='Name of the request component.')
 @click.option('--path', help='Request URL path to rewrite to.')
@@ -353,7 +353,7 @@ def _filter(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST])
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add filter rule to.')(f), is_remote)

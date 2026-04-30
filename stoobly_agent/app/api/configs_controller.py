@@ -8,7 +8,7 @@ from stoobly_agent.app.cli.helpers.handle_config_update_service import (
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy, test_policy
+from stoobly_agent.config.constants import mock_policy, mode, normalize_policy, record_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -48,9 +48,9 @@ class ConfigsController:
                 json = [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND],
                 status = 200
             )
-        elif active_mode == mode.REPLAY:
+        elif active_mode == mode.NORMALIZE:
             context.render(
-                json = [replay_policy.ALL],
+                json = [normalize_policy.ALL],
                 status = 200
             )
 
@@ -90,7 +90,7 @@ class ConfigsController:
 
         remote_project_id = self.__remote_project_id(settings)
 
-        modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
+        modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
 
         context.render(
             json = {

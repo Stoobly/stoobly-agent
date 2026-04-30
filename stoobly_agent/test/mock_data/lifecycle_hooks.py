@@ -13,8 +13,8 @@ def handle_before_record(context: RecordContext):
 def handle_before_mock(context: MockContext):
   print('before_mock')
 
-def handle_before_replay(context: ReplayContext):
-  print('before_replay')
+def handle_before_normalize(context: ReplayContext):
+  print('before_normalize')
 
 def handle_before_test(context: ReplayContext):
   print('before_test')
@@ -25,8 +25,8 @@ def handle_after_record(context: RecordContext):
 def handle_after_mock(context: MockContext):
   print('after_mock')
 
-def handle_after_replay(context: ReplayContext):
-  print('after_replay')
+def handle_after_normalize(context: ReplayContext):
+  print('after_normalize')
 
 def handle_after_test(context: TestContext):
   print('after_test')

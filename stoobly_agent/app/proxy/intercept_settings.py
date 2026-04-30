@@ -53,7 +53,7 @@ class InterceptSettings:
 
     self._mock_rewrite_rules = None
     self._record_rewrite_rules = None
-    self._replay_rewrite_rules = None
+    self._normalize_rewrite_rules = None
     self._test_rewrite_rules = None
 
   def with_cache(self, cache: Cache):
@@ -355,13 +355,13 @@ class InterceptSettings:
   @property
   def match_rules(self) -> List[MatchRule]:
     _mode = self.mode
-    rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    rules = list(filter(lambda rule: self.__rule_modes_match(_mode, rule.modes), self.__match_rules))
     
     # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
     # Expected format from stoobly-js:
     # [
     #   {
-    #     modes: ['replay', 'mock'],
+    #     modes: ['normalize', 'mock'],
     #     components: 'Header'  // Single RequestParameter value
     #   }
     # ]
@@ -427,10 +427,10 @@ class InterceptSettings:
     return self._mock_rewrite_rules
 
   @property
-  def replay_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._replay_rewrite_rules:
-      self._replay_rewrite_rules = self.__select_rewrite_rules(mode.REPLAY)
-    return self._replay_rewrite_rules
+  def normalize_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._normalize_rewrite_rules:
+      self._normalize_rewrite_rules = self.__select_rewrite_rules(mode.NORMALIZE)
+    return self._normalize_rewrite_rules
 
   @property
   def test_rewrite_rules(self) -> List[RewriteRule]:
@@ -489,16 +489,27 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
+  def __rule_modes_match(self, active_mode: str, rule_modes: List[str]) -> bool:
+    if not rule_modes:
+      return False
+    if active_mode in rule_modes:
+      return True
+    if active_mode == mode.NORMALIZE and 'replay' in rule_modes:
+      return True
+    return False
+
   def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.EXCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__rule_modes_match(mode, rule.modes) and rule.action == filter_action.EXCLUDE, self.__filter_rules))
 
   def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.INCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__rule_modes_match(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
 
   def for_response(self):
     self.__for_response = True
 
   def policy_for_mode(self, mode):
+    if mode == 'replay':
+      mode = intercept_mode.NORMALIZE
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
         return self.__headers[custom_headers.MOCK_POLICY]
@@ -514,8 +525,8 @@ class InterceptSettings:
         return self.__headers[custom_headers.TEST_POLICY]
 
       return self.__data_rules.test_policy
-    elif mode == intercept_mode.REPLAY:
-      return self.__data_rules.replay_policy
+    elif mode == intercept_mode.NORMALIZE:
+      return self.__data_rules.normalize_policy
 
   def __select_rewrite_rules(self, mode = None):
     mode = mode or self.mode
@@ -600,14 +611,14 @@ class InterceptSettings:
   def __select_parameter_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda parameter: mode in parameter.modes and parameter.name, 
+      lambda parameter: self.__rule_modes_match(mode, parameter.modes) and parameter.name,
       rewrite_rule.parameter_rules or []
     ))
 
   def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda url: mode in url.modes,
+      lambda url: self.__rule_modes_match(mode, url.modes),
       rewrite_rule.url_rules or []
     ))
 

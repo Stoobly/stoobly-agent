@@ -14,7 +14,7 @@ from stoobly_agent.test.test_helper import reset
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-from stoobly_agent.config.constants import env_vars, mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_policy, test_strategy
+from stoobly_agent.config.constants import env_vars, mode, mock_policy, normalize_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
 
 @pytest.fixture(scope='module')
 def runner():
@@ -158,23 +158,23 @@ class TestInterceptSet():
     class TestReplayPolicy():
 
       def test_policy_replay_mode_all(self, runner: CliRunner):
-        set_result = runner.invoke(intercept, ['set', '--mode', mode.REPLAY, '--policy', replay_policy.ALL])
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.NORMALIZE, '--policy', normalize_policy.ALL])
         assert set_result.exit_code == 0
 
         settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        assert data_rule.replay_policy == replay_policy.ALL
+        assert data_rule.normalize_policy == normalize_policy.ALL
 
       def test_policy_without_mode_replay_existing(self, runner: CliRunner):
-        runner.invoke(intercept, ['set', '--mode', mode.REPLAY])
-        set_result = runner.invoke(intercept, ['set', '--policy', replay_policy.ALL])
+        runner.invoke(intercept, ['set', '--mode', mode.NORMALIZE])
+        set_result = runner.invoke(intercept, ['set', '--policy', normalize_policy.ALL])
         assert set_result.exit_code == 0
 
         settings = Settings.instance()
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        assert data_rule.replay_policy == replay_policy.ALL
+        assert data_rule.normalize_policy == normalize_policy.ALL
 
     class TestTestPolicy():
       def test_policy_test_mode_found(self, runner: CliRunner, intercept_cli: Group):
@@ -220,8 +220,8 @@ class TestInterceptSet():
         assert "Valid policies for" in set_result.output
 
       def test_policy_invalid_for_replay_mode(self, runner: CliRunner):
-        # Use record_policy.API which is not valid for REPLAY mode
-        set_result = runner.invoke(intercept, ['set', '--mode', mode.REPLAY, '--policy', record_policy.API])
+        # Use record_policy.API which is not valid for NORMALIZE mode
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.NORMALIZE, '--policy', record_policy.API])
         assert set_result.exit_code == 1
         assert "Error: Valid policies for" in set_result.output
 
@@ -301,7 +301,7 @@ class TestInterceptSet():
         assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
 
       def test_strategy_replay_mode_error(self, runner: CliRunner):
-        set_result = runner.invoke(intercept, ['set', '--mode', mode.REPLAY, '--strategy', record_strategy.FULL])
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.NORMALIZE, '--strategy', record_strategy.FULL])
         assert set_result.exit_code == 1
         assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
 

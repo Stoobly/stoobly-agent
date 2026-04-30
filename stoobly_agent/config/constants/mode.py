@@ -2,8 +2,8 @@ from typing import Literal
 
 MOCK = 'mock'
 NONE = 'none'
+NORMALIZE = 'normalize'
 RECORD = 'record'
-REPLAY = 'replay'
 TEST = 'test'
 
-AgentMode = Literal[MOCK, NONE, RECORD, REPLAY, TEST]
+AgentMode = Literal[MOCK, NONE, NORMALIZE, RECORD, TEST]

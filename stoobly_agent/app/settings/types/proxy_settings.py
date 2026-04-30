@@ -39,7 +39,7 @@ class RewriteRule(TypedDict):
   url_rule: List[UrlRule]
 
 class FilterRule(TypedDict):
-  action: List[FilterAction]
+  action: FilterAction
   modes: List[Mode]
   pattern: str
 

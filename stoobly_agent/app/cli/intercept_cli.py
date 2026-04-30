@@ -3,10 +3,10 @@ import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode, mock_policy, record_order, record_policy, record_strategy, replay_policy, test_policy, test_strategy
+from stoobly_agent.config.constants import mode, mock_policy, normalize_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-mode_options = [mode.MOCK, mode.RECORD, mode.REPLAY, mode.TEST]
+mode_options = [mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE]
 settings: Settings = Settings.instance()
 
 active_mode = settings.proxy.intercept.mode
@@ -22,8 +22,8 @@ def __get_policy_options(active_mode: str) -> list[str]:
         return [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE]
     elif active_mode == mode.RECORD:
         return [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND]
-    elif active_mode == mode.REPLAY:
-        return [replay_policy.ALL]
+    elif active_mode == mode.NORMALIZE:
+        return [normalize_policy.ALL]
     elif active_mode == mode.TEST:
         return [test_policy.FOUND, test_policy.NONE]
     else:
@@ -138,8 +138,8 @@ def set(**kwargs):
             data_rule.mock_policy = kwargs['policy']
         elif active_mode == mode.RECORD:
             data_rule.record_policy = kwargs['policy']
-        elif active_mode == mode.REPLAY:
-            data_rule.replay_policy = kwargs['policy']
+        elif active_mode == mode.NORMALIZE:
+            data_rule.normalize_policy = kwargs['policy']
         elif active_mode == mode.TEST:
             data_rule.test_policy = kwargs['policy']
 
@@ -199,8 +199,8 @@ def show(**kwargs):
     elif active_mode == mode.RECORD:
         policy = data_rule.record_policy
         strategy = data_rule.record_strategy
-    elif active_mode == mode.REPLAY:
-        policy = data_rule.replay_policy
+    elif active_mode == mode.NORMALIZE:
+        policy = data_rule.normalize_policy
     elif active_mode == mode.TEST:
         policy = data_rule.test_policy
         strategy = data_rule.test_strategy
