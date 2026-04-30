@@ -222,7 +222,7 @@ class TestLocalScaffoldE2e():
       assert external_service_name in services, f"External service {external_service_name} should exist"
       assert local_service_name in services, f"Local service {local_service_name} should exist"
 
-    def test_workflow_firewall(self, proxy_url: str):
+    def test_workflow_filter(self, proxy_url: str):
       """Test workflow up command for local execution"""
       # Use http send request with proxy, do this in python, make the following not check ssl cert
       res = requests.get('https://www.google.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)

@@ -5,39 +5,39 @@ from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
-from stoobly_agent.app.cli.scaffold.workflow_firewall import (
+from stoobly_agent.app.cli.scaffold.workflow_filter import (
   HTTP_METHODS,
-  build_include_firewall_rule_for_service_url,
-  upsert_firewall_rule,
-  workflow_template_to_firewall_mode,
+  build_include_filter_rule_for_service_url,
+  upsert_filter_rule,
+  workflow_template_to_filter_mode,
 )
-from stoobly_agent.app.settings.constants import firewall_action
+from stoobly_agent.app.settings.constants import filter_action
 from stoobly_agent.config.constants import mode
 
 
-def build_workflow_firewall_rules(
+def build_workflow_filter_rules(
   *,
-  existing_firewall_rules: list,
+  existing_filter_rules: list,
   service_urls: list,
   workflow_template: str,
 ):
   """
-  Test-only helper that mirrors the CLI behavior for firewall rule application.
+  Test-only helper that mirrors the CLI behavior for filter rule application.
   """
-  firewall_mode = workflow_template_to_firewall_mode(workflow_template)
-  firewall_rules = list(existing_firewall_rules)
+  filter_mode = workflow_template_to_filter_mode(workflow_template)
+  filter_rules = list(existing_filter_rules)
 
   for service_url in service_urls:
     if not service_url:
       continue
 
-    new_rule = build_include_firewall_rule_for_service_url(
+    new_rule = build_include_filter_rule_for_service_url(
       service_url=service_url,
-      firewall_mode=firewall_mode,
+      filter_mode=filter_mode,
     )
-    upsert_firewall_rule(firewall_rules=firewall_rules, new_rule=new_rule)
+    upsert_filter_rule(filter_rules=filter_rules, new_rule=new_rule)
 
-  return firewall_rules
+  return filter_rules
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,7 @@ def build_workflow_firewall_rules(
     (WORKFLOW_TEST_TYPE, mode.MOCK),
   ],
 )
-def test_build_workflow_firewall_rules_applied_for_each_service(
+def test_build_workflow_filter_rules_applied_for_each_service(
   workflow_template: str,
   expected_mode: str,
 ):
@@ -59,8 +59,8 @@ def test_build_workflow_firewall_rules_applied_for_each_service(
     "http://local-service",
   ]
 
-  updated_rules = build_workflow_firewall_rules(
-    existing_firewall_rules=existing_rules,
+  updated_rules = build_workflow_filter_rules(
+    existing_filter_rules=existing_rules,
     service_urls=service_urls,
     workflow_template=workflow_template,
   )
@@ -70,7 +70,7 @@ def test_build_workflow_firewall_rules_applied_for_each_service(
   for url in service_urls:
     expected_pattern = f"{url}/?.*?"
     assert any(
-      rule.action == firewall_action.INCLUDE
+      rule.action == filter_action.INCLUDE
       and rule.pattern == expected_pattern
       and rule.methods == HTTP_METHODS
       and rule.modes == [expected_mode]
@@ -78,20 +78,20 @@ def test_build_workflow_firewall_rules_applied_for_each_service(
     )
 
 
-def test_build_workflow_firewall_rules_upserts_on_pattern_and_methods():
+def test_build_workflow_filter_rules_upserts_on_pattern_and_methods():
   # Start with an incorrect mode for an existing rule.
   service_url = "http://external-api"
   expected_pattern = f"{service_url}/?.*?"
 
-  existing_rules = build_workflow_firewall_rules(
-    existing_firewall_rules=[],
+  existing_rules = build_workflow_filter_rules(
+    existing_filter_rules=[],
     service_urls=[service_url],
     workflow_template=WORKFLOW_MOCK_TYPE,
   )
   assert existing_rules[0].modes == [mode.MOCK]
 
-  updated_rules = build_workflow_firewall_rules(
-    existing_firewall_rules=existing_rules,
+  updated_rules = build_workflow_filter_rules(
+    existing_filter_rules=existing_rules,
     service_urls=[service_url],
     workflow_template=WORKFLOW_RECORD_TYPE,
   )
@@ -99,6 +99,6 @@ def test_build_workflow_firewall_rules_upserts_on_pattern_and_methods():
   assert len(updated_rules) == 1
   assert updated_rules[0].pattern == expected_pattern
   assert updated_rules[0].methods == HTTP_METHODS
-  assert updated_rules[0].action == firewall_action.INCLUDE
+  assert updated_rules[0].action == filter_action.INCLUDE
   assert updated_rules[0].modes == [mode.RECORD]
 

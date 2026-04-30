@@ -13,7 +13,7 @@ from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
-from stoobly_agent.app.settings.constants import firewall_action, request_component
+from stoobly_agent.app.settings.constants import filter_action, request_component
 from stoobly_agent.config.constants import custom_headers, mode, record_order, record_policy, request_origin
 from stoobly_agent.cli import mock, record
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
@@ -200,7 +200,7 @@ class TestRecording():
         with pytest.raises(json.decoder.JSONDecodeError):
           json.loads(body)
 
-  class TestFirewall():
+  class TestFilter():
     @pytest.fixture(scope='function', autouse=True)
     def settings(self):
       return reset()
@@ -209,8 +209,8 @@ class TestRecording():
 
       def test_it_does_not_exclude(self, runner: CliRunner):
         rewrite_result = runner.invoke(setting, [
-            'firewall', 'set', 
-            '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
+            'filter', 'set',
+            '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', filter_action.EXCLUDE
           ]
         )
         assert rewrite_result.exit_code == 0
@@ -222,8 +222,8 @@ class TestRecording():
 
       def test_it_includes(self, runner: CliRunner):
         rewrite_result = runner.invoke(setting, [
-            'firewall', 'set', 
-            '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', firewall_action.INCLUDE
+            'filter', 'set',
+            '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', filter_action.INCLUDE
           ]
         )
         assert rewrite_result.exit_code == 0
@@ -242,8 +242,8 @@ class TestRecording():
 
       def test_it_excludes(self, runner: CliRunner):
         rewrite_result = runner.invoke(setting, [
-            'firewall', 'set', 
-            '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
+            'filter', 'set',
+            '--method', 'GET', '--mode', mode.RECORD, '--pattern', '.*?', '--action', filter_action.EXCLUDE
           ]
         )
         assert rewrite_result.exit_code == 0
@@ -255,8 +255,8 @@ class TestRecording():
 
       def test_it_checks_mode(self, runner: CliRunner):
         rewrite_result = runner.invoke(setting, [
-            'firewall', 'set', 
-            '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--action', firewall_action.EXCLUDE
+            'filter', 'set',
+            '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--action', filter_action.EXCLUDE
           ]
         )
         assert rewrite_result.exit_code == 0
@@ -268,8 +268,8 @@ class TestRecording():
 
       def test_it_includes(self, runner: CliRunner):
         rewrite_result = runner.invoke(setting, [
-            'firewall', 'set', 
-            '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', firewall_action.INCLUDE
+            'filter', 'set',
+            '--method', 'GET', '--mode', mode.RECORD, '--pattern', DETERMINISTIC_GET_REQUEST_URL, '--action', filter_action.INCLUDE
           ]
         )
         assert rewrite_result.exit_code == 0

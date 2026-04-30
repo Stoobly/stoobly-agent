@@ -10,7 +10,7 @@ proxy:
         active: false
         mode: record
         project_key: eyJpIjowLCJvIjowfQ==
-    firewall: {}
+    filter: {}
     rewrite: {}
 remote: 
     api_key: ''

@@ -11,10 +11,10 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.cli.helpers.feature_flags import is_remote
-from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
+from stoobly_agent.app.settings.constants import filter_action, intercept_mode
 from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
-from stoobly_agent.app.settings.firewall_rule import FirewallRule
+from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.match_rule import MatchRule as MatchRuleClass
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
@@ -44,7 +44,7 @@ class InterceptSettings:
     # Otherwise, set settings for the project
     self.__data_rules = self.__settings.proxy.data.data_rules(project_id)
     self.__rewrite_rules = self.__settings.proxy.rewrite.rewrite_rules(project_id)
-    self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
+    self.__filter_rules = self.__settings.proxy.filter.filter_rules(project_id)
     self.__intercept_settings = self.__settings.proxy.intercept 
     self.__match_rules = self.__settings.proxy.match.match_rules(project_id)
 
@@ -343,12 +343,12 @@ class InterceptSettings:
     return self.__data_rules.record_strategy
 
   @property
-  def exclude_rules(self) -> List[FirewallRule]:
+  def exclude_rules(self) -> List[FilterRule]:
     _mode = self.mode
     return self.exclude_rules_for_mode(_mode)
 
   @property
-  def include_rules(self) -> List[FirewallRule]:
+  def include_rules(self) -> List[FilterRule]:
     _mode = self.mode
     return self.include_rules_for_mode(_mode)
 
@@ -489,11 +489,11 @@ class InterceptSettings:
 
     return request_origin.PROXY
 
-  def exclude_rules_for_mode(self, mode: str) -> List[FirewallRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
+  def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.EXCLUDE, self.__filter_rules))
 
-  def include_rules_for_mode(self, mode: str) -> List[FirewallRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
+  def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
+    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.INCLUDE, self.__filter_rules))
 
   def for_response(self):
     self.__for_response = True

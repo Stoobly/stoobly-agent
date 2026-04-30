@@ -3,4 +3,4 @@ from typing import Literal
 EXCLUDE = 'exclude'
 INCLUDE = 'include'
 
-FirewallAction = Literal[EXCLUDE, INCLUDE]
+FilterAction = Literal[EXCLUDE, INCLUDE]

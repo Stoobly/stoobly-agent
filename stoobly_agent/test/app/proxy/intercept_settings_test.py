@@ -28,12 +28,12 @@ def mock_settings():
     settings.proxy.intercept = MagicMock()
     settings.proxy.match = MagicMock()
     settings.proxy.rewrite = MagicMock()
-    settings.proxy.firewall = MagicMock()
+    settings.proxy.filter = MagicMock()
     # Use a properly encoded project key with id=1
     settings.proxy.intercept.project_key = ProjectKey.encode(1, 1).decode()
     settings.proxy.match.match_rules.return_value = []
     settings.proxy.rewrite.rewrite_rules.return_value = []
-    settings.proxy.firewall.firewall_rules.return_value = []
+    settings.proxy.filter.filter_rules.return_value = []
     return settings
 
 
