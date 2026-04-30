@@ -11,9 +11,7 @@ class DataRules:
     self.__record_order = self.__data_rules.get('record_order') or record_order.APPEND
     self.__record_policy = self.__data_rules.get('record_policy') or record_policy.ALL
     self.__record_strategy = self.__data_rules.get('record_strategy') or record_strategy.FULL
-    _np = self.__data_rules.get('normalize_policy')
-    _legacy_rp = self.__data_rules.get('replay_policy')
-    self.__normalize_policy = _np or _legacy_rp or normalize_policy.ALL
+    self.__normalize_policy = self.__data_rules.get('normalize_policy') or normalize_policy.ALL
     self.__scenario_key = self.__data_rules.get('scenario_key')
     self.__test_policy = self.__data_rules.get('test_policy') or test_policy.FOUND
     self.__test_strategy = self.__data_rules.get('test_strategy') or test_strategy.DIFF
@@ -70,8 +68,6 @@ class DataRules:
   def normalize_policy(self, v):
     self.__normalize_policy = v
     self.__data_rules['normalize_policy'] = v
-    if 'replay_policy' in self.__data_rules:
-      del self.__data_rules['replay_policy']
 
   @property
   def scenario_key(self):

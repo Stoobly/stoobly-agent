@@ -494,8 +494,6 @@ class InterceptSettings:
       return False
     if active_mode in rule_modes:
       return True
-    if active_mode == mode.NORMALIZE and 'replay' in rule_modes:
-      return True
     return False
 
   def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
@@ -508,8 +506,6 @@ class InterceptSettings:
     self.__for_response = True
 
   def policy_for_mode(self, mode):
-    if mode == 'replay':
-      mode = intercept_mode.NORMALIZE
     if mode == intercept_mode.MOCK:
       if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
         return self.__headers[custom_headers.MOCK_POLICY]
