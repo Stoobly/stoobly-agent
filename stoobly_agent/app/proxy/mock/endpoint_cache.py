@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -12,8 +11,9 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse, IgnoredComponent
+from stoobly_agent.lib.logger import Logger
 
-logger = logging.getLogger(__name__)
+logger = Logger.instance('EndpointCache')
 
 LayerKind = str  # "openapi" | "project"
 
@@ -25,7 +25,9 @@ def load_openapi_endpoints_from_file(open_api_spec: str) -> List[EndpointShowRes
   try:
     return OpenApiEndpointAdapter().adapt_from_file(open_api_spec)
   except Exception as e:
-    logger.warning("Failed to load OpenAPI spec %s: %s", open_api_spec, e)
+    # Create relative path to the open_api_spec file
+    relative_path = os.path.relpath(open_api_spec, os.getcwd())
+    logger.warning("Failed to load OpenAPI spec %s: %s", relative_path, e)
     return []
 
 
