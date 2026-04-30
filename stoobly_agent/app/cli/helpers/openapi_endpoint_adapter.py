@@ -69,6 +69,9 @@ class OpenApiEndpointAdapter():
     with open(file_path, "r") as stream:
       file_data: Dict = yaml.safe_load(stream)
 
+      if not file_data:
+        return []
+
       if 'info' not in file_data:
         self.__add_info(file_data)
 

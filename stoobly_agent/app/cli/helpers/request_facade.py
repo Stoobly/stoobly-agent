@@ -55,7 +55,7 @@ class RequestFacade(ReplayFacade):
     # Because record mode also applies replay rules, if record option is set,
     # Use record mode instead of replay mode
     replay_options = {
-      'mode': mode.RECORD if cli_options.get('record') else mode.REPLAY,
+      'mode': mode.RECORD if cli_options.get('record') else mode.NORMALIZE,
       **self.__common_replay_options(request_key),
       **self.common_replay_cli_options(cli_options)
     }

@@ -53,7 +53,7 @@ class InterceptSettings:
 
     self._mock_rewrite_rules = None
     self._record_rewrite_rules = None
-    self._replay_rewrite_rules = None
+    self._normalize_rewrite_rules = None
     self._test_rewrite_rules = None
 
   def with_cache(self, cache: Cache):
@@ -347,6 +347,11 @@ class InterceptSettings:
     _mode = self.mode
     return self.exclude_rules_for_mode(_mode)
 
+  # TODO: explore if should support specifying components to ignore
+  @property
+  def ignore_rules(self) -> List[IgnoreRule]:
+    return []
+
   @property
   def include_rules(self) -> List[FilterRule]:
     _mode = self.mode
@@ -354,56 +359,11 @@ class InterceptSettings:
 
   @property
   def match_rules(self) -> List[MatchRule]:
-    _mode = self.mode
-    rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
-    
-    # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
-    # Expected format from stoobly-js:
-    # [
-    #   {
-    #     modes: ['replay', 'mock'],
-    #     components: 'Header'  // Single RequestParameter value
-    #   }
-    # ]
-    if self.__headers and custom_headers.REQUEST_MATCH_RULES in self.__headers and self.__request:
-      value = self.__headers[custom_headers.REQUEST_MATCH_RULES]
-      if value:
-        try:
-          decoded = base64.b64decode(value).decode('utf-8')
-          match_rules_data = json.loads(decoded)
-          if isinstance(match_rules_data, list):
-            for match_rule_data in match_rules_data:
-              if not isinstance(match_rule_data, dict):
-                continue
-              
-              # Get components - stoobly-js sends a single string, but agent expects array
-              components_value = match_rule_data.get('components')
-              if not components_value or not isinstance(components_value, str):
-                continue
-              
-              # Convert single component to array (agent expects List[RequestComponent])
-              components = [components_value.strip()]
-              
-              # Get modes (optional, defaults to current mode)
-              modes = match_rule_data.get('modes', [_mode])
-              if not isinstance(modes, list):
-                modes = [_mode]
-              
-              header_rule = MatchRuleClass({
-                'components': components,
-                'methods': [self.__request.method.upper()],
-                'modes': modes,
-                'pattern': re.escape(self.__request.url),
-              })
-              rules.append(header_rule)
-        except (json.JSONDecodeError, ValueError) as e:
-          Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
-    return rules
+    return self.__select_match_rules(self.mode)
 
-  # TODO: explore if should support specifying components to ignore
   @property
-  def ignore_rules(self) -> List[IgnoreRule]:
-    return []
+  def mock_match_rules(self) -> List[MatchRule]:
+    return self.__select_match_rules(mode.MOCK)
 
   @property
   def rewrite_rules(self) -> List[RewriteRule]:
@@ -427,10 +387,10 @@ class InterceptSettings:
     return self._mock_rewrite_rules
 
   @property
-  def replay_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._replay_rewrite_rules:
-      self._replay_rewrite_rules = self.__select_rewrite_rules(mode.REPLAY)
-    return self._replay_rewrite_rules
+  def normalize_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._normalize_rewrite_rules:
+      self._normalize_rewrite_rules = self.__select_rewrite_rules(mode.NORMALIZE)
+    return self._normalize_rewrite_rules
 
   @property
   def test_rewrite_rules(self) -> List[RewriteRule]:
@@ -490,10 +450,10 @@ class InterceptSettings:
     return request_origin.PROXY
 
   def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.EXCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.EXCLUDE, self.__filter_rules))
 
   def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == filter_action.INCLUDE, self.__filter_rules))
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
 
   def for_response(self):
     self.__for_response = True
@@ -514,8 +474,54 @@ class InterceptSettings:
         return self.__headers[custom_headers.TEST_POLICY]
 
       return self.__data_rules.test_policy
-    elif mode == intercept_mode.REPLAY:
-      return self.__data_rules.replay_policy
+    elif mode == intercept_mode.NORMALIZE:
+      return self.__data_rules.normalize_policy
+
+  def __select_match_rules(self, _mode: str) -> List[MatchRule]:
+    rules = list(filter(lambda rule: self.__mode_in_modes(_mode, rule.modes), self.__match_rules))
+    
+    # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
+    # Expected format from stoobly-js:
+    # [
+    #   {
+    #     modes: ['normalize', 'mock'],
+    #     components: 'Header'  // Single RequestParameter value
+    #   }
+    # ]
+    if self.__headers and custom_headers.REQUEST_MATCH_RULES in self.__headers and self.__request:
+      value = self.__headers[custom_headers.REQUEST_MATCH_RULES]
+      if value:
+        try:
+          decoded = base64.b64decode(value).decode('utf-8')
+          match_rules_data = json.loads(decoded)
+          if isinstance(match_rules_data, list):
+            for match_rule_data in match_rules_data:
+              if not isinstance(match_rule_data, dict):
+                continue
+              
+              # Get components - stoobly-js sends a single string, but agent expects array
+              components_value = match_rule_data.get('components')
+              if not components_value or not isinstance(components_value, str):
+                continue
+              
+              # Convert single component to array (agent expects List[RequestComponent])
+              components = [components_value.strip()]
+              
+              # Get modes (optional, defaults to current mode)
+              modes = match_rule_data.get('modes', [_mode])
+              if not isinstance(modes, list):
+                modes = [_mode]
+              
+              header_rule = MatchRuleClass({
+                'components': components,
+                'methods': [self.__request.method.upper()],
+                'modes': modes,
+                'pattern': re.escape(self.__request.url),
+              })
+              rules.append(header_rule)
+        except (json.JSONDecodeError, ValueError) as e:
+          Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
+    return rules
 
   def __select_rewrite_rules(self, mode = None):
     mode = mode or self.mode
@@ -600,14 +606,14 @@ class InterceptSettings:
   def __select_parameter_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda parameter: mode in parameter.modes and parameter.name, 
+      lambda parameter: self.__mode_in_modes(mode, parameter.modes) and parameter.name,
       rewrite_rule.parameter_rules or []
     ))
 
   def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda url: mode in url.modes,
+      lambda url: self.__mode_in_modes(mode, url.modes),
       rewrite_rule.url_rules or []
     ))
 
@@ -684,3 +690,10 @@ class InterceptSettings:
         return item['path']
 
     return None
+
+  def __mode_in_modes(self, active_mode: str, rule_modes: List[str]) -> bool:
+    if not rule_modes:
+      return False
+    if active_mode in rule_modes:
+      return True
+    return False
