@@ -8,6 +8,7 @@ import atexit
 import re
 import subprocess
 import sys
+import threading
 import time
 from typing import TYPE_CHECKING, Final, Optional
 
@@ -53,6 +54,7 @@ class InterceptedRequestsLogger():
     _settings: Settings = Settings.instance()
     _file_path: str = None
     _previous_scenario_key: str = None
+    _scenario_key_lock: threading.Lock = threading.Lock()
 
     # Feature flag: Set to True to enable async queue-based logging
     _USE_ASYNC_QUEUE: bool = True
@@ -592,9 +594,10 @@ class InterceptedRequestsLogger():
         intercept_settings = InterceptSettings(base._settings)
         current_scenario_key = intercept_settings.scenario_key
 
-        if base._previous_scenario_key != current_scenario_key:
-            cls._log_scenario_change_delimiter(base._previous_scenario_key, current_scenario_key)
-            base._previous_scenario_key = current_scenario_key
+        with base._scenario_key_lock:
+            if base._previous_scenario_key != current_scenario_key:
+                cls._log_scenario_change_delimiter(base._previous_scenario_key, current_scenario_key)
+                base._previous_scenario_key = current_scenario_key
 
     @classmethod
     def debug(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:

@@ -30,17 +30,21 @@ def _append_error_to_tmp_log(lines):
 class ScaffoldCliInvoker():
 
   @staticmethod
-  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse'):
+  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse', proxy_port: int = None):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
 
-    result = runner.invoke(scaffold, ['app', 'create',
+    command = ['app', 'create',
       '--app-dir-path', app_dir_path,
       '--copy-on-workflow-up',
       '--quiet',
       '--runtime', 'docker',
       '--proxy-mode', proxy_mode,
-      app_name
-    ])
+    ]
+    if proxy_port is not None:
+      command += ['--proxy-port', str(proxy_port)]
+    command.append(app_name)
+
+    result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
       _append_error_to_tmp_log([
