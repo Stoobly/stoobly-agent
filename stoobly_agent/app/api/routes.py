@@ -9,12 +9,12 @@ from stoobly_agent.app.api.responses_controller import ResponsesController
 from stoobly_agent.app.api.response_headers_controller import ResponseHeadersController
 from stoobly_agent.app.api.scenarios_controller import ScenariosController
 
-from .configs_controller import ConfigsController
+from .settings_controller import SettingsController
 from .proxy_controller import ProxyController
 from .replayed_response_headers_controller import ReplayedResponseHeadersController
 from .statuses_controller import StatusesController
 
-CONFIGS_PATH = '/configs'
+SETTINGS_PATH = '/settings'
 PROXY_PATH = '/proxy'
 REQUESTS_PATH = '/requests'
 SCENARIOS_PATH = '/scenarios'
@@ -46,9 +46,9 @@ ROUTES = {
     [SCENARIO_PATH, ScenariosController.instance().destroy],
   ],
   'GET': [
-      [CONFIGS_PATH, ConfigsController.instance().show],
-      ['/'.join([CONFIGS_PATH, 'summary']), ConfigsController.instance().summary],
-      ['/'.join([CONFIGS_PATH, 'policies']), ConfigsController.instance().policies],
+      [SETTINGS_PATH, SettingsController.instance().show],
+      ['/'.join([SETTINGS_PATH, 'summary']), SettingsController.instance().summary],
+      ['/'.join([SETTINGS_PATH, 'policies']), SettingsController.instance().policies],
       ['/'.join([PROXY_PATH, 'get']), ProxyController.instance().do_GET],
       [re.compile('/'.join([BODIES_PATH.pattern, 'mock'])), BodiesController.instance().mock],
       [HEADERS_PATH, HeadersController.instance().index],
@@ -79,7 +79,7 @@ ROUTES = {
       [SCENARIOS_PATH, ScenariosController.instance().create],
   ],
   'PUT': [
-      [CONFIGS_PATH, ConfigsController.instance().update],
+      [SETTINGS_PATH, SettingsController.instance().update],
       ['/'.join([PROXY_PATH, 'put']), ProxyController.instance().do_PUT],
       [BODY_PATH, BodiesController.instance().update],
       [HEADER_PATH, HeadersController.instance().update],
