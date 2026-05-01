@@ -7,19 +7,18 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
-from stoobly_agent.app.settings.constants import intercept_mode
-from stoobly_agent.app.settings.firewall_rule import FirewallRule
-from stoobly_agent.config.constants import mode, intercept_policy, request_origin
+from stoobly_agent.app.settings.filter_rule import FilterRule
+from stoobly_agent.config.constants import intercept_policy, request_origin
 from stoobly_agent.lib.logger import bcolors, Logger
 
-LOG_ID = 'Firewall'
+LOG_ID = 'Filter'
 
-def get_active_mode_policy(request: 'MitmproxyRequest', intercept_settings: InterceptSettings, mode = None) -> str:
+def get_intercept_mode_policy(request: 'MitmproxyRequest', intercept_settings: InterceptSettings, mode = None) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
-        return intercept_settings.policy 
+        return intercept_settings.policy_for_mode(mode or intercept_settings.mode)
 
     if allowed_request(request, intercept_settings, mode):
-        return intercept_settings.policy
+        return intercept_settings.policy_for_mode(mode or intercept_settings.mode)
     else:
         # If the request path does not match accepted paths, do not intercept
         return intercept_policy.NONE
@@ -42,7 +41,7 @@ def allowed_request(request: 'MitmproxyRequest', intercept_settings: InterceptSe
     # If there are no exclude or include patterns, request is allowed
     return True
 
-def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[FirewallRule], mode: str):
+def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[FilterRule], mode: str):
     if exclude_rules:
         method = request.method.upper()
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
@@ -53,7 +52,7 @@ def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[Firewall
     
     return False
 
-def __request_included(request: 'MitmproxyRequest', include_rules: List[FirewallRule], mode: str):
+def __request_included(request: 'MitmproxyRequest', include_rules: List[FilterRule], mode: str):
     if not include_rules:
         return True
 

@@ -3,7 +3,7 @@ import os
 from stoobly_agent.config.constants import env_vars
 
 from .data_settings import DataSettings
-from .firewall_settings import FirewallSettings
+from .filter_settings import FilterSettings
 from .intercept_settings import InterceptSettings
 from .match_settings import MatchSettings
 from .rewrite_settings import RewriteSettings
@@ -15,7 +15,7 @@ class ProxySettings:
     self.__proxy_settings = proxy_settings or {}
 
     self.__data = DataSettings(self.__proxy_settings.get('data'))
-    self.__firewall = FirewallSettings(self.__proxy_settings.get('firewall'))
+    self.__filter = FilterSettings(self.__proxy_settings.get('filter'))
     self.__intercept = InterceptSettings(self.__proxy_settings.get('intercept'))
     self.__match = MatchSettings(self.__proxy_settings.get('match'))
     self.__rewrite = RewriteSettings(self.__proxy_settings.get('rewrite')) 
@@ -30,8 +30,8 @@ class ProxySettings:
     return self.__rewrite
 
   @property
-  def firewall(self) -> FirewallSettings:
-    return self.__firewall
+  def filter(self) -> FilterSettings:
+    return self.__filter
 
   @property
   def intercept(self) -> InterceptSettings:
@@ -55,7 +55,7 @@ class ProxySettings:
   def to_dict(self) -> IProxySettings:
     _dict = {
       'data': self.__data.to_dict(),
-      'firewall': self.__firewall.to_dict(),
+      'filter': self.__filter.to_dict(),
       'intercept': self.__intercept.to_dict(),
       'match': self.__match.to_dict(),
       'rewrite': self.__rewrite.to_dict(),

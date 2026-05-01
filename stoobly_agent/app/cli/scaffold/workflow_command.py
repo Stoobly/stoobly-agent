@@ -104,6 +104,13 @@ class WorkflowCommand(ServiceCommand):
     return os.path.join(self.workflow_path, CUSTOM_LIFECYCLE_HOOKS)
 
   @property
+  def openapi_specification_path(self):
+    if not self.service_config.openapi_specification:
+      return None
+
+    return self.service_config.openapi_specification_path
+
+  @property
   def workflow_config(self):
     return self.__config
 

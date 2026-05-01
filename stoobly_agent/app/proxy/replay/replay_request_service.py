@@ -30,7 +30,7 @@ class ReplayRequestOptions(TypedDict):
   group_by: str
   host: str
   lifecycle_hooks_path: str
-  mode: Union[mode.MOCK, mode.RECORD, mode.TEST, None]
+  mode: Union[mode.MOCK, mode.NORMALIZE, mode.RECORD, mode.TEST, None]
   before_replay: Union[Callable[[ReplayContext], None], None]
   after_replay: Union[Callable[[ReplayContext], Union['Response', None]], None]
   openapi_specification_path: str
@@ -168,7 +168,7 @@ def replay(context: ReplayContext, options: ReplayRequestOptions) -> 'Response':
   received_at = time()
   latency = int((received_at - now) * 1000)
 
-  if options['mode'] == mode.REPLAY:
+  if options['mode'] == mode.NORMALIZE:
     if options.get('save') or options.get('overwrite'):
       replayed_response, status = __create_replayed_response(context.request.id, res, latency)
 

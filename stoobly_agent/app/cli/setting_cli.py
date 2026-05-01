@@ -5,13 +5,14 @@ import sys
 
 from stoobly_agent.app.cli.validators.scaffold import validate_hostname
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.settings.constants import firewall_action, request_component
-from stoobly_agent.app.settings.firewall_rule import FirewallRule
+from stoobly_agent.app.settings.constants import filter_action, request_component
+from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.app.settings.match_rule import MatchRule
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import ProjectKey, ScenarioKey
 from stoobly_agent.lib.logger import Logger
+from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .helpers.project_facade import ProjectFacade
 from .helpers.scenario_facade import ScenarioFacade
@@ -217,18 +218,18 @@ def rewrite(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE])
 )
 @click.option('--name', help='Name of the request component.')
 @click.option('--path', help='Request URL path to rewrite to.')
 @click.option('--pattern', required=True, help='URLs to rewrite.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Request URL port to rewrite to.')
-@click.option('--project-key', help='Project to add rewrite rule to.')
 @click.option(
     '--type', 
     type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM, request_component.RESPONSE_HEADER, request_component.RESPONSE_PARAM]), 
     help='Request component type.'
 )
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add rewrite rule to.')(f), is_remote)
 @click.option(
     '--scheme', 
     type=click.Choice(['http', 'https']), 
@@ -270,6 +271,12 @@ def match(ctx):
     help="Set match rule"
 )
 @click.option(
+    '--component', 
+    multiple=True,
+    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
+    help='Request component type.'
+)
+@click.option(
     '--method', 
     multiple=True, 
     required=True,
@@ -280,16 +287,10 @@ def match(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--project_key', help='Project to add rewrite rule to.')
-@click.option(
-    '--component', 
-    multiple=True,
-    type=click.Choice([request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]), 
-    help='Request component type.'
-)
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add match rule to.')(f), is_remote)
 def set(**kwargs):
     settings = Settings.instance()
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
@@ -322,17 +323,24 @@ def set(**kwargs):
 
     Logger.instance(LOG_ID).debug(f"Match {kwargs['method']} {kwargs['pattern']} -> {kwargs['component']} set!")
 
-### Firewall
+### Filter
 
 @click.group(
-    help="Manage firewall rules"
+    'filter',
+    help="Manage filter rules"
 )
 @click.pass_context
-def firewall(ctx):
+def _filter(ctx):
     pass
 
-@firewall.command(
-    help="Set firewall rule."
+@_filter.command(
+    help="Set filter rule."
+)
+@click.option(
+    '--action', 
+    required=True,
+    type=click.Choice([filter_action.EXCLUDE, filter_action.INCLUDE]), 
+    help='Action to take on match.'
 )
 @click.option(
     '--method', 
@@ -345,16 +353,10 @@ def firewall(ctx):
     '--mode',
     multiple=True,
     required=True,
-    type=click.Choice([mode.MOCK, mode.RECORD, mode.REPLAY] + ([mode.TEST] if is_remote else []))
+    type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--project_key', help='Project to add firewall rule to.')
-@click.option(
-    '--action', 
-    required=True,
-    type=click.Choice([firewall_action.EXCLUDE, firewall_action.INCLUDE]), 
-    help='Action to take on match.'
-)
+@ConditionalDecorator(lambda f: click.option('--project-key', help='Project to add filter rule to.')(f), is_remote)
 def set(**kwargs):
     settings = Settings.instance()
     project_key_str = resolve_project_key_and_validate(kwargs, settings)
@@ -363,30 +365,30 @@ def set(**kwargs):
     methods = list(kwargs['method'])
     modes = list(kwargs['mode'])
  
-    firewall_rule = FirewallRule({
+    filter_rule = FilterRule({
         'action': kwargs['action'],
         'methods': methods,
         'modes': modes,
         'pattern': kwargs['pattern'],
     })
 
-    firewall_rules = settings.proxy.firewall.firewall_rules(project_key.id)
+    filter_rules = settings.proxy.filter.filter_rules(project_key.id)
     index = -1
     i = 0
-    for rule in firewall_rules:
+    for rule in filter_rules:
         if rule.pattern == kwargs['pattern'] and rule.methods == methods:
             index = i
         i += 1
 
     if index == -1:
-        firewall_rules.append(firewall_rule)
-        settings.proxy.firewall.set_firewall_rules(project_key.id, firewall_rules)
+        filter_rules.append(filter_rule)
+        settings.proxy.filter.set_filter_rules(project_key.id, filter_rules)
     else:
-        firewall_rules[index] = firewall_rule
+        filter_rules[index] = filter_rule
 
     settings.commit()
 
-    Logger.instance(LOG_ID).debug(f"Firewall {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
+    Logger.instance(LOG_ID).debug(f"Filter {kwargs['method']} {kwargs['pattern']} -> {kwargs['action']} set!")
 
 ### Validate
 
@@ -476,7 +478,7 @@ if is_remote:
 if is_remote:
     setting.add_command(api_key)
 
-setting.add_command(firewall)
+setting.add_command(_filter)
 setting.add_command(match)
 
 if is_remote:

@@ -27,6 +27,12 @@ class ReverseProxyDecorator(CommandDecorator):
       '--settings-watch'
     ]
 
+    if config.openapi_specification:
+      openapi_specification_path = config.openapi_specification_path
+      if os.path.exists(openapi_specification_path):
+        command.append('--openapi-specification-path')
+        command.append(openapi_specification_path)
+
     if config.scheme == 'https':
       command.append('--certs')
       command.append(os.path.join(STOOBLY_CERTS_DIR, f"{SERVICE_HOSTNAME}-joined.pem"))

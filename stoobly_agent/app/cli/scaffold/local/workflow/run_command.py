@@ -141,9 +141,15 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     def on_service_up(command):
       command.service_up(**options)
 
-    def on_before_entrypoint(public_directory_paths, response_fixtures_paths, lifecycle_hooks_paths):
+    def on_before_entrypoint(
+      lifecycle_hooks_paths,
+      openapi_specification_paths, 
+      public_directory_paths, 
+      response_fixtures_paths, 
+    ):
       self.__up_command(
         lifecycle_hooks_paths,
+        openapi_specification_paths,
         public_directory_paths, 
         response_fixtures_paths,
         **options
@@ -346,6 +352,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def __up_command(self,
     lifecycle_hooks_paths: List[str],
+    openapi_specification_paths: List[str],
     public_directory_paths: List[str],
     response_fixtures_paths: List[str],
     **options: WorkflowUpOptions
@@ -365,6 +372,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       self.app_config,
       log_level=options.get('log_level'),
       lifecycle_hooks_paths=lifecycle_hooks_paths,
+      openapi_specification_paths=openapi_specification_paths,
       public_directory_paths=public_directory_paths,
       response_fixtures_paths=response_fixtures_paths,
     )

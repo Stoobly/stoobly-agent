@@ -3,7 +3,7 @@ import re
 
 from typing import List, Tuple, Dict, Optional, Literal
 
-from ..mock.types import LifecycleHooksPath, PublicDirectoryPath, ResponseFixturesPath
+from ..mock.types import LifecycleHooksPath, OpenapiSpecificationPath, PublicDirectoryPath, ResponseFixturesPath
 
 def parse_origin_path_item(path_item: str) -> Tuple[str, str]:
   """
@@ -40,7 +40,7 @@ def parse_origin_path_item(path_item: str) -> Tuple[str, str]:
 
 def parse_origin_paths(
   raw: str,
-  kind: Optional[Literal['plain', 'public', 'fixtures', 'lifecycle_hooks']] = 'plain'
+  kind: Optional[Literal['plain', 'public', 'fixtures', 'lifecycle_hooks', 'openapi_specification']] = 'plain'
 ) -> List[Dict[str, str]]:
   """
   Parse comma-separated 'path[:origin]' items into a list of dicts:
@@ -66,6 +66,8 @@ def parse_origin_paths(
     return [PublicDirectoryPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: ignore
   elif kind == 'fixtures':
     return [ResponseFixturesPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: ignore
+  elif kind == 'openapi_specification':
+    return [OpenapiSpecificationPath(origin=i.get('origin'), path=i.get('path')) for i in items]  # type: ignore
   else:
     return items
 
@@ -87,6 +89,12 @@ def parse_lifecycle_hooks_script_paths(raw: str) -> List[LifecycleHooksPath]:
   for lifecycle hooks scripts.
   """
   return parse_origin_paths(raw, kind='lifecycle_hooks')  # type: ignore
+
+def parse_openapi_specification_paths(raw: str) -> List[OpenapiSpecificationPath]:
+  """
+  Convenience wrapper returning List[OpenapiSpecificationPath] using parse_origin_paths.
+  """
+  return parse_origin_paths(raw, kind='openapi_specification')  # type: ignore
 
 def request_origin_from_url(url: str) -> str:
   """

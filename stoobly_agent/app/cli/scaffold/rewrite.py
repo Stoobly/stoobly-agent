@@ -28,7 +28,7 @@ def apply_upstream_url_rewrite(service_config: ServiceConfig) -> None:
       project_key.id,
       pattern=f'{service_config.url}/?.*?',
       method=[method.GET, method.PATCH, method.POST, method.PUT, method.DELETE, method.OPTIONS],
-      mode=[mode.REPLAY],
+      mode=[mode.NORMALIZE],
       hostname=upstream_hostname,
       port=upstream_port,
       scheme=upstream_scheme,

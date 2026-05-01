@@ -7,11 +7,13 @@ import re
 from .app_config import AppConfig
 from .config import Config
 from .constants import (
+  OPENAPI_SPECIFICATION_FILE_NAME,
   SERVICE_DETACHED_ENV,
   SERVICE_HOSTNAME_ENV,
   SERVICE_ID_ENV,
   SERVICE_LOCAL_ENV,
   SERVICE_NAME_ENV,
+  SERVICE_OPENAPI_SPECIFICATION_ENV,
   SERVICE_PRIORITY_ENV,
   SERVICE_PORT_ENV,
   SERVICE_SCHEME_ENV,
@@ -30,6 +32,7 @@ class ServiceConfig(Config):
     self.__hostname = None
     self.__local = None
     self.__name = None
+    self.__openapi_specification = None
     self.__port = None
     self.__priority = None
     self.__scheme = None
@@ -61,6 +64,9 @@ class ServiceConfig(Config):
 
     if 'scheme' in kwargs:
       self.__scheme = kwargs.get('scheme')
+
+    if 'openapi_specification' in kwargs:
+      self.__openapi_specification = kwargs.get('openapi_specification')
 
     if 'upstream_hostname' in kwargs:
       self.__upstream_hostname = kwargs.get('upstream_hostname')
@@ -177,6 +183,18 @@ class ServiceConfig(Config):
     return self.__scheme == 'https'
 
   @property
+  def openapi_specification(self):
+    return not not self.__openapi_specification
+
+  @openapi_specification.setter
+  def openapi_specification(self, v):
+    self.__openapi_specification = not not v
+
+  @property
+  def openapi_specification_path(self):
+    return os.path.join(self.dir, OPENAPI_SPECIFICATION_FILE_NAME)
+
+  @property
   def upstream_hostname(self) -> str:
     if self.local:
       if self.app_config.runtime_docker:
@@ -236,6 +254,7 @@ class ServiceConfig(Config):
     self.hostname = config.get(SERVICE_HOSTNAME_ENV)
     self.local = config.get(SERVICE_LOCAL_ENV)
     self.name = config.get(SERVICE_NAME_ENV)
+    self.openapi_specification = config.get(SERVICE_OPENAPI_SPECIFICATION_ENV)
     self.port = config.get(SERVICE_PORT_ENV)
     self.priority = config.get(SERVICE_PRIORITY_ENV)
     self.scheme = config.get(SERVICE_SCHEME_ENV)
@@ -251,6 +270,7 @@ class ServiceConfig(Config):
       'priority': self.priority,
       'local': self.local,
       'detached': self.detached,
+      'openapi_specification': self.openapi_specification,
       'upstream_scheme': self.upstream_scheme,
       'upstream_hostname': self.upstream_hostname,
       'upstream_port': self.upstream_port,
@@ -267,6 +287,9 @@ class ServiceConfig(Config):
 
     if self.name:
       config[SERVICE_NAME_ENV] = self.name
+
+    if self.openapi_specification:
+      config[SERVICE_OPENAPI_SPECIFICATION_ENV] = True
 
     if self.port:
       config[SERVICE_PORT_ENV] = self.port

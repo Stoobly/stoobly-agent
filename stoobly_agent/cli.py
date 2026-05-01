@@ -14,14 +14,14 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .app.cli import MainGroup
-from .app.cli.helpers.feature_flags import local, remote
+from .app.cli.helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .app.settings import Settings
 from .lib import logger
 from .lib.orm.migrate_service import migrate as migrate_database
 
 settings: Settings = Settings.instance()
-is_remote = remote(settings)
-is_local = local(settings)
+is_remote = feature_is_remote(settings)
+is_local = feature_is_local(settings)
 
 # Makes sure database is up to date
 migrate_database(VERSION)
@@ -84,7 +84,7 @@ def init(**kwargs):
   multiple=True,
   help='Path to lifecycle hooks script. Can take the form <FILE-PATH>[:<ORIGIN>].'
 )
-@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
+@click.option('--openapi-specification-path', multiple=True, help='Path to OpenAPI specification file. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
@@ -110,7 +110,7 @@ def run(**kwargs):
     import dotenv
 
     from .app.proxy.run import run as run_proxy
-    from .app.cli.helpers.options import normalize_public_dir_path, normalize_response_fixtures_path, normalize_lifecycle_hooks_path
+    from .app.cli.helpers.options import normalize_openapi_specification_path, normalize_public_dir_path, normalize_response_fixtures_path, normalize_lifecycle_hooks_path
 
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
@@ -139,7 +139,9 @@ def run(**kwargs):
       )
 
     if kwargs.get('openapi_specification_path'):
-      os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = kwargs['openapi_specification_path']
+      os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = normalize_openapi_specification_path(
+        kwargs['openapi_specification_path']
+      )
 
     if kwargs.get('public_dir_path'):
       # Join multiple paths with commas

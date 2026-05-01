@@ -8,18 +8,18 @@ proxy:
     '0':
       mock_policy: found
       record_policy: all
-      replay_policy: all
+      normalize_policy: all
       scenario_key: null
       test_policy: found
       test_strategy: diff
     '67':
       mock_policy: found
       record_policy: all
-      replay_policy: all
+      normalize_policy: all
       scenario_key: null
       test_policy: found
       test_strategy: diff
-  firewall: {}
+  filter: {}
   intercept:
     active: false
     mode: record

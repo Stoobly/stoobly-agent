@@ -3,19 +3,22 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from stoobly_agent.test.test_helper import reset
-from stoobly_agent.app.api.configs_controller import ConfigsController
-from stoobly_agent.config.constants import mock_policy, mode, record_policy, replay_policy
+from stoobly_agent.app.api.settings_controller import SettingsController
+from stoobly_agent.config.constants import mock_policy, mode, normalize_policy, record_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+
 
 @pytest.fixture(scope='class')
 def settings():
     return reset()
 
+
 @pytest.fixture
 def controller():
-    ConfigsController._instance = None
-    return ConfigsController.instance()
+    SettingsController._instance = None
+    return SettingsController.instance()
+
 
 @pytest.fixture
 def mock_context():
@@ -24,22 +27,23 @@ def mock_context():
     context.params = {}
     return context
 
-class TestConfigsController:
+
+class TestSettingsController:
 
     def test_singleton_pattern(self):
-        ConfigsController._instance = None
+        SettingsController._instance = None
 
-        instance1 = ConfigsController.instance()
-        instance2 = ConfigsController.instance()
+        instance1 = SettingsController.instance()
+        instance2 = SettingsController.instance()
 
         assert instance1 is instance2
 
     def test_singleton_init_raises_error(self):
-        ConfigsController._instance = None
-        ConfigsController.instance()
+        SettingsController._instance = None
+        SettingsController.instance()
 
         with pytest.raises(RuntimeError, match="Call instance\\(\\) instead"):
-            ConfigsController()
+            SettingsController()
 
     class TestPolicies:
 
@@ -49,7 +53,7 @@ class TestConfigsController:
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[mock_policy.ALL, mock_policy.FOUND],
+                json=[mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
                 status=200
             )
 
@@ -59,7 +63,7 @@ class TestConfigsController:
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[mock_policy.ALL, mock_policy.FOUND],
+                json=[test_policy.FOUND, test_policy.NONE],
                 status=200
             )
 
@@ -73,13 +77,13 @@ class TestConfigsController:
                 status=200
             )
 
-        def test_policies_replay_mode(self, settings, controller, mock_context):
-            settings.proxy.intercept.mode = mode.REPLAY
+        def test_policies_normalize_mode(self, settings, controller, mock_context):
+            settings.proxy.intercept.mode = mode.NORMALIZE
 
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[replay_policy.ALL],
+                json=[normalize_policy.ALL],
                 status=200
             )
 
@@ -131,7 +135,7 @@ class TestConfigsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.REPLAY]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
             assert response_data['modes'] == expected_modes
 
         def test_summary_without_agent_param(self, controller, mock_context):
@@ -142,10 +146,10 @@ class TestConfigsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.REPLAY]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
             assert response_data['modes'] == expected_modes
 
-        @patch('stoobly_agent.app.api.configs_controller.ScenarioModel')
+        @patch('stoobly_agent.app.api.settings_controller.ScenarioModel')
         def test_summary_with_invalid_scenario(self, mock_scenario_model_class, settings, controller, mock_context):
             mock_model = MagicMock()
             mock_model.show.return_value = (None, 404)
@@ -164,7 +168,7 @@ class TestConfigsController:
             response_data = kwargs['json']
             assert response_data['scenario_id'] is None
 
-        @patch('stoobly_agent.app.api.configs_controller.ScenarioModel')
+        @patch('stoobly_agent.app.api.settings_controller.ScenarioModel')
         def test_summary_with_valid_scenario(self, mock_scenario_model_class, settings, controller, mock_context):
             mock_model = MagicMock()
             mock_scenario = {'id': 123}
@@ -184,11 +188,11 @@ class TestConfigsController:
 
     class TestUpdate:
 
-        @patch('stoobly_agent.app.api.configs_controller.handle_intercept_active_update')
-        @patch('stoobly_agent.app.api.configs_controller.handle_order_update')
-        @patch('stoobly_agent.app.api.configs_controller.handle_strategy_update')
-        @patch('stoobly_agent.app.api.configs_controller.handle_project_update')
-        @patch('stoobly_agent.app.api.configs_controller.handle_scenario_update')
+        @patch('stoobly_agent.app.api.settings_controller.handle_intercept_active_update')
+        @patch('stoobly_agent.app.api.settings_controller.handle_order_update')
+        @patch('stoobly_agent.app.api.settings_controller.handle_strategy_update')
+        @patch('stoobly_agent.app.api.settings_controller.handle_project_update')
+        @patch('stoobly_agent.app.api.settings_controller.handle_scenario_update')
         def test_update_calls_all_handlers(self, mock_scenario_update, mock_project_update,
                                          mock_strategy_update, mock_order_update,
                                          mock_active_update, settings, controller, mock_context):
@@ -258,32 +262,32 @@ class TestConfigsController:
             valid_key = ProjectKey.encode(123, -1)
             settings.remote.project_key = valid_key
 
-            result = controller._ConfigsController__remote_project_id(settings)
+            result = controller._SettingsController__remote_project_id(settings)
 
             assert result == '123'
 
         def test_remote_project_id_invalid_key(self, controller, settings):
             settings.remote.project_key = 'invalid_key'
 
-            result = controller._ConfigsController__remote_project_id(settings)
+            result = controller._SettingsController__remote_project_id(settings)
 
             assert result is None
 
         def test_remote_project_id_no_key(self, controller, settings):
             settings.remote.project_key = None
 
-            result = controller._ConfigsController__remote_project_id(settings)
+            result = controller._SettingsController__remote_project_id(settings)
 
             assert result is None
 
         def test_scenario_model_with_settings(self, controller, settings):
-            model = controller._ConfigsController__scenario_model(settings)
+            model = controller._SettingsController__scenario_model(settings)
 
             assert model is not None
             assert hasattr(model, 'show')
 
         def test_scenario_model_without_settings(self, controller):
-            model = controller._ConfigsController__scenario_model()
+            model = controller._SettingsController__scenario_model()
 
             assert model is not None
             assert hasattr(model, 'show')

@@ -36,11 +36,11 @@ from stoobly_agent.app.cli.scaffold.local.workflow.run_command import LocalWorkf
 from stoobly_agent.app.cli.scaffold.workflow_validate_command import WorkflowValidateCommand
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_scenarios_since_service import snapshot_scenarios_since
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.app.cli.scaffold.workflow_firewall import (
+from stoobly_agent.app.cli.scaffold.workflow_filter import (
   HTTP_METHODS,
-  build_include_firewall_rule_for_service_url,
-  upsert_firewall_rule,
-  workflow_template_to_firewall_mode,
+  build_include_filter_rule_for_service_url,
+  upsert_filter_rule,
+  workflow_template_to_filter_mode,
 )
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir
@@ -146,6 +146,7 @@ def create(**kwargs):
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
+@click.option('--openapi-specification', is_flag=True, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
@@ -235,9 +236,11 @@ def delete(**kwargs):
   help="Update a service config"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--detached', type=bool, default=None, help='Use isolated and non-persistent context directory.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
-@click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
+@click.option('--local', type=bool, default=None, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--name', callback=validate_service_name, type=click.STRING, help='New name of the service to update to.')
+@click.option('--openapi-specification', type=bool, default=None, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
@@ -255,16 +258,24 @@ def update(**kwargs):
 
   service_config = ServiceConfig(service.dir_path)
 
-  service_config.local = kwargs['local']
+  # If false and service_config.detached is True, then ask for confirmation
+  if kwargs['detached'] != None:
+      service_config.detached = kwargs['detached']
 
   if kwargs['hostname']:
     service_config.hostname = kwargs['hostname']
+
+  if kwargs['local'] != None:
+    service_config.local = kwargs['local']
 
   if kwargs['port']:
     service_config.port = kwargs['port']
 
   if kwargs['priority']:
     service_config.priority = kwargs['priority']
+
+  if kwargs['openapi_specification'] != None:
+    service_config.openapi_specification = kwargs['openapi_specification']
 
   if kwargs['scheme']:
     service_config.scheme = kwargs['scheme']
@@ -388,7 +399,9 @@ def show(**kwargs):
     if len(found_workflows) > 1:
       click.echo()  # Blank line between multiple workflows
 
-@workflow.command()
+@workflow.command(
+  help="Stop and tear down a scaffold workflow",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
@@ -518,7 +531,9 @@ def down(**kwargs):
   if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
 
-@workflow.command()
+@workflow.command(
+  help="Show or follow logs from workflow service(s)",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option(
   '--container', multiple=True, help=f"Select which containers to log."
@@ -574,7 +589,9 @@ def logs(**kwargs):
     **kwargs
   )
 
-@workflow.command()
+@workflow.command(
+  help="Start a scaffold workflow and bring up service(s)",
+)
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
@@ -695,7 +712,7 @@ def up(**kwargs):
   )
 
 @workflow.command(
-  help="Scaffold workflow service certs"
+  help="Generate SSL certs for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
@@ -716,7 +733,7 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
-  help="Sync replay rewrite rules from service upstream hostname, port, and scheme"
+  help="Sync normalize rewrite rules from service upstream hostname, port, and scheme"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
@@ -735,14 +752,15 @@ def rewrite(**kwargs):
   __services_rewrite(app, services, kwargs['workflow_name'])
 
 @workflow.command(
-  help="Configure include firewall rules for workflow service(s)"
+  'filter',
+  help="Configure include filter rules for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
-def firewall(**kwargs):
+def _filter(**kwargs):
   containerized = kwargs['containerized']
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
 
@@ -751,7 +769,7 @@ def firewall(**kwargs):
   services = __get_services(
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
   )
-  __services_firewall(app, services, kwargs['workflow_name'])
+  __services_filter(app, services, kwargs['workflow_name'])
 
 @workflow.command(
   help="Validate a scaffold workflow"
@@ -1141,11 +1159,11 @@ def __services_rewrite(app: App, services, workflow_name: str):
 
     apply_upstream_url_rewrite(service_config)
 
-def __services_firewall(app: App, services, workflow_name: str):
+def __services_filter(app: App, services, workflow_name: str):
   settings = Settings.instance()
   project_key = ProjectKey(settings.proxy.intercept.project_key)
   project_id = project_key.id
-  firewall_rules = settings.proxy.firewall.firewall_rules(project_id)
+  filter_rules = settings.proxy.filter.filter_rules(project_id)
 
   for service_name in services:
     service = Service(service_name, app)
@@ -1155,20 +1173,20 @@ def __services_firewall(app: App, services, workflow_name: str):
     workflow_config = WorkflowConfig(workflow_dir_path)
     workflow_template = workflow_config.template or workflow_name
     # For custom workflows, template is set using the --template option
-    firewall_mode = workflow_template_to_firewall_mode(workflow_template)
+    filter_mode = workflow_template_to_filter_mode(workflow_template)
 
     service_config = ServiceConfig(service.dir_path)
     if not service_config.url:
       continue
 
-    new_rule = build_include_firewall_rule_for_service_url(
+    new_rule = build_include_filter_rule_for_service_url(
       service_url=service_config.url,
-      firewall_mode=firewall_mode,
+      filter_mode=filter_mode,
       methods=HTTP_METHODS,
     )
-    upsert_firewall_rule(firewall_rules=firewall_rules, new_rule=new_rule)
+    upsert_filter_rule(filter_rules=filter_rules, new_rule=new_rule)
 
-  settings.proxy.firewall.set_firewall_rules(project_id, firewall_rules)
+  settings.proxy.filter.set_filter_rules(project_id, filter_rules)
   settings.commit()
 
 def __validate_app(app: App):

@@ -69,6 +69,9 @@ class OpenApiEndpointAdapter():
     with open(file_path, "r") as stream:
       file_data: Dict = yaml.safe_load(stream)
 
+      if not file_data:
+        return []
+
       if 'info' not in file_data:
         self.__add_info(file_data)
 
@@ -145,7 +148,7 @@ class OpenApiEndpointAdapter():
             elif parsed_url.scheme == 'http':
               endpoint['port'] = '80'
             else:
-              endpoint['port'] = '0'
+              endpoint['port'] = '-'
           else:
             endpoint['port'] = str(parsed_url.port)
 

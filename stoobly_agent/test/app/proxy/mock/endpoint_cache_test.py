@@ -16,6 +16,57 @@ def reset_endpoint_cache_singleton():
   endpoint_cache_module.EndpointCache._instance = original
 
 
+class TestPortMatches:
+  """_port_matches: empty / % / - are wildcards; otherwise compare to request port string."""
+
+  @pytest.mark.parametrize("wildcard", ["", "%", "-"])
+  @pytest.mark.parametrize("request_port", ["80", "443", "8080", "0"])
+  def test_wildcard_port_matches_any_request_port(self, wildcard, request_port):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": wildcard, "match_pattern": "/x"}
+    assert endpoint_cache_module._port_matches(ep, request_port) is True
+
+  def test_specific_port_matches_equal_string(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": "/x"}
+    assert endpoint_cache_module._port_matches(ep, "443") is True
+
+  def test_specific_port_rejects_different_port(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "8080", "match_pattern": "/x"}
+    assert endpoint_cache_module._port_matches(ep, "443") is False
+
+
+class TestPathMatches:
+  """_path_matches: empty or '/' pattern matches only root path; else suffix match via %{match_pattern}."""
+
+  @pytest.mark.parametrize("match_pattern", ["", "/"])
+  @pytest.mark.parametrize("request_path", ["", "/"])
+  def test_empty_or_slash_pattern_matches_only_root_paths(self, match_pattern, request_path):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": match_pattern}
+    assert endpoint_cache_module._path_matches(ep, request_path) is True
+
+  @pytest.mark.parametrize("match_pattern", ["", "/"])
+  @pytest.mark.parametrize("request_path", ["/api", "/v1/items", "/items/extra"])
+  def test_empty_or_slash_pattern_rejects_non_root_paths(self, match_pattern, request_path):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": match_pattern}
+    assert endpoint_cache_module._path_matches(ep, request_path) is False
+
+  def test_suffix_match_accepts_prefix_before_pattern(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": "/v2/pets"}
+    assert endpoint_cache_module._path_matches(ep, "/api/v2/pets") is True
+
+  def test_suffix_match_accepts_exact_path(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": "/v2/pets"}
+    assert endpoint_cache_module._path_matches(ep, "/v2/pets") is True
+
+  def test_suffix_match_rejects_extra_trailing_segments(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443", "match_pattern": "/v2/pets"}
+    assert endpoint_cache_module._path_matches(ep, "/v2/pets/1") is False
+
+  def test_missing_match_pattern_treated_as_empty(self):
+    ep = {"id": "1", "method": "GET", "host": "example.com", "port": "443"}
+    assert endpoint_cache_module._path_matches(ep, "/") is True
+    assert endpoint_cache_module._path_matches(ep, "/x") is False
+
+
 def _make_settings(intercept_project_key=None, remote_project_key=None):
   return SimpleNamespace(
     cli=SimpleNamespace(features=SimpleNamespace(remote=True)),

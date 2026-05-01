@@ -63,7 +63,7 @@ class TestCliSubcommandsLoad:
         ['scaffold', 'workflow', 'copy'],
         ['scaffold', 'workflow', 'create'],
         ['scaffold', 'workflow', 'down'],
-        ['scaffold', 'workflow', 'firewall'],
+        ['scaffold', 'workflow', 'filter'],
         ['scaffold', 'workflow', 'logs'],
         ['scaffold', 'workflow', 'mkcert'],
         ['scaffold', 'workflow', 'rewrite'],

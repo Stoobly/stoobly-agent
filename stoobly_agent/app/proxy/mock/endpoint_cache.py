@@ -1,19 +1,19 @@
 import json
-import logging
 import os
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse
 
-from stoobly_agent.app.cli.helpers.feature_flags import remote as remote_feature
+from stoobly_agent.app.cli.helpers.feature_flags import is_remote as remote_feature
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import OpenApiEndpointAdapter
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import COMPONENT_TYPES
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.endpoints_resource import EndpointsResource
 from stoobly_agent.lib.api.interfaces.endpoints import EndpointShowResponse, IgnoredComponent
+from stoobly_agent.lib.logger import Logger
 
-logger = logging.getLogger(__name__)
+logger = Logger.instance('EndpointCache')
 
 LayerKind = str  # "openapi" | "project"
 
@@ -25,7 +25,9 @@ def load_openapi_endpoints_from_file(open_api_spec: str) -> List[EndpointShowRes
   try:
     return OpenApiEndpointAdapter().adapt_from_file(open_api_spec)
   except Exception as e:
-    logger.warning("Failed to load OpenAPI spec %s: %s", open_api_spec, e)
+    # Create relative path to the open_api_spec file
+    relative_path = os.path.relpath(open_api_spec, os.getcwd())
+    logger.warning("Failed to load OpenAPI spec %s: %s", relative_path, e)
     return []
 
 
@@ -89,11 +91,15 @@ def _port_matches(endpoint: EndpointShowResponse, request_port: str) -> bool:
   port = endpoint.get("port") or ""
   if not port or port == "%":
     return True
+  if port == "-":
+    return True
   return port == request_port
 
 
 def _path_matches(endpoint: EndpointShowResponse, request_path: str) -> bool:
   match_pattern = endpoint.get("match_pattern") or ""
+  if match_pattern == "" or match_pattern == "/":
+    return request_path == "" or request_path == "/"
   like_pattern = f"%{match_pattern}"
   return sql_like(request_path, like_pattern)
 

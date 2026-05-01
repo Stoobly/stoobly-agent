@@ -12,6 +12,12 @@ def normalize_response_fixtures_path(response_fixtures_path: Union[str, List[str
   else:
     return response_fixtures_path
 
+def normalize_openapi_specification_path(openapi_specification_path: Union[str, List[str]]):
+  if isinstance(openapi_specification_path, (list, tuple)):
+    return ','.join(openapi_specification_path)
+  else:
+    return openapi_specification_path
+
 def normalize_lifecycle_hooks_path(lifecycle_hooks_path: Union[str, List[str]]):
   if isinstance(lifecycle_hooks_path, (list, tuple)):
     return ','.join(lifecycle_hooks_path)

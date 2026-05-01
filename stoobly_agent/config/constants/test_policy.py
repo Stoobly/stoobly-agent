@@ -1,0 +1,2 @@
+NONE = 'none'
+FOUND = 'found'

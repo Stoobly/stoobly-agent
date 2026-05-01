@@ -9,13 +9,12 @@ from typing import List, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
-    from .mock.types import LifecycleHooksPath
 
-from stoobly_agent.app.cli.helpers.feature_flags import remote
-from stoobly_agent.app.settings.constants import firewall_action, intercept_mode
+from stoobly_agent.app.cli.helpers.feature_flags import is_remote
+from stoobly_agent.app.settings.constants import filter_action, intercept_mode
 from stoobly_agent.app.settings.parameter_rule import ParameterRule as ParameterRuleClass
 from stoobly_agent.app.settings.rewrite_rule import RewriteRule
-from stoobly_agent.app.settings.firewall_rule import FirewallRule
+from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.match_rule import MatchRule as MatchRuleClass
 from stoobly_agent.app.settings.types import IgnoreRule, MatchRule
@@ -32,8 +31,7 @@ class InterceptSettings:
   def __init__(self, settings: Settings, request: 'MitmproxyRequest' = None, cache: Optional[Cache] = None, scenario_model: Optional[ScenarioModel] = None):
     self.__settings = settings
     self.__request = request
-    # Lazy import for runtime usage
-    from mitmproxy.http import Request as MitmproxyRequest
+
     self.__headers: 'MitmproxyRequest.headers' = request.headers if request else None
     self.__for_response = False
     self.__cache = cache
@@ -46,7 +44,7 @@ class InterceptSettings:
     # Otherwise, set settings for the project
     self.__data_rules = self.__settings.proxy.data.data_rules(project_id)
     self.__rewrite_rules = self.__settings.proxy.rewrite.rewrite_rules(project_id)
-    self.__firewall_rules = self.__settings.proxy.firewall.firewall_rules(project_id)
+    self.__filter_rules = self.__settings.proxy.filter.filter_rules(project_id)
     self.__intercept_settings = self.__settings.proxy.intercept 
     self.__match_rules = self.__settings.proxy.match.match_rules(project_id)
 
@@ -55,7 +53,7 @@ class InterceptSettings:
 
     self._mock_rewrite_rules = None
     self._record_rewrite_rules = None
-    self._replay_rewrite_rules = None
+    self._normalize_rewrite_rules = None
     self._test_rewrite_rules = None
 
   def with_cache(self, cache: Cache):
@@ -93,7 +91,7 @@ class InterceptSettings:
 
   @property
   def is_remote(self):
-    return remote(self.__settings)
+    return is_remote(self.__settings)
     
   @property
   def lifecycle_hooks_path(self):
@@ -106,32 +104,8 @@ class InterceptSettings:
     else:
       return raw_value
 
-    # Normalize whitespace; treat empty/whitespace-only as unset
-    if isinstance(raw_value, str):
-      normalized_value = raw_value.strip()
-    else:
-      normalized_value = str(raw_value).strip() if raw_value is not None else ''
-
-    if not normalized_value:
-      return None
-
-    # Parse list of paths with optional origins
-    from .utils.origin_path import parse_lifecycle_hooks_script_paths, request_origin_from_request, origin_matches
-    items: List['LifecycleHooksPath'] = parse_lifecycle_hooks_script_paths(normalized_value)
-    if not items:
-      return None
-
-    if self.__request:
-      # With request context, try to match origin first
-      req_origin = request_origin_from_request(self.__request)
-      for item in items:
-        origin = item.get('origin')
-        if origin and req_origin and origin_matches(origin, req_origin):
-          return item['path']
-
-    for item in items:
-      if not item.get('origin'):
-        return item['path']
+    from .utils.origin_path import parse_lifecycle_hooks_script_paths
+    return self.__resolve_origin_scoped_path(raw_value, parse_lifecycle_hooks_script_paths)
 
   @property
   def lifecycle_hooks(self):
@@ -220,7 +194,7 @@ class InterceptSettings:
 
   @property
   def openapi_specification_path(self):
-    """Filesystem path to an OpenAPI spec; from header or environment variable only."""
+    """Return selected OpenAPI spec path, supporting multiple values with optional origin."""
     raw_value = None
     if self.__headers and custom_headers.OPENAPI_SPECIFICATION_PATH in self.__headers:
       raw_value = self.__headers[custom_headers.OPENAPI_SPECIFICATION_PATH]
@@ -229,12 +203,8 @@ class InterceptSettings:
     else:
       return None
 
-    if isinstance(raw_value, str):
-      normalized = raw_value.strip()
-    else:
-      normalized = str(raw_value).strip() if raw_value is not None else ''
-
-    return normalized if normalized else None
+    from .utils.origin_path import parse_openapi_specification_paths
+    return self.__resolve_origin_scoped_path(raw_value, parse_openapi_specification_paths)
 
   @property
   def parsed_remote_project_key(self):
@@ -355,13 +325,13 @@ class InterceptSettings:
 
   @property
   def policy(self):
-    return self.__policy(self.mode)
+    return self.policy_for_mode(self.mode)
 
   @property
   def response_policy(self):
     if self.__headers and custom_headers.RESPONSE_PROXY_MODE in self.__headers:
       mode = self.__headers[custom_headers.RESPONSE_PROXY_MODE]
-      return self.__policy(mode)
+      return self.policy_for_mode(mode)
 
     return self.policy
 
@@ -373,25 +343,148 @@ class InterceptSettings:
     return self.__data_rules.record_strategy
 
   @property
-  def exclude_rules(self) -> List[FirewallRule]:
+  def exclude_rules(self) -> List[FilterRule]:
     _mode = self.mode
     return self.exclude_rules_for_mode(_mode)
 
+  # TODO: explore if should support specifying components to ignore
   @property
-  def include_rules(self) -> List[FirewallRule]:
+  def ignore_rules(self) -> List[IgnoreRule]:
+    return []
+
+  @property
+  def include_rules(self) -> List[FilterRule]:
     _mode = self.mode
     return self.include_rules_for_mode(_mode)
 
   @property
   def match_rules(self) -> List[MatchRule]:
+    return self.__select_match_rules(self.mode)
+
+  @property
+  def mock_match_rules(self) -> List[MatchRule]:
+    return self.__select_match_rules(mode.MOCK)
+
+  @property
+  def rewrite_rules(self) -> List[RewriteRule]:
     _mode = self.mode
-    rules = list(filter(lambda rule: _mode in rule.modes, self.__match_rules))
+    return self.__select_rewrite_rules(_mode)
+
+  @property
+  def record_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._record_rewrite_rules:
+      self._record_rewrite_rules = self.__select_rewrite_rules(mode.RECORD)
+    return self._record_rewrite_rules
+
+  @property
+  def mock_policy(self):
+    return self.policy_for_mode(mode.MOCK)
+
+  @property
+  def mock_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._mock_rewrite_rules:
+      self._mock_rewrite_rules = self.__select_rewrite_rules(mode.MOCK)
+    return self._mock_rewrite_rules
+
+  @property
+  def normalize_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._normalize_rewrite_rules:
+      self._normalize_rewrite_rules = self.__select_rewrite_rules(mode.NORMALIZE)
+    return self._normalize_rewrite_rules
+
+  @property
+  def test_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._test_rewrite_rules:
+      self._test_rewrite_rules = self.__select_rewrite_rules(mode.TEST)
+    return self._test_rewrite_rules
+
+  @property
+  def upstream_url(self):
+    if self.__headers and custom_headers.SERVICE_URL in self.__headers:
+      return self.__headers[custom_headers.SERVICE_URL]
+
+    settings_upstream_url = self.__intercept_settings.upstream_url
+    if settings_upstream_url and len(settings_upstream_url) > 0:
+      return self.__intercept_settings.upstream_url
+
+    if self.__request:
+      return f"{self.__request.scheme}://{self.__request.host}:{self.__request.port}"
+
+  @property
+  def test_filter(self):
+    if self.__headers and custom_headers.TEST_FILTER in self.__headers:
+      return self.__headers[custom_headers.TEST_FILTER]
+
+    return test_filter.ALL
+
+  @property
+  def test_policy(self):
+    return self.policy_for_mode(mode.TEST)
+
+  @property
+  def test_save_results(self):
+    if self.__headers and custom_headers.TEST_SAVE_RESULTS in self.__headers:
+      return not not int(self.__headers[custom_headers.TEST_SAVE_RESULTS])
+
+    return False
+
+  @property
+  def test_skip(self):
+    if self.__headers and custom_headers.TEST_SKIP in self.__headers:
+      return True
+    
+    return False
+  
+  @property
+  def test_strategy(self):
+    if self.__headers and custom_headers.TEST_STRATEGY in self.__headers:
+      return self.__headers[custom_headers.TEST_STRATEGY]
+
+    return self.__data_rules.test_strategy
+
+  @property
+  def request_origin(self):
+    if self.__headers and custom_headers.REQUEST_ORIGIN in self.__headers:
+      return self.__headers[custom_headers.REQUEST_ORIGIN]
+
+    return request_origin.PROXY
+
+  def exclude_rules_for_mode(self, mode: str) -> List[FilterRule]:
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.EXCLUDE, self.__filter_rules))
+
+  def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
+    return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
+
+  def for_response(self):
+    self.__for_response = True
+
+  def policy_for_mode(self, mode):
+    if mode == intercept_mode.MOCK:
+      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
+        return self.__headers[custom_headers.MOCK_POLICY]
+
+      return self.__data_rules.mock_policy
+    elif mode == intercept_mode.RECORD:
+      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
+        return self.__headers[custom_headers.RECORD_POLICY]
+
+      return self.__data_rules.record_policy
+    elif mode == intercept_mode.TEST:
+      if self.__headers and custom_headers.TEST_POLICY in self.__headers:
+        return self.__headers[custom_headers.TEST_POLICY]
+
+      return self.__data_rules.test_policy
+    elif mode == intercept_mode.NORMALIZE:
+      return self.__data_rules.normalize_policy
+
+  def __select_match_rules(self, _mode: str) -> List[MatchRule]:
+    rules = list(filter(lambda rule: self.__mode_in_modes(_mode, rule.modes), self.__match_rules))
     
     # Append rules from X-Stoobly-Request-Match-Rules header (base64-encoded JSON)
     # Expected format from stoobly-js:
     # [
     #   {
-    #     modes: ['replay', 'mock'],
+    #     modes: ['normalize', 'mock'],
     #     components: 'Header'  // Single RequestParameter value
     #   }
     # ]
@@ -429,96 +522,6 @@ class InterceptSettings:
         except (json.JSONDecodeError, ValueError) as e:
           Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
     return rules
-
-  # TODO: explore if should support specifying components to ignore
-  @property
-  def ignore_rules(self) -> List[IgnoreRule]:
-    return []
-
-  @property
-  def rewrite_rules(self) -> List[RewriteRule]:
-    _mode = self.mode
-    return self.__select_rewrite_rules(_mode)
-
-  @property
-  def record_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._record_rewrite_rules:
-      self._record_rewrite_rules = self.__select_rewrite_rules(mode.RECORD)
-    return self._record_rewrite_rules
-
-  @property
-  def mock_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._mock_rewrite_rules:
-      self._mock_rewrite_rules = self.__select_rewrite_rules(mode.MOCK)
-    return self._mock_rewrite_rules
-
-  @property
-  def replay_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._replay_rewrite_rules:
-      self._replay_rewrite_rules = self.__select_rewrite_rules(mode.REPLAY)
-    return self._replay_rewrite_rules
-
-  @property
-  def test_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._test_rewrite_rules:
-      self._test_rewrite_rules = self.__select_rewrite_rules(mode.TEST)
-    return self._test_rewrite_rules
-
-  @property
-  def upstream_url(self):
-    if self.__headers and custom_headers.SERVICE_URL in self.__headers:
-      return self.__headers[custom_headers.SERVICE_URL]
-
-    settings_upstream_url = self.__intercept_settings.upstream_url
-    if settings_upstream_url and len(settings_upstream_url) > 0:
-      return self.__intercept_settings.upstream_url
-
-    if self.__request:
-      return f"{self.__request.scheme}://{self.__request.host}:{self.__request.port}"
-
-  @property
-  def test_filter(self):
-    if self.__headers and custom_headers.TEST_FILTER in self.__headers:
-      return self.__headers[custom_headers.TEST_FILTER]
-
-    return test_filter.ALL
-
-  @property
-  def test_save_results(self):
-    if self.__headers and custom_headers.TEST_SAVE_RESULTS in self.__headers:
-      return not not int(self.__headers[custom_headers.TEST_SAVE_RESULTS])
-
-    return False
-
-  @property
-  def test_skip(self):
-    if self.__headers and custom_headers.TEST_SKIP in self.__headers:
-      return True
-    
-    return False
-  
-  @property
-  def test_strategy(self):
-    if self.__headers and custom_headers.TEST_STRATEGY in self.__headers:
-      return self.__headers[custom_headers.TEST_STRATEGY]
-
-    return self.__data_rules.test_strategy
-
-  @property
-  def request_origin(self):
-    if self.__headers and custom_headers.REQUEST_ORIGIN in self.__headers:
-      return self.__headers[custom_headers.REQUEST_ORIGIN]
-
-    return request_origin.PROXY
-
-  def exclude_rules_for_mode(self, mode: str) -> List[FirewallRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.EXCLUDE, self.__firewall_rules))
-
-  def include_rules_for_mode(self, mode: str) -> List[FirewallRule]:
-    return list(filter(lambda rule: mode in rule.modes and rule.action == firewall_action.INCLUDE, self.__firewall_rules))
-
-  def for_response(self):
-    self.__for_response = True
 
   def __select_rewrite_rules(self, mode = None):
     mode = mode or self.mode
@@ -603,14 +606,14 @@ class InterceptSettings:
   def __select_parameter_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda parameter: mode in parameter.modes and parameter.name, 
+      lambda parameter: self.__mode_in_modes(mode, parameter.modes) and parameter.name,
       rewrite_rule.parameter_rules or []
     ))
 
   def __select_url_rules(self, rewrite_rule: RewriteRule, mode = None):
     mode = mode or self.mode
     return list(filter(
-      lambda url: mode in url.modes,
+      lambda url: self.__mode_in_modes(mode, url.modes),
       rewrite_rule.url_rules or []
     ))
 
@@ -648,6 +651,11 @@ class InterceptSettings:
 
     return None
 
+  def __normalize_path_raw_value(self, raw_value):
+    if isinstance(raw_value, str):
+      return raw_value.strip()
+    return str(raw_value).strip() if raw_value is not None else ''
+
   def __order(self, mode):
     if mode == intercept_mode.RECORD:
       if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
@@ -660,21 +668,32 @@ class InterceptSettings:
       if self.__headers and custom_headers.RECORD_ORDER in self.__headers:
         return self.__headers[custom_headers.RECORD_ORDER]
 
-  def __policy(self, mode):
-    if mode == intercept_mode.MOCK:
-      if self.__headers and custom_headers.MOCK_POLICY in self.__headers:
-        return self.__headers[custom_headers.MOCK_POLICY]
+  def __resolve_origin_scoped_path(self, raw_value, parse_paths_fn):
+    normalized_value = self.__normalize_path_raw_value(raw_value)
+    if not normalized_value:
+      return None
 
-      return self.__data_rules.mock_policy
-    elif mode == intercept_mode.RECORD:
-      if self.__headers and custom_headers.RECORD_POLICY in self.__headers:
-        return self.__headers[custom_headers.RECORD_POLICY]
+    items = parse_paths_fn(normalized_value)
+    if not items:
+      return None
 
-      return self.__data_rules.record_policy
-    elif mode == intercept_mode.TEST:
-      if self.__headers and custom_headers.TEST_POLICY in self.__headers:
-        return self.__headers[custom_headers.TEST_POLICY]
+    from .utils.origin_path import request_origin_from_request, origin_matches
+    if self.__request:
+      request_origin = request_origin_from_request(self.__request)
+      for item in items:
+        origin = item.get('origin')
+        if origin and request_origin and origin_matches(origin, request_origin):
+          return item['path']
 
-      return self.__data_rules.test_policy
-    elif mode == intercept_mode.REPLAY:
-      return self.__data_rules.replay_policy
+    for item in items:
+      if not item.get('origin'):
+        return item['path']
+
+    return None
+
+  def __mode_in_modes(self, active_mode: str, rule_modes: List[str]) -> bool:
+    if not rule_modes:
+      return False
+    if active_mode in rule_modes:
+      return True
+    return False

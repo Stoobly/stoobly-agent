@@ -1,13 +1,13 @@
 from typing import Dict, List, Literal, TypedDict
 
-from ..constants.firewall_action import FirewallAction
+from ..constants.filter_action import FilterAction
 from ..constants.intercept_mode import Mode
 from ..constants.request_component import RequestComponent
 
 Method = Literal['DELETE,GET,OPTIONS,POST,PUT']
 MockPolicy = Literal['all', 'found', 'none']
 RecordPolicy = Literal['all','found','none']
-TestPolicy = Literal['all','found','none']
+TestPolicy = Literal['found','none']
 
 class ParameterRule(TypedDict):
   modes: List[Mode]
@@ -38,8 +38,8 @@ class RewriteRule(TypedDict):
   parameter_rules: List[ParameterRule]
   url_rule: List[UrlRule]
 
-class FirewallRule(TypedDict):
-  action: List[FirewallAction]
+class FilterRule(TypedDict):
+  action: FilterAction
   modes: List[Mode]
   pattern: str
 
@@ -55,13 +55,13 @@ MatchRules = Dict[str, List[MatchRule]]
 MatchSettings = Dict[str, MatchRules]
 RewriteRules = List[RewriteRule]
 RewriteSettings = Dict[str, RewriteRules]
-FirewallRules = Dict[str, List[FirewallRule]]
-FirewallSettings = Dict[str, FirewallRules]
+FilterRules = Dict[str, List[FilterRule]]
+FilterSettings = Dict[str, FilterRules]
 
 class ProxySettings(TypedDict):
   data: DataSettings
-  filter: RewriteSettings
-  firewall: FirewallSettings
+  filter: FilterSettings
   intercept: InterceptSettings
   match: MatchSettings
+  rewrite: RewriteSettings
   url: str

@@ -56,7 +56,7 @@ class ValidateCommand():
       raise ScaffoldValidateException(error_message)
 
     if init_container.status != 'exited' or init_container.attrs['State']['ExitCode'] != 0:
-      if retry < 5:
+      if retry < 10:
         sleep(1)
         return self.validate_init_containers(init_container_name, retry + 1)
 
