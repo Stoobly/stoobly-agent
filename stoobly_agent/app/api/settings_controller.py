@@ -4,7 +4,7 @@ from mergedeep import merge
 
 from stoobly_agent.app.cli.helpers.handle_config_update_service import (
     context as handle_context, handle_intercept_active_update, handle_order_update, handle_project_update, handle_scenario_update, handle_strategy_update
-) 
+)
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.settings import Settings
@@ -12,7 +12,8 @@ from stoobly_agent.config.constants import mock_policy, mode, normalize_policy, 
 from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
-class ConfigsController:
+
+class SettingsController:
     _instance = None
 
     def __init__(self):
@@ -28,42 +29,42 @@ class ConfigsController:
 
         return cls._instance
 
-    # GET /configs/policies
+    # GET /settings/policies
     def policies(self, context):
         settings = Settings.instance()
         active_mode = settings.proxy.intercept.mode
 
         if active_mode == mode.MOCK:
             context.render(
-                json = [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
-                status = 200
+                json=[mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE],
+                status=200
             )
         elif active_mode == mode.TEST:
             context.render(
-                json = [test_policy.FOUND, test_policy.NONE],
-                status = 200
+                json=[test_policy.FOUND, test_policy.NONE],
+                status=200
             )
         elif active_mode == mode.RECORD:
             context.render(
-                json = [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND],
-                status = 200
+                json=[record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND],
+                status=200
             )
         elif active_mode == mode.NORMALIZE:
             context.render(
-                json = [normalize_policy.ALL],
-                status = 200
+                json=[normalize_policy.ALL],
+                status=200
             )
 
-    # GET /configs
+    # GET /settings
     def show(self, context):
         settings = Settings.instance()
 
         context.render(
-            json = settings.to_dict(),
-            status = 200
+            json=settings.to_dict(),
+            status=200
         )
 
-    # GET /configs/summary
+    # GET /settings/summary
     def summary(self, context):
         settings: Settings = Settings.instance()
         proxy = settings.proxy
@@ -71,7 +72,7 @@ class ConfigsController:
 
         project_key = intercept_settings.project_key
         project_id = ProjectKey(project_key).id if project_key else None
-                
+
         scenario_key = intercept_settings.scenario_key
         scenario_id = None
 
@@ -93,7 +94,7 @@ class ConfigsController:
         modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
 
         context.render(
-            json = {
+            json={
                 'active': intercept_settings.active,
                 'mode': intercept_settings.mode,
                 'modes': modes,
@@ -102,10 +103,10 @@ class ConfigsController:
                 'remote_project_id': remote_project_id,
                 'scenario_id': int(scenario_id) if scenario_id != None else None,
             },
-            status = 200
+            status=200
         )
 
-    # PUT /configs
+    # PUT /settings
     def update(self, context):
         new_settings = context.params
         settings = Settings.instance()
@@ -130,8 +131,8 @@ class ConfigsController:
         settings.write(settings.to_dict())
 
         context.render(
-            json = merged_settings,
-            status = 200
+            json=merged_settings,
+            status=200
         )
 
     def __remote_project_id(self, settings: Settings):
