@@ -153,13 +153,13 @@ def __handle_mock_error(test_context: TestContext):
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found')
+        return build_response(False, 'No test found, due to invalid mock policy')
 
 def __handle_mock_failure(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found')
+        return build_response(False, 'No test found, due to no mock found')
 
 def __handle_mock_success(test_context: TestContext) -> None:
     request_id = test_context.mock_request_id
@@ -170,7 +170,7 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     flow: 'MitmproxyHTTPFlow' = test_context.flow
     intercept_settings = test_context.intercept_settings
-    mock_response = test_context.mock_context.response
+    mock_response = test_context.mock_context.flow.response
     request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY) if mock_response else None
     if request_key:
         Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Testing{bcolors.ENDC} {request_key} from {intercept_settings.request_origin}")

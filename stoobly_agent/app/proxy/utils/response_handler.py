@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 #
 # Return response headers, body, and status code
 #
-def pass_on(flow: 'MitmproxyHTTPFlow', res: 'Response'):
+def apply_response(flow: 'MitmproxyHTTPFlow', res: 'Response'):
     # Lazy import for runtime usage
     from mitmproxy.http import Response as MitmproxyResponse
     headers = {}
