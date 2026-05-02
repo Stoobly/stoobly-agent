@@ -591,10 +591,8 @@ class InterceptedRequestsLogger():
     def _check_scenario_key_changes(cls) -> None:
         """Check if the scenario key has changed and log a delimiter if so."""
         base = InterceptedRequestsLogger
-        intercept_settings = InterceptSettings(base._settings)
-        current_scenario_key = intercept_settings.scenario_key
-
         with base._scenario_key_lock:
+            current_scenario_key = InterceptSettings(base._settings).scenario_key
             if base._previous_scenario_key != current_scenario_key:
                 cls._log_scenario_change_delimiter(base._previous_scenario_key, current_scenario_key)
                 base._previous_scenario_key = current_scenario_key

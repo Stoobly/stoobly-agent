@@ -4,7 +4,7 @@ import pytest
 import requests
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from click.testing import CliRunner
 
@@ -21,22 +21,11 @@ from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldC
 from stoobly_agent.test.test_helper import reset
 
 
-PROXY_URL = "http://localhost:8081"
+PROXY_URL = os.environ.get("STOOBLY_PROXY_URL", "http://localhost:8081")
 SERVICES = ['dog.ceo', 'example.com', 'docs.stoobly.com']
 
-
-def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
-    for line in output.strip().split('\n'):
-        if not line.strip():
-            continue
-        try:
-            entry = json.loads(line)
-            if entry.get('message') == message:
-                if method is None or entry.get('method') == method:
-                    return entry
-        except json.JSONDecodeError:
-            continue
-    return None
+# These tests bind to PROXY_URL and must run sequentially — parallel execution
+# (e.g. pytest-xdist) will cause port conflicts across test classes.
 
 
 def find_all_log_entries(output: str, filters: dict = None) -> List[dict]:
@@ -97,10 +86,12 @@ def fire_concurrent_requests(targets: List[Tuple[str, str]], proxy_url: str) -> 
         return [f.result() for f in as_completed(futures)]
 
 
-def set_scenario_key_on_settings(settings: Settings, scenario_key: str) -> None:
+def set_scenario_key_on_settings(settings: Settings, scenario_key: str, watchdog_delay: float = 1.0) -> None:
+    """Commit scenario_key and wait for the proxy watchdog to reload the settings file."""
     settings.proxy.data.data_rules(str(LOCAL_PROJECT_ID)).scenario_key = scenario_key
     settings.commit()
-    time.sleep(1)
+    # The proxy subprocess detects the file change via a watchdog that polls ~every 1s.
+    time.sleep(watchdog_delay)
     settings.load()
 
 
@@ -243,8 +234,10 @@ class TestMultiServiceUrlFilter:
             )
 
     def _flush(self):
+        # flush() drains the async queue without stopping the listener, so subsequent
+        # test methods in this class can still log through the same proxy session.
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
     def test_url_filter_returns_only_matching_service(self, app_dir_path, runner):
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
@@ -343,7 +336,7 @@ class TestMultiServiceLevelFilter:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--level', 'error', '--context-dir-path', app_dir_path])
@@ -370,7 +363,7 @@ class TestMultiServiceLevelFilter:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--level', 'info', '--context-dir-path', app_dir_path])
@@ -776,6 +769,8 @@ class TestScenarioChangeMidBurst:
         batch_a = [(hostname, f'/burst-a-{i}') for i in range(5) for hostname in SERVICES]
         batch_b = [(hostname, f'/burst-b-{i}') for i in range(5) for hostname in SERVICES]
 
+        # Inlined rather than using fire_concurrent_requests so we can submit futures
+        # and mutate settings before the pool blocks waiting for them to finish.
         def _get(hostname_path):
             hostname, path = hostname_path
             try:
@@ -886,7 +881,7 @@ class TestMultiFilterComposition:
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         self._send_to_all()
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--url', 'dog.ceo', '--level', 'error', '--context-dir-path', app_dir_path])
@@ -909,7 +904,6 @@ class TestMultiFilterComposition:
         self._send_to_all()
 
         InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--url', 'dog.ceo', '--scenario-name', 'compose-scenario-alpha', '--context-dir-path', app_dir_path])
@@ -953,8 +947,9 @@ class TestMultiFilterComposition:
 
 @pytest.mark.e2e
 class TestWorkflowRestartLogPersistence:
-    """Gap 4: log file opens in append mode so entries from before a workflow restart
-    survive in the same file alongside entries from the new session."""
+    """Gap 4: the local workflow calls truncate() on startup so the log file is cleared
+    on each restart. Tests verify that logging is fully functional after a restart and
+    that each service produces entries in the new session."""
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
@@ -1093,7 +1088,7 @@ class TestPostTruncateNoSpuriousDelimiter:
         # Same scenario, same proxy process — proxy detects no change, emits no delimiter
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
