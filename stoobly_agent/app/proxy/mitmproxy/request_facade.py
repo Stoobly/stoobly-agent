@@ -7,17 +7,15 @@ from urllib.parse import urlparse
 if TYPE_CHECKING:
     from mitmproxy.http import Headers, Request as MitmproxyRequest
 
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants.mode import AgentMode
-from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
-
-LOG_ID = 'RequestFacade'
 
 class MitmproxyRequestFacade(Request):
 
@@ -149,8 +147,9 @@ class MitmproxyRequestFacade(Request):
         if len(rewrites):
             url_before = self.url
             self.__rewrite_url(rewrites)
-            log_id = self.__mode.capitalize() if self.__mode else LOG_ID
-            Logger.instance(log_id).info(f"{bcolors.OKCYAN}rewriting{bcolors.ENDC} URL {url_before} => {self.url}")
+            RequestTransformationEntryLogger.log_rewrite_request_url(
+                self.request, self.__mode, url_before, self.url,
+            )
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
@@ -182,7 +181,9 @@ class MitmproxyRequestFacade(Request):
         try:
             url_matches = re.fullmatch(pattern, self.url)
         except re.error as e:
-            Logger.instance().error(f"RegExp error '{e}' for {pattern}")
+            RequestTransformationEntryLogger.log_rewrite_rule_regexp_error(
+                self.request, self.__mode, pattern, e,
+            )
             return False
 
         method = self.method.upper()
@@ -199,8 +200,13 @@ class MitmproxyRequestFacade(Request):
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:
-        log_id = self.__mode.capitalize() if self.__mode else LOG_ID
-        Logger.instance(log_id).info(f"{bcolors.OKCYAN}rewriting{bcolors.ENDC} request {rewrite.type.lower()} {rewrite.name} => {rewrite.value}")
+        RequestTransformationEntryLogger.log_rewrite_request_parameter(
+            self.request,
+            self.__mode,
+            rewrite.type,
+            rewrite.name,
+            rewrite.value,
+        )
         return rewrite.value
 
     def __rewrite_url(self, rewrites: List[UrlRule]):

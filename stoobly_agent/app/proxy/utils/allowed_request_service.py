@@ -7,11 +7,9 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.filter_rule import FilterRule
 from stoobly_agent.config.constants import intercept_policy, request_origin
-from stoobly_agent.lib.logger import bcolors, Logger
-
-LOG_ID = 'Filter'
 
 def get_intercept_mode_policy(request: 'MitmproxyRequest', intercept_settings: InterceptSettings, mode = None) -> str:
     if intercept_settings.request_origin == request_origin.CLI:
@@ -46,8 +44,8 @@ def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[FilterRu
         method = request.method.upper()
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
-        if __exclude(request, patterns):
-            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}ignore (exclude) handling {mode}{bcolors.ENDC} {request.url}")
+        if __exclude(request, patterns, mode):
+            RequestTransformationEntryLogger.log_filter_exclude(request, mode, request.url)
             return True
     
     return False
@@ -62,12 +60,12 @@ def __request_included(request: 'MitmproxyRequest', include_rules: List[FilterRu
     # If there are include rules, but none that match the request's method,
     # then we know that none of the include rules will match the request
     if len(include_rules) > 0 and len(rules) == 0:
-        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Ignore (not include) handling {mode}{bcolors.ENDC} {request.url}")
+        RequestTransformationEntryLogger.log_filter_include_method_mismatch(request, mode, request.url)
         return False
 
     patterns = list(map(lambda rule: rule.pattern, rules))
-    if not __include(request, patterns):
-        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}ignore (not include) handling {mode}{bcolors.ENDC} {request.url}")
+    if not __include(request, patterns, mode):
+        RequestTransformationEntryLogger.log_filter_include_pattern_miss(request, mode, request.url)
         return False
 
     return True
@@ -76,7 +74,7 @@ def __request_included(request: 'MitmproxyRequest', include_rules: List[FilterRu
 #
 # @param patterns [Array<string>]
 #
-def __include(request: 'MitmproxyRequest', patterns: List[str]) -> bool:
+def __include(request: 'MitmproxyRequest', patterns: List[str], mode: str) -> bool:
     if not patterns:
         return True
 
@@ -88,12 +86,12 @@ def __include(request: 'MitmproxyRequest', patterns: List[str]) -> bool:
             if re.fullmatch(pattern, request.url):
                 return True
         except re.error as e:
-            Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")
+            RequestTransformationEntryLogger.log_filter_regexp_error(request, mode, pattern, e)
             return False
 
     return False
 
-def __exclude(request: 'MitmproxyRequest', patterns: List[str]) -> bool:
+def __exclude(request: 'MitmproxyRequest', patterns: List[str], mode: str) -> bool:
     if not patterns:
         return False
 
@@ -102,7 +100,7 @@ def __exclude(request: 'MitmproxyRequest', patterns: List[str]) -> bool:
             if re.fullmatch(pattern, request.url):
                 return True
         except re.error as e:
-            Logger.instance(LOG_ID).error(f"RegExp error '{e}' for {pattern}")
+            RequestTransformationEntryLogger.log_filter_regexp_error(request, mode, pattern, e)
             return True
 
     return False

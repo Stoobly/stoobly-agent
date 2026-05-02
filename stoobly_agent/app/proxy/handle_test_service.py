@@ -15,9 +15,10 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
-from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import (
     handle_mock_failure as handle_mock_failure_service,
@@ -173,7 +174,11 @@ def __handle_mock_success(test_context: TestContext) -> None:
     mock_response = test_context.mock_context.flow.response
     request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY) if mock_response else None
     if request_key:
-        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Testing{bcolors.ENDC} {request_key} from {intercept_settings.request_origin}")
+        RequestTransformationEntryLogger.log_testing_response(
+            flow.request,
+            request_key,
+            str(intercept_settings.request_origin),
+        )
 
     __rewrite_request(test_context.replay_context)
     __rewrite_response(test_context.replay_context)

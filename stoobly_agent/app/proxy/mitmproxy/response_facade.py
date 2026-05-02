@@ -5,18 +5,16 @@ from typing import Callable, List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from mitmproxy.http import Headers, Response as MitmproxyResponse
 
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants.mode import AgentMode
-from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
 
 from .request_facade import MitmproxyRequestFacade
 from .response_body_facade import MitmproxyResponseBodyFacade
 from .response import Response
-
-LOG_ID = 'Response'
 
 class MitmproxyResponseFacade(Response):
 
@@ -26,6 +24,7 @@ class MitmproxyResponseFacade(Response):
         self.__body = MitmproxyResponseBodyFacade(response)
         self.__parameter_rules: List[ParameterRule] = []
         self.__mode: Optional[AgentMode] = None
+        self.__request_facade: Optional[MitmproxyRequestFacade] = None
 
     @property
     def code(self):
@@ -63,6 +62,7 @@ class MitmproxyResponseFacade(Response):
         return self
 
     def with_parameter_rules(self, rules: List[RewriteRule], request_facade: MitmproxyRequestFacade):
+        self.__request_facade = request_facade
         if type(rules) == list:
             self.__parameter_rules = request_facade.select_parameter_rules(rules)
         return self 
@@ -84,8 +84,13 @@ class MitmproxyResponseFacade(Response):
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:
-        log_id = self.__mode.capitalize() if self.__mode else LOG_ID
-        Logger.instance(log_id).info(f"{bcolors.OKCYAN}rewriting{bcolors.ENDC} {rewrite.type.lower()} {rewrite.name} => {rewrite.value}")
+        RequestTransformationEntryLogger.log_rewrite_response_parameter(
+            self.__request_facade.request if self.__request_facade else None,
+            self.__mode,
+            rewrite.type,
+            rewrite.name,
+            rewrite.value,
+        )
         return rewrite.value
 
     def __rewrite_headers(self, rewrites: List[ParameterRule]):
