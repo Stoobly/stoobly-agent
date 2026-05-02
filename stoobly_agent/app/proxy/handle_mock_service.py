@@ -227,7 +227,7 @@ def __rewrite_request(context: MockContext):
     rewrite_rules = intercept_settings.mock_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(context.flow, rewrite_rules) 
+        rewrite_request(context.flow, rewrite_rules, mode=mode.MOCK) 
 
 def __rewrite_response(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -236,7 +236,7 @@ def __rewrite_response(context: MockContext):
     rewrite_rules = intercept_settings.mock_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(context.flow, rewrite_rules) 
+        rewrite_response(context.flow, rewrite_rules, mode=mode.MOCK) 
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings

@@ -116,7 +116,7 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
     if active_record_strategy == record_strategy.MINIMAL:
         minimize_headers(flow_copy)
 
-    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules)
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
 
     __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
 

@@ -64,7 +64,7 @@ def __rewrite_request(replay_context: ReplayContext):
     rewrite_rules = intercept_settings.normalize_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(replay_context.flow, rewrite_rules)
+        rewrite_request(replay_context.flow, rewrite_rules, mode=mode.NORMALIZE)
 
 def __rewrite_response(replay_context: ReplayContext):
     """
@@ -76,4 +76,4 @@ def __rewrite_response(replay_context: ReplayContext):
     rewrite_rules = intercept_settings.normalize_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(flow, rewrite_rules)
+        rewrite_response(flow, rewrite_rules, mode=mode.NORMALIZE)

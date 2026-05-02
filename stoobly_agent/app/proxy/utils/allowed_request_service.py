@@ -47,7 +47,7 @@ def __request_excluded(request: 'MitmproxyRequest', exclude_rules: List[FilterRu
         rules = list(filter(lambda rule: method in rule.methods, exclude_rules))
         patterns = list(map(lambda rule: rule.pattern, rules))
         if __exclude(request, patterns):
-            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Ignore (exclude) handling {mode}{bcolors.ENDC} {request.url}")
+            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}ignore (exclude) handling {mode}{bcolors.ENDC} {request.url}")
             return True
     
     return False
@@ -67,7 +67,7 @@ def __request_included(request: 'MitmproxyRequest', include_rules: List[FilterRu
 
     patterns = list(map(lambda rule: rule.pattern, rules))
     if not __include(request, patterns):
-        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Ignore (not include) handling {mode}{bcolors.ENDC} {request.url}")
+        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}ignore (not include) handling {mode}{bcolors.ENDC} {request.url}")
         return False
 
     return True

@@ -265,7 +265,7 @@ def __record_handler(context: TestContext, upload_test_data):
         # TODO: apply other record policies
 
         # Since we are "uploading" the request, use record_write_rules
-        rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules)
+        rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
         __test_hook(lifecycle_hooks.BEFORE_RECORD, record_context)
 
         # Commit test to API
@@ -286,7 +286,7 @@ def __rewrite_request(context: ReplayContext):
     rewrite_rules = intercept_settings.test_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(context.flow, rewrite_rules)
+        rewrite_request(context.flow, rewrite_rules, mode=mode.TEST)
 
 def __rewrite_response(context: ReplayContext):
     """
@@ -296,7 +296,7 @@ def __rewrite_response(context: ReplayContext):
     rewrite_rules = intercept_settings.test_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(context.flow, rewrite_rules)
+        rewrite_response(context.flow, rewrite_rules, mode=mode.TEST)
 
 def __test_hook(hook: str, context: TestContext):
     intercept_settings = context.intercept_settings

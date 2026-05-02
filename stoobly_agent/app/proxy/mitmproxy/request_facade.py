@@ -1,7 +1,7 @@
 import pdb
 import re
 
-from typing import Callable, List, TYPE_CHECKING
+from typing import Callable, List, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -10,13 +10,14 @@ if TYPE_CHECKING:
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.app.settings.rewrite_rule import ParameterRule, RewriteRule, UrlRule 
 from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants.mode import AgentMode
 from stoobly_agent.lib.logger import Logger, bcolors
 from stoobly_agent.lib.utils import jmespath
 
 from .request_body_facade import MitmproxyRequestBodyFacade
 from .request import Request
 
-LOG_ID = 'Request'
+LOG_ID = 'RequestFacade'
 
 class MitmproxyRequestFacade(Request):
 
@@ -29,6 +30,7 @@ class MitmproxyRequestFacade(Request):
     def __init__(self, request: 'MitmproxyRequest'):
         self.__url_rules: List[UrlRule] = []
         self.__parameter_rules: List[ParameterRule] = []
+        self.__mode: Optional[AgentMode] = None
 
         self.request = request
         self.uri = urlparse(self.request.url)
@@ -116,6 +118,14 @@ class MitmproxyRequestFacade(Request):
     def scheme(self):
         return self.request.scheme
 
+    @property
+    def mode(self) -> Optional[AgentMode]:
+        return self.__mode
+
+    def with_mode(self, mode: Optional[AgentMode]):
+        self.__mode = mode
+        return self
+
     def with_parameter_rules(self, rules: List[RewriteRule]):
         if type(rules) == list:
             self.__parameter_rules = self.select_parameter_rules(rules)
@@ -139,7 +149,8 @@ class MitmproxyRequestFacade(Request):
         if len(rewrites):
             url_before = self.url
             self.__rewrite_url(rewrites)
-            Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN} Rewriting URL{bcolors.ENDC} {url_before} => {self.url}")
+            log_id = self.__mode.capitalize() if self.__mode else LOG_ID
+            Logger.instance(log_id).info(f"{bcolors.OKCYAN}rewriting{bcolors.ENDC} URL {url_before} => {self.url}")
 
     # Find all the rules that match request url and method
     def select_rewrite_rules(self, rules: List[RewriteRule]) -> List[RewriteRule]:
@@ -188,7 +199,8 @@ class MitmproxyRequestFacade(Request):
             })
 
     def __rewrite_handler(self, rewrite: ParameterRule) -> str:
-        Logger.instance(LOG_ID).info(f"{bcolors.OKCYAN}Rewriting{bcolors.ENDC} {rewrite.type.lower()} {rewrite.name} => {rewrite.value}")
+        log_id = self.__mode.capitalize() if self.__mode else LOG_ID
+        Logger.instance(log_id).info(f"{bcolors.OKCYAN}rewriting{bcolors.ENDC} request {rewrite.type.lower()} {rewrite.name} => {rewrite.value}")
         return rewrite.value
 
     def __rewrite_url(self, rewrites: List[UrlRule]):

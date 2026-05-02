@@ -124,8 +124,13 @@ class TestHandleNormalizeServiceExcludedRequest:
         handle_request_normalize(context)
         handle_response_normalize(context)
 
-        mock_rewrite_request.assert_called_once_with(flow, intercept_settings.normalize_rewrite_rules)
+        mock_rewrite_request.assert_called_once_with(
+            flow,
+            intercept_settings.normalize_rewrite_rules,
+            mode=mode.NORMALIZE,
+        )
         mock_rewrite_response.assert_called_once_with(
             flow,
             intercept_settings.normalize_rewrite_rules,
+            mode=mode.NORMALIZE,
         )
