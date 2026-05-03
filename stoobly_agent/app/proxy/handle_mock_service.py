@@ -128,37 +128,28 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
     if policy == mock_policy.ALL:
         res = eval_request_with_retry(context, eval_request, **options) 
-
-        if res.status_code == custom_response_codes.NOT_FOUND:
-            __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
-
-        if not context.modified:
-            context.with_response(res)
     elif policy == mock_policy.FOUND:
         res = eval_request_with_retry(context, eval_request, **options) 
         
         if res.status_code == custom_response_codes.NOT_FOUND:
-            __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
+            try:
+                return __handle_found_policy(context) # Continue proxying the request
+            except RuntimeError:
+                # Do nothing, return custom error response
+                pass 
 
-            if not context.modified:
-                try:
-                    return __handle_found_policy(context) # Continue proxying the request
-                except RuntimeError:
-                    # Do nothing, return custom error response
-                    pass 
-
-        if not context.modified:
-            context.with_response(res)
+    flow = context.flow
+    apply_response(flow, res)
 
     if res.status_code == custom_response_codes.NOT_FOUND:
-        if handle_failure:
-            res = handle_failure(context)
-    else:
-        if handle_success:
-            res = handle_success(context)
+        __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
 
-    if res:
-        apply_response(context.flow, res)
+        # If custom hook did not override resonse, continue with handle_failure
+        if flow.response.status_code == custom_response_codes.NOT_FOUND and handle_failure:
+            return handle_failure(context)
+    
+    if handle_success:
+        handle_success(context)
 
 def eval_request_with_retry(context: MockContext, eval_request, **options: MockOptions):
     request = context.flow.request
