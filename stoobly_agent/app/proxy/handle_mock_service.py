@@ -132,7 +132,8 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
         if res.status_code == custom_response_codes.NOT_FOUND:
             __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
 
-        context.with_response(res)
+        if not context.modified:
+            context.with_response(res)
     elif policy == mock_policy.FOUND:
         res = eval_request_with_retry(context, eval_request, **options) 
         
@@ -145,8 +146,9 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
                 except RuntimeError:
                     # Do nothing, return custom error response
                     pass 
-        
-        context.with_response(res)
+
+        if not context.modified:
+            context.with_response(res)
 
     if res.status_code == custom_response_codes.NOT_FOUND:
         if handle_failure:

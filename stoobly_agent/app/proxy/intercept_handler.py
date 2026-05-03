@@ -1,6 +1,5 @@
 import os
 import pdb
-import uuid
 
 from typing import TYPE_CHECKING
 
@@ -21,8 +20,8 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
 from stoobly_agent.config.constants import lifecycle_hooks, mode
-from stoobly_agent.config.constants.custom_headers import PROXY_REQUEST_UUID
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
@@ -41,7 +40,7 @@ def request(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
 
     __patch_cookie(request)
-    __set_proxy_request_uuid(request)
+    __set_proxy_request_uuid(flow)
 
     intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
     if not intercept_settings.active:
@@ -130,5 +129,6 @@ def __intercept_hook(hook: str, flow: 'MitmproxyHTTPFlow', intercept_settings: I
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](InterceptContext(flow, intercept_settings))
 
-def __set_proxy_request_uuid(request: 'MitmproxyRequest') -> None:
-    request.headers[PROXY_REQUEST_UUID] = str(uuid.uuid4())
+def __set_proxy_request_uuid(flow: 'MitmproxyHTTPFlow') -> None:
+    """Mirror ``flow.id`` on the Request for code paths that only hold ``request`` (not sent upstream)."""
+    set_proxy_request_uuid(flow.request, flow.id)

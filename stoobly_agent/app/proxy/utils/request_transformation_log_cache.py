@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, List, Literal, Optional, TypedDict
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
+from stoobly_agent.app.proxy.utils.request_correlation import get_proxy_request_uuid
 from stoobly_agent.app.settings.constants import request_component as req_comp
-from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants.mode import AgentMode
 from stoobly_agent.lib.cache import Cache
 
@@ -36,7 +36,7 @@ def append_log_from_request(
     *,
     timeout: Optional[int] = None,
 ) -> None:
-    request_uuid = request.headers.get(custom_headers.PROXY_REQUEST_UUID)
+    request_uuid = get_proxy_request_uuid(request)
     if not request_uuid:
         return
     RequestTransformationLogCache.instance().append(str(request_uuid), entry, timeout=timeout)

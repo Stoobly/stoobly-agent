@@ -3,6 +3,7 @@ import pytest
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
+from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
 from stoobly_agent.app.proxy.utils.request_transformation_log_cache import (
     RequestTransformationLogCache,
     append_log_from_request,
@@ -10,7 +11,6 @@ from stoobly_agent.app.proxy.utils.request_transformation_log_cache import (
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
-from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants import mode as agent_mode
 from stoobly_agent.lib.cache import Cache
 
@@ -117,7 +117,7 @@ class TestRequestTransformationLogCache:
         cache = RequestTransformationLogCache.instance()
         assert cache.read('nonexistent-uuid') == []
 
-    def test_append_log_from_request_skips_without_proxy_uuid_header(self):
+    def test_append_log_from_request_skips_without_correlation_id(self):
         req = _mitm_request()
         append_log_from_request(req, {
             'action': 'rewrite',
@@ -129,9 +129,10 @@ class TestRequestTransformationLogCache:
         cache = RequestTransformationLogCache.instance()
         assert cache.read('00000000-0000-0000-0000-000000000099') == []
 
-    def test_append_log_from_request_with_header(self):
+    def test_append_log_from_request_with_correlation_id(self):
         uid = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         append_log_from_request(req, {
             'action': 'rewrite',
             'lifecycle': 'response',
@@ -151,7 +152,8 @@ class TestRequestTransformationLogCache:
 class TestRequestTransformationEntryLoggerApi:
     def test_log_filter_exclude_writes_cache_after_flush(self):
         uid = '11111111-1111-1111-1111-111111111111'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         isettings = InterceptSettings(Settings.instance(), req)
         RequestTransformationEntryLogger.log_filter_exclude(
             req, isettings, agent_mode.MOCK, str(req.url)
@@ -169,7 +171,8 @@ class TestRequestTransformationEntryLoggerApi:
 
     def test_log_filter_exclude_lifecycle_response_when_for_response(self):
         uid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         isettings = InterceptSettings(Settings.instance(), req)
         isettings.for_response()
         RequestTransformationEntryLogger.log_filter_exclude(
@@ -183,7 +186,8 @@ class TestRequestTransformationEntryLoggerApi:
 
     def test_flush_emits_all_records_single_cache_write(self):
         uid = '22222222-2222-2222-2222-222222222222'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         isettings = InterceptSettings(Settings.instance(), req)
         RequestTransformationEntryLogger.log_filter_exclude(
             req, isettings, agent_mode.MOCK, 'https://a'
@@ -203,7 +207,8 @@ class TestRequestTransformationEntryLoggerApi:
 
     def test_log_mocked_response_after_flush(self):
         uid = '33333333-3333-3333-3333-333333333333'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         RequestTransformationEntryLogger.log_mocked_response(req, 'https://ex/a', 'req-key-1')
         cache = RequestTransformationLogCache.instance()
         RequestTransformationEntryLogger.flush(req)
@@ -217,7 +222,8 @@ class TestRequestTransformationEntryLoggerApi:
 
     def test_log_testing_response_after_flush(self):
         uid = '44444444-4444-4444-4444-444444444444'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         RequestTransformationEntryLogger.log_testing_response(req, 'rk', 'cli')
         cache = RequestTransformationLogCache.instance()
         RequestTransformationEntryLogger.flush(req)
@@ -231,7 +237,8 @@ class TestRequestTransformationEntryLoggerApi:
 
     def test_log_recording_after_flush(self):
         uid = '55555555-5555-5555-5555-555555555555'
-        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        req = _mitm_request()
+        set_proxy_request_uuid(req, uid)
         RequestTransformationEntryLogger.log_recording(req, str(req.url))
         cache = RequestTransformationLogCache.instance()
         RequestTransformationEntryLogger.flush(req)

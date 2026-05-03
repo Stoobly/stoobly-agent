@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
     from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.app.proxy.utils.request_correlation import get_proxy_request_uuid
 from stoobly_agent.config.constants import mode as agent_mode
 from stoobly_agent.config.constants.mode import AgentMode
 from stoobly_agent.lib.logger import Logger, bcolors
@@ -55,11 +55,11 @@ class RequestTransformationEntryLogger:
         if request is None:
             cls._emit_one(record)
             return
-        uuid = request.headers.get(custom_headers.PROXY_REQUEST_UUID)
-        if not uuid:
+        request_id = get_proxy_request_uuid(request)
+        if not request_id:
             cls._emit_one(record)
             return
-        cls._pending[str(uuid)].append(record)
+        cls._pending[str(request_id)].append(record)
 
     @staticmethod
     def _emit_one(record: _BufferedRecord) -> None:
@@ -72,10 +72,10 @@ class RequestTransformationEntryLogger:
 
     @classmethod
     def flush(cls, request: 'MitmproxyRequest') -> None:
-        uuid = request.headers.get(custom_headers.PROXY_REQUEST_UUID)
-        if not uuid:
+        request_id = get_proxy_request_uuid(request)
+        if not request_id:
             return
-        key = str(uuid)
+        key = str(request_id)
         pending = cls._pending.pop(key, None)
         if not pending:
             return

@@ -24,7 +24,7 @@ class MockContext(InterceptContext):
 
   @property
   def modified(self):
-    return  not not self.end_time
+    return not not self.end_time
 
   @property
   def start_time(self):
