@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -134,6 +135,9 @@ def __record_handler(context: RecordContext, request_model: RequestModel):
         InterceptedRequestsLogger.error("Record failure", request=flow_copy.request, response=flow_copy.response)
 
 def __record_request(context: RecordContext, request_model: RequestModel):
+    flow = context.flow
+    RequestTransformationEntryLogger.log_recording(flow.request, flow.request.url)
+
     if os.environ.get(ENV) == TEST:
         __record_handler(context, request_model)
     else:

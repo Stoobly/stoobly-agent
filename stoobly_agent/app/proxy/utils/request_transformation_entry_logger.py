@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Literal, Optional, cast
 
 if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
+    from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants import mode as agent_mode
@@ -16,6 +17,7 @@ from stoobly_agent.lib.logger import Logger, bcolors
 from .request_transformation_log_cache import (
     RequestTransformationLogCache,
     RequestTransformationLogEntry,
+    TransformationLifecycle,
     TransformationTarget,
 )
 
@@ -43,6 +45,10 @@ class RequestTransformationEntryLogger:
     @staticmethod
     def _rewrite_log_id(mode: Optional[AgentMode], fallback: str) -> str:
         return mode.capitalize() if mode else fallback
+
+    @staticmethod
+    def _filter_lifecycle(intercept_settings: InterceptSettings) -> TransformationLifecycle:
+        return 'response' if intercept_settings.is_for_response else 'request'
 
     @classmethod
     def _enqueue(cls, request: Optional['MitmproxyRequest'], record: _BufferedRecord) -> None:
@@ -186,17 +192,25 @@ class RequestTransformationEntryLogger:
         ))
 
     @classmethod
-    def log_filter_exclude(cls, request: 'MitmproxyRequest', mode: str, url: str) -> None:
-        details = f'ignore (exclude) handling {mode} {url}'
+    def log_filter_exclude(
+        cls,
+        request: 'MitmproxyRequest',
+        intercept_settings: InterceptSettings,
+        mode: str,
+        url: str,
+    ) -> None:
+        lifecycle = cls._filter_lifecycle(intercept_settings)
+        log_id = cls._rewrite_log_id(cast(AgentMode, mode), cls.FILTER_LOG_ID)
+        details = f'filtering (exclude) {lifecycle} {url}'
         cls._enqueue(request, _BufferedRecord(
             level='info',
-            log_id=cls.FILTER_LOG_ID,
+            log_id=log_id,
             console_message=(
-                f"{bcolors.OKCYAN}ignore (exclude) handling {mode}{bcolors.ENDC} {url}"
+                f"{bcolors.OKCYAN}filtering{bcolors.ENDC} (exclude) {lifecycle} {url}"
             ),
             entry={
                 'action': 'filter',
-                'lifecycle': 'request',
+                'lifecycle': lifecycle,
                 'target': 'url',
                 'mode': cast(AgentMode, mode),
                 'details': details,
@@ -204,17 +218,25 @@ class RequestTransformationEntryLogger:
         ))
 
     @classmethod
-    def log_filter_include_method_mismatch(cls, request: 'MitmproxyRequest', mode: str, url: str) -> None:
-        details = f'ignore (not include) handling {mode} {url}'
+    def log_filter_include_method_mismatch(
+        cls,
+        request: 'MitmproxyRequest',
+        intercept_settings: InterceptSettings,
+        mode: str,
+        url: str,
+    ) -> None:
+        lifecycle = cls._filter_lifecycle(intercept_settings)
+        log_id = cls._rewrite_log_id(cast(AgentMode, mode), cls.FILTER_LOG_ID)
+        details = f'filtering (not include) {lifecycle} {url}'
         cls._enqueue(request, _BufferedRecord(
             level='info',
-            log_id=cls.FILTER_LOG_ID,
+            log_id=log_id,
             console_message=(
-                f"{bcolors.OKCYAN}ignore (not include) handling {mode}{bcolors.ENDC} {url}"
+                f"{bcolors.OKCYAN}filtering{bcolors.ENDC} (not include) {lifecycle} {url}"
             ),
             entry={
                 'action': 'filter',
-                'lifecycle': 'request',
+                'lifecycle': lifecycle,
                 'target': 'url',
                 'mode': cast(AgentMode, mode),
                 'details': details,
@@ -222,17 +244,25 @@ class RequestTransformationEntryLogger:
         ))
 
     @classmethod
-    def log_filter_include_pattern_miss(cls, request: 'MitmproxyRequest', mode: str, url: str) -> None:
-        details = f'ignore (not include) handling {mode} {url}'
+    def log_filter_include_pattern_miss(
+        cls,
+        request: 'MitmproxyRequest',
+        intercept_settings: InterceptSettings,
+        mode: str,
+        url: str,
+    ) -> None:
+        lifecycle = cls._filter_lifecycle(intercept_settings)
+        log_id = cls._rewrite_log_id(cast(AgentMode, mode), cls.FILTER_LOG_ID)
+        details = f'filtering (not include) {lifecycle} {url}'
         cls._enqueue(request, _BufferedRecord(
             level='info',
-            log_id=cls.FILTER_LOG_ID,
+            log_id=log_id,
             console_message=(
-                f"{bcolors.OKCYAN}ignore (not include) handling {mode}{bcolors.ENDC} {url}"
+                f"{bcolors.OKCYAN}filtering{bcolors.ENDC} (not include) {lifecycle} {url}"
             ),
             entry={
                 'action': 'filter',
-                'lifecycle': 'request',
+                'lifecycle': lifecycle,
                 'target': 'url',
                 'mode': cast(AgentMode, mode),
                 'details': details,
@@ -243,18 +273,23 @@ class RequestTransformationEntryLogger:
     def log_filter_regexp_error(
         cls,
         request: 'MitmproxyRequest',
+        intercept_settings: InterceptSettings,
         mode: str,
         pattern: str,
         exc: re.error,
     ) -> None:
-        details = f"RegExp error '{exc}' for {pattern}"
+        lifecycle = cls._filter_lifecycle(intercept_settings)
+        log_id = cls._rewrite_log_id(cast(AgentMode, mode), cls.FILTER_LOG_ID)
+        details = f"filtering {lifecycle} RegExp error '{exc}' for {pattern}"
         cls._enqueue(request, _BufferedRecord(
             level='error',
-            log_id=cls.FILTER_LOG_ID,
-            console_message=details,
+            log_id=log_id,
+            console_message=(
+                f"{bcolors.OKCYAN}filtering{bcolors.ENDC} {lifecycle} RegExp error '{exc}' for {pattern}"
+            ),
             entry={
                 'action': 'filter',
-                'lifecycle': 'request',
+                'lifecycle': lifecycle,
                 'target': 'url',
                 'mode': cast(AgentMode, mode),
                 'details': details,
@@ -263,11 +298,11 @@ class RequestTransformationEntryLogger:
 
     @classmethod
     def log_mocked_response(cls, request: 'MitmproxyRequest', url: str, target: str) -> None:
-        details = f'Mocked {url} -> {target}'
+        details = f'mocked {url} -> {target}'
         cls._enqueue(request, _BufferedRecord(
             level='info',
             log_id=cls.MOCK_LOG_ID,
-            console_message=f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {url} -> {target}",
+            console_message=f"{bcolors.OKBLUE}mocked{bcolors.ENDC} {url} -> {target}",
             entry={
                 'action': 'rewrite',
                 'lifecycle': 'response',
@@ -284,12 +319,12 @@ class RequestTransformationEntryLogger:
         request_key: str,
         request_origin_value: str,
     ) -> None:
-        details = f'Testing {request_key} from {request_origin_value}'
+        details = f'testing {request_key} from {request_origin_value}'
         cls._enqueue(request, _BufferedRecord(
             level='info',
             log_id=cls.TEST_LOG_ID,
             console_message=(
-                f"{bcolors.OKBLUE}Testing{bcolors.ENDC} {request_key} from {request_origin_value}"
+                f"{bcolors.OKBLUE}testing{bcolors.ENDC} {request_key} from {request_origin_value}"
             ),
             entry={
                 'action': 'noop',
@@ -302,7 +337,7 @@ class RequestTransformationEntryLogger:
 
     @classmethod
     def log_recording(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
-        details = f'Recording {url}'
+        details = f'recording {url}'
         entry: Optional[RequestTransformationLogEntry] = None
         if mitmproxy_request is not None:
             entry = {
@@ -315,7 +350,7 @@ class RequestTransformationEntryLogger:
         record = _BufferedRecord(
             level='info',
             log_id=cls.RECORD_LOG_ID,
-            console_message=f"{bcolors.OKBLUE}Recording{bcolors.ENDC} {url}",
+            console_message=f"{bcolors.OKBLUE}recording{bcolors.ENDC} {url}",
             entry=entry,
         )
         if mitmproxy_request is None:

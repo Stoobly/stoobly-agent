@@ -2,11 +2,13 @@ import pytest
 
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
+from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.utils.request_transformation_log_cache import (
     RequestTransformationLogCache,
     append_log_from_request,
 )
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
+from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.settings.constants import request_component
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.constants import mode as agent_mode
@@ -70,7 +72,7 @@ class TestRequestTransformationLogCache:
             'lifecycle': 'request',
             'target': 'url',
             'mode': agent_mode.RECORD,
-            'details': 'ignore (exclude) handling record https://x',
+            'details': 'filtering (exclude) request https://x',
         }
         cache.append(uid, e1)
         cache.append(uid, e2)
@@ -150,7 +152,10 @@ class TestRequestTransformationEntryLoggerApi:
     def test_log_filter_exclude_writes_cache_after_flush(self):
         uid = '11111111-1111-1111-1111-111111111111'
         req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
-        RequestTransformationEntryLogger.log_filter_exclude(req, agent_mode.MOCK, str(req.url))
+        isettings = InterceptSettings(Settings.instance(), req)
+        RequestTransformationEntryLogger.log_filter_exclude(
+            req, isettings, agent_mode.MOCK, str(req.url)
+        )
         cache = RequestTransformationLogCache.instance()
         assert cache.read(uid) == []
         RequestTransformationEntryLogger.flush(req)
@@ -159,21 +164,40 @@ class TestRequestTransformationEntryLoggerApi:
         assert rows[0]['action'] == 'filter'
         assert rows[0]['lifecycle'] == 'request'
         assert rows[0]['target'] == 'url'
-        assert 'ignore (exclude)' in rows[0]['details']
+        assert rows[0]['details'].startswith('filtering (exclude) request ')
         assert rows[0]['mode'] == agent_mode.MOCK
+
+    def test_log_filter_exclude_lifecycle_response_when_for_response(self):
+        uid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
+        isettings = InterceptSettings(Settings.instance(), req)
+        isettings.for_response()
+        RequestTransformationEntryLogger.log_filter_exclude(
+            req, isettings, agent_mode.MOCK, str(req.url)
+        )
+        RequestTransformationEntryLogger.flush(req)
+        rows = RequestTransformationLogCache.instance().read(uid)
+        assert len(rows) == 1
+        assert rows[0]['lifecycle'] == 'response'
+        assert rows[0]['details'].startswith('filtering (exclude) response ')
 
     def test_flush_emits_all_records_single_cache_write(self):
         uid = '22222222-2222-2222-2222-222222222222'
         req = _mitm_request(**{custom_headers.PROXY_REQUEST_UUID: uid})
-        RequestTransformationEntryLogger.log_filter_exclude(req, agent_mode.MOCK, 'https://a')
-        RequestTransformationEntryLogger.log_filter_include_pattern_miss(req, agent_mode.RECORD, 'https://b')
+        isettings = InterceptSettings(Settings.instance(), req)
+        RequestTransformationEntryLogger.log_filter_exclude(
+            req, isettings, agent_mode.MOCK, 'https://a'
+        )
+        RequestTransformationEntryLogger.log_filter_include_pattern_miss(
+            req, isettings, agent_mode.RECORD, 'https://b'
+        )
         cache = RequestTransformationLogCache.instance()
         assert cache.read(uid) == []
         RequestTransformationEntryLogger.flush(req)
         rows = cache.read(uid)
         assert len(rows) == 2
-        assert 'ignore (exclude)' in rows[0]['details']
-        assert 'ignore (not include)' in rows[1]['details']
+        assert 'filtering (exclude)' in rows[0]['details']
+        assert 'filtering (not include)' in rows[1]['details']
         RequestTransformationEntryLogger.flush(req)
         assert len(cache.read(uid)) == 2
 
@@ -189,7 +213,7 @@ class TestRequestTransformationEntryLoggerApi:
         assert rows[0]['lifecycle'] == 'response'
         assert rows[0]['target'] == 'url'
         assert rows[0]['mode'] == agent_mode.MOCK
-        assert 'Mocked' in rows[0]['details']
+        assert 'mocked' in rows[0]['details']
 
     def test_log_testing_response_after_flush(self):
         uid = '44444444-4444-4444-4444-444444444444'
@@ -203,7 +227,7 @@ class TestRequestTransformationEntryLoggerApi:
         assert rows[0]['lifecycle'] == 'response'
         assert rows[0]['target'] == 'url'
         assert rows[0]['mode'] == agent_mode.TEST
-        assert 'Testing' in rows[0]['details']
+        assert 'testing' in rows[0]['details']
 
     def test_log_recording_after_flush(self):
         uid = '55555555-5555-5555-5555-555555555555'
@@ -217,4 +241,4 @@ class TestRequestTransformationEntryLoggerApi:
         assert rows[0]['lifecycle'] == 'response'
         assert rows[0]['target'] == 'url'
         assert rows[0]['mode'] == agent_mode.RECORD
-        assert 'Recording' in rows[0]['details']
+        assert 'recording' in rows[0]['details']

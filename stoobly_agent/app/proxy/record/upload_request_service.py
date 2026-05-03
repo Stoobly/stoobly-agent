@@ -16,7 +16,6 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.record import JoinedRequest, RequestString, ResponseString
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import request_origin
 from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
@@ -53,8 +52,6 @@ def inject_upload_request(request_model: RequestModel, intercept_settings: Inter
 def upload_request(
     request_model: RequestModel, intercept_settings: InterceptSettings, flow: 'MitmproxyHTTPFlow' = None
 ):
-    RequestTransformationEntryLogger.log_recording(flow.request, flow.request.url)
-
     flow_copy = deepcopy(flow) # When applying modifications we don't want to persist them in the response
     joined_request = join_request_from_flow(flow_copy, intercept_settings=intercept_settings)
 
