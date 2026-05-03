@@ -11,9 +11,10 @@ if TYPE_CHECKING:
 
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.mitmproxy.request_facade import MitmproxyRequestFacade
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.rewrite_rules_to_ignored_components_service import rewrite_rules_to_ignored_components
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, request_origin
-from stoobly_agent.lib.logger import bcolors, Logger
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from .constants import custom_response_codes
 from .mock.context import MockContext
@@ -21,7 +22,7 @@ from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.request_handler import reverse_proxy
-from .utils.response_handler import bad_request, enable_cors, pass_on
+from .utils.response_handler import apply_response, bad_request, enable_cors
 from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'Mock'
@@ -37,7 +38,7 @@ class MockOptions(TypedDict):
 def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse']:
     flow = context.flow
     request = flow.request
-    response = context.response
+    response = flow.response
 
     if request.method.upper() == 'OPTIONS':
         # Default OPTIONS request to allow CORS
@@ -47,19 +48,19 @@ def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse'
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 
 def handle_mock_success(context: MockContext) -> None:
-    response = context.response
+    response = context.flow.response
 
     if response:
         request = context.flow.request
 
         request_key = response.headers.get(custom_headers.MOCK_REQUEST_KEY)
         if request_key:
-            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {request_key}")
+            RequestTransformationEntryLogger.log_mocked_response(request, request.url, request_key)
             InterceptedRequestsLogger.info("Mock success", request=request, response=response, request_key=request_key)
 
         fixture_path = response.headers.get(custom_headers.MOCK_FIXTURE_PATH)
         if fixture_path:
-            Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Mocked{bcolors.ENDC} {request.url} -> {fixture_path}")
+            RequestTransformationEntryLogger.log_mocked_response(request, request.url, fixture_path)
             InterceptedRequestsLogger.info("Mock success", request=request, response=response, fixture_path=fixture_path)
 
 def handle_request_mock_generic_without_rewrite(context: MockContext, **options: MockOptions):
@@ -86,23 +87,28 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
     # If policy override is set, use it, otherwise use the intercept mode policy
     policy = policy_override or get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
+
     if policy == mock_policy.NONE:
         if handle_error:
             res = handle_error(context)
 
             if res:
-                return pass_on(context.flow, res)
+                apply_response(context.flow, res)
         return
 
     if policy not in [mock_policy.ALL, mock_policy.FOUND]:
         if handle_error:
             res = handle_error(context)
 
-        return bad_request(
-            context.flow,
-            "Valid mock policies: %s, Got: %s" %
-            ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
-        )
+        if res:
+            apply_response(context.flow, res)
+        else:
+            bad_request(
+                context.flow,
+                "Valid mock policies: %s, Got: %s" %
+                ([mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE], policy)
+            )
+        return
 
     if not options.get('no_rewrite'):
         __rewrite_request(context)
@@ -122,15 +128,9 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
 
     if policy == mock_policy.ALL:
         res = eval_request_with_retry(context, eval_request, **options) 
-
-        context.with_response(res)
-        res = __after_mock_not_found(context)
     elif policy == mock_policy.FOUND:
         res = eval_request_with_retry(context, eval_request, **options) 
-
-        context.with_response(res)
-        res = __after_mock_not_found(context)
-
+        
         if res.status_code == custom_response_codes.NOT_FOUND:
             try:
                 return __handle_found_policy(context) # Continue proxying the request
@@ -138,14 +138,18 @@ def handle_request_mock_generic(context: MockContext, **options: MockOptions):
                 # Do nothing, return custom error response
                 pass 
 
-    if res.status_code == custom_response_codes.NOT_FOUND:
-        if handle_failure:
-            res = handle_failure(context) or res
-    else:
-        if handle_success:
-            res = handle_success(context) or res
+    flow = context.flow
+    apply_response(flow, res)
 
-    return pass_on(context.flow, res)
+    if res.status_code == custom_response_codes.NOT_FOUND:
+        __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
+
+        # If custom hook did not override resonse, continue with handle_failure
+        if flow.response.status_code == custom_response_codes.NOT_FOUND and handle_failure:
+            return handle_failure(context)
+    
+    if handle_success:
+        handle_success(context)
 
 def eval_request_with_retry(context: MockContext, eval_request, **options: MockOptions):
     request = context.flow.request
@@ -217,7 +221,7 @@ def __rewrite_request(context: MockContext):
     rewrite_rules = intercept_settings.mock_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(context.flow, rewrite_rules) 
+        rewrite_request(context.flow, rewrite_rules, mode=mode.MOCK) 
 
 def __rewrite_response(context: MockContext):
     # Rewrite request with paramter rules for mock
@@ -226,7 +230,7 @@ def __rewrite_response(context: MockContext):
     rewrite_rules = intercept_settings.mock_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(context.flow, rewrite_rules) 
+        rewrite_response(context.flow, rewrite_rules, mode=mode.MOCK) 
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings = context.intercept_settings
@@ -234,14 +238,3 @@ def __mock_hook(hook: str, context: MockContext):
 
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](context)
-
-def __after_mock_not_found(context: MockContext):
-    res = context.response
-
-    if res.status_code == custom_response_codes.NOT_FOUND:
-        __mock_hook(lifecycle_hooks.AFTER_MOCK_NOT_FOUND, context)
-
-        # context.response may have been modified by the hook
-        res = context.response
-
-    return res

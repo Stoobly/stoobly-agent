@@ -15,9 +15,10 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
-from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
+from stoobly_agent.app.proxy.utils.response_handler import apply_response, bad_request, disable_transfer_encoding
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
-from stoobly_agent.lib.logger import Logger, bcolors
+from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import (
     handle_mock_failure as handle_mock_failure_service,
@@ -149,17 +150,21 @@ def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
     if test_id:
         flow.response.headers[custom_headers.TEST_ID] = str(test_id)
 
-def __handle_mock_error(test_context: TestContext):
+def __handle_mock_error(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found')
+        flow = test_context.mock_context.flow
+        res = build_response(False, 'No test found, due to invalid mock policy')
+        apply_response(flow, res)
 
 def __handle_mock_failure(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found')
+        flow = test_context.mock_context.flow
+        res = build_response(False, 'No test found, due to no mock found')
+        apply_response(flow, res)
 
 def __handle_mock_success(test_context: TestContext) -> None:
     request_id = test_context.mock_request_id
@@ -170,10 +175,14 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
     flow: 'MitmproxyHTTPFlow' = test_context.flow
     intercept_settings = test_context.intercept_settings
-    mock_response = test_context.mock_context.response
+    mock_response = test_context.mock_context.flow.response
     request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY) if mock_response else None
     if request_key:
-        Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Testing{bcolors.ENDC} {request_key} from {intercept_settings.request_origin}")
+        RequestTransformationEntryLogger.log_testing_response(
+            flow.request,
+            request_key,
+            str(intercept_settings.request_origin),
+        )
 
     __rewrite_request(test_context.replay_context)
     __rewrite_response(test_context.replay_context)
@@ -265,7 +274,7 @@ def __record_handler(context: TestContext, upload_test_data):
         # TODO: apply other record policies
 
         # Since we are "uploading" the request, use record_write_rules
-        rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules)
+        rewrite_request_response(record_context.flow, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
         __test_hook(lifecycle_hooks.BEFORE_RECORD, record_context)
 
         # Commit test to API
@@ -286,7 +295,7 @@ def __rewrite_request(context: ReplayContext):
     rewrite_rules = intercept_settings.test_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(context.flow, rewrite_rules)
+        rewrite_request(context.flow, rewrite_rules, mode=mode.TEST)
 
 def __rewrite_response(context: ReplayContext):
     """
@@ -296,7 +305,7 @@ def __rewrite_response(context: ReplayContext):
     rewrite_rules = intercept_settings.test_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(context.flow, rewrite_rules)
+        rewrite_response(context.flow, rewrite_rules, mode=mode.TEST)
 
 def __test_hook(hook: str, context: TestContext):
     intercept_settings = context.intercept_settings

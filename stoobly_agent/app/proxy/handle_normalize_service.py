@@ -25,8 +25,6 @@ def handle_request_normalize_without_rewrite(replay_context: ReplayContext):
     handle_request_normalize(replay_context, **options)
 
 def handle_request_normalize(replay_context: ReplayContext, **options: NormalizeOptions):
-    # Lazy import for runtime usage
-    from mitmproxy.http import Request as MitmproxyRequest
     request: 'MitmproxyRequest' = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
@@ -43,8 +41,13 @@ def handle_request_normalize(replay_context: ReplayContext, **options: Normalize
 # 2. AFTER_NORMALIZE gets triggered
 #
 def handle_response_normalize(replay_context: ReplayContext):
-    __rewrite_response(replay_context)
-    __normalize_hook(lifecycle_hooks.AFTER_NORMALIZE, replay_context)
+    request: 'MitmproxyRequest' = replay_context.flow.request
+    intercept_settings: InterceptSettings = replay_context.intercept_settings
+
+    policy = get_intercept_mode_policy(request, intercept_settings, mode.NORMALIZE)
+    if policy != normalize_policy.NONE:
+        __rewrite_response(replay_context)
+        __normalize_hook(lifecycle_hooks.AFTER_NORMALIZE, replay_context)
 
 def __normalize_hook(hook: str, replay_context: ReplayContext):
     intercept_settings: InterceptSettings = replay_context.intercept_settings
@@ -61,7 +64,7 @@ def __rewrite_request(replay_context: ReplayContext):
     rewrite_rules = intercept_settings.normalize_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_request(replay_context.flow, rewrite_rules)
+        rewrite_request(replay_context.flow, rewrite_rules, mode=mode.NORMALIZE)
 
 def __rewrite_response(replay_context: ReplayContext):
     """
@@ -73,4 +76,4 @@ def __rewrite_response(replay_context: ReplayContext):
     rewrite_rules = intercept_settings.normalize_rewrite_rules
 
     if len(rewrite_rules) > 0:
-        rewrite_response(flow, rewrite_rules)
+        rewrite_response(flow, rewrite_rules, mode=mode.NORMALIZE)

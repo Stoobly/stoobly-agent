@@ -455,6 +455,10 @@ class InterceptSettings:
   def include_rules_for_mode(self, mode: str) -> List[FilterRule]:
     return list(filter(lambda rule: self.__mode_in_modes(mode, rule.modes) and rule.action == filter_action.INCLUDE, self.__filter_rules))
 
+  @property
+  def is_for_response(self) -> bool:
+    return self.__for_response
+
   def for_response(self):
     self.__for_response = True
 

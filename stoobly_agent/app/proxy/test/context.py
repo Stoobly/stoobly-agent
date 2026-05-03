@@ -32,12 +32,6 @@ class TestContext(TestContextABC):
     self.__mock_context = mock_context
     self.__replay_context = replay_context
 
-    mock_response = self.__mock_context.response
-    self.__expected_response = RequestsResponseAdapter(mock_response).adapt()
-
-    upstream_response = self.__flow.response
-    self.__response = MitmproxyResponseAdapter(upstream_response).adapt()
-
     self.__log = ''
     self.__passed = None
     self.__skipped = False
@@ -60,11 +54,11 @@ class TestContext(TestContextABC):
 
   @property
   def decoded_response_content(self) -> FuzzyContent:
-    return self.__response.decode_content()
+    return self.response.decode_content()
 
   @property
   def decoded_expected_response_content(self) -> FuzzyContent:
-    return self.__expected_response.decode_content()
+    return self.expected_response.decode_content()
 
   @property
   def endpoint(self) -> EndpointFacade:
@@ -81,15 +75,16 @@ class TestContext(TestContextABC):
 
   @property
   def expected_latency(self):
-    return self.__mock_context.response.headers.get(custom_headers.RESPONSE_LATENCY)
+    return self.expected_response.headers.get(custom_headers.RESPONSE_LATENCY)
 
   @property
-  def expected_response(self):
-    return self.__expected_response
+  def expected_response(self) -> TestContextResponse:
+    mock_response = self.__mock_context.flow.response
+    return MitmproxyResponseAdapter(mock_response).adapt()
 
   @property
   def expected_status_code(self):
-    return self.__expected_response.status_code
+    return self.expected_response.status_code
 
   @property
   def filter(self):
@@ -161,7 +156,8 @@ class TestContext(TestContextABC):
 
   @property
   def response(self) -> TestContextResponse:
-    return self.__response
+    upstream_response = self.__flow.response
+    return MitmproxyResponseAdapter(upstream_response).adapt()
 
   @property
   def response_fixtures_path(self):
