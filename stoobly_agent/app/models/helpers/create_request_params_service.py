@@ -1,3 +1,4 @@
+import uuid
 import pdb
 
 from typing import TYPE_CHECKING
@@ -16,6 +17,7 @@ LOG_ID = 'CreateRequestParamsService'
 
 class MitmproxyFlowMock():
     def __init__(self, request, response):
+        self.id = str(uuid.uuid4())
         self.request = request
         self.response = response
 
