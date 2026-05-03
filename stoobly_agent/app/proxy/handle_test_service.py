@@ -16,7 +16,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
-from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
+from stoobly_agent.app.proxy.utils.response_handler import apply_response, bad_request, disable_transfer_encoding
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
 from stoobly_agent.lib.logger import Logger
 
@@ -150,17 +150,21 @@ def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
     if test_id:
         flow.response.headers[custom_headers.TEST_ID] = str(test_id)
 
-def __handle_mock_error(test_context: TestContext):
+def __handle_mock_error(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found, due to invalid mock policy')
+        flow = test_context.mock_context.flow
+        res = build_response(False, 'No test found, due to invalid mock policy')
+        apply_response(flow, res)
 
 def __handle_mock_failure(test_context: TestContext) -> None:
     intercept_settings = test_context.intercept_settings
 
     if intercept_settings.request_origin == request_origin.CLI:
-        return build_response(False, 'No test found, due to no mock found')
+        flow = test_context.mock_context.flow
+        res = build_response(False, 'No test found, due to no mock found')
+        apply_response(flow, res)
 
 def __handle_mock_success(test_context: TestContext) -> None:
     request_id = test_context.mock_request_id
