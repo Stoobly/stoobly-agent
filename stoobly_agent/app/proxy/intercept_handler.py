@@ -40,7 +40,9 @@ def request(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
 
     __patch_cookie(request)
-    __set_proxy_request_uuid(flow)
+
+    # Mirror ``flow.id`` on the Request for code paths that only hold ``request`` (not sent upstream).
+    set_proxy_request_uuid(flow.request, flow.id)
 
     intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
     if not intercept_settings.active:
@@ -128,7 +130,3 @@ def __intercept_hook(hook: str, flow: 'MitmproxyHTTPFlow', intercept_settings: I
 
     if hook in lifecycle_hooks_module:
         lifecycle_hooks_module[hook](InterceptContext(flow, intercept_settings))
-
-def __set_proxy_request_uuid(flow: 'MitmproxyHTTPFlow') -> None:
-    """Mirror ``flow.id`` on the Request for code paths that only hold ``request`` (not sent upstream)."""
-    set_proxy_request_uuid(flow.request, flow.id)
