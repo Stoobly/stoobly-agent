@@ -122,14 +122,30 @@ class InterceptedRequestsLogger():
         base._logger.handlers.clear()
 
     @classmethod
-    def flush(cls) -> None:
-        """Flush pending log messages to disk without stopping the listener."""
+    def flush(cls, timeout: float = None) -> None:
+        """Flush pending log messages to disk without stopping the listener.
+
+        Args:
+            timeout: Maximum seconds to wait for the queue to drain. If None,
+                     blocks until fully drained. If the timeout expires the file
+                     handler is still flushed so already-written entries are
+                     visible — callers simply may not see the most recent ones.
+        """
         base = InterceptedRequestsLogger
         if base._USE_ASYNC_QUEUE and base._log_queue is not None:
-            # Wait for the queue to be empty (all messages processed)
-            base._log_queue.join()
+            if timeout is None:
+                base._log_queue.join()
+            else:
+                # Mirrors queue.Queue.join() but with a deadline so dump_logs
+                # is never indefinitely blocked under sustained traffic.
+                with base._log_queue.all_tasks_done:
+                    deadline = time.time() + timeout
+                    while base._log_queue.unfinished_tasks:
+                        remaining = deadline - time.time()
+                        if remaining <= 0:
+                            break
+                        base._log_queue.all_tasks_done.wait(remaining)
 
-        # Flush the file handler buffer to disk
         if base._file_handler is not None:
             base._file_handler.flush()
 
@@ -411,7 +427,7 @@ class InterceptedRequestsLogger():
             follow: If True, stream new entries after printing history (like tail -f). Blocks until Ctrl-C.
         """
         base = InterceptedRequestsLogger
-        cls.flush()
+        cls.flush(timeout=2.0)
         file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
         if not os.path.exists(file_path):
             return
