@@ -152,7 +152,6 @@ class TestMultiServiceLoggingCompleteness:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -177,7 +176,6 @@ class TestMultiServiceLoggingCompleteness:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -234,10 +232,7 @@ class TestMultiServiceUrlFilter:
             )
 
     def _flush(self):
-        # flush() drains the async queue without stopping the listener, so subsequent
-        # test methods in this class can still log through the same proxy session.
         time.sleep(0.5)
-        InterceptedRequestsLogger.flush()
 
     def test_url_filter_returns_only_matching_service(self, app_dir_path, runner):
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
@@ -336,7 +331,6 @@ class TestMultiServiceLevelFilter:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--level', 'error', '--context-dir-path', app_dir_path])
@@ -363,7 +357,6 @@ class TestMultiServiceLevelFilter:
             )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--level', 'info', '--context-dir-path', app_dir_path])
@@ -395,7 +388,6 @@ class TestMultiServiceLevelFilter:
         )
 
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -459,7 +451,6 @@ class TestScenarioChangeDelimiter:
 
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -529,8 +520,6 @@ class TestConcurrentHighTrafficLogging:
 
         fire_concurrent_requests(targets, PROXY_URL)
 
-        InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
         time.sleep(1.0)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
@@ -607,9 +596,6 @@ class TestConcurrentScenarioChangeRace:
 
         batch_b = [(hostname, f'/race-b-{i}') for i in range(5) for hostname in SERVICES]
         fire_concurrent_requests(batch_b, PROXY_URL)
-
-        InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -693,9 +679,6 @@ class TestMultiScenarioFilter:
                 proxies={'http': PROXY_URL, 'https': PROXY_URL},
                 verify=False,
             )
-
-        InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--scenario-name', 'filter-scenario-alpha', '--context-dir-path', app_dir_path])
@@ -801,9 +784,6 @@ class TestScenarioChangeMidBurst:
 
         fire_concurrent_requests(batch_b, PROXY_URL)
 
-        InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
-
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
 
@@ -881,7 +861,6 @@ class TestMultiFilterComposition:
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         self._send_to_all()
         time.sleep(0.5)
-        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--url', 'dog.ceo', '--level', 'error', '--context-dir-path', app_dir_path])
@@ -902,8 +881,6 @@ class TestMultiFilterComposition:
 
         set_scenario_key_on_settings(settings, scenario_b_key)
         self._send_to_all()
-
-        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--url', 'dog.ceo', '--scenario-name', 'compose-scenario-alpha', '--context-dir-path', app_dir_path])
@@ -927,9 +904,6 @@ class TestMultiFilterComposition:
 
         set_scenario_key_on_settings(settings, scenario_b_key)
         self._send_to_all()
-
-        InterceptedRequestsLogger.flush()
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
             '--level', 'error', '--scenario-name', 'compose-scenario-alpha', '--context-dir-path', app_dir_path])
@@ -994,7 +968,6 @@ class TestWorkflowRestartLogPersistence:
                 verify=False,
             )
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         session_1_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         session_1_entries = find_all_log_entries(session_1_result.output)
@@ -1017,7 +990,6 @@ class TestWorkflowRestartLogPersistence:
                 verify=False,
             )
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0
@@ -1080,7 +1052,7 @@ class TestPostTruncateNoSpuriousDelimiter:
 
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
-        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger.flush()
 
         # Truncate: runs in the test process — does NOT reset the proxy's _previous_scenario_key
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
@@ -1088,7 +1060,6 @@ class TestPostTruncateNoSpuriousDelimiter:
         # Same scenario, same proxy process — proxy detects no change, emits no delimiter
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
-        InterceptedRequestsLogger.flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
         assert result.exit_code == 0

@@ -411,6 +411,7 @@ class InterceptedRequestsLogger():
             follow: If True, stream new entries after printing history (like tail -f). Blocks until Ctrl-C.
         """
         base = InterceptedRequestsLogger
+        cls.flush()
         file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
         if not os.path.exists(file_path):
             return
