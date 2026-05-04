@@ -1,3 +1,5 @@
+import uuid
+
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
@@ -10,8 +12,13 @@ from stoobly_agent.app.models.adapters.raw_http_request_adapter import DEFAULT_H
 class MitmproxyFlowMock():
 
   def __init__(self):
+    self.__id = str(uuid.uuid4())
     self.__request: 'MitmproxyRequest' = None
     self.__response: 'MitmproxyResponse' = None
+
+  @property
+  def id(self):
+    return self.__id
 
   @property
   def request(self):

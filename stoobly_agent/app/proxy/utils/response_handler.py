@@ -11,13 +11,10 @@ if TYPE_CHECKING:
 #
 # Return response headers, body, and status code
 #
-def pass_on(flow: 'MitmproxyHTTPFlow', res: 'Response'):
+def apply_response(flow: 'MitmproxyHTTPFlow', res: 'Response'):
     # Lazy import for runtime usage
     from mitmproxy.http import Response as MitmproxyResponse
-    headers = {}
-    for key, value in res.headers.items():
-        headers[key.title()] = value
-
+    
     # Without specifying a length to read, requests will compare content length
     # with Content-Length header. If the content is gzipped, an IncompleteRead error will be thrown
     #content = res.raw.read(res.raw.length_remaining)
@@ -28,7 +25,7 @@ def pass_on(flow: 'MitmproxyHTTPFlow', res: 'Response'):
     content = res.content
 
     flow.response = MitmproxyResponse.make(
-        res.status_code, content, headers,
+        res.status_code, content, dict(res.headers.items())
     )
 
 def bad_request(flow: 'MitmproxyHTTPFlow', message: str):

@@ -17,8 +17,10 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
+from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
 from stoobly_agent.config.constants import lifecycle_hooks, mode
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
@@ -38,6 +40,9 @@ def request(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
 
     __patch_cookie(request)
+
+    # Mirror ``flow.id`` on the Request for code paths that only hold ``request`` (not sent upstream).
+    set_proxy_request_uuid(flow.request, flow.id)
 
     intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
     if not intercept_settings.active:
@@ -73,28 +78,31 @@ def request(flow: 'MitmproxyHTTPFlow'):
 def response(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
 
-    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
-    intercept_settings.for_response()
+    try:
+        intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
+        intercept_settings.for_response()
 
-    if not intercept_settings.active:
-        return
+        if not intercept_settings.active:
+            return
 
-    active_mode = intercept_settings.mode
+        active_mode = intercept_settings.mode
 
-    if active_mode == mode.MOCK:
-        context = MockContext(flow, intercept_settings)
-        handle_response_mock(context)
-    elif active_mode == mode.RECORD:
-        context = RecordContext(flow, intercept_settings)
-        handle_response_record(context)
-    elif active_mode == mode.NORMALIZE:
-        context = ReplayContext(flow, intercept_settings)
-        handle_response_normalize(context)
-    elif active_mode == mode.TEST:
-        context = ReplayContext(flow, intercept_settings)
-        handle_response_test(context)
+        if active_mode == mode.MOCK:
+            context = MockContext(flow, intercept_settings)
+            handle_response_mock(context)
+        elif active_mode == mode.RECORD:
+            context = RecordContext(flow, intercept_settings)
+            handle_response_record(context)
+        elif active_mode == mode.NORMALIZE:
+            context = ReplayContext(flow, intercept_settings)
+            handle_response_normalize(context)
+        elif active_mode == mode.TEST:
+            context = ReplayContext(flow, intercept_settings)
+            handle_response_test(context)
 
-    __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
+        __intercept_hook(lifecycle_hooks.BEFORE_RESPONSE, flow, intercept_settings)
+    finally:
+        RequestTransformationEntryLogger.flush(request)
 
 ### PRIVATE
 
