@@ -8,6 +8,7 @@ import atexit
 import re
 import subprocess
 import sys
+import threading
 import time
 from typing import TYPE_CHECKING, Final, Optional
 
@@ -53,6 +54,7 @@ class InterceptedRequestsLogger():
     _settings: Settings = Settings.instance()
     _file_path: str = None
     _previous_scenario_key: str = None
+    _scenario_key_lock: threading.Lock = threading.Lock()
 
     # Feature flag: Set to True to enable async queue-based logging
     _USE_ASYNC_QUEUE: bool = True
@@ -120,14 +122,30 @@ class InterceptedRequestsLogger():
         base._logger.handlers.clear()
 
     @classmethod
-    def flush(cls) -> None:
-        """Flush pending log messages to disk without stopping the listener."""
+    def flush(cls, timeout: float = None) -> None:
+        """Flush pending log messages to disk without stopping the listener.
+
+        Args:
+            timeout: Maximum seconds to wait for the queue to drain. If None,
+                     blocks until fully drained. If the timeout expires the file
+                     handler is still flushed so already-written entries are
+                     visible — callers simply may not see the most recent ones.
+        """
         base = InterceptedRequestsLogger
         if base._USE_ASYNC_QUEUE and base._log_queue is not None:
-            # Wait for the queue to be empty (all messages processed)
-            base._log_queue.join()
+            if timeout is None:
+                base._log_queue.join()
+            else:
+                # Mirrors queue.Queue.join() but with a deadline so dump_logs
+                # is never indefinitely blocked under sustained traffic.
+                with base._log_queue.all_tasks_done:
+                    deadline = time.time() + timeout
+                    while base._log_queue.unfinished_tasks:
+                        remaining = deadline - time.time()
+                        if remaining <= 0:
+                            break
+                        base._log_queue.all_tasks_done.wait(remaining)
 
-        # Flush the file handler buffer to disk
         if base._file_handler is not None:
             base._file_handler.flush()
 
@@ -139,7 +157,9 @@ class InterceptedRequestsLogger():
     @classmethod
     def reset_scenario_key(cls) -> None:
         """Reset the previous scenario key tracker."""
-        InterceptedRequestsLogger._previous_scenario_key = None
+        base = InterceptedRequestsLogger
+        with base._scenario_key_lock:
+            base._previous_scenario_key = None
 
     @classmethod
     def set_log_level(cls, log_level: str) -> None:
@@ -409,6 +429,7 @@ class InterceptedRequestsLogger():
             follow: If True, stream new entries after printing history (like tail -f). Blocks until Ctrl-C.
         """
         base = InterceptedRequestsLogger
+        cls.flush(timeout=2.0)
         file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
         if not os.path.exists(file_path):
             return
@@ -589,12 +610,11 @@ class InterceptedRequestsLogger():
     def _check_scenario_key_changes(cls) -> None:
         """Check if the scenario key has changed and log a delimiter if so."""
         base = InterceptedRequestsLogger
-        intercept_settings = InterceptSettings(base._settings)
-        current_scenario_key = intercept_settings.scenario_key
-
-        if base._previous_scenario_key != current_scenario_key:
-            cls._log_scenario_change_delimiter(base._previous_scenario_key, current_scenario_key)
-            base._previous_scenario_key = current_scenario_key
+        with base._scenario_key_lock:
+            current_scenario_key = InterceptSettings(base._settings).scenario_key
+            if base._previous_scenario_key != current_scenario_key:
+                cls._log_scenario_change_delimiter(base._previous_scenario_key, current_scenario_key)
+                base._previous_scenario_key = current_scenario_key
 
     @classmethod
     def debug(cls, message: str, *, request: 'MitmproxyRequest' = None, response: 'Response' = None, request_key: str = None, fixture_path: str = None) -> None:
