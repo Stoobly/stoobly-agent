@@ -1007,9 +1007,9 @@ class TestWorkflowRestartLogPersistence:
 
 @pytest.mark.e2e
 class TestPostTruncateNoSpuriousDelimiter:
-    """Gap 5: 'request logs delete' truncates the log file but runs in the test process,
-    not the proxy subprocess. The proxy's _previous_scenario_key is unchanged, so the
-    next request with the same scenario produces no delimiter."""
+    """Gap 5: 'request logs delete' clears the log file. Verifies that the first
+    post-clear request under the same active scenario does not produce a spurious
+    delimiter — the log starts clean with only request entries."""
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
@@ -1047,17 +1047,16 @@ class TestPostTruncateNoSpuriousDelimiter:
         time.sleep(1)
 
     def test_no_spurious_delimiter_after_log_clear(self, settings, app_dir_path, runner, scenario_a_key):
-        # Establish scenario_a in the proxy so _previous_scenario_key is set
+        # Establish scenario_a as the active scenario
         set_scenario_key_on_settings(settings, scenario_a_key)
 
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
         InterceptedRequestsLogger.flush()
 
-        # Truncate: runs in the test process — does NOT reset the proxy's _previous_scenario_key
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
 
-        # Same scenario, same proxy process — proxy detects no change, emits no delimiter
+        # Same scenario continues — the post-clear log should have no delimiter
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
 
