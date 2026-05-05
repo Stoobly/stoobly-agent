@@ -157,7 +157,9 @@ class InterceptedRequestsLogger():
     @classmethod
     def reset_scenario_key(cls) -> None:
         """Reset the previous scenario key tracker."""
-        InterceptedRequestsLogger._previous_scenario_key = None
+        base = InterceptedRequestsLogger
+        with base._scenario_key_lock:
+            base._previous_scenario_key = None
 
     @classmethod
     def set_log_level(cls, log_level: str) -> None:
