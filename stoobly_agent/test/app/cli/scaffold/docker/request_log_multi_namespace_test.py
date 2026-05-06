@@ -5,6 +5,7 @@ import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
+from urllib.parse import urlparse
 
 from click.testing import CliRunner
 
@@ -17,10 +18,17 @@ from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliIn
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import find_all_log_entries
 
 
+def _url_has_hostname(url: str, hostname: str) -> bool:
+    try:
+        return urlparse(url).hostname == hostname
+    except Exception:
+        return False
+
+
 def assert_no_entries_for_hostname(output: str, hostname: str) -> None:
     """Raise AssertionError with the offending entry if any parsed log entry's url contains hostname."""
     for entry in find_all_log_entries(output):
-        if hostname in entry.get('url', ''):
+        if _url_has_hostname(entry.get('url', ''), hostname):
             raise AssertionError(
                 f"Found unexpected log entry for {hostname!r}: {entry}"
             )
@@ -201,8 +209,8 @@ class TestDockerMultiNamespaceRequestLogE2e:
             assert output, "Expected log entries in namespace all-svc-a"
 
             entries = find_all_log_entries(output)
-            badssl_entries = [e for e in entries if 'http.badssl.com' in e.get('url', '')]
-            example_entries = [e for e in entries if 'example.com' in e.get('url', '')]
+            badssl_entries = [e for e in entries if _url_has_hostname(e.get('url', ''), 'http.badssl.com')]
+            example_entries = [e for e in entries if _url_has_hostname(e.get('url', ''), 'example.com')]
 
             assert len(badssl_entries) >= 1, "Expected ≥1 log entry for http.badssl.com"
             assert len(example_entries) >= 1, "Expected ≥1 log entry for example.com"
@@ -245,7 +253,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
             # Read a sample entry to confirm the actual service_name value injected by the scaffold
             all_entries = find_all_log_entries(output)
-            badssl_entry = next((e for e in all_entries if 'http.badssl.com' in e.get('url', '')), None)
+            badssl_entry = next((e for e in all_entries if _url_has_hostname(e.get('url', ''), 'http.badssl.com')), None)
             assert badssl_entry is not None, "Expected an entry for http.badssl.com to determine service_name"
             alpha_service_name = badssl_entry.get('service_name')
             assert alpha_service_name, "service_name should be set on log entries in Docker reverse proxy mode"
@@ -262,9 +270,9 @@ class TestDockerMultiNamespaceRequestLogE2e:
             filtered_entries = find_all_log_entries(result.output)
             assert all(e.get('service_name') == alpha_service_name for e in filtered_entries), \
                 f"All filtered entries should have service_name={alpha_service_name!r}"
-            assert all('http.badssl.com' in e.get('url', '') for e in filtered_entries), \
+            assert all(_url_has_hostname(e.get('url', ''), 'http.badssl.com') for e in filtered_entries), \
                 "All filtered entries should be for http.badssl.com"
-            assert not any('example.com' in e.get('url', '') for e in filtered_entries), \
+            assert not any(_url_has_hostname(e.get('url', ''), 'example.com') for e in filtered_entries), \
                 "Filtered entries should not include example.com (service-beta)"
 
     # ------------------------------------------------------------------
