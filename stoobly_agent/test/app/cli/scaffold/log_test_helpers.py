@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import List
 
 
 def find_all_log_entries(output: str, filters: dict = None) -> List[dict]:

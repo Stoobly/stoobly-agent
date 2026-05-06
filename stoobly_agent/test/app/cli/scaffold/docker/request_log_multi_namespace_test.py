@@ -14,11 +14,6 @@ from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_MOCK_TYPE
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
-from stoobly_agent.test.app.cli.scaffold.docker.request_log_test import (
-    find_log_entry,
-    poll_for_log_entry,
-    wait_for_port,
-)
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import find_all_log_entries
 
 
@@ -205,14 +200,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
             output = poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path, 'all-svc-a')
             assert output, "Expected log entries in namespace all-svc-a"
 
-            result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-                '--context-dir-path', app_dir_path,
-                '--namespace', 'all-svc-a',
-            ])
-            assert result.exit_code == 0
-
-            entries = find_all_log_entries(result.output)
+            entries = find_all_log_entries(output)
             badssl_entries = [e for e in entries if 'http.badssl.com' in e.get('url', '')]
             example_entries = [e for e in entries if 'example.com' in e.get('url', '')]
 
@@ -390,6 +378,15 @@ class TestDockerMultiNamespaceRequestLogE2e:
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='teardown-b')
 
         def test_ns_b_logs_survive_ns_a_teardown(self, runner, app_dir_path_a, app_dir_path_b):
+            pre_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
+                '--context-dir-path', app_dir_path_b,
+                '--namespace', 'teardown-b',
+            ])
+            assert pre_result.exit_code == 0
+            pre_count = len(find_all_log_entries(pre_result.output))
+            assert pre_count >= 1, "Setup: expected seed entries in NS B before NS A teardown"
+
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='teardown-a')
             time.sleep(2)
 
@@ -399,7 +396,8 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 '--namespace', 'teardown-b',
             ])
             assert result.exit_code == 0
-            assert result.output.strip(), "NS B logs should still be present after NS A teardown"
+            assert len(find_all_log_entries(result.output)) >= pre_count, \
+                "NS B log entries must not be reduced by NS A teardown"
 
             resp = requests.get('http://localhost:8181/', headers={'Host': 'example.com'}, timeout=5.0)
             assert resp.status_code == NOT_FOUND, "NS B proxy should still be running after NS A teardown"
