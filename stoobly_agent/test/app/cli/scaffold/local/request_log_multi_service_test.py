@@ -1,4 +1,3 @@
-import json
 import os
 import pytest
 import requests
@@ -18,6 +17,7 @@ from stoobly_agent.lib.api.keys.project_key import LOCAL_PROJECT_ID
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.log_test_helpers import count_log_entries, find_all_log_entries
 from stoobly_agent.test.test_helper import reset
 
 
@@ -26,26 +26,6 @@ SERVICES = ['dog.ceo', 'example.com', 'docs.stoobly.com']
 
 # These tests bind to PROXY_URL and must run sequentially — parallel execution
 # (e.g. pytest-xdist) will cause port conflicts across test classes.
-
-
-def find_all_log_entries(output: str, filters: dict = None) -> List[dict]:
-    results = []
-    for line in output.strip().split('\n'):
-        if not line.strip():
-            continue
-        try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if filters:
-            if not all(entry.get(k) == v for k, v in filters.items()):
-                continue
-        results.append(entry)
-    return results
-
-
-def count_log_entries(output: str) -> int:
-    return len(find_all_log_entries(output))
 
 
 def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
