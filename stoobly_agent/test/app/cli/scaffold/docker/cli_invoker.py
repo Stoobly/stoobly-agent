@@ -30,7 +30,7 @@ def _append_error_to_tmp_log(lines):
 class ScaffoldCliInvoker():
 
   @staticmethod
-  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse', proxy_port: int = None):
+  def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse', proxy_port: int = None, ui_port: int = None):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
 
     command = ['app', 'create',
@@ -42,6 +42,8 @@ class ScaffoldCliInvoker():
     ]
     if proxy_port is not None:
       command += ['--proxy-port', str(proxy_port)]
+    if ui_port is not None:
+      command += ['--ui-port', str(ui_port)]
     command.append(app_name)
 
     result = runner.invoke(scaffold, command)
@@ -58,19 +60,21 @@ class ScaffoldCliInvoker():
     assert not output
 
   @staticmethod
-  def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
+  def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool, port: int = None):
     scheme = 'http'
-    port = '80'
+    default_port = '80'
     if https == True:
       scheme = 'https'
-      port = '443'
+      default_port = '443'
+
+    actual_port = str(port) if port is not None else default_port
 
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
       '--env', 'TEST',
       '--hostname', hostname,
       '--scheme', scheme,
-      '--port', port,
+      '--port', actual_port,
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'record',
@@ -129,14 +133,17 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
 
   @staticmethod
-  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--ca-certs-install-confirm', 'n',
       '--context-dir-path', app_dir_path,
       '--hostname-install-confirm', 'n',
-      target_workflow_name,
     ]
+    if namespace is not None:
+      command += ['--namespace', namespace]
+    command.append(target_workflow_name)
+
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
@@ -149,13 +156,16 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
 
   @staticmethod
-  def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+  def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
     command = ['workflow', 'down',
       '--app-dir-path', app_dir_path,
       '--context-dir-path', app_dir_path,
       '--hostname-uninstall-confirm', 'n',
-      target_workflow_name,
     ]
+    if namespace is not None:
+      command += ['--namespace', namespace]
+    command.append(target_workflow_name)
+
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
