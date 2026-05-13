@@ -4,6 +4,7 @@ import requests
 import socket
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from click.testing import CliRunner
 from typing import Optional
@@ -19,6 +20,7 @@ from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.log_test_helpers import count_log_entries, find_all_log_entries
 
 
 def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
@@ -254,6 +256,36 @@ def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_ret
     return None
 
 
+def poll_until_log_count_stable(
+    runner,
+    workflow_name: str,
+    context_dir_path: str,
+    target_count: int,
+    max_retries: int = 30,
+    interval: float = 1.0,
+) -> str:
+    """Poll until log count reaches target_count. Exits early on success — max_retries is only the fallback timeout."""
+    consecutive_errors = 0
+    for _ in range(max_retries):
+        time.sleep(interval)
+        result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', workflow_name,
+            '--context-dir-path', context_dir_path,
+        ])
+        if result.exit_code != 0:
+            consecutive_errors += 1
+            if consecutive_errors >= 5:
+                raise RuntimeError(
+                    f"'scaffold request logs list' failed {consecutive_errors} times in a row; "
+                    f"last output: {result.output!r}"
+                )
+            continue
+        consecutive_errors = 0
+        if count_log_entries(result.output) >= target_count:
+            return result.output
+    return ''
+
+
 @pytest.mark.e2e
 class TestDockerRequestLogE2e():
 
@@ -421,6 +453,81 @@ class TestDockerRequestLogE2e():
             ])
             assert list_result.exit_code == 0
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+    class TestReverseProxyMockHighTrafficLog:
+        """Verify the async logger captures all entries under concurrent load — no dropped writes."""
+
+        _REQUEST_COUNT = 200
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-high-traffic"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service-high-traffic"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_MOCK_TYPE
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_reverse_proxy_intercept(hostname), "Reverse proxy did not enter mock-intercept mode"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_high_traffic_no_dropped_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path,
+            ])
+            assert delete_result.exit_code == 0, f"Failed to delete logs before test: {delete_result.output}"
+
+            paths = [f'/high-traffic-{i}' for i in range(self._REQUEST_COUNT)]
+
+            def _get(path):
+                try:
+                    return requests.get(
+                        f'http://localhost:80{path}',
+                        headers={'Host': hostname},
+                        timeout=10.0,
+                    ).status_code
+                except Exception:
+                    return -1
+
+            with ThreadPoolExecutor(max_workers=self._REQUEST_COUNT) as pool:
+                futures = [pool.submit(_get, p) for p in paths]
+                status_codes = [f.result() for f in as_completed(futures)]
+
+            transport_failures = sum(1 for s in status_codes if s == -1)
+            assert transport_failures == 0, (
+                f"{transport_failures}/{self._REQUEST_COUNT} requests failed to reach the proxy "
+                f"(transport/connection error) — any log shortfall is not a logger bug"
+            )
+
+            output = poll_until_log_count_stable(
+                runner, target_workflow_name, app_dir_path,
+                target_count=self._REQUEST_COUNT,
+            )
+            assert output, f"Log count did not reach {self._REQUEST_COUNT} within {30}s — entries may have been dropped"
+
+            total = count_log_entries(output)
+            assert total == self._REQUEST_COUNT, \
+                f"Expected {self._REQUEST_COUNT} log entries, got {total} — logger dropped writes under load"
+
+            entries = find_all_log_entries(output)
+            assert all(e['level'] == 'ERROR' for e in entries), "All entries should be ERROR (unrecorded → 499)"
+            assert all(e['status_code'] == NOT_FOUND for e in entries), "All entries should have status_code 499"
 
 
 @pytest.mark.e2e
