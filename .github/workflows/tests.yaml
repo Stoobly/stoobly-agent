@@ -18,6 +18,10 @@ on:
       - '.github/**/*.yaml'
       - '.github/**/*.yml'
 
+# Workflow-level permissions are inherited by all jobs unless a job overrides them.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
