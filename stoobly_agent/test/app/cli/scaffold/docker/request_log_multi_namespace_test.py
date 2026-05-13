@@ -47,7 +47,7 @@ def read_log_file_raw(app_dir_path: str, workflow: str, namespace: str) -> str:
 
 
 def wait_for_reverse_proxy_intercept_on_port(
-    hostname: str, port: int, timeout: float = 60.0, interval: float = 1.0
+    hostname: str, port: int, timeout: float = 30.0, interval: float = 0.5
 ) -> bool:
     """Poll until localhost:{port} returns 499 for Host: {hostname}, confirming mock-intercept mode."""
     deadline = time.time() + timeout
@@ -72,7 +72,7 @@ def poll_for_any_log_entry(
     context_dir_path: str,
     namespace: str,
     max_retries: int = 30,
-    interval: float = 1.0,
+    interval: float = 0.25,
 ) -> str:
     """Poll scaffold request logs list until ≥1 entry appears. Returns full output or '' on timeout."""
     for _ in range(max_retries):
