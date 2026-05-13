@@ -261,16 +261,10 @@ def poll_until_log_count_stable(
     workflow_name: str,
     context_dir_path: str,
     target_count: int,
-    stable_for: int = 3,
     max_retries: int = 30,
     interval: float = 1.0,
 ) -> str:
-    """Poll until log count reaches target_count or stabilizes for stable_for consecutive polls.
-
-    Exits early on success — max_retries is only the fallback timeout.
-    """
-    last_count = -1
-    stable_streak = 0
+    """Poll until log count reaches target_count. Exits early on success — max_retries is only the fallback timeout."""
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
@@ -279,16 +273,8 @@ def poll_until_log_count_stable(
         ])
         if result.exit_code != 0:
             continue
-        current_count = count_log_entries(result.output)
-        if current_count >= target_count:
+        if count_log_entries(result.output) >= target_count:
             return result.output
-        if current_count == last_count:
-            stable_streak += 1
-            if stable_streak >= stable_for:
-                return result.output
-        else:
-            stable_streak = 0
-        last_count = current_count
     return ''
 
 
@@ -493,10 +479,11 @@ class TestDockerRequestLogE2e():
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
         def test_high_traffic_no_dropped_entries(self, runner, app_dir_path, hostname, target_workflow_name):
-            runner.invoke(scaffold, [
+            delete_result = runner.invoke(scaffold, [
                 'request', 'logs', 'delete', target_workflow_name,
                 '--context-dir-path', app_dir_path,
             ])
+            assert delete_result.exit_code == 0, f"Failed to delete logs before test: {delete_result.output}"
 
             paths = [f'/high-traffic-{i}' for i in range(self._REQUEST_COUNT)]
 
@@ -512,13 +499,14 @@ class TestDockerRequestLogE2e():
 
             with ThreadPoolExecutor(max_workers=self._REQUEST_COUNT) as pool:
                 futures = [pool.submit(_get, p) for p in paths]
-                [f.result() for f in as_completed(futures)]
+                for f in as_completed(futures):
+                    f.result()
 
             output = poll_until_log_count_stable(
                 runner, target_workflow_name, app_dir_path,
                 target_count=self._REQUEST_COUNT,
             )
-            assert output, "No log entries appeared after high-traffic burst"
+            assert output, f"Log count did not reach {self._REQUEST_COUNT} within {30}s — entries may have been dropped"
 
             total = count_log_entries(output)
             assert total == self._REQUEST_COUNT, \
