@@ -265,6 +265,7 @@ def poll_until_log_count_stable(
     interval: float = 1.0,
 ) -> str:
     """Poll until log count reaches target_count. Exits early on success — max_retries is only the fallback timeout."""
+    consecutive_errors = 0
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
@@ -272,7 +273,14 @@ def poll_until_log_count_stable(
             '--context-dir-path', context_dir_path,
         ])
         if result.exit_code != 0:
+            consecutive_errors += 1
+            if consecutive_errors >= 5:
+                raise RuntimeError(
+                    f"'scaffold request logs list' failed {consecutive_errors} times in a row; "
+                    f"last output: {result.output!r}"
+                )
             continue
+        consecutive_errors = 0
         if count_log_entries(result.output) >= target_count:
             return result.output
     return ''
@@ -499,8 +507,13 @@ class TestDockerRequestLogE2e():
 
             with ThreadPoolExecutor(max_workers=self._REQUEST_COUNT) as pool:
                 futures = [pool.submit(_get, p) for p in paths]
-                for f in as_completed(futures):
-                    f.result()
+                status_codes = [f.result() for f in as_completed(futures)]
+
+            transport_failures = sum(1 for s in status_codes if s == -1)
+            assert transport_failures == 0, (
+                f"{transport_failures}/{self._REQUEST_COUNT} requests failed to reach the proxy "
+                f"(transport/connection error) — any log shortfall is not a logger bug"
+            )
 
             output = poll_until_log_count_stable(
                 runner, target_workflow_name, app_dir_path,
