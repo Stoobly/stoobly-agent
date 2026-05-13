@@ -56,21 +56,6 @@ test/e2e/workflow-cli:
 		stoobly_agent/test/app/cli/scaffold/docker/workflow_test.py \
 		stoobly_agent/test/app/cli/scaffold/docker/cli_test.py
 
-test/e2e-parallel:
-	poetry install --with test
-	EXIT=0; \
-	$(MAKE) test/e2e/forward-proxy-docker & PID1=$$!; \
-	$(MAKE) test/e2e/reverse-proxy-docker & PID2=$$!; \
-	$(MAKE) test/e2e/multi-namespace      & PID3=$$!; \
-	$(MAKE) test/e2e/local               & PID4=$$!; \
-	$(MAKE) test/e2e/workflow-cli        & PID5=$$!; \
-	wait $$PID1 || EXIT=1; \
-	wait $$PID2 || EXIT=1; \
-	wait $$PID3 || EXIT=1; \
-	wait $$PID4 || EXIT=1; \
-	wait $$PID5 || EXIT=1; \
-	exit $$EXIT
-
 test/python: test/build
 	docker exec -it ${TEST_CONTAINER_NAME} sh -c "cd ${TEST_DIR} && pip3 install poetry && poetry install && make test"
 
