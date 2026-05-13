@@ -66,12 +66,179 @@ jobs:
 
           make test
 
-  e2e_tests:
-    name: End-to-end Tests
+  e2e_forward_proxy_docker:
+    name: E2E Forward Proxy Docker
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Add hosts to /etc/hosts
+        run: |
+          echo 'Adding hosts to /etc/hosts'
+          sudo echo "127.0.0.1 http.badssl.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 example.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
+
+      - name: Build image
+        run: |
+          IMAGE_TAG=stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py)
+          docker build -t "$IMAGE_TAG" .
+
+          for i in {1..30}; do
+            if docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "Image $IMAGE_TAG is ready"
+              docker images
+              break
+            fi
+            echo "Waiting for image to be available... (attempt $i/30)"
+            sleep 2
+          done
+
+          docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || { echo "Image not available after waiting"; exit 1; }
+
+      - name: Test with pytest
+        run: |
+          python --version
+          python -m pip install poetry && \
+          python -m poetry install --with test
+
+          make test/e2e/forward-proxy-docker
+
+  e2e_reverse_proxy_docker:
+    name: E2E Reverse Proxy Docker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Add hosts to /etc/hosts
+        run: |
+          echo 'Adding hosts to /etc/hosts'
+          sudo echo "127.0.0.1 http.badssl.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 example.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
+
+      - name: Build image
+        run: |
+          IMAGE_TAG=stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py)
+          docker build -t "$IMAGE_TAG" .
+
+          for i in {1..30}; do
+            if docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "Image $IMAGE_TAG is ready"
+              docker images
+              break
+            fi
+            echo "Waiting for image to be available... (attempt $i/30)"
+            sleep 2
+          done
+
+          docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || { echo "Image not available after waiting"; exit 1; }
+
+      - name: Test with pytest
+        run: |
+          python --version
+          python -m pip install poetry && \
+          python -m poetry install --with test
+
+          make test/e2e/reverse-proxy-docker
+
+  e2e_multi_namespace:
+    name: E2E Multi-Namespace Docker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Add hosts to /etc/hosts
+        run: |
+          echo 'Adding hosts to /etc/hosts'
+          sudo echo "127.0.0.1 http.badssl.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 example.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 my-httpbin.com" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 assets" | sudo tee -a /etc/hosts
+
+      - name: Build image
+        run: |
+          IMAGE_TAG=stoobly/agent:$(grep -oP "VERSION\s*=\s*'\K[0-9]+\.[0-9]+" stoobly_agent/__init__.py)
+          docker build -t "$IMAGE_TAG" .
+
+          for i in {1..30}; do
+            if docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+              echo "Image $IMAGE_TAG is ready"
+              docker images
+              break
+            fi
+            echo "Waiting for image to be available... (attempt $i/30)"
+            sleep 2
+          done
+
+          docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || { echo "Image not available after waiting"; exit 1; }
+
+      - name: Test with pytest
+        run: |
+          python --version
+          python -m pip install poetry && \
+          python -m poetry install --with test
+
+          make test/e2e/multi-namespace
+
+  e2e_local:
+    name: E2E Local
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Test with pytest
+        run: |
+          python --version
+          python -m pip install poetry && \
+          python -m poetry install --with test
+
+          make test/e2e/local
+
+  e2e_workflow_cli:
+    name: E2E Workflow and CLI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -116,4 +283,4 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
 
-          STOOBLY_IMAGE_USE_LOCAL=1 make test/e2e
+          make test/e2e/workflow-cli
