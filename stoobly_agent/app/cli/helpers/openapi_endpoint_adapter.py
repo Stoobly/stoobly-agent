@@ -439,12 +439,10 @@ class OpenApiEndpointAdapter():
       component_name = component_data[1]
       component = components.get(component_type, {})
 
-      component_content = component.content()
-      if component_content is not None and component_name not in component_content:
-        raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
-
       # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-      body_spec = component_content[component_name]
+      body_spec = component.get(component_name)
+      if body_spec is None:
+        raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
         
       if '$ref' in body_spec.keys():
         body_spec = self.__dereference(components, body_spec.get('$ref'), spec)
