@@ -89,7 +89,7 @@ class OpenApiEndpointAdapter():
     endpoints = []
     components = spec.get("components", {})
     schemas = components.get("schemas", {})
-    paths = spec.getkey('paths')
+    paths = spec['paths']
 
     servers_spec = spec.get("servers")
     servers = self.__evaluate_servers(servers_spec)
@@ -467,12 +467,6 @@ class OpenApiEndpointAdapter():
       if hasattr(current, 'get'):
         # SchemaPath objects use .get() method
         current = current.get(unescaped_part)
-        if current is None:
-          # Also try with getkey for paths
-          try:
-            current = current.getkey(unescaped_part) if hasattr(current, 'getkey') else None
-          except:
-            pass
       elif hasattr(current, '__getitem__'):
         try:
           # Try as integer index for arrays
