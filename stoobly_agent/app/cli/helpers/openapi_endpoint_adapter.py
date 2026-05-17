@@ -327,7 +327,7 @@ class OpenApiEndpointAdapter():
 
     return list(literal_params)[-2]
 
-  def __extract_param_properties(self, components, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string=''):
+  def __extract_param_properties(self, components, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string='', override_required=False):
     # Name of the schema object (i.e. the name of the body_param_name or response_param_name component)
     property_name = list(schema_object.keys())[0]
 
@@ -355,33 +355,32 @@ class OpenApiEndpointAdapter():
       # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
       if property_name != 'tmp':
         literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
-        literal_val = {'name': property_name, 'values': [literal_val_type], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+        literal_val = {'name': property_name, 'values': [literal_val_type], 'required': override_required or bool(property_schema.get('required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
       return curr_id
 
     if 'properties' in property_schema.keys():
       # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
-      required_component_params += property_schema.get('required', [])
+      _required = property_schema.get('required')
+      if _required is not None:
+        _required_list = _required.read_value() if hasattr(_required, 'read_value') else _required
+        required_component_params += _required_list if isinstance(_required_list, list) else []
 
       # curr_id_tmp is the parent_id of all elements in param_properties
       # Should be set to parent_id when property_name is 'tmp' to handle case where a schema uses the 'allOf' keyword since curr_id will change between every recursive call on each 'part' element in the allOf list
       curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
 
-      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': property_schema.get('schema_required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('schema_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
 
       if property_name != 'tmp':
         literal_component_params.append(literal_val)
 
       param_properties = property_schema.get('properties')
       for property_key, property_value in param_properties.items():
-        if property_key in required_component_params:
-          if property_value.get('type') == 'object':
-            # Necessary to avoid overwriting the 'required' list of an object-type schema
-            property_value['schema_required'] = True
-          else:
-            property_value['required'] = True
+        is_required = property_key in required_component_params
+        if is_required:
           required_component_params.remove(property_key)
-        curr_id = self.__extract_param_properties(components, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query)    
+        curr_id = self.__extract_param_properties(components, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query, override_required=is_required)    
 
     elif property_schema.get('type') == 'array':
       # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
@@ -390,21 +389,23 @@ class OpenApiEndpointAdapter():
         curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
       else:
         schema_object = {f"{property_name}Element": property_schema['items']}
-        literal_val = {'name': property_name, 'value': [], 'required': property_schema.get('required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+        literal_val = {'name': property_name, 'value': [], 'required': override_required or bool(property_schema.get('required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
         curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
 
     elif 'allOf' in property_schema.keys():
       # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
       all_of = property_schema.get('allOf')
-      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': property_schema.get('self_required', False), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('self_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
       if property_name != 'tmp':
         literal_component_params.append(literal_val)
 
       curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
       for part in all_of:
-        part_required = part.get('required', [])
-        required_component_params.extend(part_required)
+        _part_required = part.get('required')
+        if _part_required is not None:
+          _part_required_list = _part_required.read_value() if hasattr(_part_required, 'read_value') else _part_required
+          required_component_params.extend(_part_required_list if isinstance(_part_required_list, list) else [])
         curr_id = self.__extract_param_properties(components, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
 
     return curr_id
@@ -607,9 +608,12 @@ class OpenApiEndpointAdapter():
       for variable_name, variable in existent_vars.items():
         enum_list = variable.get('enum')
         if enum_list:
-          var_to_possible_vals[variable_name] = enum_list
+          raw_enum = enum_list.read_value() if hasattr(enum_list, 'read_value') else enum_list
+          var_to_possible_vals[variable_name] = raw_enum
         else:
-          default_value = variable['default']
+          default_value = variable.get('default')
+          if hasattr(default_value, 'read_value'):
+            default_value = default_value.read_value()
           var_to_possible_vals[variable_name] = [default_value]
 
       all_possible_vals = list(var_to_possible_vals.values())

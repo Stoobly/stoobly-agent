@@ -1671,7 +1671,8 @@ class TestOpenApiEndpointAdapter():
       # Should resolve through the $ref to the actual Pet schema
       assert result['type'] == 'object'
       assert 'name' in result['properties']
-      assert result['required'] == ['name']
+      required = result['required']
+      assert (required.read_value() if hasattr(required, 'read_value') else required) == ['name']
 
   class TestAllOf:
     """Test cases for allOf schema handling"""
