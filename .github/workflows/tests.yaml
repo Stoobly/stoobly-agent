@@ -70,8 +70,8 @@ jobs:
 
           make test
 
-  e2e_forward_proxy_docker:
-    name: E2E Forward Proxy Docker
+  e2e_request_log_forward_proxy_docker:
+    name: E2E Request Log - Forward Proxy Docker
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -116,10 +116,10 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
 
-          make test/e2e/forward-proxy-docker
+          make test/e2e/request-log-forward-proxy-docker
 
-  e2e_reverse_proxy_docker:
-    name: E2E Reverse Proxy Docker
+  e2e_request_log_reverse_proxy_docker:
+    name: E2E Request Log - Reverse Proxy Docker
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -164,10 +164,10 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
 
-          make test/e2e/reverse-proxy-docker
+          make test/e2e/request-log-reverse-proxy-docker
 
-  e2e_multi_namespace:
-    name: E2E Multi-Namespace Docker
+  e2e_request_log_multi_namespace_docker:
+    name: E2E Request Log - Multi-Namespace Docker
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -212,10 +212,10 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
 
-          make test/e2e/multi-namespace
+          make test/e2e/request-log-multi-namespace-docker
 
-  e2e_local:
-    name: E2E Local
+  e2e_request_log_forward_proxy_local:
+    name: E2E Request Log - Forward Proxy Local
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -235,7 +235,7 @@ jobs:
           python -m pip install poetry && \
           python -m poetry install --with test
 
-          make test/e2e/local
+          make test/e2e/request-log-forward-proxy-local
 
   e2e_workflow_cli:
     name: E2E Workflow and CLI
