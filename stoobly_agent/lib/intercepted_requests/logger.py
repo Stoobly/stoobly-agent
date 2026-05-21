@@ -483,7 +483,6 @@ class InterceptedRequestsLogger():
 
                         unknown = [k for k in select if k not in available_columns]
                         if unknown and available_columns:
-                            import sys
                             print(
                                 f"Warning: unknown column(s) for --select: {', '.join(unknown)}. "
                                 f"Available: {', '.join(sorted(available_columns))}",
