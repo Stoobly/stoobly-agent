@@ -497,14 +497,14 @@ class TestRequestLogListSelectBugFixes:
         runner = CliRunner()
         result = runner.invoke(request, ['logs', 'list', '--select', 'no_such_col'])
         assert result.exit_code == 0
-        assert 'no_such_col' in result.output
+        assert 'no_such_col' in result.stderr
 
     def test_select_some_unknown_columns_warns_and_shows_known(self):
         """When some --select columns are unknown, known ones render and the unknown ones are warned about."""
         runner = CliRunner()
         result = runner.invoke(request, ['logs', 'list', '--select', 'url', '--select', 'not_a_real_column'])
         assert result.exit_code == 0
-        # Known column still renders
-        assert 'https://example.com' in result.output
-        # Unknown column triggers a warning
-        assert 'not_a_real_column' in result.output
+        # Known column renders — check a path segment that's unambiguously from the url column
+        assert '/api/users' in result.output
+        # Unknown column warning goes to stderr
+        assert 'not_a_real_column' in result.stderr
