@@ -482,15 +482,15 @@ class TestRequestLogListSelectBugFixes:
         InterceptedRequestsLogger._file_path = None
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_select_hyphen_normalized_to_underscore(self):
-        """--select status-code (hyphen) must normalize to status_code and render that column."""
+    def test_select_hyphen_is_not_normalized(self):
+        """--select status-code (hyphen) does not match status_code — warns and the status values are absent."""
         runner = CliRunner()
         result = runner.invoke(request, ['logs', 'list', '--select', 'url', '--select', 'status-code'])
         assert result.exit_code == 0
-        # After normalization status-code → status_code, the column header and values must appear
-        assert 'status_code' in result.output
-        assert '200' in result.output
-        assert '499' in result.output
+        assert 'status-code' in result.stderr
+        # Status values (200, 499) must not appear — only url column rendered
+        assert '200' not in result.output
+        assert '499' not in result.output
 
     def test_select_all_unknown_columns_warns(self):
         """When every --select column is unknown, a warning identifying the bad names goes to stderr."""

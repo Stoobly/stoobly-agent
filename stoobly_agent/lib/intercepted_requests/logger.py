@@ -477,8 +477,6 @@ class InterceptedRequestsLogger():
 
                     # Apply select if provided
                     if select:
-                        select = tuple(k.replace('-', '_') for k in select)
-
                         available_columns = set()
                         for entry in entries:
                             available_columns.update(entry.keys())
