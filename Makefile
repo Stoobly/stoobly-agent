@@ -30,31 +30,33 @@ test/e2e:
 	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e stoobly_agent/test/
 
-test/e2e/forward-proxy-docker:
+test/e2e/request-log-forward-proxy-docker:
 	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e \
 		stoobly_agent/test/app/cli/scaffold/docker/request_log_forward_proxy_test.py
 
-test/e2e/reverse-proxy-docker:
+test/e2e/request-log-reverse-proxy-docker:
 	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e \
 		stoobly_agent/test/app/cli/scaffold/docker/request_log_reverse_proxy_test.py
 
-test/e2e/multi-namespace:
+test/e2e/request-log-multi-namespace-docker:
 	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e \
 		stoobly_agent/test/app/cli/scaffold/docker/request_log_multi_namespace_test.py
 
-test/e2e/local:
+test/e2e/request-log-forward-proxy-local:
 	poetry install --with test
 	poetry run pytest --verbose --capture=no -m e2e \
-		stoobly_agent/test/app/cli/scaffold/local/
+		stoobly_agent/test/app/cli/scaffold/local/request_log_test.py \
+		stoobly_agent/test/app/cli/scaffold/local/request_log_multi_service_test.py
 
 test/e2e/workflow-cli:
 	poetry install --with test
 	STOOBLY_IMAGE_USE_LOCAL=1 poetry run pytest --verbose --capture=no -m e2e \
 		stoobly_agent/test/app/cli/scaffold/docker/workflow_test.py \
-		stoobly_agent/test/app/cli/scaffold/docker/cli_test.py
+		stoobly_agent/test/app/cli/scaffold/docker/cli_test.py \
+		stoobly_agent/test/app/cli/scaffold/local/workflow_test.py
 
 test/python: test/build
 	docker exec -it ${TEST_CONTAINER_NAME} sh -c "cd ${TEST_DIR} && pip3 install poetry && poetry install && make test"

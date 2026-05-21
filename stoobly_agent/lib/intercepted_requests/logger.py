@@ -477,6 +477,18 @@ class InterceptedRequestsLogger():
 
                     # Apply select if provided
                     if select:
+                        available_columns = set()
+                        for entry in entries:
+                            available_columns.update(entry.keys())
+
+                        unknown = [k for k in select if k not in available_columns]
+                        if unknown and available_columns:
+                            print(
+                                f"Warning: unknown column(s) for --select: {', '.join(unknown)}. "
+                                f"Available: {', '.join(sorted(available_columns))}",
+                                file=sys.stderr
+                            )
+
                         filtered_entries = []
                         for entry in entries:
                             filtered_entry = {}

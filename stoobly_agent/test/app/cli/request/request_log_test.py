@@ -14,13 +14,16 @@ from click.testing import CliRunner
 from typing import Optional
 from unittest.mock import patch
 
+# test_helper must be imported first — its module-level reset() call initializes
+# Settings before intercept_cli and request_cli access settings at import time.
+from stoobly_agent.test.test_helper import reset
+
 from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger
-from stoobly_agent.test.test_helper import reset
 
 
 class TestRequestLogCliParams:
@@ -450,3 +453,58 @@ class TestRequestLogListFiltering:
         assert 'Mock failure' in result.output
         lines = [line for line in result.output.strip().split('\n') if line]
         assert len(lines) == 3
+
+
+class TestRequestLogListSelectBugFixes:
+    """Tests for --select flag behavior: exact key matching and unknown-column warnings.
+
+    - --select values are matched exactly; hyphens do not normalize (status-code warns, status_code works).
+    - Unknown column names warn to stderr instead of silently producing empty output.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.temp_dir = tempfile.mkdtemp()
+        log_path = os.path.join(self.temp_dir, 'requests.json')
+
+        entries = [
+            {"timestamp": "2024-01-01T00:00:00", "level": "INFO", "message": "Mock success", "method": "GET", "url": "https://example.com/api/users", "status_code": 200},
+            {"timestamp": "2024-01-01T00:00:01", "level": "ERROR", "message": "Mock failure", "method": "POST", "url": "https://example.com/api/orders", "status_code": 499},
+        ]
+
+        with open(log_path, 'w') as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + '\n')
+
+        InterceptedRequestsLogger.set_file_path(log_path)
+        yield
+
+        InterceptedRequestsLogger._file_path = None
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_select_hyphen_is_not_normalized(self):
+        """--select status-code (hyphen) does not match status_code — warns and the status values are absent."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['logs', 'list', '--select', 'url', '--select', 'status-code'])
+        assert result.exit_code == 0
+        assert 'status-code' in result.stderr
+        # Status values (200, 499) must not appear — only url column rendered
+        assert '200' not in result.output
+        assert '499' not in result.output
+
+    def test_select_all_unknown_columns_warns(self):
+        """When every --select column is unknown, a warning identifying the bad names goes to stderr."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['logs', 'list', '--select', 'no_such_col'])
+        assert result.exit_code == 0
+        assert 'no_such_col' in result.stderr
+
+    def test_select_some_unknown_columns_warns_and_shows_known(self):
+        """When some --select columns are unknown, known ones render and the unknown ones are warned about."""
+        runner = CliRunner()
+        result = runner.invoke(request, ['logs', 'list', '--select', 'url', '--select', 'not_a_real_column'])
+        assert result.exit_code == 0
+        # Known column renders — check a path segment that's unambiguously from the url column
+        assert '/api/users' in result.output
+        # Unknown column warning goes to stderr
+        assert 'not_a_real_column' in result.stderr
