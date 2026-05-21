@@ -456,10 +456,10 @@ class TestRequestLogListFiltering:
 
 
 class TestRequestLogListSelectBugFixes:
-    """Failing tests for --select flag bugs: hyphen normalization and unknown-column warnings.
+    """Tests for --select flag behavior: exact key matching and unknown-column warnings.
 
-    Bug 1: --select status-code (hyphen) silently omits the column instead of normalizing to status_code.
-    Bug 2: Unknown column names in --select produce empty output with no warning.
+    - --select values are matched exactly; hyphens do not normalize (status-code warns, status_code works).
+    - Unknown column names warn to stderr instead of silently producing empty output.
     """
 
     @pytest.fixture(autouse=True)
