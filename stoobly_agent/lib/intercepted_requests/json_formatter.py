@@ -102,7 +102,7 @@ class JSONFormatter(logging.Formatter):
       log_entry.update({
         "scenario_name": scenario_name
       })
-    elif not scenario_key and test_title and request and hasattr(request, 'headers') and request.headers:
+    elif not scenario_key and test_title:
       scenario_name = request.headers.get(custom_headers.SCENARIO_NAME, "")
       if scenario_name:
         log_entry.update({
