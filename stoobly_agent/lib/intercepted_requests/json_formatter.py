@@ -79,6 +79,15 @@ class JSONFormatter(logging.Formatter):
           "latency_ms": latency_ms
         })
 
+    # Set test title if available in request headers
+    test_title = ""
+    if request and hasattr(request, 'headers') and request.headers:
+      test_title = request.headers.get(custom_headers.TEST_TITLE, "")
+      if test_title:
+        log_entry.update({
+          "test_title": test_title
+        })
+
     # Set scenario key
     intercept_settings = InterceptSettings(self.__settings, request=request)
     scenario_key = intercept_settings.scenario_key
@@ -86,13 +95,19 @@ class JSONFormatter(logging.Formatter):
       "scenario_key": scenario_key
     })
 
-    # Set scenario name if scenario_key is set
+    # Set scenario name if scenario_key is set; fall back to header when test_title is present
     scenario_name = ""
     if scenario_key and self.__get_scenario_name:
       scenario_name = self.__get_scenario_name(scenario_key)
       log_entry.update({
         "scenario_name": scenario_name
       })
+    elif not scenario_key and test_title and request and hasattr(request, 'headers') and request.headers:
+      scenario_name = request.headers.get(custom_headers.SCENARIO_NAME, "")
+      if scenario_name:
+        log_entry.update({
+          "scenario_name": scenario_name
+        })
 
     # Set scaffold service name
     service_name = ""
@@ -130,15 +145,5 @@ class JSONFormatter(logging.Formatter):
       log_entry.update({
         "fixture_path": record.fixture_path
       })
-
-    # Set test title if available in request headers
-    if hasattr(record, 'request') and record.request is not None:
-      request: 'MitmproxyRequest' = record.request
-      if hasattr(request, 'headers') and request.headers:
-        test_title = request.headers.get(custom_headers.TEST_TITLE, "")
-        if test_title:
-          log_entry.update({
-            "test_title": test_title
-          })
 
     return json.dumps(log_entry)

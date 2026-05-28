@@ -262,6 +262,33 @@ class TestJSONFormatter:
                     return
             pytest.fail("Scenario key test entry not found")
 
+    def test_scenario_name_from_header_when_scenario_key_null_and_test_title_set(self, mock_mitmproxy_request):
+        """When scenario_key is None but test_title is set, scenario_name is taken from the SCENARIO_NAME header."""
+        def mock_header_get(header_name, default=None):
+            if header_name == custom_headers.TEST_TITLE:
+                return "My Test"
+            if header_name == custom_headers.SCENARIO_NAME:
+                return "My Scenario"
+            return default
+
+        mock_mitmproxy_request.headers.get = mock_header_get
+
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
+            mock_intercept.return_value.scenario_key = None
+            InterceptedRequestsLogger.info("Scenario name test", request=mock_mitmproxy_request)
+
+        InterceptedRequestsLogger.flush()
+
+        with open(self.log_path, 'r') as f:
+            for line in f:
+                entry = json.loads(line.strip())
+                if entry.get('message') == 'Scenario name test':
+                    assert entry.get('scenario_name') == 'My Scenario'
+                    assert entry.get('test_title') == 'My Test'
+                    assert entry.get('scenario_key') is None
+                    return
+            pytest.fail("Scenario name test entry not found")
+
 
 class TestFileOperations:
     """Tests for file operations."""
