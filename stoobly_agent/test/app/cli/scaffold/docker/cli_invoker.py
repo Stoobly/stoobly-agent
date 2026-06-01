@@ -4,6 +4,8 @@ import datetime
 import pdb
 import subprocess
 
+import docker
+
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
@@ -28,31 +30,28 @@ def _append_error_to_tmp_log(lines):
 
 
 def _dump_docker_state():
-  """Write docker ps and per-container logs into the e2e log for post-mortem debugging."""
+  """Write all container states and logs into the e2e log for post-mortem debugging."""
+  client = None
   try:
-    ps = subprocess.run(['docker', 'ps', '-a'], capture_output=True, text=True, timeout=15)
-    _append_error_to_tmp_log(["=== docker ps -a ===", ps.stdout or "(empty)"])
+    client = docker.from_env()
+    containers = client.containers.list(all=True)
 
-    ids = subprocess.run(['docker', 'ps', '-aq'], capture_output=True, text=True, timeout=15)
-    for cid in ids.stdout.strip().splitlines():
-      if not cid:
-        continue
-      name_r = subprocess.run(
-        ['docker', 'inspect', '--format', '{{.Name}}', cid],
-        capture_output=True, text=True, timeout=10,
-      )
-      name = name_r.stdout.strip().lstrip('/')
-      logs_r = subprocess.run(
-        ['docker', 'logs', '--tail', '200', cid],
-        capture_output=True, text=True, timeout=15,
-      )
+    summary = "\n".join(
+      f"  {c.name} ({c.short_id}) status={c.status}" for c in containers
+    ) or "(no containers)"
+    _append_error_to_tmp_log(["=== docker containers ===", summary])
+
+    for container in containers:
+      logs = container.logs(tail=200, stdout=True, stderr=True).decode('utf-8', errors='replace')
       _append_error_to_tmp_log([
-        f"=== docker logs {name} ({cid}) ===",
-        logs_r.stdout or "(no stdout)",
-        logs_r.stderr or "(no stderr)",
+        f"=== logs: {container.name} ({container.short_id}) ===",
+        logs or "(empty)",
       ])
   except Exception:
     pass
+  finally:
+    if client:
+      client.close()
 
 
 class ScaffoldCliInvoker():
