@@ -13,7 +13,7 @@ if [ "${WORKFLOW_ACCESS_COUNT:-1}" == "1" ]; then
 fi
 
 echo "Configuring intercept..."
-stoobly-agent intercept configure --mode mock --policy all
+stoobly-agent intercept configure --mode mock --policy found
 stoobly-agent intercept enable
 
 if [ "$APP_PROXY_MODE" = "forward" ]; then
