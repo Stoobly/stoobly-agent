@@ -17,7 +17,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker, _append_error_to_tmp_log, _dump_docker_state
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import count_log_entries, find_all_log_entries
 
 
@@ -68,6 +68,8 @@ def wait_for_reverse_proxy_ready(hostname: str, timeout: float = 60.0, interval:
 def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, interval: float = 0.5) -> bool:
     """Poll until the reverse proxy is intercepting in mock mode (returns 499 for unrecorded requests)."""
     deadline = time.time() + timeout
+    last_status = None
+    last_exc = None
     while time.time() < deadline:
         try:
             resp = requests.get(
@@ -75,11 +77,17 @@ def wait_for_reverse_proxy_intercept(hostname: str, timeout: float = 30.0, inter
                 headers={'Host': hostname},
                 timeout=5.0,
             )
+            last_status = resp.status_code
             if resp.status_code == NOT_FOUND:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            last_exc = e
         time.sleep(interval)
+    _append_error_to_tmp_log([
+        f"wait_for_reverse_proxy_intercept timed out after {timeout}s",
+        f"Last HTTP status: {last_status}",
+        f"Last exception: {last_exc}",
+    ])
     return False
 
 
@@ -222,7 +230,10 @@ class TestDockerRequestLogE2e():
         @pytest.fixture(scope='class', autouse=True)
         def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_reverse_proxy_intercept(hostname), "Reverse proxy did not enter mock-intercept mode"
+            success = wait_for_reverse_proxy_intercept(hostname)
+            if not success:
+                _dump_docker_state()
+            assert success, "Reverse proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
@@ -363,7 +374,10 @@ class TestDockerRecordRequestLogE2e():
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
-            assert wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, service_name), "Reverse proxy did not enter record mode"
+            success = wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, service_name)
+            if not success:
+                _dump_docker_state()
+            assert success, "Reverse proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):

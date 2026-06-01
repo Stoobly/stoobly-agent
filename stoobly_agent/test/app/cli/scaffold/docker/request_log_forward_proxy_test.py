@@ -16,7 +16,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker, _append_error_to_tmp_log, _dump_docker_state
 
 
 def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
@@ -36,6 +36,8 @@ def find_log_entry(output: str, message: str, method: str = None) -> Optional[di
 def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 0.5) -> bool:
     """Poll until the forward proxy is intercepting (returns 499 for unrecorded requests)."""
     deadline = time.time() + timeout
+    last_status = None
+    last_exc = None
     while time.time() < deadline:
         try:
             resp = requests.get(
@@ -44,11 +46,17 @@ def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: flo
                 verify=False,
                 timeout=5.0,
             )
+            last_status = resp.status_code
             if resp.status_code == NOT_FOUND:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            last_exc = e
         time.sleep(interval)
+    _append_error_to_tmp_log([
+        f"wait_for_forward_proxy_intercept timed out after {timeout}s",
+        f"Last HTTP status: {last_status}",
+        f"Last exception: {last_exc}",
+    ])
     return False
 
 
@@ -185,7 +193,10 @@ class TestDockerRequestLogE2e():
         @pytest.fixture(scope='class', autouse=True)
         def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-            assert wait_for_forward_proxy_intercept(proxy_url, hostname), "Forward proxy did not enter mock-intercept mode"
+            success = wait_for_forward_proxy_intercept(proxy_url, hostname)
+            if not success:
+                _dump_docker_state()
+            assert success, "Forward proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):

@@ -27,6 +27,34 @@ def _append_error_to_tmp_log(lines):
     pass
 
 
+def _dump_docker_state():
+  """Write docker ps and per-container logs into the e2e log for post-mortem debugging."""
+  try:
+    ps = subprocess.run(['docker', 'ps', '-a'], capture_output=True, text=True, timeout=15)
+    _append_error_to_tmp_log(["=== docker ps -a ===", ps.stdout or "(empty)"])
+
+    ids = subprocess.run(['docker', 'ps', '-aq'], capture_output=True, text=True, timeout=15)
+    for cid in ids.stdout.strip().splitlines():
+      if not cid:
+        continue
+      name_r = subprocess.run(
+        ['docker', 'inspect', '--format', '{{.Name}}', cid],
+        capture_output=True, text=True, timeout=10,
+      )
+      name = name_r.stdout.strip().lstrip('/')
+      logs_r = subprocess.run(
+        ['docker', 'logs', '--tail', '200', cid],
+        capture_output=True, text=True, timeout=15,
+      )
+      _append_error_to_tmp_log([
+        f"=== docker logs {name} ({cid}) ===",
+        logs_r.stdout or "(no stdout)",
+        logs_r.stderr or "(no stderr)",
+      ])
+  except Exception:
+    pass
+
+
 class ScaffoldCliInvoker():
 
   @staticmethod
@@ -152,6 +180,7 @@ class ScaffoldCliInvoker():
         f"Output: {result.output}",
         f"Exception: {result.exception}",
       ])
+      _dump_docker_state()
 
     assert result.exit_code == 0
 
