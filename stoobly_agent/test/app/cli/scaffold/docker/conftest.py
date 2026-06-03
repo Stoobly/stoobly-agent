@@ -1,6 +1,8 @@
-import os
 import pytest
 
+from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
+from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import TMP_E2E_LOG_PATH
 
 
@@ -27,8 +29,10 @@ def pytest_runtest_makereport(item, call):
         app_dir_path = item.funcargs.get('app_dir_path')
         workflow_name = item.funcargs.get('target_workflow_name')
         if app_dir_path and workflow_name:
-            log_path = os.path.join(
-                app_dir_path, '.stoobly', 'tmp', workflow_name, 'logs',
-                f'{workflow_name}.requests.json'
+            app = App(app_dir_path)
+            workflow_namespace = WorkflowNamespace(app, workflow_name)
+            log_path = ScaffoldInterceptedRequestsLogger._get_file_path(
+                workflow=workflow_name,
+                workflow_namespace=workflow_namespace,
             )
             _attach_file_section(report, 'E2E Request Logs', log_path)
