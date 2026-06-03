@@ -20,7 +20,7 @@ def _append_error_to_tmp_log(lines):
   try:
     timestamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + "Z"
     with open(TMP_E2E_LOG_PATH, 'a', encoding='utf-8') as f:
-      f.write(f"[{timestamp}] e2e error\n")
+      f.write(f"[{timestamp}] E2E Test Error\n")
       for line in lines:
         f.write(f"{line}\n")
       f.write("\n")
@@ -39,12 +39,12 @@ def _dump_docker_state():
     summary = "\n".join(
       f"  {c.name} ({c.short_id}) status={c.status}" for c in containers
     ) or "(no containers)"
-    _append_error_to_tmp_log(["=== docker containers ===", summary])
+    _append_error_to_tmp_log(["=== Docker containers ===", summary])
 
     for container in containers:
       logs = container.logs(tail=200, stdout=True, stderr=True).decode('utf-8', errors='replace')
       _append_error_to_tmp_log([
-        f"=== logs: {container.name} ({container.short_id}) ===",
+        f"=== Container logs: {container.name} ({container.short_id}) ===",
         logs or "(empty)",
       ])
   except Exception:
