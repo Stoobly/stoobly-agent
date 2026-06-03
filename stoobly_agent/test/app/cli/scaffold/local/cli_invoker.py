@@ -16,7 +16,7 @@ def _append_error_to_tmp_log(lines):
   try:
     timestamp = datetime.datetime.utcnow().isoformat(timespec='seconds') + "Z"
     with open(TMP_E2E_LOG_PATH, 'a', encoding='utf-8') as f:
-      f.write(f"[{timestamp}] e2e error\n")
+      f.write(f"[{timestamp}] E2E Test Error\n")
       for line in lines:
         f.write(f"{line}\n")
       f.write("\n")
