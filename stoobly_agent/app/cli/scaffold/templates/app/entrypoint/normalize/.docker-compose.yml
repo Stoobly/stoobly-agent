@@ -1,0 +1,8 @@
+services:
+  entrypoint.init:
+    extends:
+      file: ../.docker-compose.base.yml
+      service: entrypoint.init_base
+    image: stoobly.${USER_ID}
+    profiles:
+      - ${WORKFLOW_NAME}

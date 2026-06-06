@@ -117,6 +117,13 @@ mock/request/logs/delete: workflow/mock workflow/request/logs/delete
 mock/request/logs/path: workflow/mock workflow/request/logs/path
 mock/request/logs: workflow/mock workflow/request/logs
 mock/services: workflow/mock workflow/services
+normalize: workflow/normalize workflow/up nameservers workflow/hostname/install workflow/up/run
+normalize/down: workflow/normalize workflow/down workflow/down/run workflow/hostname/uninstall
+normalize/logs: workflow/normalize workflow/logs workflow/logs/run
+normalize/request/logs/delete: workflow/normalize workflow/request/logs/delete
+normalize/request/logs/path: workflow/normalize workflow/request/logs/path
+normalize/request/logs: workflow/normalize workflow/request/logs
+normalize/services: workflow/normalize workflow/services
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
 		echo "pipx is not installed. Installing pipx..."; \
@@ -194,6 +201,8 @@ workflow/logs/run:
 	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/mock:
 	$(eval workflow=mock)
+workflow/normalize:
+	$(eval workflow=normalize)
 workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
