@@ -9,6 +9,7 @@ from typing import List
 
 from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_MOCK_TYPE,
+  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -27,6 +28,7 @@ HTTP_METHODS: List[str] = [
 
 WORKFLOW_FILTER_MODE_MAP = {
   WORKFLOW_MOCK_TYPE: mode.MOCK,
+  WORKFLOW_NORMALIZE_TYPE: mode.NORMALIZE,
   WORKFLOW_RECORD_TYPE: mode.RECORD,
   WORKFLOW_TEST_TYPE: mode.MOCK,  # `test` workflows use mock interception mode
 }

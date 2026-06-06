@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from .app import App
-from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from .constants import WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from .local.service.builder import ServiceBuilder
 from .docker.service.builder import DockerServiceBuilder
 from .docker.workflow.decorators_factory import get_workflow_decorators
@@ -20,7 +20,7 @@ class ServiceCreateCommand(ServiceCommand):
 
     self.__upstream_port = kwargs.get('upstream_port') or []
     self.__env_vars = kwargs.get('env') or []
-    self.__workflows = kwargs.get('workflow') or [WORKFLOW_RECORD_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_TEST_TYPE]
+    self.__workflows = kwargs.get('workflow') or [WORKFLOW_RECORD_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_TEST_TYPE, WORKFLOW_NORMALIZE_TYPE]
 
   @property
   def upstream_port(self):
@@ -65,6 +65,9 @@ class ServiceCreateCommand(ServiceCommand):
     if WORKFLOW_MOCK_TYPE in self.workflows:
       self.__build_with_mock_workflow(service_builder, **workflow_kwargs)
 
+    if WORKFLOW_NORMALIZE_TYPE in self.workflows:
+      self.__build_with_normalize_workflow(service_builder, **workflow_kwargs)
+
     if WORKFLOW_RECORD_TYPE in self.workflows:
       service_builder_copy = deepcopy(service_builder)
       service_builder_copy.with_upstream_port(self.upstream_port)
@@ -86,6 +89,12 @@ class ServiceCreateCommand(ServiceCommand):
 
     workflow_decorators = get_workflow_decorators(WORKFLOW_MOCK_TYPE, self.service_config)
     mock_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
+
+  def __build_with_normalize_workflow(self, service_builder: Union[ServiceBuilder, DockerServiceBuilder], **kwargs):
+    normalize_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': WORKFLOW_NORMALIZE_TYPE }})
+
+    workflow_decorators = get_workflow_decorators(WORKFLOW_NORMALIZE_TYPE, self.service_config)
+    normalize_workflow.build(service_builder=service_builder, workflow_decorators=workflow_decorators)
 
   def __build_with_record_workflow(self, service_builder: Union[ServiceBuilder, DockerServiceBuilder], **kwargs):
     record_workflow = WorkflowCreateCommand(self.app, **{ **kwargs, **{ 'workflow_name': WORKFLOW_RECORD_TYPE }})
