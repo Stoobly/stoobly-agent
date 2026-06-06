@@ -56,7 +56,6 @@ class WorkflowUpOptions(TypedDict, total=False):
 
 class WorkflowLogsOptions(TypedDict, total=False):
   print_service_header: Optional[Callable[[str], None]]
-  container: List[str]
   follow: bool
   namespace: Optional[str]
   # CLI-specific options that get passed through

@@ -7,10 +7,10 @@ import time
 from typing import List
 from types import FunctionType
 
-from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_REVERSE, WORKFLOW_CONTAINER_PROXY, WORKFLOW_CONTAINER_SERVICE, WORKFLOW_NAME
+from stoobly_agent.app.cli.scaffold.constants import PROXY_MODE_REVERSE, WORKFLOW_CONTAINER_INIT, WORKFLOW_CONTAINER_PROXY, WORKFLOW_CONTAINER_SERVICE, WORKFLOW_NAME
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE, APP_INGRESS_NETWORK_TEMPLATE, DOCKERFILE_CONTEXT
 from stoobly_agent.app.cli.scaffold.docker.service.gateway_base import GatewayBase
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_SERVICES_DOCKER
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CORE_SERVICES_DOCKER
 from stoobly_agent.app.cli.scaffold.workflow import Workflow
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import BuildOptions, DownOptions, UpOptions, WorkflowDownOptions, WorkflowUpOptions, WorkflowLogsOptions
@@ -205,18 +205,20 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       self.__find_and_verify_timestamp_file()
      
     print_service_header = options.get('print_service_header')
+
+    if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+      containers_to_log = [WORKFLOW_CONTAINER_INIT, WORKFLOW_CONTAINER_PROXY]
+    else:
+      containers_to_log = [WORKFLOW_CONTAINER_INIT, WORKFLOW_CONTAINER_SERVICE]
     
     # Filter services based on options
     filtered_services = []
 
     if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
-      if len(options.get('container', [])) == 0:
-        options['container'] = [WORKFLOW_CONTAINER_PROXY]
-
       for service in self.services:
         if len(options.get('service', [])) == 0:
           # If no filter is specified, ignore CORE_SERVICES  
-          if service in CORE_SERVICES_DOCKER:
+          if service == CORE_BUILD_SERVICE_NAME or service == CORE_MOCK_UI_SERVICE_NAME or service == CORE_GATEWAY_SERVICE_NAME:
             continue
         else:
           # If a filter is specified, ignore all other services
@@ -225,13 +227,10 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
         filtered_services.append(service)
     else:
-      if len(options.get('container', [])) == 0:
-        options['container'] = [WORKFLOW_CONTAINER_SERVICE]
-
       for service in self.services:
         if len(options.get('service', [])) == 0:
-          # If no filter is specified, ignore all other services except the gateway
-          if service != CORE_GATEWAY_SERVICE_NAME:
+          # If no filter is specified, ignore CORE_SERVICES other than the gateway
+          if service == CORE_BUILD_SERVICE_NAME or service == CORE_MOCK_UI_SERVICE_NAME:
             continue 
         else:
           # If a filter is specified, ignore all other services
@@ -249,7 +248,18 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       commands.append((service, command))
     
     # Sort commands by priority and execute
-    commands = sorted(commands, key=lambda x: x[1].service_config.priority)
+    if self.app_config.proxy_mode == PROXY_MODE_REVERSE:
+      commands = sorted(commands, key=lambda x: x[1].service_config.priority)
+    else:
+      # For forward proxy, gateway is second to last; entrypoint is last (follow target)
+      commands = sorted(
+        commands,
+        key=lambda x: (
+          2 if x[0] == CORE_ENTRYPOINT_SERVICE_NAME else 1 if x[0] == CORE_GATEWAY_SERVICE_NAME else 0,
+          x[1].service_config.priority,
+        ),
+      )
+
     for index, (service, command) in enumerate(commands):
       if print_service_header:
         print_service_header(service)
@@ -257,7 +267,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       follow = options.get('follow', False) and index == len(commands) - 1
       shell_commands = self._build_log_commands(
         command, 
-        containers=options.get('container', []), 
+        containers=containers_to_log, 
         follow=follow, 
         namespace=options.get('namespace')
       )
@@ -279,15 +289,13 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         ), containers or []
       )
     )
+    matched = [c for c in allowed_containers if c in available_containers]
 
-    for index, container in enumerate(available_containers):
-      if container not in allowed_containers:
-        continue
-
+    for index, container in enumerate(matched):
       container_name = self._container_name(container, namespace or command.workflow_name)
       log_commands.append(f"echo \"=== Logging {container_name}\"")
       
-      if follow and index == len(available_containers) - 1:
+      if follow and index == len(matched) - 1:
         docker_command = ['docker', 'logs', '--follow', container_name]
       else:
         docker_command = ['docker', 'logs', container_name]
