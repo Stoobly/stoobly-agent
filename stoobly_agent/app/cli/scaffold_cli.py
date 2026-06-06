@@ -404,7 +404,7 @@ def show(**kwargs):
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -521,7 +521,7 @@ def down(**kwargs):
 
   finally:
     # Execute the workflow down
-    command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+    command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
     workflow_command.down(
       **command_args,
       **kwargs
@@ -535,12 +535,9 @@ def down(**kwargs):
   help="Show or follow logs from workflow service(s)",
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option(
-  '--container', multiple=True, help=f"Select which containers to log."
-)
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
-@click.option('--follow', is_flag=True, help='Follow last container log output.')
+@click.option('--follow', is_flag=True, help='Follow log output.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -583,7 +580,7 @@ def logs(**kwargs):
     )
 
   # Execute the workflow logs
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
   workflow_command.logs(
     **command_args,
     **kwargs
@@ -596,7 +593,7 @@ def logs(**kwargs):
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands instead of running them.')
@@ -705,7 +702,7 @@ def up(**kwargs):
     Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow logs{options_str} {kwargs['workflow_name']}`")
   
   # Execute the workflow
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"SERVICE {service_name}") }
+  command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
   workflow_command.up(
     **command_args,
     **kwargs
@@ -717,7 +714,7 @@ def up(**kwargs):
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
@@ -736,7 +733,7 @@ def mkcert(**kwargs):
   help="Sync normalize rewrite rules from service upstream hostname, port, and scheme"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
@@ -756,7 +753,7 @@ def rewrite(**kwargs):
   help="Configure include filter rules for workflow service(s)"
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--containerized', is_flag=True, help='Set if run from within a container.')
+@click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=data_dir.context_dir_path, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
