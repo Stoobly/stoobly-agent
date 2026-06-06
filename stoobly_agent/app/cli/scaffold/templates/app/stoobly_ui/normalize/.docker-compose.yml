@@ -1,0 +1,14 @@
+services:
+  stoobly_ui.service:
+    command: --proxyless --ui-host local.stoobly.com --ui-port 4200
+    extends:
+      file: ../.docker-compose.base.yml
+      service: stoobly_ui.base
+    networks:
+      app.egress:
+        aliases:
+          - local.stoobly.com
+    ports:
+      - '${APP_UI_PORT}:4200'
+    profiles:
+      - ${WORKFLOW_NAME}

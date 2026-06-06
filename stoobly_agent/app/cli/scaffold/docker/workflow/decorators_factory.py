@@ -1,6 +1,6 @@
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 
-from ...constants import PROXY_MODE_REVERSE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+from ...constants import PROXY_MODE_REVERSE, WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 from .detached_decorator import DetachedDecorator
 from .dns_decorator import DnsDecorator
 from .local_decorator import LocalDecorator
@@ -10,7 +10,7 @@ from .reverse_proxy_decorator import ReverseProxyDecorator
 def get_workflow_decorators(workflow: str, service_config: ServiceConfig):
   workflow_decorators = []
 
-  if workflow == WORKFLOW_RECORD_TYPE:
+  if workflow == WORKFLOW_RECORD_TYPE or workflow == WORKFLOW_NORMALIZE_TYPE:
     if service_config.hostname:
       if service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:
         workflow_decorators.append(ReverseProxyDecorator)

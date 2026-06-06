@@ -10,6 +10,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
     OPENAPI_SPECIFICATION_FILE_NAME,
     WORKFLOW_MOCK_TYPE,
+    WORKFLOW_NORMALIZE_TYPE,
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
 )
@@ -212,6 +213,7 @@ class TestScaffoldServiceCreate:
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
                 '--workflow', WORKFLOW_MOCK_TYPE,
+                '--workflow', WORKFLOW_NORMALIZE_TYPE,
                 '--workflow', WORKFLOW_RECORD_TYPE,
                 '--workflow', WORKFLOW_TEST_TYPE,
                 '--quiet',
@@ -222,7 +224,29 @@ class TestScaffoldServiceCreate:
         def test_all_workflow_dirs_exist(self, app_dir_path: str, service_name: str):
             app = App(app_dir_path)
             service = Service(service_name, app)
-            for workflow in [WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
+            for workflow in [WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
+                assert os.path.exists(service.workflow_dir_path(workflow))
+
+    class TestCreateWithDefaultWorkflows:
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            return 'default-workflow-service'
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+            result = runner.invoke(scaffold, [
+                'service', 'create',
+                '--app-dir-path', app_dir_path,
+                '--quiet',
+                service_name,
+            ])
+            assert result.exit_code == 0
+
+        def test_all_default_workflow_dirs_exist(self, app_dir_path: str, service_name: str):
+            app = App(app_dir_path)
+            service = Service(service_name, app)
+            for workflow in [WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
                 assert os.path.exists(service.workflow_dir_path(workflow))
 
     class TestCreateInvalidCases:

@@ -1,0 +1,8 @@
+services:
+  build.init:
+    extends:
+      file: ../.docker-compose.base.yml
+      service: build.init_base
+    image: stoobly.${USER_ID}
+    profiles:
+      - ${WORKFLOW_NAME}

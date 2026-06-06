@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# This file was automatically generated. DO NOT EDIT.
+# Any changes made to this file will be overwritten.
+
+if [ -f .env ]; then
+  set -a; . ./.env; set +a;
+fi
+
+if [ "${WORKFLOW_ACCESS_COUNT:-1}" == "1" ]; then
+  stoobly-agent setting reset
+  stoobly-agent snapshot apply
+fi
+
+echo "Configuring intercept..."
+stoobly-agent intercept configure --mode normalize --policy all
+stoobly-agent intercept enable
+
+if [ "$APP_PROXY_MODE" = "forward" ]; then
+  echo "Configuring filter..."
+  stoobly-agent scaffold workflow filter "$WORKFLOW_NAME"
+
+  echo "Configuring rewrite..."
+  stoobly-agent scaffold workflow rewrite "$WORKFLOW_NAME"
+fi
+
+entrypoint=$1
+
+if [ -e "$entrypoint" ]; then
+  ./"$entrypoint"
+fi
