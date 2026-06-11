@@ -482,7 +482,7 @@ def down(**kwargs):
   # Snapshot / hostname steps must not skip workflow teardown: down() runs in finally.
   try:
     # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
-    if workflow_command.workflow_template != WORKFLOW_TEST_TYPE and not kwargs['dry_run']:
+    if workflow_command.workflow_template not in [WORKFLOW_TEST_TYPE, WORKFLOW_NORMALIZE_TYPE] and not kwargs['dry_run']:
       if workflow_up_timestamp:
         try:
           snapshot_results = snapshot_scenarios_since(workflow_up_timestamp)
