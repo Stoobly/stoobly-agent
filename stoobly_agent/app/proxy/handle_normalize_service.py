@@ -6,8 +6,10 @@ if TYPE_CHECKING:
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.config.constants import lifecycle_hooks, normalize_policy, mode
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 
 from .utils.allowed_request_service import get_intercept_mode_policy
+from .utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from .utils.rewrite import rewrite_request, rewrite_response
 
 class NormalizeOptions(TypedDict):
@@ -38,7 +40,7 @@ def handle_request_normalize(replay_context: ReplayContext, **options: Normalize
 # 1. Rewrites normalize response
 # 2. AFTER_NORMALIZE gets triggered
 #
-def handle_response_normalize(replay_context: ReplayContext):
+def handle_response_normalize(replay_context: ReplayContext) -> str:
     request: 'MitmproxyRequest' = replay_context.flow.request
     intercept_settings: InterceptSettings = replay_context.intercept_settings
 
@@ -46,6 +48,25 @@ def handle_response_normalize(replay_context: ReplayContext):
     if policy != normalize_policy.NONE:
         __rewrite_response(replay_context)
         __normalize_hook(lifecycle_hooks.AFTER_NORMALIZE, replay_context)
+
+    return policy
+
+###
+#
+# Called when normalize is the active proxy mode, not as a sub-step of record.
+# Wraps handle_response_normalize and writes to the request log.
+#
+def handle_response_normalize_primary(replay_context: ReplayContext):
+    policy = handle_response_normalize(replay_context)
+
+    if policy != normalize_policy.NONE:
+        flow = replay_context.flow
+        RequestTransformationEntryLogger.log_normalizing(flow.request, flow.request.url)
+        response = flow.response
+        if response is not None and response.status_code < 400:
+            InterceptedRequestsLogger.info("Normalize success", request=flow.request, response=response)
+        else:
+            InterceptedRequestsLogger.error("Normalize failure", request=flow.request, response=response)
 
 def __normalize_hook(hook: str, replay_context: ReplayContext):
     intercept_settings: InterceptSettings = replay_context.intercept_settings

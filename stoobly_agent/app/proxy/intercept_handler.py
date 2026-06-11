@@ -10,18 +10,15 @@ if TYPE_CHECKING:
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
-from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
+from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize_primary
 from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
-from stoobly_agent.app.proxy.utils.allowed_request_service import get_intercept_mode_policy
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
-from stoobly_agent.config.constants import normalize_policy
-from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
 from stoobly_agent.config.constants import lifecycle_hooks, mode
@@ -98,15 +95,7 @@ def response(flow: 'MitmproxyHTTPFlow'):
             handle_response_record(context)
         elif active_mode == mode.NORMALIZE:
             context = ReplayContext(flow, intercept_settings)
-            handle_response_normalize(context)
-            active_normalize_policy = get_intercept_mode_policy(flow.request, intercept_settings, mode.NORMALIZE)
-            if active_normalize_policy != normalize_policy.NONE:
-                response = flow.response
-                RequestTransformationEntryLogger.log_normalizing(flow.request, flow.request.url)
-                if response is not None and response.status_code < 400:
-                    InterceptedRequestsLogger.info("Normalize success", request=flow.request, response=response)
-                else:
-                    InterceptedRequestsLogger.error("Normalize failure", request=flow.request, response=response)
+            handle_response_normalize_primary(context)
         elif active_mode == mode.TEST:
             context = ReplayContext(flow, intercept_settings)
             handle_response_test(context)
