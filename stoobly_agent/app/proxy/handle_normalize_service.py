@@ -63,7 +63,7 @@ def handle_response_normalize_primary(replay_context: ReplayContext):
         flow = replay_context.flow
         RequestTransformationEntryLogger.log_normalizing(flow.request, flow.request.url)
         response = flow.response
-        if response is not None and response.status_code < 400:
+        if response is not None:
             InterceptedRequestsLogger.info("Normalize success", request=flow.request, response=response)
         else:
             InterceptedRequestsLogger.error("Normalize failure", request=flow.request, response=response)
