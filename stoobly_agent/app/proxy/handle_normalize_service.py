@@ -10,8 +10,6 @@ from stoobly_agent.config.constants import lifecycle_hooks, normalize_policy, mo
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.rewrite import rewrite_request, rewrite_response
 
-LOG_ID = 'HandleNormalize'
-
 class NormalizeOptions(TypedDict):
     no_rewrite: bool
 

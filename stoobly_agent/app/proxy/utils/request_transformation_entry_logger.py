@@ -39,6 +39,7 @@ class RequestTransformationEntryLogger:
     MOCK_LOG_ID = 'Mock'
     TEST_LOG_ID = 'Test'
     RECORD_LOG_ID = 'Record'
+    NORMALIZE_LOG_ID = 'Normalize'
 
     _pending: dict[str, list[_BufferedRecord]] = defaultdict(list)
 
@@ -351,6 +352,29 @@ class RequestTransformationEntryLogger:
             level='info',
             log_id=cls.RECORD_LOG_ID,
             console_message=f"{bcolors.OKBLUE}recording{bcolors.ENDC} {url}",
+            entry=entry,
+        )
+        if mitmproxy_request is None:
+            cls._emit_one(record)
+            return
+        cls._enqueue(mitmproxy_request, record)
+
+    @classmethod
+    def log_normalizing(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
+        details = f'normalizing {url}'
+        entry: Optional[RequestTransformationLogEntry] = None
+        if mitmproxy_request is not None:
+            entry = {
+                'action': 'noop',
+                'lifecycle': 'response',
+                'target': 'url',
+                'mode': agent_mode.NORMALIZE,
+                'details': details,
+            }
+        record = _BufferedRecord(
+            level='info',
+            log_id=cls.NORMALIZE_LOG_ID,
+            console_message=f"{bcolors.OKBLUE}normalizing{bcolors.ENDC} {url}",
             entry=entry,
         )
         if mitmproxy_request is None:
