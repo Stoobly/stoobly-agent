@@ -13,6 +13,7 @@ from stoobly_agent.test.test_helper import reset  # must be first: calls reset()
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
+    WORKFLOW_NORMALIZE_TYPE,
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
@@ -148,6 +149,29 @@ def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_ret
             if entry is not None:
                 return entry
     return None
+
+
+def wait_for_normalize_active_reverse(hostname: str, runner, workflow_name: str, context_dir_path: str, service_name: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
+    """Poll until the reverse proxy is actively normalizing (writing request log entries)."""
+    container_name = f'{workflow_name}-{service_name}.proxy-1'
+    runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--context-dir-path', context_dir_path])
+    _enable_intercept_in_container(container_name)
+    last_enable = time.time()
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if time.time() - last_enable >= reenable_interval:
+            _enable_intercept_in_container(container_name)
+            last_enable = time.time()
+        try:
+            requests.get('http://localhost:80/', headers={'Host': hostname}, timeout=5.0)
+        except Exception:
+            pass
+        time.sleep(interval)
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--context-dir-path', context_dir_path])
+        if result.exit_code == 0 and result.output.strip():
+            if find_log_entry(result.output, 'Normalize success') or find_log_entry(result.output, 'Normalize failure'):
+                return True
+    return False
 
 
 def poll_until_log_count_stable(
@@ -410,6 +434,107 @@ class TestDockerRecordRequestLogE2e():
             )
 
             entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
+            assert entry is not None, "Expected log entries before delete"
+
+            delete_result = runner.invoke(scaffold, [
+                'request', 'logs', 'delete', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert delete_result.exit_code == 0
+
+            list_result = runner.invoke(scaffold, [
+                'request', 'logs', 'list', target_workflow_name,
+                '--context-dir-path', app_dir_path
+            ])
+            assert list_result.exit_code == 0
+            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+
+@pytest.mark.e2e
+class TestDockerNormalizeRequestLogE2e():
+
+    @pytest.fixture(scope='module', autouse=True)
+    def settings(self):
+        return reset('stoobly-agent-test-normalize')
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class', autouse=True)
+    def temp_dir(self):
+        data_dir_path = DataDir.instance().path
+        tmp_path = data_dir_path[:data_dir_path.rfind('/')]
+        yield tmp_path
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self, temp_dir):
+        yield temp_dir
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "http.badssl.com"
+
+    class TestReverseProxyNormalizeRequestLog():
+
+        @pytest.fixture(scope='class')
+        def app_name(self):
+            yield "docker-request-log-normalize"
+
+        @pytest.fixture(scope='class')
+        def service_name(self):
+            yield "external-service"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def target_workflow_name(self):
+            yield WORKFLOW_NORMALIZE_TYPE
+
+        @pytest.fixture(scope='class', autouse=True)
+        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, service_name):
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
+            assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
+            success = wait_for_normalize_active_reverse(hostname, runner, target_workflow_name, app_dir_path, service_name)
+            if not success:
+                _dump_docker_state()
+            assert success, "Reverse proxy did not enter normalize mode"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+        def test_normalize_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Make a request through the reverse proxy normalize workflow and verify a Normalize success log entry appears."""
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+
+            requests.get(
+                'http://localhost:80/',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
+            assert entry is not None, "Expected 'Normalize success' log entry but none appeared"
+
+            assert entry['level'] == 'INFO'
+            assert entry['method'] == 'GET'
+            assert hostname in entry.get('url', '')
+            assert entry.get('timestamp'), "timestamp should exist and not be empty"
+            assert entry.get('latency_ms') is not None, "latency_ms should exist"
+
+        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Verify that deleting logs clears all entries."""
+            requests.get(
+                'http://localhost:80/another-path',
+                headers={'Host': hostname},
+            )
+
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
             assert entry is not None, "Expected log entries before delete"
 
             delete_result = runner.invoke(scaffold, [
