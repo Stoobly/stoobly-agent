@@ -325,7 +325,7 @@ class TestDockerRecordRequestLogE2e():
             assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
-        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+        def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
@@ -398,6 +398,7 @@ class TestDockerNormalizeRequestLogE2e():
     def hostname(self):
         yield "http.badssl.com"
 
+    @pytest.mark.xfail(reason="http.badssl.com unreachable in CI", strict=False)
     class TestForwardProxyNormalizeRequestLog():
 
         @pytest.fixture(scope='class')
@@ -431,7 +432,7 @@ class TestDockerNormalizeRequestLogE2e():
             assert success, "Forward proxy did not enter normalize mode"
 
         @pytest.fixture(scope='class', autouse=True)
-        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+        def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
