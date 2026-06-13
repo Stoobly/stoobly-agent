@@ -47,8 +47,8 @@ def test_snapshot_scenarios_since_collects_snapshots_with_pagination(monkeypatch
     }
   )
 
-  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda: object()))
-  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings: fake_model)
+  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda data_dir_path=None: object()))
+  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings, **kwargs: fake_model)
 
   snapshots = snapshot_scenarios_since_service.snapshot_scenarios_since('2026-01-01T00:00:00Z')
 
@@ -74,8 +74,8 @@ def test_snapshot_scenarios_since_stops_when_index_non_200(monkeypatch):
     snapshot_results={'scenario-a': ('/tmp/a.yml', 200)}
   )
 
-  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda: object()))
-  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings: fake_model)
+  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda data_dir_path=None: object()))
+  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings, **kwargs: fake_model)
 
   snapshots = snapshot_scenarios_since_service.snapshot_scenarios_since('2026-01-01T00:00:00Z')
 
@@ -89,8 +89,8 @@ def test_snapshot_scenarios_since_passes_custom_snapshot_options(monkeypatch):
     snapshot_results={'scenario-a': ('/tmp/a.yml', 200)}
   )
 
-  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda: object()))
-  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings: fake_model)
+  monkeypatch.setattr(snapshot_scenarios_since_service.Settings, 'instance', staticmethod(lambda data_dir_path=None: object()))
+  monkeypatch.setattr(snapshot_scenarios_since_service, 'ScenarioModel', lambda _settings, **kwargs: fake_model)
 
   snapshot_scenarios_since_service.snapshot_scenarios_since(
     '2026-01-01T00:00:00Z',
