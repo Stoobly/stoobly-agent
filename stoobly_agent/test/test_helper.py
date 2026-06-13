@@ -28,7 +28,9 @@ def reset(dir_name = 'stoobly-agent-test'):
   data_dir: DataDir = DataDir.instance()
   data_dir.create()
 
-  ORM.instance().initialize_db()
+  orm = ORM.instance()
+  orm._db = None
+  ORM.configure()
   migrate(VERSION)
 
   settings: Settings = Settings.instance()

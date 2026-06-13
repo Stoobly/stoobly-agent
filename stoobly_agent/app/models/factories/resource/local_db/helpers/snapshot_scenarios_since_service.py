@@ -17,7 +17,12 @@ def snapshot_scenarios_since(updated_since: str, **options) -> List[Tuple[Scenar
   """
   formatted_updated_since = __normalize_iso_datetime(updated_since)
 
-  scenario_model = ScenarioModel(Settings.instance())
+  data_dir_path = options.get('data_dir_path')
+
+  scenario_model = ScenarioModel(
+    Settings.instance(data_dir_path),
+    data_dir_path=data_dir_path,
+  )
   scenario_model.as_local()
 
   snapshots = []

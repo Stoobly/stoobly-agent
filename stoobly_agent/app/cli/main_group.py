@@ -2,7 +2,15 @@ import click
 import collections
 
 from typing import List, TypedDict
+
+from stoobly_agent import VERSION
+from stoobly_agent.app.cli.helpers.database_migration import (
+  non_option_args,
+  resolve_context_dir_path_from_argv,
+  should_skip_database_migration,
+)
 from stoobly_agent.app.settings import Settings
+from stoobly_agent.lib.orm.migrate_service import migrate as migrate_database
 
 class CommandGroup(TypedDict):
   commands: List[str]
@@ -16,6 +24,21 @@ class MainGroup(click.Group):
     self.__settings = Settings.instance()
     # Cache for lazily loaded commands
     self.__loaded_commands = {}
+
+  def invoke(self, ctx):
+    if not ctx.resilient_parsing:
+      self.__try_migrate_database()
+
+    return super().invoke(ctx)
+
+  def __try_migrate_database(self):
+    command_path = non_option_args()
+
+    if should_skip_database_migration(command_path):
+      return
+
+    data_dir_path = resolve_context_dir_path_from_argv()
+    migrate_database(VERSION, data_dir_path)
 
   def list_commands(self, ctx):
     # Return all available command names for help/autocomplete

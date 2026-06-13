@@ -4,7 +4,6 @@ import os
 import pdb
 import sys
 
-from stoobly_agent import VERSION
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
 from stoobly_agent.app.cli.intercept_cli import mode_options
@@ -17,14 +16,10 @@ from .app.cli import MainGroup
 from .app.cli.helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .app.settings import Settings
 from .lib import logger
-from .lib.orm.migrate_service import migrate as migrate_database
 
 settings: Settings = Settings.instance()
 is_remote = feature_is_remote(settings)
 is_local = feature_is_local(settings)
-
-# Makes sure database is up to date
-migrate_database(VERSION)
 
 CONNECTION_STRATEGIES = ['eager', 'lazy']
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
