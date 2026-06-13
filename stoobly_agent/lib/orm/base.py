@@ -1,6 +1,6 @@
-from . import ORM 
+from stoobly_orator import Model
 
-class Base(ORM.instance().base):
+class Base(Model):
 
   @classmethod
   def where_for(cls, **kwargs):

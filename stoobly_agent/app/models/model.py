@@ -9,22 +9,28 @@ class Model():
     self.adapter = None
     self.is_local = False
     self.settings = settings
+    self.__data_dir_path = options.get('data_dir_path')
 
     if not settings.cli.features.remote:
-      self.as_local()
+      self.__configure_local_db()
     else:
       if 'access_token' in options:
         if options.get('access_token'):
           self.as_remote()
         else:
-          self.as_local() 
+          self.__configure_local_db()
       else:
         project_key = ProjectKey(settings.proxy.intercept.project_key)
 
         if int(project_key.id) == LOCAL_PROJECT_ID:
-          self.as_local()
+          self.__configure_local_db()
         else:
           self.as_remote()
+
+  def __configure_local_db(self):
+    from stoobly_agent.lib.orm import ORM
+    ORM.configure(self.__data_dir_path)
+    self.as_local()
 
   # Override
   def as_local(self):
