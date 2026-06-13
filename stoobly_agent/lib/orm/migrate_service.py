@@ -13,6 +13,7 @@ from stoobly_agent.lib.orm import ORM
 
 def migrate(version, data_dir_path: str = None, pretend = False):
   data_dir: DataDir = DataDir.instance(data_dir_path)
+  ORM.configure(data_dir_path)
 
   # If current db version is same as version, return
   if os.path.exists(data_dir.db_version_path):
@@ -27,7 +28,6 @@ def migrate(version, data_dir_path: str = None, pretend = False):
   file_lock = FileLock(lock_path, timeout=5)
 
   with file_lock:
-    ORM.configure(data_dir_path)
     migrator = __build_migrator()
     migrations_path = __build_migrations_path()
     migrator.run(migrations_path, pretend)
