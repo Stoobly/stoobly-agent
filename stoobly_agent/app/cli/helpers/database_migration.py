@@ -1,12 +1,18 @@
 import sys
+
 from typing import List, Optional
 
 CONTEXT_DIR_PATH_OPTION = '--context-dir-path'
 
 # Top-level commands that should not trigger automatic database migration.
 SKIP_MIGRATION_COMMANDS = {
-  'init',
+  'ca-cert',
+  'dev-tools',
   'feature',
+  'init',
+  'intercept',
+  'scaffold',
+  'setting'
 }
 
 
@@ -80,7 +86,6 @@ def resolve_context_dir_path_from_argv(argv: List[str] = None) -> Optional[str]:
 
   return context_dir_path
 
-
 def should_skip_database_migration(command_path: List[str]) -> bool:
   """Determine whether automatic database migration should be skipped.
 
@@ -100,9 +105,6 @@ def should_skip_database_migration(command_path: List[str]) -> bool:
   top_level = command_path[0]
 
   if top_level in SKIP_MIGRATION_COMMANDS:
-    return True
-
-  if top_level == 'dev-tools' and len(command_path) > 1 and command_path[1] == 'migrate':
     return True
 
   return False
