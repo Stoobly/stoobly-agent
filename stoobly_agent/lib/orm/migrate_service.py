@@ -11,17 +11,19 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.config.source_dir import SourceDir
 from stoobly_agent.lib.orm import ORM
 
-def migrate(version, pretend = False):
+def migrate(version, data_dir_path: str = None, pretend = False):
+  data_dir: DataDir = DataDir.instance(data_dir_path)
+  ORM.configure(data_dir_path)
+
   # If current db version is same as version, return
-  if os.path.exists(DataDir.instance().db_version_path):
-    with open(DataDir.instance().db_version_path, 'r') as fp:
+  if os.path.exists(data_dir.db_version_path):
+    with open(data_dir.db_version_path, 'r') as fp:
       _version = fp.read().strip()
 
       if _version == version:
         return
 
   # Use FileLock for migration locking
-  data_dir: DataDir = DataDir.instance()
   lock_path = os.path.join(data_dir.tmp_dir_path, '.db-migrate.lock')
   file_lock = FileLock(lock_path, timeout=5)
 
@@ -30,7 +32,7 @@ def migrate(version, pretend = False):
     migrations_path = __build_migrations_path()
     migrator.run(migrations_path, pretend)
 
-    with open(DataDir.instance().db_version_path, 'w') as fp:
+    with open(data_dir.db_version_path, 'w') as fp:
       fp.write(version)
 
 def rollback(pretend = False):
