@@ -68,12 +68,6 @@ stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-ar
 stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)
 stoobly_exec_env=$(exec_env) CONTEXT_DIR="$(context_dir)" 
 
-# Exec workflow run
-# Scaffold is stored in the application source code directory. 
-# When running a scaffold command from within a container, it needs access to $(app_dir) rather than $(context_dir)
-stoobly_exec_run=$(stoobly_exec_build) && $(stoobly_exec_run_env) $(exec_up)
-stoobly_exec_run_env=$(exec_env) CONTEXT_DIR="$(app_dir)"
-
 action/install:
 	$(eval action=install)
 action/uninstall:
@@ -181,7 +175,7 @@ tmpdir:
 	@mkdir -p $(app_tmp_dir)
 workflow/down: dotenv
 	@export EXEC_COMMAND=scaffold/.down EXEC_OPTIONS="$(workflow_down_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run)
+	$(stoobly_exec)
 workflow/down/run:
 	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/hostname: stoobly/install
@@ -196,7 +190,7 @@ workflow/hostname/install: action/install workflow/hostname
 workflow/hostname/uninstall: action/uninstall workflow/hostname  
 workflow/logs:
 	@export EXEC_COMMAND=scaffold/.logs EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run)
+	$(stoobly_exec)
 workflow/logs/run:
 	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/mock:
@@ -220,11 +214,11 @@ workflow/request/logs:
 	$(stoobly_exec)
 workflow/services:
 	@export EXEC_COMMAND=scaffold/.services EXEC_OPTIONS="$(workflow_service_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run)
+	$(stoobly_exec)
 workflow/test:
 	$(eval workflow=test) $(eval workflow_up_extra_options=$(workflow_up_extra_options))
 workflow/up: dotenv
 	@export EXEC_COMMAND=scaffold/.up EXEC_OPTIONS="$(workflow_up_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec_run)
+	$(stoobly_exec)
 workflow/up/run:
 	@cd "$(app_dir)" && bash "$(workflow_script)" $(docker_compose_options)

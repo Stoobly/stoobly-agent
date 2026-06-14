@@ -1,4 +1,5 @@
 from stoobly_agent.app.cli.helpers.database_migration import (
+  SKIP_MIGRATION_COMMANDS,
   non_option_args,
   resolve_context_dir_path_from_argv,
   should_skip_database_migration,
@@ -39,12 +40,14 @@ class TestShouldSkipDatabaseMigration:
   def test_skips_without_command(self):
     assert should_skip_database_migration([]) is True
 
-  def test_skips_init(self):
-    assert should_skip_database_migration(['init']) is True
+  def test_skips_top_level_commands(self):
+    for command in SKIP_MIGRATION_COMMANDS:
+      assert should_skip_database_migration([command]) is True
 
-  def test_skips_dev_tools_migrate(self):
+  def test_skips_subcommands_of_skip_commands(self):
     assert should_skip_database_migration(['dev-tools', 'migrate']) is True
+    assert should_skip_database_migration(['scaffold', 'app', 'create']) is True
 
-  def test_runs_for_local_commands(self):
+  def test_runs_for_other_commands(self):
     assert should_skip_database_migration(['mock']) is False
-    assert should_skip_database_migration(['scaffold', 'app', 'create']) is False
+    assert should_skip_database_migration(['request', 'logs', 'list']) is False
