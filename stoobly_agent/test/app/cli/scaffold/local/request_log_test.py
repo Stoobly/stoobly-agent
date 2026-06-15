@@ -24,6 +24,7 @@ from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLog
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
 from stoobly_agent.test.test_helper import reset
 from typing import Optional
 
@@ -86,11 +87,12 @@ class TestRequestLogE2e():
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
         """Start mock workflow for testing."""
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
         settings.load()
+        wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
@@ -771,11 +773,12 @@ class TestRequestLogFromDifferentWorkingDirectory():
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
         """Start mock workflow for testing."""
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
         settings.load()
+        wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)
     def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
