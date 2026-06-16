@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
   PROXY_MODE_FORWARD,
   SERVICES_NAMESPACE,
+  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -453,3 +454,199 @@ class TestScaffoldE2e():
       runtime_scaffold_namespace_path = app.host_runtime_scaffold_namespace_path
 
       assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"
+
+
+  class TestNormalizeWorkflow():
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+      yield WORKFLOW_NORMALIZE_TYPE
+
+    @pytest.fixture(scope='class')
+    def normalize_local_service_mock_docker_compose_path(self, mock_data_directory_path):
+      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-normalize.yml"
+
+    @pytest.fixture(scope='class')
+    def managed_services_docker_compose(self, target_workflow_name):
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
+
+    @pytest.fixture(scope='class')
+    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+
+    @pytest.fixture(scope='class')
+    def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+
+    @pytest.fixture(scope='class')
+    def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, normalize_local_service_mock_docker_compose_path):
+      ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+
+      # Create user defined services
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
+
+      # Create user defined custom container service
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+
+      # Add user defined Docker Compose file for the custom container service
+      destination_path = Path(local_service_docker_compose.docker_compose_path)
+      assert destination_path.is_file()
+      shutil.copyfile(normalize_local_service_mock_docker_compose_path, destination_path)
+
+      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+      yield
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+    def test_core_services(self, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'build'
+      }
+
+      command = WorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': external_service_docker_compose.service_name
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': local_service_docker_compose.service_name
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+
+  class TestNormalizeWorkflowForward():
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+      yield WORKFLOW_NORMALIZE_TYPE
+
+    @pytest.fixture(scope='class')
+    def normalize_local_service_mock_docker_compose_path(self, mock_data_directory_path):
+      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-normalize.yml"
+
+    @pytest.fixture(scope='class')
+    def managed_services_docker_compose(self, target_workflow_name):
+      yield ManagedServicesDockerCompose(namespace=target_workflow_name, workflow_name=target_workflow_name)
+
+    @pytest.fixture(scope='class')
+    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
+
+    @pytest.fixture(scope='class')
+    def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
+
+    @pytest.fixture(scope='class')
+    def local_service_docker_compose(self, app_dir_path, target_workflow_name, local_service_name, local_hostname):
+      yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, normalize_local_service_mock_docker_compose_path):
+      ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
+
+      # Create user defined services
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_service_docker_compose.hostname, external_service_docker_compose.service_name, False)
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, external_https_service_docker_compose.hostname, external_https_service_docker_compose.service_name, True)
+
+      # Create user defined custom container service
+      ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, local_service_docker_compose.hostname, local_service_docker_compose.service_name, False)
+
+      # Add user defined Docker Compose file for the custom container service
+      destination_path = Path(local_service_docker_compose.docker_compose_path)
+      assert destination_path.is_file()
+      shutil.copyfile(normalize_local_service_mock_docker_compose_path, destination_path)
+
+      ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+      yield
+      ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+
+    def test_core_services(self, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': 'build'
+      }
+
+      command = WorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_external_service(self, external_service_docker_compose: ServiceDockerCompose, app_dir_path, target_workflow_name):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': external_service_docker_compose.service_name
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_local_service(self, app_dir_path, target_workflow_name, local_service_docker_compose: ServiceDockerCompose):
+      app = App(app_dir_path)
+      config = {
+        'workflow_name': target_workflow_name,
+        'service_name': local_service_docker_compose.service_name
+      }
+
+      command = ServiceWorkflowValidateCommand(app, **config)
+      command.validate()
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Test that access count is correct after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+    def test_gateway_base_compose_has_env_file(self, app_dir_path: str, target_workflow_name: str):
+      """WORKFLOW_NAME must be injected into the gateway container via env_file so that
+      ScaffoldInterceptedRequestsLogger is used instead of SimpleInterceptedRequestsLogger."""
+      app = App(app_dir_path)
+      workflow_namespace = WorkflowNamespace(app, target_workflow_name)
+      app.denormalize_configure(workflow_namespace)
+      gateway_base_compose_path = os.path.join(
+        app.runtime_app_data_dir.path, SERVICES_NAMESPACE, CORE_GATEWAY_SERVICE_NAME, DOCKER_COMPOSE_BASE
+      )
+
+      assert os.path.exists(gateway_base_compose_path), f"Gateway base compose not found: {gateway_base_compose_path}"
+
+      with open(gateway_base_compose_path, 'r') as f:
+        compose = yaml.safe_load(f)
+
+      gateway_base = compose.get('services', {}).get('gateway_base', {})
+      assert 'env_file' in gateway_base, (
+        "gateway_base service missing env_file — WORKFLOW_NAME won't be set in the container, "
+        "causing SimpleInterceptedRequestsLogger to be used instead of ScaffoldInterceptedRequestsLogger"
+      )
+      assert gateway_base['env_file'] == [f'{target_workflow_name}/.env']

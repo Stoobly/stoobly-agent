@@ -10,9 +10,10 @@ from pathlib import Path
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
+  WORKFLOW_MOCK_TYPE,
+  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
-  WORKFLOW_MOCK_TYPE,
 )
 from stoobly_agent.app.cli.scaffold.context_lock import ContextLock
 from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
@@ -318,6 +319,115 @@ class TestLocalScaffoldE2e():
       access_count = context_lock.access_count()
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
+  class TestNormalizeWorkflow():
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+      yield WORKFLOW_NORMALIZE_TYPE
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
+      # Create app with local runtime
+      LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+
+      # Create external user defined services
+      LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, external_service_name, False)
+      LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, https_service_hostname, external_https_service_name, True)
+
+      # Create local user defined service
+      LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+      """Start the normalize workflow"""
+      LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+      time.sleep(1)
+      settings.load()
+
+    @pytest.fixture(scope="class", autouse=True)
+    def test_workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+      yield
+
+      LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+      time.sleep(1)
+
+      try:
+        requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+        assert False, "Expected ProxyError after workflow down"
+      except requests.exceptions.ProxyError:
+        assert True
+
+    def test_request_proxied(self, proxy_url: str):
+      """Normalize mode forwards to the real upstream — expect a real 200"""
+      res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+      assert res.status_code == 200, "Proxied request in normalize mode should forward to the real upstream"
+
+    def test_app_configuration(self, app_dir_path: str):
+      """The app should be valid and configured for local execution"""
+      app = App(app_dir_path)
+      assert app.valid, "App should be valid"
+
+      from stoobly_agent.app.cli.scaffold.app_config import AppConfig
+      app_config = AppConfig(app.scaffold_namespace_path)
+      assert app_config.runtime_local, "App should be configured to run locally"
+
+    def test_services_exist(self, app_dir_path: str, external_service_name: str, local_service_name: str):
+      """Services should be created and present in the app"""
+      app = App(app_dir_path)
+      services = app.services
+
+      assert external_service_name in services, f"External service {external_service_name} should exist"
+      assert local_service_name in services, f"Local service {local_service_name} should exist"
+
+    def test_intercept_mode_normalize(self, settings: Settings):
+      """Workflow up should set the intercept mode to normalize"""
+      assert settings.proxy.intercept.mode == mode.NORMALIZE
+
+    def test_no_records(self, settings: Settings, proxy_url: str):
+      """Normalize mode rewrites and forwards; it does not persist Request records"""
+      _requests = Request.all()
+      assert len(_requests) == 0, "Expected 0 requests before enabling intercept"
+      settings.proxy.intercept.active = True
+      settings.commit()
+      time.sleep(1)
+      res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
+      assert res.status_code == 200
+      _requests = Request.all()
+      assert len(_requests) == 0, "Normalize mode should not record requests"
+
+    def test_lifecycle_hooks(self, app_dir_path: str, external_https_service_name: str, https_service_hostname: str, proxy_url: str, target_workflow_name: str):
+      """Write a handle_after_normalize hook and assert the upstream response is mutated."""
+      app = App(app_dir_path)
+      workflow_command = WorkflowCommand(app, service_name=external_https_service_name, workflow_name=target_workflow_name)
+
+      hooks_content = "\n".join([
+        "HEADER_NAME = 'X-After-Normalize-Header'",
+        "HEADER_VALUE = 'after-normalize-value'",
+        "def handle_after_normalize(context):",
+        "  context.flow.response.headers[HEADER_NAME] = HEADER_VALUE",
+      ])
+      with open(workflow_command.lifecycle_hooks_path, 'w') as f:
+        f.write(hooks_content)
+
+      res = requests.get(
+        'https://' + https_service_hostname,
+        proxies={'http': proxy_url, 'https': proxy_url}, verify=False
+      )
+      assert res.status_code == 200
+      assert res.headers.get('X-After-Normalize-Header') == 'after-normalize-value'
+
+    def test_workflow_logs(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+      """Workflow logs command should succeed"""
+      LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+
+    def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
+      """Access count should be >= 1 after workflow up"""
+      app = App(app_dir_path)
+      context_lock = ContextLock(app)
+      access_count = context_lock.access_count()
+
+      assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
+
 
   class TestTestWorkflow():
     @pytest.fixture(scope='class', autouse=True)

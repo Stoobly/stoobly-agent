@@ -1,12 +1,14 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from mitmproxy.http import Headers, Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.handle_normalize_service import (
     handle_request_normalize,
+    handle_request_normalize_without_rewrite,
     handle_response_normalize,
 )
+from stoobly_agent.config.constants import lifecycle_hooks as lc_hooks
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.settings import Settings
@@ -134,3 +136,142 @@ class TestHandleNormalizeServiceExcludedRequest:
             intercept_settings.normalize_rewrite_rules,
             mode=mode.NORMALIZE,
         )
+
+
+class TestHandleNormalizeServiceLifecycleHooks:
+
+    def _make_context(self, settings, normalize_get_request, lifecycle_hooks_dict):
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        flow.response = MagicMock()
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        with patch.object(type(intercept_settings), 'lifecycle_hooks', new_callable=PropertyMock) as mock_lc:
+            mock_lc.return_value = lifecycle_hooks_dict
+            return ReplayContext(flow, intercept_settings), intercept_settings, mock_lc
+
+    @patch.object(InterceptSettings, 'lifecycle_hooks', new_callable=PropertyMock)
+    def test_before_normalize_hook_called_for_allowed_request(self, mock_lc, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, _ = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = []
+
+        mock_hook = MagicMock()
+        mock_lc.return_value = {lc_hooks.BEFORE_NORMALIZE: mock_hook}
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        handle_request_normalize(context)
+
+        mock_hook.assert_called_once_with(context)
+
+    @patch.object(InterceptSettings, 'lifecycle_hooks', new_callable=PropertyMock)
+    def test_after_normalize_hook_called_for_allowed_response(self, mock_lc, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, _ = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = []
+
+        mock_hook = MagicMock()
+        mock_lc.return_value = {lc_hooks.AFTER_NORMALIZE: mock_hook}
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        flow.response = MagicMock()
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        handle_response_normalize(context)
+
+        mock_hook.assert_called_once_with(context)
+
+    @patch.object(InterceptSettings, 'lifecycle_hooks', new_callable=PropertyMock)
+    def test_hooks_not_called_for_excluded_request(self, mock_lc, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, request_url = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = [
+            FilterRule({
+                'action': filter_action.EXCLUDE,
+                'methods': ['GET'],
+                'modes': [mode.NORMALIZE],
+                'pattern': request_url,
+            })
+        ]
+
+        before_hook = MagicMock()
+        after_hook = MagicMock()
+        mock_lc.return_value = {
+            lc_hooks.BEFORE_NORMALIZE: before_hook,
+            lc_hooks.AFTER_NORMALIZE: after_hook,
+        }
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        flow.response = MagicMock()
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        handle_request_normalize(context)
+        handle_response_normalize(context)
+
+        before_hook.assert_not_called()
+        after_hook.assert_not_called()
+
+    @patch.object(InterceptSettings, 'lifecycle_hooks', new_callable=PropertyMock)
+    def test_unregistered_hook_is_silently_skipped(self, mock_lc, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, _ = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = []
+
+        mock_lc.return_value = {}  # no hooks registered
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        flow.response = MagicMock()
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        # should not raise
+        handle_request_normalize(context)
+        handle_response_normalize(context)
+
+
+class TestHandleRequestNormalizeWithoutRewrite:
+
+    @patch('stoobly_agent.app.proxy.handle_normalize_service.rewrite_request')
+    @patch.object(InterceptSettings, 'lifecycle_hooks', new_callable=PropertyMock)
+    def test_skips_rewrite_but_fires_before_normalize_hook(self, mock_lc, mock_rewrite_request, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, _ = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = []
+
+        mock_hook = MagicMock()
+        mock_lc.return_value = {lc_hooks.BEFORE_NORMALIZE: mock_hook}
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        handle_request_normalize_without_rewrite(context)
+
+        mock_rewrite_request.assert_not_called()
+        mock_hook.assert_called_once_with(context)
+
+
+class TestHandleNormalizeServiceNoRewriteRules:
+
+    @patch('stoobly_agent.app.proxy.handle_normalize_service.rewrite_response')
+    @patch('stoobly_agent.app.proxy.handle_normalize_service.rewrite_request')
+    def test_rewrite_not_called_when_rules_empty(self, mock_rewrite_request, mock_rewrite_response, mock_settings_with_normalize_rewrite, normalize_get_request):
+        settings, _ = mock_settings_with_normalize_rewrite
+        settings.proxy.filter.filter_rules.return_value = []
+        settings.proxy.rewrite.rewrite_rules.return_value = []
+
+        flow = MagicMock()
+        flow.request = normalize_get_request
+        flow.response = MagicMock()
+        intercept_settings = InterceptSettings(settings, normalize_get_request)
+        context = ReplayContext(flow, intercept_settings)
+
+        handle_request_normalize(context)
+        handle_response_normalize(context)
+
+        mock_rewrite_request.assert_not_called()
+        mock_rewrite_response.assert_not_called()
