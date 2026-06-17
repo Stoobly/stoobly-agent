@@ -21,7 +21,7 @@ class DataDir:
             self.__path = path
 
             if path:
-                self.__data_dir_path = os.path.join(path, DATA_DIR_NAME)
+                self.__data_dir_path = os.path.join(os.path.abspath(path), DATA_DIR_NAME)
             else:
                 cwd = os.getcwd()
                 self.__data_dir_path = self.find_data_dir(cwd)

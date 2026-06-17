@@ -78,3 +78,28 @@ class TestDataDir():
     finally:
       shutil.rmtree(temp_dir)
       os.chdir(original_cwd)
+
+  def test_relative_path_arg_returns_absolute_path(self, original_cwd: str):
+    """Regression: DataDir.instance() with a relative path must return an absolute .path"""
+    os.environ[ENV] = NONE
+    DataDir._instances = None
+
+    # Create parent/child dirs; we'll cd into child and pass '../' as path
+    temp_dir = os.path.join(original_cwd, 'tmp')
+    child_dir = os.path.join(temp_dir, 'child')
+    os.makedirs(child_dir, exist_ok=True)
+
+    expected_data_dir_path = os.path.join(temp_dir, DATA_DIR_NAME)
+
+    os.chdir(child_dir)
+
+    try:
+      result = DataDir.instance('..').path
+
+      assert os.path.isabs(result), f"Expected absolute path, got: {result}"
+      assert result == expected_data_dir_path
+
+    finally:
+      DataDir._instances = None
+      shutil.rmtree(temp_dir)
+      os.chdir(original_cwd)
