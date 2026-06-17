@@ -117,7 +117,7 @@ class TestRequestLogE2e():
         time.sleep(0.5)
 
         # Invoke scaffold request log list
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         output = result.output
@@ -150,16 +150,16 @@ class TestRequestLogE2e():
         InterceptedRequestsLogger.shutdown()
 
         # Verify log has entries
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
         assert result.output.strip(), "Log should have entries before delete"
 
         # Delete log entries
-        delete_result = runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+        delete_result = runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
         assert delete_result.exit_code == 0
 
         # Verify log is now empty
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
 
@@ -243,7 +243,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_successful_mock_logged_at_info_level(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful mock requests are logged at INFO level (default)."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with mocked response
         res = requests.get(
@@ -255,7 +255,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -282,7 +282,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger 499
         res = requests.get(
@@ -295,7 +295,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry
@@ -307,7 +307,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_options_request_not_logged_as_failure(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as mock failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -322,7 +322,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
@@ -410,7 +410,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_successful_test_logged_at_info_level(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful test requests are logged at INFO level."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
@@ -422,7 +422,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -448,7 +448,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
@@ -461,7 +461,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should have a Mock failure entry (test workflow uses mock mode)
@@ -473,7 +473,7 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -488,7 +488,7 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         # Should NOT have a Mock failure entry for OPTIONS request
@@ -558,7 +558,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
     def test_successful_record_logged_at_info_level(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
         """Test that successfully recorded requests are logged at INFO level."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             'https://dog.ceo/api/breeds/list/all',
@@ -569,7 +569,7 @@ class TestRequestLogWithRecordWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -590,7 +590,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
     def test_options_request_not_logged_as_failure(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as record failures."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
         # In record mode, OPTIONS is forwarded to the real server (e.g. dog.ceo returns 405).
         # Unlike mock mode, there is no synthetic CORS 200 — status code is not relevant here.
@@ -603,7 +603,7 @@ class TestRequestLogWithRecordWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         entry = find_log_entry(list_result.output, 'Record failure', method='OPTIONS')
@@ -666,7 +666,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
     def test_successful_normalize_logged_at_info_level(self, app_dir_path, normalize_workflow, runner: CliRunner, proxy_url: str):
         """Test that successfully normalized requests are logged at INFO level."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             'https://dog.ceo/api/breeds/list/all',
@@ -677,7 +677,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
@@ -698,7 +698,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
     def test_options_request_not_logged_as_failure(self, app_dir_path, normalize_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as normalize failures."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
 
         # In normalize mode, OPTIONS is forwarded to the real server.
         # It should not appear as a "Normalize failure" in the request log.
@@ -711,7 +711,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--context-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         entry = find_log_entry(list_result.output, 'Normalize failure', method='OPTIONS')
@@ -720,7 +720,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
 @pytest.mark.e2e
 class TestRequestLogFromDifferentWorkingDirectory():
-    """Test that --context-dir-path flag allows viewing logs from a different working directory."""
+    """Test that --app-dir-path flag allows viewing logs from a different working directory."""
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
@@ -787,18 +787,18 @@ class TestRequestLogFromDifferentWorkingDirectory():
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
 
-    def test_log_list_with_context_dir_path_from_different_directory(
+    def test_log_list_with_app_dir_path_from_different_directory(
         self, app_dir_path: str, different_working_dir: str, hostname: str, runner: CliRunner, proxy_url: str, target_workflow_name: str
     ):
         """
-        Test that scaffold request log list works with --context-dir-path when running from a different directory.
+        Test that scaffold request log list works with --app-dir-path when running from a different directory.
 
         This simulates the bug where users cd to their app directory but logs are in the context directory.
-        Without --context-dir-path, logs would not be found.
-        With --context-dir-path pointing to the correct location, logs are retrieved.
+        Without --app-dir-path, logs would not be found.
+        With --app-dir-path pointing to the correct location, logs are retrieved.
         """
         # Clear any existing logs
-        runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
 
         # Make a request to generate log entries
         res = requests.get(
@@ -826,19 +826,19 @@ class TestRequestLogFromDifferentWorkingDirectory():
             # in scaffold_cli.py, and we need a fresh lookup for the test to work correctly
             DataDir._instances = None
 
-            # Without --context-dir-path, logs should not be found (empty output or error)
+            # Without --app-dir-path, logs should not be found (empty output or error)
             result_without_flag = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name])
             # The output should be empty because there's no .stoobly in different_working_dir
             assert not result_without_flag.output.strip() or 'Mock failure' not in result_without_flag.output, \
-                "Logs should NOT be found without --context-dir-path from a different directory"
+                "Logs should NOT be found without --app-dir-path from a different directory"
 
-            # With --context-dir-path, logs SHOULD be found
-            result_with_flag = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--context-dir-path', app_dir_path])
+            # With --app-dir-path, logs SHOULD be found
+            result_with_flag = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
             assert result_with_flag.exit_code == 0
-            assert result_with_flag.output.strip(), "Logs should be found with --context-dir-path"
+            assert result_with_flag.output.strip(), "Logs should be found with --app-dir-path"
 
             entry = find_log_entry(result_with_flag.output, 'Mock failure')
-            assert entry is not None, f"Expected 'Mock failure' log entry with --context-dir-path, got:\n{result_with_flag.output}"
+            assert entry is not None, f"Expected 'Mock failure' log entry with --app-dir-path, got:\n{result_with_flag.output}"
             assert entry['level'] == 'ERROR'
             assert hostname in entry.get('url', '')
 

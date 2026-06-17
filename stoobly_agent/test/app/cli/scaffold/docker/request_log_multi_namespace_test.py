@@ -69,7 +69,7 @@ def wait_for_reverse_proxy_intercept_on_port(
 def poll_for_any_log_entry(
     runner,
     workflow_name: str,
-    context_dir_path: str,
+    app_dir_path: str,
     namespace: str,
     max_retries: int = 30,
     interval: float = 0.25,
@@ -79,7 +79,7 @@ def poll_for_any_log_entry(
         time.sleep(interval)
         result = runner.invoke(scaffold, [
             'request', 'logs', 'list', workflow_name,
-            '--context-dir-path', context_dir_path,
+            '--app-dir-path', app_dir_path,
             '--namespace', namespace,
         ])
         if result.exit_code == 0 and result.output.strip():
@@ -260,7 +260,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
             result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-                '--context-dir-path', app_dir_path,
+                '--app-dir-path', app_dir_path,
                 '--namespace', 'svc-filter-a',
                 '--service-name', alpha_service_name,
             ])
@@ -388,7 +388,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
         def test_ns_b_logs_survive_ns_a_teardown(self, runner, app_dir_path_a, app_dir_path_b):
             pre_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-                '--context-dir-path', app_dir_path_b,
+                '--app-dir-path', app_dir_path_b,
                 '--namespace', 'teardown-b',
             ])
             assert pre_result.exit_code == 0
@@ -400,7 +400,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
             result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-                '--context-dir-path', app_dir_path_b,
+                '--app-dir-path', app_dir_path_b,
                 '--namespace', 'teardown-b',
             ])
             assert result.exit_code == 0
@@ -417,7 +417,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
             # NS A was torn down in the previous test; the log file must survive workflow down
             result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-                '--context-dir-path', app_dir_path_a,
+                '--app-dir-path', app_dir_path_a,
                 '--namespace', 'teardown-a',
             ])
             assert result.exit_code == 0

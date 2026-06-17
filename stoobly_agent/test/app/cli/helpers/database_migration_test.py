@@ -31,7 +31,7 @@ class TestResolveContextDirPathFromArgv:
     assert resolve_context_dir_path_from_argv(argv) == '/tmp/context'
 
   def test_supports_equals_form(self):
-    argv = ['request', 'logs', 'list', '--context-dir-path=/tmp/context']
+    argv = ['scaffold', 'workflow', 'up', '--context-dir-path=/tmp/context']
 
     assert resolve_context_dir_path_from_argv(argv) == '/tmp/context'
 
