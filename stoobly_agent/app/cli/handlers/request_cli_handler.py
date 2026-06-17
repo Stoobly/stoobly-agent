@@ -21,7 +21,7 @@ from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.utils import jmespath
 
 from ..helpers.print_service import print_requests, select_print_options
-from ..helpers.request_facade import RequestFacade
+from ..helpers.request_facade import RequestFacade, RequestNotFoundError
 from ..helpers.validations import *
 from ..types.request import RequestTestOptions
 from ..helpers.diff_request_print import print_request_diff
@@ -225,6 +225,9 @@ def __replay(handler, kwargs) -> 'Response':
     return handler(request_key, kwargs) 
   except InvalidRequestKey:
     print('Error: Invalid request key.', file=sys.stderr)
+    sys.exit(1)
+  except RequestNotFoundError as e:
+    print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
 
 def __assign_default_alias_resolve_strategy(kwargs):
