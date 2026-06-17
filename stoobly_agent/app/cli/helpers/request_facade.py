@@ -12,6 +12,9 @@ from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, RequestKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
+class RequestNotFoundError(Exception):
+  pass
+
 class RequestFacade(ReplayFacade):
 
   def __init__(self, settings: Settings):
@@ -98,6 +101,9 @@ class RequestFacade(ReplayFacade):
       'query_params': True,
       'response': True,
     })
+    if status != 200:
+      message = "Request not found" if status == 404 else request_response
+      raise RequestNotFoundError(message)
     return ReplayContext(Request(request_response))
 
   def __replay(self, replay_context: ReplayContext, trace_context: TraceContext, replay_options: ReplayRequestOptions):
