@@ -122,7 +122,7 @@ class TestMultiServiceLoggingCompleteness:
         time.sleep(1)
 
     def test_all_services_produce_log_entries(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -133,7 +133,7 @@ class TestMultiServiceLoggingCompleteness:
 
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
         output = result.output
 
@@ -146,7 +146,7 @@ class TestMultiServiceLoggingCompleteness:
     def test_service_name_is_entrypoint_in_local_mode(self, app_dir_path, runner):
         """Gap 3: LocalWorkflowRunCommand always sets SERVICE_NAME=entrypoint in the env,
         so every local-mode log entry carries service_name='entrypoint'."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -157,7 +157,7 @@ class TestMultiServiceLoggingCompleteness:
 
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -215,12 +215,12 @@ class TestMultiServiceUrlFilter:
         time.sleep(0.5)
 
     def test_url_filter_returns_only_matching_service(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all_services()
         self._flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--context-dir-path', app_dir_path])
+            '--url', 'dog.ceo', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -229,12 +229,12 @@ class TestMultiServiceUrlFilter:
             assert 'dog.ceo' in e.get('url', ''), f"Expected dog.ceo in URL, got: {e.get('url')}"
 
     def test_url_filter_excludes_other_services(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all_services()
         self._flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'example.com', '--context-dir-path', app_dir_path])
+            '--url', 'example.com', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -301,7 +301,7 @@ class TestMultiServiceLevelFilter:
         time.sleep(1)
 
     def test_level_error_filter_returns_only_errors(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -313,7 +313,7 @@ class TestMultiServiceLevelFilter:
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--level', 'error', '--context-dir-path', app_dir_path])
+            '--level', 'error', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -322,7 +322,7 @@ class TestMultiServiceLevelFilter:
             assert e.get('level') == 'ERROR', f"Expected ERROR, got {e.get('level')}"
 
     def test_level_info_filter_returns_only_successes(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             'https://dog.ceo/api/breeds/list/all',
@@ -339,7 +339,7 @@ class TestMultiServiceLevelFilter:
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--level', 'info', '--context-dir-path', app_dir_path])
+            '--level', 'info', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         if res.status_code != 200:
@@ -354,7 +354,7 @@ class TestMultiServiceLevelFilter:
         assert any(e.get('status_code') == 200 for e in dog_entries), "Expected 200 entry for dog.ceo"
 
     def test_both_levels_present_without_filter(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             'https://dog.ceo/api/breeds/list/all',
@@ -369,7 +369,7 @@ class TestMultiServiceLevelFilter:
 
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -422,7 +422,7 @@ class TestScenarioChangeDelimiter:
         time.sleep(1)
 
     def test_scenario_change_delimiter_appears(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
@@ -432,7 +432,7 @@ class TestScenarioChangeDelimiter:
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
         output = result.output
 
@@ -490,7 +490,7 @@ class TestConcurrentHighTrafficLogging:
 
     @pytest.mark.xfail(strict=False)
     def test_concurrent_requests_do_not_drop_log_entries(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         targets = [
             (hostname, f'/concurrent-{i}')
@@ -502,7 +502,7 @@ class TestConcurrentHighTrafficLogging:
 
         time.sleep(1.0)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
         output = result.output
 
@@ -561,7 +561,7 @@ class TestConcurrentScenarioChangeRace:
         time.sleep(1)
 
     def test_scenario_change_produces_exactly_one_delimiter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Establish scenario_a so the only transition under test is a→b
         set_scenario_key_on_settings(settings, scenario_a_key)
@@ -577,7 +577,7 @@ class TestConcurrentScenarioChangeRace:
         batch_b = [(hostname, f'/race-b-{i}') for i in range(5) for hostname in SERVICES]
         fire_concurrent_requests(batch_b, PROXY_URL)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
         output = result.output
 
@@ -639,7 +639,7 @@ class TestMultiScenarioFilter:
         time.sleep(1)
 
     def test_scenario_name_filter_isolates_entries(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Phase A: send to dog.ceo and example.com under scenario_a
         set_scenario_key_on_settings(settings, scenario_a_key)
@@ -661,7 +661,7 @@ class TestMultiScenarioFilter:
             )
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--scenario-name', 'filter-scenario-alpha', '--context-dir-path', app_dir_path])
+            '--scenario-name', 'filter-scenario-alpha', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -725,7 +725,7 @@ class TestScenarioChangeMidBurst:
 
     @pytest.mark.xfail(strict=False)
     def test_scenario_change_mid_burst_produces_delimiter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
 
@@ -764,7 +764,7 @@ class TestScenarioChangeMidBurst:
 
         fire_concurrent_requests(batch_b, PROXY_URL)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         all_entries = find_all_log_entries(result.output)
@@ -838,12 +838,12 @@ class TestMultiFilterComposition:
 
     def test_url_and_level_filter(self, app_dir_path, runner):
         """--url dog.ceo --level error returns only ERROR entries for dog.ceo, excluding other services."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all()
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--level', 'error', '--context-dir-path', app_dir_path])
+            '--url', 'dog.ceo', '--level', 'error', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -854,7 +854,7 @@ class TestMultiFilterComposition:
 
     def test_url_and_scenario_filter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
         """--url dog.ceo --scenario-name alpha returns only alpha-scenario entries for dog.ceo."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         self._send_to_all()
@@ -863,7 +863,7 @@ class TestMultiFilterComposition:
         self._send_to_all()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--scenario-name', 'compose-scenario-alpha', '--context-dir-path', app_dir_path])
+            '--url', 'dog.ceo', '--scenario-name', 'compose-scenario-alpha', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -877,7 +877,7 @@ class TestMultiFilterComposition:
 
     def test_level_and_scenario_filter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
         """--level error --scenario-name alpha returns only ERROR entries from the alpha scenario."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         self._send_to_all()
@@ -886,7 +886,7 @@ class TestMultiFilterComposition:
         self._send_to_all()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--level', 'error', '--scenario-name', 'compose-scenario-alpha', '--context-dir-path', app_dir_path])
+            '--level', 'error', '--scenario-name', 'compose-scenario-alpha', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
@@ -938,7 +938,7 @@ class TestWorkflowRestartLogPersistence:
         """Gap 4: the local workflow calls truncate() on startup (not append), so the log
         file is cleared on each restart. This test verifies the logger is functional
         after a restart — not that entries persist (they don't by default)."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Session 1: log entries from the first proxy process
         for hostname in SERVICES:
@@ -949,7 +949,7 @@ class TestWorkflowRestartLogPersistence:
             )
         time.sleep(0.5)
 
-        session_1_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        session_1_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         session_1_entries = find_all_log_entries(session_1_result.output)
         assert len(session_1_entries) >= len(SERVICES), \
             f"Expected ≥{len(SERVICES)} entries in session 1, got {len(session_1_entries)}"
@@ -971,7 +971,7 @@ class TestWorkflowRestartLogPersistence:
             )
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         all_entries = find_all_log_entries(result.output)
@@ -1034,13 +1034,13 @@ class TestPostTruncateNoSpuriousDelimiter:
         time.sleep(0.5)
         InterceptedRequestsLogger.flush()
 
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Same scenario continues — the post-clear log should have no delimiter
         requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
 
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--context-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         all_entries = find_all_log_entries(result.output)

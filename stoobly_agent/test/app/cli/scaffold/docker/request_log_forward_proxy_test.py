@@ -93,12 +93,12 @@ def _enable_intercept_in_container(container_name: str) -> bool:
     return result.returncode == 0
 
 
-def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 120.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
+def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name: str, app_dir_path: str, timeout: float = 120.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively recording."""
     container_name = f'{workflow_name}-gateway.service-1'
     runner.invoke(scaffold, [
         'request', 'logs', 'delete', workflow_name,
-        '--context-dir-path', context_dir_path
+        '--app-dir-path', app_dir_path
     ])
     _enable_intercept_in_container(container_name)
     last_enable = time.time()
@@ -120,7 +120,7 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
         time.sleep(interval)
         result = runner.invoke(scaffold, [
             'request', 'logs', 'list', workflow_name,
-            '--context-dir-path', context_dir_path
+            '--app-dir-path', app_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
             if find_log_entry(result.output, 'Record success') or find_log_entry(result.output, 'Record failure'):
@@ -128,10 +128,10 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     return False
 
 
-def wait_for_normalize_active_forward(proxy_url: str, hostname: str, runner, workflow_name: str, context_dir_path: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
+def wait_for_normalize_active_forward(proxy_url: str, hostname: str, runner, workflow_name: str, app_dir_path: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
     """Poll until the forward proxy is actively normalizing (writing request log entries)."""
     container_name = f'{workflow_name}-gateway.service-1'
-    runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--context-dir-path', context_dir_path])
+    runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--app-dir-path', app_dir_path])
     _enable_intercept_in_container(container_name)
     last_enable = time.time()
     deadline = time.time() + timeout
@@ -144,20 +144,20 @@ def wait_for_normalize_active_forward(proxy_url: str, hostname: str, runner, wor
         except Exception:
             pass
         time.sleep(interval)
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--context-dir-path', context_dir_path])
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--app-dir-path', app_dir_path])
         if result.exit_code == 0 and result.output.strip():
             if find_log_entry(result.output, 'Normalize success') or find_log_entry(result.output, 'Normalize failure'):
                 return True
     return False
 
 
-def poll_for_log_entry(runner, workflow_name, context_dir_path, message, max_retries=20, interval=0.25):
+def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries=20, interval=0.25):
     """Poll scaffold request logs list until a matching entry appears."""
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
             'request', 'logs', 'list', workflow_name,
-            '--context-dir-path', context_dir_path
+            '--app-dir-path', app_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
             entry = find_log_entry(result.output, message)
@@ -257,13 +257,13 @@ class TestDockerRequestLogE2e():
 
             delete_result = runner.invoke(scaffold, [
                 'request', 'logs', 'delete', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert delete_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
@@ -331,7 +331,7 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
             """Make a request through the forward proxy record workflow and verify a Record success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
 
             res = requests.get(
                 f'http://{hostname}/',
@@ -361,13 +361,13 @@ class TestDockerRecordRequestLogE2e():
 
             delete_result = runner.invoke(scaffold, [
                 'request', 'logs', 'delete', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert delete_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
@@ -438,7 +438,7 @@ class TestDockerNormalizeRequestLogE2e():
 
         def test_normalize_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
             """Make a request through the forward proxy normalize workflow and verify a Normalize success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--context-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
 
             requests.get(
                 f'http://{hostname}/',
@@ -468,13 +468,13 @@ class TestDockerNormalizeRequestLogE2e():
 
             delete_result = runner.invoke(scaffold, [
                 'request', 'logs', 'delete', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert delete_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
-                '--context-dir-path', app_dir_path
+                '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
             assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
