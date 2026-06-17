@@ -59,6 +59,7 @@ class LocalScaffoldCliInvoker():
       '--port', port,
       '--quiet',
       '--workflow', 'mock',
+      '--workflow', 'normalize',
       '--workflow', 'record',
       '--workflow', 'test',
       service_name
@@ -74,9 +75,10 @@ class LocalScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--hostname', hostname,
       '--scheme', 'https' if https else 'http',
-      '--port', '3000',  
+      '--port', '3000',
       '--quiet',
       '--workflow', 'mock',
+      '--workflow', 'normalize',
       '--workflow', 'record',
       '--workflow', 'test',
       service_name

@@ -39,6 +39,7 @@ class RequestTransformationEntryLogger:
     MOCK_LOG_ID = 'Mock'
     TEST_LOG_ID = 'Test'
     RECORD_LOG_ID = 'Record'
+    NORMALIZE_LOG_ID = 'Normalize'
 
     _pending: dict[str, list[_BufferedRecord]] = defaultdict(list)
 
@@ -336,24 +337,32 @@ class RequestTransformationEntryLogger:
         ))
 
     @classmethod
-    def log_recording(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
-        details = f'recording {url}'
+    def _log_passthrough(cls, log_id: str, verb: str, mode: str, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
+        details = f'{verb} {url}'
         entry: Optional[RequestTransformationLogEntry] = None
         if mitmproxy_request is not None:
             entry = {
                 'action': 'noop',
                 'lifecycle': 'response',
                 'target': 'url',
-                'mode': agent_mode.RECORD,
+                'mode': mode,
                 'details': details,
             }
         record = _BufferedRecord(
             level='info',
-            log_id=cls.RECORD_LOG_ID,
-            console_message=f"{bcolors.OKBLUE}recording{bcolors.ENDC} {url}",
+            log_id=log_id,
+            console_message=f"{bcolors.OKBLUE}{verb}{bcolors.ENDC} {url}",
             entry=entry,
         )
         if mitmproxy_request is None:
             cls._emit_one(record)
             return
         cls._enqueue(mitmproxy_request, record)
+
+    @classmethod
+    def log_recording(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
+        cls._log_passthrough(cls.RECORD_LOG_ID, 'recording', agent_mode.RECORD, mitmproxy_request, url)
+
+    @classmethod
+    def log_normalizing(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
+        cls._log_passthrough(cls.NORMALIZE_LOG_ID, 'normalizing', agent_mode.NORMALIZE, mitmproxy_request, url)

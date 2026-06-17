@@ -104,6 +104,7 @@ class ScaffoldCliInvoker():
       '--port', actual_port,
       '--quiet',
       '--workflow', 'mock',
+      '--workflow', 'normalize',
       '--workflow', 'record',
       '--workflow', 'test',
       service_name

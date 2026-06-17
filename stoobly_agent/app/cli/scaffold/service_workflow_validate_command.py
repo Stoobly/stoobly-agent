@@ -16,6 +16,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   PUBLIC_FOLDER_NAME,
   SERVICES_NAMESPACE,
   STOOBLY_DATA_DIR,
+  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -206,7 +207,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   # Check public folder exists in container
   def validate_public_folder(self, container: Container):
     
-    if self.workflow_name == WORKFLOW_RECORD_TYPE:
+    if self.workflow_name in (WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE):
       print(f"Skipping validating public folder in workflow: {self.workflow_name}, container: {container.name}")
       return
 

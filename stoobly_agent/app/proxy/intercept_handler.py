@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
-from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
+from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize_primary
 from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -95,7 +95,7 @@ def response(flow: 'MitmproxyHTTPFlow'):
             handle_response_record(context)
         elif active_mode == mode.NORMALIZE:
             context = ReplayContext(flow, intercept_settings)
-            handle_response_normalize(context)
+            handle_response_normalize_primary(context)
         elif active_mode == mode.TEST:
             context = ReplayContext(flow, intercept_settings)
             handle_response_test(context)
