@@ -27,6 +27,11 @@ class RequestFacade(ReplayFacade):
 
     return self.__model.destroy(key.id)
 
+  def update(self, request_key: str, params: dict):
+    key = RequestKey(request_key)
+
+    return self.__model.update(key.id, **params)
+
   def show(self, request_key: str, cli_options: dict):
     key = RequestKey(request_key)
 

@@ -13,7 +13,7 @@ from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .handlers.request_cli_handler import (
-  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler
+  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -95,6 +95,25 @@ def replay(**kwargs):
   replay_handler(kwargs)
 
 if is_local:
+  @request.command(
+    help="Update a request"
+  )
+  @click.option('--body', help='Raw request body.')
+  @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+  @click.option('--header', multiple=True, help='Set or delete a header. Format: NAME:VALUE. Empty VALUE deletes the header.')
+  @click.option('--host', help='Rewrite request host.')
+  @click.option('--method', help='Rewrite request method.')
+  @click.option('--path', help='Rewrite request path.')
+  @click.option('--port', help='Rewrite request port.')
+  @click.option('--scenario-key', is_flag=False, flag_value='', default=None, help='Assign scenario. Pass with no value to clear.')
+  @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
+  @click.option('--select', multiple=True, help='Select column(s) to display.')
+  @click.option('--url', help='Rewrite request URL.')
+  @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+  @click.argument('request_key')
+  def update(**kwargs):
+    update_handler(kwargs)
+
   @click.group(
     epilog="Run 'stoobly-agent request snapshot COMMAND --help' for more information on a command.",
     help="Manage request snapshots"
