@@ -142,6 +142,32 @@ class TestUpdateHeaders:
       headers = RawHttpRequestAdapter(refreshed.raw).headers
       assert headers.get('X-Custom') == 'a:b:c'
 
+  class TestWhenReplacingHeaderWithDifferentCase:
+
+    @pytest.fixture(autouse=True, scope='class')
+    def seed_mixed_case_header(self, runner: CliRunner, recorded_request: Request):
+      result = runner.invoke(
+        request,
+        ['update', recorded_request.key(), '--header', 'X-Case-Test:original'],
+      )
+      assert result.exit_code == 0
+
+    @pytest.fixture(autouse=True, scope='class')
+    def replace_header_with_lowercase_name(self, runner: CliRunner, recorded_request: Request, seed_mixed_case_header):
+      result = runner.invoke(
+        request,
+        ['update', recorded_request.key(), '--header', 'x-case-test:updated'],
+      )
+      assert result.exit_code == 0
+      return result
+
+    def test_it_replaces_existing_header_case_insensitively(self, recorded_request: Request):
+      refreshed = Request.find(recorded_request.id)
+      headers = RawHttpRequestAdapter(refreshed.raw).headers
+      matching_keys = [k for k in headers if k.lower() == 'x-case-test']
+      assert len(matching_keys) == 1
+      assert headers[matching_keys[0]] == 'updated'
+
   class TestWhenHeaderFormatIsInvalid:
 
     def test_it_rejects_header_without_colon(self, runner: CliRunner, recorded_request: Request):

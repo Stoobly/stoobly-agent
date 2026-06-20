@@ -301,11 +301,11 @@ def __merge_headers(request_key: str, header_flags: tuple):
       print('Error: Invalid header format. Header name is required.', file=sys.stderr)
       sys.exit(1)
 
-    if value == '':
-      matched_key = next((k for k in headers if k.lower() == name.lower()), None)
-      if matched_key:
-        del headers[matched_key]
-    else:
+    matched_key = next((k for k in headers if k.lower() == name.lower()), None)
+    if matched_key:
+      del headers[matched_key]
+
+    if value != '':
       headers[name] = value
 
   return headers
