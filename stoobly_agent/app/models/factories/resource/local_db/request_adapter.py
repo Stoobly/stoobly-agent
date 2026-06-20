@@ -144,7 +144,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     return (
       ORMToRequestsResponseTransformer(response_record)
-        .with_headers(headers)
+        .with_headers(headers, merge=True)
         .transform()
     )
 
