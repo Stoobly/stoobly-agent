@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, handle_before_replay, handle_after_replay, print_session, ReplaySession
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
@@ -17,7 +18,9 @@ from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
+from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
+from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.utils import jmespath
 
 from ..helpers.print_service import print_requests, select_print_options
@@ -26,6 +29,54 @@ from ..helpers.validations import *
 from ..types.request import RequestTestOptions
 from ..helpers.diff_request_print import print_request_diff
 
+
+UPDATE_URL_KEYS = ['url', 'method', 'scheme', 'host', 'port', 'path']
+
+def update_handler(kwargs):
+  request_key = kwargs.pop('request_key')
+  validate_request_key(request_key)
+
+  print_options = select_print_options(kwargs)
+
+  params = {}
+  has_update = False
+
+  scenario_key = kwargs.pop('scenario_key', None)
+  if scenario_key is not None:
+    has_update = True
+    if scenario_key == '':
+      params['scenario_id'] = None
+    else:
+      key = validate_scenario_key(scenario_key)
+      params['scenario_id'] = key.id
+
+  for key in UPDATE_URL_KEYS:
+    value = kwargs.pop(key, None)
+    if value is not None:
+      params[key] = value
+      has_update = True
+
+  body = kwargs.pop('body', None)
+  if body is not None:
+    params['body'] = body
+    has_update = True
+
+  header_flags = kwargs.pop('header', ()) or ()
+  if header_flags:
+    has_update = True
+    params['headers'] = __merge_headers(request_key, header_flags)
+
+  if not has_update:
+    print('Error: At least one update option is required.', file=sys.stderr)
+    sys.exit(1)
+
+  request = RequestFacade(Settings.instance())
+  res, status = request.update(request_key, params)
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  print_requests([res], **print_options)
 
 def delete_handler(kwargs):
   validate_request_key(kwargs['request_key'])
@@ -229,6 +280,35 @@ def __replay(handler, kwargs) -> 'Response':
   except RequestNotFoundError as e:
     print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
+
+def __merge_headers(request_key: str, header_flags: tuple):
+  key = RequestKey(request_key)
+  request = Request.find_by(uuid=key.id)
+
+  if not request:
+    print('Error: Could not find request', file=sys.stderr)
+    sys.exit(1)
+
+  headers = dict(RawHttpRequestAdapter(request.raw).headers)
+
+  for header_flag in header_flags:
+    if ':' not in header_flag:
+      print('Error: Invalid header format. Expected NAME:VALUE.', file=sys.stderr)
+      sys.exit(1)
+
+    name, _, value = header_flag.partition(':')
+    if not name:
+      print('Error: Invalid header format. Header name is required.', file=sys.stderr)
+      sys.exit(1)
+
+    if value == '':
+      matched_key = next((k for k in headers if k.lower() == name.lower()), None)
+      if matched_key:
+        del headers[matched_key]
+    else:
+      headers[name] = value
+
+  return headers
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved
