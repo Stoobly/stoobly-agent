@@ -27,7 +27,7 @@ class ORMToRequestsResponseTransformer():
   def transform(self) -> 'Response':
     adapter = RawHttpResponseAdapter(self.__response.raw)
 
-    if self.__body:
+    if self.__body is not None:
       adapter.body = self.__body 
 
     if self.__headers:

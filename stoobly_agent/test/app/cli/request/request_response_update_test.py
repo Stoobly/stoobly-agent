@@ -62,6 +62,29 @@ class TestResponseUpdateBody:
     assert decode(python_response.content) == '{"x":1}'
 
 
+class TestResponseUpdateEmptyBody:
+
+  @pytest.fixture(autouse=True, scope='class')
+  def recorded_request(self, runner: CliRunner):
+    record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+    assert record_result.exit_code == 0
+    return Request.last()
+
+  @pytest.fixture(autouse=True, scope='class')
+  def update_result(self, runner: CliRunner, recorded_request: Request):
+    result = runner.invoke(
+      request,
+      ['response', 'update', recorded_request.key(), '--body', ''],
+    )
+    assert result.exit_code == 0
+    return result
+
+  def test_it_clears_body(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    python_response = RawHttpResponseAdapter(refreshed.response.raw).to_response()
+    assert decode(python_response.content) == ''
+
+
 class TestResponseUpdateHeaders:
 
   @pytest.fixture(autouse=True, scope='class')
@@ -215,3 +238,26 @@ class TestResponseUpdateLatency:
     refreshed = Request.find(recorded_request.id)
     control = ResponseStringControl(refreshed.response.control)
     assert control.latency == 500
+
+
+class TestResponseUpdateZeroLatency:
+
+  @pytest.fixture(autouse=True, scope='class')
+  def recorded_request(self, runner: CliRunner):
+    record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+    assert record_result.exit_code == 0
+    return Request.last()
+
+  @pytest.fixture(autouse=True, scope='class')
+  def update_result(self, runner: CliRunner, recorded_request: Request):
+    result = runner.invoke(
+      request,
+      ['response', 'update', recorded_request.key(), '--latency', '0'],
+    )
+    assert result.exit_code == 0
+    return result
+
+  def test_it_updates_latency_to_zero(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    control = ResponseStringControl(refreshed.response.control)
+    assert control.latency == 0

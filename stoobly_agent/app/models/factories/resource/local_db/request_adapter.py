@@ -257,7 +257,7 @@ class LocalDBRequestAdapter(LocalDBAdapter):
       # Some params need to be reflected in response record
       response_params = {}
 
-      if params.get('latency'):
+      if params.get('latency') is not None:
         latency = int(params['latency'])
         latency = latency = 0 if latency < 0 else latency
         params['latency'] = latency

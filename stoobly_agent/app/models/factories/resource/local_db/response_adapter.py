@@ -59,11 +59,11 @@ class LocalDBResponseAdapter(LocalDBAdapter):
  
     # If text not set and content-encoding changed 
     current_python_response = ORMToRequestsResponseTransformer(response).transform()
-    if not params.get('text'):
+    if params.get('text') is None:
       if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
         params['text'] = current_python_response.content
 
-    if params.get('text'):
+    if params.get('text') is not None:
       text: str = params['text'] # This will be given in decoded format
       content_encoding = self.content_encoding_header(headers, current_python_response.headers)
       encoded_text = self.encode_body(text, content_encoding)
@@ -71,7 +71,7 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       transformer.with_body(encoded_text)
       request_params['response_hash'] = RequestHasher.instance().hash_text(encoded_text)
       
-    if params.get('latency'):
+    if params.get('latency') is not None:
       control = response.control
       control = ResponseStringControl(control)
       control.timestamp = control.timestamp - control.latency * 1000 + int(params['latency']) * 1000
