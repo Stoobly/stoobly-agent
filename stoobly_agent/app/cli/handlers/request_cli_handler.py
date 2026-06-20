@@ -11,6 +11,7 @@ from stoobly_agent.app.cli.helpers.handle_replay_service import DEFAULT_FORMAT, 
 from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, exit_on_failure, handle_test_complete, handle_test_session_complete
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
@@ -25,6 +26,7 @@ from stoobly_agent.lib.utils import jmespath
 
 from ..helpers.print_service import print_requests, select_print_options
 from ..helpers.request_facade import RequestFacade, RequestNotFoundError
+from ..helpers.response_facade import ResponseFacade, ResponseNotFoundError
 from ..helpers.validations import *
 from ..types.request import RequestTestOptions
 from ..helpers.diff_request_print import print_request_diff
@@ -77,6 +79,53 @@ def update_handler(kwargs):
     sys.exit(1)
 
   print_requests([res], **print_options)
+
+def response_update_handler(kwargs):
+  request_key = kwargs.pop('request_key')
+  validate_request_key(request_key)
+
+  params = {}
+  has_update = False
+
+  body = kwargs.pop('body', None)
+  if body is not None:
+    params['text'] = body
+    has_update = True
+
+  header_flags = kwargs.pop('header', ()) or ()
+  if header_flags:
+    has_update = True
+    params['headers'] = __merge_headers(request_key, header_flags, from_response=True)
+
+  status = kwargs.pop('status', None)
+  if status is not None:
+    params['status'] = status
+    has_update = True
+
+  latency = kwargs.pop('latency', None)
+  if latency is not None:
+    params['latency'] = 0 if latency < 0 else latency
+    has_update = True
+
+  if not has_update:
+    print('Error: At least one update option is required.', file=sys.stderr)
+    sys.exit(1)
+
+  response = ResponseFacade(Settings.instance())
+
+  try:
+    res, status_code = response.update(request_key, params)
+  except RequestNotFoundError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+  except ResponseNotFoundError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+
+  if filter_response(res, status_code):
+    sys.exit(1)
+
+  print(res['text'])
 
 def delete_handler(kwargs):
   validate_request_key(kwargs['request_key'])
@@ -281,16 +330,7 @@ def __replay(handler, kwargs) -> 'Response':
     print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
 
-def __merge_headers(request_key: str, header_flags: tuple):
-  key = RequestKey(request_key)
-  request = Request.find_by(uuid=key.id)
-
-  if not request:
-    print('Error: Could not find request', file=sys.stderr)
-    sys.exit(1)
-
-  headers = dict(RawHttpRequestAdapter(request.raw).headers)
-
+def __apply_header_flags(headers: dict, header_flags: tuple) -> dict:
   for header_flag in header_flags:
     if ':' not in header_flag:
       print('Error: Invalid header format. Expected NAME:VALUE.', file=sys.stderr)
@@ -309,6 +349,24 @@ def __merge_headers(request_key: str, header_flags: tuple):
       headers[name] = value
 
   return headers
+
+def __merge_headers(request_key: str, header_flags: tuple, *, from_response: bool = False):
+  key = RequestKey(request_key)
+  request = Request.find_by(uuid=key.id)
+
+  if not request:
+    print('Error: Could not find request', file=sys.stderr)
+    sys.exit(1)
+
+  if from_response:
+    if not request.response:
+      print('Error: Could not find response', file=sys.stderr)
+      sys.exit(1)
+    headers = dict(RawHttpResponseAdapter(request.response.raw).headers)
+  else:
+    headers = dict(RawHttpRequestAdapter(request.raw).headers)
+
+  return __apply_header_flags(headers, header_flags)
 
 def __assign_default_alias_resolve_strategy(kwargs):
     # If we have assigned values to aliases, it's likely we want to also have them resolved

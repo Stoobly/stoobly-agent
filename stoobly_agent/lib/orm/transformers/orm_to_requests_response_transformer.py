@@ -27,11 +27,11 @@ class ORMToRequestsResponseTransformer():
   def transform(self) -> 'Response':
     adapter = RawHttpResponseAdapter(self.__response.raw)
 
-    if self.__body:
+    if self.__body is not None:
       adapter.body = self.__body 
 
     if self.__headers:
-      adapter.headers = { **adapter.headers, **self.__headers }
+      adapter.headers = self.__headers
 
     if self.__status:
       adapter.status = self.__status
@@ -51,13 +51,18 @@ class ORMToRequestsResponseTransformer():
     self.__body = body
     self.__dirty = True
 
-    self.with_headers({ 'Content-Length': str(len(body)) })
+    self.with_headers({ 'Content-Length': str(len(body)) }, merge=True)
 
     return self
 
-  def with_headers(self, headers: dict):
-    _headers = self.__headers or {}
-    self.__headers = { **_headers, **headers } 
+  def with_headers(self, headers: dict, merge: bool = False):
+    if merge:
+      base_headers = self.__headers if self.__headers is not None else dict(
+        RawHttpResponseAdapter(self.__response.raw).headers
+      )
+      self.__headers = { **base_headers, **headers }
+    else:
+      self.__headers = headers
     self.__dirty = True
     return self
 

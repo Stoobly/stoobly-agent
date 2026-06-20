@@ -13,7 +13,7 @@ from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .handlers.request_cli_handler import (
-  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler
+  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler, response_update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -247,6 +247,19 @@ def show(**kwargs) -> None:
 @click.argument('request_key')
 def query(**kwargs):
   query_handler(kwargs)
+
+if is_local:
+  @response.command(
+    name='update',
+    help="Update a response"
+  )
+  @click.option('--body', help='Raw response body.')
+  @click.option('--header', multiple=True, help='Set or delete a header. Format: NAME:VALUE. Empty VALUE deletes the header.')
+  @click.option('--latency', type=int, help='Response latency in milliseconds.')
+  @click.option('--status', type=int, help='HTTP status code.')
+  @click.argument('request_key')
+  def response_update(**kwargs):
+    response_update_handler(kwargs)
 
 @click.group(
   epilog="Run 'stoobly-agent request logs COMMAND --help' for more information on a command.",
