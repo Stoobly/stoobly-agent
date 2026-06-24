@@ -32,7 +32,7 @@ def request_log(ctx):
 @click.argument('workflow_name')
 def request_log_path(**kwargs):
     app = App(kwargs['app_dir_path'])
-    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'), mkdir=False)
 
     ScaffoldInterceptedRequestsLogger.get_log_file_path(
         workflow=kwargs.get('workflow_name'),
@@ -48,7 +48,7 @@ def request_log_path(**kwargs):
 @click.argument('workflow_name')
 def request_log_list(**kwargs):
     app = App(kwargs['app_dir_path'])
-    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'), mkdir=False)
     filters = build_log_filters(kwargs, extra_keys=['service_name'])
 
     ScaffoldInterceptedRequestsLogger.dump_logs(

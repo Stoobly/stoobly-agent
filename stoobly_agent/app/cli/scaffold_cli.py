@@ -593,18 +593,25 @@ def logs(**kwargs):
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
+  if not kwargs.get('dry_run'):
+    namespace = kwargs['namespace']
+    tmp_namespace_path = os.path.join(app.data_dir.tmp_dir_path, namespace)
+    if not os.path.exists(tmp_namespace_path):
+      print(f"Error: Workflow '{kwargs['workflow_name']}' is not running.", file=sys.stderr)
+      sys.exit(1)
+
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
   script = __build_script(app, **kwargs)
-  
+
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
-      app, 
+      app,
       services=services,
       script=script,
       **kwargs
@@ -612,7 +619,7 @@ def logs(**kwargs):
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
-      app, 
+      app,
       services=services,
       script=script,
       **kwargs
