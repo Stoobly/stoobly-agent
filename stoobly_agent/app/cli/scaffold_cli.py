@@ -1,5 +1,6 @@
 import click
 import docker
+import json
 import os
 import pdb
 import sys
@@ -12,9 +13,16 @@ from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAutho
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
-from stoobly_agent.app.cli.scaffold.context_config import add_context_service, get_context_services, init_context_dir
+from stoobly_agent.app.cli.scaffold.config import Config
+from stoobly_agent.app.cli.scaffold.context_config import (
+  add_context_service,
+  get_context_services,
+  init_context_dir,
+  resolve_app_dir_path,
+)
 from stoobly_agent.app.cli.scaffold.constants import (
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  CONFIG_FILE,
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
@@ -44,7 +52,7 @@ from stoobly_agent.app.cli.scaffold.workflow_filter import (
   workflow_template_to_filter_mode,
 )
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 
@@ -885,6 +893,22 @@ def uninstall(**kwargs):
     workflow=kwargs['workflow'],
   )
 
+@scaffold.command(
+  help="Describe scaffold configuration",
+)
+@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly context directory.')
+@click.option('--app-dir-path', default=None, help='Override app directory when context config is absent.')
+def describe(**kwargs):
+  context_dir = os.path.abspath(kwargs['context_dir_path'])
+
+  try:
+    app_dir = resolve_app_dir_path(context_dir, kwargs.get('app_dir_path'))
+  except ValueError as e:
+    click.echo(f"Error: {e}", err=True)
+    sys.exit(1)
+
+  __print_scaffold_describe(context_dir, app_dir)
+
 scaffold.add_command(app)
 scaffold.add_command(service)
 scaffold.add_command(workflow)
@@ -1416,3 +1440,37 @@ def __show_workflow_services(workflow_name: str, app: App):
       })
 
     print_services(rows)
+
+def __context_config_file_path(context_dir_path: str) -> str:
+  return os.path.join(context_dir_path, DATA_DIR_NAME, CONFIG_FILE)
+
+def __app_config_file_path(app_dir_path: str) -> str:
+  return os.path.join(app_dir_path, DATA_DIR_NAME, SERVICES_NAMESPACE, CONFIG_FILE)
+
+def __read_config_file(path: str) -> dict:
+  if not os.path.exists(path):
+    return None
+
+  config = Config(os.path.dirname(path), file_name=os.path.basename(path)).read()
+  return config or {}
+
+def __build_scaffold_describe_output(context_dir: str, app_dir: str) -> dict:
+  context_config_path = __context_config_file_path(context_dir)
+  app_config_path = __app_config_file_path(app_dir)
+  context_config = __read_config_file(context_config_path)
+  app_config = __read_config_file(app_config_path)
+
+  output = {
+    'context_dir_path': context_dir,
+    'app_dir_path': app_dir,
+    'app_config': app_config or {},
+  }
+
+  if context_config is not None:
+    output['context_config'] = context_config
+
+  return output
+
+def __print_scaffold_describe(context_dir: str, app_dir: str):
+  output = __build_scaffold_describe_output(context_dir, app_dir)
+  click.echo(json.dumps(output, indent=2, sort_keys=True))

@@ -12,6 +12,7 @@ import os
 from mergedeep import merge
 
 from stoobly_agent.app.cli.scaffold.config import Config
+from stoobly_agent.app.cli.scaffold.constants import CONFIG_FILE, SERVICES_NAMESPACE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 
@@ -115,3 +116,40 @@ def get_context_services(context_dir_path: str) -> list[str]:
   """Return ``scaffold.services`` from a context dir ``.stoobly/.config.yml``, or ``[]`` if unset."""
   _, _, existing_scaffold = _read_scaffold_config(os.path.abspath(context_dir_path))
   return list(existing_scaffold.get(SERVICES_CONFIG_KEY) or [])
+
+
+def _context_config_path(context_dir_path: str) -> str:
+  return os.path.join(os.path.abspath(context_dir_path), DATA_DIR_NAME, CONFIG_FILE)
+
+
+def resolve_app_dir_path(context_dir_path: str, app_dir_path: str = None) -> str:
+  """Resolve the application scaffold directory for a Stoobly context directory.
+
+  Resolution order:
+
+  1. If ``context_dir/.stoobly/.config.yml`` exists and sets ``scaffold.app_dir_path``,
+     resolve that path relative to the context directory.
+  2. Else if ``app_dir_path`` is provided, use it.
+  3. Else if ``context_dir/.stoobly/services`` exists, return ``context_dir``.
+  4. Else raise ``ValueError``.
+  """
+  abs_context_dir = os.path.abspath(context_dir_path)
+  config_path = _context_config_path(abs_context_dir)
+
+  if os.path.exists(config_path):
+    _, _, existing_scaffold = _read_scaffold_config(abs_context_dir)
+    relative_app_dir_path = existing_scaffold.get(APP_DIR_PATH_CONFIG_KEY)
+    if relative_app_dir_path:
+      return os.path.abspath(os.path.join(abs_context_dir, relative_app_dir_path))
+
+  if app_dir_path:
+    return os.path.abspath(app_dir_path)
+
+  services_dir = os.path.join(abs_context_dir, DATA_DIR_NAME, SERVICES_NAMESPACE)
+  if os.path.isdir(services_dir):
+    return abs_context_dir
+
+  raise ValueError(
+    f"Could not resolve app directory from context '{abs_context_dir}'. "
+    "Run scaffold app create with --context-dir-path, or pass --app-dir-path."
+  )
