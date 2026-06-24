@@ -3,6 +3,7 @@ import pathlib
 
 import pytest
 import yaml
+import json
 
 from click.testing import CliRunner
 
@@ -462,3 +463,64 @@ class TestContextServiceDefaults:
     assert result.exit_code == 0
     assert 'svc-api' in result.output
     assert 'svc-assets' in result.output
+
+
+class TestScaffoldDescribe:
+  def test_describe_with_context_config(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'e2e'
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-api', context_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'describe',
+      '--context-dir-path', str(context_dir_path),
+    ])
+
+    assert result.exit_code == 0
+    assert str(app_dir_path) in result.output
+    assert 'svc-api' in result.output
+    assert 'test-app' in result.output
+
+    data = json.loads(result.output)
+    assert 'scaffold' in data['context_config']
+    assert 'APP_NAME' in data['app_config']
+
+  def test_describe_without_context_config(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    app_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    create_result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--quiet',
+      'my-app',
+    ])
+    assert create_result.exit_code == 0
+
+    result = runner.invoke(scaffold, [
+      'describe',
+      '--context-dir-path', str(app_dir_path),
+    ])
+
+    assert result.exit_code == 0
+    assert str(app_dir_path) in result.output
+    assert 'my-app' in result.output
+
+    data = json.loads(result.output)
+    assert 'context_config' not in data
+
+  def test_describe_split_layout(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'e2e'
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'describe',
+      '--context-dir-path', str(context_dir_path),
+    ])
+
+    assert result.exit_code == 0
+    assert str(app_dir_path) in result.output
+    assert os.path.relpath(str(app_dir_path), str(context_dir_path)) in result.output
