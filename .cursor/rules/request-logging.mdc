@@ -90,6 +90,7 @@ Each log entry includes:
 - `scenario_name` - Scenario name (if available)
 - `service_name` - Scaffold service name (if set)
 - `namespace` - Workflow namespace (if set)
+- `context_dir_path` - Stoobly context directory path (only when `APP_DIR != CONTEXT_DIR`)
 - `request_key` - Stoobly request key (if available)
 - `fixture_path` - Path to response fixture (if used)
 - `test_title` - Test title from request headers (if set)

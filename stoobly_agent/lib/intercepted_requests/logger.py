@@ -18,7 +18,8 @@ if TYPE_CHECKING:
     from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 
 from stoobly_agent.app.cli.helpers.print_service import JSON_FORMAT, SIMPLE_FORMAT
-from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
+from stoobly_agent.app.cli.scaffold.constants import APP_DIR_ENV, CONTEXT_DIR_ENV, WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey, InvalidScenarioKey
@@ -96,6 +97,22 @@ class InterceptedRequestsLogger():
     def _get_namespace() -> str:
         """Get the namespace from env var, falling back to workflow."""
         return os.environ.get(WORKFLOW_NAMESPACE_ENV) or InterceptedRequestsLogger._get_workflow()
+
+    @staticmethod
+    def _get_context_dir_path() -> str:
+        """Get the context directory path from env var or DataDir."""
+        env_value = os.environ.get(CONTEXT_DIR_ENV)
+        if env_value:
+            return os.path.abspath(env_value)
+        return DataDir.instance().context_dir_path
+
+    @staticmethod
+    def _should_log_context_dir_path() -> bool:
+        """Return True when APP_DIR and CONTEXT_DIR resolve to different paths."""
+        app_dir = os.environ.get(APP_DIR_ENV)
+        if not app_dir:
+            return False
+        return os.path.abspath(app_dir) != InterceptedRequestsLogger._get_context_dir_path()
 
     @classmethod
     def _cleanup_handlers(cls) -> None:
@@ -295,6 +312,8 @@ class InterceptedRequestsLogger():
                 base._settings,
                 get_scenario_name=cls._get_scenario_name,
                 extract_request_key=cls._extract_request_key,
+                should_log_context_dir_path=cls._should_log_context_dir_path,
+                get_context_dir_path=cls._get_context_dir_path,
             )
             base._file_handler.setFormatter(json_formatter)
 

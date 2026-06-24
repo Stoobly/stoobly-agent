@@ -21,11 +21,15 @@ class JSONFormatter(logging.Formatter):
     settings: Settings,
     get_scenario_name: Callable[[str], Optional[str]] = None,
     extract_request_key: Callable = None,
+    should_log_context_dir_path: Callable[[], bool] = None,
+    get_context_dir_path: Callable[[], str] = None,
   ):
     super().__init__()
     self.__settings = settings
     self.__get_scenario_name = get_scenario_name
     self.__extract_request_key = extract_request_key
+    self.__should_log_context_dir_path = should_log_context_dir_path
+    self.__get_context_dir_path = get_context_dir_path
 
   def format(self, record: logging.LogRecord) -> str:
     timestamp = datetime.fromtimestamp(record.created)
@@ -123,6 +127,11 @@ class JSONFormatter(logging.Formatter):
     if env_var_namespace_name:
       log_entry.update({
         "namespace": env_var_namespace_name
+      })
+
+    if self.__should_log_context_dir_path and self.__should_log_context_dir_path():
+      log_entry.update({
+        "context_dir_path": self.__get_context_dir_path()
       })
 
     # Set request key and UI URL - prioritize passed-in value, fallback to response headers

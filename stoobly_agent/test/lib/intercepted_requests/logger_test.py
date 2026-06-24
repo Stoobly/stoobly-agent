@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from stoobly_agent.app.cli.scaffold.constants import APP_DIR_ENV, CONTEXT_DIR_ENV
 from stoobly_agent.config.constants import custom_headers
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
@@ -289,6 +290,70 @@ class TestJSONFormatter:
                     return
             pytest.fail("Scenario name test entry not found")
 
+    def test_context_dir_path_when_app_dir_differs(self, temp_log_dir):
+        """context_dir_path is logged when APP_DIR and CONTEXT_DIR differ."""
+        app_dir = os.path.join(temp_log_dir, 'app')
+        context_dir = os.path.join(temp_log_dir, 'context')
+        os.makedirs(app_dir)
+        os.makedirs(context_dir)
+
+        log_path = os.path.join(temp_log_dir, 'context_dir_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+        with patch.dict(os.environ, {APP_DIR_ENV: app_dir, CONTEXT_DIR_ENV: context_dir}):
+            ScaffoldInterceptedRequestsLogger.enable_logger_file()
+            InterceptedRequestsLogger.set_log_level(DEBUG)
+            with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
+                mock_intercept.return_value.scenario_key = None
+                InterceptedRequestsLogger.info("Context dir test")
+            InterceptedRequestsLogger.flush()
+
+        with open(log_path, 'r') as f:
+            for line in f:
+                entry = json.loads(line.strip())
+                if entry.get('message') == 'Context dir test':
+                    assert entry['context_dir_path'] == os.path.abspath(context_dir)
+                    return
+            pytest.fail("Context dir test entry not found")
+
+    def test_context_dir_path_omitted_when_app_dir_matches(self, temp_log_dir):
+        """context_dir_path is omitted when APP_DIR and CONTEXT_DIR are the same."""
+        shared_dir = os.path.join(temp_log_dir, 'shared')
+        os.makedirs(shared_dir)
+
+        log_path = os.path.join(temp_log_dir, 'context_dir_match_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+        with patch.dict(os.environ, {APP_DIR_ENV: shared_dir, CONTEXT_DIR_ENV: shared_dir}):
+            ScaffoldInterceptedRequestsLogger.enable_logger_file()
+            InterceptedRequestsLogger.set_log_level(DEBUG)
+            with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
+                mock_intercept.return_value.scenario_key = None
+                InterceptedRequestsLogger.info("No context dir test")
+            InterceptedRequestsLogger.flush()
+
+        with open(log_path, 'r') as f:
+            for line in f:
+                entry = json.loads(line.strip())
+                if entry.get('message') == 'No context dir test':
+                    assert 'context_dir_path' not in entry
+                    return
+            pytest.fail("No context dir test entry not found")
+
+    def test_context_dir_path_omitted_when_app_dir_unset(self):
+        """context_dir_path is omitted when APP_DIR is not set."""
+        with patch('stoobly_agent.lib.intercepted_requests.logger.InterceptSettings') as mock_intercept:
+            mock_intercept.return_value.scenario_key = None
+            InterceptedRequestsLogger.info("Simple mode test")
+
+        InterceptedRequestsLogger.flush()
+
+        with open(self.log_path, 'r') as f:
+            for line in f:
+                entry = json.loads(line.strip())
+                if entry.get('message') == 'Simple mode test':
+                    assert 'context_dir_path' not in entry
+                    return
+            pytest.fail("Simple mode test entry not found")
+
 
 class TestFileOperations:
     """Tests for file operations."""
@@ -412,6 +477,41 @@ class TestWorkflowNamespaceParameters:
                 mock_settings.proxy.intercept.mode = 'mock'
                 result = InterceptedRequestsLogger._get_workflow()
         assert result == 'mock'
+
+    def test_get_context_dir_path_returns_env_var_when_set(self, temp_log_dir):
+        """_get_context_dir_path() returns CONTEXT_DIR when set."""
+        context_dir = os.path.join(temp_log_dir, 'context')
+        with patch.dict(os.environ, {CONTEXT_DIR_ENV: context_dir}):
+            result = InterceptedRequestsLogger._get_context_dir_path()
+        assert result == os.path.abspath(context_dir)
+
+    def test_get_context_dir_path_falls_back_to_data_dir(self):
+        """_get_context_dir_path() falls back to DataDir when CONTEXT_DIR unset."""
+        env_copy = os.environ.copy()
+        env_copy.pop(CONTEXT_DIR_ENV, None)
+        with patch.dict(os.environ, env_copy, clear=True):
+            with patch.object(DataDir, 'instance') as mock_data_dir:
+                mock_data_dir.return_value.context_dir_path = '/default/context'
+                result = InterceptedRequestsLogger._get_context_dir_path()
+        assert result == '/default/context'
+
+    def test_should_log_context_dir_path_when_dirs_differ(self, temp_log_dir):
+        """_should_log_context_dir_path() is True when APP_DIR and CONTEXT_DIR differ."""
+        app_dir = os.path.join(temp_log_dir, 'app')
+        context_dir = os.path.join(temp_log_dir, 'context')
+        with patch.dict(os.environ, {APP_DIR_ENV: app_dir, CONTEXT_DIR_ENV: context_dir}):
+            assert InterceptedRequestsLogger._should_log_context_dir_path() is True
+
+    def test_should_log_context_dir_path_false_when_dirs_match(self, temp_log_dir):
+        """_should_log_context_dir_path() is False when APP_DIR and CONTEXT_DIR match."""
+        shared_dir = os.path.join(temp_log_dir, 'shared')
+        with patch.dict(os.environ, {APP_DIR_ENV: shared_dir, CONTEXT_DIR_ENV: shared_dir}):
+            assert InterceptedRequestsLogger._should_log_context_dir_path() is False
+
+    def test_should_log_context_dir_path_false_when_app_dir_unset(self):
+        """_should_log_context_dir_path() is False when APP_DIR is unset."""
+        with patch.dict(os.environ, {}, clear=True):
+            assert InterceptedRequestsLogger._should_log_context_dir_path() is False
 
     def test_enable_logger_file_uses_workflow_name_env(self):
         """enable_logger_file() without params uses WORKFLOW_NAME env var for filename."""
