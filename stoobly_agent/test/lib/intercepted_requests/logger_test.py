@@ -513,6 +513,12 @@ class TestWorkflowNamespaceParameters:
         with patch.dict(os.environ, {}, clear=True):
             assert InterceptedRequestsLogger._should_log_context_dir_path() is False
 
+    def test_should_log_context_dir_path_false_when_context_dir_unset(self, temp_log_dir):
+        """_should_log_context_dir_path() is False when CONTEXT_DIR is unset."""
+        app_dir = os.path.join(temp_log_dir, 'app')
+        with patch.dict(os.environ, {APP_DIR_ENV: app_dir}, clear=True):
+            assert InterceptedRequestsLogger._should_log_context_dir_path() is False
+
     def test_enable_logger_file_uses_workflow_name_env(self):
         """enable_logger_file() without params uses WORKFLOW_NAME env var for filename."""
         workflow = 'mock'

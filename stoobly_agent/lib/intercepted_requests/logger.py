@@ -108,11 +108,12 @@ class InterceptedRequestsLogger():
 
     @staticmethod
     def _should_log_context_dir_path() -> bool:
-        """Return True when APP_DIR and CONTEXT_DIR resolve to different paths."""
+        """Return True when APP_DIR and CONTEXT_DIR env vars resolve to different paths."""
         app_dir = os.environ.get(APP_DIR_ENV)
-        if not app_dir:
+        context_dir = os.environ.get(CONTEXT_DIR_ENV)
+        if not app_dir or not context_dir:
             return False
-        return os.path.abspath(app_dir) != InterceptedRequestsLogger._get_context_dir_path()
+        return os.path.abspath(app_dir) != os.path.abspath(context_dir)
 
     @classmethod
     def _cleanup_handlers(cls) -> None:
