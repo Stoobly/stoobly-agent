@@ -109,3 +109,9 @@ def add_context_service(context_dir_path: str, app_dir_path: str, service_name: 
     services.append(service_name)
 
   _write_scaffold_config(config, existing, existing_scaffold, relative_app_dir_path, services)
+
+
+def get_context_services(context_dir_path: str) -> list[str]:
+  """Return ``scaffold.services`` from a context dir ``.config.yml``, or ``[]`` if unset."""
+  _, _, existing_scaffold = _read_scaffold_config(os.path.abspath(context_dir_path))
+  return list(existing_scaffold.get(SERVICES_CONFIG_KEY) or [])

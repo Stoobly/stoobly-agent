@@ -42,6 +42,45 @@ def _read_settings(context_dir_path: pathlib.Path) -> dict:
     return yaml.safe_load(fp)
 
 
+def _write_config(path: pathlib.Path, config: dict):
+  with open(path, 'w') as fp:
+    yaml.dump(config, fp)
+
+
+def _create_app_with_context(runner: CliRunner, app_dir_path: pathlib.Path, context_dir_path: pathlib.Path):
+  app_dir_path.mkdir()
+  context_dir_path.mkdir()
+  _prepare_app_dir(app_dir_path)
+
+  result = runner.invoke(scaffold, [
+    'app', 'create',
+    '--app-dir-path', str(app_dir_path),
+    '--context-dir-path', str(context_dir_path),
+    '--quiet',
+    'test-app',
+  ])
+  assert result.exit_code == 0
+
+
+def _create_service(
+  runner: CliRunner,
+  app_dir_path: pathlib.Path,
+  service_name: str,
+  context_dir_path: pathlib.Path = None,
+):
+  command = [
+    'service', 'create',
+    '--app-dir-path', str(app_dir_path),
+    '--quiet',
+    service_name,
+  ]
+  if context_dir_path:
+    command.extend(['--context-dir-path', str(context_dir_path)])
+
+  result = runner.invoke(scaffold, command)
+  assert result.exit_code == 0
+
+
 class TestScaffoldAppCreateValidation:
   def test_copy_on_workflow_up_requires_docker_runtime(self, runner: CliRunner, tmp_path):
     docker_socket_path = tmp_path / 'docker.sock'
@@ -359,3 +398,67 @@ class TestScaffoldServiceCreateContextDirPaths:
     ])
 
     assert result.exit_code != 0
+
+
+class TestContextServiceDefaults:
+  def test_service_list_defaults_to_context_services(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-api', context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-assets', context_dir_path)
+
+    config = _read_config(_context_config_path(context_dir_path))
+    config['scaffold']['services'] = ['svc-api']
+    _write_config(_context_config_path(context_dir_path), config)
+
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+    ])
+
+    assert result.exit_code == 0
+    assert 'svc-api' in result.output
+    assert 'svc-assets' not in result.output
+
+  def test_service_list_explicit_service_overrides_context(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-api', context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-assets', context_dir_path)
+
+    config = _read_config(_context_config_path(context_dir_path))
+    config['scaffold']['services'] = ['svc-api']
+    _write_config(_context_config_path(context_dir_path), config)
+
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+      '--service', 'svc-assets',
+    ])
+
+    assert result.exit_code == 0
+    assert 'svc-assets' in result.output
+    assert 'svc-api' not in result.output
+
+  def test_empty_context_services_lists_all(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-api')
+    _create_service(runner, app_dir_path, 'svc-assets')
+
+    assert _read_config(_context_config_path(context_dir_path))['scaffold']['services'] == []
+
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+    ])
+
+    assert result.exit_code == 0
+    assert 'svc-api' in result.output
+    assert 'svc-assets' in result.output
