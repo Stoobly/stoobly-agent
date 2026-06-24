@@ -199,9 +199,8 @@ def create(**kwargs):
 @click.option('--all', is_flag=True, default=False, help='Display all services including core and user defined services')
 @click.option('--workflow', multiple=True, help='Specify workflow(s) to filter the services by. Defaults to all.')
 def _list(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
-  app = App(kwargs['app_dir_path'])
+  app = App(kwargs['app_dir_path'], **kwargs)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
   __validate_app(app)
 
   without_core = not kwargs['all']
@@ -336,11 +335,10 @@ def update(**kwargs):
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   __validate_app_dir(kwargs['app_dir_path'])
 
   app = App(kwargs['app_dir_path'], **kwargs)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -366,9 +364,8 @@ def create(**kwargs):
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   app = App(kwargs['app_dir_path'], **kwargs)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   for service_name in kwargs['service']:
     config = { **kwargs }
@@ -442,8 +439,6 @@ def show(**kwargs):
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
 @click.argument('workflow_name')
 def down(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
@@ -451,6 +446,8 @@ def down(**kwargs):
 
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
+
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -578,8 +575,6 @@ def down(**kwargs):
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
 def logs(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
@@ -587,6 +582,8 @@ def logs(**kwargs):
 
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
+
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
@@ -644,8 +641,6 @@ def logs(**kwargs):
 @click.option('--verbose', is_flag=True)
 @click.argument('workflow_name')
 def up(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   containerized = kwargs['containerized']
@@ -657,6 +652,8 @@ def up(**kwargs):
   # It needs to differ because if containerized, we are generating .env with contents from the host
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
+
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   # Generate SSL certs for HTTPS services
   if kwargs['mkcert']:
@@ -755,12 +752,11 @@ def up(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def mkcert(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   containerized = kwargs['containerized']
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
 
   __validate_app(app)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
@@ -776,12 +772,11 @@ def mkcert(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def rewrite(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   containerized = kwargs['containerized']
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
-
   __validate_app(app)
+
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
@@ -798,12 +793,11 @@ def rewrite(**kwargs):
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def _filter(**kwargs):
-  __apply_context_service_defaults(kwargs)
-
   containerized = kwargs['containerized']
   app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
-
   __validate_app(app)
+
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   services = __get_services(
     app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
@@ -859,7 +853,8 @@ def validate(**kwargs):
 @click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def install(**kwargs):
-  __apply_context_service_defaults(kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_install_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
@@ -879,7 +874,8 @@ def install(**kwargs):
 @click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
 def uninstall(**kwargs):
-  __apply_context_service_defaults(kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
+  __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_uninstall_with_prompt(
     app_dir_path=kwargs['app_dir_path'],
@@ -924,11 +920,11 @@ def __build_script(app: App, **kwargs):
 
   return open(script_path, 'a')
 
-def __apply_context_service_defaults(kwargs):
+def __apply_context_service_defaults(context_dir_path, kwargs):
   if kwargs.get('service'):
     return
 
-  context_services = get_context_services(kwargs['context_dir_path'])
+  context_services = get_context_services(context_dir_path)
   if context_services:
     kwargs['service'] = tuple(context_services)
 
