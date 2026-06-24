@@ -12,6 +12,7 @@ from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAutho
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
+from stoobly_agent.app.cli.scaffold.context_config import add_context_service, init_context_dir
 from stoobly_agent.app.cli.scaffold.constants import (
   PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
@@ -100,6 +101,12 @@ def hostname(ctx):
   help="Scaffold application"
 )
 @click.option('--app-dir-path', default=os.getcwd(), help='Path to create the app scaffold.')
+@click.option(
+  '--context-dir-path',
+  multiple=True,
+  type=click.Path(exists=True, file_okay=False, dir_okay=True),
+  help='Path to a Stoobly context directory. May be specified multiple times.',
+)
 @click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
@@ -135,6 +142,9 @@ def create(**kwargs):
 
   res = AppCreateCommand(app, **kwargs).build()
 
+  for context_dir_path in kwargs.get('context_dir_path') or ():
+    init_context_dir(context_dir_path, kwargs['app_dir_path'])
+
   for warning in res['warnings']:
     print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
 
@@ -142,6 +152,12 @@ def create(**kwargs):
   help="Scaffold a service",
 )
 @click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option(
+  '--context-dir-path',
+  multiple=True,
+  type=click.Path(exists=True, file_okay=False, dir_okay=True),
+  help='Path to a Stoobly context directory. May be specified multiple times.',
+)
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
 @click.option('--env', multiple=True, help='Specify an environment variable.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
@@ -166,6 +182,9 @@ def create(**kwargs):
     print(f"{service.dir_path} already exists, updating scaffold maintained files...")
 
   __scaffold_build(app, **kwargs)
+
+  for context_dir_path in kwargs.get('context_dir_path') or ():
+    add_context_service(context_dir_path, kwargs['app_dir_path'], kwargs['service_name'])
 
 @service.command(
   help="List services",
