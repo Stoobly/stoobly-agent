@@ -2,13 +2,13 @@
 
 ## What it does
 
-A Stoobly **context directory** is the folder that contains `.stoobly/` (settings, certs, and so on). When you scaffold an app or services with `--context-dir-path`, the agent writes a `.config.yml` file in that directory that links the context to the app scaffold and records which services belong to that context.
+A Stoobly **context directory** is the folder that contains `.stoobly/` (settings, certs, and so on). When you scaffold an app or services with `--context-dir-path`, the agent writes a `.stoobly/.config.yml` file that links the context to the app scaffold and records which services belong to that context.
 
 The `scaffold.services` list in that file is used as the **default value for `--service`** on scaffold commands when you do not pass `--service` explicitly. This lets each context (for example, a Cypress or Playwright project directory) operate on a focused subset of services without repeating `--service` on every command.
 
 ## Context config file
 
-Path: `{context_dir}/.config.yml`
+Path: `{context_dir}/.stoobly/.config.yml`
 
 Example:
 
@@ -43,7 +43,7 @@ When a scaffold command accepts `--service`, the agent resolves which services t
 flowchart TD
   cmd[Command invoked] --> hasService{"--service provided?"}
   hasService -->|yes| useCli[Use CLI values]
-  hasService -->|no| readConfig["Read scaffold.services from context .config.yml"]
+  hasService -->|no| readConfig["Read scaffold.services from context .stoobly/.config.yml"]
   readConfig --> hasConfig{"services non-empty?"}
   hasConfig -->|yes| useConfig[Use context services as default]
   hasConfig -->|no| useExisting["Keep existing behavior"]
@@ -60,7 +60,7 @@ flowchart TD
    - Commands that select from app services (for example `service list`, `workflow up`) default to **all** services, as before.
    - Commands that require explicit targets (for example `workflow create`, `workflow copy`) still do nothing when no services are given.
 
-Resolution happens at runtime via `__apply_context_service_defaults()` in `scaffold_cli.py`, which reads the config with `get_context_services()` from `context_config.py`. Defaults are not shown in `--help` because they depend on the context's `.config.yml`.
+Resolution happens at runtime via `__apply_context_service_defaults()` in `scaffold_cli.py`, which reads the config with `get_context_services()` from `context_config.py`. Defaults are not shown in `--help` because they depend on the context's `.stoobly/.config.yml`.
 
 ## `--context-dir-path`
 
@@ -106,7 +106,7 @@ stoobly-agent scaffold service create \
   assets
 ```
 
-`./e2e/.config.yml` now contains `scaffold.services: [api, assets]`.
+`./e2e/.stoobly/.config.yml` now contains `scaffold.services: [api, assets]`.
 
 ### Use context defaults (no `--service`)
 
@@ -147,5 +147,5 @@ stoobly-agent scaffold service list \
 
 | File | Role |
 |------|------|
-| `stoobly_agent/app/cli/scaffold/context_config.py` | Writes and reads `scaffold.services` in `.config.yml`. |
+| `stoobly_agent/app/cli/scaffold/context_config.py` | Writes and reads `scaffold.services` in `.stoobly/.config.yml`. |
 | `stoobly_agent/app/cli/scaffold_cli.py` | Applies context defaults to `--service` before command handlers run. |

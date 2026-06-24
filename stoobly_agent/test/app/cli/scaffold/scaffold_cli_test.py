@@ -28,7 +28,7 @@ def _prepare_app_dir(app_dir_path: pathlib.Path):
 
 
 def _context_config_path(context_dir_path: pathlib.Path) -> pathlib.Path:
-  return context_dir_path / CONFIG_FILE
+  return context_dir_path / DATA_DIR_NAME / CONFIG_FILE
 
 
 def _read_config(path: pathlib.Path) -> dict:
@@ -43,6 +43,7 @@ def _read_settings(context_dir_path: pathlib.Path) -> dict:
 
 
 def _write_config(path: pathlib.Path, config: dict):
+  path.parent.mkdir(parents=True, exist_ok=True)
   with open(path, 'w') as fp:
     yaml.dump(config, fp)
 
@@ -173,8 +174,7 @@ class TestScaffoldAppCreateContextDirPaths:
     _prepare_app_dir(app_dir_path)
 
     config_path = _context_config_path(context_dir_path)
-    with open(config_path, 'w') as fp:
-      yaml.dump({'workflow': {'name': 'record'}}, fp)
+    _write_config(config_path, {'workflow': {'name': 'record'}})
 
     runner.invoke(scaffold, [
       'app', 'create',
