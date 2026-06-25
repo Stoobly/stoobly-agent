@@ -604,7 +604,8 @@ def logs(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  script = __build_script(app, **kwargs)
+  script = __build_script(app, mkdir=False, **kwargs)
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=False)
 
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
@@ -614,6 +615,7 @@ def logs(**kwargs):
       app,
       services=services,
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
   else:
@@ -622,6 +624,7 @@ def logs(**kwargs):
       app,
       services=services,
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
 
@@ -935,14 +938,16 @@ def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_conf
   else:
     print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
-def __build_script(app: App, **kwargs):
+def __build_script(app: App, mkdir: bool = True, **kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'])
+    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'], mkdir=mkdir)
     script_path = workflow_namespace.run_script_path
-  
+
   script_dir = os.path.dirname(script_path)
   if not os.path.exists(script_dir):
+    if not mkdir:
+      return None
     os.makedirs(script_dir, exist_ok=True)
 
   # Truncate
