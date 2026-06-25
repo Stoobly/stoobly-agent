@@ -120,7 +120,7 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['dev-tools', 'exec', 'init', 'mock', 'record', 'scaffold'],
+        'commands': ['describe', 'dev-tools', 'exec', 'init', 'mock', 'record', 'scaffold'],
       },
       {
         'name': 'Proxy Commands',

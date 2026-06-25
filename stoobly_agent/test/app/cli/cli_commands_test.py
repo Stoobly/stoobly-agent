@@ -16,6 +16,7 @@ class TestCliCommandsLoad:
         [],  # root help
         ['ca-cert'],
         ['config'],  # Backward compatibility: hidden but still works
+        ['describe'],
         ['endpoint'],
         ['feature'],
         ['intercept'],

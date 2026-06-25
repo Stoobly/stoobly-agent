@@ -46,6 +46,21 @@ def init(**kwargs):
     settings.reset_and_load()
 
 @main.command(
+    help="Describe settings"
+)
+def describe(**kwargs):
+    data_dir = DataDir.instance()
+    all_settings = Settings.instance().to_dict()
+    output = {
+        'context_dir_path': data_dir.context_dir_path,
+        'settings': {
+            'proxy': all_settings['proxy'],
+            'ui': all_settings['ui'],
+        },
+    }
+    print(json.dumps(output, indent=2, sort_keys=True))
+
+@main.command(
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
