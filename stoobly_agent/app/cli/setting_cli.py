@@ -1,5 +1,4 @@
 import click
-import json
 import os
 import sys
 
@@ -39,24 +38,6 @@ def setting(ctx):
 
 # Backward compatibility: config is an alias for setting
 config = setting
-
-@setting.command(
-    name="list",
-    help="List settings"
-)
-@click.option('--dir', is_flag=True, help='To only show the path of the data directory being used.')
-def list_settings(**kwargs):
-    if kwargs['dir']:
-        output = DataDir.instance().path
-        print(output)
-
-        return
-
-    settings = Settings.instance()
-
-    output = json.dumps(settings.to_dict(), indent=2, sort_keys=True)
-
-    print(output)
 
 @setting.command(
     help="Reset settings to defaults"

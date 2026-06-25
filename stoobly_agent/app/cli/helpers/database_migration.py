@@ -7,6 +7,7 @@ CONTEXT_DIR_PATH_OPTION = '--context-dir-path'
 # Top-level commands that should not trigger automatic database migration.
 SKIP_MIGRATION_COMMANDS = {
   'ca-cert',
+  'describe',
   'dev-tools',
   'feature',
   'init',
