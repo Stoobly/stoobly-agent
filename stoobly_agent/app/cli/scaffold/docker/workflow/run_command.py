@@ -273,7 +273,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       )
       
       for shell_command in shell_commands:
-        if self.script:
+        if self.script or self.dry_run:
           self.exec(shell_command)
 
   def _build_log_commands(self, command, containers=None, follow=False, namespace=None):

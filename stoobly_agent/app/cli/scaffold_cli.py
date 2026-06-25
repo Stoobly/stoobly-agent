@@ -457,14 +457,22 @@ def down(**kwargs):
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
+  if not kwargs.get('dry_run'):
+    namespace = kwargs['namespace']
+    tmp_namespace_path = os.path.join(app.data_dir.tmp_dir_path, namespace)
+    if not os.path.exists(tmp_namespace_path):
+      print(f"Error: Workflow '{kwargs['workflow_name']}' is not running.", file=sys.stderr)
+      sys.exit(1)
+
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  script = __build_script(app, **kwargs)
-  
+  mkdir = not kwargs.get('dry_run')
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=mkdir)
+  script = __build_script(app, mkdir=mkdir, workflow_namespace=workflow_namespace, **kwargs)
+
   # Determine which workflow command to use based on app configuration
-  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.copy_on_workflow_up:
@@ -479,9 +487,10 @@ def down(**kwargs):
   if app_config.runtime_local:
     # Use LocalWorkflowRunCommand for local execution
     workflow_command = LocalWorkflowRunCommand(
-      app, 
-      services=services, 
+      app,
+      services=services,
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
 
@@ -494,9 +503,10 @@ def down(**kwargs):
   else:
     # Use DockerWorkflowRunCommand for Docker execution
     workflow_command = DockerWorkflowRunCommand(
-      app, 
-      services=services, 
+      app,
+      services=services,
       script=script,
+      workflow_namespace=workflow_namespace,
       **kwargs
     )
 
@@ -604,8 +614,8 @@ def logs(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  script = __build_script(app, mkdir=False, **kwargs)
   workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=False)
+  script = __build_script(app, mkdir=False, workflow_namespace=workflow_namespace, **kwargs)
 
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
@@ -938,10 +948,11 @@ def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_conf
   else:
     print("You can install the CA certificate later by running: stoobly-agent ca-cert install")
 
-def __build_script(app: App, mkdir: bool = True, **kwargs):
+def __build_script(app: App, mkdir: bool = True, workflow_namespace: WorkflowNamespace = None, **kwargs):
   script_path = kwargs['script_path']
   if not script_path:
-    workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'], mkdir=mkdir)
+    if workflow_namespace is None:
+      workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs['workflow_name'], mkdir=mkdir)
     script_path = workflow_namespace.run_script_path
 
   script_dir = os.path.dirname(script_path)
