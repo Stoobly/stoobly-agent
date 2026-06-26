@@ -10,6 +10,7 @@ from click.testing import CliRunner
 from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.cli import init as cli_init
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
@@ -314,6 +315,33 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     config = _read_config(_context_config_path(context_dir_path))
     assert config['scaffold']['services'] == ['api']
+
+  def test_adds_service_without_explicit_app_dir_path(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    app_dir_path.mkdir()
+    context_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--quiet',
+      'test-app',
+    ])
+
+    result = runner.invoke(scaffold, [
+      'service', 'create',
+      '--context-dir-path', str(context_dir_path),
+      '--quiet',
+      'api',
+    ], env={**os.environ, env_vars.APP_DIR: str(app_dir_path)})
+
+    assert result.exit_code == 0
+
+    config = _read_config(_context_config_path(context_dir_path))
+    assert config['scaffold']['services'] == ['api']
+    assert config['scaffold']['app_dir_path'] == os.path.relpath(str(app_dir_path), str(context_dir_path))
 
   def test_appends_services_for_multiple_context_dirs(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'

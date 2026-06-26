@@ -185,7 +185,7 @@ def create(**kwargs):
   __scaffold_build(app, **kwargs)
 
   for context_dir_path in kwargs.get('context_dir_path') or ():
-    add_context_service(context_dir_path, kwargs['app_dir_path'], kwargs['service_name'])
+    add_context_service(context_dir_path, app.app_dir_path, kwargs['service_name'])
 
 @service.command(
   help="List services",
