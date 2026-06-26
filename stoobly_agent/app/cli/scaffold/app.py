@@ -6,6 +6,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
 from .constants import SERVICES_NAMESPACE
@@ -16,8 +17,15 @@ if TYPE_CHECKING:
 class App():
 
   # path: path to the folder where data dir directory resides e.g. ~
-  def __init__(self, path: str, **kwargs):
-    path = os.path.abspath(path) or os.getcwd()
+  def __init__(self, path: str = None, **kwargs):
+    if path is None:
+      path = os.environ.get(env_vars.APP_DIR)
+      if path is None:
+        data_dir = DataDir.instance() 
+        path = data_dir.parent_path
+    else:
+      path = os.path.abspath(path)
+
     data_dir: DataDir = DataDir.instance(path) 
 
     self.__containerized = kwargs.get('containerized', False)
@@ -28,10 +36,10 @@ class App():
     self.__skip_validate_path = not not kwargs.get('dry_run')
     
     # Store host (kwarg) values
-    self.__host_app_dir_path = kwargs.get('app_dir_path')
-    self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path')
-    self.__host_certs_dir_path = kwargs.get('certs_dir_path')
-    self.__host_context_dir_path = kwargs.get('context_dir_path')
+    self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
+    self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or os.environ.get(env_vars.CA_CERTS_DIR)
+    self.__host_certs_dir_path = kwargs.get('certs_dir_path') or os.environ.get(env_vars.CERTS_DIR)
+    self.__host_context_dir_path = kwargs.get('context_dir_path') or os.environ.get(env_vars.CONTEXT_DIR)
     self.__host_runtime_app_dir_path = self.__host_app_dir_path if self.__host_app_dir_path else None
     
     # If containerized, use data_dir/constructor values; otherwise use kwargs if provided
