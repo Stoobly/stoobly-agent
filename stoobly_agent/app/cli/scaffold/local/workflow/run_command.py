@@ -8,10 +8,13 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
+from stoobly_agent.app.cli.scaffold.constants import DOTENV_FILE
+from stoobly_agent.app.cli.scaffold.env import Env
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
+from stoobly_agent.config.constants.env_vars import APP_DIR as STOOBLY_APP_DIR, CONTEXT_DIR as STOOBLY_CONTEXT_DIR
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import Logger
 
@@ -78,7 +81,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     except (OSError, ProcessLookupError):
       return False
 
-  def exec_service_script(self, step_script_path: str, args: List[str], cwd = None):
+  def exec_service_script(self, step_script_path: str, args: List[str], cwd = None, env = None):
     workflow_path = cwd or self.workflow_path
 
     # Change directory to workflow path
@@ -93,9 +96,29 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if self.dry_run:
       print(' '.join(command))
     else:
-      result = subprocess.run(['sh', '-c', ' '.join(command)], cwd=workflow_path)
+      result = self.exec_command(['sh', '-c', ' '.join(command)], cwd=workflow_path)  
       if result.returncode != 0:
         sys.exit(1)
+
+  def exec_command(self, command: List[str], **kwargs):
+    options = kwargs.copy()
+    if 'env' in options:
+      del options['env']
+
+    env = { **os.environ.copy() }
+
+    env_path = os.path.join(self.workflow_path, DOTENV_FILE)
+    if os.path.exists(env_path):
+      env.update(Env(env_path).read())
+
+    # Ensure the context directory is set
+    env[STOOBLY_APP_DIR] = self.app_dir_path
+    env[STOOBLY_CONTEXT_DIR] = self.context_dir_path
+
+    if kwargs.get('env') is not None:
+      env.update(kwargs.get('env'))
+
+    return subprocess.run(command, env=env, **options)
 
   def service_up(self, **options: WorkflowUpOptions):
     print_service_header = options.get('print_service_header')
@@ -129,7 +152,6 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
 
   def up(self, **options: WorkflowUpOptions):
     """Start the workflow using local stoobly-agent run."""
-    detached = options.get('detached', False)
 
     if not self.dry_run:
       self.__iterate_active_workflows(handle_active=self.__handle_up_active, handle_stale=self.__handle_up_stale)
@@ -368,6 +390,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     # Use the log file path as the detached output file
     command.extend(['--detached', self.log_file_path])
 
+    # Use the context dir path as the request log context dir path
+    command.extend(['--context-dir-path', self.app.context_dir_path])
+
     options = run_options(
       self.app_config,
       log_level=options.get('log_level'),
@@ -398,10 +423,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     else:
       # Execute directly
       try:
-        # Run the command with --detached option
-        # TODO: cwd should be the context_dir_path since the workflow path is mounted as a volume
-        # This is ok so long as --copy-on-workflow-up is not used
-        result = subprocess.run(
+        # Run the command within workflow path
+        result = self.exec_command(
           command,
           capture_output=True,
           text=True,
