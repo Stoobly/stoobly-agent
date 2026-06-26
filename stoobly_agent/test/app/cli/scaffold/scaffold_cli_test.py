@@ -7,7 +7,7 @@ import json
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import CONFIG_FILE
+from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.cli import init as cli_init
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
@@ -84,9 +84,10 @@ def _create_service(
 
 
 class TestScaffoldAppCreateValidation:
-  def test_copy_on_workflow_up_requires_docker_runtime(self, runner: CliRunner, tmp_path):
+  def test_copy_on_workflow_up_allowed_with_local_runtime(self, runner: CliRunner, tmp_path):
     docker_socket_path = tmp_path / 'docker.sock'
     docker_socket_path.touch()
+    _prepare_app_dir(tmp_path)
 
     result = runner.invoke(scaffold, [
       'app', 'create',
@@ -94,11 +95,16 @@ class TestScaffoldAppCreateValidation:
       '--copy-on-workflow-up',
       '--docker-socket-path', str(docker_socket_path),
       '--runtime', 'local',
+      '--quiet',
       'test-app',
     ])
 
-    assert result.exit_code == 1
-    assert '--copy-on-workflow-up is only supported for docker runtime.' in result.output
+    assert result.exit_code == 0
+
+    config_path = tmp_path / DATA_DIR_NAME / 'services' / CONFIG_FILE
+    config = _read_config(config_path)
+    assert config[APP_COPY_ON_WORKFLOW_UP_ENV] is True
+    assert config['APP_RUNTIME'] == 'local'
 
   def test_context_dir_path_must_exist(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'

@@ -62,9 +62,6 @@ from .validators.scaffold import validate_app_name, validate_hostname, validate_
 
 LOG_ID = 'Scaffold'
 
-data_dir: DataDir = DataDir.instance()
-context_dir_path = data_dir.context_dir_path
-
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
     help="Manage scaffold"
@@ -133,12 +130,10 @@ def create(**kwargs):
 
   # Validate copy-on-workflow-up can only be used with docker runtime
   # This flag is meant to support parallel workflow runs. However ports will conflict for local runtime.
-  if kwargs.get('runtime') != RUNTIME_DOCKER and kwargs.get('copy_on_workflow_up'):
-    error_message = f"Error: --copy-on-workflow-up is only supported for {RUNTIME_DOCKER} runtime."
-    click.echo(error_message, err=True)
-    sys.exit(1)
-
-  __validate_app_dir(kwargs['app_dir_path'])
+  #if kwargs.get('runtime') != RUNTIME_DOCKER and kwargs.get('copy_on_workflow_up'):
+  #  error_message = f"Error: --copy-on-workflow-up is only supported for {RUNTIME_DOCKER} runtime."
+  #  click.echo(error_message, err=True)
+  #  sys.exit(1)
 
   app = App(kwargs['app_dir_path'])
 
@@ -159,7 +154,7 @@ def create(**kwargs):
 @service.command(
   help="Scaffold a service",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option(
   '--context-dir-path',
   multiple=True,
@@ -181,8 +176,6 @@ def create(**kwargs):
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
-  __validate_app_dir(kwargs['app_dir_path'])
-
   app = App(kwargs['app_dir_path'])
   service = Service(kwargs['service_name'], app)
 
@@ -198,8 +191,8 @@ def create(**kwargs):
   help="List services",
   name="list"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--select', multiple=True, help='Select column(s) to display.')
 @click.option('--service', multiple=True, help='Select specific services.')
@@ -230,7 +223,7 @@ def _list(**kwargs):
 @service.command(
   help="Show information about a service",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
 @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
 @click.argument('service_name')
@@ -246,7 +239,7 @@ def show(ctx, **kwargs):
 @service.command(
   help="Delete a service",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.argument('service_name')
 def delete(**kwargs):
   app = App(kwargs['app_dir_path'])
@@ -264,7 +257,7 @@ def delete(**kwargs):
 @service.command(
   help="Update a service config"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--detached', type=bool, default=None, help='Use isolated and non-persistent context directory.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--local', type=bool, default=None, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
@@ -336,15 +329,13 @@ def update(**kwargs):
 @workflow.command(
   help="Create workflow for service(s)"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
-  __validate_app_dir(kwargs['app_dir_path'])
-
   app = App(kwargs['app_dir_path'], **kwargs)
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
@@ -366,8 +357,8 @@ def create(**kwargs):
 @workflow.command(
   help="Copy a workflow for service(s)",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Specify service(s) to add the workflow to.')
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
@@ -391,7 +382,7 @@ def copy(**kwargs):
 @workflow.command(
   help="Show information about running workflow(s)"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace. Only valid when workflow_name is provided.')
 @click.option('--verbose', '-v', is_flag=True, default=False, help='Show detailed information.')
 @click.argument('workflow_name', required=False, default=None)
@@ -433,8 +424,8 @@ def show(**kwargs):
 @workflow.command(
   help="Stop and tear down a scaffold workflow",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True)
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
@@ -452,7 +443,7 @@ def down(**kwargs):
   containerized = kwargs['containerized']
   __with_namespace_defaults(kwargs)
 
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -564,15 +555,16 @@ def down(**kwargs):
     )
 
   # Options are no longer valid (after successful down; still run if pre-down work failed)
+  data_dir: DataDir = DataDir.instance()
   if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
     os.remove(data_dir.mitmproxy_options_json_path)
 
 @workflow.command(
   help="Show or follow logs from workflow service(s)",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
 @click.option('--follow', is_flag=True, help='Follow log output.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
@@ -585,10 +577,9 @@ def down(**kwargs):
 def logs(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
-  containerized = kwargs['containerized']
   __with_namespace_defaults(kwargs)
 
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -598,7 +589,7 @@ def logs(**kwargs):
   )
 
   script = __build_script(app, **kwargs)
-  
+
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
   if app_config.runtime_local:
@@ -628,12 +619,12 @@ def logs(**kwargs):
 @workflow.command(
   help="Start a scaffold workflow and bring up service(s)",
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands instead of running them.')
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
@@ -655,10 +646,7 @@ def up(**kwargs):
   dry_run = kwargs['dry_run']
   __with_namespace_defaults(kwargs)
 
-  # Because we are running a docker-compose command which depends on APP_DIR env var
-  # when we are running this command within a container, the host's app_dir_path will likely differ
-  # It needs to differ because if containerized, we are generating .env with contents from the host
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -752,16 +740,15 @@ def up(**kwargs):
 @workflow.command(
   help="Generate SSL certs for workflow service(s)"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def mkcert(**kwargs):
-  containerized = kwargs['containerized']
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
 
   __validate_app(app)
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -774,14 +761,13 @@ def mkcert(**kwargs):
 @workflow.command(
   help="Sync normalize rewrite rules from service upstream hostname, port, and scheme"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def rewrite(**kwargs):
-  containerized = kwargs['containerized']
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -795,14 +781,13 @@ def rewrite(**kwargs):
   'filter',
   help="Configure include filter rules for workflow service(s)"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.argument('workflow_name')
 def _filter(**kwargs):
-  containerized = kwargs['containerized']
-  app = App(context_dir_path, **kwargs) if containerized else App(kwargs['app_dir_path'], **kwargs)
+  app = App(kwargs['app_dir_path'], **kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -815,8 +800,8 @@ def _filter(**kwargs):
 @workflow.command(
   help="Validate a scaffold workflow"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to validate the app scaffold.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to validate the app scaffold.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
 @click.argument('workflow_name')
 def validate(**kwargs):
@@ -854,8 +839,8 @@ def validate(**kwargs):
 @hostname.command(
   help="Update the system hosts file for all scaffold service hostnames"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
@@ -875,8 +860,8 @@ def install(**kwargs):
 @hostname.command(
   help="Delete from the system hosts file all scaffold service hostnames"
 )
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly data directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
@@ -896,10 +881,11 @@ def uninstall(**kwargs):
 @scaffold.command(
   help="Describe scaffold configuration",
 )
-@click.option('--context-dir-path', default=context_dir_path, help='Path to Stoobly context directory.')
 @click.option('--app-dir-path', default=None, help='Override app directory when context config is absent.')
+@click.option('--context-dir-path', default=None, help='Path to Stoobly context directory.')
 def describe(**kwargs):
-  context_dir = os.path.abspath(kwargs['context_dir_path'])
+  app = App(kwargs['app_dir_path'], **kwargs)
+  context_dir = os.path.abspath(app.context_dir_path)
 
   try:
     app_dir = resolve_app_dir_path(context_dir, kwargs.get('app_dir_path'))
@@ -1267,14 +1253,6 @@ def __validate_app(app: App):
     app.valid
   except ValueError as e:
     print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
-
-def __validate_app_dir(app_dir_path):
-  __validate_dir(app_dir_path)
-
-def __validate_dir(dir_path):
-  if not os.path.exists(dir_path):
-    print(f"Error: {dir_path} does not exist", file=sys.stderr)
     sys.exit(1)
 
 def __validate_service_dir(service_dir_path):
