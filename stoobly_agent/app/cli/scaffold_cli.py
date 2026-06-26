@@ -11,6 +11,7 @@ from docker import errors as docker_errors
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.config import Config
@@ -443,7 +444,7 @@ def down(**kwargs):
   containerized = kwargs['containerized']
   __with_namespace_defaults(kwargs)
 
-  app = App(kwargs['app_dir_path'], **kwargs)
+  app = __app_from_kwargs(kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -579,7 +580,7 @@ def logs(**kwargs):
 
   __with_namespace_defaults(kwargs)
 
-  app = App(kwargs['app_dir_path'], **kwargs)
+  app = __app_from_kwargs(kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -646,7 +647,7 @@ def up(**kwargs):
   dry_run = kwargs['dry_run']
   __with_namespace_defaults(kwargs)
 
-  app = App(kwargs['app_dir_path'], **kwargs)
+  app = __app_from_kwargs(kwargs)
   __validate_app(app)
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
@@ -1247,6 +1248,11 @@ def __services_filter(app: App, services, workflow_name: str):
 
   settings.proxy.filter.set_filter_rules(project_id, filter_rules)
   settings.commit()
+
+def __app_from_kwargs(kwargs):
+  if kwargs.get('containerized'):
+    return ContainerizedApp(**kwargs)
+  return App(kwargs['app_dir_path'], **kwargs)
 
 def __validate_app(app: App):
   try:
