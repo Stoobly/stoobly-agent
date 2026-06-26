@@ -140,14 +140,14 @@ def create(**kwargs):
 
   if not kwargs['quiet']:
     if os.path.exists(app.scaffold_namespace_path):
-      print(f"{kwargs['app_dir_path']} already exists, updating scaffold maintained files...")
+      print(f"{app.app_dir_path} already exists, updating scaffold maintained files...")
     else:
-      print(f"Creating scaffold in {kwargs['app_dir_path']}")
+      print(f"Creating scaffold in {app.app_dir_path}")
 
   res = AppCreateCommand(app, **kwargs).build()
 
   for context_dir_path in kwargs.get('context_dir_path') or ():
-    init_context_dir(context_dir_path, kwargs['app_dir_path'])
+    init_context_dir(context_dir_path, app.app_dir_path)
 
   for warning in res['warnings']:
     print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
