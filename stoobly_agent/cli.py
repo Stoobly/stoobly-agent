@@ -136,16 +136,20 @@ def run(**kwargs):
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
 
-    settings: Settings = Settings.instance(kwargs['context_dir_path'])
+    settings: Settings = Settings.instance()
+
+    if kwargs.get('context_dir_path'):
+      os.environ[env_vars.AGENT_CONTEXT_DIR] = kwargs['context_dir_path']
+
+      # Reload settings to be relative to new context directory
+      settings = settings.handle_chdir()
+
     if kwargs.get('settings_watch'):
       # Observe config for changes
       settings.watch()
 
     if not kwargs.get('ca_certs_dir_path'):
       kwargs['ca_certs_dir_path'] = DataDir.instance().ca_certs_dir_path
-
-    if kwargs.get('context_dir_path'):
-      os.environ[env_vars.AGENT_CONTEXT_DIR] = kwargs['context_dir_path']
 
     if kwargs.get('headless'):
       os.environ[env_vars.AGENT_HEADLESS] = '1'
