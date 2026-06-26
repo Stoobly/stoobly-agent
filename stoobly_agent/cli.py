@@ -64,7 +64,12 @@ def describe(**kwargs):
     help="Run proxy and/or UI",
 )
 @ConditionalDecorator(lambda f: click.option('--api-url', help='API URL.')(f), is_remote)
-@click.option('--ca-certs-dir-path', default=DataDir.instance().ca_certs_dir_path, help='Path to ca certs directory used to sign SSL certs.')
+@click.option(
+  '--ca-certs-dir-path',
+  default=None,
+  type=click.Path(exists=True, file_okay=False, dir_okay=True),
+  help='Path to ca certs directory used to sign SSL certs.'
+)
 @click.option('--certs', help='''
   SSL certificates of the form "[domain=]path". The domain may include a wildcard, and is equal to "*" if not specified. The file at path is a certificate in PEM format. If a private key is included in the
   PEM, it is used, else the default key in the conf dir is used. The PEM file should contain the full certificate chain, with the leaf certificate as the first entry. May be passed multiple times.
@@ -74,6 +79,12 @@ def describe(**kwargs):
   config.yaml to avoid this.
 ''')
 @click.option('--connection-strategy', help=', '.join(CONNECTION_STRATEGIES), type=click.Choice(CONNECTION_STRATEGIES))
+@click.option(
+  '--context-dir-path',
+  default=None,
+  type=click.Path(exists=True, file_okay=False, dir_okay=True),
+  help='Path to context directory.'
+)
 @click.option('--detached', type=click.Path(), help='Run in detached mode and redirect output to the specified file path.')
 @click.option('--flow-detail', default='1', type=click.Choice(['0', '1', '2', '3', '4']), help='''
   The display detail level for flows in mitmdump: 0 (quiet) to 4 (very verbose).
@@ -130,8 +141,11 @@ def run(**kwargs):
       # Observe config for changes
       settings.watch()
 
-    if not os.path.exists(kwargs.get('ca_certs_dir_path')):
+    if not kwargs.get('ca_certs_dir_path'):
       kwargs['ca_certs_dir_path'] = DataDir.instance().ca_certs_dir_path
+
+    if kwargs.get('context_dir_path'):
+      os.environ[env_vars.AGENT_CONTEXT_DIR] = kwargs['context_dir_path']
 
     if kwargs.get('headless'):
       os.environ[env_vars.AGENT_HEADLESS] = '1'
