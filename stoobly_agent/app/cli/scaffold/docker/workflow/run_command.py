@@ -229,12 +229,12 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     else:
       for service in self.services:
         if len(options.get('service', [])) == 0:
-          # If no filter is specified, ignore CORE_SERVICES other than the gateway
+          # If no filter is specified, ignore CORE_SERVICES except the gateway
           if service == CORE_BUILD_SERVICE_NAME or service == CORE_MOCK_UI_SERVICE_NAME:
             continue 
         else:
-          # If a filter is specified, ignore all other services
-          if service not in options.get('service', []):
+          # If a filter is specified, ignore all other services except the gateway
+          if service not in options.get('service', []) and service != CORE_GATEWAY_SERVICE_NAME:
             continue
 
         filtered_services.append(service)
