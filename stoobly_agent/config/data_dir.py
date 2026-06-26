@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 
+from stoobly_agent.config.constants.env_vars import AGENT_CONTEXT_DIR, CONTEXT_DIR
+
 CERTS_DIR_NAME = 'certs'
 DATA_DIR_NAME = '.stoobly'
 DB_FILE_NAME = 'stoobly_agent.sqlite3'
@@ -51,6 +53,21 @@ class DataDir:
 
     @property
     def context_dir_path(self):
+        # If the context directory is not set via self__.path,
+        if not self.__path:
+        
+            # And environment variable is set, use the environment variable to resolve the context directory
+            # This takes precedence over CONTEXT_DIR since this is set by the run command
+            if os.environ.get(AGENT_CONTEXT_DIR) != None:
+                return os.path.abspath(os.environ.get(AGENT_CONTEXT_DIR))
+
+            if os.environ.get(CONTEXT_DIR) != None:
+                return os.path.abspath(os.environ.get(CONTEXT_DIR))
+
+        return self.parent_path
+
+    @property
+    def parent_path(self):
         return os.path.abspath(os.path.join(self.path, '..'))
 
     @property
@@ -83,7 +100,7 @@ class DataDir:
 
     @property
     def db_dir_path(self):
-        db_dir_path = os.path.join(self.path, 'db')
+        db_dir_path = os.path.join(self.context_dir_path, DATA_DIR_NAME, 'db')
 
         if not os.path.exists(db_dir_path):
             os.makedirs(db_dir_path, exist_ok=True)
@@ -119,11 +136,11 @@ class DataDir:
 
     @property
     def settings_file_path(self):
-        return os.path.join(self.path, 'settings.yml')
+        return os.path.join(self.context_dir_path, DATA_DIR_NAME, 'settings.yml')
 
     @property
     def snapshots_dir_path(self):
-        snapshots_dir_path = os.path.join(self.path, 'snapshots')
+        snapshots_dir_path = os.path.join(self.context_dir_path, DATA_DIR_NAME, 'snapshots')
 
         if not os.path.exists(snapshots_dir_path):
             os.makedirs(snapshots_dir_path, exist_ok=True)
