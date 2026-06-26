@@ -1,5 +1,5 @@
+from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
-from stoobly_agent.config.data_dir import DataDir
 
 class ServiceDockerCompose():
   def __init__(self, app_dir_path: str, namespace: str, workflow_name: str, service_name: str, hostname: str):
@@ -9,6 +9,6 @@ class ServiceDockerCompose():
     self.proxy_container_name = f"{namespace}-{service_name}.proxy-1"
     self.init_container_name = f"{namespace}-{service_name}.init-1"
 
-    data_dir_path = DataDir.instance(app_dir_path).path
-    self.docker_compose_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/docker-compose.yml"
-    self.init_script_path = f"{data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/init"
+    app = App(app_dir_path)
+    self.docker_compose_path = f"{app.data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/docker-compose.yml"
+    self.init_script_path = f"{app.data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/init"

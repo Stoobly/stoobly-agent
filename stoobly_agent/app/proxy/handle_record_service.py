@@ -8,6 +8,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
@@ -106,28 +107,17 @@ def handle_response_record(context: RecordContext):
                 ([record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND], active_record_policy)
             )
 
-def __record_handler(context: RecordContext, request_model: RequestModel):
-    flow = context.flow
-    flow_copy = deepcopy(flow)
+def __record_handler(context: RecordContext, flow_copy: 'MitmproxyHTTPFlow', request_model: RequestModel):
     intercept_settings = context.intercept_settings
 
-    context.flow = flow_copy # Deep copy flow to prevent response modifications from persisting
-
-    active_record_strategy = get_active_mode_strategy(intercept_settings)
-    if active_record_strategy == record_strategy.MINIMAL:
-        minimize_headers(flow_copy)
-
-    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
-
-    __record_hook(lifecycle_hooks.BEFORE_RECORD, context)
+    __record_hook_with_flow(lifecycle_hooks.BEFORE_RECORD, context, flow_copy)
 
     try:
         res = inject_upload_request(request_model, intercept_settings)(flow_copy)
     except Exception:
         res = None
     finally:
-        __record_hook(lifecycle_hooks.AFTER_RECORD, context)
-        context.flow = flow # Reset flow
+        __record_hook_with_flow(lifecycle_hooks.AFTER_RECORD, context, flow_copy)
 
     if res:
         InterceptedRequestsLogger.info("Record success", request=flow_copy.request, response=flow_copy.response)
@@ -138,8 +128,17 @@ def __record_request(context: RecordContext, request_model: RequestModel):
     flow = context.flow
     RequestTransformationEntryLogger.log_recording(flow.request, flow.request.url)
 
+    flow_copy = deepcopy(flow)
+    intercept_settings = context.intercept_settings
+
+    active_record_strategy = get_active_mode_strategy(intercept_settings)
+    if active_record_strategy == record_strategy.MINIMAL:
+        minimize_headers(flow_copy)
+
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
+
     if os.environ.get(ENV) == TEST:
-        __record_handler(context, request_model)
+        __record_handler(context, flow_copy, request_model)
     else:
         # Use asyncio.run_in_executor to schedule record handler without blocking event loop
         # This integrates with mitmproxy's async event loop and limits thread usage
@@ -149,13 +148,13 @@ def __record_request(context: RecordContext, request_model: RequestModel):
             # This allows the event loop to process other requests while upload happens
             # When max_workers is reached, tasks are queued and processed as workers become available
             executor = __get_record_executor()
-            loop.run_in_executor(executor, __record_handler, context, request_model)
+            loop.run_in_executor(executor, __record_handler, context, flow_copy, request_model)
         except RuntimeError:
             # No running event loop, fall back to threading for compatibility
             # This should rarely happen in mitmproxy context
             thread = threading.Thread(
                 target=__record_handler,
-                args=[context, request_model],
+                args=[context, flow_copy, request_model],
             )
             thread.start()
 
@@ -167,6 +166,14 @@ def __get_record_executor():
         # This allows multiple concurrent uploads without creating unlimited threads
         _record_executor = ThreadPoolExecutor(max_workers=_MAX_WORKERS, thread_name_prefix='request-record')
     return _record_executor
+
+def __record_hook_with_flow(hook: str, context: RecordContext, flow: 'MitmproxyHTTPFlow'):
+    original_flow = context.flow
+    context.flow = flow
+    try:
+        __record_hook(hook, context)
+    finally:
+        context.flow = original_flow
 
 def __record_hook(hook: str, context: RecordContext):
     intercept_settings: InterceptSettings = context.intercept_settings

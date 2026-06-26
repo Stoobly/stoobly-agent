@@ -3,11 +3,7 @@ import click
 from stoobly_agent.app.cli.helpers.log_options import build_log_filters, log_list_options
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
-from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
-
-data_dir: DataDir = DataDir.instance()
-context_dir_path = data_dir.context_dir_path
 
 @click.group(
   epilog="Run 'stoobly-agent scaffold request COMMAND --help' for more information on a command.",
@@ -27,7 +23,7 @@ def request_log(ctx):
     pass
 
 @request_log.command(name="path", help="Get intercepted requests log path")
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--namespace', help='Workflow namespace to get logs for.')
 @click.argument('workflow_name')
 def request_log_path(**kwargs):
@@ -41,7 +37,7 @@ def request_log_path(**kwargs):
     )
 
 @request_log.command(name="list", help="List intercepted requests log entries")
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--namespace', help='Workflow namespace to list logs for.')
 @click.option('--service-name', default=None, help='Filter by service name.')
 @log_list_options
@@ -63,7 +59,7 @@ def request_log_list(**kwargs):
     )
 
 @request_log.command(name="delete", help="Delete intercepted requests log entries")
-@click.option('--app-dir-path', default=context_dir_path, help='Path to application directory.')
+@click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--namespace', help='Workflow namespace to delete logs for.')
 @click.argument('workflow_name')
 def request_log_delete(**kwargs):
