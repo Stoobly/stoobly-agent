@@ -153,6 +153,7 @@ def __filter_options(options):
     if 'ui_port' in options:
         del options['ui_port']
 
+    del options['context_dir_path']
     del options['log_level']
     del options['openapi_specification_path']
     del options['proxy_host']

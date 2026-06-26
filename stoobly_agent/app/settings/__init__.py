@@ -238,7 +238,7 @@ class Settings:
             fp.write(contents)
 
     def __detect_paths(self):
-        self.__settings_file_path = os.environ.get(env_vars.AGENT_CONFIG_PATH) or self.__data_dir.settings_file_path
+        self.__settings_file_path = os.environ.get(env_vars.AGENT_SETTINGS_PATH) or self.__data_dir.settings_file_path
         self.__schema_file_path = SourceDir.instance().schema_file_path
 
     def __load_settings(self, preserve_existing: bool = False):

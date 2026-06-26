@@ -37,7 +37,7 @@ def iter_commands(
           # Since this is containerized, use the normalized path 
           public_dir_path = os.path.relpath(
             command.normalize_path(command.public_dir_path),
-            command.normalize_path(command.app.context_dir_path)
+            command.normalize_path(command.app.app_dir_path)
           )
         else:
           public_dir_path = command.public_dir_path
@@ -50,7 +50,7 @@ def iter_commands(
         if containerized:
           response_fixtures_path = os.path.relpath(
             command.normalize_path(command.response_fixtures_path),
-            command.normalize_path(command.app.context_dir_path)
+            command.normalize_path(command.app.app_dir_path)
           )
         else:
           response_fixtures_path = command.response_fixtures_path
@@ -64,7 +64,7 @@ def iter_commands(
         if containerized:
           openapi_specification_path = os.path.relpath(
             command.normalize_path(openapi_specification_path),
-            command.normalize_path(command.app.context_dir_path)
+            command.normalize_path(command.app.app_dir_path)
           )
 
         openapi_specification_paths.append(f"{openapi_specification_path}:{url}")
@@ -77,7 +77,7 @@ def iter_commands(
         if containerized:
           relative_hooks_path = os.path.relpath(
             command.normalize_path(lifecycle_hooks_path),
-            command.normalize_path(command.app.context_dir_path)
+            command.normalize_path(command.app.app_dir_path)
           )
         else:
           relative_hooks_path = lifecycle_hooks_path
