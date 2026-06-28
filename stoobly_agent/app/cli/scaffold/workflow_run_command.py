@@ -31,7 +31,8 @@ class WorkflowRunCommand(WorkflowCommand):
     self.__namespace = kwargs.get('namespace') or self.workflow_name
     self.__workflow_namespace = kwargs.get('workflow_namespace') or WorkflowNamespace(app, self.__namespace)
 
-    self.__workflow_namespace.copy_dotenv()
+    if not kwargs.get('workflow_namespace'):
+      self.__workflow_namespace.copy_dotenv()
 
   @property
   def app_dir_path(self):

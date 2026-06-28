@@ -10,12 +10,12 @@ LOG_ID = 'WorkflowNamespace'
 
 class WorkflowNamespace():
 
-  def __init__(self, app: App, namespace: str = None):
+  def __init__(self, app: App, namespace: str = None, mkdir: bool = True):
     self._app = app
     self._namespace = namespace
     self._path = os.path.join(app.data_dir.tmp_dir_path, namespace or '')
 
-    if not os.path.exists(self._path):
+    if mkdir and not os.path.exists(self._path):
       os.makedirs(self._path, exist_ok=True)
 
   @property
@@ -61,7 +61,7 @@ class WorkflowNamespace():
   def copy_dotenv(self):
     dotenv_path = os.environ.get(DOTENV_PATH_ENV) or '.env'
 
-    if os.path.isfile(dotenv_path):
+    if os.path.isfile(dotenv_path) and os.path.exists(self._path):
       shutil.copy(dotenv_path, self.dotenv_path)
 
   def log_file_path(self, workflow_name: str):
