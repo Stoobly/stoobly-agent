@@ -6,9 +6,10 @@ import shutil
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
-from .constants import SERVICES_NAMESPACE
+from .constants import SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 
 if TYPE_CHECKING:
     from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
@@ -16,36 +17,45 @@ if TYPE_CHECKING:
 class App():
 
   # path: path to the folder where data dir directory resides e.g. ~
-  def __init__(self, path: str, **kwargs):
-    path = os.path.abspath(path) or os.getcwd()
-    data_dir: DataDir = DataDir.instance(path) 
+  def __init__(self, path: str = None, **kwargs):
+    containerized = kwargs.get('containerized', False)
 
-    self.__containerized = kwargs.get('containerized', False)
+    # Store host (kwarg) values before remapping operational paths.
+    self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
+    self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or os.environ.get(env_vars.CA_CERTS_DIR)
+    self.__host_certs_dir_path = kwargs.get('certs_dir_path') or os.environ.get(env_vars.CERTS_DIR)
+    self.__host_context_dir_path = kwargs.get('context_dir_path') or os.environ.get(env_vars.CONTEXT_DIR)
+    self.__host_runtime_app_dir_path = self.__host_app_dir_path if self.__host_app_dir_path else None
+
+    if containerized:
+      operational_root = STOOBLY_HOME_DIR
+    elif path is None:
+      operational_root = self.__host_app_dir_path
+      if operational_root is None:
+        operational_root = DataDir.instance().parent_path
+    else:
+      operational_root = os.path.abspath(path)
+
+    data_dir: DataDir = DataDir.instance(operational_root)
+
+    self.__containerized = containerized
     self.__data_dir = data_dir
     self.__data_dir_path = data_dir.path
-    self.__dir_path = path
+    self.__dir_path = operational_root
     self.__scaffold_namespace = kwargs.get('scaffold_namespace') or SERVICES_NAMESPACE
     self.__skip_validate_path = not not kwargs.get('dry_run')
-    
-    # Store host (kwarg) values
-    self.__host_app_dir_path = kwargs.get('app_dir_path')
-    self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path')
-    self.__host_certs_dir_path = kwargs.get('certs_dir_path')
-    self.__host_context_dir_path = kwargs.get('context_dir_path')
-    self.__host_runtime_app_dir_path = self.__host_app_dir_path if self.__host_app_dir_path else None
-    
-    # If containerized, use data_dir/constructor values; otherwise use kwargs if provided
-    if self.__containerized:
-      self.__app_data_dir = DataDir.instance(path)
-      self.__app_dir_path = path
+
+    if containerized:
+      self.__app_data_dir = data_dir
+      self.__app_dir_path = operational_root
       self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
       self.__certs_dir_path = data_dir.certs_dir_path
       self.__context_dir_path = data_dir.context_dir_path
-      self.__runtime_app_data_dir = self.app_data_dir
+      self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or path)
-      self.__app_dir_path = self.__host_app_dir_path or path
+      self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or operational_root)
+      self.__app_dir_path = self.__host_app_dir_path or operational_root
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path

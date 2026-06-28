@@ -1,8 +1,8 @@
 from .app import App
 
-# Intention is to not pass kwargs to ContainerizedApp to avoid overriding path options e.g. --context-dir-path
-# In a containerized environment, the context-dir-path is the cwd
-# However, passing kwargs is still allowed if needed
+# Host paths (app-dir-path, context-dir-path, etc.) are passed via kwargs for compose env.
+# Operational paths resolve under STOOBLY_HOME_DIR inside the container.
 class ContainerizedApp(App):
-  def __init__(self, path: str, **kwargs):
-    super().__init__(path, **kwargs)
+  def __init__(self, **kwargs):
+    kwargs['containerized'] = True
+    super().__init__(None, **kwargs)

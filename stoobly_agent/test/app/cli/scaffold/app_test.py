@@ -3,6 +3,7 @@ import os
 import pytest
 import shutil
 
+from stoobly_agent.app.cli.scaffold import app as app_module
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
@@ -72,12 +73,16 @@ class TestApp:
             assert app.app_dir_path == os.path.abspath(custom_app_dir)
             assert app.host_app_dir_path == os.path.abspath(custom_app_dir)
 
-        def test_init_with_containerized_flag(self, tmp_app_dir):
+        def test_init_with_containerized_flag(self, tmp_path, monkeypatch):
             """Test initialization with containerized flag"""
-            app = App(tmp_app_dir, containerized=True)
-            
+            container_root = tmp_path / 'container'
+            container_root.mkdir()
+            monkeypatch.setattr(app_module, 'STOOBLY_HOME_DIR', str(container_root))
+
+            app = App('/host/path', containerized=True)
+
             assert app.containerized
-            assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+            assert app.app_dir_path == str(container_root)
 
         def test_init_with_custom_scaffold_namespace(self, tmp_app_dir):
             """Test initialization with custom scaffold namespace"""
@@ -260,22 +265,59 @@ class TestApp:
     class TestContainerizedMode:
         """Test App behavior in containerized mode"""
 
-        def test_containerized_mode_uses_constructor_path(self, tmp_app_dir):
-            """Test containerized mode uses path from constructor"""
-            app = App(tmp_app_dir, containerized=True)
-            
-            assert app.containerized
-            assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+        def test_containerized_mode_uses_container_root(self, tmp_path, monkeypatch):
+            """Test containerized mode uses STOOBLY_HOME_DIR for operational paths"""
+            container_root = tmp_path / 'container'
+            scaffold_path = container_root / DATA_DIR_NAME / SERVICES_NAMESPACE
+            scaffold_path.mkdir(parents=True)
+            monkeypatch.setattr(app_module, 'STOOBLY_HOME_DIR', str(container_root))
 
-        def test_containerized_mode_ignores_custom_app_dir_path(self, tmp_app_dir, tmp_path):
-            """Test containerized mode ignores app_dir_path kwarg"""
-            custom_app_dir = os.path.join(tmp_path, 'custom-app')
-            os.makedirs(custom_app_dir, exist_ok=True)
-            
-            app = App(tmp_app_dir, containerized=True, app_dir_path=custom_app_dir)
-            
-            # In containerized mode, should use tmp_app_dir, not custom_app_dir
-            assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+            app = App('/host/path', containerized=True)
+
+            assert app.containerized
+            assert app.app_dir_path == str(container_root)
+            assert app.scaffold_namespace_path == str(scaffold_path)
+
+        def test_containerized_mode_preserves_host_app_dir_path(self, tmp_app_dir, tmp_path, monkeypatch):
+            """Test containerized mode preserves host app_dir_path kwarg"""
+            host_app_dir = os.path.join(tmp_path, 'host-app')
+            os.makedirs(host_app_dir, exist_ok=True)
+
+            container_root = tmp_path / 'container'
+            scaffold_path = container_root / DATA_DIR_NAME / SERVICES_NAMESPACE
+            scaffold_path.mkdir(parents=True)
+            monkeypatch.setattr(app_module, 'STOOBLY_HOME_DIR', str(container_root))
+
+            app = App(
+                '/host/path',
+                containerized=True,
+                app_dir_path=host_app_dir,
+                context_dir_path=host_app_dir,
+            )
+
+            assert app.app_dir_path == str(container_root)
+            assert app.host_app_dir_path == os.path.abspath(host_app_dir)
+            assert app.host_context_dir_path == os.path.abspath(host_app_dir)
+
+        def test_containerized_validates_mount_paths(self, tmp_path, monkeypatch):
+            """Test containerized mode validates scaffold under container mount root"""
+            container_root = tmp_path / 'container'
+            scaffold_path = container_root / DATA_DIR_NAME / SERVICES_NAMESPACE
+            scaffold_path.mkdir(parents=True)
+            monkeypatch.setattr(app_module, 'STOOBLY_HOME_DIR', str(container_root))
+
+            host_app_dir = tmp_path / 'host-app'
+            host_app_dir.mkdir()
+
+            app = App(
+                str(host_app_dir),
+                containerized=True,
+                app_dir_path=str(host_app_dir),
+                context_dir_path=str(host_app_dir),
+            )
+
+            assert app.valid
+            assert app.scaffold_namespace_path == str(scaffold_path)
 
     class TestValid:
         """Test App.valid property"""
