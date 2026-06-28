@@ -449,10 +449,10 @@ def down(**kwargs):
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=False)
+
   if not kwargs.get('dry_run'):
-    namespace = kwargs['namespace']
-    tmp_namespace_path = os.path.join(app.data_dir.tmp_dir_path, namespace)
-    if not os.path.exists(tmp_namespace_path):
+    if not os.path.exists(workflow_namespace.path):
       print(f"Error: Workflow '{kwargs['workflow_name']}' is not running.", file=sys.stderr)
       sys.exit(1)
 
@@ -461,13 +461,12 @@ def down(**kwargs):
   )
 
   mkdir = not kwargs.get('dry_run')
-  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=mkdir)
   script = __build_script(app, mkdir=mkdir, workflow_namespace=workflow_namespace, **kwargs)
 
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
 
-  if app_config.copy_on_workflow_up:
+  if app_config.copy_on_workflow_up and not kwargs.get('dry_run'):
     app.denormalize_configure(workflow_namespace)
 
   # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
@@ -595,10 +594,10 @@ def logs(**kwargs):
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=False)
+
   if not kwargs.get('dry_run'):
-    namespace = kwargs['namespace']
-    tmp_namespace_path = os.path.join(app.data_dir.tmp_dir_path, namespace)
-    if not os.path.exists(tmp_namespace_path):
+    if not os.path.exists(workflow_namespace.path):
       print(f"Error: Workflow '{kwargs['workflow_name']}' is not running.", file=sys.stderr)
       sys.exit(1)
 
@@ -606,7 +605,6 @@ def logs(**kwargs):
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
 
-  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'], mkdir=False)
   script = __build_script(app, mkdir=False, workflow_namespace=workflow_namespace, **kwargs)
 
   # Determine which workflow command to use based on app configuration
@@ -683,9 +681,9 @@ def up(**kwargs):
   services = __get_services(
     app, service=kwargs['service'], workflow=[kwargs['workflow_name']]
   )
-  script = __build_script(app, **kwargs)
-
   workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
+  script = __build_script(app, workflow_namespace=workflow_namespace, **kwargs)
+
   app_config = AppConfig(app.scaffold_namespace_path)
 
   if app_config.copy_on_workflow_up:

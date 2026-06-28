@@ -142,6 +142,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     for service in self.services:
       config = { **options }
       config['service_name'] = service
+      config['workflow_namespace'] = self.workflow_namespace
       command = DockerWorkflowRunCommand(self.app, **config)
       commands.append(command)
 
@@ -168,9 +169,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
         user_id=options.get('user_id')
       )
       
-      if exec_command and self.script:
+      if exec_command and (self.script or self.dry_run):
         self.exec(exec_command)
-    
+
     # After services are stopped, their network needs to be removed
     if commands:
       command = commands[0]
