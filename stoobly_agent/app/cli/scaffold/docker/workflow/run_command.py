@@ -244,6 +244,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     for service in filtered_services:
       config = dict(options)
       config['service_name'] = service
+      config['workflow_namespace'] = self.workflow_namespace
       command = DockerWorkflowRunCommand(self.app, **config)
       commands.append((service, command))
     
