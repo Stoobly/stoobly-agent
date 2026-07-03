@@ -103,3 +103,40 @@ class TestDataDir():
       DataDir._instances = None
       shutil.rmtree(temp_dir)
       os.chdir(original_cwd)
+
+  def test_path_with_stoobly_resolves_to_grandparent(self, original_cwd: str):
+    os.environ[ENV] = NONE
+    DataDir._instances = None
+
+    temp_dir = os.path.join(original_cwd, 'tmp')
+    data_dir_path = os.path.join(temp_dir, DATA_DIR_NAME)
+    nested_path = os.path.join(data_dir_path, 'db')
+    os.makedirs(nested_path, exist_ok=True)
+
+    try:
+      result = DataDir.instance(nested_path).path
+
+      assert result == data_dir_path
+
+    finally:
+      DataDir._instances = None
+      shutil.rmtree(temp_dir)
+
+  def test_path_with_stoobly_in_tmp_keeps_nested_stoobly(self, original_cwd: str):
+    os.environ[ENV] = NONE
+    DataDir._instances = None
+
+    temp_dir = os.path.join(original_cwd, 'tmp')
+    parent_data_dir_path = os.path.join(temp_dir, DATA_DIR_NAME)
+    nested_data_dir_path = os.path.join(parent_data_dir_path, 'tmp', DATA_DIR_NAME)
+    os.makedirs(nested_data_dir_path, exist_ok=True)
+
+    try:
+      result = DataDir.instance(nested_data_dir_path).path
+
+      assert result == nested_data_dir_path
+      assert result != parent_data_dir_path
+
+    finally:
+      DataDir._instances = None
+      shutil.rmtree(temp_dir)
