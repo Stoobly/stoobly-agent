@@ -7,6 +7,7 @@ from typing import List, TYPE_CHECKING
 if TYPE_CHECKING:
   from stoobly_agent.app.cli.scaffold.docker.workflow.run_command import DockerWorkflowRunCommand
 
+from stoobly_agent import COMMAND
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
 from stoobly_agent.app.cli.scaffold.constants import APP_DIR, PROXY_MODE_REVERSE, SERVICES_NAMESPACE
@@ -89,7 +90,7 @@ class GatewayBase():
         if self.proxy_mode == PROXY_MODE_REVERSE:
           hostnames, ports = self.__find_hosts()
         else:
-          hostnames = [CORE_GATEWAY_SERVICE_NAME]
+          hostnames = [COMMAND]
           ports = []
 
           if self.app_config:
