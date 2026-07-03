@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner
 from typing import List
 
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
@@ -73,7 +73,7 @@ class TestReplay():
 
         @pytest.fixture(scope='class')
         def recorded_request(self, runner: CliRunner, created_scenario: Scenario):
-            record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
+            record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
