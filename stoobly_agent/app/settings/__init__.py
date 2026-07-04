@@ -220,8 +220,8 @@ class Settings:
         from filelock import FileLock
 
         lock_file = f".{SETTINGS_YML}.lock"
-        lock_file_path = os.path.join(os.path.dirname(self.__settings_file_path), lock_file)
-        lock = FileLock(lock_file_path)  # lock file alongside the target
+        lock_file_path = os.path.join(self.__data_dir.tmp_dir_path, lock_file)
+        lock = FileLock(lock_file_path)
 
         with lock:
             with open(self.__settings_file_path, 'w') as fp:
