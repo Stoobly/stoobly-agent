@@ -23,7 +23,7 @@ class DataDir:
             self.__path = path
 
             if path:
-                self.__data_dir_path = self.resolve_data_dir_path(path)
+                self.__data_dir_path = os.path.join(os.path.abspath(path), DATA_DIR_NAME)
             else:
                 cwd = os.getcwd()
                 self.__data_dir_path = self.find_data_dir(cwd)
@@ -232,7 +232,6 @@ class DataDir:
             with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
                 fp.write(
                     "\n".join([
-                        '.settings.yml.lock',
                         'ca_certs',
                         'certs',
                         'db',
@@ -242,25 +241,6 @@ class DataDir:
                         TMP_DIR_NAME
                     ])
                 )
-
-    @classmethod
-    def resolve_data_dir_path(cls, path: str) -> str:
-        # When an explicit path already contains .stoobly, resolve to that directory
-        # instead of appending another .stoobly segment.
-        abs_path = os.path.abspath(path)
-        parts = abs_path.split(os.sep)
-        stoobly_indices = [i for i, part in enumerate(parts) if part == DATA_DIR_NAME]
-
-        if not stoobly_indices:
-            return os.path.join(abs_path, DATA_DIR_NAME)
-
-        # Prefer the innermost .stoobly under .stoobly/tmp (e.g. .stoobly/tmp/.stoobly).
-        for idx in reversed(stoobly_indices):
-            if idx >= 2 and parts[idx - 1] == TMP_DIR_NAME and parts[idx - 2] == DATA_DIR_NAME:
-                return os.sep.join(parts[:idx + 1])
-
-        # Otherwise use the outermost .stoobly ancestor in the path.
-        return os.sep.join(parts[:stoobly_indices[0] + 1])
 
     # If the current working directory does not contain a .stoobly folder,
     # then search in the parent directories until the home directory.
