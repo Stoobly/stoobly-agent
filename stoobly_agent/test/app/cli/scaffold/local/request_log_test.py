@@ -25,7 +25,11 @@ from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import (
+    DETERMINISTIC_GET_REQUEST_HOST,
+    DETERMINISTIC_GET_REQUEST_URL,
+    reset,
+)
 from typing import Optional
 
 
@@ -42,6 +46,11 @@ def find_log_entry(output: str, message: str, method: str = None) -> Optional[di
         except json.JSONDecodeError:
             continue
     return None
+
+
+@pytest.fixture
+def deterministic_get_request_unknown_url():
+    return DETERMINISTIC_GET_REQUEST_URL.replace('/list/all', '/unknown-endpoint')
 
 
 @pytest.mark.e2e
@@ -187,7 +196,7 @@ class TestRequestLogWithRecordedRequestsE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield "dog.ceo"
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -270,7 +279,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         # Check specific field values
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert 'dog.ceo' in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
         assert 'scenario_key' in entry
 
@@ -279,14 +288,14 @@ class TestRequestLogWithRecordedRequestsE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
+    def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str, deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
         # Clear log first
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger 499
         res = requests.get(
-            'https://dog.ceo/api/breeds/unknown-endpoint',
+            deterministic_get_request_unknown_url,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -354,7 +363,7 @@ class TestRequestLogWithTestWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield "dog.ceo"
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -436,7 +445,7 @@ class TestRequestLogWithTestWorkflowE2e():
         # Check specific field values
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert 'dog.ceo' in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
         assert 'scenario_key' in entry
 
@@ -445,14 +454,14 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
+    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
-            'https://dog.ceo/api/breeds/unknown-endpoint',
+            deterministic_get_request_unknown_url,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -520,7 +529,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield "dog.ceo"
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -581,7 +590,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert 'dog.ceo' in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
 
         assert entry.get('timestamp'), "timestamp should exist and not be empty"
@@ -592,7 +601,7 @@ class TestRequestLogWithRecordWorkflowE2e():
         """Test that OPTIONS requests are not logged as record failures."""
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
-        # In record mode, OPTIONS is forwarded to the real server (e.g. dog.ceo returns 405).
+        # In record mode, OPTIONS is forwarded to the real server (e.g. returns 405).
         # Unlike mock mode, there is no synthetic CORS 200 — status code is not relevant here.
         requests.options(
             DETERMINISTIC_GET_REQUEST_URL,
@@ -634,7 +643,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield "dog.ceo"
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -689,7 +698,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert 'dog.ceo' in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
 
         assert entry.get('timestamp'), "timestamp should exist and not be empty"

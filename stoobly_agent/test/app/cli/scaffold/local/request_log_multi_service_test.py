@@ -18,11 +18,11 @@ from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLog
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import count_log_entries, find_all_log_entries
-from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_HOST, DETERMINISTIC_GET_REQUEST_URL, reset
 
 
 PROXY_URL = os.environ.get("STOOBLY_PROXY_URL", "http://localhost:8081")
-SERVICES = ['dog.ceo', 'example.com', 'docs.stoobly.com']
+SERVICES = [DETERMINISTIC_GET_REQUEST_HOST, 'example.com', 'docs.stoobly.com']
 
 # These tests bind to PROXY_URL and must run sequentially — parallel execution
 # (e.g. pytest-xdist) will cause port conflicts across test classes.
@@ -113,7 +113,7 @@ class TestMultiServiceLoggingCompleteness:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -195,7 +195,7 @@ class TestMultiServiceUrlFilter:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -220,13 +220,13 @@ class TestMultiServiceUrlFilter:
         self._flush()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--app-dir-path', app_dir_path])
+            '--url', DETERMINISTIC_GET_REQUEST_HOST, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
-        assert entries, "Expected log entries with --url dog.ceo filter"
+        assert entries, f"Expected log entries with --url {DETERMINISTIC_GET_REQUEST_HOST} filter"
         for e in entries:
-            assert 'dog.ceo' in e.get('url', ''), f"Expected dog.ceo in URL, got: {e.get('url')}"
+            assert DETERMINISTIC_GET_REQUEST_HOST in e.get('url', ''), f"Expected {DETERMINISTIC_GET_REQUEST_HOST} in URL, got: {e.get('url')}"
 
     def test_url_filter_excludes_other_services(self, app_dir_path, runner):
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
@@ -240,7 +240,7 @@ class TestMultiServiceUrlFilter:
         entries = find_all_log_entries(result.output)
         for e in entries:
             url = e.get('url', '')
-            assert 'dog.ceo' not in url, f"dog.ceo should be excluded, got: {url}"
+            assert DETERMINISTIC_GET_REQUEST_HOST not in url, f"{DETERMINISTIC_GET_REQUEST_HOST} should be excluded, got: {url}"
             assert 'docs.stoobly.com' not in url, f"docs.stoobly.com should be excluded, got: {url}"
 
 
@@ -269,7 +269,7 @@ class TestMultiServiceLevelFilter:
 
     @pytest.fixture(scope='class', autouse=True)
     def record_then_mock_workflow(self, create_scaffold_setup, runner, app_dir_path, settings):
-        """Record GET /api/breeds/list/all on dog.ceo, then switch to mock workflow."""
+        """Record DETERMINISTIC_GET_REQUEST_URL, then switch to mock workflow."""
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
 
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_RECORD_TYPE)
@@ -293,7 +293,7 @@ class TestMultiServiceLevelFilter:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
         yield
 
@@ -343,15 +343,15 @@ class TestMultiServiceLevelFilter:
         assert result.exit_code == 0
 
         if res.status_code != 200:
-            pytest.skip(f"dog.ceo returned {res.status_code}; skipping INFO-level assertions")
+            pytest.skip(f"{DETERMINISTIC_GET_REQUEST_HOST} returned {res.status_code}; skipping INFO-level assertions")
 
         entries = find_all_log_entries(result.output)
         assert entries, "Expected INFO log entries"
         for e in entries:
             assert e.get('level') == 'INFO', f"Expected INFO, got {e.get('level')}"
 
-        dog_entries = [e for e in entries if 'dog.ceo' in e.get('url', '')]
-        assert any(e.get('status_code') == 200 for e in dog_entries), "Expected 200 entry for dog.ceo"
+        deterministic_host_entries = [e for e in entries if DETERMINISTIC_GET_REQUEST_HOST in e.get('url', '')]
+        assert any(e.get('status_code') == 200 for e in deterministic_host_entries), f"Expected 200 entry for {DETERMINISTIC_GET_REQUEST_HOST}"
 
     def test_both_levels_present_without_filter(self, app_dir_path, runner):
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
@@ -406,14 +406,14 @@ class TestScenarioChangeDelimiter:
     @pytest.fixture(scope='class', autouse=True)
     def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
-        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'dog.ceo', 'dog', True)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, DETERMINISTIC_GET_REQUEST_HOST, 'dog', True)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -425,11 +425,11 @@ class TestScenarioChangeDelimiter:
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
-        requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
+        requests.get(f'https://{DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
 
         set_scenario_key_on_settings(settings, scenario_b_key)
 
-        requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
+        requests.get(f'https://{DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
@@ -480,7 +480,7 @@ class TestConcurrentHighTrafficLogging:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -552,7 +552,7 @@ class TestConcurrentScenarioChangeRace:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -630,7 +630,7 @@ class TestMultiScenarioFilter:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -641,9 +641,9 @@ class TestMultiScenarioFilter:
     def test_scenario_name_filter_isolates_entries(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
-        # Phase A: send to dog.ceo and example.com under scenario_a
+        # Phase A: send to DETERMINISTIC_GET_REQUEST_HOST and example.com under scenario_a
         set_scenario_key_on_settings(settings, scenario_a_key)
-        for hostname in ['dog.ceo', 'example.com']:
+        for hostname in [DETERMINISTIC_GET_REQUEST_HOST, 'example.com']:
             requests.get(
                 f'https://{hostname}/',
                 proxies={'http': PROXY_URL, 'https': PROXY_URL},
@@ -715,7 +715,7 @@ class TestScenarioChangeMidBurst:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -820,7 +820,7 @@ class TestMultiFilterComposition:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -837,23 +837,23 @@ class TestMultiFilterComposition:
             )
 
     def test_url_and_level_filter(self, app_dir_path, runner):
-        """--url dog.ceo --level error returns only ERROR entries for dog.ceo, excluding other services."""
+        """--url filter with --level error returns only ERROR entries for the host, excluding other services."""
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all()
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--level', 'error', '--app-dir-path', app_dir_path])
+            '--url', DETERMINISTIC_GET_REQUEST_HOST, '--level', 'error', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
-        assert entries, "Expected entries with --url dog.ceo --level error"
+        assert entries, f"Expected entries with --url {DETERMINISTIC_GET_REQUEST_HOST} --level error"
         for e in entries:
-            assert 'dog.ceo' in e.get('url', ''), f"URL filter failed: {e.get('url')}"
+            assert DETERMINISTIC_GET_REQUEST_HOST in e.get('url', ''), f"URL filter failed: {e.get('url')}"
             assert e.get('level') == 'ERROR', f"Level filter failed: {e.get('level')}"
 
     def test_url_and_scenario_filter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        """--url dog.ceo --scenario-name alpha returns only alpha-scenario entries for dog.ceo."""
+        """--url filter with --scenario-name returns only matching-scenario entries for the host."""
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
@@ -863,13 +863,13 @@ class TestMultiFilterComposition:
         self._send_to_all()
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
-            '--url', 'dog.ceo', '--scenario-name', 'compose-scenario-alpha', '--app-dir-path', app_dir_path])
+            '--url', DETERMINISTIC_GET_REQUEST_HOST, '--scenario-name', 'compose-scenario-alpha', '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
 
         entries = find_all_log_entries(result.output)
-        assert entries, "Expected entries with --url dog.ceo --scenario-name compose-scenario-alpha"
+        assert entries, f"Expected entries with --url {DETERMINISTIC_GET_REQUEST_HOST} --scenario-name compose-scenario-alpha"
         for e in entries:
-            assert 'dog.ceo' in e.get('url', ''), f"URL filter failed: {e.get('url')}"
+            assert DETERMINISTIC_GET_REQUEST_HOST in e.get('url', ''), f"URL filter failed: {e.get('url')}"
             assert 'compose-scenario-alpha' in e.get('scenario_name', ''), \
                 f"Scenario filter failed: {e.get('scenario_name')}"
             assert 'compose-scenario-beta' not in e.get('scenario_name', ''), \
@@ -929,7 +929,7 @@ class TestWorkflowRestartLogPersistence:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -960,7 +960,7 @@ class TestWorkflowRestartLogPersistence:
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
         # Session 2: fresh log file — only post-restart entries should be present
         for hostname in SERVICES:
@@ -1011,14 +1011,14 @@ class TestPostTruncateNoSpuriousDelimiter:
     @pytest.fixture(scope='class', autouse=True)
     def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
-        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'dog.ceo', 'dog', True)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, DETERMINISTIC_GET_REQUEST_HOST, 'dog', True)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
-        wait_for_forward_proxy_intercept(PROXY_URL, 'dog.ceo')
+        wait_for_forward_proxy_intercept(PROXY_URL, DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
     def workflow_down(self, workflow_up, runner, app_dir_path):
@@ -1030,14 +1030,14 @@ class TestPostTruncateNoSpuriousDelimiter:
         # Establish scenario_a as the active scenario
         set_scenario_key_on_settings(settings, scenario_a_key)
 
-        requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
+        requests.get(f'https://{DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
         InterceptedRequestsLogger.flush()
 
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Same scenario continues — the post-clear log should have no delimiter
-        requests.get('https://dog.ceo/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
+        requests.get(f'https://{DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
         time.sleep(0.5)
 
         result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])

@@ -5,6 +5,7 @@ import shutil
 
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlparse
 
 from stoobly_agent import VERSION
 from stoobly_agent.config.constants.env_vars import ENV
@@ -16,6 +17,7 @@ from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.migrate_service import migrate
 
 DETERMINISTIC_GET_REQUEST_URL = 'https://dog.ceo/api/breeds/list/all'
+DETERMINISTIC_GET_REQUEST_HOST = urlparse(DETERMINISTIC_GET_REQUEST_URL).hostname
 NON_DETERMINISTIC_GET_REQUEST_URL = 'https://www.google.com'
 
 with open(Path(__file__).parent / 'mock_data' / 'deterministic_get_request_response.json') as fp:
