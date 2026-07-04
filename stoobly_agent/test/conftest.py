@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-import requests
 
 from stoobly_agent.test.test_helper import (
   DETERMINISTIC_GET_REQUEST_URL,
@@ -14,6 +13,8 @@ def stub_deterministic_get_request(request):
   if 'DETERMINISTIC_GET_REQUEST_URL' not in getattr(request.module, '__dict__', {}):
     yield
     return
+
+  import requests
 
   original_send = requests.Session.send
 

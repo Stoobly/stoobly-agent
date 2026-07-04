@@ -92,8 +92,9 @@ def validate_is_local_matches(key: Union[RequestKey, ScenarioKey]):
     project_key = ProjectKey(raw_project_key)
     is_local = project_key.is_local
 
-  if is_local != ProjectKey.check_is_local(key.project_id):
-    raise InvalidRequestKey(f"Error: Change to {'local' if is_local else 'remote'} project")
+  key_is_local = ProjectKey.check_is_local(key.project_id)
+  if is_local != key_is_local:
+    raise InvalidRequestKey(f"Error: Change to {'local' if key_is_local else 'remote'} project")
 
 def validate_request_key(request_key) -> RequestKey:
   try:
