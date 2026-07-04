@@ -254,6 +254,11 @@ class DataDir:
         if not stoobly_indices:
             return os.path.join(abs_path, DATA_DIR_NAME)
 
+        # Prefer the innermost .stoobly under .stoobly/tmp (e.g. .stoobly/tmp/.stoobly).
+        for idx in reversed(stoobly_indices):
+            if idx >= 2 and parts[idx - 1] == TMP_DIR_NAME and parts[idx - 2] == DATA_DIR_NAME:
+                return os.sep.join(parts[:idx + 1])
+
         # Otherwise use the outermost .stoobly ancestor in the path.
         return os.sep.join(parts[:stoobly_indices[0] + 1])
 
