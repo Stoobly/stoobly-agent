@@ -19,7 +19,6 @@ if [ "$(id -u)" = '0' ]; then
 
         if [ -d "$data_dir" ]; then
             find "$data_dir" -maxdepth 1 \! -user $user -exec chown $user:$user '{}' +
-        fi
         elif [ -d "$user_home/$data_dir" ]; then
             find "$user_home/$data_dir" -maxdepth 1 \! -user $user -exec chown $user:$user '{}' +
         fi
