@@ -18,7 +18,7 @@ from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLog
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import count_log_entries, find_all_log_entries
-from stoobly_agent.test.test_helper import reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 
 PROXY_URL = os.environ.get("STOOBLY_PROXY_URL", "http://localhost:8081")
@@ -282,7 +282,7 @@ class TestMultiServiceLevelFilter:
         settings.load()
 
         requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': PROXY_URL, 'https': PROXY_URL},
             verify=False,
         )
@@ -325,7 +325,7 @@ class TestMultiServiceLevelFilter:
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': PROXY_URL, 'https': PROXY_URL},
             verify=False,
         )
@@ -357,7 +357,7 @@ class TestMultiServiceLevelFilter:
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': PROXY_URL, 'https': PROXY_URL},
             verify=False,
         )

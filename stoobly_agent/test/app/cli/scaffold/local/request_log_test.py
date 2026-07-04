@@ -25,7 +25,7 @@ from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
-from stoobly_agent.test.test_helper import reset
+from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 from typing import Optional
 
 
@@ -220,7 +220,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         settings.load()
 
         requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -247,7 +247,7 @@ class TestRequestLogWithRecordedRequestsE2e():
 
         # Make the recorded request - should succeed with mocked response
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -311,7 +311,7 @@ class TestRequestLogWithRecordedRequestsE2e():
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -387,7 +387,7 @@ class TestRequestLogWithTestWorkflowE2e():
         settings.load()
 
         requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -414,7 +414,7 @@ class TestRequestLogWithTestWorkflowE2e():
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -477,7 +477,7 @@ class TestRequestLogWithTestWorkflowE2e():
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -561,7 +561,7 @@ class TestRequestLogWithRecordWorkflowE2e():
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -595,7 +595,7 @@ class TestRequestLogWithRecordWorkflowE2e():
         # In record mode, OPTIONS is forwarded to the real server (e.g. dog.ceo returns 405).
         # Unlike mock mode, there is no synthetic CORS 200 — status code is not relevant here.
         requests.options(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -669,7 +669,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -703,7 +703,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         # In normalize mode, OPTIONS is forwarded to the real server.
         # It should not appear as a "Normalize failure" in the request log.
         requests.options(
-            'https://dog.ceo/api/breeds/list/all',
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
