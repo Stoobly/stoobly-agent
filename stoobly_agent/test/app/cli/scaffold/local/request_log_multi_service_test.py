@@ -1,6 +1,8 @@
 import os
 import pytest
 import requests
+import shutil
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
@@ -93,10 +95,15 @@ class TestMultiServiceLoggingCompleteness:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -175,10 +182,15 @@ class TestMultiServiceUrlFilter:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -252,10 +264,15 @@ class TestMultiServiceLevelFilter:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -386,10 +403,15 @@ class TestScenarioChangeDelimiter:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -460,10 +482,15 @@ class TestConcurrentHighTrafficLogging:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -524,10 +551,15 @@ class TestConcurrentScenarioChangeRace:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -602,10 +634,15 @@ class TestMultiScenarioFilter:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -687,10 +724,15 @@ class TestScenarioChangeMidBurst:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -792,10 +834,15 @@ class TestMultiFilterComposition:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -909,10 +956,15 @@ class TestWorkflowRestartLogPersistence:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
@@ -995,10 +1047,15 @@ class TestPostTruncateNoSpuriousDelimiter:
     def settings(self):
         return reset()
 
-    @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
-        data_dir = DataDir.instance()
-        yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    @pytest.fixture(scope='class')
+    def temp_dir(self):
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture(scope='class')
+    def app_dir_path(self, temp_dir, app_name):
+        return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
     def app_name(self):
