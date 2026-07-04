@@ -19,6 +19,7 @@ from stoobly_agent.lib.orm.migrate_service import migrate
 DETERMINISTIC_GET_REQUEST_URL = 'https://dog.ceo/api/breeds/list/all'
 DETERMINISTIC_GET_REQUEST_HOST = urlparse(DETERMINISTIC_GET_REQUEST_URL).hostname
 NON_DETERMINISTIC_GET_REQUEST_URL = 'https://www.google.com'
+NON_DETERMINISTIC_GET_REQUEST_HOST = urlparse(NON_DETERMINISTIC_GET_REQUEST_URL).hostname
 
 with open(Path(__file__).parent / 'mock_data' / 'deterministic_get_request_response.json') as fp:
   DETERMINISTIC_GET_REQUEST_RESPONSE = json.load(fp)
