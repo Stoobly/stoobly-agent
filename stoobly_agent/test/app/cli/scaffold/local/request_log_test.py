@@ -68,15 +68,11 @@ class TestRequestLogE2e():
     def app_name(self):
         yield "request-log-test-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -192,15 +188,11 @@ class TestRequestLogWithRecordedRequestsE2e():
     def app_name(self):
         yield "request-log-recorded-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -363,15 +355,11 @@ class TestRequestLogWithTestWorkflowE2e():
     def app_name(self):
         yield "request-log-test-workflow-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -533,15 +521,11 @@ class TestRequestLogWithRecordWorkflowE2e():
     def app_name(self):
         yield "request-log-record-workflow-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -651,15 +635,11 @@ class TestRequestLogWithNormalizeWorkflowE2e():
     def app_name(self):
         yield "request-log-normalize-workflow-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def hostname(self):
@@ -763,15 +743,11 @@ class TestRequestLogFromDifferentWorkingDirectory():
     def app_name(self):
         yield "request-log-diff-cwd-app"
 
-    @pytest.fixture(scope='class')
-    def temp_dir(self):
-        temp_dir = tempfile.mkdtemp()
-        yield temp_dir
-        shutil.rmtree(temp_dir)
-
-    @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
-        return os.path.join(temp_dir, app_name)
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
 
     @pytest.fixture(scope='class')
     def different_working_dir(self):

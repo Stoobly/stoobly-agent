@@ -1,7 +1,5 @@
 import os
 import pytest
-import shutil
-import tempfile
 import time
 import hashlib
 import threading
@@ -9,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.context_lock import ContextLock, FOLDER_COUNT_INTERVAL_SECONDS
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.test.test_helper import reset
 
 class TestContextLock():
@@ -18,18 +17,10 @@ class TestContextLock():
     return reset()
 
   @pytest.fixture(scope='class')
-  def temp_dir(self):
-    temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    shutil.rmtree(temp_dir)
-
-  @pytest.fixture(scope='class')
-  def app_name(self):
-    return 'context-lock-test-app'
-
-  @pytest.fixture(scope='class')
-  def app_dir_path(self, temp_dir, app_name):
-    return os.path.join(temp_dir, app_name)
+  def app_dir_path(self):
+    data_dir: DataDir = DataDir.instance()
+    path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    yield path
 
   @pytest.fixture
   def app(self, app_dir_path):

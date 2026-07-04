@@ -2,8 +2,6 @@ import os
 import pdb
 import pytest
 import requests
-import shutil
-import tempfile
 import time
 import yaml
 
@@ -22,6 +20,7 @@ from stoobly_agent.app.cli.scaffold.workflow_command import WorkflowCommand
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.test_helper import reset
@@ -41,15 +40,11 @@ class TestLocalScaffoldE2e():
   def app_name(self):
     yield "local-test-app"
 
-  @pytest.fixture(scope='class')
-  def temp_dir(self):
-    temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    shutil.rmtree(temp_dir)
-
-  @pytest.fixture(scope='class')
-  def app_dir_path(self, temp_dir, app_name):
-    return os.path.join(temp_dir, app_name)
+  @pytest.fixture(scope='class', autouse=True)
+  def app_dir_path(self):
+    data_dir: DataDir = DataDir.instance()
+    path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+    yield path
 
   @pytest.fixture(scope='class')
   def hostname(self):
