@@ -15,14 +15,13 @@ fi
 if [ "$(id -u)" = '0' ]; then
     # If the first argument is $cli OR /usr/local/bin/*
     if [ "$1" = $cli ] || [[ "$1" == /usr/local/bin/* ]] || [[ "$1" == .stoobly/* ]]; then
-        # changes any file that is not already $user to be owned by $user
+        # Changes any file that is not already $user to be owned by $user
 
         if [ -d "$data_dir" ]; then
-            find "$data_dir" -maxdepth 2 \! -user $user -exec chown $user:$user '{}' +
+            find "$data_dir" -maxdepth 1 \! -user $user -exec chown $user:$user '{}' +
         fi
-
-        if [ -d "$user_home/$data_dir" ]; then
-            find "$user_home/$data_dir" -maxdepth 2 \! -user $user -exec chown $user:$user '{}' +
+        elif [ -d "$user_home/$data_dir" ]; then
+            find "$user_home/$data_dir" -maxdepth 1 \! -user $user -exec chown $user:$user '{}' +
         fi
 
         # gosu is used to run commands as a different user, switches to $user without creating a new process
