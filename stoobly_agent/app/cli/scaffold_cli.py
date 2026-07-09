@@ -903,7 +903,9 @@ def uninstall(**kwargs):
 @click.option('--app-dir-path', default=None, help='Override app directory when context config is absent.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly context directory.')
 def describe(**kwargs):
-  app = App(kwargs['app_dir_path'], **kwargs)
+  # Do not pass app_dir_path as App's positional path because that anchors context resolution to
+  # the app dir instead of the cwd-discovered / --context-dir-path context.
+  app = App(None, context_dir_path=kwargs.get('context_dir_path'))
   context_dir = os.path.abspath(app.context_dir_path)
 
   try:

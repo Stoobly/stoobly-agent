@@ -11,7 +11,7 @@ from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.cli import init as cli_init
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
 
@@ -558,3 +558,58 @@ class TestScaffoldDescribe:
     assert result.exit_code == 0
     assert str(app_dir_path) in result.output
     assert os.path.relpath(str(app_dir_path), str(context_dir_path)) in result.output
+
+
+class TestScaffoldDescribeAppDirPathAlone:
+  """`scaffold describe --app-dir-path` must not hijack context resolution."""
+
+  @pytest.fixture(autouse=True)
+  def isolate_data_dir_cache(self):
+    DataDir._instances = None
+    yield
+    DataDir._instances = None
+
+  @pytest.fixture
+  def layout(self, runner, tmp_path):
+    app_dir_path = tmp_path / 'app'          # shared scaffold app (has .stoobly/services)
+    context_dir_path = tmp_path / 'context'  # per-app context (has .stoobly/.config.yml)
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+    _create_service(runner, app_dir_path, 'svc-api', context_dir_path)
+    return app_dir_path, context_dir_path
+
+  def _run_describe_from(self, runner: CliRunner, cwd: pathlib.Path, args: list):
+    prev = os.getcwd()
+    os.chdir(str(cwd))
+    try:
+      return runner.invoke(scaffold, ['describe', *args])
+    finally:
+      os.chdir(prev)
+
+  def test_app_dir_path_alone_resolves_local_context(self, runner: CliRunner, layout):
+    app_dir_path, context_dir_path = layout
+
+    result = self._run_describe_from(
+      runner, context_dir_path, ['--app-dir-path', str(app_dir_path)]
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    # Will fail with context_dir_path == app_dir_path if the bug regressed.
+    assert data['context_dir_path'] == str(context_dir_path)
+    assert data['app_dir_path'] == str(app_dir_path)
+    assert 'svc-api' in data['context_config']['scaffold']['services']
+
+  def test_app_dir_path_alone_matches_flagless(self, runner: CliRunner, layout):
+    app_dir_path, context_dir_path = layout
+
+    flagless = json.loads(
+      self._run_describe_from(runner, context_dir_path, []).output
+    )
+    with_app_dir_path = json.loads(
+      self._run_describe_from(
+        runner, context_dir_path, ['--app-dir-path', str(app_dir_path)]
+      ).output
+    )
+
+    assert with_app_dir_path['context_dir_path'] == flagless['context_dir_path']
+    assert with_app_dir_path['context_config'] == flagless['context_config']
