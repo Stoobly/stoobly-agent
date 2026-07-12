@@ -148,6 +148,27 @@ class TestScaffoldAppCreateContextDirPaths:
     assert config['scaffold']['services'] == []
     assert not os.path.isabs(config['scaffold']['app_dir_path'])
 
+  def test_writes_context_dir_paths_to_app_context_config(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    app_dir_path.mkdir()
+    context_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+      '--quiet',
+      'test-app',
+    ])
+
+    assert result.exit_code == 0
+
+    config = _read_config(_context_config_path(app_dir_path))
+    assert config['scaffold']['context_dir_paths'] == [os.path.relpath(str(context_dir_path), str(app_dir_path))]
+    assert not os.path.isabs(config['scaffold']['context_dir_paths'][0])
+
   def test_writes_config_for_multiple_context_dirs(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
     context_a = tmp_path / 'context-a'
@@ -173,6 +194,29 @@ class TestScaffoldAppCreateContextDirPaths:
       assert config['scaffold']['app_dir_path'] == os.path.relpath(str(app_dir_path), str(context_dir_path))
       assert config['scaffold']['services'] == []
       assert (context_dir_path / DATA_DIR_NAME / 'settings.yml').exists()
+
+    app_config = _read_config(_context_config_path(app_dir_path))
+    assert app_config['scaffold']['context_dir_paths'] == [
+      os.path.relpath(str(context_a), str(app_dir_path)),
+      os.path.relpath(str(context_b), str(app_dir_path)),
+    ]
+
+  def test_writes_empty_context_dir_paths_when_no_context_dirs(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    app_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--quiet',
+      'test-app',
+    ])
+
+    assert result.exit_code == 0
+
+    config = _read_config(_context_config_path(app_dir_path))
+    assert config['scaffold']['context_dir_paths'] == []
 
   def test_rerun_preserves_existing_config_properties(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
@@ -205,6 +249,30 @@ class TestScaffoldAppCreateContextDirPaths:
     config = _read_config(config_path)
     assert config['workflow']['name'] == 'record'
     assert config['scaffold']['app_dir_path'] == os.path.relpath(str(app_dir_path), str(context_dir_path))
+
+  def test_rerun_preserves_existing_app_config_properties(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    app_dir_path.mkdir()
+    context_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    app_config_path = _context_config_path(app_dir_path)
+    _write_config(app_config_path, {'workflow': {'name': 'mock'}})
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+      '--quiet',
+      'test-app',
+    ])
+
+    assert result.exit_code == 0
+
+    config = _read_config(app_config_path)
+    assert config['workflow']['name'] == 'mock'
+    assert config['scaffold']['context_dir_paths'] == [os.path.relpath(str(context_dir_path), str(app_dir_path))]
 
   def test_rerun_resets_services_to_empty(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
@@ -518,9 +586,12 @@ class TestScaffoldDescribe:
 
     data = json.loads(result.output)
     assert 'scaffold' in data['context_config']
+    assert data['context_config']['scaffold']['context_dir_paths'] == [
+      os.path.relpath(str(context_dir_path), str(app_dir_path)),
+    ]
     assert 'APP_NAME' in data['app_config']
 
-  def test_describe_without_context_config(self, runner: CliRunner, tmp_path):
+  def test_describe_without_context_dirs(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
     app_dir_path.mkdir()
     _prepare_app_dir(app_dir_path)
@@ -543,7 +614,7 @@ class TestScaffoldDescribe:
     assert 'my-app' in result.output
 
     data = json.loads(result.output)
-    assert 'context_config' not in data
+    assert data['context_config']['scaffold']['context_dir_paths'] == []
 
   def test_describe_split_layout(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
@@ -559,6 +630,13 @@ class TestScaffoldDescribe:
     assert str(app_dir_path) in result.output
     assert os.path.relpath(str(app_dir_path), str(context_dir_path)) in result.output
 
+    data = json.loads(result.output)
+    assert data['context_config']['scaffold']['app_dir_path'] == os.path.relpath(
+      str(app_dir_path), str(context_dir_path)
+    )
+    assert data['context_config']['scaffold']['context_dir_paths'] == [
+      os.path.relpath(str(context_dir_path), str(app_dir_path)),
+    ]
 
 class TestScaffoldDescribeAppDirPathAlone:
   """`scaffold describe --app-dir-path` must not hijack context resolution."""

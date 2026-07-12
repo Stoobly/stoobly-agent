@@ -3,6 +3,8 @@
 When ``scaffold app create`` or ``scaffold service create`` is run with one or
 more ``--context-dir-path`` options, each context directory gets a lightweight
 Stoobly init and a ``.stoobly/.config.yml`` file linking it to the app scaffold.
+``scaffold app create`` also writes ``app_dir/.stoobly/.config.yml`` with
+``scaffold.context_dir_paths`` listing relative paths to each context directory.
 
 This module is invoked from ``scaffold_cli`` after app or service create builds.
 """
@@ -18,6 +20,7 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 
 SCAFFOLD_CONFIG_KEY = 'scaffold'
 APP_DIR_PATH_CONFIG_KEY = 'app_dir_path'
+CONTEXT_DIR_PATHS_CONFIG_KEY = 'context_dir_paths'
 SERVICES_CONFIG_KEY = 'services'
 
 
@@ -80,6 +83,34 @@ def init_context_dir(context_dir_path: str, app_dir_path: str) -> None:
   config, existing, existing_scaffold = _read_scaffold_config(abs_context_dir)
 
   _write_scaffold_config(config, existing, existing_scaffold, relative_app_dir_path, [])
+
+
+def init_app_context_config(app_dir_path: str, context_dir_paths) -> None:
+  """Write ``app_dir/.stoobly/.config.yml`` with relative paths to each context dir.
+
+  Sets ``scaffold.context_dir_paths`` to the relative path from the app dir to each
+  context directory (e.g. ``../context``). Other existing config properties are
+  preserved.
+
+  Args:
+    app_dir_path: Host path to the application directory where the scaffold
+      was created.
+    context_dir_paths: Host paths to Stoobly context directories linked to the
+      app.
+  """
+  abs_app_dir = _ensure_context_dir(app_dir_path)
+  relative_paths = [
+    os.path.relpath(os.path.abspath(context_dir_path), abs_app_dir)
+    for context_dir_path in context_dir_paths
+  ]
+
+  config, existing, existing_scaffold = _read_scaffold_config(abs_app_dir)
+  merged = merge({}, existing, {
+    SCAFFOLD_CONFIG_KEY: merge({}, existing_scaffold, {
+      CONTEXT_DIR_PATHS_CONFIG_KEY: relative_paths,
+    }),
+  })
+  config.write(merged)
 
 
 def add_context_service(context_dir_path: str, app_dir_path: str, service_name: str) -> None:
