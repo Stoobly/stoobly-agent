@@ -586,9 +586,7 @@ class TestScaffoldDescribe:
 
     data = json.loads(result.output)
     assert 'scaffold' in data['context_config']
-    assert data['context_config']['scaffold']['context_dir_paths'] == [
-      os.path.relpath(str(context_dir_path), str(app_dir_path)),
-    ]
+    assert 'context_dir_paths' not in data['context_config']['scaffold']
     assert 'APP_NAME' in data['app_config']
 
   def test_describe_without_context_dirs(self, runner: CliRunner, tmp_path):
@@ -634,9 +632,7 @@ class TestScaffoldDescribe:
     assert data['context_config']['scaffold']['app_dir_path'] == os.path.relpath(
       str(app_dir_path), str(context_dir_path)
     )
-    assert data['context_config']['scaffold']['context_dir_paths'] == [
-      os.path.relpath(str(context_dir_path), str(app_dir_path)),
-    ]
+    assert 'context_dir_paths' not in data['context_config']['scaffold']
 
 class TestScaffoldDescribeAppDirPathAlone:
   """`scaffold describe --app-dir-path` must not hijack context resolution."""

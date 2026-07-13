@@ -16,8 +16,6 @@ from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.config import Config
 from stoobly_agent.app.cli.scaffold.context_config import (
-  CONTEXT_DIR_PATHS_CONFIG_KEY,
-  SCAFFOLD_CONFIG_KEY,
   add_context_service,
   get_context_services,
   init_app_context_config,
@@ -1469,10 +1467,8 @@ def __read_config_file(path: str) -> dict:
 
 def __build_scaffold_describe_output(context_dir: str, app_dir: str) -> dict:
   context_config_path = __context_config_file_path(context_dir)
-  app_context_config_path = __context_config_file_path(app_dir)
   app_config_path = __app_config_file_path(app_dir)
   context_config = __read_config_file(context_config_path)
-  app_context_config = __read_config_file(app_context_config_path)
   app_config = __read_config_file(app_config_path)
 
   output = {
@@ -1481,17 +1477,8 @@ def __build_scaffold_describe_output(context_dir: str, app_dir: str) -> dict:
     'app_config': app_config or {},
   }
 
-  app_scaffold = (app_context_config or {}).get(SCAFFOLD_CONFIG_KEY) or {}
-  context_dir_paths = app_scaffold.get(CONTEXT_DIR_PATHS_CONFIG_KEY)
-
-  if context_config is not None or context_dir_paths is not None:
-    merged_context_config = dict(context_config or {})
-    merged_scaffold = dict(merged_context_config.get(SCAFFOLD_CONFIG_KEY) or {})
-    if context_dir_paths is not None:
-      merged_scaffold[CONTEXT_DIR_PATHS_CONFIG_KEY] = context_dir_paths
-    if merged_scaffold:
-      merged_context_config[SCAFFOLD_CONFIG_KEY] = merged_scaffold
-    output['context_config'] = merged_context_config
+  if context_config is not None:
+    output['context_config'] = context_config
 
   return output
 
