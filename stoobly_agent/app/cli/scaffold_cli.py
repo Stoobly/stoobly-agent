@@ -18,6 +18,7 @@ from stoobly_agent.app.cli.scaffold.config import Config
 from stoobly_agent.app.cli.scaffold.context_config import (
   add_context_service,
   get_context_services,
+  init_app_context_config,
   init_context_dir,
   resolve_app_dir_path,
 )
@@ -146,8 +147,11 @@ def create(**kwargs):
 
   res = AppCreateCommand(app, **kwargs).build()
 
-  for context_dir_path in kwargs.get('context_dir_path') or ():
+  context_dir_paths = kwargs.get('context_dir_path') or ()
+  for context_dir_path in context_dir_paths:
     init_context_dir(context_dir_path, app.app_dir_path)
+
+  init_app_context_config(app.app_dir_path, context_dir_paths)
 
   for warning in res['warnings']:
     print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
