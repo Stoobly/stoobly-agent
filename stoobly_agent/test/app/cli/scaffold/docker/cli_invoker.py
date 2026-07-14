@@ -54,16 +54,12 @@ def _dump_docker_state():
       client.close()
 
 
-def _enable_intercept_for_namespace(namespace: str, attempts = 0):
-  """Enable intercept in gateway/proxy containers for the given compose namespace."""
-  """Enable intercept in local settings so requests are not just forwarded."""
+def _enable_intercept_for_namespace(app_dir_path: str):
   from stoobly_agent.app.settings import Settings
-  settings = Settings.instance()
-  settings.load()
+  settings = Settings.instance(app_dir_path)
   settings.proxy.intercept.active = True
   settings.commit()
   time.sleep(1)
-  settings.load()
 
 class ScaffoldCliInvoker():
 
@@ -196,7 +192,7 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
 
     if not without_intercept:
-      _enable_intercept_for_namespace(namespace or target_workflow_name)
+      _enable_intercept_for_namespace(app_dir_path)
 
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
@@ -238,7 +234,7 @@ class ScaffoldCliInvoker():
 
     assert result.returncode == 0
 
-    _enable_intercept_for_namespace(target_workflow_name)
+    _enable_intercept_for_namespace(app_dir_path)
 
   @staticmethod
   def makefile_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
