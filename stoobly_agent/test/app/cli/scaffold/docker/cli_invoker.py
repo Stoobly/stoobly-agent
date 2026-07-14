@@ -3,12 +3,13 @@ import pathlib
 import datetime
 import pdb
 import subprocess
-import time
 
 import docker
 
 from click.testing import CliRunner
 
+from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS, SERVICES_NAMESPACE
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
@@ -54,34 +55,31 @@ def _dump_docker_state():
       client.close()
 
 
-def _enable_intercept_for_namespace(namespace: str, attempts = 0):
-  """Enable intercept in gateway/proxy containers for the given compose namespace."""
-  client = None
-  try:
-    client = docker.from_env()
-    enabled = False
-    for container in client.containers.list():
-      name = container.name
-      if name == f'{namespace}-gateway.service-1' or (
-        name.startswith(f'{namespace}-') and name.endswith('.proxy-1')
-      ):
-        container.exec_run(
-          ['stoobly-agent', 'intercept', 'enable'],
-          user='stoobly',
-        )
-        enabled = True
+def _enable_intercept_in_build_init_scripts(app_dir_path: str):
+  """Append intercept enable to each workflow's build init script after app create."""
+  enable_lines = [
+    '',
+    'echo "Enabling intercept..."',
+    'stoobly-agent intercept enable',
+    '',
+  ]
+  for workflow_name in CORE_WORKFLOWS:
+    init_path = os.path.join(
+      app_dir_path, DATA_DIR_NAME, SERVICES_NAMESPACE, CORE_BUILD_SERVICE_NAME, workflow_name, CUSTOM_INIT
+    )
+    if not os.path.exists(init_path):
+      continue
 
-    if not enabled:
-      if attempts < 3:
-        time.sleep(1)
-        _enable_intercept_for_namespace(namespace, attempts + 1)
-      else:
-        raise Exception(f"No gateway/proxy containers found for namespace: {namespace}")
-  except Exception:
-    pass
-  finally:
-    if client:
-      client.close()
+    with open(init_path, 'r') as fp:
+      contents = fp.read()
+
+    if 'stoobly-agent intercept enable' in contents:
+      continue
+
+    with open(init_path, 'a') as fp:
+      if contents and not contents.endswith('\n'):
+        fp.write('\n')
+      fp.write('\n'.join(enable_lines))
 
 
 class ScaffoldCliInvoker():
@@ -115,6 +113,8 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
     output = result.stdout
     assert not output
+
+    _enable_intercept_in_build_init_scripts(app_dir_path)
 
   @staticmethod
   def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool, port: int = None):
@@ -214,9 +214,6 @@ class ScaffoldCliInvoker():
 
     assert result.exit_code == 0
 
-    if not without_intercept:
-      _enable_intercept_for_namespace(namespace or target_workflow_name)
-
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
     command = ['workflow', 'down',
@@ -256,8 +253,6 @@ class ScaffoldCliInvoker():
       ])
 
     assert result.returncode == 0
-
-    _enable_intercept_for_namespace(target_workflow_name)
 
   @staticmethod
   def makefile_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
