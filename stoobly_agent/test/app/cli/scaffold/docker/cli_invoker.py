@@ -56,10 +56,12 @@ def _dump_docker_state():
 
 def _enable_intercept_for_namespace(app_dir_path: str):
   from stoobly_agent.app.settings import Settings
+
+  time.sleep(5) # TODO: Make this more deterministic
+
   settings = Settings.instance(app_dir_path)
   settings.proxy.intercept.active = True
   settings.commit()
-  time.sleep(1)
 
 class ScaffoldCliInvoker():
 
