@@ -21,7 +21,6 @@ class MockDecorator(CommandDecorator):
 
     command = [
       '--headless',
-      '--intercept',
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
