@@ -109,6 +109,17 @@ class LocalScaffoldCliInvoker():
     assert result.exit_code == 0
 
   @staticmethod
+  def enable_intercept():
+    """Enable intercept in local settings so requests are not just forwarded."""
+    from stoobly_agent.app.settings import Settings
+    settings = Settings.instance()
+    settings.load()
+    settings.proxy.intercept.active = True
+    settings.commit()
+    time.sleep(1)
+    settings.load()
+
+  @staticmethod
   def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
@@ -129,6 +140,9 @@ class LocalScaffoldCliInvoker():
       time.sleep(0.5) # Provide some time for the process to start
 
     assert result.exit_code == 0
+
+    LocalScaffoldCliInvoker.enable_intercept()
+
     return result
 
   @staticmethod

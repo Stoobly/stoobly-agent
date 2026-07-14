@@ -8,7 +8,6 @@ import docker
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import CONTEXT_DIR_ENV
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
@@ -47,6 +46,27 @@ def _dump_docker_state():
         f"=== Container logs: {container.name} ({container.short_id}) ===",
         logs or "(empty)",
       ])
+  except Exception:
+    pass
+  finally:
+    if client:
+      client.close()
+
+
+def _enable_intercept_for_namespace(namespace: str):
+  """Enable intercept in gateway/proxy containers for the given compose namespace."""
+  client = None
+  try:
+    client = docker.from_env()
+    for container in client.containers.list():
+      name = container.name
+      if name == f'{namespace}-gateway.service-1' or (
+        name.startswith(f'{namespace}-') and name.endswith('.proxy-1')
+      ):
+        container.exec_run(
+          ['stoobly-agent', 'intercept', 'enable'],
+          user='stoobly',
+        )
   except Exception:
     pass
   finally:
@@ -175,6 +195,7 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
+      pdb.set_trace()
       _append_error_to_tmp_log([
         f"cli_workflow_up failed with exit code {result.exit_code}",
         f"Output: {result.output}",
@@ -183,6 +204,8 @@ class ScaffoldCliInvoker():
       _dump_docker_state()
 
     assert result.exit_code == 0
+
+    _enable_intercept_for_namespace(namespace or target_workflow_name)
 
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
@@ -198,6 +221,7 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
+      pdb.set_trace()
       _append_error_to_tmp_log([
         f"cli_workflow_down failed with exit code {result.exit_code}",
         f"Output: {result.output}",
@@ -223,6 +247,8 @@ class ScaffoldCliInvoker():
       ])
 
     assert result.returncode == 0
+
+    _enable_intercept_for_namespace(target_workflow_name)
 
   @staticmethod
   def makefile_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
