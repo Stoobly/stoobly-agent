@@ -320,7 +320,7 @@ class TestDockerRecordRequestLogE2e():
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name, without_intercept=True)
             assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
             assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record mode"
 

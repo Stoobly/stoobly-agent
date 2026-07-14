@@ -56,33 +56,14 @@ def _dump_docker_state():
 
 def _enable_intercept_for_namespace(namespace: str, attempts = 0):
   """Enable intercept in gateway/proxy containers for the given compose namespace."""
-  client = None
-  try:
-    client = docker.from_env()
-    enabled = False
-    for container in client.containers.list():
-      name = container.name
-      if name == f'{namespace}-gateway.service-1' or (
-        name.startswith(f'{namespace}-') and name.endswith('.proxy-1')
-      ):
-        container.exec_run(
-          ['stoobly-agent', 'intercept', 'enable'],
-          user='stoobly',
-        )
-        enabled = True
-
-    if not enabled:
-      if attempts < 3:
-        time.sleep(1)
-        _enable_intercept_for_namespace(namespace, attempts + 1)
-      else:
-        raise Exception(f"No gateway/proxy containers found for namespace: {namespace}")
-  except Exception:
-    pass
-  finally:
-    if client:
-      client.close()
-
+  """Enable intercept in local settings so requests are not just forwarded."""
+  from stoobly_agent.app.settings import Settings
+  settings = Settings.instance()
+  settings.load()
+  settings.proxy.intercept.active = True
+  settings.commit()
+  time.sleep(1)
+  settings.load()
 
 class ScaffoldCliInvoker():
 
