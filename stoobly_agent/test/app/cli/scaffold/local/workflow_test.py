@@ -94,7 +94,7 @@ class TestLocalScaffoldE2e():
     @pytest.fixture(scope="class", autouse=True)
     def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
       """Test workflow up command for local execution"""
-      LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+      LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name, without_intercept=True)
       time.sleep(1)
       settings.load()
 

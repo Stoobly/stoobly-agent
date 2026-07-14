@@ -3,6 +3,7 @@ import pathlib
 import datetime
 import pdb
 import subprocess
+import time
 
 import docker
 
@@ -53,11 +54,12 @@ def _dump_docker_state():
       client.close()
 
 
-def _enable_intercept_for_namespace(namespace: str):
+def _enable_intercept_for_namespace(namespace: str, attempts = 0):
   """Enable intercept in gateway/proxy containers for the given compose namespace."""
   client = None
   try:
     client = docker.from_env()
+    enabled = False
     for container in client.containers.list():
       name = container.name
       if name == f'{namespace}-gateway.service-1' or (
@@ -67,6 +69,14 @@ def _enable_intercept_for_namespace(namespace: str):
           ['stoobly-agent', 'intercept', 'enable'],
           user='stoobly',
         )
+        enabled = True
+
+    if not enabled:
+      if attempts < 3:
+        time.sleep(1)
+        _enable_intercept_for_namespace(namespace, attempts + 1)
+      else:
+        raise Exception(f"No gateway/proxy containers found for namespace: {namespace}")
   except Exception:
     pass
   finally:
@@ -181,7 +191,7 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
 
   @staticmethod
-  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
+  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None, without_intercept: bool = False):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--ca-certs-install-confirm', 'n',
@@ -195,7 +205,6 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      pdb.set_trace()
       _append_error_to_tmp_log([
         f"cli_workflow_up failed with exit code {result.exit_code}",
         f"Output: {result.output}",
@@ -205,7 +214,8 @@ class ScaffoldCliInvoker():
 
     assert result.exit_code == 0
 
-    _enable_intercept_for_namespace(namespace or target_workflow_name)
+    if not without_intercept:
+      _enable_intercept_for_namespace(namespace or target_workflow_name)
 
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
@@ -221,7 +231,6 @@ class ScaffoldCliInvoker():
     result = runner.invoke(scaffold, command)
 
     if result.exit_code != 0:
-      pdb.set_trace()
       _append_error_to_tmp_log([
         f"cli_workflow_down failed with exit code {result.exit_code}",
         f"Output: {result.output}",
