@@ -395,7 +395,7 @@ class TestDockerRecordRequestLogE2e():
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, hostname, service_name):
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name, without_intercept=True)
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
             success = wait_for_reverse_proxy_record_active(hostname, runner, target_workflow_name, app_dir_path, service_name)

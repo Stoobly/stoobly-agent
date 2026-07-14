@@ -1,15 +1,13 @@
 import pathlib
 import datetime
-import os
 import pdb
 import time
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS, SERVICES_NAMESPACE
-from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.test.app.cli.scaffold.helpers import enable_intercept_in_build_init_scripts
 
 TMP_E2E_LOG_PATH = "/tmp/stoobly-e2e.log"
 
@@ -26,33 +24,6 @@ def _append_error_to_tmp_log(lines):
   except Exception:
     # Avoid masking the original failure if logging itself fails.
     pass
-
-
-def _enable_intercept_in_build_init_scripts(app_dir_path: str):
-  """Append intercept enable to each workflow's build init script after app create."""
-  enable_lines = [
-    '',
-    'echo "Enabling intercept..."',
-    'stoobly-agent intercept enable',
-    '',
-  ]
-  for workflow_name in CORE_WORKFLOWS:
-    init_path = os.path.join(
-      app_dir_path, DATA_DIR_NAME, SERVICES_NAMESPACE, CORE_BUILD_SERVICE_NAME, workflow_name, CUSTOM_INIT
-    )
-    if not os.path.exists(init_path):
-      continue
-
-    with open(init_path, 'r') as fp:
-      contents = fp.read()
-
-    if 'stoobly-agent intercept enable' in contents:
-      continue
-
-    with open(init_path, 'a') as fp:
-      if contents and not contents.endswith('\n'):
-        fp.write('\n')
-      fp.write('\n'.join(enable_lines))
 
 
 class LocalScaffoldCliInvoker():
@@ -73,7 +44,7 @@ class LocalScaffoldCliInvoker():
     output = result.stdout
     assert not output
 
-    _enable_intercept_in_build_init_scripts(app_dir_path)
+    enable_intercept_in_build_init_scripts(app_dir_path)
 
   @staticmethod
   def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
@@ -141,7 +112,7 @@ class LocalScaffoldCliInvoker():
     assert result.exit_code == 0
 
   @staticmethod
-  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str, without_intercept: bool = False):
+  def cli_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['workflow', 'up',
       '--app-dir-path', app_dir_path,
       '--ca-certs-install-confirm', 'y',
