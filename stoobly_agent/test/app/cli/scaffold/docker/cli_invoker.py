@@ -54,14 +54,35 @@ def _dump_docker_state():
       client.close()
 
 
-def _enable_intercept_for_namespace(app_dir_path: str):
-  from stoobly_agent.app.settings import Settings
+def _enable_intercept_for_namespace(namespace: str, attempts = 0):
+  """Enable intercept in gateway/proxy containers for the given compose namespace."""
+  client = None
+  try:
+    client = docker.from_env()
+    enabled = False
+    for container in client.containers.list():
+      name = container.name
+      if name == f'{namespace}-gateway.service-1' or (
+        name.startswith(f'{namespace}-') and name.endswith('.proxy-1')
+      ):
+        container.exec_run(
+          ['stoobly-agent', 'intercept', 'enable'],
+          user='stoobly',
+        )
+        enabled = True
 
-  time.sleep(5) # TODO: Make this more deterministic
+    if not enabled:
+      if attempts < 3:
+        time.sleep(1)
+        _enable_intercept_for_namespace(namespace, attempts + 1)
+      else:
+        raise Exception(f"No gateway/proxy containers found for namespace: {namespace}")
+  except Exception:
+    pass
+  finally:
+    if client:
+      client.close()
 
-  settings = Settings.instance(app_dir_path)
-  settings.proxy.intercept.active = True
-  settings.commit()
 
 class ScaffoldCliInvoker():
 
@@ -194,7 +215,7 @@ class ScaffoldCliInvoker():
     assert result.exit_code == 0
 
     if not without_intercept:
-      _enable_intercept_for_namespace(app_dir_path)
+      _enable_intercept_for_namespace(namespace or target_workflow_name)
 
   @staticmethod
   def cli_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str, namespace: str = None):
@@ -236,7 +257,7 @@ class ScaffoldCliInvoker():
 
     assert result.returncode == 0
 
-    _enable_intercept_for_namespace(app_dir_path)
+    _enable_intercept_for_namespace(target_workflow_name)
 
   @staticmethod
   def makefile_workflow_down(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
