@@ -588,6 +588,11 @@ class TestScaffoldDescribe:
     assert 'scaffold' in data['context_config']
     assert 'context_dir_paths' not in data['context_config']['scaffold']
     assert 'APP_NAME' in data['app_config']
+    assert data['app_config']['scaffold']['context_dir_paths'] == [
+      os.path.relpath(str(context_dir_path), os.getcwd())
+    ]
+    assert data['app_dir_path'] == str(app_dir_path)
+    assert data['context_dir_path'] == str(context_dir_path)
 
   def test_describe_without_context_dirs(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
@@ -613,6 +618,9 @@ class TestScaffoldDescribe:
 
     data = json.loads(result.output)
     assert data['context_config']['scaffold']['context_dir_paths'] == []
+    assert data['app_config']['scaffold']['context_dir_paths'] == []
+    assert data['app_dir_path'] == str(app_dir_path)
+    assert data['context_dir_path'] == str(app_dir_path)
 
   def test_describe_split_layout(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
@@ -626,13 +634,79 @@ class TestScaffoldDescribe:
 
     assert result.exit_code == 0
     assert str(app_dir_path) in result.output
-    assert os.path.relpath(str(app_dir_path), str(context_dir_path)) in result.output
+    assert os.path.relpath(str(app_dir_path), os.getcwd()) in result.output
 
     data = json.loads(result.output)
     assert data['context_config']['scaffold']['app_dir_path'] == os.path.relpath(
-      str(app_dir_path), str(context_dir_path)
+      str(app_dir_path), os.getcwd()
     )
     assert 'context_dir_paths' not in data['context_config']['scaffold']
+    assert data['app_config']['scaffold']['context_dir_paths'] == [
+      os.path.relpath(str(context_dir_path), os.getcwd())
+    ]
+    assert data['app_dir_path'] == str(app_dir_path)
+    assert data['context_dir_path'] == str(context_dir_path)
+
+  def test_describe_context_dir_paths_relative_to_cwd(self, runner: CliRunner, tmp_path):
+    """context_dir_paths are stored relative to the app/context dir; describe rewrites them to cwd."""
+    app_dir_path = tmp_path / 'app'
+    apps_dir = app_dir_path / 'apps'
+    context_a = apps_dir / 'app-1'
+    context_b = apps_dir / 'app-2'
+    app_dir_path.mkdir()
+    apps_dir.mkdir()
+    context_a.mkdir()
+    context_b.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    create_result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_a),
+      '--context-dir-path', str(context_b),
+      '--quiet',
+      'test-app',
+    ])
+    assert create_result.exit_code == 0
+
+    # Stored relative to app dir (as written on disk).
+    assert _read_config(_context_config_path(app_dir_path))['scaffold']['context_dir_paths'] == [
+      'apps/app-1',
+      'apps/app-2',
+    ]
+
+    prev = os.getcwd()
+    os.chdir(str(apps_dir))
+    try:
+      result = runner.invoke(scaffold, [
+        'describe',
+        '--context-dir-path', str(app_dir_path),
+      ])
+    finally:
+      os.chdir(prev)
+
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    expected = ['app-1', 'app-2']
+    assert data['context_config']['scaffold']['context_dir_paths'] == expected
+    assert data['app_config']['scaffold']['context_dir_paths'] == expected
+
+    # Leaf context: scaffold.app_dir_path is stored as ../.. relative to app-1;
+    # from apps/ that should display as ...
+    prev = os.getcwd()
+    os.chdir(str(apps_dir))
+    try:
+      leaf_result = runner.invoke(scaffold, [
+        'describe',
+        '--context-dir-path', str(context_a),
+      ])
+    finally:
+      os.chdir(prev)
+
+    assert leaf_result.exit_code == 0
+    leaf_data = json.loads(leaf_result.output)
+    assert leaf_data['context_config']['scaffold']['app_dir_path'] == '..'
+
 
 class TestScaffoldDescribeAppDirPathAlone:
   """`scaffold describe --app-dir-path` must not hijack context resolution."""
@@ -672,6 +746,10 @@ class TestScaffoldDescribeAppDirPathAlone:
     assert data['context_dir_path'] == str(context_dir_path)
     assert data['app_dir_path'] == str(app_dir_path)
     assert 'svc-api' in data['context_config']['scaffold']['services']
+    assert data['context_config']['scaffold']['app_dir_path'] == os.path.relpath(
+      str(app_dir_path), str(context_dir_path)
+    )
+    assert data['app_config']['scaffold']['context_dir_paths'] == ['.']
 
   def test_app_dir_path_alone_matches_flagless(self, runner: CliRunner, layout):
     app_dir_path, context_dir_path = layout
