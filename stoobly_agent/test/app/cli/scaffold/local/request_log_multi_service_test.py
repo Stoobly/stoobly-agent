@@ -276,10 +276,6 @@ class TestMultiServiceLevelFilter:
         time.sleep(1)
         settings.load()
 
-        settings.proxy.intercept.active = True
-        settings.commit()
-        time.sleep(1)
-        settings.load()
 
         requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,

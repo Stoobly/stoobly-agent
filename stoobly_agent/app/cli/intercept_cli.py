@@ -6,9 +6,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode, mock_policy, normalize_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
-mode_options = [mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE]
 settings: Settings = Settings.instance()
-
 active_mode = settings.proxy.intercept.mode
 
 def __get_order_options(active_mode: str) -> list[str]:
@@ -82,7 +80,7 @@ def disable(**kwargs):
 @intercept.command(
     help="Set intercept options"
 )
-@click.option('--mode', type=click.Choice(mode_options))
+@click.option('--mode', type=click.Choice(mode.options))
 @click.option('--order', help=f"Order to use for recording. Valid options: {order_options}")
 @click.option('--policy', help=f"Policy to use for recording. Valid options: {policy_options}")
 @click.option('--strategy', help=f"Strategy to use for recording. Valid options: {strategy_options}")
@@ -173,7 +171,7 @@ def set(**kwargs):
     help="Configure intercept (deprecated: use 'set' instead)",
     hidden=True
 )
-@click.option('--mode', type=click.Choice(mode_options))
+@click.option('--mode', type=click.Choice(mode.options))
 @click.option('--order', help=f"Order to use for recording. Valid options: {order_options}")
 @click.option('--policy', help=f"Policy to use for recording. Valid options: {policy_options}")
 @click.option('--strategy', help=f"Strategy to use for recording. Valid options: {strategy_options}")
