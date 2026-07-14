@@ -1465,20 +1465,65 @@ def __read_config_file(path: str) -> dict:
   config = Config(os.path.dirname(path), file_name=os.path.basename(path)).read()
   return config or {}
 
+def __path_relative_to_cwd(path: str, base_dir: str) -> str:
+  """Resolve ``path`` against ``base_dir``, then return it relative to cwd."""
+  return os.path.relpath(
+    os.path.abspath(os.path.join(os.path.abspath(base_dir), path)),
+    os.getcwd(),
+  )
+
+def __relativize_scaffold_paths(config: dict, base_dir: str) -> dict:
+  """Rewrite scaffold path fields so they are relative to cwd.
+
+  ``scaffold.app_dir_path`` and ``scaffold.context_dir_paths`` are stored
+  relative to ``base_dir`` (the config's owning directory); resolve each
+  against that base, then express relative to the current working directory.
+  """
+  if not config:
+    return config
+
+  result = dict(config)
+  scaffold = result.get('scaffold')
+  if not isinstance(scaffold, dict):
+    return result
+
+  updated = dict(scaffold)
+
+  app_dir_path = scaffold.get('app_dir_path')
+  if isinstance(app_dir_path, str) and app_dir_path:
+    updated['app_dir_path'] = __path_relative_to_cwd(app_dir_path, base_dir)
+
+  context_dir_paths = scaffold.get('context_dir_paths')
+  if isinstance(context_dir_paths, list):
+    updated['context_dir_paths'] = [
+      __path_relative_to_cwd(path, base_dir)
+      for path in context_dir_paths
+    ]
+
+  result['scaffold'] = updated
+  return result
+
 def __build_scaffold_describe_output(context_dir: str, app_dir: str) -> dict:
   context_config_path = __context_config_file_path(context_dir)
-  app_config_path = __app_config_file_path(app_dir)
+  app_services_config_path = __app_config_file_path(app_dir)
+  app_scaffold_config_path = __context_config_file_path(app_dir)
   context_config = __read_config_file(context_config_path)
-  app_config = __read_config_file(app_config_path)
+  app_services_config = __read_config_file(app_services_config_path) or {}
+  app_scaffold_config = __read_config_file(app_scaffold_config_path) or {}
+
+  app_config = __relativize_scaffold_paths(
+    {**app_services_config, **app_scaffold_config},
+    app_dir,
+  )
 
   output = {
     'context_dir_path': context_dir,
     'app_dir_path': app_dir,
-    'app_config': app_config or {},
+    'app_config': app_config,
   }
 
   if context_config is not None:
-    output['context_config'] = context_config
+    output['context_config'] = __relativize_scaffold_paths(context_config, context_dir)
 
   return output
 
