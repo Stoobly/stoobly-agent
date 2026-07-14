@@ -101,6 +101,7 @@ class TestRequestLogE2e():
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
         settings.load()
+
         wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)
@@ -223,10 +224,6 @@ class TestRequestLogWithRecordedRequestsE2e():
         settings.load()
 
         # Record a request
-        settings.proxy.intercept.active = True
-        settings.commit()
-        time.sleep(1)
-        settings.load()
 
         requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -242,6 +239,7 @@ class TestRequestLogWithRecordedRequestsE2e():
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
+
 
         yield
 
@@ -390,10 +388,6 @@ class TestRequestLogWithTestWorkflowE2e():
         settings.load()
 
         # Record a request
-        settings.proxy.intercept.active = True
-        settings.commit()
-        time.sleep(1)
-        settings.load()
 
         requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -409,6 +403,7 @@ class TestRequestLogWithTestWorkflowE2e():
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_TEST_TYPE)
         time.sleep(1)
         settings.load()
+
 
         yield
 
@@ -554,11 +549,6 @@ class TestRequestLogWithRecordWorkflowE2e():
         time.sleep(1)
         settings.load()
 
-        # Enable intercept so requests are recorded (not just forwarded)
-        settings.proxy.intercept.active = True
-        settings.commit()
-        time.sleep(1)
-        settings.load()
 
         yield
 
@@ -667,6 +657,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_NORMALIZE_TYPE)
         time.sleep(1)
         settings.load()
+
 
         yield
 
@@ -787,6 +778,7 @@ class TestRequestLogFromDifferentWorkingDirectory():
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
         settings.load()
+
         wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)

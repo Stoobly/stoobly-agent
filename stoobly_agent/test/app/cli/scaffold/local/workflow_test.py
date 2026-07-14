@@ -144,19 +144,15 @@ class TestLocalScaffoldE2e():
       # Check stoobly-agent intercept show output starts with Mock
       assert settings.proxy.intercept.mode == mode.RECORD
 
-    def test_intercept_mode_not_active(self, settings: Settings):
-      assert not settings.proxy.intercept.active
+    def test_intercept_mode_active(self, settings: Settings):
+      assert settings.proxy.intercept.active
 
     def test_records(self, settings: Settings, proxy_url: str):
-      _requests = Request.all()
-      assert len(_requests) == 0, "Expected 0 requests to be recorded"
-      settings.proxy.intercept.active = True
-      settings.commit()
-      time.sleep(1) # Wait for change to propagate
+      before = len(Request.all())
       res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
       assert res.status_code == 200, "HTTP request with HTTP_PROXY and HTTPS_PROXY set to the local service should succeed"
       _requests = Request.all()
-      assert len(_requests) == 1, "Expected 1 request to be recorded"
+      assert len(_requests) == before + 1, "Expected 1 additional request to be recorded"
 
     def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
       """Test that access count is correct after workflow up"""
@@ -385,11 +381,6 @@ class TestLocalScaffoldE2e():
 
     def test_no_records(self, settings: Settings, proxy_url: str):
       """Normalize mode rewrites and forwards; it does not persist Request records"""
-      _requests = Request.all()
-      assert len(_requests) == 0, "Expected 0 requests before enabling intercept"
-      settings.proxy.intercept.active = True
-      settings.commit()
-      time.sleep(1)
       res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
       assert res.status_code == 200
       _requests = Request.all()

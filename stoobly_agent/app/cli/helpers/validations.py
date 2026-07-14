@@ -177,8 +177,8 @@ def resolve_project_key(kwargs: dict, settings: Settings) -> str:
 
     return project_key
 
-def resolve_project_key_and_validate(kwargs: dict, settings: Settings  = Settings.instance()) -> str:
-    project_key = resolve_project_key(kwargs, settings)
+def resolve_project_key_and_validate(kwargs: dict, settings: Settings = None) -> str:
+    project_key = resolve_project_key(kwargs, settings or Settings.instance())
 
     validate_project_key(project_key)
 
@@ -195,8 +195,8 @@ def resolve_scenario_key(kwargs: dict, settings: Settings) -> str:
 
     return scenario_key
 
-def resolve_scenario_key_and_validate(kwargs: dict, settings: Settings = Settings.instance()) -> str:
-    scenario_key = resolve_scenario_key(kwargs, settings)
+def resolve_scenario_key_and_validate(kwargs: dict, settings: Settings = None) -> str:
+    scenario_key = resolve_scenario_key(kwargs, settings or Settings.instance())
 
     validate_scenario_key(scenario_key)
 

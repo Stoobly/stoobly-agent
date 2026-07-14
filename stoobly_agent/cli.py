@@ -6,7 +6,6 @@ import sys
 
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
 from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
-from stoobly_agent.app.cli.intercept_cli import mode_options
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
 from stoobly_agent.config.constants import env_vars, mode
 from stoobly_agent.config.data_dir import DataDir
@@ -17,7 +16,11 @@ from .app.cli.helpers.feature_flags import is_local as feature_is_local, is_remo
 from .app.settings import Settings
 from .lib import logger
 
-settings: Settings = Settings.instance()
+try:
+    settings: Settings = Settings.instance()
+except FileNotFoundError as e:
+    Logger.instance('Settings').error(e)
+    sys.exit(1)
 is_remote = feature_is_remote(settings)
 is_local = feature_is_local(settings)
 
@@ -96,7 +99,7 @@ def describe(**kwargs):
 ''')
 @click.option('--headless', is_flag=True, default=False, help='Disable starting UI.')
 @click.option('--intercept', is_flag=True, default=False, help='Enable intercept on run.')
-@click.option('--intercept-mode', type=click.Choice(mode_options), help='Set intercept mode.')
+@click.option('--intercept-mode', type=click.Choice(mode.options), help='Set intercept mode.')
 @click.option('--log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')

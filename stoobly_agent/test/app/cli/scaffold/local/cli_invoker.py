@@ -7,6 +7,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.test.app.cli.scaffold.helpers import enable_intercept_in_build_init_scripts
 
 TMP_E2E_LOG_PATH = "/tmp/stoobly-e2e.log"
 
@@ -42,6 +43,8 @@ class LocalScaffoldCliInvoker():
     assert result.exit_code == 0
     output = result.stdout
     assert not output
+
+    enable_intercept_in_build_init_scripts(app_dir_path)
 
   @staticmethod
   def cli_service_create(runner: CliRunner, app_dir_path: str, hostname: str, service_name: str, https: bool):
@@ -129,6 +132,7 @@ class LocalScaffoldCliInvoker():
       time.sleep(0.5) # Provide some time for the process to start
 
     assert result.exit_code == 0
+
     return result
 
   @staticmethod
