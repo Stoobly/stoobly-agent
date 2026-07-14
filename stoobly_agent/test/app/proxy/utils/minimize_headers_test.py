@@ -5,10 +5,7 @@ from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from mitmproxy.http import Request, Response, Headers
 from stoobly_agent.app.proxy.utils.minimize_headers import (
     minimize_headers, 
-    minimize_request_headers, 
-    minimize_response_headers,
-    REQUEST_HEADERS_ALLOWLIST,
-    RESPONSE_HEADERS_ALLOWLIST,
+    minimize_request_headers,
 )
 
 
@@ -84,62 +81,6 @@ class TestMinimizeHeaders():
         assert "Origin" in new_headers
         assert "Referer" in new_headers
 
-    def test_minimize_response_headers(self):
-        headers_stub = [
-            # Essential headers (should be preserved)
-            (b"Content-Type", b"application/json"),
-            (b"Content-Length", b"1234"),
-            (b"Date", b"Wed, 21 Oct 2015 07:28:00 GMT"),
-            (b"Server", b"nginx/1.18.0"),
-            (b"Transfer-Encoding", b"chunked"),
-            
-            # Headers that should be removed
-            (b"Set-Cookie", b"session=new; HttpOnly; Secure"),
-            (b"X-Powered-By", b"Express"),
-            (b"X-Request-ID", b"resp-uuid-456"),
-            (b"Access-Control-Allow-Origin", b"*"),
-            (b"Vary", b"Accept-Encoding"),
-            (b"ETag", b'"abc123"'),
-            (b"Last-Modified", b"Tue, 20 Oct 2015 07:28:00 GMT"),
-        ]
-        headers = Headers(headers_stub)
-        flow_stub = MitmproxyHTTPFlow(client_conn=None, server_conn=None)
-        flow_stub.response = Response(
-            http_version="HTTP/1.1",
-            status_code=200,
-            reason="OK",
-            headers=headers,
-            content=b"{}",
-            trailers=None,
-            timestamp_start=time.time(),
-            timestamp_end=time.time() + 1,
-        )
-        old_headers = copy.deepcopy(flow_stub.response.headers)
-
-        minimize_response_headers(flow_stub)
-        
-        new_headers = flow_stub.response.headers
-        # Non-essential headers should be removed
-        assert old_headers != new_headers
-        assert "Set-Cookie" in old_headers
-        assert "Set-Cookie" not in new_headers
-        assert "X-Powered-By" not in new_headers
-        assert "X-Request-ID" not in new_headers
-        assert "Access-Control-Allow-Origin" not in new_headers
-        assert "Vary" not in new_headers
-        assert "ETag" not in new_headers
-        assert "Last-Modified" not in new_headers
-        
-        # Essential headers should remain
-        assert "Content-Type" in new_headers
-        assert "Content-Length" in new_headers
-        assert "Date" in new_headers
-        assert "Server" in new_headers
-        assert "Transfer-Encoding" in new_headers
-        
-        # Verify exact header count (Content-Type, Content-Length, Date, Server, Transfer-Encoding)
-        assert len(new_headers) == 5
-
     def test_minimize_headers(self):
         req_headers = Headers([
             (b"Host", b"example.com"),
@@ -147,7 +88,8 @@ class TestMinimizeHeaders():
         ])
         res_headers = Headers([
             (b"Content-Type", b"text/html"),
-            (b"X-Remove-Me", b"bye")
+            (b"X-Remove-Me", b"bye"),
+            (b"Set-Cookie", b"session=new"),
         ])
         flow_stub = MitmproxyHTTPFlow(client_conn=None, server_conn=None)
         flow_stub.request = Request(
@@ -179,19 +121,18 @@ class TestMinimizeHeaders():
         
         minimize_headers(flow_stub)
         
-        # Verify changes occurred
+        # Request headers are minimized
         assert old_req_headers != flow_stub.request.headers
-        assert old_res_headers != flow_stub.response.headers
-        
-        # Verify specific header removal and retention
         assert "X-Remove-Me" not in flow_stub.request.headers
-        assert "X-Remove-Me" not in flow_stub.response.headers
         assert "Host" in flow_stub.request.headers
-        assert "Content-Type" in flow_stub.response.headers
-        
-        # Verify header counts
         assert len(flow_stub.request.headers) == 1
-        assert len(flow_stub.response.headers) == 1
+
+        # Response headers are preserved
+        assert old_res_headers == flow_stub.response.headers
+        assert "X-Remove-Me" in flow_stub.response.headers
+        assert "Set-Cookie" in flow_stub.response.headers
+        assert "Content-Type" in flow_stub.response.headers
+        assert len(flow_stub.response.headers) == 3
 
     def test_empty_headers(self):
         """Test minimize functions with empty headers"""
@@ -282,29 +223,9 @@ class TestMinimizeHeaders():
         flow_stub.response = None
         
         # Should not raise an error when response is None
-        minimize_request_headers(flow_stub)
+        minimize_headers(flow_stub)
         assert "Host" in flow_stub.request.headers
         assert "X-Remove" not in flow_stub.request.headers
-
-    def test_minimize_headers_no_request(self):
-        """Test minimize_headers when request is None"""
-        flow_stub = MitmproxyHTTPFlow(client_conn=None, server_conn=None)
-        flow_stub.request = None
-        flow_stub.response = Response(
-            http_version="HTTP/1.1",
-            status_code=200,
-            reason="OK",
-            headers=Headers([(b"Content-Type", b"text/html"), (b"X-Remove", b"me")]),
-            content=b"<html></html>",
-            trailers=None,
-            timestamp_start=time.time(),
-            timestamp_end=time.time() + 1,
-        )
-        
-        # Should not raise an error when request is None
-        minimize_response_headers(flow_stub)
-        assert "Content-Type" in flow_stub.response.headers
-        assert "X-Remove" not in flow_stub.response.headers
 
     def test_header_ordering_preserved(self):
         """Test that header ordering is preserved after minimization"""
