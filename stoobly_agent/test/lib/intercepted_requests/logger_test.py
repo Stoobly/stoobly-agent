@@ -1023,3 +1023,52 @@ class TestFollowLog:
             SimpleInterceptedRequestsLogger._follow_log(log_file, None)
 
         mock_proc.terminate.assert_called_once()
+
+
+class TestWorkflowLine:
+    """Tests for mirroring workflow stdout lines into the request log."""
+
+    @pytest.fixture(autouse=True)
+    def setup_logger(self, temp_log_dir):
+        log_path = os.path.join(temp_log_dir, 'wf_test.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+        ScaffoldInterceptedRequestsLogger.enable_logger_file()
+        InterceptedRequestsLogger.set_log_level(DEBUG)
+        self.log_path = log_path
+        yield
+        InterceptedRequestsLogger.shutdown()
+
+    def _find(self, message):
+        InterceptedRequestsLogger.flush()
+        with open(self.log_path, 'r') as f:
+            for line in f.readlines():
+                entry = json.loads(line.strip())
+                if entry.get('message') == message:
+                    return entry
+        return None
+
+    def test_writes_entry_with_source_workflow(self):
+        InterceptedRequestsLogger.log_workflow_line("hello from workflow")
+        entry = self._find("hello from workflow")
+        assert entry is not None
+        assert entry['source'] == 'workflow'
+
+    def test_parses_leading_level_tag(self):
+        InterceptedRequestsLogger.log_workflow_line("[ERROR] something broke")
+        entry = self._find("[ERROR] something broke")
+        assert entry is not None
+        assert entry['level'] == 'ERROR'
+
+    def test_defaults_to_info_level(self):
+        InterceptedRequestsLogger.log_workflow_line("no tag here")
+        entry = self._find("no tag here")
+        assert entry is not None
+        assert entry['level'] == 'INFO'
+
+    def test_mirror_is_faithful_regardless_of_threshold(self):
+        # Raise threshold above INFO; a faithful mirror must still record the line.
+        InterceptedRequestsLogger.set_log_level(ERROR)
+        InterceptedRequestsLogger.log_workflow_line("info-level workflow line")
+        entry = self._find("info-level workflow line")
+        assert entry is not None
+        assert entry['source'] == 'workflow'
