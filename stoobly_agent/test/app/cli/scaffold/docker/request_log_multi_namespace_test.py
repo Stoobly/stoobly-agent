@@ -96,6 +96,25 @@ def _make_app_dir(base_dir: str, suffix: str) -> str:
     return path
 
 
+def read_docker_container_logs_for_namespace(namespace: str) -> str:
+    """Concatenate `docker logs` (stdout+stderr) for every container whose name contains `namespace`.
+
+    Reads straight from the Docker daemon (not through the CLI/`.stoobly` mount), so this is
+    independent of the request-log mirroring under test -- it proves stdout as seen by
+    `docker logs` is unaffected by the tee installed inside the container's `stoobly-agent run`.
+    """
+    import docker
+    client = docker.from_env()
+    try:
+        containers = client.containers.list(all=True, filters={'name': namespace})
+        return '\n'.join(
+            c.logs(stdout=True, stderr=True).decode('utf-8', errors='replace')
+            for c in containers
+        )
+    finally:
+        client.close()
+
+
 @pytest.mark.e2e
 class TestDockerMultiNamespaceRequestLogE2e:
     """Docker reverse-proxy multi-namespace CI isolation tests.
@@ -214,8 +233,12 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
             assert len(badssl_entries) >= 1, "Expected ≥1 log entry for http.badssl.com"
             assert len(example_entries) >= 1, "Expected ≥1 log entry for example.com"
-            assert all(e['level'] == 'ERROR' for e in entries), "All entries should be ERROR (unrecorded → 499)"
-            assert all(e['status_code'] == NOT_FOUND for e in entries), "All entries should have status_code 499"
+
+            # `entries` also includes mirrored source="workflow" stdout lines (INFO-level,
+            # no url/status_code) -- scope these assertions to the request entries only.
+            request_entries = badssl_entries + example_entries
+            assert all(e['level'] == 'ERROR' for e in request_entries), "All request entries should be ERROR (unrecorded → 499)"
+            assert all(e['status_code'] == NOT_FOUND for e in request_entries), "All request entries should have status_code 499"
 
     # ------------------------------------------------------------------
     # TestServiceNameFilterWithinNamespace
@@ -274,6 +297,54 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 "All filtered entries should be for http.badssl.com"
             assert not any(_url_has_hostname(e.get('url', ''), 'example.com') for e in filtered_entries), \
                 "Filtered entries should not include example.com (service-beta)"
+
+    # ------------------------------------------------------------------
+    # TestWorkflowSourceMirroredInDockerLogs
+    # ------------------------------------------------------------------
+
+    class TestWorkflowSourceMirroredInDockerLogs:
+        """The container's own stdout is mirrored into requests.json as source="workflow",
+        while `docker logs` itself is unaffected by the mirroring.
+        """
+
+        # Emitted by cli.py's run() via Stoobly's Logger the moment the proxy starts, after
+        # install_workflow_log_tee() is installed inside the container process -- a
+        # deterministic line the container always prints.
+        STARTUP_MESSAGE_SUBSTRING = 'starting with mode'
+
+        @pytest.fixture(scope='class')
+        def app_dir_path(self, base_dir):
+            yield _make_app_dir(base_dir, 'wf-source-a')
+
+        @pytest.fixture(scope='class', autouse=True)
+        def setup_ns(self, runner, app_dir_path):
+            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'wf-source-a', proxy_mode='reverse')
+            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'http.badssl.com', 'service-a', False, port=8180)
+            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='wf-source-a')
+            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                "NS did not enter mock-intercept mode on port 8180"
+
+        @pytest.fixture(scope='class', autouse=True)
+        def teardown(self, setup_ns, runner, app_dir_path):
+            yield
+            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='wf-source-a')
+
+        def test_workflow_line_mirrored_into_request_log(self, runner, app_dir_path):
+            output = poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path, 'wf-source-a')
+            assert output, "Expected log entries in namespace wf-source-a"
+
+            entries = find_all_log_entries(output)
+            workflow_entries = [e for e in entries if e.get('source') == 'workflow']
+            assert workflow_entries, f"Expected ≥1 source='workflow' entry, got: {entries}"
+
+            assert any(self.STARTUP_MESSAGE_SUBSTRING in e.get('message', '') for e in workflow_entries), \
+                f"Expected a workflow entry mentioning '{self.STARTUP_MESSAGE_SUBSTRING}', got: {workflow_entries}"
+
+        def test_docker_logs_unchanged(self, app_dir_path):
+            raw_logs = read_docker_container_logs_for_namespace('wf-source-a')
+            assert raw_logs.strip(), "docker logs should not be empty"
+            assert self.STARTUP_MESSAGE_SUBSTRING in raw_logs, \
+                f"Expected docker logs to still contain '{self.STARTUP_MESSAGE_SUBSTRING}':\n{raw_logs}"
 
     # ------------------------------------------------------------------
     # TestConcurrentCrossNamespaceTraffic

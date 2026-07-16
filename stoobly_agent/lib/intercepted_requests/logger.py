@@ -671,3 +671,28 @@ class InterceptedRequestsLogger():
         """Log an error message."""
         extra = cls._setup_logging(request, response, request_key, fixture_path)
         InterceptedRequestsLogger._logger.error(message, extra=extra if extra else None)
+
+    _WORKFLOW_LEVEL_TAG_PATTERN: Final = re.compile(r'^\[(DEBUG|INFO|WARNING|ERROR)\]', re.IGNORECASE)
+
+    @classmethod
+    def log_workflow_line(cls, message: str, level: str = INFO) -> None:
+        """Mirror a raw workflow stdout/stderr line into the request log.
+
+        Tags the entry with source='workflow' so it can be told apart from request
+        entries. A leading '[LEVEL]' tag (as emitted by Stoobly's own Logger format)
+        is parsed to set the displayed level; otherwise `level` (default INFO) is used.
+
+        The mirror is faithful regardless of the request logger's configured level
+        threshold: the record is dispatched via `_logger.handle()`, which bypasses
+        the enabled-for-level check that `.debug()/.info()/...` perform.
+        """
+        base = InterceptedRequestsLogger
+        match = base._WORKFLOW_LEVEL_TAG_PATTERN.match(message)
+        parsed_level = match.group(1).upper() if match else level.upper()
+        numeric_level = base._STR_TO_LEVEL.get(parsed_level.lower(), logging.INFO)
+
+        extra = {'source': 'workflow', 'source_level': parsed_level}
+        record = base._logger.makeRecord(
+            base._logger.name, numeric_level, __file__, 0, message, (), None, extra=extra
+        )
+        base._logger.handle(record)

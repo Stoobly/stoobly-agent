@@ -42,6 +42,23 @@ class JSONFormatter(logging.Formatter):
       }
       return json.dumps(delimiter_entry)
 
+    # Handle workflow stdout/stderr lines mirrored via InterceptedRequestsLogger.log_workflow_line.
+    # A minimal, consistent entry is emitted before the request/scenario logic below runs,
+    # since this branch fires on every stdout line (avoids per-line InterceptSettings/scenario lookups).
+    if hasattr(record, 'source'):
+      workflow_entry = {
+        "timestamp": timestamp.isoformat(),
+        "level": getattr(record, 'source_level', record.levelname),
+        "source": record.source,
+      }
+
+      env_var_namespace_name = os.environ.get(WORKFLOW_NAMESPACE_ENV)
+      if env_var_namespace_name:
+        workflow_entry["namespace"] = env_var_namespace_name
+
+      workflow_entry["message"] = record.getMessage()
+      return json.dumps(workflow_entry)
+
     log_entry = {
       "timestamp": timestamp.isoformat(),
       "level": record.levelname,

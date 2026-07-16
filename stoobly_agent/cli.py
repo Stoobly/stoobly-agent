@@ -258,6 +258,16 @@ def run(**kwargs):
       print(process.pid)
       return
     else:
+      if kwargs.get('request_log_enable') and os.environ.get(WORKFLOW_NAME_ENV):
+        # Mirror this worker's raw stdout/stderr into the request log so
+        # `scaffold request log list` shows workflow output alongside requests.
+        # Covers local (detached child) and Docker (foreground container) alike,
+        # since both land here. The plain `stoobly-agent request log` path
+        # (no WORKFLOW_NAME) is unaffected.
+        from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+        from stoobly_agent.lib.intercepted_requests.tee_stream import install_workflow_log_tee
+        install_workflow_log_tee(ScaffoldInterceptedRequestsLogger.log_workflow_line)
+
       if kwargs.get('settings_commit'):
         settings.commit()
 

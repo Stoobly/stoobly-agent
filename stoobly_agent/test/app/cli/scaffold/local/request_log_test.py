@@ -10,6 +10,7 @@ from click.testing import CliRunner
 from unittest.mock import patch
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
+from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
@@ -24,7 +25,7 @@ from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLog
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
-from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
+from stoobly_agent.test.app.cli.scaffold.log_test_helpers import find_all_log_entries, wait_for_forward_proxy_intercept
 from stoobly_agent.test.test_helper import (
     NON_DETERMINISTIC_GET_REQUEST_HOST,
     NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -172,6 +173,138 @@ class TestRequestLogE2e():
         list_result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
         assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+
+@pytest.mark.e2e
+class TestRequestLogWorkflowSourceE2e():
+    """Test that the workflow's own stdout/stderr is mirrored into the request log
+    (tagged source="workflow"), alongside intercepted request entries.
+    """
+
+    # Emitted by cli.py's run() via Stoobly's Logger the moment the proxy starts, after
+    # install_workflow_log_tee() is installed -- a deterministic line the child always prints.
+    STARTUP_MESSAGE_SUBSTRING = 'starting with mode'
+
+    @pytest.fixture(scope='class', autouse=True)
+    def settings(self):
+        return reset()
+
+    @pytest.fixture(scope='module')
+    def runner(self):
+        yield CliRunner()
+
+    @pytest.fixture(scope='class')
+    def app_name(self):
+        yield "request-log-workflow-source-app"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def app_dir_path(self):
+        data_dir: DataDir = DataDir.instance()
+        path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
+        yield path
+
+    @pytest.fixture(scope='class')
+    def hostname(self):
+        yield "docs.stoobly.com"
+
+    @pytest.fixture(scope='class')
+    def service_name(self):
+        yield "test-api"
+
+    @pytest.fixture(scope='class', autouse=True)
+    def target_workflow_name(self):
+        yield WORKFLOW_MOCK_TYPE
+
+    @pytest.fixture(scope="class", autouse=True)
+    def proxy_url(self):
+        return "http://localhost:8081"
+
+    @pytest.fixture(scope="class", autouse=True)
+    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+        LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
+        LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+        """Start mock workflow for testing."""
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
+        time.sleep(1)
+        settings.load()
+
+        wait_for_forward_proxy_intercept(proxy_url, hostname)
+
+        # Give the async log writer time to flush the workflow's startup line.
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+    @pytest.fixture(scope="class", autouse=True)
+    def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+        yield
+
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
+        time.sleep(1)
+
+    def test_workflow_line_mirrored_into_request_log(self, app_dir_path, runner: CliRunner, target_workflow_name: str):
+        """The workflow's own stdout is mirrored into requests.json as a source="workflow" entry."""
+        result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
+        assert result.exit_code == 0
+
+        entries = find_all_log_entries(result.output)
+        workflow_entries = [e for e in entries if e.get('source') == 'workflow']
+        assert workflow_entries, f"Expected at least one source='workflow' entry in output:\n{result.output}"
+
+        assert any(self.STARTUP_MESSAGE_SUBSTRING in e.get('message', '') for e in workflow_entries), \
+            f"Expected a workflow entry mentioning '{self.STARTUP_MESSAGE_SUBSTRING}', got: {workflow_entries}"
+
+    def test_source_workflow_filter(self, app_dir_path, hostname, runner: CliRunner, proxy_url: str, target_workflow_name: str):
+        """--source workflow returns only workflow entries; omitting it also surfaces request entries."""
+        # Generate a real request entry so both kinds of entries coexist.
+        requests.get(
+            f'https://{hostname}/source-filter-test',
+            proxies={'http': proxy_url, 'https': proxy_url},
+            verify=False,
+        )
+        time.sleep(0.5)
+        InterceptedRequestsLogger.shutdown()
+
+        filtered_result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', target_workflow_name,
+            '--app-dir-path', app_dir_path, '--source', 'workflow',
+        ])
+        assert filtered_result.exit_code == 0
+        filtered_entries = find_all_log_entries(filtered_result.output)
+        assert filtered_entries, "Expected --source workflow to return at least one entry"
+        assert all(e.get('source') == 'workflow' for e in filtered_entries), \
+            f"--source workflow returned a non-workflow entry: {filtered_entries}"
+
+        unfiltered_result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
+        assert unfiltered_result.exit_code == 0
+        unfiltered_entries = find_all_log_entries(unfiltered_result.output)
+        assert any('source' not in e for e in unfiltered_entries), \
+            f"Expected at least one non-workflow (request) entry without a 'source' key, got: {unfiltered_entries}"
+
+    def test_log_file_still_written_and_faithful(self, app_dir_path, runner: CliRunner, target_workflow_name: str):
+        """The raw .log file is unaffected by mirroring -- still written, still contains the raw line.
+
+        `scaffold workflow logs` shells out to `cat` on the underlying fd (see
+        LocalWorkflowRunCommand.logs), which bypasses Click's CliRunner stdout capture -- so
+        `result.output` can't be used here. Read the .log file directly instead, using the same
+        path resolution the `logs` command itself uses (namespace defaults to the workflow name).
+        """
+        # Exercise the CLI command too, just to confirm it still exits cleanly.
+        LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+
+        app = App(app_dir_path)
+        workflow_namespace = WorkflowNamespace(app, target_workflow_name, mkdir=False)
+        log_path = workflow_namespace.log_file_path(target_workflow_name)
+
+        assert os.path.exists(log_path), f".log file should exist at {log_path}"
+        with open(log_path, 'r') as f:
+            log_contents = f.read()
+
+        assert log_contents.strip(), ".log file should not be empty"
+        assert self.STARTUP_MESSAGE_SUBSTRING in log_contents, \
+            f"Expected raw .log file to contain '{self.STARTUP_MESSAGE_SUBSTRING}':\n{log_contents}"
+
 
 @pytest.mark.e2e
 class TestRequestLogWithRecordedRequestsE2e():

@@ -8,7 +8,7 @@ LOG_FILTER_KEYS = [
     # Filter keys only — display options (format, select, without_headers)
     # are intentionally excluded and handled directly by each CLI command.
     'level', 'message', 'method', 'scenario_key', 'scenario_name',
-    'status_code', 'url', 'request_key', 'test_title',
+    'status_code', 'url', 'request_key', 'test_title', 'source',
 ]
 
 
@@ -44,6 +44,9 @@ def log_list_options(func):
         click.option('--scenario-key', default=None, help='Filter by scenario key.'),
         click.option('--scenario-name', default=None, help='Filter by scenario name.'),
         click.option('--select', multiple=True, help='Select column(s) to display.'),
+        click.option('--source', default=None,
+            type=click.Choice(['workflow'], case_sensitive=False),
+            help='Filter by entry source. "workflow" shows mirrored workflow stdout/stderr lines only.'),
         click.option('--status-code', default=None, type=click.IntRange(min=100, max=599),
             help='Filter by HTTP status code.'),
         click.option('--test-title', default=None, help='Filter by test title.'),
