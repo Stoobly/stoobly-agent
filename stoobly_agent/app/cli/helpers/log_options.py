@@ -45,8 +45,9 @@ def log_list_options(func):
         click.option('--scenario-name', default=None, help='Filter by scenario name.'),
         click.option('--select', multiple=True, help='Select column(s) to display.'),
         click.option('--source', default=None,
-            type=click.Choice(['workflow'], case_sensitive=False),
-            help='Filter by entry source. "workflow" shows mirrored workflow stdout/stderr lines only.'),
+            type=click.Choice(['workflow', 'request'], case_sensitive=False),
+            help='Filter by entry source. "workflow" shows mirrored workflow stdout/stderr lines only; '
+                 '"request" shows intercepted request entries only.'),
         click.option('--status-code', default=None, type=click.IntRange(min=100, max=599),
             help='Filter by HTTP status code.'),
         click.option('--test-title', default=None, help='Filter by test title.'),

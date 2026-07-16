@@ -257,7 +257,13 @@ class InterceptedRequestsLogger():
         """
         base = InterceptedRequestsLogger
         for key, expected_value in filters.items():
-            actual_value = entry.get(key)
+            if key == 'source':
+                # Request entries don't carry a "source" key (see json_formatter) --
+                # treat that absence as the implicit "request" source so --source
+                # can select either kind.
+                actual_value = entry.get('source', 'request')
+            else:
+                actual_value = entry.get(key)
 
             if actual_value is None:
                 return False

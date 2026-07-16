@@ -282,6 +282,18 @@ class TestRequestLogWorkflowSourceE2e():
         assert any('source' not in e for e in unfiltered_entries), \
             f"Expected at least one non-workflow (request) entry without a 'source' key, got: {unfiltered_entries}"
 
+        # --source request selects the same entries the unfiltered list surfaces without a
+        # 'source' key -- the implicit "request" source for entries that omit the field.
+        request_result = runner.invoke(scaffold, [
+            'request', 'logs', 'list', target_workflow_name,
+            '--app-dir-path', app_dir_path, '--source', 'request',
+        ])
+        assert request_result.exit_code == 0
+        request_entries = find_all_log_entries(request_result.output)
+        assert request_entries, "Expected --source request to return at least one entry"
+        assert all('source' not in e for e in request_entries), \
+            f"--source request returned a non-request entry: {request_entries}"
+
     def test_log_file_still_written_and_faithful(self, app_dir_path, runner: CliRunner, target_workflow_name: str):
         """The raw .log file is unaffected by mirroring -- still written, still contains the raw line.
 
