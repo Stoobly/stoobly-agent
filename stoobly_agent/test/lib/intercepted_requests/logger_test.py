@@ -1072,3 +1072,15 @@ class TestWorkflowLine:
         entry = self._find("info-level workflow line")
         assert entry is not None
         assert entry['source'] == 'workflow'
+
+    def test_strips_ansi_escape_codes(self):
+        InterceptedRequestsLogger.log_workflow_line("[INFO] EvalRequest \x1b[93mmissing\x1b[0m scenario key")
+        entry = self._find("[INFO] EvalRequest missing scenario key")
+        assert entry is not None
+        assert '\x1b' not in entry['message']
+
+    def test_strips_leading_and_trailing_whitespace(self):
+        InterceptedRequestsLogger.log_workflow_line("              << 200 OK 2.4k")
+        entry = self._find("<< 200 OK 2.4k")
+        assert entry is not None
+        assert entry['message'] == "<< 200 OK 2.4k"

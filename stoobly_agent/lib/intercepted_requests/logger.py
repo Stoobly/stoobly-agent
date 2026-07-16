@@ -679,6 +679,9 @@ class InterceptedRequestsLogger():
         InterceptedRequestsLogger._logger.error(message, extra=extra if extra else None)
 
     _WORKFLOW_LEVEL_TAG_PATTERN: Final = re.compile(r'^\[(DEBUG|INFO|WARNING|ERROR)\]', re.IGNORECASE)
+    # Strips terminal color/style codes (e.g. bcolors, mitmproxy's colored one-liners) --
+    # meaningless once the line is copied into JSON.
+    _ANSI_ESCAPE_PATTERN: Final = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]')
 
     @classmethod
     def log_workflow_line(cls, message: str, level: str = INFO) -> None:
@@ -688,11 +691,19 @@ class InterceptedRequestsLogger():
         entries. A leading '[LEVEL]' tag (as emitted by Stoobly's own Logger format)
         is parsed to set the displayed level; otherwise `level` (default INFO) is used.
 
+        The mirrored `message` has ANSI escape codes stripped and is trimmed of
+        leading/trailing whitespace (e.g. mitmproxy's terminal-column alignment on
+        response lines) -- neither carries meaning outside a terminal. This only
+        affects the JSON copy; the real .log file / docker logs output (written by
+        the wrapped stream, untouched by the tee) keeps the raw bytes as-is.
+
         The mirror is faithful regardless of the request logger's configured level
         threshold: the record is dispatched via `_logger.handle()`, which bypasses
         the enabled-for-level check that `.debug()/.info()/...` perform.
         """
         base = InterceptedRequestsLogger
+        message = base._ANSI_ESCAPE_PATTERN.sub('', message).strip()
+
         match = base._WORKFLOW_LEVEL_TAG_PATTERN.match(message)
         parsed_level = match.group(1).upper() if match else level.upper()
         numeric_level = base._STR_TO_LEVEL.get(parsed_level.lower(), logging.INFO)
