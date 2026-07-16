@@ -11,10 +11,20 @@ from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.test_helper import reset
 
+def build_raw_request(path_with_query: str, headers: dict = None) -> bytes:
+  lines = [f'GET https://example.com{path_with_query} HTTP/1.1']
+  for name, value in (headers or {}).items():
+    lines.append(f'{name}: {value}')
+  lines.append('')
+  lines.append('')
+  return '\r\n'.join(lines).encode()
+
 class RequestMock():
 
-  def __init__(self, id):
+  def __init__(self, id, raw: bytes = None, http_version = 1.1):
     self.__id = id
+    self.raw = raw
+    self.http_version = http_version
 
   @property
   def id(self):
@@ -111,3 +121,52 @@ class TestTiebreakScenarioRequest():
 
       assert cache.read('persists') != None
       assert cache.read(f'1.{SUFFIX}') is None
+
+  class TestWhenHeuristics():
+    @pytest.fixture(scope='class')
+    def session_id(self):
+      return generate_session_id({
+        'scenario_id': 'heuristics'
+      })
+
+    def test_it_picks_by_query_params(self, session_id: str):
+      requests = [
+        RequestMock(1, build_raw_request('/api?role=admin')),
+        RequestMock(2, build_raw_request('/api?role=user')),
+      ]
+
+      request = tiebreak_scenario_request(
+        session_id,
+        requests,
+        query_params={ 'role': 'user' },
+      )
+      assert request.id == 2
+
+    def test_it_picks_by_headers_when_query_tied(self, session_id: str):
+      requests = [
+        RequestMock(1, build_raw_request('/api?role=admin', { 'Accept': 'application/json' })),
+        RequestMock(2, build_raw_request('/api?role=admin', { 'Accept': 'text/html' })),
+      ]
+
+      request = tiebreak_scenario_request(
+        session_id,
+        requests,
+        query_params={ 'role': 'admin' },
+        headers={ 'Accept': 'text/html' },
+      )
+      assert request.id == 2
+
+    def test_it_falls_back_to_order_when_tied(self, session_id: str):
+      requests = [
+        RequestMock(1, build_raw_request('/api?role=admin', { 'Accept': 'application/json' })),
+        RequestMock(2, build_raw_request('/api?role=admin', { 'Accept': 'application/json' })),
+      ]
+
+      access_request(session_id, requests[0].id)
+      request = tiebreak_scenario_request(
+        session_id,
+        requests,
+        query_params={ 'role': 'admin' },
+        headers={ 'Accept': 'application/json' },
+      )
+      assert request.id == 2

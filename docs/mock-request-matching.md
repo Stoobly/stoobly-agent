@@ -2,7 +2,7 @@
 
 ## Background
 
-How an **incoming proxied request** is matched to a **recorded row** in the local DB for mocks: **hash-based** identity, optional **match rules** that drop hash dimensions, and optional **`compute`** to re-hash stored `raw` when **ignored components** change between record time and the retry path. Custom status codes: **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** ([`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py)) — not standard HTTP 404/498.
+How an **incoming proxied request** is matched to a **recorded row** in the local DB for mocks: **endpoint identity** (host / path / port / method), optional **hash dimensions** enabled by **match-rule allowlists**, **scenario tiebreak** when multiple rows remain, and optional **`compute`** to re-hash stored `raw` when **ignored components** change between record time and the retry path. Custom status codes: **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** ([`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py)) — not standard HTTP 404/498.
 
 ### Endpoint lookup and `compute`
 
@@ -26,6 +26,33 @@ If `endpoint_promise` exists, and the request is on **retry** with non-empty ign
 ### Hash dimensions
 
 [`HashedRequestDecorator`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py): MD5 over **headers**, **query params** (multi-value), **body** as params or raw text per [`__build_request_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py). Typed **ignored components** (`HEADER`, `QUERY_PARAM`, `BODY_PARAM`, …) exclude matching parts before hashing.
+
+Hashes are always **computed**, but only dimensions **kept** by a match rule are passed to the ORM lookup (see below).
+
+### Match rules (component allowlists)
+
+Match rules are **allowlists**, not denylists. [`__matched_components`](../stoobly_agent/app/proxy/mock/eval_request_service.py) starts with every hash dimension **off** (`Header`, `Query Param`, `Body Param` → `False`). For each rule whose **method** and **URL pattern** match the live request, the rule’s `components` list becomes the keep set (**last matching rule wins**; rules do not merge).
+
+| Situation | Hash columns sent to ORM | Live tiebreak params |
+|-----------|--------------------------|----------------------|
+| **No** matching rule (default) | None — identity is host / path / port / method only | Live query params + headers (when present) |
+| Rule lists e.g. `Query Param` | Only `query_params_hash` | Live headers only (query already hashed) |
+| Rule lists all three components | All component hashes | None (exact hash already distinguishes) |
+
+[`__filter_by_match_rules`](../stoobly_agent/app/proxy/mock/eval_request_service.py) deletes hashes for dimensions not kept. The same keep set drives [`__build_tiebreak_params`](../stoobly_agent/app/proxy/mock/eval_request_service.py):
+
+- Dimension **not** kept → attach live value for fuzzy overlap (`QUERY_PARAMS` / `HEADERS`). Body is never scored in tiebreak—only hashed when allowlisted.
+- Dimension **kept** → skip the corresponding live param (exact hash already distinguishes candidates).
+
+### Scenario tiebreak
+
+When local DB lookup returns **multiple** rows for a scenario, [`tiebreak_scenario_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/tiebreak_scenario_request.py) picks one:
+
+1. Score candidates by live query-param overlap (if `QUERY_PARAMS` present); unique best score wins.
+2. Else score by live header overlap (if `HEADERS` present); unique best score wins.
+3. Else fall back to session order (next request after last served id; candidates are ordered by `id` ascending).
+
+Without a scenario, multiple matches resolve to the **highest id** (most recent).
 
 ---
 
@@ -96,19 +123,24 @@ flowchart TB
   Snap[component_hashes from kwargs]
   Comp{COMPUTE equals 1?}
   Start --> Col --> Snap --> Comp
-  Comp -->|no| ORM1[where_for with hash columns]
+  Comp -->|no| ORM1["where_for + order_by(id asc)"]
   ORM1 --> Rows1[rows as list]
   Comp -->|yes| Strip[drop component hash keys from request_columns]
-  Strip --> ORM2[where_for coarse candidates]
+  Strip --> ORM2["where_for coarse + order_by(id asc)"]
   ORM2 --> Rows2[candidates]
   Rows2 --> IG[ignored_components from ENDPOINT_PROMISE]
   IG --> CF{ignored_components non-empty?}
   CF -->|yes| Filt[filter_requests_by_hashes on raw]
   CF -->|no| Rows3[rows]
   Filt --> Rows3[rows]
-  Rows1 --> Pick[pick row or scenario tiebreak]
-  Rows3 --> Pick
-  Pick --> Got{row found?}
+  Rows1 --> Multi
+  Rows3 --> Multi
+  Multi{multiple rows and scenario_id?}
+  Multi -->|yes| TB["tiebreak_scenario_request<br/>1. live query params score<br/>2. live headers score<br/>3. session order"]
+  Multi -->|no| Last[last row = highest id, or none]
+  TB --> Got
+  Last --> Got
+  Got{row found?}
   Got -->|yes| OK[transform stored response]
   Got -->|no| NFD[no matching row]
   NFD --> RY{retry truthy?}
@@ -120,15 +152,42 @@ flowchart TB
 
 ---
 
+## Diagram: match rules → hashes and live tiebreak params
+
+Inside [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py), before calling `request_model.response`. Keep flags default **off**; a matching rule’s `components` are an **allowlist** (last match wins).
+
+```mermaid
+flowchart TB
+  Build["build request hashes + optional params"]
+  Keep["__matched_components<br/>default all false; matching rule allowlists keep dims"]
+  Build --> Keep
+  Keep --> TB["__build_tiebreak_params"]
+  TB --> QP{query param kept?}
+  QP -->|no| LQP[attach QUERY_PARAMS]
+  QP -->|yes| SkipQ[skip live query params]
+  TB --> HD{header kept?}
+  HD -->|no| LH[attach HEADERS]
+  HD -->|yes| SkipH[skip live headers]
+  LQP --> Filter
+  SkipQ --> Filter
+  LH --> Filter
+  SkipH --> Filter
+  Filter["__filter_by_match_rules<br/>drop hashes for dimensions not allowlisted"]
+  Filter --> Resp[request_model.response]
+```
+
+---
+
 ## Primary code references
 
 | Concern | Location |
 |--------|----------|
 | Mock entry, retry, fixtures | [`handle_mock_service.py`](../stoobly_agent/app/proxy/handle_mock_service.py) |
-| Query / hashes / match rules / `compute` | [`eval_request_service.py`](../stoobly_agent/app/proxy/mock/eval_request_service.py) |
+| Query / hashes / match rules / live tiebreak params / `compute` | [`eval_request_service.py`](../stoobly_agent/app/proxy/mock/eval_request_service.py) |
 | Endpoint cache + OpenAPI ignored-component derivation | [`endpoint_cache.py`](../stoobly_agent/app/proxy/mock/endpoint_cache.py) |
 | Remote endpoint search adapter | [`search_endpoint.py`](../stoobly_agent/app/proxy/mock/search_endpoint.py) |
 | OpenAPI endpoint search adapter | [`search_open_api_endpoint.py`](../stoobly_agent/app/proxy/mock/search_open_api_endpoint.py) |
 | Local DB lookup, strip columns, not found 498/499 | [`request_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
+| Scenario multi-row tiebreak | [`tiebreak_scenario_request.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/tiebreak_scenario_request.py) |
 | Candidate filtering | [`filter_requests_by_hashes_service.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/filter_requests_by_hashes_service.py) |
 | Hashing | [`hashed_request_decorator.py`](../stoobly_agent/app/proxy/mock/hashed_request_decorator.py) |

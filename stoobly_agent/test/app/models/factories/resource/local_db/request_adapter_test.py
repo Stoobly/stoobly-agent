@@ -307,6 +307,60 @@ class TestLocalDBRequestAdapter():
         )
         assert response.status_code == 201
 
+    class TestMostRecentWithoutScenario():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      @pytest.fixture(scope='class')
+      def request_url(self):
+        return 'https://example.com/v1/unordered'
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_one(self, settings: Settings, request_url: str):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='older',
+          status_code=200,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        return Request.last()
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_two(self, settings: Settings, request_url: str, created_request_one: Request):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='newer',
+          status_code=201,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        request = Request.last()
+        assert request.id > created_request_one.id
+        return request
+
+      def test_it_returns_highest_id(
+        self,
+        request_url: str,
+        created_request_one: Request,
+        created_request_two: Request,
+        local_db_request_adapter: LocalDBRequestAdapter,
+      ):
+        uri = urlparse(request_url)
+        response = local_db_request_adapter.response(
+          host=uri.hostname,
+          path=uri.path,
+          method='GET',
+          port=443,
+        )
+        assert response.status_code == 201
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request_two.id)
+
     class TestMockRequestEndpointIdHeader():
       @pytest.fixture(scope='function')
       def created_request(self, settings: Settings):

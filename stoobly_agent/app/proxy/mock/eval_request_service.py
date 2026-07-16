@@ -77,6 +77,8 @@ def eval_request(
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params_builder.with_params(__build_request_params(request, ignored_components))
     query_params_builder.with_params(__build_optional_params(request, options))
+    match_rules = intercept_settings.mock_match_rules
+    query_params_builder.with_params(__build_tiebreak_params(request, match_rules))
 
     # Tease out API returning ignored components on custom not found
     if request_model.is_local:
@@ -104,7 +106,7 @@ def eval_request(
                 query_params_builder.with_param(request_query_params.COMPUTE, '1')
 
     query_params = query_params_builder.build()
-    __filter_by_match_rules(request, intercept_settings.mock_match_rules, query_params)
+    __filter_by_match_rules(request, match_rules, query_params)
 
     return request_model.response(**query_params)
 
@@ -181,11 +183,41 @@ def __build_optional_params(request: 'MitmproxyRequest', options: EvalRequestOpt
 
     return optional_params
 
-def __filter_by_match_rules(
-    request: 'MitmproxyRequest',
-    match_rules: List[MatchRule],
-    query_params: RequestResponseShowQueryParams,
-):
+def __build_tiebreak_params(request: 'MitmproxyRequest', match_rules: List[MatchRule]) -> dict:
+    # Only pass live components for dimensions not already matched by hash.
+    # When a component is in the match rule, exact hash matching already distinguishes
+    # candidates; fuzzy tiebreak on that same dimension is unnecessary.
+    keep = __matched_components(request, match_rules)
+    facade = MitmproxyRequestFacade(request)
+    params = {}
+
+    if not keep[request_component.QUERY_PARAM]:
+        query_params = __deflatten_multi_dict(facade.query)
+        if query_params:
+            params[request_query_params.QUERY_PARAMS] = query_params
+
+    if not keep[request_component.HEADER]:
+        headers = dict(facade.headers)
+        if headers:
+            params[request_query_params.HEADERS] = headers
+
+    return params
+
+def __deflatten_multi_dict(multi_dict) -> dict:
+    params = {}
+    for name, value in multi_dict.items(multi=True):
+        if name not in params:
+            params[name] = value
+        else:
+            if not isinstance(params[name], list):
+                params[name] = [params[name]]
+
+            params[name].append(value)
+    return params
+
+def __matched_components(request: 'MitmproxyRequest', match_rules: List[MatchRule]) -> dict:
+    # Allowlist: keep flags start False. A matching rule's components list turns
+    # dimensions on; last matching rule wins (no merge). No match → no hash dims.
     components = [request_component.BODY_PARAM, request_component.HEADER, request_component.QUERY_PARAM]
     method = request.method.upper()
 
@@ -207,6 +239,15 @@ def __filter_by_match_rules(
 
         for component in components:
             keep[component] = component in match_rule.components
+
+    return keep
+
+def __filter_by_match_rules(
+    request: 'MitmproxyRequest',
+    match_rules: List[MatchRule],
+    query_params: RequestResponseShowQueryParams,
+):
+    keep = __matched_components(request, match_rules)
 
     if not keep[request_component.HEADER]:
         if 'headers_hash' in query_params:

@@ -98,8 +98,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
           if key in request_columns:
             del request_columns[key]
 
-      # Find most recent matching record
-      requests = self.__request_orm.where_for(**request_columns).get()
+      # Ascending id so session-order tiebreak and last-row (most recent) pick are stable
+      requests = self.__request_orm.where_for(**request_columns).order_by('id', 'asc').get()
 
       if should_compute and ignored_components:
         requests = filter_requests_by_hashes(requests, _component_hashes, ignored_components)
@@ -113,7 +113,12 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
           # When multiple requests are matched for a scenario, return them in sequence
           request_session_id = generate_session_id(request_session_id_components)
-          request = tiebreak_scenario_request(request_session_id, requests)
+          request = tiebreak_scenario_request(
+            request_session_id,
+            requests,
+            query_params=query_params.get(request_query_params.QUERY_PARAMS),
+            headers=query_params.get(request_query_params.HEADERS),
+          )
           access_request(request_session_id, request.id)
       else:
         request = requests[-1] if len(requests) > 0 else None
@@ -368,6 +373,12 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     if request_columns.get(request_query_params.COMPUTE):
       del request_columns[request_query_params.COMPUTE]
+
+    if request_columns.get(request_query_params.QUERY_PARAMS):
+      del request_columns[request_query_params.QUERY_PARAMS]
+
+    if request_columns.get(request_query_params.HEADERS):
+      del request_columns[request_query_params.HEADERS]
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):
