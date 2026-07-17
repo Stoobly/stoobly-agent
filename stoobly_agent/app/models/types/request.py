@@ -10,6 +10,7 @@ class RequestCreateParams(TypedDict):
   project_id: str
   joined_request: JoinedRequest
   scenario_id: str
+  sequence_id: Optional[int]
   uuid: str
 
 class RequestDestroyParams(TypedDict):

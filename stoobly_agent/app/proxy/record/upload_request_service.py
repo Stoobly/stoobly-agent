@@ -57,11 +57,13 @@ def upload_request(
 
     project_key = intercept_settings.project_key
     scenario_key = intercept_settings.scenario_key
+    sequence_id = intercept_settings.request_sequence_id
     body_params = __build_body_params(
         project_key,
         joined_request,
         flow=flow,
-        scenario_key=scenario_key
+        scenario_key=scenario_key,
+        sequence_id=sequence_id,
     )
 
     res = __upload_request_with_body_params(request_model, body_params)
@@ -116,9 +118,13 @@ def __upload_request_with_body_params(request_model: RequestModel, body_params: 
 def __build_body_params(project_key: str, joined_request: JoinedRequest, **kwargs):
     flow: MitmproxyHTTPFlow = kwargs.get('flow')
     scenario_key = kwargs.get('scenario_key')
+    sequence_id = kwargs.get('sequence_id')
 
     body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
     body_params.with_resource_scoping(project_key, scenario_key)
+
+    if sequence_id is not None:
+        body_params.with_param('sequence_id', sequence_id)
 
     return body_params.build()
 

@@ -1,4 +1,4 @@
-from typing import List, TypedDict, Union
+from typing import List, Optional, TypedDict, Union
 
 from .pagination_query_params import PaginationQueryParams
 
@@ -7,6 +7,7 @@ class RequestCreateParams(TypedDict):
   project_id: str
   requests: bytes
   scenario_id: str
+  sequence_id: Optional[int]
 
 class RequestResponseShowQueryParams(TypedDict):
   body_params_hash: str
@@ -50,6 +51,7 @@ class RequestShowResponse(TypedDict):
   scheme: str
   scenario: str
   scenario_id: int
+  sequence_id: Optional[int]
   starred: bool
   status: int
   uuid: str

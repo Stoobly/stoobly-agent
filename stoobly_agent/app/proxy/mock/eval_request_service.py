@@ -181,6 +181,12 @@ def __build_optional_params(request: 'MitmproxyRequest', options: EvalRequestOpt
     if custom_headers.SESSION_ID in headers:
         optional_params[request_query_params.SESSION_ID] = headers[custom_headers.SESSION_ID]
 
+    if custom_headers.REQUEST_SEQUENCE_ID in headers:
+        try:
+            optional_params[request_query_params.SEQUENCE_ID] = int(headers[custom_headers.REQUEST_SEQUENCE_ID])
+        except (TypeError, ValueError):
+            pass
+
     return optional_params
 
 def __build_tiebreak_params(request: 'MitmproxyRequest', match_rules: List[MatchRule]) -> dict:
@@ -195,11 +201,6 @@ def __build_tiebreak_params(request: 'MitmproxyRequest', match_rules: List[Match
         query_params = __deflatten_multi_dict(facade.query)
         if query_params:
             params[request_query_params.QUERY_PARAMS] = query_params
-
-    if not keep[request_component.HEADER]:
-        headers = dict(facade.headers)
-        if headers:
-            params[request_query_params.HEADERS] = headers
 
     return params
 

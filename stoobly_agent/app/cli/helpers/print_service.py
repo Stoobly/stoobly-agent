@@ -55,7 +55,7 @@ def print_reports(reports, **kwargs: TabulatePrintOptions):
 
 def print_requests(requests, **kwargs: TabulatePrintOptions):
     filter = [
-        'body_params_hash', 'body_text_hash', 'components' , 'created_at', 'endpoint', 'endpoint_id', 'http_version', 'is_deleted', 'position', 'project_id', 'pushed_at', 'query_params_hash', 'scenario_id', 'scheme', 'starred', 'uuid', 'updated_at', 'url'
+        'body_params_hash', 'body_text_hash', 'components' , 'created_at', 'endpoint', 'endpoint_id', 'http_version', 'is_deleted', 'project_id', 'pushed_at', 'query_params_hash', 'scenario_id', 'scheme', 'sequence_id', 'starred', 'uuid', 'updated_at', 'url'
     ]
     format = kwargs.get('format')
 

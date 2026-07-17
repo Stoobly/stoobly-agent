@@ -9,7 +9,6 @@ from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.orm.request import Request
 
 SUFFIX = 'last_request_id'
-STOOBLY_HEADER_PREFIX = 'x-stoobly-'
 
 def access_request(session_id: str, request_id: int, timeout = None):
   cache = Cache.instance()
@@ -31,7 +30,7 @@ def tiebreak_scenario_request(
   session_id: str,
   requests: List[Request],
   query_params: Optional[dict] = None,
-  headers: Optional[dict] = None,
+  sequence_id: Optional[int] = None,
 ):
   if len(requests) == 0:
     return None
@@ -49,15 +48,23 @@ def tiebreak_scenario_request(
     if winner:
       return winner
 
-  if headers:
-    winner = __most_matches_winner(
-      requests,
-      lambda request: __score_headers(headers, __parsed_components(request, parsed_cache)['headers'])
-    )
+  if sequence_id is not None:
+    winner = __tiebreak_by_sequence_id(sequence_id, requests)
     if winner:
       return winner
 
   return __tiebreak_by_order(session_id, requests)
+
+def __tiebreak_by_sequence_id(sequence_id: int, requests: List[Request]) -> Optional[Request]:
+  for request in requests:
+    request_sequence_id = getattr(request, 'sequence_id', None)
+    if request_sequence_id is None:
+      continue
+
+    if request_sequence_id == sequence_id:
+      return request
+
+  return None
 
 def __tiebreak_by_order(session_id: str, requests: List[Request]):
   _last_request_id_key = __last_request_id_key(session_id)
@@ -112,26 +119,6 @@ def __score_query_params(query_params: dict, stored_query_params: dict) -> int:
 
   return score
 
-def __score_headers(headers: dict, stored_headers: dict) -> int:
-  score = 0
-  stored_by_lower = {
-    key.lower(): value for key, value in stored_headers.items()
-    if not __is_stoobly_header(key)
-  }
-
-  for key, value in headers.items():
-    if __is_stoobly_header(key):
-      continue
-
-    stored_value = stored_by_lower.get(key.lower())
-    if stored_value is not None and stored_value == value:
-      score += 1
-
-  return score
-
-def __is_stoobly_header(name: str) -> bool:
-  return name.lower().startswith(STOOBLY_HEADER_PREFIX)
-
 def __parsed_components(request: Request, cache: Dict[int, dict]) -> dict:
   request_id = request.id
   if request_id in cache:
@@ -139,11 +126,10 @@ def __parsed_components(request: Request, cache: Dict[int, dict]) -> dict:
 
   facade = __parse_stored_request(request)
   if facade is None:
-    components = { 'query_params': {}, 'headers': {} }
+    components = { 'query_params': {} }
   else:
     components = {
       'query_params': __deflatten_multi_dict(facade.query),
-      'headers': dict(facade.headers),
     }
 
   cache[request_id] = components
