@@ -66,7 +66,10 @@ class RequestsController:
                 'uuid': str(uuid.uuid4()),
             }
             if body_params.get('sequence_id') is not None:
-                create_body['sequence_id'] = int(body_params.get('sequence_id'))
+                try:
+                    create_body['sequence_id'] = int(body_params.get('sequence_id'))
+                except (TypeError, ValueError):
+                    return context.bad_request('Invalid sequence_id')
 
             request, status = request_model.create(**create_body)
 

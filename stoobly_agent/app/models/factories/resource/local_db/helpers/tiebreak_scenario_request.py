@@ -140,15 +140,18 @@ def __parse_stored_request(request: Request) -> Optional[MitmproxyRequestFacade]
   if not raw:
     return None
 
-  python_request = RawHttpRequestAdapter(raw).to_request()
-  http_version = getattr(request, 'http_version', None)
-  if isinstance(http_version, float) or isinstance(http_version, int):
-    http_version = f"HTTP/{http_version}"
-  if not http_version:
-    http_version = 'HTTP/1.1'
+  try:
+    python_request = RawHttpRequestAdapter(raw).to_request()
+    http_version = getattr(request, 'http_version', None)
+    if isinstance(http_version, float) or isinstance(http_version, int):
+      http_version = f"HTTP/{http_version}"
+    if not http_version:
+      http_version = 'HTTP/1.1'
 
-  mitmproxy_request = PythonRequestAdapterFactory(python_request).mitmproxy_request(http_version)
-  return MitmproxyRequestFacade(mitmproxy_request)
+    mitmproxy_request = PythonRequestAdapterFactory(python_request).mitmproxy_request(http_version)
+    return MitmproxyRequestFacade(mitmproxy_request)
+  except Exception:
+    return None
 
 def __deflatten_multi_dict(multi_dict) -> dict:
   params = {}
