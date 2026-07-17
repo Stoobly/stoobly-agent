@@ -34,6 +34,7 @@ class Request(Base):
     'response_headers_hash',
     'scenario_id',
     'scheme', 
+    'sequence_id',
     'starred',
     'status',
     'uuid',

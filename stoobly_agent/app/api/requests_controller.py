@@ -60,11 +60,18 @@ class RequestsController:
                 return context.bad_request('Could not parse requests')
 
             request_model = self.__request_model(context)
-            request, status = request_model.create(**{
+            create_body = {
                 **create_params,
                 'scenario_id': scenario_id,
                 'uuid': str(uuid.uuid4()),
-            })
+            }
+            if body_params.get('sequence_id') is not None:
+                try:
+                    create_body['sequence_id'] = int(body_params.get('sequence_id'))
+                except (TypeError, ValueError):
+                    return context.bad_request('Invalid sequence_id')
+
+            request, status = request_model.create(**create_body)
 
             if context.filter_response(request, status):
                 # Rollback

@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 class RequestColumns(TypedDict):
   body_params_hash: str
@@ -13,3 +13,4 @@ class RequestColumns(TypedDict):
   query_params_hash: str
   raw: bytes
   scheme: str
+  sequence_id: Optional[int]

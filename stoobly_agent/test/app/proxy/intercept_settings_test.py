@@ -648,6 +648,48 @@ class TestRequestRewriteRules:
         assert len(rules) == 0
 
 
+class TestRequestSequenceId:
+
+    def test_returns_int_from_header_when_set(self, mock_settings, mock_data_rules, mock_request):
+        mock_request.headers = Headers(**{custom_headers.REQUEST_SEQUENCE_ID: '7'})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.request_sequence_id == 7
+
+    def test_returns_none_when_header_not_set(self, mock_settings, mock_data_rules, mock_request):
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.request_sequence_id is None
+
+    def test_returns_none_when_header_invalid(self, mock_settings, mock_data_rules, mock_request):
+        mock_request.headers = Headers(**{custom_headers.REQUEST_SEQUENCE_ID: 'not-an-int'})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.request_sequence_id is None
+
+    def test_survives_minimize_on_flow_copy(self, mock_settings, mock_data_rules, mock_request):
+        """MINIMAL record strategy strips headers from a flow copy; settings keep originals."""
+        from copy import deepcopy
+        from stoobly_agent.app.proxy.utils.minimize_headers import minimize_headers
+
+        mock_request.headers = Headers(**{
+            custom_headers.REQUEST_SEQUENCE_ID: '3',
+            'Accept': 'application/json',
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+
+        flow_stub = MagicMock()
+        flow_stub.request = deepcopy(mock_request)
+        minimize_headers(flow_stub)
+
+        assert custom_headers.REQUEST_SEQUENCE_ID not in flow_stub.request.headers
+        assert intercept_settings.request_sequence_id == 3
+
+
 class TestPublicDirectoryPath:
 
     def test_returns_path_from_header_when_set(self, mock_settings, mock_data_rules, mock_request):

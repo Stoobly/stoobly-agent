@@ -47,8 +47,17 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     joined_request: JoinedRequest = params['joined_request']
     scenario_id = params.get('scenario_id')
     uuid = params.get('uuid')
+    sequence_id = params.get('sequence_id')
 
-    request_columns = build_request_columns(flow, joined_request, is_deleted=False, scenario_id=scenario_id, uuid=uuid)
+    create_columns = {
+      'is_deleted': False,
+      'scenario_id': scenario_id,
+      'uuid': uuid,
+    }
+    if sequence_id is not None:
+      create_columns['sequence_id'] = sequence_id
+
+    request_columns = build_request_columns(flow, joined_request, **create_columns)
 
     with ORM.instance().db.transaction():
       request_record = self.__request_orm.create(**request_columns)
@@ -98,8 +107,8 @@ class LocalDBRequestAdapter(LocalDBAdapter):
           if key in request_columns:
             del request_columns[key]
 
-      # Find most recent matching record
-      requests = self.__request_orm.where_for(**request_columns).get()
+      # Ascending id so session-order tiebreak and last-row (most recent) pick are stable
+      requests = self.__request_orm.where_for(**request_columns).order_by('id', 'asc').get()
 
       if should_compute and ignored_components:
         requests = filter_requests_by_hashes(requests, _component_hashes, ignored_components)
@@ -113,7 +122,12 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
           # When multiple requests are matched for a scenario, return them in sequence
           request_session_id = generate_session_id(request_session_id_components)
-          request = tiebreak_scenario_request(request_session_id, requests)
+          request = tiebreak_scenario_request(
+            request_session_id,
+            requests,
+            query_params=query_params.get(request_query_params.QUERY_PARAMS),
+            sequence_id=query_params.get(request_query_params.SEQUENCE_ID),
+          )
           access_request(request_session_id, request.id)
       else:
         request = requests[-1] if len(requests) > 0 else None
@@ -368,6 +382,12 @@ class LocalDBRequestAdapter(LocalDBAdapter):
 
     if request_columns.get(request_query_params.COMPUTE):
       del request_columns[request_query_params.COMPUTE]
+
+    if request_columns.get(request_query_params.QUERY_PARAMS):
+      del request_columns[request_query_params.QUERY_PARAMS]
+
+    if request_columns.get(request_query_params.SEQUENCE_ID) is not None:
+      del request_columns[request_query_params.SEQUENCE_ID]
 
   def __request(self, request_id: str):
     if self.validate_uuid(request_id):

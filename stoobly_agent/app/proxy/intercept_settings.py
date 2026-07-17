@@ -302,6 +302,16 @@ class InterceptSettings:
 
     return None
 
+  @property
+  def request_sequence_id(self) -> Optional[int]:
+    if not self.__headers or custom_headers.REQUEST_SEQUENCE_ID not in self.__headers:
+      return None
+
+    try:
+      return int(self.__headers[custom_headers.REQUEST_SEQUENCE_ID])
+    except (TypeError, ValueError):
+      return None
+
   @scenario_key.setter
   def scenario_key(self, v):
     self.__data_rules.scenario_key = v

@@ -10,11 +10,12 @@ from stoobly_agent.app.models.factories.resource.local_db.request_adapter import
   LocalDBRequestAdapter,
 )
 from stoobly_agent.app.models.types.request import RequestIndexSimilarParams
+from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import custom_headers
+from stoobly_agent.config.constants import custom_headers, query_params as request_query_params
 from stoobly_agent.lib.orm.scenario import Scenario
 from stoobly_agent.test.test_helper import reset
 
@@ -306,6 +307,162 @@ class TestLocalDBRequestAdapter():
           host=uri.hostname, path=uri.path, scenario_id=created_scenario.id
         )
         assert response.status_code == 201
+
+    class TestMostRecentWithoutScenario():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      @pytest.fixture(scope='class')
+      def request_url(self):
+        return 'https://example.com/v1/unordered'
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_one(self, settings: Settings, request_url: str):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='older',
+          status_code=200,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        return Request.last()
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_two(self, settings: Settings, request_url: str, created_request_one: Request):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='newer',
+          status_code=201,
+          url=request_url,
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        request = Request.last()
+        assert request.id > created_request_one.id
+        return request
+
+      def test_it_returns_highest_id(
+        self,
+        request_url: str,
+        created_request_one: Request,
+        created_request_two: Request,
+        local_db_request_adapter: LocalDBRequestAdapter,
+      ):
+        uri = urlparse(request_url)
+        response = local_db_request_adapter.response(
+          host=uri.hostname,
+          path=uri.path,
+          method='GET',
+          port=443,
+        )
+        assert response.status_code == 201
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request_two.id)
+
+    class TestHeuristicTiebreak():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      @pytest.fixture(scope='class')
+      def created_scenario(self):
+        return Scenario.create(name='heuristic-tiebreak')
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_admin(self, settings: Settings, created_scenario: Scenario):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='admin',
+          status_code=200,
+          url='https://example.com/v1/search?role=admin',
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        request = Request.last()
+        request.update(scenario_id=created_scenario.id, sequence_id=1)
+        return request
+
+      @pytest.fixture(autouse=True, scope='class')
+      def created_request_user(self, settings: Settings, created_scenario: Scenario):
+        status = RequestBuilder(
+          method='GET',
+          request_body='',
+          request_headers={},
+          response_body='user',
+          status_code=201,
+          url='https://example.com/v1/search?role=user',
+        ).with_settings(settings).build()[1]
+        assert status == 200
+        request = Request.last()
+        request.update(scenario_id=created_scenario.id, sequence_id=3)
+        return request
+
+      def test_it_picks_by_query_params(
+        self,
+        created_scenario: Scenario,
+        created_request_user: Request,
+        local_db_request_adapter: LocalDBRequestAdapter,
+      ):
+        response = local_db_request_adapter.response(
+          host='example.com',
+          path='/v1/search',
+          method='GET',
+          port=443,
+          scenario_id=created_scenario.id,
+          **{request_query_params.QUERY_PARAMS: {'role': 'user'}},
+        )
+        assert response.status_code == 201
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request_user.id)
+
+      def test_it_picks_by_sequence_id(
+        self,
+        created_scenario: Scenario,
+        created_request_user: Request,
+        local_db_request_adapter: LocalDBRequestAdapter,
+      ):
+        response = local_db_request_adapter.response(
+          host='example.com',
+          path='/v1/search',
+          method='GET',
+          port=443,
+          scenario_id=created_scenario.id,
+          **{request_query_params.SEQUENCE_ID: 3},
+        )
+        assert response.status_code == 201
+        assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(created_request_user.id)
+
+    class TestNotFound():
+      @pytest.fixture(autouse=True, scope='class')
+      def settings(self):
+        return reset()
+
+      def test_it_returns_499_when_no_matching_row(self, local_db_request_adapter: LocalDBRequestAdapter):
+        response = local_db_request_adapter.response(
+          host='missing.example.com',
+          path='/none',
+          method='GET',
+          port=443,
+        )
+        assert response.status_code == custom_response_codes.NOT_FOUND
+
+      def test_it_returns_499_on_retry_even_with_endpoint_ignores(
+        self, local_db_request_adapter: LocalDBRequestAdapter
+      ):
+        ignored_components = [{'type': 3, 'name': 'b'}]
+        response = local_db_request_adapter.response(
+          host='missing.example.com',
+          path='/none',
+          method='GET',
+          port=443,
+          query_params_hash='abc',
+          retry=True,
+          endpoint_promise=lambda: {'ignored_components': ignored_components},
+        )
+        assert response.status_code == custom_response_codes.NOT_FOUND
 
     class TestMockRequestEndpointIdHeader():
       @pytest.fixture(scope='function')
