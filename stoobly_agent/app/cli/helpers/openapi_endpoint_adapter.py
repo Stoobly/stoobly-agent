@@ -7,8 +7,6 @@ import yaml
 
 from functools import reduce
 from jsonschema_path import SchemaPath
-from openapi_core import OpenAPI
-from pprint import pprint
 from typing import Dict, List, Union
 from urllib.parse import urlparse
 
@@ -64,6 +62,8 @@ class OpenApiEndpointAdapter():
     self.strict_refs = strict_refs
 
   def adapt_from_file(self, file_path) -> List[OpenApiEndpointShowResponse]:
+    from openapi_core import OpenAPI
+
     spec = {}
 
     with open(file_path, "r") as stream:

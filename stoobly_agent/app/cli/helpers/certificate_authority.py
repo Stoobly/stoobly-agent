@@ -5,12 +5,6 @@ import socket
 import ssl
 import subprocess
 
-from cryptography import x509
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
-from cryptography.x509.oid import NameOID
 from pathlib import Path
 
 from stoobly_agent.config.data_dir import DataDir
@@ -123,6 +117,7 @@ class CertificateAuthority():
             )
 
     def sign(self, hostname: str, dest = None, port = 443):
+        from cryptography.hazmat.primitives import serialization
         from mitmproxy.certs import CertStore
 
         dest = dest or self.certs_dir
@@ -157,6 +152,11 @@ class CertificateAuthority():
         return True
 
     def signed(self, hostname: str, dest = None):
+        from cryptography import x509
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives.asymmetric import rsa, ec
+
         dest = dest or self.certs_dir
 
         crt_path = os.path.join(dest, f"{hostname}.crt")
@@ -255,6 +255,10 @@ class CertificateAuthority():
         :param port: The port number (default: 443 for HTTPS).
         :return: A tuple containing the organization name and a list of alternative names (or None if not found).
         """
+        from cryptography import x509
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.x509.oid import NameOID
+
         alt_names = [domain]
         try:
             # Connect to the server and get the certificate
