@@ -3,7 +3,6 @@ import pdb
 import socket
 import time
 
-from docker import errors as docker_errors
 from typing import Optional
 
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_TEST_TYPE
@@ -42,6 +41,8 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
 
   # Gateway core service only runs in Docker scaffolds
   def validate_gateway_service(self):
+    from docker import errors as docker_errors
+
     if self.app_config.runtime_local:
       # print(f"Skipping core service validation: {CORE_GATEWAY_SERVICE_NAME} (local runtime)")
       return
@@ -61,6 +62,8 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
       raise ScaffoldValidateException(error_message)
 
   def validate_mock_ui_service(self, retry: int = 0):
+    from docker import errors as docker_errors
+
     if self.app_config.runtime_local:
       return
     
@@ -97,6 +100,8 @@ class WorkflowValidateCommand(WorkflowCommand, ValidateCommand):
       raise ScaffoldValidateException(mock_ui_missing_error_message)
 
   def validate_entrypoint_service(self):
+    from docker import errors as docker_errors
+
     print(f"Validating core service: {CORE_ENTRYPOINT_SERVICE_NAME}")
 
     core_entrypoint_init_container_name = None

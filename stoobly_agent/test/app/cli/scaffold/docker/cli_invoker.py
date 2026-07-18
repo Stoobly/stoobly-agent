@@ -4,8 +4,6 @@ import datetime
 import pdb
 import subprocess
 
-import docker
-
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold_cli import scaffold
@@ -31,6 +29,8 @@ def _append_error_to_tmp_log(lines):
 
 def _dump_docker_state():
   """Write all container states and logs into the e2e log for post-mortem debugging."""
+  import docker
+
   client = None
   try:
     client = docker.from_env()

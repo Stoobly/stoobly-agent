@@ -4,11 +4,10 @@ import socket
 import time
 
 from collections import Counter
-from docker import errors as docker_errors
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
-from docker.models.containers import Container
 
 from stoobly_agent.app.cli.scaffold.constants import (
   PROXY_MODE_FORWARD,
@@ -30,6 +29,9 @@ from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import bcolors
 
 from .app import App
+
+if TYPE_CHECKING:
+  from docker.models.containers import Container
 
 
 class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
@@ -169,6 +171,8 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     # TODO: check logs of proxy. lifecycle hook for custom logging? Does mitmproxy support json logging?
 
   def validate_internal_hostname(self, url: str) -> None:
+    from docker import errors as docker_errors
+
     print(f"Validating hostname inside Docker network, url: {url}")
     
     # See WorkflowRunCommand for how 'network' is generated
@@ -205,7 +209,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
       raise ScaffoldValidateException(f"Error reaching {url} from inside Docker network with logs: \n{logs}")
 
   # Check public folder exists in container
-  def validate_public_folder(self, container: Container):
+  def validate_public_folder(self, container: 'Container'):
     
     if self.workflow_name in (WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE):
       print(f"Skipping validating public folder in workflow: {self.workflow_name}, container: {container.name}")
@@ -241,7 +245,7 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     if Counter(public_folder_contents_container) != Counter(public_folder_contents_scaffold):
       raise ScaffoldValidateException(f"public folder was not mounted properly, expected {self.public_dir_path} to exist in container path {public_folder_path}")
 
-  def validate_proxy_container(self, service_proxy_container: Container):
+  def validate_proxy_container(self, service_proxy_container: 'Container'):
     print(f"Validating proxy container: {service_proxy_container.name}")
 
     if service_proxy_container.status == 'exited' or service_proxy_container.attrs['State']['ExitCode'] != 0:
@@ -258,6 +262,8 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
     pass
   
   def validate(self) -> bool:
+    from docker import errors as docker_errors
+
     print(f"Validating service: {self.service_name}")
 
     url = self.service_config.url

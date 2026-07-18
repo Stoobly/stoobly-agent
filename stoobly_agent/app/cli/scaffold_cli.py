@@ -1,12 +1,10 @@
 import click
-import docker
 import json
 import os
 import pdb
 import sys
 
 from datetime import datetime, timezone
-from docker import errors as docker_errors
 
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
@@ -1315,6 +1313,9 @@ def __with_workflow_namespace(app: App, namespace: str):
 
 def __is_docker_workflow_running(namespace: str) -> bool:
   """Check if any containers are running for this workflow namespace."""
+  import docker
+  from docker import errors as docker_errors
+
   docker_client = None
   try:
     docker_client = docker.from_env()

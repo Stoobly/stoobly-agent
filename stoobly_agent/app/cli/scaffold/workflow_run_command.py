@@ -1,8 +1,9 @@
-import dns.resolver
 import os
 import pdb
 import subprocess
 import re
+
+from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_DIR_MOUNT_PATH, CONTEXT_DIR_MOUNT_PATH
 
@@ -18,6 +19,9 @@ from .workflow_command import WorkflowCommand
 from .workflow_env import WorkflowEnv
 from .workflow_namespace import WorkflowNamespace
 from ..types.workflow_run_command import ComposeOptions
+
+if TYPE_CHECKING:
+  import dns.resolver
 
 LOG_ID = 'WorkflowRunCommand'
 
@@ -105,6 +109,8 @@ class WorkflowRunCommand(WorkflowCommand):
     return self.__workflow_namespace
 
   def write_nameservers(self):
+    import dns.resolver
+
     # If hostname is set then the service is external and we will need to configure the container's DNS.
     # If we don't configure the container's DNS, then Docker's embedded DNS will potentially
     # use configuration from the host's /etc/hosts file. The user may have configured their
@@ -170,7 +176,7 @@ class WorkflowRunCommand(WorkflowCommand):
     WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
 
-  def __find_nameservers(self, dns_resolver: dns.resolver.Resolver):
+  def __find_nameservers(self, dns_resolver: 'dns.resolver.Resolver'):
     nameservers = dns_resolver.nameservers
 
     # If systemd-resolved is not used

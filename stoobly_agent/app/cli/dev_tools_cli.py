@@ -6,6 +6,7 @@ from stoobly_agent import VERSION
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response, is_traversable
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.lib.api.response_param_names_resource import ResponseParamNamesResource
+from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.migrate_service import migrate as database_migrate, rollback as database_rollback
 from stoobly_agent.lib.orm.replayed_response import ReplayedResponse
 from stoobly_agent.lib.orm.request import Request
@@ -29,6 +30,7 @@ def dev_tools(ctx):
 
 @dev_tools.command()
 def debug(**kwargs):
+  ORM.instance()
   pdb.set_trace()
 
 @dev_tools.command()

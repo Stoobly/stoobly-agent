@@ -1,15 +1,14 @@
 import pdb
 import re
 from time import sleep
-from typing import Union
-
-import docker
-from docker import errors as docker_errors
-from docker.models.containers import Container
+from typing import TYPE_CHECKING, Union
 
 from stoobly_agent.app.cli.scaffold.validate_exceptions import ScaffoldValidateException
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import bcolors
+
+if TYPE_CHECKING:
+  from docker.models.containers import Container
 
 
 class ValidateCommand():
@@ -20,6 +19,7 @@ class ValidateCommand():
   @property
   def docker_client(self):
     if self._docker_client is None and self._require_docker:
+      import docker
       self._docker_client = docker.from_env()
     return self._docker_client
 
@@ -31,7 +31,9 @@ class ValidateCommand():
     return error_message
 
   # Some containers like init can take longer than expected to finish so retry
-  def __get_container_with_retries(self, container_name: str) -> Container:
+  def __get_container_with_retries(self, container_name: str) -> 'Container':
+    from docker import errors as docker_errors
+
     tries = 30
     for _ in range(tries):
       try:
@@ -66,7 +68,7 @@ class ValidateCommand():
 
       raise ScaffoldValidateException(error_message)
   
-  def validate_detached(self, container: Container) -> None:
+  def validate_detached(self, container: 'Container') -> None:
     print(f"Validating detached for: {container.name}")
     
     if not container.attrs:
