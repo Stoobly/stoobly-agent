@@ -27,7 +27,7 @@ from .handle_mock_service import (
     handle_request_mock_generic,
     handle_response_mock,
 )
-from .handle_normalize_service import handle_request_normalize, handle_response_normalize
+from .handle_develop_service import handle_request_develop, handle_response_develop
 from .mock.context import MockContext
 from .test.helpers.test_results_builder import TestResultsBuilder
 from .test.helpers.upload_test_service import inject_upload_test
@@ -42,14 +42,14 @@ LOG_ID = 'Test'
 # Lifecycle hook order for standard test_policy=found path:
 #
 # 1.  BEFORE_REQUEST gets triggered
-# 2.  BEFORE_NORMALIZE gets triggered
-# 3.  AFTER_NORMALIZE gets triggered
+# 2.  BEFORE_DEVELOP gets triggered
+# 3.  AFTER_DEVELOP gets triggered
 #
 def handle_request_test(context: ReplayContext) -> None:
     if context.intercept_settings.policy == test_policy.FOUND:
-        # To differentiate test rewrite rules, outbound request uses normalize rules
+        # To differentiate test rewrite rules, outbound request uses develop rules
         # Test rules are applied to the request and its response 
-        handle_request_normalize(context)
+        handle_request_develop(context)
     else:
         if context.intercept_settings.policy != test_policy.NONE:
             return __handle_invalid_policy(context)
@@ -86,7 +86,7 @@ def handle_response_test(context: ReplayContext) -> None:
 
     # Else use test flow
     disable_transfer_encoding(flow.response)
-    handle_response_normalize(context)
+    handle_response_develop(context)
 
     # Mock policy is used for response handling
     # Exception is request_origin is CLI, then a custom response is returned for the CLI to process

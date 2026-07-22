@@ -13,7 +13,7 @@ from stoobly_agent.test.test_helper import reset  # must be first: calls reset()
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
-    WORKFLOW_NORMALIZE_TYPE,
+    WORKFLOW_DEVELOP_TYPE,
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
@@ -151,8 +151,8 @@ def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries
     return None
 
 
-def wait_for_normalize_active_reverse(hostname: str, runner, workflow_name: str, app_dir_path: str, service_name: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
-    """Poll until the reverse proxy is actively normalizing (writing request log entries)."""
+def wait_for_develop_active_reverse(hostname: str, runner, workflow_name: str, app_dir_path: str, service_name: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
+    """Poll until the reverse proxy is actively developing (writing request log entries)."""
     container_name = f'{workflow_name}-{service_name}.proxy-1'
     runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--app-dir-path', app_dir_path])
     _enable_intercept_in_container(container_name)
@@ -169,7 +169,7 @@ def wait_for_normalize_active_reverse(hostname: str, runner, workflow_name: str,
         time.sleep(interval)
         result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--app-dir-path', app_dir_path])
         if result.exit_code == 0 and result.output.strip():
-            if find_log_entry(result.output, 'Normalize success') or find_log_entry(result.output, 'Normalize failure'):
+            if find_log_entry(result.output, 'Develop success') or find_log_entry(result.output, 'Develop failure'):
                 return True
     return False
 
@@ -451,11 +451,11 @@ class TestDockerRecordRequestLogE2e():
 
 
 @pytest.mark.e2e
-class TestDockerNormalizeRequestLogE2e():
+class TestDockerDevelopRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
     def settings(self):
-        return reset('stoobly-agent-test-normalize')
+        return reset('stoobly-agent-test-develop')
 
     @pytest.fixture(scope='module')
     def runner(self):
@@ -475,11 +475,11 @@ class TestDockerNormalizeRequestLogE2e():
     def hostname(self):
         yield "http.badssl.com"
 
-    class TestReverseProxyNormalizeRequestLog():
+    class TestReverseProxyDevelopRequestLog():
 
         @pytest.fixture(scope='class')
         def app_name(self):
-            yield "docker-request-log-normalize"
+            yield "docker-request-log-develop"
 
         @pytest.fixture(scope='class')
         def service_name(self):
@@ -487,7 +487,7 @@ class TestDockerNormalizeRequestLogE2e():
 
         @pytest.fixture(scope='class', autouse=True)
         def target_workflow_name(self):
-            yield WORKFLOW_NORMALIZE_TYPE
+            yield WORKFLOW_DEVELOP_TYPE
 
         @pytest.fixture(scope='class', autouse=True)
         def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
@@ -499,18 +499,18 @@ class TestDockerNormalizeRequestLogE2e():
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_port('localhost', 80), "Reverse proxy did not become ready on port 80"
             assert wait_for_reverse_proxy_ready(hostname), "stoobly proxy behind Traefik did not become ready"
-            success = wait_for_normalize_active_reverse(hostname, runner, target_workflow_name, app_dir_path, service_name)
+            success = wait_for_develop_active_reverse(hostname, runner, target_workflow_name, app_dir_path, service_name)
             if not success:
                 _dump_docker_state()
-            assert success, "Reverse proxy did not enter normalize mode"
+            assert success, "Reverse proxy did not enter develop mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
-        def test_normalize_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
-            """Make a request through the reverse proxy normalize workflow and verify a Normalize success log entry appears."""
+        def test_develop_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
+            """Make a request through the reverse proxy develop workflow and verify a Develop success log entry appears."""
             runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
 
             requests.get(
@@ -518,8 +518,8 @@ class TestDockerNormalizeRequestLogE2e():
                 headers={'Host': hostname},
             )
 
-            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
-            assert entry is not None, "Expected 'Normalize success' log entry but none appeared"
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Develop success')
+            assert entry is not None, "Expected 'Develop success' log entry but none appeared"
 
             assert entry['level'] == 'INFO'
             assert entry['method'] == 'GET'
@@ -534,7 +534,7 @@ class TestDockerNormalizeRequestLogE2e():
                 headers={'Host': hostname},
             )
 
-            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Develop success')
             assert entry is not None, "Expected log entries before delete"
 
             delete_result = runner.invoke(scaffold, [

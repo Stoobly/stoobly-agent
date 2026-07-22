@@ -62,7 +62,7 @@ class LocalScaffoldCliInvoker():
       '--port', port,
       '--quiet',
       '--workflow', 'mock',
-      '--workflow', 'normalize',
+      '--workflow', 'develop',
       '--workflow', 'record',
       '--workflow', 'test',
       service_name
@@ -81,7 +81,7 @@ class LocalScaffoldCliInvoker():
       '--port', '3000',
       '--quiet',
       '--workflow', 'mock',
-      '--workflow', 'normalize',
+      '--workflow', 'develop',
       '--workflow', 'record',
       '--workflow', 'test',
       service_name

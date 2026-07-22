@@ -11,7 +11,7 @@ from pathlib import Path
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_MOCK_TYPE,
-  WORKFLOW_NORMALIZE_TYPE,
+  WORKFLOW_DEVELOP_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -316,10 +316,10 @@ class TestLocalScaffoldE2e():
       
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
-  class TestNormalizeWorkflow():
+  class TestDevelopWorkflow():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
-      yield WORKFLOW_NORMALIZE_TYPE
+      yield WORKFLOW_DEVELOP_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
     def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
@@ -335,7 +335,7 @@ class TestLocalScaffoldE2e():
 
     @pytest.fixture(scope="class", autouse=True)
     def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
-      """Start the normalize workflow"""
+      """Start the develop workflow"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
       time.sleep(1)
       settings.load()
@@ -354,9 +354,9 @@ class TestLocalScaffoldE2e():
         assert True
 
     def test_request_proxied(self, proxy_url: str):
-      """Normalize mode forwards to the real upstream — expect a real 200"""
+      """Develop mode forwards to the real upstream — expect a real 200"""
       res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
-      assert res.status_code == 200, "Proxied request in normalize mode should forward to the real upstream"
+      assert res.status_code == 200, "Proxied request in develop mode should forward to the real upstream"
 
     def test_app_configuration(self, app_dir_path: str):
       """The app should be valid and configured for local execution"""
@@ -375,26 +375,26 @@ class TestLocalScaffoldE2e():
       assert external_service_name in services, f"External service {external_service_name} should exist"
       assert local_service_name in services, f"Local service {local_service_name} should exist"
 
-    def test_intercept_mode_normalize(self, settings: Settings):
-      """Workflow up should set the intercept mode to normalize"""
-      assert settings.proxy.intercept.mode == mode.NORMALIZE
+    def test_intercept_mode_develop(self, settings: Settings):
+      """Workflow up should set the intercept mode to develop"""
+      assert settings.proxy.intercept.mode == mode.DEVELOP
 
     def test_no_records(self, settings: Settings, proxy_url: str):
-      """Normalize mode rewrites and forwards; it does not persist Request records"""
+      """Develop mode rewrites and forwards; it does not persist Request records"""
       res = requests.get('https://docs.stoobly.com', proxies={'http': proxy_url, 'https': proxy_url}, verify=False)
       assert res.status_code == 200
       _requests = Request.all()
-      assert len(_requests) == 0, "Normalize mode should not record requests"
+      assert len(_requests) == 0, "Develop mode should not record requests"
 
     def test_lifecycle_hooks(self, app_dir_path: str, external_https_service_name: str, https_service_hostname: str, proxy_url: str, target_workflow_name: str):
-      """Write a handle_after_normalize hook and assert the upstream response is mutated."""
+      """Write a handle_after_develop hook and assert the upstream response is mutated."""
       app = App(app_dir_path)
       workflow_command = WorkflowCommand(app, service_name=external_https_service_name, workflow_name=target_workflow_name)
 
       hooks_content = "\n".join([
-        "HEADER_NAME = 'X-After-Normalize-Header'",
-        "HEADER_VALUE = 'after-normalize-value'",
-        "def handle_after_normalize(context):",
+        "HEADER_NAME = 'X-After-Develop-Header'",
+        "HEADER_VALUE = 'after-develop-value'",
+        "def handle_after_develop(context):",
         "  context.flow.response.headers[HEADER_NAME] = HEADER_VALUE",
       ])
       with open(workflow_command.lifecycle_hooks_path, 'w') as f:
@@ -405,7 +405,7 @@ class TestLocalScaffoldE2e():
         proxies={'http': proxy_url, 'https': proxy_url}, verify=False
       )
       assert res.status_code == 200
-      assert res.headers.get('X-After-Normalize-Header') == 'after-normalize-value'
+      assert res.headers.get('X-After-Develop-Header') == 'after-develop-value'
 
     def test_workflow_logs(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
       """Workflow logs command should succeed"""

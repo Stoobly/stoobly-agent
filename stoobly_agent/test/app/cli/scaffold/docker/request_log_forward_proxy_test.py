@@ -12,7 +12,7 @@ from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     PROXY_MODE_FORWARD,
     WORKFLOW_MOCK_TYPE,
-    WORKFLOW_NORMALIZE_TYPE,
+    WORKFLOW_DEVELOP_TYPE,
     WORKFLOW_RECORD_TYPE,
 )
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
@@ -128,8 +128,8 @@ def wait_for_record_active(proxy_url: str, hostname: str, runner, workflow_name:
     return False
 
 
-def wait_for_normalize_active_forward(proxy_url: str, hostname: str, runner, workflow_name: str, app_dir_path: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
-    """Poll until the forward proxy is actively normalizing (writing request log entries)."""
+def wait_for_develop_active_forward(proxy_url: str, hostname: str, runner, workflow_name: str, app_dir_path: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
+    """Poll until the forward proxy is actively developing (writing request log entries)."""
     container_name = f'{workflow_name}-gateway.service-1'
     runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--app-dir-path', app_dir_path])
     _enable_intercept_in_container(container_name)
@@ -146,7 +146,7 @@ def wait_for_normalize_active_forward(proxy_url: str, hostname: str, runner, wor
         time.sleep(interval)
         result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--app-dir-path', app_dir_path])
         if result.exit_code == 0 and result.output.strip():
-            if find_log_entry(result.output, 'Normalize success') or find_log_entry(result.output, 'Normalize failure'):
+            if find_log_entry(result.output, 'Develop success') or find_log_entry(result.output, 'Develop failure'):
                 return True
     return False
 
@@ -374,11 +374,11 @@ class TestDockerRecordRequestLogE2e():
 
 
 @pytest.mark.e2e
-class TestDockerNormalizeRequestLogE2e():
+class TestDockerDevelopRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
     def settings(self):
-        return reset('stoobly-agent-test-normalize')
+        return reset('stoobly-agent-test-develop')
 
     @pytest.fixture(scope='module')
     def runner(self):
@@ -399,19 +399,19 @@ class TestDockerNormalizeRequestLogE2e():
         yield "http.badssl.com"
 
     @pytest.mark.xfail(reason="http.badssl.com unreachable in CI", strict=False)
-    class TestForwardProxyNormalizeRequestLog():
+    class TestForwardProxyDevelopRequestLog():
 
         @pytest.fixture(scope='class')
         def app_name(self):
-            yield "docker-request-log-forward-normalize"
+            yield "docker-request-log-forward-develop"
 
         @pytest.fixture(scope='class')
         def service_name(self):
-            yield "external-service-normalize"
+            yield "external-service-develop"
 
         @pytest.fixture(scope='class', autouse=True)
         def target_workflow_name(self):
-            yield WORKFLOW_NORMALIZE_TYPE
+            yield WORKFLOW_DEVELOP_TYPE
 
         @pytest.fixture(scope='class')
         def proxy_url(self):
@@ -426,18 +426,18 @@ class TestDockerNormalizeRequestLogE2e():
         def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
-            success = wait_for_normalize_active_forward(proxy_url, hostname, runner, target_workflow_name, app_dir_path)
+            success = wait_for_develop_active_forward(proxy_url, hostname, runner, target_workflow_name, app_dir_path)
             if not success:
                 _dump_docker_state()
-            assert success, "Forward proxy did not enter normalize mode"
+            assert success, "Forward proxy did not enter develop mode"
 
         @pytest.fixture(scope='class', autouse=True)
         def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
-        def test_normalize_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
-            """Make a request through the forward proxy normalize workflow and verify a Normalize success log entry appears."""
+        def test_develop_success_logged(self, runner, app_dir_path, hostname, target_workflow_name, proxy_url):
+            """Make a request through the forward proxy develop workflow and verify a Develop success log entry appears."""
             runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
 
             requests.get(
@@ -446,8 +446,8 @@ class TestDockerNormalizeRequestLogE2e():
                 verify=False
             )
 
-            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
-            assert entry is not None, "Expected 'Normalize success' log entry but none appeared"
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Develop success')
+            assert entry is not None, "Expected 'Develop success' log entry but none appeared"
 
             assert entry['level'] == 'INFO'
             assert entry['method'] == 'GET'
@@ -463,7 +463,7 @@ class TestDockerNormalizeRequestLogE2e():
                 verify=False
             )
 
-            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Normalize success')
+            entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Develop success')
             assert entry is not None, "Expected log entries before delete"
 
             delete_result = runner.invoke(scaffold, [

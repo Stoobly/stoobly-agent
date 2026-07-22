@@ -53,7 +53,7 @@ class InterceptSettings:
 
     self._mock_rewrite_rules = None
     self._record_rewrite_rules = None
-    self._normalize_rewrite_rules = None
+    self._develop_rewrite_rules = None
     self._test_rewrite_rules = None
 
   def with_cache(self, cache: Cache):
@@ -397,10 +397,10 @@ class InterceptSettings:
     return self._mock_rewrite_rules
 
   @property
-  def normalize_rewrite_rules(self) -> List[RewriteRule]:
-    if not self._normalize_rewrite_rules:
-      self._normalize_rewrite_rules = self.__select_rewrite_rules(mode.NORMALIZE)
-    return self._normalize_rewrite_rules
+  def develop_rewrite_rules(self) -> List[RewriteRule]:
+    if not self._develop_rewrite_rules:
+      self._develop_rewrite_rules = self.__select_rewrite_rules(mode.DEVELOP)
+    return self._develop_rewrite_rules
 
   @property
   def test_rewrite_rules(self) -> List[RewriteRule]:
@@ -488,8 +488,8 @@ class InterceptSettings:
         return self.__headers[custom_headers.TEST_POLICY]
 
       return self.__data_rules.test_policy
-    elif mode == intercept_mode.NORMALIZE:
-      return self.__data_rules.normalize_policy
+    elif mode == intercept_mode.DEVELOP:
+      return self.__data_rules.develop_policy
 
   def __select_match_rules(self, _mode: str) -> List[MatchRule]:
     rules = list(filter(lambda rule: self.__mode_in_modes(_mode, rule.modes), self.__match_rules))
@@ -498,7 +498,7 @@ class InterceptSettings:
     # Expected format from stoobly-js:
     # [
     #   {
-    #     modes: ['normalize', 'mock'],
+    #     modes: ['develop', 'mock'],
     #     components: 'Header'  // Single RequestParameter value
     #   }
     # ]

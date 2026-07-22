@@ -1,8 +1,8 @@
 from typing import Final, Literal
 
+DEVELOP: Final = 'develop'
 MOCK: Final = 'mock'
-NORMALIZE: Final = 'normalize'
 RECORD: Final = 'record'
 TEST: Final = 'test'
 
-Mode = Literal[MOCK, NORMALIZE, RECORD, TEST]
+Mode = Literal[DEVELOP, MOCK, RECORD, TEST]
