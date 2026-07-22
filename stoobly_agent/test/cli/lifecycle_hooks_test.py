@@ -67,24 +67,24 @@ class TestLifecycleHooks():
     return replay_result
 
   def test_calls_record_hooks(self, record_result):
-    expected_stdout = ['before_request', 'before_normalize', 'after_normalize', 'before_record', 'after_record', 'before_response']
+    expected_stdout = ['before_request', 'before_develop', 'after_develop', 'before_record', 'after_record', 'before_response']
     assert record_result.stdout.strip() == "\n".join(expected_stdout)
 
   def test_calls_mock_hooks(self, mock_result):
-    expected_stdout = ['before_request', 'before_normalize', 'before_mock', 'after_normalize', 'after_mock', 'before_response']
+    expected_stdout = ['before_request', 'before_develop', 'before_mock', 'after_develop', 'after_mock', 'before_response']
     assert mock_result.stdout.strip() == "\n".join(expected_stdout)
 
   def test_calls_replay_hooks(self, replay_result):
-    expected_stdout = ['before_request', 'before_normalize', 'after_normalize', 'before_response']
+    expected_stdout = ['before_request', 'before_develop', 'after_develop', 'before_response']
     stdout = replay_result.stdout
     lifecycle_hooks_output = stdout.split('{')[0]
     assert lifecycle_hooks_output.strip() == "\n".join(expected_stdout)
 
   def test_calls_test_hooks(self, test_result):
     # In a test_policy=found flow, 
-    # before_normalize and after_normalize are called twice for mock flow and test flow respectively
+    # before_develop and after_develop are called twice for mock flow and test flow respectively
      expected_stdout = [
-       'before_request', 'before_normalize', 'after_normalize', 'before_mock', 'after_normalize', 'after_mock', 'before_test', 'after_test', 'before_response'
+       'before_request', 'before_develop', 'after_develop', 'before_mock', 'after_develop', 'after_mock', 'before_test', 'after_test', 'before_response'
      ]
      stdout = test_result.stdout
      lifecycle_hooks_output = stdout.split('{')[0]
@@ -119,7 +119,7 @@ class TestLifecycleHooks():
 
     def test_calls_test_hooks(self, test_result):
       expected_stdout = [
-        'before_request', 'before_normalize', 'before_mock', 'after_normalize', 'after_mock', 'before_response'
+        'before_request', 'before_develop', 'before_mock', 'after_develop', 'after_mock', 'before_response'
       ]
       stdout = test_result.stdout
       lifecycle_hooks_output = stdout.split('{')[0]
@@ -162,23 +162,23 @@ class TestRecordModifications():
   def python_response(self, recorded_response: Response):
     return RawHttpResponseAdapter(recorded_response.raw).to_response()
 
-  class TestBeforeNormalizeHook():
-    """Test that before_normalize hook can modify outbound request headers."""
+  class TestBeforeDevelopHook():
+    """Test that before_develop hook can modify outbound request headers."""
 
     def test_adds_header_to_request(self, python_request):
       from stoobly_agent.test.mock_data.lifecycle_hooks_modify import (
-        BEFORE_NORMALIZE_HEADER_NAME, BEFORE_NORMALIZE_HEADER_VALUE
+        BEFORE_DEVELOP_HEADER_NAME, BEFORE_DEVELOP_HEADER_VALUE
       )
-      assert python_request.headers.get(BEFORE_NORMALIZE_HEADER_NAME) == BEFORE_NORMALIZE_HEADER_VALUE
+      assert python_request.headers.get(BEFORE_DEVELOP_HEADER_NAME) == BEFORE_DEVELOP_HEADER_VALUE
 
-  class TestAfterNormalizeHook():
-    """Test that after_normalize hook can modify response headers."""
+  class TestAfterDevelopHook():
+    """Test that after_develop hook can modify response headers."""
 
     def test_adds_header_to_response(self, python_response):
       from stoobly_agent.test.mock_data.lifecycle_hooks_modify import (
-        AFTER_NORMALIZE_HEADER_NAME, AFTER_NORMALIZE_HEADER_VALUE
+        AFTER_DEVELOP_HEADER_NAME, AFTER_DEVELOP_HEADER_VALUE
       )
-      assert python_response.headers.get(AFTER_NORMALIZE_HEADER_NAME) == AFTER_NORMALIZE_HEADER_VALUE
+      assert python_response.headers.get(AFTER_DEVELOP_HEADER_NAME) == AFTER_DEVELOP_HEADER_VALUE
 
   class TestBeforeRecordHook():
     """Test that before_record hook can modify request before storage."""
@@ -194,7 +194,7 @@ class TestRecordModifications():
     Test which hook changes persist to before_response.
     
     - before_record operates on a deep copy, so changes do NOT persist
-    - after_normalize operates on the original flow, so changes DO persist
+    - after_develop operates on the original flow, so changes DO persist
     """
 
     def test_before_record_changes_do_not_persist_to_before_response(self, record_result):
@@ -205,43 +205,43 @@ class TestRecordModifications():
       # Since before_record operates on a copy, this should NOT be in the output
       assert BEFORE_RESPONSE_VERIFIED_HEADER_VALUE not in record_result.stdout
 
-    def test_after_normalize_changes_do_persist_to_before_response(self, record_result):
+    def test_after_develop_changes_do_persist_to_before_response(self, record_result):
       from stoobly_agent.test.mock_data.lifecycle_hooks_modify import (
-        AFTER_NORMALIZE_PERSISTS_MARKER
+        AFTER_DEVELOP_PERSISTS_MARKER
       )
-      # The before_response hook prints this value if it sees the after_normalize header
-      # Since after_normalize operates on the original flow, this SHOULD be in the output
-      assert AFTER_NORMALIZE_PERSISTS_MARKER in record_result.stdout
+      # The before_response hook prints this value if it sees the after_develop header
+      # Since after_develop operates on the original flow, this SHOULD be in the output
+      assert AFTER_DEVELOP_PERSISTS_MARKER in record_result.stdout
 
-  class TestNormalizeChangesVisibleInBeforeRecord():
+  class TestDevelopChangesVisibleInBeforeRecord():
     """
-    Test that changes made in before_normalize and after_normalize hooks are visible
+    Test that changes made in before_develop and after_develop hooks are visible
     in the before_record hook.
     
     This verifies the lifecycle hook ordering:
-    before_normalize -> after_normalize -> before_record
+    before_develop -> after_develop -> before_record
     """
 
-    def test_before_normalize_changes_visible_in_before_record(self, record_result):
+    def test_before_develop_changes_visible_in_before_record(self, record_result):
       from stoobly_agent.test.mock_data.lifecycle_hooks_modify import (
-        BEFORE_NORMALIZE_VISIBLE_IN_BEFORE_RECORD_MARKER
+        BEFORE_DEVELOP_VISIBLE_IN_BEFORE_RECORD_MARKER
       )
-      # The before_record hook prints this marker if it sees the before_normalize header
-      assert BEFORE_NORMALIZE_VISIBLE_IN_BEFORE_RECORD_MARKER in record_result.stdout
+      # The before_record hook prints this marker if it sees the before_develop header
+      assert BEFORE_DEVELOP_VISIBLE_IN_BEFORE_RECORD_MARKER in record_result.stdout
 
-    def test_after_normalize_changes_visible_in_before_record(self, record_result):
+    def test_after_develop_changes_visible_in_before_record(self, record_result):
       from stoobly_agent.test.mock_data.lifecycle_hooks_modify import (
-        AFTER_NORMALIZE_VISIBLE_IN_BEFORE_RECORD_MARKER
+        AFTER_DEVELOP_VISIBLE_IN_BEFORE_RECORD_MARKER
       )
-      # The before_record hook prints this marker if it sees the after_normalize header
-      assert AFTER_NORMALIZE_VISIBLE_IN_BEFORE_RECORD_MARKER in record_result.stdout
+      # The before_record hook prints this marker if it sees the after_develop header
+      assert AFTER_DEVELOP_VISIBLE_IN_BEFORE_RECORD_MARKER in record_result.stdout
 
 
-class TestNormalizeRewriteRulesInRecordMode():
+class TestDevelopRewriteRulesInRecordMode():
   """
-  Test that normalize rewrite rules are applied during record mode.
+  Test that develop rewrite rules are applied during record mode.
   
-  This verifies that configuring rewrite rules with --mode normalize
+  This verifies that configuring rewrite rules with --mode develop
   will apply those rules to outbound requests during recording.
   """
 
@@ -250,17 +250,17 @@ class TestNormalizeRewriteRulesInRecordMode():
     return reset()
 
   class TestRequestHeaderRewrite():
-    """Test that normalize mode request header rewrite rules are applied in record mode."""
+    """Test that develop mode request header rewrite rules are applied in record mode."""
 
     def test_rewrites_request_header(self, runner: CliRunner):
-      header_name = 'X-Normalize-Rewrite-Header'
-      header_value = 'normalize-rewrite-value'
+      header_name = 'X-Develop-Rewrite-Header'
+      header_value = 'develop-rewrite-value'
 
-      # Configure a normalize mode rewrite rule
+      # Configure a develop mode rewrite rule
       rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
-        '--mode', mode.NORMALIZE,
+        '--mode', mode.DEVELOP,
         '--name', header_name,
         '--value', header_value,
         '--pattern', '.*?',
@@ -268,7 +268,7 @@ class TestNormalizeRewriteRulesInRecordMode():
       ])
       assert rewrite_result.exit_code == 0
 
-      # Record a request - normalize rewrite rules should be applied
+      # Record a request - develop rewrite rules should be applied
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
 
@@ -278,17 +278,17 @@ class TestNormalizeRewriteRulesInRecordMode():
       assert python_request.headers.get(header_name) == header_value
 
   class TestResponseHeaderRewrite():
-    """Test that normalize mode response header rewrite rules are applied in record mode."""
+    """Test that develop mode response header rewrite rules are applied in record mode."""
 
     def test_rewrites_response_header(self, runner: CliRunner):
-      header_name = 'X-Normalize-Response-Header'
-      header_value = 'normalize-response-value'
+      header_name = 'X-Develop-Response-Header'
+      header_value = 'develop-response-value'
 
-      # Configure a normalize mode response header rewrite rule
+      # Configure a develop mode response header rewrite rule
       rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
-        '--mode', mode.NORMALIZE,
+        '--mode', mode.DEVELOP,
         '--name', header_name,
         '--value', header_value,
         '--pattern', '.*?',
@@ -296,7 +296,7 @@ class TestNormalizeRewriteRulesInRecordMode():
       ])
       assert rewrite_result.exit_code == 0
 
-      # Record a request - normalize rewrite rules should be applied
+      # Record a request - develop rewrite rules should be applied
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
 
@@ -305,22 +305,22 @@ class TestNormalizeRewriteRulesInRecordMode():
       python_response = RawHttpResponseAdapter(_response.raw).to_response()
       assert python_response.headers.get(header_name) == header_value
 
-  class TestNormalizeRulesDoNotAffectRecordRules():
-    """Test that normalize rules and record rules can coexist and both are applied."""
+  class TestDevelopRulesDoNotAffectRecordRules():
+    """Test that develop rules and record rules can coexist and both are applied."""
 
-    def test_both_normalize_and_record_rules_applied(self, runner: CliRunner):
-      normalize_header_name = 'X-Normalize-Header'
-      normalize_header_value = 'from-normalize-rule'
+    def test_both_develop_and_record_rules_applied(self, runner: CliRunner):
+      develop_header_name = 'X-Develop-Header'
+      develop_header_value = 'from-develop-rule'
       record_header_name = 'X-Record-Header'
       record_header_value = 'from-record-rule'
 
-      # Configure a normalize mode rewrite rule
+      # Configure a develop mode rewrite rule
       rewrite_result = runner.invoke(setting, [
         'rewrite', 'set',
         '--method', 'GET',
-        '--mode', mode.NORMALIZE,
-        '--name', normalize_header_name,
-        '--value', normalize_header_value,
+        '--mode', mode.DEVELOP,
+        '--name', develop_header_name,
+        '--value', develop_header_value,
         '--pattern', '.*?',
         '--type', request_component.HEADER
       ])
@@ -345,7 +345,7 @@ class TestNormalizeRewriteRulesInRecordMode():
       # Verify both headers were added
       _request = Request.last()
       python_request = RawHttpRequestAdapter(_request.raw).to_request()
-      assert python_request.headers.get(normalize_header_name) == normalize_header_value
+      assert python_request.headers.get(develop_header_name) == develop_header_value
       assert python_request.headers.get(record_header_name) == record_header_value
 
 
@@ -354,7 +354,7 @@ class TestTestModifications():
   Test that lifecycle hooks can modify requests and responses in test mode.
   
   Lifecycle hook order in test mode:
-  before_request -> before_normalize -> after_normalize -> before_mock -> after_mock -> before_test -> after_test -> before_response
+  before_request -> before_develop -> after_develop -> before_mock -> after_mock -> before_test -> after_test -> before_response
   """
 
   @pytest.fixture(scope='class', autouse=True)
@@ -410,32 +410,32 @@ class TestTestModifications():
     assert test_result.exit_code != 0
     return test_result
 
-  class TestBeforeNormalizeChanges():
-    """Test that changes in before_normalize are visible in after_normalize."""
+  class TestBeforeDevelopChanges():
+    """Test that changes in before_develop are visible in after_develop."""
 
-    def test_before_normalize_changes_visible_in_after_normalize(self, test_result_found):
+    def test_before_develop_changes_visible_in_after_develop(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
-        BEFORE_NORMALIZE_VISIBLE_IN_AFTER_NORMALIZE_MARKER
+        BEFORE_DEVELOP_VISIBLE_IN_AFTER_DEVELOP_MARKER
       )
-      # The after_normalize hook prints this marker if it sees the before_normalize header
-      assert BEFORE_NORMALIZE_VISIBLE_IN_AFTER_NORMALIZE_MARKER in test_result_found.stdout
+      # The after_develop hook prints this marker if it sees the before_develop header
+      assert BEFORE_DEVELOP_VISIBLE_IN_AFTER_DEVELOP_MARKER in test_result_found.stdout
 
-  class TestAfterNormalizeChanges():
-    """Test that changes in after_normalize are visible in both before_mock and before_test."""
+  class TestAfterDevelopChanges():
+    """Test that changes in after_develop are visible in both before_mock and before_test."""
 
-    def test_after_normalize_changes_visible_in_before_mock(self, test_result_found):
+    def test_after_develop_changes_visible_in_before_mock(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
-        AFTER_NORMALIZE_VISIBLE_IN_BEFORE_MOCK_MARKER
+        AFTER_DEVELOP_VISIBLE_IN_BEFORE_MOCK_MARKER
       )
-      # The before_mock hook prints this marker if it sees the after_normalize header
-      assert AFTER_NORMALIZE_VISIBLE_IN_BEFORE_MOCK_MARKER in test_result_found.stdout
+      # The before_mock hook prints this marker if it sees the after_develop header
+      assert AFTER_DEVELOP_VISIBLE_IN_BEFORE_MOCK_MARKER in test_result_found.stdout
 
-    def test_after_normalize_changes_visible_in_before_test(self, test_result_found):
+    def test_after_develop_changes_visible_in_before_test(self, test_result_found):
       from stoobly_agent.test.mock_data.lifecycle_hooks_test_modify import (
-        AFTER_NORMALIZE_VISIBLE_IN_BEFORE_TEST_MARKER
+        AFTER_DEVELOP_VISIBLE_IN_BEFORE_TEST_MARKER
       )
-      # The before_test hook prints this marker if it sees the after_normalize header
-      assert AFTER_NORMALIZE_VISIBLE_IN_BEFORE_TEST_MARKER in test_result_found.stdout
+      # The before_test hook prints this marker if it sees the after_develop header
+      assert AFTER_DEVELOP_VISIBLE_IN_BEFORE_TEST_MARKER in test_result_found.stdout
 
   class TestBeforeMockChanges():
     """Test that changes in before_mock are visible in after_mock."""

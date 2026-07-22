@@ -30,7 +30,7 @@ For each service:
 3. If any of `hostname`, `port`, or `scheme` differs, persist a rewrite rule with:
    - pattern: `{service_url}/?.*?`
    - methods: `GET`, `PATCH`, `POST`, `PUT`, `DELETE`, `OPTIONS`
-   - mode: `normalize`
+   - mode: `develop`
    - destination: upstream hostname/port/scheme
 
 If a service has no URL, no rewrite rule is created for that service.

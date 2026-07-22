@@ -1,11 +1,11 @@
 from typing import Literal
 
+DEVELOP = 'develop'
 MOCK = 'mock'
 NONE = 'none'
-NORMALIZE = 'normalize'
 RECORD = 'record'
 TEST = 'test'
 
-options = [MOCK, NORMALIZE, RECORD, TEST]
+options = [DEVELOP, MOCK, RECORD, TEST]
 
-AgentMode = Literal[MOCK, NONE, NORMALIZE, RECORD, TEST]
+AgentMode = Literal[DEVELOP, MOCK, NONE, RECORD, TEST]

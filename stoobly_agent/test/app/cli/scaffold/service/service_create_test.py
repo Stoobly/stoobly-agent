@@ -9,8 +9,8 @@ from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
     OPENAPI_SPECIFICATION_FILE_NAME,
+    WORKFLOW_DEVELOP_TYPE,
     WORKFLOW_MOCK_TYPE,
-    WORKFLOW_NORMALIZE_TYPE,
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
 )
@@ -212,8 +212,8 @@ class TestScaffoldServiceCreate:
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
+                '--workflow', WORKFLOW_DEVELOP_TYPE,
                 '--workflow', WORKFLOW_MOCK_TYPE,
-                '--workflow', WORKFLOW_NORMALIZE_TYPE,
                 '--workflow', WORKFLOW_RECORD_TYPE,
                 '--workflow', WORKFLOW_TEST_TYPE,
                 '--quiet',
@@ -224,7 +224,7 @@ class TestScaffoldServiceCreate:
         def test_all_workflow_dirs_exist(self, app_dir_path: str, service_name: str):
             app = App(app_dir_path)
             service = Service(service_name, app)
-            for workflow in [WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
+            for workflow in [WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
                 assert os.path.exists(service.workflow_dir_path(workflow))
 
     class TestCreateWithDefaultWorkflows:
@@ -246,7 +246,7 @@ class TestScaffoldServiceCreate:
         def test_all_default_workflow_dirs_exist(self, app_dir_path: str, service_name: str):
             app = App(app_dir_path)
             service = Service(service_name, app)
-            for workflow in [WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
+            for workflow in [WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]:
                 assert os.path.exists(service.workflow_dir_path(workflow))
 
     class TestCreateInvalidCases:

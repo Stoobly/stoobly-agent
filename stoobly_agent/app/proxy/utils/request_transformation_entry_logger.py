@@ -39,7 +39,7 @@ class RequestTransformationEntryLogger:
     MOCK_LOG_ID = 'Mock'
     TEST_LOG_ID = 'Test'
     RECORD_LOG_ID = 'Record'
-    NORMALIZE_LOG_ID = 'Normalize'
+    DEVELOP_LOG_ID = 'Develop'
 
     _pending: dict[str, list[_BufferedRecord]] = defaultdict(list)
 
@@ -364,5 +364,5 @@ class RequestTransformationEntryLogger:
         cls._log_passthrough(cls.RECORD_LOG_ID, 'recording', agent_mode.RECORD, mitmproxy_request, url)
 
     @classmethod
-    def log_normalizing(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
-        cls._log_passthrough(cls.NORMALIZE_LOG_ID, 'normalizing', agent_mode.NORMALIZE, mitmproxy_request, url)
+    def log_developing(cls, mitmproxy_request: Optional['MitmproxyRequest'], url: str) -> None:
+        cls._log_passthrough(cls.DEVELOP_LOG_ID, 'developing', agent_mode.DEVELOP, mitmproxy_request, url)

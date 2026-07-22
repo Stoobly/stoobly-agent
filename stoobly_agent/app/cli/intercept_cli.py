@@ -3,7 +3,7 @@ import pdb
 import sys
 
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode, mock_policy, normalize_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
+from stoobly_agent.config.constants import mode, mock_policy, develop_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
 settings: Settings = Settings.instance()
@@ -20,8 +20,8 @@ def __get_policy_options(active_mode: str) -> list[str]:
         return [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE]
     elif active_mode == mode.RECORD:
         return [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND]
-    elif active_mode == mode.NORMALIZE:
-        return [normalize_policy.ALL]
+    elif active_mode == mode.DEVELOP:
+        return [develop_policy.ALL]
     elif active_mode == mode.TEST:
         return [test_policy.FOUND, test_policy.NONE]
     else:
@@ -136,8 +136,8 @@ def set(**kwargs):
             data_rule.mock_policy = kwargs['policy']
         elif active_mode == mode.RECORD:
             data_rule.record_policy = kwargs['policy']
-        elif active_mode == mode.NORMALIZE:
-            data_rule.normalize_policy = kwargs['policy']
+        elif active_mode == mode.DEVELOP:
+            data_rule.develop_policy = kwargs['policy']
         elif active_mode == mode.TEST:
             data_rule.test_policy = kwargs['policy']
 
@@ -197,8 +197,8 @@ def show(**kwargs):
     elif active_mode == mode.RECORD:
         policy = data_rule.record_policy
         strategy = data_rule.record_strategy
-    elif active_mode == mode.NORMALIZE:
-        policy = data_rule.normalize_policy
+    elif active_mode == mode.DEVELOP:
+        policy = data_rule.develop_policy
     elif active_mode == mode.TEST:
         policy = data_rule.test_policy
         strategy = data_rule.test_strategy

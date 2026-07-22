@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
     from mitmproxy.http import Request as MitmproxyRequest
 
-from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
+from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
@@ -47,12 +47,12 @@ _MAX_WORKERS = 10
 
 ###
 #
-# 1. BEFORE_NORMALIZE gets triggered
+# 1. BEFORE_DEVELOP gets triggered
 #
 def handle_request_record(context: ReplayContext) -> None:
-    # To differentiate record rewrite rules, outbound request uses normalize rules
+    # To differentiate record rewrite rules, outbound request uses develop rules
     # Record rules are applied to the request and its response when storing
-    handle_request_normalize(context)
+    handle_request_develop(context)
 
     # Check if scenario should be overwritten before recording new requests.
     # Must happen here (not in handle_response_record) because:
@@ -62,7 +62,7 @@ def handle_request_record(context: ReplayContext) -> None:
     __try_overwrite_scenario(context.intercept_settings, context.flow.request)
 
 ###
-# 1. AFTER_NORMALIZE gets triggered
+# 1. AFTER_DEVELOP gets triggered
 # 2. BEFORE_RECORD gets triggered
 # 3. AFTER_RECORD gets triggered
 #
@@ -71,7 +71,7 @@ def handle_response_record(context: RecordContext):
     intercept_settings = context.intercept_settings
 
     disable_transfer_encoding(flow.response)
-    handle_response_normalize(context)
+    handle_response_develop(context)
 
     # Lazy import for runtime usage
     request: 'MitmproxyRequest' = flow.request

@@ -11,7 +11,7 @@ from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import (
   PROXY_MODE_FORWARD,
   SERVICES_NAMESPACE,
-  WORKFLOW_NORMALIZE_TYPE,
+  WORKFLOW_DEVELOP_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -456,14 +456,14 @@ class TestScaffoldE2e():
       assert os.path.exists(runtime_scaffold_namespace_path), "Runtime scaffold namespace path should exist"
 
 
-  class TestNormalizeWorkflow():
+  class TestDevelopWorkflow():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
-      yield WORKFLOW_NORMALIZE_TYPE
+      yield WORKFLOW_DEVELOP_TYPE
 
     @pytest.fixture(scope='class')
-    def normalize_local_service_mock_docker_compose_path(self, mock_data_directory_path):
-      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-normalize.yml"
+    def develop_local_service_mock_docker_compose_path(self, mock_data_directory_path):
+      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-develop.yml"
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
@@ -482,7 +482,7 @@ class TestScaffoldE2e():
       yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, normalize_local_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, develop_local_service_mock_docker_compose_path):
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
       # Create user defined services
@@ -495,7 +495,7 @@ class TestScaffoldE2e():
       # Add user defined Docker Compose file for the custom container service
       destination_path = Path(local_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
-      shutil.copyfile(normalize_local_service_mock_docker_compose_path, destination_path)
+      shutil.copyfile(develop_local_service_mock_docker_compose_path, destination_path)
 
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
 
@@ -543,14 +543,14 @@ class TestScaffoldE2e():
       assert access_count >= 1, f"Access count should be >= 1, got {access_count}"
 
 
-  class TestNormalizeWorkflowForward():
+  class TestDevelopWorkflowForward():
     @pytest.fixture(scope='class', autouse=True)
     def target_workflow_name(self):
-      yield WORKFLOW_NORMALIZE_TYPE
+      yield WORKFLOW_DEVELOP_TYPE
 
     @pytest.fixture(scope='class')
-    def normalize_local_service_mock_docker_compose_path(self, mock_data_directory_path):
-      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-normalize.yml"
+    def develop_local_service_mock_docker_compose_path(self, mock_data_directory_path):
+      yield mock_data_directory_path / "scaffold" / "docker-compose-local-service-develop.yml"
 
     @pytest.fixture(scope='class')
     def managed_services_docker_compose(self, target_workflow_name):
@@ -569,7 +569,7 @@ class TestScaffoldE2e():
       yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=local_service_name, hostname=local_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, normalize_local_service_mock_docker_compose_path):
+    def create_scaffold_setup(self, runner, app_dir_path, app_name, target_workflow_name, external_service_docker_compose, external_https_service_docker_compose, local_service_docker_compose, develop_local_service_mock_docker_compose_path):
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
 
       # Create user defined services
@@ -582,7 +582,7 @@ class TestScaffoldE2e():
       # Add user defined Docker Compose file for the custom container service
       destination_path = Path(local_service_docker_compose.docker_compose_path)
       assert destination_path.is_file()
-      shutil.copyfile(normalize_local_service_mock_docker_compose_path, destination_path)
+      shutil.copyfile(develop_local_service_mock_docker_compose_path, destination_path)
 
       ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
 

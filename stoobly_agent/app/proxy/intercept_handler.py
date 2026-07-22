@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
-from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize_primary
+from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop_primary
 from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -62,9 +62,9 @@ def request(flow: 'MitmproxyHTTPFlow'):
     elif active_mode == mode.RECORD:
         context = ReplayContext(flow, intercept_settings)
         handle_request_record(context)
-    elif active_mode == mode.NORMALIZE:
+    elif active_mode == mode.DEVELOP:
         context = ReplayContext(flow, intercept_settings)
-        handle_request_normalize(context)
+        handle_request_develop(context)
     elif active_mode == mode.TEST:
         context = ReplayContext(flow, intercept_settings)
         handle_request_test(context)
@@ -72,7 +72,7 @@ def request(flow: 'MitmproxyHTTPFlow'):
         if active_mode != mode.NONE:
             bad_request(
                 flow,
-                "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.TEST, mode.NORMALIZE], active_mode)
+                "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP], active_mode)
             )
 
 def response(flow: 'MitmproxyHTTPFlow'):
@@ -93,9 +93,9 @@ def response(flow: 'MitmproxyHTTPFlow'):
         elif active_mode == mode.RECORD:
             context = RecordContext(flow, intercept_settings)
             handle_response_record(context)
-        elif active_mode == mode.NORMALIZE:
+        elif active_mode == mode.DEVELOP:
             context = ReplayContext(flow, intercept_settings)
-            handle_response_normalize_primary(context)
+            handle_response_develop_primary(context)
         elif active_mode == mode.TEST:
             context = ReplayContext(flow, intercept_settings)
             handle_response_test(context)

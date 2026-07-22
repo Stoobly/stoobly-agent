@@ -2,7 +2,7 @@ import pdb
 
 from typing import TYPE_CHECKING, Callable, TypedDict, Union
 
-from stoobly_agent.app.proxy.handle_normalize_service import handle_request_normalize, handle_response_normalize
+from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 
 if TYPE_CHECKING:
@@ -176,10 +176,10 @@ def eval_request_with_retry(context: MockContext, eval_request, **options: MockO
 
 ###
 # 
-# 1. BEFORE_NORMALIZE gets triggered
+# 1. BEFORE_DEVELOP gets triggered
 #
 def handle_request_mock(context: MockContext):
-    handle_request_normalize(ReplayContext(context.flow, context.intercept_settings))
+    handle_request_develop(ReplayContext(context.flow, context.intercept_settings))
     handle_request_mock_generic(
         context,
         failure=handle_mock_failure,
@@ -194,7 +194,7 @@ def handle_request_mock(context: MockContext):
 # 3. AFTER_MOCK gets triggered
 #
 def handle_response_mock(context: MockContext):
-    handle_response_normalize(ReplayContext(context.flow, context.intercept_settings))
+    handle_response_develop(ReplayContext(context.flow, context.intercept_settings))
     __rewrite_response(context)
     __mock_hook(lifecycle_hooks.AFTER_MOCK, context)
 

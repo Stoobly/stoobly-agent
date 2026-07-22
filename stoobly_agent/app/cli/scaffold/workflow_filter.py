@@ -8,8 +8,8 @@ to unit test the rule construction/upsert behavior without running workflows.
 from typing import List
 
 from stoobly_agent.app.cli.scaffold.constants import (
+  WORKFLOW_DEVELOP_TYPE,
   WORKFLOW_MOCK_TYPE,
-  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -28,7 +28,7 @@ HTTP_METHODS: List[str] = [
 
 WORKFLOW_FILTER_MODE_MAP = {
   WORKFLOW_MOCK_TYPE: mode.MOCK,
-  WORKFLOW_NORMALIZE_TYPE: mode.NORMALIZE,
+  WORKFLOW_DEVELOP_TYPE: mode.DEVELOP,
   WORKFLOW_RECORD_TYPE: mode.RECORD,
   WORKFLOW_TEST_TYPE: mode.MOCK,  # `test` workflows use mock interception mode
 }

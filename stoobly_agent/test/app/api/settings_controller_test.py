@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from stoobly_agent.test.test_helper import reset
 from stoobly_agent.app.api.settings_controller import SettingsController
-from stoobly_agent.config.constants import mock_policy, mode, normalize_policy, record_policy, test_policy
+from stoobly_agent.config.constants import mock_policy, mode, develop_policy, record_policy, test_policy
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
 
@@ -77,13 +77,13 @@ class TestSettingsController:
                 status=200
             )
 
-        def test_policies_normalize_mode(self, settings, controller, mock_context):
-            settings.proxy.intercept.mode = mode.NORMALIZE
+        def test_policies_develop_mode(self, settings, controller, mock_context):
+            settings.proxy.intercept.mode = mode.DEVELOP
 
             controller.policies(mock_context)
 
             mock_context.render.assert_called_once_with(
-                json=[normalize_policy.ALL],
+                json=[develop_policy.ALL],
                 status=200
             )
 
@@ -135,7 +135,7 @@ class TestSettingsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.DEVELOP]
             assert response_data['modes'] == expected_modes
 
         def test_summary_without_agent_param(self, controller, mock_context):
@@ -146,7 +146,7 @@ class TestSettingsController:
             _, kwargs = mock_context.render.call_args
             response_data = kwargs['json']
 
-            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.NORMALIZE]
+            expected_modes = [mode.RECORD, mode.MOCK, mode.TEST, mode.DEVELOP]
             assert response_data['modes'] == expected_modes
 
         @patch('stoobly_agent.app.api.settings_controller.ScenarioModel')

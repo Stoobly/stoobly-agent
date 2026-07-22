@@ -22,7 +22,7 @@ from stoobly_agent.app.cli.scaffold.context_config import (
 )
 from stoobly_agent.app.cli.scaffold.constants import (
   CONFIG_FILE,
-  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
+  PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
@@ -176,7 +176,7 @@ def create(**kwargs):
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
 @click.option('--upstream-scheme', type=click.Choice(['http', 'https']), help='Upstream service scheme.')
-@click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
+@click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   app = App(kwargs['app_dir_path'])
@@ -336,7 +336,7 @@ def update(**kwargs):
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
-@click.option('--template', required=True, type=click.Choice([WORKFLOW_MOCK_TYPE, WORKFLOW_NORMALIZE_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
+@click.option('--template', required=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
   app = App(kwargs['app_dir_path'], **kwargs)
@@ -780,7 +780,7 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
-  help="Sync normalize rewrite rules from service upstream hostname, port, and scheme"
+  help="Sync develop rewrite rules from service upstream hostname, port, and scheme"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')

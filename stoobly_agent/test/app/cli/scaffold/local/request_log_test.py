@@ -13,7 +13,7 @@ from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAutho
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
-    WORKFLOW_NORMALIZE_TYPE,
+    WORKFLOW_DEVELOP_TYPE,
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
 )
@@ -610,8 +610,8 @@ class TestRequestLogWithRecordWorkflowE2e():
 
 
 @pytest.mark.e2e
-class TestRequestLogWithNormalizeWorkflowE2e():
-    """Test that request logging works in the normalize scaffold workflow."""
+class TestRequestLogWithDevelopWorkflowE2e():
+    """Test that request logging works in the develop scaffold workflow."""
 
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
@@ -623,7 +623,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def app_name(self):
-        yield "request-log-normalize-workflow-app"
+        yield "request-log-develop-workflow-app"
 
     @pytest.fixture(scope='class', autouse=True)
     def app_dir_path(self):
@@ -637,7 +637,7 @@ class TestRequestLogWithNormalizeWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def service_name(self):
-        yield "dog-api-normalize"
+        yield "dog-api-develop"
 
     @pytest.fixture(scope="class", autouse=True)
     def proxy_url(self):
@@ -649,24 +649,24 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def normalize_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
-        """Start normalize workflow for testing."""
+    def develop_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+        """Start develop workflow for testing."""
         # Pre-generate CA certs so workflow up skips sudo cert install
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
 
-        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_NORMALIZE_TYPE)
+        LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_DEVELOP_TYPE)
         time.sleep(1)
         settings.load()
 
 
         yield
 
-        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_NORMALIZE_TYPE)
+        LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_DEVELOP_TYPE)
         time.sleep(1)
 
-    def test_successful_normalize_logged_at_info_level(self, app_dir_path, normalize_workflow, runner: CliRunner, proxy_url: str):
-        """Test that successfully normalized requests are logged at INFO level."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
+    def test_successful_develop_logged_at_info_level(self, app_dir_path, develop_workflow, runner: CliRunner, proxy_url: str):
+        """Test that successfully developed requests are logged at INFO level."""
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -677,15 +677,15 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
         if res.status_code != 200:
-            assert False, f"Expected successful normalize (200), got {res.status_code}. Response: {res.text}."
+            assert False, f"Expected successful develop (200), got {res.status_code}. Response: {res.text}."
 
         output = list_result.output
-        entry = find_log_entry(output, 'Normalize success')
-        assert entry is not None, f"Expected 'Normalize success' log entry, got:\n{output}"
+        entry = find_log_entry(output, 'Develop success')
+        assert entry is not None, f"Expected 'Develop success' log entry, got:\n{output}"
 
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
@@ -696,12 +696,12 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_options_request_not_logged_as_failure(self, app_dir_path, normalize_workflow, runner: CliRunner, proxy_url: str):
-        """Test that OPTIONS requests are not logged as normalize failures."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
+    def test_options_request_not_logged_as_failure(self, app_dir_path, develop_workflow, runner: CliRunner, proxy_url: str):
+        """Test that OPTIONS requests are not logged as develop failures."""
+        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
 
-        # In normalize mode, OPTIONS is forwarded to the real server.
-        # It should not appear as a "Normalize failure" in the request log.
+        # In develop mode, OPTIONS is forwarded to the real server.
+        # It should not appear as a "Develop failure" in the request log.
         requests.options(
             NON_DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
@@ -711,11 +711,11 @@ class TestRequestLogWithNormalizeWorkflowE2e():
         time.sleep(0.5)
         InterceptedRequestsLogger.shutdown()
 
-        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_NORMALIZE_TYPE, '--app-dir-path', app_dir_path])
+        list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
-        entry = find_log_entry(list_result.output, 'Normalize failure', method='OPTIONS')
-        assert entry is None, f"OPTIONS request should not be logged as Normalize failure, got log output:\n{list_result.output}"
+        entry = find_log_entry(list_result.output, 'Develop failure', method='OPTIONS')
+        assert entry is None, f"OPTIONS request should not be logged as Develop failure, got log output:\n{list_result.output}"
 
 
 @pytest.mark.e2e

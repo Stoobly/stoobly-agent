@@ -33,7 +33,7 @@ class ScenarioFacade(ReplayFacade):
 
   def replay(self, source_key: str, cli_options: ReplayCliOptions):
     return self.__replay(source_key, {
-      'mode': mode.RECORD if cli_options.get('record') else mode.NORMALIZE,
+      'mode': mode.RECORD if cli_options.get('record') else mode.DEVELOP,
       **self.common_replay_cli_options(cli_options),
       **self.__common_replay_options(source_key),
     })

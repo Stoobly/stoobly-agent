@@ -294,7 +294,7 @@ class RequestsController:
         self.__send(context, replay_context, **options)
 
     def __send(self, context: SimpleHTTPRequestHandler, replay_context: ReplayContext, **replay_options):
-        res = replay(replay_context, { **replay_options, 'mode': mode.NORMALIZE })
+        res = replay(replay_context, { **replay_options, 'mode': mode.DEVELOP })
 
         if 'Access-Control-Allow-Origin' in res.headers:
             del res.headers['Access-Control-Allow-Origin']

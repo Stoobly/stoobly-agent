@@ -1,8 +1,8 @@
 import pytest
 
 from stoobly_agent.app.cli.scaffold.constants import (
+  WORKFLOW_DEVELOP_TYPE,
   WORKFLOW_MOCK_TYPE,
-  WORKFLOW_NORMALIZE_TYPE,
   WORKFLOW_RECORD_TYPE,
   WORKFLOW_TEST_TYPE,
 )
@@ -44,10 +44,10 @@ def build_workflow_filter_rules(
 @pytest.mark.parametrize(
   "workflow_template,expected_mode",
   [
+    (WORKFLOW_DEVELOP_TYPE, mode.DEVELOP),
     (WORKFLOW_MOCK_TYPE, mode.MOCK),
     (WORKFLOW_RECORD_TYPE, mode.RECORD),
     (WORKFLOW_TEST_TYPE, mode.MOCK),
-    (WORKFLOW_NORMALIZE_TYPE, mode.NORMALIZE),
   ],
 )
 def test_build_workflow_filter_rules_applied_for_each_service(

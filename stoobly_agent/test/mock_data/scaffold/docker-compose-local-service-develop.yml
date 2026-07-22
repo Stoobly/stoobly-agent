@@ -6,4 +6,4 @@ services:
     networks:
       - app.egress
     profiles: &id001
-      - normalize
+      - develop
