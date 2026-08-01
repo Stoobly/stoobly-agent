@@ -34,10 +34,6 @@ class SourceDir:
         return os.path.join(self.db_dir_path, 'migrations')
 
     @property
-    def settings_file_path(self):
-        return os.path.join(self.config_dir_path, 'settings.yml')
-
-    @property
     def settings_template_file_path(self):
         return os.path.join(self.config_dir_path, 'settings.yml.sample')
 
