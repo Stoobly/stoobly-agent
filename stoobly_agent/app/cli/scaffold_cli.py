@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FORMAT, apply_config
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -917,6 +918,15 @@ def describe(**kwargs):
     sys.exit(1)
 
   __print_scaffold_describe(context_dir, app_dir)
+
+@scaffold.command(
+  help="Apply scaffold commands from a config file",
+)
+@click.option('--format', 'format', type=click.Choice(APPLY_FORMATS), default=YAML_FORMAT, show_default=True, help='Config file format.')
+@click.argument('path', type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.pass_context
+def apply(ctx, path, format):
+  apply_config(ctx, scaffold, path, format)
 
 scaffold.add_command(app)
 scaffold.add_command(service)
