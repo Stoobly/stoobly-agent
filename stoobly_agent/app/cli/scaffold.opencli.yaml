@@ -1,0 +1,804 @@
+# OpenCLI Description for stoobly-agent scaffold
+# Source: stoobly_agent/app/cli/scaffold_cli.py (and scaffold_request_log_cli.py)
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: "0.1"
+info:
+  title: stoobly-agent scaffold
+  summary: Manage scaffold applications, services, workflows, and hostnames
+  description: |
+    CLI contract for the `stoobly-agent scaffold` command group.
+    Invoked as `stoobly-agent scaffold <command> …`.
+  version: "2.4.2"
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: " "
+command:
+  name: scaffold
+  description: Manage scaffold
+  exitCodes:
+    - code: 0
+      description: Success
+    - code: 1
+      description: Validation or runtime error
+  commands:
+    - name: apply
+      description: Apply scaffold commands from a config file
+      arguments:
+        - name: path
+          required: true
+          description: Path to the config file. Must exist and be a file.
+      options:
+        - name: format
+          description: Config file format. Default yaml.
+          arguments:
+            - name: format
+              acceptedValues: [yaml, json]
+      examples:
+        - stoobly-agent scaffold apply scaffold.yml
+        - stoobly-agent scaffold apply scaffold.json --format json
+
+    - name: describe
+      description: Describe scaffold configuration
+      options:
+        - name: app-dir-path
+          description: Override app directory when context config is absent.
+          arguments:
+            - name: path
+        - name: context-dir-path
+          description: Path to Stoobly context directory.
+          arguments:
+            - name: path
+
+    - name: app
+      description: Manage app scaffold
+      commands:
+        - name: create
+          description: Scaffold application
+          arguments:
+            - name: app_name
+              required: true
+              description: Application name.
+          options:
+            - name: app-dir-path
+              description: Path to create the app scaffold. Defaults to the current working directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to a Stoobly context directory. May be specified multiple times.
+              arguments:
+                - name: path
+                  arity:
+                    minimum: 1
+                    maximum: 1
+            - name: copy-on-workflow-up
+              description: Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.
+            - name: docker-socket-path
+              description: Path to Docker socket. Default /var/run/docker.sock.
+              arguments:
+                - name: path
+            - name: plugin
+              description: Scaffold integrations.
+              arguments:
+                - name: plugin
+                  acceptedValues: [cypress, playwright]
+            - name: proxy-mode
+              description: Determines how to proxy requests to the upstream service(s). Default forward.
+              arguments:
+                - name: mode
+                  acceptedValues: [forward, reverse]
+            - name: proxy-port
+              description: Proxy service port. Default 8080.
+              arguments:
+                - name: port
+            - name: quiet
+              description: Disable log output.
+            - name: runtime
+              description: Runtime environments to support. Default local.
+              arguments:
+                - name: runtime
+                  acceptedValues: [docker, local]
+            - name: ui-port
+              description: UI service port. Default 4200.
+              arguments:
+                - name: port
+          examples:
+            - stoobly-agent scaffold app create my-app
+            - stoobly-agent scaffold app create my-app --runtime docker --proxy-mode reverse
+
+    - name: service
+      description: Manage service scaffold
+      commands:
+        - name: create
+          description: Scaffold a service
+          arguments:
+            - name: service_name
+              required: true
+              description: Service name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to a Stoobly context directory. May be specified multiple times.
+              arguments:
+                - name: path
+            - name: detached
+              description: Use isolated and non-persistent context directory.
+            - name: env
+              description: Specify an environment variable. May be specified multiple times.
+              arguments:
+                - name: env
+            - name: hostname
+              description: Service hostname.
+              arguments:
+                - name: hostname
+            - name: local
+              description: Specifies upstream service is local. Overrides --upstream-hostname option.
+            - name: openapi-specification
+              description: Enable using OpenAPI specification for this service.
+            - name: port
+              description: Service port.
+              arguments:
+                - name: port
+            - name: priority
+              description: Determines the service run order. Lower values run first. Default 5. Range 1.0–9.0.
+              arguments:
+                - name: priority
+            - name: quiet
+              description: Disable log output.
+            - name: scheme
+              description: Defaults to https if hostname is set.
+              arguments:
+                - name: scheme
+                  acceptedValues: [http, https]
+            - name: upstream-hostname
+              description: Upstream service hostname.
+              arguments:
+                - name: hostname
+            - name: upstream-port
+              description: Upstream service port.
+              arguments:
+                - name: port
+            - name: upstream-scheme
+              description: Upstream service scheme.
+              arguments:
+                - name: scheme
+                  acceptedValues: [http, https]
+            - name: workflow
+              description: Include pre-defined workflows. May be specified multiple times.
+              arguments:
+                - name: workflow
+                  acceptedValues: [develop, mock, record, test]
+          examples:
+            - stoobly-agent scaffold service create api --hostname api.example.com --port 443 --scheme https
+            - stoobly-agent scaffold service create api --workflow record --workflow mock
+
+        - name: list
+          description: List services
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: format
+              description: Format output.
+              arguments:
+                - name: format
+                  acceptedValues: [json, simple]
+            - name: select
+              description: Select column(s) to display. May be specified multiple times.
+              arguments:
+                - name: column
+            - name: service
+              description: Select specific services. May be specified multiple times.
+              arguments:
+                - name: service
+            - name: without-headers
+              description: Disable printing column headers.
+            - name: all
+              description: Display all services including core and user defined services.
+            - name: workflow
+              description: Specify workflow(s) to filter the services by. Defaults to all.
+              arguments:
+                - name: workflow
+
+        - name: show
+          description: Show information about a service
+          arguments:
+            - name: service_name
+              required: true
+              description: Service name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: format
+              description: Format output.
+              arguments:
+                - name: format
+                  acceptedValues: [json, simple]
+            - name: without-headers
+              description: Disable printing column headers.
+
+        - name: delete
+          description: Delete a service
+          arguments:
+            - name: service_name
+              required: true
+              description: Service name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+
+        - name: update
+          description: Update a service config
+          arguments:
+            - name: service_name
+              required: true
+              description: Service name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: detached
+              description: Use isolated and non-persistent context directory.
+              arguments:
+                - name: value
+                  acceptedValues: ["true", "false"]
+            - name: hostname
+              description: Service hostname.
+              arguments:
+                - name: hostname
+            - name: local
+              description: Specifies upstream service is local. Overrides --upstream-hostname option.
+              arguments:
+                - name: value
+                  acceptedValues: ["true", "false"]
+            - name: name
+              description: New name of the service to update to.
+              arguments:
+                - name: name
+            - name: openapi-specification
+              description: Enable using OpenAPI specification for this service.
+              arguments:
+                - name: value
+                  acceptedValues: ["true", "false"]
+            - name: port
+              description: Service port.
+              arguments:
+                - name: port
+            - name: priority
+              description: Determines the service run order. Lower values run first. Range 1.0–9.0.
+              arguments:
+                - name: priority
+            - name: scheme
+              description: Defaults to https if hostname is set.
+              arguments:
+                - name: scheme
+                  acceptedValues: [http, https]
+            - name: upstream-hostname
+              description: Upstream service hostname.
+              arguments:
+                - name: hostname
+            - name: upstream-port
+              description: Upstream service port.
+              arguments:
+                - name: port
+            - name: upstream-scheme
+              description: Upstream service scheme.
+              arguments:
+                - name: scheme
+                  acceptedValues: [http, https]
+
+    - name: workflow
+      description: Manage workflow scaffold
+      commands:
+        - name: create
+          description: Create workflow for service(s)
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: quiet
+              description: Disable log output.
+            - name: service
+              description: Specify the service(s) to create the workflow for. May be specified multiple times.
+              arguments:
+                - name: service
+            - name: template
+              required: true
+              description: Select which workflow to use as a template.
+              arguments:
+                - name: template
+                  acceptedValues: [develop, mock, record, test]
+          examples:
+            - stoobly-agent scaffold workflow create custom --template record --service api
+
+        - name: copy
+          description: Copy a workflow for service(s)
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Source workflow name.
+            - name: destination_workflow_name
+              required: true
+              description: Destination workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: service
+              description: Specify service(s) to add the workflow to. May be specified multiple times.
+              arguments:
+                - name: service
+
+        - name: show
+          description: Show information about running workflow(s)
+          arguments:
+            - name: workflow_name
+              required: false
+              description: Workflow name. If omitted, lists all running workflows.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: namespace
+              description: Workflow namespace. Only valid when workflow_name is provided.
+              arguments:
+                - name: namespace
+            - name: verbose
+              aliases: [v]
+              description: Show detailed information.
+
+        - name: up
+          description: Start a scaffold workflow and bring up service(s)
+          interactive: true
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: ca-certs-dir-path
+              description: Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.
+              arguments:
+                - name: path
+            - name: ca-certs-install-confirm
+              description: Confirm answer to CA certificate installation prompt.
+              arguments:
+                - name: confirm
+                  acceptedValues: [y, Y, n, N]
+            - name: certs-dir-path
+              description: Path to certs directory. Defaults to the certs dir of the context.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: detached
+              description: If set, will run the highest priority service in the background.
+            - name: dry-run
+              description: If set, prints commands instead of running them.
+            - name: hostname-install-confirm
+              description: Confirm answer to hostname installation prompt.
+              arguments:
+                - name: confirm
+                  acceptedValues: [y, Y, n, N]
+            - name: log-level
+              description: Log levels can be debug, info, warning, or error. Default info.
+              arguments:
+                - name: level
+                  acceptedValues: [debug, info, warning, error]
+            - name: mkcert
+              description: Set to generate SSL certs for HTTPS services.
+            - name: namespace
+              description: Workflow namespace. Defaults to workflow_name.
+              arguments:
+                - name: namespace
+            - name: no-publish
+              description: Do not publish all ports.
+            - name: script-path
+              description: Path to intermediate script path.
+              arguments:
+                - name: path
+            - name: service
+              description: Select which services to run. Defaults to all.
+              arguments:
+                - name: service
+            - name: user-id
+              description: OS user ID of the owner of context dir path. Defaults to current user.
+              arguments:
+                - name: uid
+            - name: verbose
+              description: Enable verbose output.
+          examples:
+            - stoobly-agent scaffold workflow up record
+            - stoobly-agent scaffold workflow up record --detached --service api
+
+        - name: down
+          description: Stop and tear down a scaffold workflow
+          interactive: true
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: dry-run
+              description: If set, prints commands instead of running them.
+            - name: hostname-uninstall-confirm
+              description: Confirm answer to hostname uninstall prompt.
+              arguments:
+                - name: confirm
+                  acceptedValues: [y, Y, n, N]
+            - name: log-level
+              description: Log levels can be debug, info, warning, or error. Default info.
+              arguments:
+                - name: level
+                  acceptedValues: [debug, info, warning, error]
+            - name: namespace
+              description: Workflow namespace. Defaults to workflow_name.
+              arguments:
+                - name: namespace
+            - name: script-path
+              description: Path to intermediate script path.
+              arguments:
+                - name: path
+            - name: service
+              description: Select which services to tear down. Defaults to all.
+              arguments:
+                - name: service
+            - name: user-id
+              description: OS user ID of the owner of context dir path. Defaults to current user.
+              arguments:
+                - name: uid
+
+        - name: logs
+          description: Show or follow logs from workflow service(s)
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: dry-run
+              description: If set, prints commands.
+            - name: follow
+              description: Follow log output.
+            - name: log-level
+              description: Log levels can be debug, info, warning, or error. Default info.
+              arguments:
+                - name: level
+                  acceptedValues: [debug, info, warning, error]
+            - name: namespace
+              description: Workflow namespace. Defaults to workflow_name.
+              arguments:
+                - name: namespace
+            - name: script-path
+              description: Path to intermediate script path.
+              arguments:
+                - name: path
+            - name: service
+              description: Select which services to log. Defaults to all.
+              arguments:
+                - name: service
+
+        - name: mkcert
+          description: Generate SSL certs for workflow service(s)
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: ca-certs-dir-path
+              description: Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.
+              arguments:
+                - name: path
+            - name: certs-dir-path
+              description: Path to certs directory. Defaults to the certs dir of the context.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: service
+              description: Select specific services. Defaults to all.
+              arguments:
+                - name: service
+
+        - name: rewrite
+          description: Sync develop rewrite rules from service upstream hostname, port, and scheme
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: service
+              description: Select specific services. Defaults to all.
+              arguments:
+                - name: service
+
+        - name: filter
+          description: Configure include filter rules for workflow service(s)
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: containerized
+              hidden: true
+              description: Set if run from within a container.
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: service
+              description: Select specific services. Defaults to all.
+              arguments:
+                - name: service
+
+        - name: validate
+          description: Validate a scaffold workflow
+          arguments:
+            - name: workflow_name
+              required: true
+              description: Workflow name.
+          options:
+            - name: app-dir-path
+              description: Path to validate the app scaffold.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: namespace
+              description: Workflow namespace. Defaults to workflow_name.
+              arguments:
+                - name: namespace
+
+    - name: hostname
+      description: Manage scaffold service hostnames
+      commands:
+        - name: install
+          description: Update the system hosts file for all scaffold service hostnames
+          interactive: true
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: hostname-install-confirm
+              description: Confirm answer to hostname installation prompt.
+              arguments:
+                - name: confirm
+                  acceptedValues: [y, Y, n, N]
+            - name: service
+              description: Select specific services. Defaults to all.
+              arguments:
+                - name: service
+            - name: validate
+              description: Validate installation of hostnames.
+            - name: workflow
+              description: Specify services by workflow(s). Defaults to all.
+              arguments:
+                - name: workflow
+
+        - name: uninstall
+          description: Delete from the system hosts file all scaffold service hostnames
+          interactive: true
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: context-dir-path
+              description: Path to Stoobly data directory.
+              arguments:
+                - name: path
+            - name: hostname-uninstall-confirm
+              description: Confirm answer to hostname uninstall prompt.
+              arguments:
+                - name: confirm
+                  acceptedValues: [y, Y, n, N]
+            - name: service
+              description: Select specific services. Defaults to all.
+              arguments:
+                - name: service
+            - name: validate
+              description: Validate uninstallation of hostnames.
+            - name: workflow
+              description: Specify services by workflow(s). Defaults to all.
+              arguments:
+                - name: workflow
+
+    - name: request
+      description: Manage scaffold request logs
+      commands:
+        - name: logs
+          description: Manage intercepted requests logs for workflows
+          commands:
+            - name: path
+              description: Get intercepted requests log path
+              arguments:
+                - name: workflow_name
+                  required: true
+                  description: Workflow name.
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: namespace
+                  description: Workflow namespace to get logs for.
+                  arguments:
+                    - name: namespace
+
+            - name: list
+              description: List intercepted requests log entries
+              arguments:
+                - name: workflow_name
+                  required: true
+                  description: Workflow name.
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: namespace
+                  description: Workflow namespace to list logs for.
+                  arguments:
+                    - name: namespace
+                - name: service-name
+                  description: Filter by service name.
+                  arguments:
+                    - name: service
+                - name: follow
+                  aliases: [f]
+                  description: Follow log output (like tail -f). Ctrl-C to stop.
+                - name: format
+                  description: Format output.
+                  arguments:
+                    - name: format
+                      acceptedValues: [json, simple]
+                - name: level
+                  description: Filter by log level.
+                  arguments:
+                    - name: level
+                      acceptedValues: [DEBUG, INFO, WARNING, ERROR]
+                - name: message
+                  description: Filter by log message (e.g., "Mock success", "Mock failure").
+                  arguments:
+                    - name: message
+                - name: method
+                  description: Filter by HTTP method.
+                  arguments:
+                    - name: method
+                      acceptedValues: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS]
+                - name: request-key
+                  description: Filter by request key.
+                  arguments:
+                    - name: key
+                - name: scenario-key
+                  description: Filter by scenario key.
+                  arguments:
+                    - name: key
+                - name: scenario-name
+                  description: Filter by scenario name.
+                  arguments:
+                    - name: name
+                - name: select
+                  description: Select column(s) to display. May be specified multiple times.
+                  arguments:
+                    - name: column
+                - name: status-code
+                  description: Filter by HTTP status code.
+                  arguments:
+                    - name: code
+                - name: test-title
+                  description: Filter by test title.
+                  arguments:
+                    - name: title
+                - name: url
+                  description: Filter by URL (substring match).
+                  arguments:
+                    - name: url
+                - name: without-headers
+                  description: Disable printing column headers.
+
+            - name: delete
+              description: Delete intercepted requests log entries
+              arguments:
+                - name: workflow_name
+                  required: true
+                  description: Workflow name.
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: namespace
+                  description: Workflow namespace to delete logs for.
+                  arguments:
+                    - name: namespace
