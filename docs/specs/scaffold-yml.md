@@ -64,19 +64,17 @@ Apply does **not** create directories. Paths that existing commands require to e
 
 ## Example
 
-Equivalent to the active steps in `scaffold-test.sh`:
-
 ```yaml
 version: 1
 commands:
   - resource: app
     action: create
     options:
-      app_name: 2.3.3-rc
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
+      app_name: monorepo
+      app_dir_path: ~/monorepo
       context_dir_path:
-        - ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-1
-        - ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-2
+        - ~/monorepo/apps/app-1
+        - ~/monorepo/apps/app-2
       copy_on_workflow_up: true
       ui_port: 4201
       plugin: [playwright]
@@ -85,9 +83,9 @@ commands:
     action: create
     options:
       service_name: dashboard
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
+      app_dir_path: ~/monorepo
       context_dir_path:
-        - ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-1
+        - ~/monorepo/apps/app-1
       hostname: local.stoobly.com
       scheme: http
       port: 80
@@ -97,10 +95,10 @@ commands:
     action: create
     options:
       service_name: google
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
+      app_dir_path: ~/monorepo
       context_dir_path:
-        - ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-1
-        - ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-2
+        - ~/monorepo/apps/app-1
+        - ~/monorepo/apps/app-2
       env: [TEST]
       hostname: www.google.com
       scheme: https
@@ -111,7 +109,7 @@ commands:
     action: create
     options:
       workflow_name: ci
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
+      app_dir_path: ~/monorepo
       service: [google]
       template: mock
 
@@ -119,7 +117,7 @@ commands:
     action: create
     options:
       service_name: assets
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
+      app_dir_path: ~/monorepo
       hostname: http.badssl.com
       scheme: http
       port: 80
@@ -130,8 +128,8 @@ commands:
     action: up
     options:
       workflow_name: mock
-      app_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc
-      context_dir_path: ~/github/stoobly-agent-scaffold/2.3.3-rc/apps/app-1
+      app_dir_path: ~/monorepo
+      context_dir_path: ~/monorepo/apps/app-1
       log_level: warning
       dry_run: true
 ```
