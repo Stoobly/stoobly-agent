@@ -31,6 +31,8 @@ command:
           required: true
           description: Path to the config file. Must exist and be a file.
       options:
+        - name: dry-run
+          description: If set, prints commands that would run without invoking them.
         - name: format
           description: Config file format. Default yaml.
           arguments:
@@ -38,6 +40,7 @@ command:
               acceptedValues: [yaml, json]
       examples:
         - stoobly-agent scaffold apply scaffold.yml
+        - stoobly-agent scaffold apply scaffold.yml --dry-run
         - stoobly-agent scaffold apply scaffold.json --format json
 
     - name: describe

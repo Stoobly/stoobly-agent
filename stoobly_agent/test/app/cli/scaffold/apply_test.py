@@ -53,6 +53,8 @@ class TestScaffoldApply:
     result = runner.invoke(scaffold, ['apply', '--help'])
     assert result.exit_code == 0
     assert 'PATH' in result.output or 'path' in result.output.lower()
+    assert '--dry-run' in result.output
+    assert '--format' in result.output
 
   def test_happy_path_app_and_service_create(self, runner: CliRunner, temp_dir: str):
     app_dir_path = os.path.join(temp_dir, 'my-app')
@@ -103,6 +105,53 @@ class TestScaffoldApply:
     service = Service('api', app)
     assert os.path.exists(service.dir_path)
     assert os.path.exists(os.path.join(app.scaffold_namespace_path))
+
+  def test_dry_run_does_not_invoke(self, runner: CliRunner, temp_dir: str):
+    app_dir_path = os.path.join(temp_dir, 'dry-run-app')
+    os.makedirs(app_dir_path, exist_ok=True)
+    os.makedirs(os.path.join(app_dir_path, DATA_DIR_NAME), exist_ok=True)
+    docker_socket_path = os.path.join(temp_dir, 'docker.sock')
+    open(docker_socket_path, 'a').close()
+
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'app',
+          'action': 'create',
+          'options': {
+            'app_name': 'dry-run-app',
+            'app_dir_path': app_dir_path,
+            'docker_socket_path': docker_socket_path,
+            'quiet': True,
+            'runtime': 'local',
+          },
+        },
+        {
+          'resource': 'service',
+          'action': 'create',
+          'options': {
+            'service_name': 'api',
+            'app_dir_path': app_dir_path,
+            'hostname': 'api.example.com',
+            'scheme': 'https',
+            'port': 443,
+            'quiet': True,
+          },
+        },
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', '--dry-run', config_path])
+    assert result.exit_code == 0, result.output
+    combined = result.output + (result.stderr or '')
+    assert 'would apply app create dry-run-app' in combined
+    assert 'would apply service create api' in combined
+    assert 'applying ' not in combined
+
+    assert not os.path.exists(os.path.join(app_dir_path, DATA_DIR_NAME, SERVICES_NAMESPACE))
+    assert not os.path.exists(os.path.join(app_dir_path, DATA_DIR_NAME, SERVICES_NAMESPACE, 'api'))
 
   def test_format_json(self, runner: CliRunner, temp_dir: str):
     app_dir_path = os.path.join(temp_dir, 'json-app')

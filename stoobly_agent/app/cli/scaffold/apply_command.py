@@ -360,7 +360,13 @@ def invoke_step(
     raise SystemExit(e.exit_code) from e
 
 
-def apply_config(ctx: click.Context, scaffold_group: click.Group, path: str, format: str = YAML_FORMAT) -> None:
+def apply_config(
+  ctx: click.Context,
+  scaffold_group: click.Group,
+  path: str,
+  format: str = YAML_FORMAT,
+  dry_run: bool = False,
+) -> None:
   logger = _logger()
 
   try:
@@ -390,10 +396,14 @@ def apply_config(ctx: click.Context, scaffold_group: click.Group, path: str, for
       logger.error(f"commands[{index}]: {e}")
       sys.exit(1)
 
-    applying = f"applying {resource} {action}"
+    prefix = 'would apply' if dry_run else 'applying'
+    applying = f"{prefix} {resource} {action}"
     if positionals:
       applying = f"{applying} {' '.join(positionals)}"
     logger.info(applying)
+
+    if dry_run:
+      continue
 
     try:
       invoke_step(ctx, scaffold_group, str(resource), command, option_argv + positionals)

@@ -431,7 +431,7 @@ def show(**kwargs):
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--dry-run', default=False, is_flag=True)
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -578,7 +578,7 @@ def down(**kwargs):
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--follow', is_flag=True, help='Follow log output.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -648,7 +648,7 @@ def logs(**kwargs):
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
-@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands instead of running them.')
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -922,11 +922,12 @@ def describe(**kwargs):
 @scaffold.command(
   help="Apply scaffold commands from a config file",
 )
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--format', 'format', type=click.Choice(APPLY_FORMATS), default=YAML_FORMAT, show_default=True, help='Config file format.')
 @click.argument('path', type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.pass_context
-def apply(ctx, path, format):
-  apply_config(ctx, scaffold, path, format)
+def apply(ctx, path, format, dry_run):
+  apply_config(ctx, scaffold, path, format, dry_run=dry_run)
 
 scaffold.add_command(app)
 scaffold.add_command(service)

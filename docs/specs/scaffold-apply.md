@@ -11,13 +11,14 @@ Config file format: [`scaffold-yml.md`](scaffold-yml.md).
 ## CLI
 
 ```bash
-stoobly-agent scaffold apply PATH [--format yaml|json]
+stoobly-agent scaffold apply PATH [--format yaml|json] [--dry-run]
 ```
 
 | Argument / option | Description |
 |-------------------|-------------|
 | `PATH` | Path to the config file. Must exist and be a file. |
 | `--format` | Config file format. Choices: `yaml`, `json`. Default: `yaml`. |
+| `--dry-run` | Validate and log each step as `would apply …` without invoking any commands. |
 
 ## Behavior
 
@@ -36,9 +37,9 @@ flowchart LR
 3. For each step in order:
    - Expand path options (relative to the config file’s directory).
    - Resolve `resource` / `action` on the Click `scaffold` group.
-   - Convert `options` to CLI argv and log `applying <resource> <action> [positionals…]` (positional argument values only; option flags such as `--hostname` are not logged).
-   - Invoke the command via Click `make_context` + `invoke` so option types, callbacks, and `exists` checks still run. Parent the leaf under `scaffold → <resource>` (not under `apply`) so usage/help matches direct CLI invocation (e.g. `scaffold app create`, not `scaffold apply PATH create`).
-4. On the first failing step, stop and exit non-zero. Later steps are not run.
+   - Convert `options` to CLI argv and log `applying <resource> <action> [positionals…]` (or `would apply …` with `--dry-run`; positional argument values only; option flags such as `--hostname` are not logged).
+   - Unless `--dry-run`, invoke the command via Click `make_context` + `invoke` so option types, callbacks, and `exists` checks still run. Parent the leaf under `scaffold → <resource>` (not under `apply`) so usage/help matches direct CLI invocation (e.g. `scaffold app create`, not `scaffold apply PATH create`).
+4. On the first failing step, stop and exit non-zero. Later steps are not run. With `--dry-run`, steps are not invoked, so underlying command failures cannot occur.
 
 Apply does not call `*CreateCommand` (or other domain command classes) directly; it reuses the existing Click handlers and their side effects.
 
@@ -70,6 +71,7 @@ Config validation errors (missing/unsupported `version`, missing `commands`, unk
 | Help | `scaffold apply --help` exits 0 and documents `PATH` |
 | Happy path | Ordered `app create` then `service create`; services and scaffold namespace exist afterward |
 | Logging | `applying app create <name>` / `applying service create <name>`; option flags not present in output |
+| Dry-run | `--dry-run` logs `would apply …`, exits 0, and does not create scaffold artifacts |
 | JSON | `--format json` applies a JSON config |
 | Validation | Missing/unsupported version; missing `commands` / `resource`; unknown resource/action/option; invalid accepted value; missing required argument; action that is a group |
 | Missing file | Non-existent `PATH` exits non-zero |
