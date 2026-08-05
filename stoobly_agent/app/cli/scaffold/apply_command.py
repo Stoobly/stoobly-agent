@@ -27,9 +27,10 @@ def _logger() -> logging.Logger:
   logger = Logger.instance(LOG_ID)
   # Named loggers inherit root; set from env (default info) so info is not dropped
   # when root remains at WARNING (basicConfig no-op if handlers already exist).
-  if logger.level == logging.NOTSET:
-    level_name = (os.getenv(LOG_LEVEL) or INFO).lower()
-    logger.setLevel(_LEVELS.get(level_name, logging.INFO))
+  # Always re-apply: other CLI commands can mutate LOG_LEVEL and the named logger
+  # retains a prior level after handlers are cleared.
+  level_name = (os.getenv(LOG_LEVEL) or INFO).lower()
+  logger.setLevel(_LEVELS.get(level_name, logging.INFO))
   return logger
 
 SUPPORTED_VERSIONS = {1}

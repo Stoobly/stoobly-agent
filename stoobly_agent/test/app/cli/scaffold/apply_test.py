@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -12,6 +13,7 @@ from stoobly_agent.app.cli.scaffold.apply_command import LOG_ID
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold_cli import scaffold
+from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.test.test_helper import reset
@@ -25,11 +27,14 @@ class TestScaffoldApply:
 
   @pytest.fixture(autouse=True)
   def reset_apply_logger(self):
+    # Other CLI tests (e.g. request replay) leave LOG_LEVEL=warning in the process env.
+    os.environ.pop(LOG_LEVEL, None)
     # Logger caches StreamHandlers bound to sys.stderr; clear between CliRunner invokes.
     if LOG_ID in Logger._instances:
       log = Logger._instances.pop(LOG_ID)
       for handler in list(log.handlers):
         log.removeHandler(handler)
+      log.setLevel(logging.NOTSET)
 
   @pytest.fixture
   def runner(self):
