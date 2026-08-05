@@ -18,3 +18,4 @@ remote:
 ui:
     active: false
     url: ''
+version: 1

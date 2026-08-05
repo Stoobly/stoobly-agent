@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FORMAT, apply_config
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -430,7 +431,7 @@ def show(**kwargs):
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
-@click.option('--dry-run', default=False, is_flag=True)
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -577,7 +578,7 @@ def down(**kwargs):
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands.')
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--follow', is_flag=True, help='Follow log output.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -647,7 +648,7 @@ def logs(**kwargs):
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
-@click.option('--dry-run', default=False, is_flag=True, help='If set, prints commands instead of running them.')
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
@@ -917,6 +918,16 @@ def describe(**kwargs):
     sys.exit(1)
 
   __print_scaffold_describe(context_dir, app_dir)
+
+@scaffold.command(
+  help="Apply scaffold commands from a config file",
+)
+@click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
+@click.option('--format', 'format', type=click.Choice(APPLY_FORMATS), default=YAML_FORMAT, show_default=True, help='Config file format.')
+@click.argument('path', type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.pass_context
+def apply(ctx, path, format, dry_run):
+  apply_config(ctx, scaffold, path, format, dry_run=dry_run)
 
 scaffold.add_command(app)
 scaffold.add_command(service)

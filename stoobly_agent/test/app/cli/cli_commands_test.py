@@ -51,6 +51,7 @@ class TestCliSubcommandsLoad:
         ['request', 'list'],
         ['scaffold', 'app'],
         ['scaffold', 'app', 'create'],
+        ['scaffold', 'apply'],
         ['scaffold', 'hostname'],
         ['scaffold', 'hostname', 'install'],
         ['scaffold', 'hostname', 'uninstall'],
