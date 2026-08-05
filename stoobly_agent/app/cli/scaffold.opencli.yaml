@@ -32,7 +32,7 @@ command:
           description: Path to the config file. Must exist and be a file.
       options:
         - name: dry-run
-          description: If set, prints commands that would run without invoking them.
+          description: If set, runs validation and logs only.
         - name: format
           description: Config file format. Default yaml.
           arguments:
@@ -415,7 +415,7 @@ command:
             - name: detached
               description: If set, will run the highest priority service in the background.
             - name: dry-run
-              description: If set, prints commands instead of running them.
+              description: If set, runs validation and logs only.
             - name: hostname-install-confirm
               description: Confirm answer to hostname installation prompt.
               arguments:
@@ -472,7 +472,7 @@ command:
               hidden: true
               description: Set if run from within a container.
             - name: dry-run
-              description: If set, prints commands instead of running them.
+              description: If set, runs validation and logs only.
             - name: hostname-uninstall-confirm
               description: Confirm answer to hostname uninstall prompt.
               arguments:
@@ -519,7 +519,7 @@ command:
               arguments:
                 - name: path
             - name: dry-run
-              description: If set, prints commands.
+              description: If set, runs validation and logs only.
             - name: follow
               description: Follow log output.
             - name: log-level

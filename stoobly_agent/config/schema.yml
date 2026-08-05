@@ -20,6 +20,7 @@ remote:
 ui:
   active: bool()
   url: str()
+version: int(required=False)
 ---
 component: enum('Body Param', 'Header', 'Query Param')
 filter_action: enum('exclude', 'include')
