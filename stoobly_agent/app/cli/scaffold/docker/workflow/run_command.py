@@ -55,9 +55,9 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     # Create networks
     init_commands.append(self.create_egress_network())
     init_commands.append(self.create_ingress_network())
-    
+
     for command in init_commands:
-      self.exec(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+      self.exec(command, stdout=subprocess.DEVNULL)
 
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
@@ -319,6 +319,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     command = ['docker', 'build']
     command.append(f"-f {dockerfile_path}")
     command.append(f"-t stoobly.{user_id}")
+    command.append(f"--build-arg STOOBLY_IMAGE=$STOOBLY_IMAGE")
     command.append(f"--build-arg USER_ID={user_id}")
 
     if not os.environ.get('STOOBLY_IMAGE_USE_LOCAL'):

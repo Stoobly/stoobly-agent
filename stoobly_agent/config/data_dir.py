@@ -139,6 +139,10 @@ class DataDir:
         return os.path.join(self.context_dir_path, DATA_DIR_NAME, 'settings.yml')
 
     @property
+    def scaffold_file_path(self):
+        return os.path.join(self.context_dir_path, DATA_DIR_NAME, 'scaffold.yml')
+
+    @property
     def snapshots_dir_path(self):
         snapshots_dir_path = os.path.join(self.context_dir_path, DATA_DIR_NAME, 'snapshots')
 

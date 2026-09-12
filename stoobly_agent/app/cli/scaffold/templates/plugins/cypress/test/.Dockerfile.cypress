@@ -33,10 +33,9 @@ RUN set -eux; \
         useradd -u "${USER_ID}" -m "${USER_NAME}"; \
     fi
 
-USER stoobly
 WORKDIR /home/stoobly
 
-RUN npx cypress install # Install Cypress binary into image
+RUN gosu stoobly npx cypress install # Install Cypress binary as stoobly user
 
 COPY .entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

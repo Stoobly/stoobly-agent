@@ -62,7 +62,7 @@ exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm sto
 
 # Build base image
 stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
-stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg STOOBLY_IMAGE=$(STOOBLY_IMAGE) --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
+stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg STOOBLY_IMAGE=$$STOOBLY_IMAGE --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
 stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)

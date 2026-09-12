@@ -103,3 +103,17 @@ class TestDataDir():
       DataDir._instances = None
       shutil.rmtree(temp_dir)
       os.chdir(original_cwd)
+
+  def test_scaffold_file_path(self, original_cwd: str):
+    os.environ[ENV] = NONE
+    DataDir._instances = None
+    os.chdir(original_cwd)
+
+    try:
+      data_dir = DataDir.instance()
+      assert data_dir.scaffold_file_path == os.path.join(
+        data_dir.context_dir_path, DATA_DIR_NAME, 'scaffold.yml'
+      )
+    finally:
+      DataDir._instances = None
+      os.chdir(original_cwd)

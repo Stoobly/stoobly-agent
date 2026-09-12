@@ -924,7 +924,12 @@ def describe(**kwargs):
 )
 @click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--format', 'format', type=click.Choice(APPLY_FORMATS), default=YAML_FORMAT, show_default=True, help='Config file format.')
-@click.argument('path', type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.argument(
+  'path',
+  type=click.Path(exists=True, file_okay=True, dir_okay=False),
+  required=False,
+  default=lambda: DataDir.instance().scaffold_file_path,
+)
 @click.pass_context
 def apply(ctx, path, format, dry_run):
   apply_config(ctx, scaffold, path, format, dry_run=dry_run)
