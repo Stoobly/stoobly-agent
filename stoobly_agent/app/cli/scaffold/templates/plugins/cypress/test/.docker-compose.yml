@@ -16,6 +16,5 @@ services:
       - "app.ingress"
     profiles:
       - ${WORKFLOW_NAME}
-    user: stoobly
     volumes:
       - ${CONTEXT_DIR}:/home/stoobly
