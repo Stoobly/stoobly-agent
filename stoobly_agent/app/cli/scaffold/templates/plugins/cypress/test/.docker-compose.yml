@@ -2,9 +2,9 @@ services:
   entrypoint.cypress:
     build:
       args:
-        CYPRESS_IMAGE: ${CYPRESS_IMAGE:-cypress/browsers:22.11.0}
-        GOLANG_IMAGE: ${GOLANG_IMAGE:-golang:1.25.8-alpine}
-        GOSU_VERSION: ${GOSU_VERSION:-1.19}
+        CYPRESS_IMAGE: ${CYPRESS_IMAGE}
+        GOLANG_IMAGE: ${GOLANG_IMAGE}
+        GOSU_VERSION: ${GOSU_VERSION}
         USER_ID: ${USER_ID}
       context: ./
       dockerfile: ./.Dockerfile.cypress

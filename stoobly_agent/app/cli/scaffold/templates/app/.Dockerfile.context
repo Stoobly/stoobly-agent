@@ -1,4 +1,6 @@
-FROM stoobly/agent:2.5
+ARG STOOBLY_IMAGE
+
+FROM ${STOOBLY_IMAGE:-stoobly/agent:2.5}
 
 ARG USER_ID
 
