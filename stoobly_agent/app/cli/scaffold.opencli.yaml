@@ -28,8 +28,8 @@ command:
       description: Apply scaffold commands from a config file
       arguments:
         - name: path
-          required: true
-          description: Path to the config file. Must exist and be a file.
+          required: false
+          description: Path to the config file. Must exist and be a file. Defaults to .stoobly/scaffold.yml in the current context.
       options:
         - name: dry-run
           description: If set, runs validation and logs only.
@@ -39,6 +39,7 @@ command:
             - name: format
               acceptedValues: [yaml, json]
       examples:
+        - stoobly-agent scaffold apply
         - stoobly-agent scaffold apply scaffold.yml
         - stoobly-agent scaffold apply scaffold.yml --dry-run
         - stoobly-agent scaffold apply scaffold.json --format json

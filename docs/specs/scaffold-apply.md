@@ -11,12 +11,12 @@ Config file format: [`scaffold-yml.md`](scaffold-yml.md).
 ## CLI
 
 ```bash
-stoobly-agent scaffold apply PATH [--format yaml|json] [--dry-run]
+stoobly-agent scaffold apply [PATH] [--format yaml|json] [--dry-run]
 ```
 
 | Argument / option | Description |
 |-------------------|-------------|
-| `PATH` | Path to the config file. Must exist and be a file. |
+| `PATH` | Path to the config file. Must exist and be a file. Defaults to `.stoobly/scaffold.yml` in the current context (`DataDir.scaffold_file_path`). |
 | `--format` | Config file format. Choices: `yaml`, `json`. Default: `yaml`. |
 | `--dry-run` | Validate and log each step as `would apply …` without invoking any commands. |
 
@@ -57,7 +57,7 @@ Config validation errors (missing/unsupported `version`, missing `commands`, unk
 
 | Condition | Result |
 |-----------|--------|
-| `PATH` missing or not a file | Non-zero exit (Click path check) |
+| `PATH` (or the default `.stoobly/scaffold.yml`) missing or not a file | Non-zero exit (Click path check) |
 | Unreadable / empty / non-mapping / unparseable config | Exit 1 |
 | Config validation failure | Exit 1; no steps run |
 | Underlying command failure (e.g. Click validation on invoke) | Stop; exit with that command’s exit code; later steps not run |
@@ -69,6 +69,7 @@ Config validation errors (missing/unsupported `version`, missing `commands`, unk
 | Area | Assertions |
 |------|------------|
 | Help | `scaffold apply --help` exits 0 and documents `PATH` |
+| Default path | Omitting `PATH` applies `DataDir.scaffold_file_path` (`.stoobly/scaffold.yml`) |
 | Happy path | Ordered `app create` then `service create`; services and scaffold namespace exist afterward |
 | Logging | `applying app create <name>` / `applying service create <name>`; option flags not present in output |
 | Dry-run | `--dry-run` logs `would apply …`, exits 0, and does not create scaffold artifacts |

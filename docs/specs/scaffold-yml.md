@@ -4,7 +4,7 @@
 
 Config file consumed by [`scaffold apply`](scaffold-apply.md). It declares an ordered list of scaffold CLI commands. Each step maps 1:1 to `stoobly-agent scaffold <resource> <action> …`.
 
-Supported formats: **YAML** (default; often named `scaffold.yml`) and **JSON**.
+Supported formats: **YAML** (default; often named `scaffold.yml`) and **JSON**. When `PATH` is omitted, apply reads `.stoobly/scaffold.yml` in the current context (`DataDir.scaffold_file_path`).
 
 ## Schema (version 1)
 

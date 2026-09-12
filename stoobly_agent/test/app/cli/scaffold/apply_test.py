@@ -14,7 +14,7 @@ from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
-from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.test.test_helper import reset
 
@@ -60,6 +60,42 @@ class TestScaffoldApply:
     assert 'PATH' in result.output or 'path' in result.output.lower()
     assert '--dry-run' in result.output
     assert '--format' in result.output
+    # PATH is optional; Click marks optional arguments with brackets.
+    assert '[PATH]' in result.output
+
+  def test_omitted_path_uses_data_dir_scaffold_file(self, runner: CliRunner):
+    config_path = DataDir.instance().scaffold_file_path
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'app',
+          'action': 'create',
+          'options': {
+            'app_name': 'default-path-app',
+            'quiet': True,
+            'runtime': 'local',
+          },
+        },
+      ],
+    })
+
+    try:
+      result = runner.invoke(scaffold, ['apply', '--dry-run'])
+      assert result.exit_code == 0, result.output
+      combined = result.output + (result.stderr or '')
+      assert 'would apply app create default-path-app' in combined
+    finally:
+      if os.path.exists(config_path):
+        os.remove(config_path)
+
+  def test_omitted_path_missing_default_file(self, runner: CliRunner):
+    config_path = DataDir.instance().scaffold_file_path
+    if os.path.exists(config_path):
+      os.remove(config_path)
+
+    result = runner.invoke(scaffold, ['apply'])
+    assert result.exit_code != 0
 
   def test_happy_path_app_and_service_create(self, runner: CliRunner, temp_dir: str):
     app_dir_path = os.path.join(temp_dir, 'my-app')
