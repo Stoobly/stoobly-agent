@@ -5,11 +5,13 @@ import re
 
 from typing import TYPE_CHECKING
 
+from dotenv import dotenv_values
+
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_DIR_MOUNT_PATH, CONTEXT_DIR_MOUNT_PATH
 
 from .app import App
 from .constants import (
-  APP_DIR_ENV, APP_DIR_MOUNT_ENV, APP_NETWORK_ENV, APP_PROXY_HOSTNAME_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, CONTEXT_DIR_MOUNT_ENV, PROXY_MODE_FORWARD, RUNTIME_APP_DIR_ENV,
+  APP_DIR_ENV, APP_DIR_MOUNT_ENV, APP_NETWORK_ENV, APP_PROXY_HOSTNAME_ENV, CA_CERTS_DIR_ENV, CERTS_DIR_ENV, CONTEXT_DIR_ENV, CONTEXT_DIR_MOUNT_ENV, DOTENV_FILE, PROXY_MODE_FORWARD, RUNTIME_APP_DIR_ENV,
   SERVICE_DNS_ENV, SERVICE_ID, SERVICE_ID_ENV, SERVICE_NAME_ENV, SERVICE_SCRIPTS_DIR,  SERVICE_SCRIPTS_ENV, USER_ID_ENV, WORKFLOW_ACCESS_COUNT_ENV,
   WORKFLOW_NAME_ENV, WORKFLOW_NAMESPACE_ENV, WORKFLOW_SCRIPTS_DIR, WORKFLOW_SCRIPTS_ENV, WORKFLOW_TEMPLATE_ENV
 )
@@ -108,6 +110,19 @@ class WorkflowRunCommand(WorkflowCommand):
   def workflow_namespace(self):
     return self.__workflow_namespace
 
+  def merge_dotenv(self, dotenv_path: str = None, env: dict = None):
+    """Merge dotenv into env; existing env (default: shell) wins on conflict."""
+    result = dict(env) if env is not None else dict(os.environ)
+    if dotenv_path and os.path.exists(dotenv_path):
+      for key, value in dotenv_values(dotenv_path).items():
+        if value is not None and key not in result:
+          result[key] = value
+    return result
+
+  def merged_app_env(self):
+    """Process env merged with services/.env (shell env wins on conflict)."""
+    return self.merge_dotenv(self.app.dotenv_path)
+
   def write_nameservers(self):
     import dns.resolver
 
@@ -172,7 +187,16 @@ class WorkflowRunCommand(WorkflowCommand):
       _config[SERVICE_DNS_ENV] = '8.8.8.8'
 
     env_vars = self.config(_config)
- 
+
+    # Merge services/.env from app create --env (overrides generated config; namespace .env still wins)
+    app_dotenv_path = os.path.join(
+      self.app.runtime_app_data_dir.path,
+      self.scaffold_namespace,
+      DOTENV_FILE,
+    )
+    if os.path.exists(app_dotenv_path):
+      env_vars = { **env_vars, **dotenv_values(app_dotenv_path) }
+
     WorkflowEnv(self.workflow_path).write(env_vars, self.dotenv_path)
     return env_vars
 
