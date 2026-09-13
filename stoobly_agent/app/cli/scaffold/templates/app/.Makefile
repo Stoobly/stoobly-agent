@@ -23,7 +23,6 @@
 # Constants
 DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 DOCKER_BIN := docker
-PULL_OPTION := $(if $(STOOBLY_IMAGE_USE_LOCAL),,--pull)
 USER_ID := $(shell id -u)
 
 CONTEXT_DIR_DEFAULT := $(realpath $(DIR)/../..)
@@ -63,8 +62,9 @@ exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm sto
 
 # Build base image
 stoobly_app_dotenv=_saved=$$(export -p); set -a; if [ -f "$(app_dotenv_file)" ]; then . "$(app_dotenv_file)"; fi; set +a; eval "$$_saved"
+stoobly_pull_option=$$( [ -z "$$STOOBLY_IMAGE_USE_LOCAL" ] && echo --pull )
 stoobly_exec_build=$(stoobly_app_dotenv); $(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
-stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg STOOBLY_IMAGE=$$STOOBLY_IMAGE --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
+stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg STOOBLY_IMAGE=$$STOOBLY_IMAGE --build-arg USER_ID=$(USER_ID) $(stoobly_pull_option) --quiet
 
 # Exec any
 stoobly_exec=$(stoobly_exec_build) && $(stoobly_exec_env) $(exec_up)

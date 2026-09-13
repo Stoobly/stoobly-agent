@@ -15,10 +15,22 @@ def validate_env_pair(ctx, param, env_pairs):
   if not env_pairs:
     return env_pairs
 
+  name_regex = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
   pairs = env_pairs if isinstance(env_pairs, (list, tuple)) else [env_pairs]
   for env_pair in pairs:
     if '=' not in env_pair:
       print(f"Error: env '{env_pair}' is invalid. Expected NAME=VALUE.", file=sys.stderr)
+      sys.exit(1)
+
+    name, value = env_pair.split('=', 1)
+    if not name or not name_regex.match(name):
+      print(
+        f"Error: env name '{name}' is invalid. Expected non-empty NAME matching [A-Za-z_][A-Za-z0-9_]*.",
+        file=sys.stderr,
+      )
+      sys.exit(1)
+    if '\n' in value or '\r' in value:
+      print(f"Error: env value for '{name}' must not contain newlines.", file=sys.stderr)
       sys.exit(1)
   return env_pairs
 

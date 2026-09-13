@@ -21,7 +21,10 @@ class WorkflowEnv(Config):
 
   def write(self, env_vars: dict, dotenv_path: str = None):
     if dotenv_path and os.path.exists(dotenv_path):
-      env_vars = { **env_vars, **dotenv_values(dotenv_path) }
+      env_vars = {
+        **env_vars,
+        **{k: v for k, v in dotenv_values(dotenv_path).items() if v is not None},
+      }
 
     Env(self.path).write(env_vars)
     self.__env_vars = env_vars
