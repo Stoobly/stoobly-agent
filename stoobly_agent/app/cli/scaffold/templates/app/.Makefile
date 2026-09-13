@@ -39,6 +39,7 @@ workflow_service_options=$(shell echo $$STOOBLY_WORKFLOW_SERVICE_OPTIONS)
 
 app_data_dir=$(app_dir)/.stoobly
 app_namespace_dir=$(app_data_dir)/services
+app_dotenv_file=$(app_namespace_dir)/.env
 app_tmp_dir=$(app_data_dir)/tmp
 dockerfile_path=$(app_namespace_dir)/.Dockerfile.context
 exec_docker_compose_file_path=$(app_namespace_dir)/stoobly_ui/exec/.docker-compose.yml
@@ -61,7 +62,8 @@ exec_env=APP_DIR="$(app_dir)" CA_CERTS_DIR="$(ca_certs_dir)" USER_ID="$(USER_ID)
 exec_up=$(DOCKER_BIN) compose -f "$(exec_docker_compose_file_path)" run --rm stoobly_ui.command
 
 # Build base image
-stoobly_exec_build=$(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
+stoobly_app_dotenv=_saved=$$(export -p); set -a; if [ -f "$(app_dotenv_file)" ]; then . "$(app_dotenv_file)"; fi; set +a; eval "$$_saved"
+stoobly_exec_build=$(stoobly_app_dotenv); $(DOCKER_BIN) build $(stoobly_exec_build_args) $(app_namespace_dir) > /dev/null
 stoobly_exec_build_args=-f "$(dockerfile_path)" -t stoobly.$(USER_ID) --build-arg STOOBLY_IMAGE=$$STOOBLY_IMAGE --build-arg USER_ID=$(USER_ID) $(PULL_OPTION) --quiet
 
 # Exec any
