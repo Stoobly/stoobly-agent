@@ -1,5 +1,6 @@
 import os
 import pdb
+import shlex
 import subprocess
 import sys
 import time
@@ -45,19 +46,20 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
 
   def exec_setup(self, containerized=False, user_id=None, verbose=False):
     """Setup Docker environment including gateway, images, and networks."""
-    init_commands = []
     
     # Create base image if needed
     if not containerized:
       create_image_command = self.create_image(user_id=user_id, verbose=verbose)
-      init_commands.append(create_image_command)
+      self.exec(create_image_command, env=self.merged_app_env(), stdout=subprocess.DEVNULL)
+
+    init_commands = []
  
     # Create networks
     init_commands.append(self.create_egress_network())
     init_commands.append(self.create_ingress_network())
 
     for command in init_commands:
-      self.exec(command, stdout=subprocess.DEVNULL)
+      self.exec(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
   def up(self, **options: WorkflowUpOptions):
     """Execute the complete Docker workflow up process."""
@@ -315,21 +317,22 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
     relative_namespace_path = os.path.relpath(self.scaffold_namespace_path, self.current_working_dir)
     dockerfile_path = os.path.join(relative_namespace_path, DOCKERFILE_CONTEXT)
     user_id = options['user_id'] or os.getuid()
+    env = self.merged_app_env()
     
     command = ['docker', 'build']
     command.append(f"-f {dockerfile_path}")
     command.append(f"-t stoobly.{user_id}")
-    command.append(f"--build-arg STOOBLY_IMAGE=$STOOBLY_IMAGE")
+    command.append(f"--build-arg STOOBLY_IMAGE={shlex.quote(env.get('STOOBLY_IMAGE', ''))}")
     command.append(f"--build-arg USER_ID={user_id}")
 
-    if not os.environ.get('STOOBLY_IMAGE_USE_LOCAL'):
+    if not env.get('STOOBLY_IMAGE_USE_LOCAL'):
       command.append('--pull')
 
     if not options.get('verbose'):
       command.append('--quiet')
 
     # To avoid large context transfer times, should be a folder with relatively low number of files
-    command.append(relative_namespace_path) 
+    command.append(relative_namespace_path)
 
     return ' '.join(command)
 

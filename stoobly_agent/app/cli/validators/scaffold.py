@@ -11,6 +11,17 @@ def validate_app_name(ctx, param, app_name: str) -> str:
     sys.exit(1)
   return app_name
 
+def validate_env_pair(ctx, param, env_pairs):
+  if not env_pairs:
+    return env_pairs
+
+  pairs = env_pairs if isinstance(env_pairs, (list, tuple)) else [env_pairs]
+  for env_pair in pairs:
+    if '=' not in env_pair:
+      print(f"Error: env '{env_pair}' is invalid. Expected NAME=VALUE.", file=sys.stderr)
+      sys.exit(1)
+  return env_pairs
+
 def validate_hostname(ctx, param, hostname: str) -> Optional[str]:
   if not hostname:
     return None

@@ -7,7 +7,10 @@ import json
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE
+from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE, DOTENV_FILE
+from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.env import Env
+from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.cli import init as cli_init
 from stoobly_agent.config.constants import env_vars
@@ -123,6 +126,68 @@ class TestScaffoldAppCreateValidation:
     ])
 
     assert result.exit_code != 0
+
+
+class TestScaffoldAppCreateEnv:
+  def test_writes_env_to_services_dotenv(self, runner: CliRunner, tmp_path):
+    _prepare_app_dir(tmp_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--env', 'FOO=bar',
+      '--env', 'BAZ=qux',
+      '--quiet',
+      'test-app',
+    ])
+
+    assert result.exit_code == 0
+
+    dotenv_path = tmp_path / DATA_DIR_NAME / 'services' / DOTENV_FILE
+    assert dotenv_path.exists()
+    assert Env(str(dotenv_path)).read() == {'FOO': 'bar', 'BAZ': 'qux'}
+
+    config_path = tmp_path / DATA_DIR_NAME / 'services' / CONFIG_FILE
+    config = _read_config(config_path)
+    assert 'APP_ENV' not in config
+
+  def test_rejects_env_without_equals(self, runner: CliRunner, tmp_path):
+    _prepare_app_dir(tmp_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--env', 'FOO',
+      '--quiet',
+      'test-app',
+    ])
+
+    assert result.exit_code != 0
+
+  def test_write_env_merges_services_dotenv(self, runner: CliRunner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    app_dir_path.mkdir()
+    _prepare_app_dir(app_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(app_dir_path),
+      '--env', 'FOO=bar',
+      '--env', 'APP_NAME=custom-name',
+      '--quiet',
+      'test-app',
+    ])
+    assert result.exit_code == 0
+
+    _create_service(runner, app_dir_path, 'my-service')
+
+    command = WorkflowRunCommand(App(str(app_dir_path)), service_name='my-service', workflow_name='mock')
+    env_vars = command.write_env()
+
+    assert env_vars['FOO'] == 'bar'
+    # services/.env takes precedence over generated config
+    assert env_vars['APP_NAME'] == 'custom-name'
+    assert Env(command.workflow_dotenv_path).read()['FOO'] == 'bar'
 
 
 class TestScaffoldAppCreateContextDirPaths:

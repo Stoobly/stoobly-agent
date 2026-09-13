@@ -8,8 +8,6 @@ import time
 from types import FunctionType
 from typing import Optional, List
 
-from stoobly_agent.app.cli.scaffold.constants import DOTENV_FILE
-from stoobly_agent.app.cli.scaffold.env import Env
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CORE_ENTRYPOINT_SERVICE_NAME, CUSTOM_INIT, CUSTOM_RUN, MAINTAINED_INIT, MAINTAINED_RUN
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.types.workflow_run_command import WorkflowUpOptions, WorkflowDownOptions, WorkflowLogsOptions
@@ -105,11 +103,8 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
     if 'env' in options:
       del options['env']
 
-    env = { **os.environ.copy() }
-
-    env_path = os.path.join(self.workflow_path, DOTENV_FILE)
-    if os.path.exists(env_path):
-      env.update(Env(env_path).read())
+    # Shell env wins over workflow .env
+    env = self.merge_dotenv(self.workflow_dotenv_path)
 
     # Ensure the context directory is set
     env[STOOBLY_APP_DIR] = self.app_dir_path
