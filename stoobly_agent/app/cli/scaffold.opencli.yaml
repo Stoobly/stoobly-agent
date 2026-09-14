@@ -83,6 +83,10 @@ command:
               description: Path to Docker socket. Default /var/run/docker.sock.
               arguments:
                 - name: path
+            - name: env
+              description: Environment variable NAME=VALUE. May be specified multiple times.
+              arguments:
+                - name: env
             - name: plugin
               description: Scaffold integrations.
               arguments:
@@ -132,10 +136,10 @@ command:
                 - name: path
             - name: detached
               description: Use isolated and non-persistent context directory.
-            - name: env
-              description: Specify an environment variable. May be specified multiple times.
+            - name: env-name
+              description: Specify an environment variable name. May be specified multiple times.
               arguments:
-                - name: env
+                - name: env-name
             - name: hostname
               description: Service hostname.
               arguments:

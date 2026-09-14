@@ -9,7 +9,7 @@ from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_T
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
-from .constants import SERVICES_NAMESPACE, STOOBLY_HOME_DIR
+from .constants import DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 
 if TYPE_CHECKING:
     from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
@@ -161,6 +161,11 @@ class App():
   @property
   def dir_path(self):
     return self.__dir_path
+
+  @property
+  def dotenv_path(self):
+    """Path to services/.env (from app create --env)."""
+    return os.path.join(self.scaffold_namespace_path, DOTENV_FILE)
 
   @property
   def network(self):

@@ -56,7 +56,7 @@ class LocalScaffoldCliInvoker():
 
     result = runner.invoke(scaffold, ['service', 'create',
       '--app-dir-path', app_dir_path,
-      '--env', 'TEST',
+      '--env-name', 'TEST',
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,

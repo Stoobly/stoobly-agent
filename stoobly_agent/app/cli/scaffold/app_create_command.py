@@ -12,11 +12,13 @@ from .app import App
 from .app_command import AppCommand
 from .constants import PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_REVERSE
 from .docker.template_files import plugin_docker_cypress, plugin_docker_playwright, plugin_local_cypress, plugin_local_playwright, remove_app_docker_files, remove_service_docker_files
+from .env import Env
 from .templates.constants import CORE_GATEWAY_SERVICE_NAME, CORE_MOCK_UI_SERVICE_NAME, CUSTOM_RUN, MAINTAINED_RUN
 
 class AppCreateOptions(TypedDict):
   copy_on_workflow_up: bool
   docker_socket_path: str
+  env: list
   name: str
   plugin: list
   proxy_mode: str
@@ -29,6 +31,8 @@ class AppCreateCommand(AppCommand):
     def __init__(self, app: App, **kwargs: AppCreateOptions):
         super().__init__(app)
 
+        self.__env = {}
+
         if kwargs.get('app_name'):
             self.app_config.name = kwargs['app_name']
 
@@ -37,6 +41,13 @@ class AppCreateCommand(AppCommand):
 
         if kwargs.get('docker_socket_path'):
             self.app_config.docker_socket_path = kwargs['docker_socket_path']
+
+        if kwargs.get('env'):
+            env = {}
+            for env_pair in kwargs['env']:
+                name, value = env_pair.split('=', 1)
+                env[name] = value
+            self.__env = env
 
         if kwargs.get('plugin'):
             self.app_config.plugins = kwargs['plugin']
@@ -149,6 +160,10 @@ class AppCreateCommand(AppCommand):
                 ))
 
         self.app_config.write()
+
+        # Persist --env NAME=VALUE pairings to services/.env (merged into workflow .env on up)
+        if self.__env:
+            Env(self.app.dotenv_path).write(self.__env)
 
         return {
             'warnings': warnings

@@ -59,7 +59,7 @@ from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNIN
 
 from .helpers.print_service import FORMATS, print_services, select_print_options
 from .scaffold_request_log_cli import request
-from .validators.scaffold import validate_app_name, validate_hostname, validate_namespace, validate_service_name
+from .validators.scaffold import validate_app_name, validate_env_pair, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
 
@@ -115,6 +115,7 @@ def hostname(ctx):
 )
 @click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
+@click.option('--env', multiple=True, callback=validate_env_pair, help='Environment variable NAME=VALUE. May be specified multiple times.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-mode', default=PROXY_MODE_FORWARD, type=click.Choice([PROXY_MODE_FORWARD, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
@@ -166,7 +167,7 @@ def create(**kwargs):
   help='Path to a Stoobly context directory. May be specified multiple times.',
 )
 @click.option('--detached', is_flag=True, help='Use isolated and non-persistent context directory.')
-@click.option('--env', multiple=True, help='Specify an environment variable.')
+@click.option('--env-name', multiple=True, help='Specify an environment variable name. May be specified multiple times.')
 @click.option('--hostname', callback=validate_hostname, help='Service hostname.')
 @click.option('--local', is_flag=True, help='Specifies upstream service is local. Overrides `--upstream-hostname` option.')
 @click.option('--openapi-specification', is_flag=True, help='Enable using OpenAPI specification for this service.')

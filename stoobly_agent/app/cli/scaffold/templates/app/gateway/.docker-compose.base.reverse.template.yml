@@ -2,7 +2,7 @@ services:
   gateway_base:
     command:
       - "--configFile=/etc/traefik/traefik.yml"
-    image: traefik:v3
+    image: ${TRAEFIK_IMAGE:-traefik:v3}
     profiles:
       - gateway_base
     volumes:

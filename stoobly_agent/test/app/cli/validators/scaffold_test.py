@@ -2,6 +2,7 @@ import pytest
 
 from stoobly_agent.app.cli.validators.scaffold import (
     validate_app_name,
+    validate_env_pair,
     validate_hostname,
     validate_namespace,
     validate_network,
@@ -54,6 +55,64 @@ class TestValidateAppName:
     def test_rejects_empty_name(self):
         with pytest.raises(SystemExit) as exc_info:
             validate_app_name(None, None, "")
+        assert exc_info.value.code == 1
+
+
+class TestValidateEnvPair:
+
+    def test_returns_valid_env_pairs(self):
+        result = validate_env_pair(None, None, ("FOO=bar", "BAZ=qux"))
+        assert result == ("FOO=bar", "BAZ=qux")
+
+    def test_accepts_empty_value(self):
+        result = validate_env_pair(None, None, ("FOO=",))
+        assert result == ("FOO=",)
+
+    def test_accepts_value_with_equals(self):
+        result = validate_env_pair(None, None, ("FOO=bar=baz",))
+        assert result == ("FOO=bar=baz",)
+
+    def test_accepts_underscore_name(self):
+        result = validate_env_pair(None, None, ("_PRIVATE=1", "FOO_BAR=1"))
+        assert result == ("_PRIVATE=1", "FOO_BAR=1")
+
+    def test_returns_empty_when_no_pairs(self):
+        assert validate_env_pair(None, None, ()) == ()
+        assert validate_env_pair(None, None, None) is None
+
+    def test_rejects_missing_equals(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("FOOBAR",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_empty_name(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("=value",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_name_starting_with_digit(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("1FOO=bar",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_name_with_hyphen(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("FOO-BAR=baz",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_name_with_space(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("FOO BAR=baz",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_value_with_newline(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("FOO=bar\nbaz",))
+        assert exc_info.value.code == 1
+
+    def test_rejects_value_with_carriage_return(self):
+        with pytest.raises(SystemExit) as exc_info:
+            validate_env_pair(None, None, ("FOO=bar\rbaz",))
         assert exc_info.value.code == 1
 
 

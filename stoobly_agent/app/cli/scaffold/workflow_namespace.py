@@ -4,7 +4,7 @@ import shutil
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
-from .constants import DOTENV_PATH_ENV, DOTENV_FILE, NAMESERVERS_FILE
+from .constants import DOTENV_FILE_ENV, DOTENV_FILE, NAMESERVERS_FILE
 
 LOG_ID = 'WorkflowNamespace'
 
@@ -59,7 +59,7 @@ class WorkflowNamespace():
     return os.path.join(self.path, self.traefik_config_file_name)
 
   def copy_dotenv(self):
-    dotenv_path = os.environ.get(DOTENV_PATH_ENV) or '.env'
+    dotenv_path = os.environ.get(DOTENV_FILE_ENV) or '.env'
 
     if os.path.isfile(dotenv_path) and os.path.exists(self._path):
       shutil.copy(dotenv_path, self.dotenv_path)
