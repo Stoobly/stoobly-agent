@@ -138,7 +138,7 @@ class AppCreateCommand(AppCommand):
 
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
-                    [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env']
+                    [os.path.join(CORE_GATEWAY_SERVICE_NAME, '.docker-compose.base.yml'), '**/.env', '!/.env']
                 ))
 
             # Provide plugins
@@ -156,7 +156,7 @@ class AppCreateCommand(AppCommand):
 
             with open(os.path.join(dest, '.gitignore'), 'w') as fp:
                 fp.write("\n".join(
-                    ['**/.env']
+                    ['**/.env', '!/.env']
                 ))
 
         self.app_config.write()
