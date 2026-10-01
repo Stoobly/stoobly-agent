@@ -891,3 +891,48 @@ class TestScaffoldServiceFilterWarnings:
     assert 'Service(s) bogus are not found' in result.output
     assert 'gateway' not in result.output
     assert 'stoobly_ui' not in result.output
+
+  @pytest.fixture
+  def docker_app_dir(self, runner: CliRunner, tmp_path):
+    docker_socket_path = tmp_path / 'docker.sock'
+    docker_socket_path.touch()
+    _prepare_app_dir(tmp_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--docker-socket-path', str(docker_socket_path),
+      '--runtime', 'docker',
+      '--quiet',
+      'test-app',
+    ])
+    assert result.exit_code == 0
+
+    result = runner.invoke(scaffold, [
+      'service', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+      '--quiet',
+      'my-service',
+    ])
+    assert result.exit_code == 0
+
+    return tmp_path
+
+  def test_docker_runtime_keeps_all_core_services_without_warning(self, runner: CliRunner, docker_app_dir):
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(docker_app_dir),
+      '--service', 'my-service',
+      '--all',
+      '--select', 'name',
+    ])
+
+    assert result.exit_code == 0
+    assert 'are not found' not in result.output
+
+    listed = result.output.split()
+    for service_name in ['build', 'entrypoint', 'stoobly_ui', 'gateway', 'my-service']:
+      assert service_name in listed
