@@ -69,4 +69,5 @@ class TestScaffoldServiceShow:
             ])
 
             assert result.exit_code == 0
-            assert 'does-not-exist' not in result.output
+            # The "not found" warning goes to stderr and names the service, so only check stdout
+            assert 'does-not-exist' not in result.stdout
