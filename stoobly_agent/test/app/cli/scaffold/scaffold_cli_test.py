@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 
@@ -11,10 +12,11 @@ from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.env import Env
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
-from stoobly_agent.app.cli.scaffold_cli import scaffold
+from stoobly_agent.app.cli.scaffold_cli import LOG_ID, scaffold
 from stoobly_agent.cli import init as cli_init
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.test.test_helper import reset
 
 
@@ -830,3 +832,62 @@ class TestScaffoldDescribeAppDirPathAlone:
 
     assert with_app_dir_path['context_dir_path'] == flagless['context_dir_path']
     assert with_app_dir_path['context_config'] == flagless['context_config']
+
+
+class TestScaffoldServiceFilterWarnings:
+  @pytest.fixture(autouse=True)
+  def reset_scaffold_logger(self):
+    # Logger binds its StreamHandler to the first CliRunner's captured stderr, drop it so each test captures its own
+    logging.getLogger(LOG_ID).handlers.clear()
+    Logger._instances.pop(LOG_ID, None)
+
+  @pytest.fixture
+  def local_app_dir(self, runner: CliRunner, tmp_path):
+    _prepare_app_dir(tmp_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--runtime', 'local',
+      '--quiet',
+      'test-app',
+    ])
+    assert result.exit_code == 0
+
+    result = runner.invoke(scaffold, [
+      'service', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+      '--quiet',
+      'my-service',
+    ])
+    assert result.exit_code == 0
+
+    return tmp_path
+
+  def test_local_runtime_does_not_warn_about_docker_core_services(self, runner: CliRunner, local_app_dir):
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(local_app_dir),
+      '--service', 'my-service',
+    ])
+
+    assert result.exit_code == 0
+    assert 'are not found' not in result.output
+    assert 'gateway' not in result.output
+    assert 'stoobly_ui' not in result.output
+
+  def test_local_runtime_warns_only_about_unknown_service(self, runner: CliRunner, local_app_dir):
+    result = runner.invoke(scaffold, [
+      'service', 'list',
+      '--app-dir-path', str(local_app_dir),
+      '--service', 'my-service',
+      '--service', 'bogus',
+    ])
+
+    assert result.exit_code == 0
+    assert 'Service(s) bogus are not found' in result.output
+    assert 'gateway' not in result.output
+    assert 'stoobly_ui' not in result.output

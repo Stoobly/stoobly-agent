@@ -987,7 +987,8 @@ def __get_services(app: App, **kwargs):
   if not selected_services:
     selected_services = app.services
   else:
-    selected_services += CORE_SERVICES_DOCKER
+    # Only add core services that exist, local runtime has no gateway or stoobly_ui
+    selected_services += [service for service in CORE_SERVICES_DOCKER if service in app.services]
     missing_services = [service for service in selected_services if service not in app.services]
 
     if missing_services:
