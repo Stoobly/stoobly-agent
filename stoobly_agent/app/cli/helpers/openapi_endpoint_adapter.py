@@ -22,15 +22,31 @@ from stoobly_agent.lib.utils.python_to_ruby_type import convert_reverse
 from .schema_builder import SchemaBuilder
 
 
+HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"]
+
+_DEFAULT_PORTS = {'https': '443', 'http': '80'}
+
+# Name given to the schema object at the root of a body/response, or to an `allOf` part.
+# It is not a real property, so it never produces a param of its own.
+_ANONYMOUS = 'tmp'
+
+# https://swagger.io/docs/specification/data-models/data-types/
+_OPENAPI_DEFAULT_TYPES = {
+  'string': str,
+  'number': float,
+  'integer': int,
+  'boolean': bool,
+  'array': list,
+  'object': dict,
+}
+
+
 def _md5_hex(value: str) -> str:
   return hashlib.md5(value.encode('utf-8')).hexdigest()
 
 
-def _endpoint_service_id(parsed_url, port_str: str) -> str:
-  hostname = parsed_url.hostname or ""
-  if hostname:
-    hostname = hostname.lower()
-  return _md5_hex(f"{hostname}:{port_str}")
+def _read_value(value):
+  return value.read_value() if hasattr(value, 'read_value') else value
 
 
 def compute_openapi_service_id(hostname: str, port: str) -> str:
@@ -98,17 +114,7 @@ class OpenApiEndpointAdapter():
       url = server["url"]
 
       for path_name, path in paths.items():
-        operations = [
-            "get",
-            "put",
-            "post",
-            "delete",
-            "options",
-            "head",
-            "patch",
-            "trace",
-        ]
-        for http_method in operations:
+        for http_method in HTTP_METHODS:
           if http_method not in path:
             continue
 
@@ -143,18 +149,12 @@ class OpenApiEndpointAdapter():
             endpoint['path_segment_names'].append(path_component_name)
           
           if parsed_url.port is None:
-            if parsed_url.scheme == 'https':
-              endpoint['port'] = '443'
-            elif parsed_url.scheme == 'http':
-              endpoint['port'] = '80'
-            else:
-              endpoint['port'] = '-'
+            endpoint['port'] = _DEFAULT_PORTS.get(parsed_url.scheme, '-')
           else:
             endpoint['port'] = str(parsed_url.port)
 
-          endpoint['service_id'] = _endpoint_service_id(parsed_url, endpoint['port'])
-          mp = endpoint.get('match_pattern') or ''
-          endpoint['id'] = _md5_hex(endpoint['service_id'] + mp + endpoint['method'])
+          endpoint['service_id'] = compute_openapi_service_id(parsed_url.hostname, endpoint['port'])
+          endpoint['id'] = compute_openapi_endpoint_id(endpoint['service_id'], endpoint['match_pattern'], endpoint['method'])
 
           alias_counter = 0
           header_param_counter = 0
@@ -233,7 +233,7 @@ class OpenApiEndpointAdapter():
           for mimetype, media_type in content.items():
             schema = media_type.get('schema')
             if schema:
-              self.__extract_param_properties(components, required_body_params, {'tmp': schema}, literal_body_params)
+              self.__extract_param_properties(components, required_body_params, {_ANONYMOUS: schema}, literal_body_params)
 
             if literal_body_params:
               endpoint['literal_body_params'] = literal_body_params
@@ -243,11 +243,11 @@ class OpenApiEndpointAdapter():
 
           literal_query_params = endpoint.get('literal_query_params')
           if literal_query_params:
-            self.__convert_literal_component_param(endpoint, required_query_params, literal_query_params, 'query_param_name', 'literal_query_params')
+            self.__convert_literal_component_param(endpoint, literal_query_params, 'query_param_name', 'literal_query_params')
             
           literal_body_params = endpoint.get('literal_body_params')
           if literal_body_params:
-            self.__convert_literal_component_param(endpoint, required_body_params, literal_body_params, 'body_param_name', 'literal_body_params')
+            self.__convert_literal_component_param(endpoint, literal_body_params, 'body_param_name', 'literal_body_params')
 
           # Responses -> construct lists of response header and response param name resources
           responses = operation.get('responses', {})
@@ -259,9 +259,6 @@ class OpenApiEndpointAdapter():
     return endpoints
 
   def __add_info(self, file_data: Dict):
-    if 'info' in file_data:
-      return
-
     file_data['info'] = {
       'version': '0.0.1',
       'title': ''
@@ -338,7 +335,7 @@ class OpenApiEndpointAdapter():
       property_schema = self.__dereference(components, property_schema.get('$ref'), self.spec)
 
     # Generates the entire query string for this particular property (ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
-    if property_name == 'tmp':
+    if property_name == _ANONYMOUS:
       query = query_string 
     else:
       if property_name.endswith('Element'):
@@ -353,7 +350,7 @@ class OpenApiEndpointAdapter():
     
     if not traversable:
       # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
-      if property_name != 'tmp':
+      if property_name != _ANONYMOUS:
         literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
         literal_val = {'name': property_name, 'values': [literal_val_type], 'required': override_required or bool(property_schema.get('required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
         literal_component_params.append(literal_val)
@@ -363,16 +360,16 @@ class OpenApiEndpointAdapter():
       # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
       _required = property_schema.get('required')
       if _required is not None:
-        _required_list = _required.read_value() if hasattr(_required, 'read_value') else _required
+        _required_list = _read_value(_required)
         required_component_params += _required_list if isinstance(_required_list, list) else []
 
       # curr_id_tmp is the parent_id of all elements in param_properties
       # Should be set to parent_id when property_name is 'tmp' to handle case where a schema uses the 'allOf' keyword since curr_id will change between every recursive call on each 'part' element in the allOf list
-      curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
+      curr_id_tmp = parent_id if property_name == _ANONYMOUS else curr_id 
 
-      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('schema_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+      literal_val = parent if property_name == _ANONYMOUS else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('schema_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
 
-      if property_name != 'tmp':
+      if property_name != _ANONYMOUS:
         literal_component_params.append(literal_val)
 
       param_properties = property_schema.get('properties')
@@ -384,7 +381,7 @@ class OpenApiEndpointAdapter():
 
     elif property_schema.get('type') == 'array':
       # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
-      if property_name == 'tmp':
+      if property_name == _ANONYMOUS:
         schema_object = {"Element": property_schema['items']}
         curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
       else:
@@ -396,17 +393,17 @@ class OpenApiEndpointAdapter():
     elif 'allOf' in property_schema.keys():
       # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
       all_of = property_schema.get('allOf')
-      literal_val = parent if property_name == 'tmp' else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('self_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
-      if property_name != 'tmp':
+      literal_val = parent if property_name == _ANONYMOUS else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('self_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
+      if property_name != _ANONYMOUS:
         literal_component_params.append(literal_val)
 
-      curr_id_tmp = parent_id if property_name == 'tmp' else curr_id 
+      curr_id_tmp = parent_id if property_name == _ANONYMOUS else curr_id 
       for part in all_of:
         _part_required = part.get('required')
         if _part_required is not None:
-          _part_required_list = _part_required.read_value() if hasattr(_part_required, 'read_value') else _part_required
+          _part_required_list = _read_value(_part_required)
           required_component_params.extend(_part_required_list if isinstance(_part_required_list, list) else [])
-        curr_id = self.__extract_param_properties(components, required_component_params, {'tmp': part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
+        curr_id = self.__extract_param_properties(components, required_component_params, {_ANONYMOUS: part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
 
     return curr_id
   
@@ -491,7 +488,7 @@ class OpenApiEndpointAdapter():
     return current 
   
   def __convert_literal_component_param(self, endpoint: OpenApiEndpointShowResponse,
-      required_component_params: List[str], literal_component_params: Union[dict, list],
+      literal_component_params: Union[dict, list],
       component_name: str, literal_component_name: str) -> None:
 
     if not literal_component_params:
@@ -565,15 +562,8 @@ class OpenApiEndpointAdapter():
     return type_map.get(open_api_type, str(dict))
 
   def __open_api_to_default_python_type(self, open_api_type: str):
-    type_map = {
-      'string': str(),
-      'number': float(),
-      'integer': int(),
-      'boolean': bool(),
-      'array': list(),
-      'object': dict()
-    }
-    return type_map.get(open_api_type, dict())
+    # Instantiate per call so mutable defaults (list, dict) are never shared
+    return _OPENAPI_DEFAULT_TYPES.get(open_api_type, dict)()
 
   def __num_variables(self, url: str) -> int:
     num = url.count('{')
@@ -606,13 +596,9 @@ class OpenApiEndpointAdapter():
       for variable_name, variable in existent_vars.items():
         enum_list = variable.get('enum')
         if enum_list:
-          raw_enum = enum_list.read_value() if hasattr(enum_list, 'read_value') else enum_list
-          var_to_possible_vals[variable_name] = raw_enum
+          var_to_possible_vals[variable_name] = _read_value(enum_list)
         else:
-          default_value = variable.get('default')
-          if hasattr(default_value, 'read_value'):
-            default_value = default_value.read_value()
-          var_to_possible_vals[variable_name] = [default_value]
+          var_to_possible_vals[variable_name] = [_read_value(variable.get('default'))]
 
       all_possible_vals = list(var_to_possible_vals.values())
       product = list(itertools.product(*all_possible_vals))
@@ -644,7 +630,7 @@ class OpenApiEndpointAdapter():
       for mimetype, media_type in response_content.items():
         schema = media_type.get('schema')
         if schema:
-          self.__extract_param_properties(components, required_response_params, {'tmp': schema}, literal_response_params)
+          self.__extract_param_properties(components, required_response_params, {_ANONYMOUS: schema}, literal_response_params)
         
         if literal_response_params:
           endpoint['literal_response_params'] = literal_response_params
@@ -654,7 +640,7 @@ class OpenApiEndpointAdapter():
       
       literal_response_params = endpoint.get('literal_response_params')
       if literal_response_params:
-        self.__convert_literal_component_param(endpoint, required_response_params, literal_response_params, 'response_param_name', 'literal_response_params')
+        self.__convert_literal_component_param(endpoint, literal_response_params, 'response_param_name', 'literal_response_params')
 
       # Construct response header name components
       response_headers = response_definition.get('headers', {})
