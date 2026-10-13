@@ -16,7 +16,8 @@ class ApplicationHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     @property
     def public_dir(self):
-        return os.path.join(self.ROOT_DIR, 'public')
+        # Normalize the public directory to ensure consistent path comparisons
+        return os.path.normpath(os.path.join(self.ROOT_DIR, 'public'))
 
     ### Method handlers
 
