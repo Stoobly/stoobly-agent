@@ -7,7 +7,7 @@ import yaml
 
 from functools import reduce
 from jsonschema_path import SchemaPath
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,31 @@ def _read_value(value):
   return value.read_value() if hasattr(value, 'read_value') else value
 
 
+def _resolve_port(parsed_url) -> str:
+  if parsed_url.port is None:
+    return _DEFAULT_PORTS.get(parsed_url.scheme, '-')
+  return str(parsed_url.port)
+
+
+def _split_path_pattern(path: str) -> Tuple[str, List[str]]:
+  """
+  Returns the match pattern and the segment names of ``path``, e.g.
+  '/pets/{id}' -> ('/pets/%', ['', 'pets', ':id'])
+  """
+  pattern_parts = []
+  segment_names = []
+
+  for part in path.split('/'):
+    if part.startswith('{') and part.endswith('}'):
+      pattern_parts.append('%')
+      segment_names.append(f":{part[1:-1]}")
+    else:
+      pattern_parts.append(part)
+      segment_names.append(part)
+
+  return '/'.join(pattern_parts), segment_names
+
+
 def compute_openapi_service_id(hostname: str, port: str) -> str:
   """MD5 hex of ``{hostname}:{port}`` (hostname lowercased). Used by tests and callers."""
   hn = (hostname or "").lower()
@@ -75,6 +100,7 @@ class OpenApiEndpointAdapter():
                    If False, log warnings and return placeholder objects.
     """
     self.spec = None
+    self.components = None
     self.strict_refs = strict_refs
 
   def adapt_from_file(self, file_path) -> List[OpenApiEndpointShowResponse]:
@@ -102,161 +128,131 @@ class OpenApiEndpointAdapter():
 
   def adapt(self, spec: SchemaPath) -> List[OpenApiEndpointShowResponse]:
     self.spec = spec  # Store spec for use in __dereference
-    endpoints = []
-    components = spec.get("components", {})
-    schemas = components.get("schemas", {})
+    self.components = spec.get("components", {})
     paths = spec['paths']
+    endpoints = []
 
-    servers_spec = spec.get("servers")
-    servers = self.__evaluate_servers(servers_spec)
-
-    for _, server in enumerate(servers):
-      url = server["url"]
+    for server in self.__evaluate_servers(spec.get("servers")):
+      parsed_url = urlparse(server["url"])
 
       for path_name, path in paths.items():
         for http_method in HTTP_METHODS:
           if http_method not in path:
             continue
 
-          parsed_url = urlparse(url)
-          endpoint: OpenApiEndpointShowResponse = {}
-          endpoint['method'] = http_method.upper()
-          endpoint['host'] = '-' if parsed_url.netloc == '' else parsed_url.netloc
+          endpoints.append(self.__build_endpoint(parsed_url, path_name, http_method, path[http_method]))
 
-          joined_path = self.__urljoin(parsed_url.path, path_name)
-          split_parts = joined_path.split('/')
-          pattern_path = []
-          segment_names = []
-          for part in split_parts:
-            sanitized_part = part
-            segment_name = part
-            if part.startswith('{') and part.endswith('}'):
-              sanitized_part = '%' 
-              segment_name = f":{part[1:-1]}"
-            pattern_path.append(sanitized_part)
-            segment_names.append(segment_name)
-          pattern_path_str = '/'.join(pattern_path)
-          endpoint['match_pattern'] = pattern_path_str
-          endpoint['path'] = joined_path
-
-          endpoint['path_segment_names'] = []
-          for segment_name in segment_names:
-            if segment_name == "":
-              continue
-            path_component_name: RequestComponentName = {}
-            path_component_name['name'] = segment_name
-            path_component_name['type'] = "alias" if segment_name.startswith(':') else "static"
-            endpoint['path_segment_names'].append(path_component_name)
-          
-          if parsed_url.port is None:
-            endpoint['port'] = _DEFAULT_PORTS.get(parsed_url.scheme, '-')
-          else:
-            endpoint['port'] = str(parsed_url.port)
-
-          endpoint['service_id'] = compute_openapi_service_id(parsed_url.hostname, endpoint['port'])
-          endpoint['id'] = compute_openapi_endpoint_id(endpoint['service_id'], endpoint['match_pattern'], endpoint['method'])
-
-          alias_counter = 0
-          header_param_counter = 0
-          operation = path[http_method]
-          required_query_params = []
-          required_body_params = []
-          literal_query_params = []
-
-          parameters = operation.get("parameters", {})
-          for parameter in parameters:
-            if '$ref' in parameter.keys():
-              parameter = self.__dereference(components, parameter['$ref'], self.spec)
-
-            if parameter['in'] == 'query':
-              # query_param: RequestComponentName = {}
-              # query_param['name'] = parameter['name']
-              #
-              # query_param_example = parameter.get('example')
-              # if query_param_example:
-              #   query_param['values'].append(query_param_example)
-
-              if parameter.get('required'):
-                required_query_params.append(parameter['name'])
-
-              if not endpoint.get('query_param_names'):
-                endpoint['query_param_names'] = []
-
-              schema = parameter.get('schema', {})
-              self.__extract_param_properties(components, required_query_params, {parameter['name']: schema}, literal_query_params, curr_id=len(literal_query_params)+1)
-
-              endpoint['literal_query_params'] = literal_query_params
-
-            elif parameter['in'] == 'header':
-              header: RequestComponentName = {}
-              header['name'] = parameter['name']
-              header['values'] = self.__extract_examples(parameter)
-
-              if parameter.get('required'):
-                header['is_required'] = True
-              else:
-                header['is_required'] = False
-
-              if not endpoint.get('header_names'):
-                endpoint['header_names'] = []
-              header['is_deterministic'] = True
-              header_param_counter += 1
-              header['id'] = header_param_counter
-
-              endpoint['header_names'].append(header)
-
-            elif parameter['in'] == 'path':
-              if not endpoint.get('aliases'):
-                endpoint['aliases'] = []
-
-              found_alias = None
-              for alias in endpoint['aliases']:
-                if parameter['name'] == alias['name']:
-                  found_alias = alias
-
-              if not found_alias:
-                alias: Alias = {}
-                alias_counter += 1
-                alias['id'] = alias_counter
-                alias['name'] = '{' + parameter['name'] + '}'
-
-                endpoint['aliases'].append(alias)
-
-          # TODO: nested servers
-
-          request_body = operation.get("requestBody", {})
-          required_request_body = request_body.get("required")
-          required_body_params = []
-          literal_body_params = []
-
-          content = request_body.get("content", {})
-          for mimetype, media_type in content.items():
-            schema = media_type.get('schema')
-            if schema:
-              self.__extract_param_properties(components, required_body_params, {_ANONYMOUS: schema}, literal_body_params)
-
-            if literal_body_params:
-              endpoint['literal_body_params'] = literal_body_params
-
-            # Only support first media type
-            break
-
-          literal_query_params = endpoint.get('literal_query_params')
-          if literal_query_params:
-            self.__convert_literal_component_param(endpoint, literal_query_params, 'query_param_name', 'literal_query_params')
-            
-          literal_body_params = endpoint.get('literal_body_params')
-          if literal_body_params:
-            self.__convert_literal_component_param(endpoint, literal_body_params, 'body_param_name', 'literal_body_params')
-
-          # Responses -> construct lists of response header and response param name resources
-          responses = operation.get('responses', {})
-          if responses:
-            self.__parse_responses(endpoint, responses, components)
-
-          endpoints.append(endpoint)
-    
     return endpoints
+
+  def __build_endpoint(self, parsed_url, path_name: str, http_method: str, operation) -> OpenApiEndpointShowResponse:
+    endpoint: OpenApiEndpointShowResponse = {}
+    endpoint['method'] = http_method.upper()
+
+    self.__apply_location(endpoint, parsed_url, path_name)
+    self.__apply_parameters(endpoint, operation)
+
+    # TODO: nested servers
+
+    self.__apply_request_body(endpoint, operation)
+
+    # Responses -> construct lists of response header and response param name resources
+    self.__parse_responses(endpoint, operation.get('responses', {}))
+
+    return endpoint
+
+  # Sets everything derived from the server url and path: host, port, path, ids
+  def __apply_location(self, endpoint: OpenApiEndpointShowResponse, parsed_url, path_name: str):
+    endpoint['host'] = '-' if parsed_url.netloc == '' else parsed_url.netloc
+
+    joined_path = self.__urljoin(parsed_url.path, path_name)
+    match_pattern, segment_names = _split_path_pattern(joined_path)
+    endpoint['match_pattern'] = match_pattern
+    endpoint['path'] = joined_path
+
+    endpoint['path_segment_names'] = [
+      {'name': name, 'type': 'alias' if name.startswith(':') else 'static'}
+      for name in segment_names if name != ''
+    ]
+
+    endpoint['port'] = _resolve_port(parsed_url)
+    endpoint['service_id'] = compute_openapi_service_id(parsed_url.hostname, endpoint['port'])
+    endpoint['id'] = compute_openapi_endpoint_id(endpoint['service_id'], endpoint['match_pattern'], endpoint['method'])
+
+  def __apply_parameters(self, endpoint: OpenApiEndpointShowResponse, operation):
+    query_parameters = []
+
+    for parameter in operation.get("parameters", {}):
+      if '$ref' in parameter.keys():
+        parameter = self.__dereference(self.components, parameter['$ref'], self.spec)
+
+      if parameter['in'] == 'query':
+        query_parameters.append(parameter)
+      elif parameter['in'] == 'header':
+        self.__add_header_param(endpoint, parameter)
+      elif parameter['in'] == 'path':
+        self.__add_path_alias(endpoint, parameter)
+
+    self.__add_query_params(endpoint, query_parameters)
+
+  # All query params of an endpoint are extracted together so their ids and required names are shared
+  def __add_query_params(self, endpoint: OpenApiEndpointShowResponse, parameters: list):
+    if not parameters:
+      return
+
+    required_params = []
+    literal_params = []
+    endpoint['query_param_names'] = []
+
+    for parameter in parameters:
+      if parameter.get('required'):
+        required_params.append(parameter['name'])
+
+      schema = parameter.get('schema', {})
+      self.__extract_param_properties(self.components, required_params, {parameter['name']: schema}, literal_params, curr_id=len(literal_params)+1)
+
+    self.__convert_literal_component_param(endpoint, literal_params, 'query_param_name')
+
+  def __add_header_param(self, endpoint: OpenApiEndpointShowResponse, parameter):
+    header_names = endpoint.setdefault('header_names', [])
+
+    header: RequestComponentName = {}
+    header['name'] = parameter['name']
+    header['values'] = self.__extract_examples(parameter)
+    header['is_required'] = bool(parameter.get('required'))
+    header['is_deterministic'] = True
+    header['id'] = len(header_names) + 1
+
+    header_names.append(header)
+
+  def __add_path_alias(self, endpoint: OpenApiEndpointShowResponse, parameter):
+    aliases = endpoint.setdefault('aliases', [])
+
+    if any(parameter['name'] == alias['name'] for alias in aliases):
+      return
+
+    alias: Alias = {}
+    alias['id'] = len(aliases) + 1
+    alias['name'] = '{' + parameter['name'] + '}'
+
+    aliases.append(alias)
+
+  def __apply_request_body(self, endpoint: OpenApiEndpointShowResponse, operation):
+    request_body = operation.get("requestBody", {})
+    literal_params = self.__extract_content_params(request_body.get("content", {}))
+    self.__convert_literal_component_param(endpoint, literal_params, 'body_param_name')
+
+  # Returns the literal params of the first media type's schema
+  def __extract_content_params(self, content) -> list:
+    literal_params = []
+
+    # Only support first media type
+    for _, media_type in content.items():
+      schema = media_type.get('schema')
+      if schema:
+        self.__extract_param_properties(self.components, [], {_ANONYMOUS: schema}, literal_params)
+      break
+
+    return literal_params
 
   def __add_info(self, file_data: Dict):
     file_data['info'] = {
@@ -488,8 +484,7 @@ class OpenApiEndpointAdapter():
     return current 
   
   def __convert_literal_component_param(self, endpoint: OpenApiEndpointShowResponse,
-      literal_component_params: Union[dict, list],
-      component_name: str, literal_component_name: str) -> None:
+      literal_component_params: Union[dict, list], component_name: str) -> None:
 
     if not literal_component_params:
       return
@@ -513,8 +508,6 @@ class OpenApiEndpointAdapter():
       endpoint[component_name + 's'] = built_params_list
     else:
       endpoint[component_name + 's'].extend(built_params_list)
-
-    del endpoint[literal_component_name]
 
   # urllib.parse.urljoin() doesn't work for some of our edge cases
   # and results in missing path components so use the custom __urljoin
@@ -617,47 +610,35 @@ class OpenApiEndpointAdapter():
     
     return result
 
-  def __parse_responses(self, endpoint: OpenApiEndpointShowResponse, responses: SchemaPath, components: SchemaPath):
+  def __parse_responses(self, endpoint: OpenApiEndpointShowResponse, responses: SchemaPath):
     for response_code, response_definition in responses.items():
       # Only support status code 200 for now
       if response_code != '200':
         continue
 
       # Construct response param name components
-      literal_response_params = []
-      required_response_params = []
-      response_content = response_definition.get('content', {})
-      for mimetype, media_type in response_content.items():
-        schema = media_type.get('schema')
-        if schema:
-          self.__extract_param_properties(components, required_response_params, {_ANONYMOUS: schema}, literal_response_params)
-        
-        if literal_response_params:
-          endpoint['literal_response_params'] = literal_response_params
-
-        # Only support first media type
-        break
-      
-      literal_response_params = endpoint.get('literal_response_params')
-      if literal_response_params:
-        self.__convert_literal_component_param(endpoint, literal_response_params, 'response_param_name', 'literal_response_params')
+      literal_params = self.__extract_content_params(response_definition.get('content', {}))
+      self.__convert_literal_component_param(endpoint, literal_params, 'response_param_name')
 
       # Construct response header name components
       response_headers = response_definition.get('headers', {})
       for header_name, header_definition in response_headers.items():
-        response_header_name: RequestComponentName = {}
-        response_header_name['name'] = header_name
-        
-        if '$ref' in header_definition:
-          header_definition = self.__dereference(components, header_definition.get('$ref'), self.spec)
+        endpoint.setdefault('response_header_names', []).append(
+          self.__build_response_header(header_name, header_definition)
+        )
 
-        response_header_name['is_required'] = header_definition.get('is_required', False)
-        response_header_name['is_deterministic'] = True
-        response_header_name['values'] = self.__extract_examples(header_definition)
-          
-        if not endpoint.get('response_header_names'):
-          endpoint['response_header_names'] = []
-        endpoint['response_header_names'].append(response_header_name)	  
+  def __build_response_header(self, header_name: str, header_definition) -> RequestComponentName:
+    response_header_name: RequestComponentName = {}
+    response_header_name['name'] = header_name
+
+    if '$ref' in header_definition:
+      header_definition = self.__dereference(self.components, header_definition.get('$ref'), self.spec)
+
+    response_header_name['is_required'] = header_definition.get('is_required', False)
+    response_header_name['is_deterministic'] = True
+    response_header_name['values'] = self.__extract_examples(header_definition)
+
+    return response_header_name
 
   def __extract_examples(self, definition: dict):
     values = []
