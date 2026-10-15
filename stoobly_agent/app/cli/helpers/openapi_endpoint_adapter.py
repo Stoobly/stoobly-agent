@@ -7,7 +7,7 @@ import yaml
 
 from functools import reduce
 from jsonschema_path import SchemaPath
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -88,6 +88,128 @@ def compute_openapi_endpoint_id(service_id: str, match_pattern: str, method: str
   do not receive the same ``id``.
   """
   return _md5_hex(f"{service_id}{match_pattern or ''}{method}")
+
+
+def _default_python_value(open_api_type: str):
+  # Instantiate per call so mutable defaults (list, dict) are never shared
+  return _OPENAPI_DEFAULT_TYPES.get(open_api_type, dict)()
+
+
+# Generates the entire query string for a property
+# Ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
+def _build_query(prefix: str, name: str) -> str:
+  if name == _ANONYMOUS:
+    return prefix
+  if name.endswith('Element'):
+    return f"{prefix}[*]"
+  if prefix == '':
+    return name
+  return f"{prefix}.{name}"
+
+
+def _make_param(name: str, value_key: str, value, required: bool, query: str, param_id: int, parent_id: int) -> dict:
+  return {'name': name, value_key: value, 'required': required, 'query': query, 'id': param_id, 'parent_id': parent_id}
+
+
+class _SchemaParamWalker():
+  """
+  Flattens an OpenAPI schema into a list of literal params (``params``), one per named property.
+  Params are listed parent first and get consecutive ids in that order.
+
+  ``required`` collects the property names that parent schemas marked as required. It is shared by
+  every schema walked with the same walker, and a name is removed once a property consumes it.
+  """
+
+  def __init__(self, dereference: Callable):
+    self.params: List[dict] = []
+    self.required: List[str] = []
+    self._dereference = dereference
+    self._last_id = 0
+
+  # Ids continue after the params collected so far, e.g. when walking several query params in a row
+  def walk_root(self, name: str, schema):
+    self._last_id = len(self.params)
+    self.walk(name, schema)
+
+  # `name` is the name of the schema object, i.e. the name of the body_param_name or response_param_name component
+  # An anonymous schema (the root of a body/response, or an allOf part) adds no param of its own
+  def walk(self, name: str, schema, parent_id=None, query_prefix='', override_required=False):
+    schema = self._dereference(schema)
+    anonymous = name == _ANONYMOUS
+    query = _build_query(query_prefix, name)
+
+    node_id = None if anonymous else self.__claim_id()
+    # The anonymous schema's children belong to the closest named ancestor
+    # Ex: the properties of every allOf part are children of the schema declaring the allOf
+    children_parent_id = parent_id if anonymous else node_id
+
+    # A schema is traversable if it has one more non-empty nested schema objects
+    traversable = schema.get('properties') or schema.get('items') or schema.get('allOf')
+
+    if not traversable:
+      self.__visit_leaf(name, schema, node_id, parent_id, query, override_required)
+    elif 'properties' in schema.keys():
+      self.__visit_object(name, schema, node_id, parent_id, query, override_required, children_parent_id)
+    elif schema.get('type') == 'array':
+      self.__visit_array(name, schema, node_id, parent_id, query, override_required)
+    elif 'allOf' in schema.keys():
+      self.__visit_all_of(name, schema, node_id, parent_id, query, override_required, children_parent_id)
+
+  # Every named schema takes an id, even if it ends up adding no param
+  def __claim_id(self) -> int:
+    self._last_id += 1
+    return self._last_id
+
+  def __add_required(self, required):
+    if required is None:
+      return
+
+    names = _read_value(required)
+    if isinstance(names, list):
+      self.required.extend(names)
+
+  # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
+  def __visit_leaf(self, name, schema, node_id, parent_id, query, override_required):
+    if name == _ANONYMOUS:
+      return
+
+    default_value = _default_python_value(schema.get('type', 'object'))
+    required = override_required or bool(schema.get('required', False))
+    self.params.append(_make_param(name, 'values', [default_value], required, query, node_id, parent_id))
+
+  # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
+  def __visit_object(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
+    self.__add_required(schema.get('required'))
+
+    if name != _ANONYMOUS:
+      required = override_required or bool(schema.get('schema_required', False))
+      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+
+    for property_key, property_value in schema.get('properties').items():
+      is_required = property_key in self.required
+      if is_required:
+        self.required.remove(property_key)
+      self.walk(property_key, property_value, children_parent_id, query, is_required)
+
+  # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
+  def __visit_array(self, name, schema, node_id, parent_id, query, override_required):
+    if name == _ANONYMOUS:
+      self.walk('Element', schema['items'], parent_id, query)
+      return
+
+    required = override_required or bool(schema.get('required', False))
+    self.params.append(_make_param(name, 'value', [], required, query, node_id, parent_id))
+    self.walk(f"{name}Element", schema['items'], node_id, query)
+
+  # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
+  def __visit_all_of(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
+    if name != _ANONYMOUS:
+      required = override_required or bool(schema.get('self_required', False))
+      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+
+    for part in schema.get('allOf'):
+      self.__add_required(part.get('required'))
+      self.walk(_ANONYMOUS, part, children_parent_id, query)
 
 
 class OpenApiEndpointAdapter():
@@ -199,18 +321,16 @@ class OpenApiEndpointAdapter():
     if not parameters:
       return
 
-    required_params = []
-    literal_params = []
+    walker = _SchemaParamWalker(self.__deref)
     endpoint['query_param_names'] = []
 
     for parameter in parameters:
       if parameter.get('required'):
-        required_params.append(parameter['name'])
+        walker.required.append(parameter['name'])
 
-      schema = parameter.get('schema', {})
-      self.__extract_param_properties(self.components, required_params, {parameter['name']: schema}, literal_params, curr_id=len(literal_params)+1)
+      walker.walk_root(parameter['name'], parameter.get('schema', {}))
 
-    self.__convert_literal_component_param(endpoint, literal_params, 'query_param_name')
+    self.__convert_literal_component_param(endpoint, walker.params, 'query_param_name')
 
   def __add_header_param(self, endpoint: OpenApiEndpointShowResponse, parameter):
     header_names = endpoint.setdefault('header_names', [])
@@ -243,16 +363,16 @@ class OpenApiEndpointAdapter():
 
   # Returns the literal params of the first media type's schema
   def __extract_content_params(self, content) -> list:
-    literal_params = []
+    walker = _SchemaParamWalker(self.__deref)
 
     # Only support first media type
     for _, media_type in content.items():
       schema = media_type.get('schema')
       if schema:
-        self.__extract_param_properties(self.components, [], {_ANONYMOUS: schema}, literal_params)
+        walker.walk_root(_ANONYMOUS, schema)
       break
 
-    return literal_params
+    return walker.params
 
   def __add_info(self, file_data: Dict):
     file_data['info'] = {
@@ -320,88 +440,12 @@ class OpenApiEndpointAdapter():
 
     return list(literal_params)[-2]
 
-  def __extract_param_properties(self, components, required_component_params, schema_object, literal_component_params, curr_id=0, parent_id=None, parent=None, query_string='', override_required=False):
-    # Name of the schema object (i.e. the name of the body_param_name or response_param_name component)
-    property_name = list(schema_object.keys())[0]
+  # Returns the node's referenced schema, if it is a $ref
+  def __deref(self, node):
+    if '$ref' in node.keys():
+      return self.__dereference(self.components, node.get('$ref'), self.spec)
 
-    # The actual OpenAPI schema object
-    property_schema = list(schema_object.values())[0] 
-
-    if '$ref' in property_schema.keys():
-      property_schema = self.__dereference(components, property_schema.get('$ref'), self.spec)
-
-    # Generates the entire query string for this particular property (ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
-    if property_name == _ANONYMOUS:
-      query = query_string 
-    else:
-      if property_name.endswith('Element'):
-        query = f"{query_string}[*]"
-      elif query_string == '':
-        query = property_name
-      else:
-        query = f"{query_string}.{property_name}"
-
-    # A schema is traversable if it has one more non-empty nested schema objects
-    traversable = property_schema.get('properties') or property_schema.get('items') or property_schema.get('allOf')
-    
-    if not traversable:
-      # Ex: {'name': {'type': 'string', 'description': 'Name of pet', 'Example': 'Buddy'}}
-      if property_name != _ANONYMOUS:
-        literal_val_type = self.__open_api_to_default_python_type(property_schema.get('type', 'object'))
-        literal_val = {'name': property_name, 'values': [literal_val_type], 'required': override_required or bool(property_schema.get('required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
-        literal_component_params.append(literal_val)
-      return curr_id
-
-    if 'properties' in property_schema.keys():
-      # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
-      _required = property_schema.get('required')
-      if _required is not None:
-        _required_list = _read_value(_required)
-        required_component_params += _required_list if isinstance(_required_list, list) else []
-
-      # curr_id_tmp is the parent_id of all elements in param_properties
-      # Should be set to parent_id when property_name is 'tmp' to handle case where a schema uses the 'allOf' keyword since curr_id will change between every recursive call on each 'part' element in the allOf list
-      curr_id_tmp = parent_id if property_name == _ANONYMOUS else curr_id 
-
-      literal_val = parent if property_name == _ANONYMOUS else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('schema_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
-
-      if property_name != _ANONYMOUS:
-        literal_component_params.append(literal_val)
-
-      param_properties = property_schema.get('properties')
-      for property_key, property_value in param_properties.items():
-        is_required = property_key in required_component_params
-        if is_required:
-          required_component_params.remove(property_key)
-        curr_id = self.__extract_param_properties(components, required_component_params, {property_key: property_value}, literal_component_params, curr_id=curr_id+1, parent_id=curr_id_tmp, parent=literal_val, query_string=query, override_required=is_required)    
-
-    elif property_schema.get('type') == 'array':
-      # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
-      if property_name == _ANONYMOUS:
-        schema_object = {"Element": property_schema['items']}
-        curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=parent_id, parent=parent, query_string=query)
-      else:
-        schema_object = {f"{property_name}Element": property_schema['items']}
-        literal_val = {'name': property_name, 'value': [], 'required': override_required or bool(property_schema.get('required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
-        literal_component_params.append(literal_val)
-        curr_id = self.__extract_param_properties(components, required_component_params, schema_object, literal_component_params, curr_id=curr_id+1, parent_id=curr_id, parent=parent, query_string=query)
-
-    elif 'allOf' in property_schema.keys():
-      # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
-      all_of = property_schema.get('allOf')
-      literal_val = parent if property_name == _ANONYMOUS else {'name': property_name, 'value': {}, 'required': override_required or bool(property_schema.get('self_required', False)), 'query': query, 'id': curr_id, 'parent_id': parent_id}
-      if property_name != _ANONYMOUS:
-        literal_component_params.append(literal_val)
-
-      curr_id_tmp = parent_id if property_name == _ANONYMOUS else curr_id 
-      for part in all_of:
-        _part_required = part.get('required')
-        if _part_required is not None:
-          _part_required_list = _read_value(_part_required)
-          required_component_params.extend(_part_required_list if isinstance(_part_required_list, list) else [])
-        curr_id = self.__extract_param_properties(components, required_component_params, {_ANONYMOUS: part}, literal_component_params, curr_id=curr_id, parent_id=curr_id_tmp, parent=literal_val, query_string=query)
-
-    return curr_id
+    return node
   
 
   # Returns the schema object located at the given reference path
@@ -555,8 +599,7 @@ class OpenApiEndpointAdapter():
     return type_map.get(open_api_type, str(dict))
 
   def __open_api_to_default_python_type(self, open_api_type: str):
-    # Instantiate per call so mutable defaults (list, dict) are never shared
-    return _OPENAPI_DEFAULT_TYPES.get(open_api_type, dict)()
+    return _default_python_value(open_api_type)
 
   def __num_variables(self, url: str) -> int:
     num = url.count('{')
