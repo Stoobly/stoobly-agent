@@ -21,6 +21,10 @@ test:
 	poetry install --with test
 	poetry run pytest --maxfail=1 -m "not e2e" stoobly_agent/test/
 
+test/coverage:
+       poetry install --with test
+       poetry run pytest --cov=stoobly_agent --cov-report=term-missing --cov-report=html --cov-report=xml -m "not e2e" stoobly_agent/test/
+
 test/build:
 	docker rm -f ${TEST_CONTAINER_NAME}
 	docker run -itd --name ${TEST_CONTAINER_NAME} python:$(version) /bin/bash
