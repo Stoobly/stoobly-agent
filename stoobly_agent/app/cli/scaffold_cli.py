@@ -56,8 +56,6 @@ from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
-from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
-
 from .helpers.print_service import FORMATS, print_services, select_print_options
 from .scaffold_request_log_cli import request
 from .validators.scaffold import validate_app_name, validate_env_pair, validate_hostname, validate_namespace, validate_service_name
@@ -449,10 +447,7 @@ def show(**kwargs):
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
-@ConditionalDecorator(
-  lambda f: click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')(f),
-  is_docker_runtime
-)
+@click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), hidden=not is_docker_runtime, help='Confirm answer to hostname uninstall prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
@@ -669,19 +664,13 @@ def logs(**kwargs):
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
-@ConditionalDecorator(
-  lambda f: click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')(f),
-  is_docker_runtime
-)
+@click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), hidden=not is_docker_runtime, help='Confirm answer to hostname installation prompt.')
 @click.option('--log-level', default=INFO, type=click.Choice([DEBUG, INFO, WARNING, ERROR]), help='''
     Log levels can be "debug", "info", "warning", or "error"
 ''')
 @click.option('--mkcert', is_flag=True, help='Set to generate SSL certs for HTTPS services.')
 @click.option('--namespace', callback=validate_namespace, help='Workflow namespace.')
-@ConditionalDecorator(
-  lambda f: click.option('--no-publish', is_flag=True, help='Do not publish all ports.')(f),
-  is_docker_runtime
-)
+@click.option('--no-publish', is_flag=True, hidden=not is_docker_runtime, help='Do not publish all ports.')
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to run. Defaults to all.')
 @click.option('--user-id', default=os.getuid(), help='OS user ID of the owner of context dir path.')
@@ -889,10 +878,7 @@ def validate(**kwargs):
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@ConditionalDecorator(
-  lambda f: click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname installation prompt.')(f),
-  is_docker_runtime
-)
+@click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), hidden=not is_docker_runtime, help='Confirm answer to hostname installation prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate installation of hostnames.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
@@ -913,10 +899,7 @@ def install(**kwargs):
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-@ConditionalDecorator(
-  lambda f: click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to hostname uninstall prompt.')(f),
-  is_docker_runtime
-)
+@click.option('--hostname-uninstall-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), hidden=not is_docker_runtime, help='Confirm answer to hostname uninstall prompt.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
 @click.option('--validate', is_flag=True, help='Validate uninstallation of hostnames.')
 @click.option('--workflow', multiple=True, help='Specify services by workflow(s). Defaults to all.')
