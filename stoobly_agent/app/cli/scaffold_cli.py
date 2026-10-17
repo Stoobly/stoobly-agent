@@ -69,7 +69,7 @@ def __cli_app_dir_path():
       return args[i + 1]
     if arg.startswith('--app-dir-path='):
       return arg.split('=', 1)[1]
-  return os.getcwd()
+  return None
 
 def __is_docker_runtime():
   app = App(__cli_app_dir_path())
