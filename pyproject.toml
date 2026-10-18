@@ -38,6 +38,7 @@ filelock = "^3.25.1"
 [tool.poetry.group.test.dependencies]
 mock = ">=5.0.0"
 pytest = ">=7.1.0"
+pytest-cov = ">=6.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -68,3 +69,13 @@ banned-module-level-imports = ["cryptography" , "dns", "docker", "mitmproxy", "o
 # Allow requests and mitmproxy imports in test files and migrations
 "*_test.py" = ["TID253"]
 "stoobly_agent/db/migrations/**" = ["TID253"]
+
+[tool.coverage.run]
+source = ["stoobly_agent"]
+omit = ["*/test/*", "*/tests/*"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false

@@ -1,4 +1,4 @@
-from lib.api.interfaces.requests import RequestShowResponse
+from stoobly_agent.lib.api.interfaces.requests import RequestShowResponse
 
 from .mitmproxy_adapter import MitmproxyRequestAdapter
 
