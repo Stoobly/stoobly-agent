@@ -55,6 +55,11 @@ def _resolve_port(parsed_url) -> str:
   return str(parsed_url.port)
 
 
+# OpenAPI uses ~1 to escape '/' and ~0 to escape '~' in JSON pointers (RFC 6901)
+def _unescape_json_pointer_token(token: str) -> str:
+  return token.replace('~1', '/').replace('~0', '~')
+
+
 def _split_path_pattern(path: str) -> Tuple[str, List[str]]:
   """
   Returns the match pattern and the segment names of ``path``, e.g.
@@ -304,8 +309,7 @@ class OpenApiEndpointAdapter():
     query_parameters = []
 
     for parameter in operation.get("parameters", {}):
-      if '$ref' in parameter.keys():
-        parameter = self.__dereference(self.components, parameter['$ref'], self.spec)
+      parameter = self.__deref(parameter)
 
       if parameter['in'] == 'query':
         query_parameters.append(parameter)
@@ -446,59 +450,62 @@ class OpenApiEndpointAdapter():
       return self.__dereference(self.components, node.get('$ref'), self.spec)
 
     return node
-  
 
   # Returns the schema object located at the given reference path
   def __dereference(self, components: SchemaPath, reference: str, spec: SchemaPath = None):
     # '#/components/schemas/NewPet' or '#/paths/~1users~1{id}/get/responses/200'
     if not reference.startswith('#'):
-      # External reference (e.g., 'external-file.yaml#/components/schemas/Pet')
-      if self.strict_refs:
-        raise ValueError(f'External references are not supported yet: {reference}')
-      else:
-        # Log warning and return a placeholder object
-        logger.warning(f'External reference "{reference}" cannot be resolved. Using placeholder object.')
-        # Return a generic object schema as fallback
-        return {
-          'type': 'object',
-          'description': f'External reference: {reference}',
-          'x-external-ref': reference
-        }
-    
-    # Remove leading '#'
-    ref_path = reference[1:]
-    
-    # Handle component references: #/components/schemas/Pet
-    if reference.startswith('#/components'):
-      ref_split = reference.split('#/components/')
-      component_data = ref_split[1].split('/')
-      component_type = component_data[0]
-      component_name = component_data[1]
-      component = components.get(component_type, {})
+      return self.__resolve_external(reference)
 
-      # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
-      body_spec = component.get(component_name)
-      if body_spec is None:
-        raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
-        
-      if '$ref' in body_spec.keys():
-        body_spec = self.__dereference(components, body_spec.get('$ref'), spec)
-      
-      return body_spec
-    
-    # Handle non-component references: #/paths/~1users/get/parameters/0
+    if reference.startswith('#/components'):
+      return self.__resolve_component(components, reference, spec)
+
+    return self.__resolve_json_pointer(components, reference, spec)
+
+  # External reference (e.g., 'external-file.yaml#/components/schemas/Pet')
+  def __resolve_external(self, reference: str):
+    if self.strict_refs:
+      raise ValueError(f'External references are not supported yet: {reference}')
+
+    # Log warning and return a placeholder object
+    logger.warning(f'External reference "{reference}" cannot be resolved. Using placeholder object.')
+    # Return a generic object schema as fallback
+    return {
+      'type': 'object',
+      'description': f'External reference: {reference}',
+      'x-external-ref': reference
+    }
+
+  # Component reference: #/components/schemas/Pet
+  def __resolve_component(self, components: SchemaPath, reference: str, spec: SchemaPath = None):
+    ref_split = reference.split('#/components/')
+    component_data = ref_split[1].split('/')
+    component_type = component_data[0]
+    component_name = component_data[1]
+    component = components.get(component_type, {})
+
+    # Example: {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}
+    body_spec = component.get(component_name)
+    if body_spec is None:
+      raise ValueError(f'Component "{component_name}" not found in "{component_type}"')
+
+    if '$ref' in body_spec.keys():
+      body_spec = self.__dereference(components, body_spec.get('$ref'), spec)
+
+    return body_spec
+
+  # Non-component reference: #/paths/~1users/get/parameters/0
+  def __resolve_json_pointer(self, components: SchemaPath, reference: str, spec: SchemaPath = None):
     if spec is None:
       raise ValueError(f'Non-component reference requires spec parameter: {reference}')
-    
+
     # Split path by '/' and navigate through spec
-    # Note: OpenAPI uses ~1 to escape '/' and ~0 to escape '~' in JSON pointers (RFC 6901)
-    path_parts = ref_path.split('/')[1:]  # Skip empty string from leading '/'
-    
+    path_parts = reference[1:].split('/')[1:]  # Skip empty string from leading '/'
+
     current = spec
     for i, part in enumerate(path_parts):
-      # Unescape JSON pointer tokens
-      unescaped_part = part.replace('~1', '/').replace('~0', '~')
-      
+      unescaped_part = _unescape_json_pointer_token(part)
+
       # Try to navigate
       if hasattr(current, 'get'):
         # SchemaPath objects use .get() method
@@ -674,8 +681,7 @@ class OpenApiEndpointAdapter():
     response_header_name: RequestComponentName = {}
     response_header_name['name'] = header_name
 
-    if '$ref' in header_definition:
-      header_definition = self.__dereference(self.components, header_definition.get('$ref'), self.spec)
+    header_definition = self.__deref(header_definition)
 
     response_header_name['is_required'] = header_definition.get('is_required', False)
     response_header_name['is_deterministic'] = True
