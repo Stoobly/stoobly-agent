@@ -1,4 +1,3 @@
-import copy
 import hashlib
 import itertools
 import logging
@@ -53,6 +52,33 @@ def _resolve_port(parsed_url) -> str:
   if parsed_url.port is None:
     return _DEFAULT_PORTS.get(parsed_url.scheme, '-')
   return str(parsed_url.port)
+
+
+def _first_oauth2_scheme(file_data: Dict):
+  if 'components' not in file_data:
+    return None
+  components = file_data['components']
+
+  if 'securitySchemes' not in components:
+    return None
+
+  for scheme in components['securitySchemes'].values():
+    if scheme.get('type') == 'oauth2':
+      return scheme
+
+  return None
+
+
+def _server_variable_values(variable) -> list:
+  enum_list = variable.get('enum')
+  if enum_list:
+    return _read_value(enum_list)
+
+  return [_read_value(variable.get('default'))]
+
+
+def _substitute_variables(split_url: List[str], values: Dict[str, str]) -> str:
+  return ''.join(values.get(part, part) for part in split_url)
 
 
 # OpenAPI uses ~1 to escape '/' and ~0 to escape '~' in JSON pointers (RFC 6901)
@@ -244,9 +270,7 @@ class OpenApiEndpointAdapter():
       if 'info' not in file_data:
         self.__add_info(file_data)
 
-      missing_oauth2_scopes = self.__is_missing_oauth2_scopes(file_data)
-      if missing_oauth2_scopes:
-        self.__add_oauth2_default_scopes(file_data)
+      self.__ensure_oauth2_scopes(file_data)
 
       openApi = OpenAPI.from_dict(file_data)
       spec = openApi.spec
@@ -384,56 +408,17 @@ class OpenApiEndpointAdapter():
       'title': ''
     }
 
-  def __is_missing_oauth2_scopes(self, file_data: Dict):
-    is_missing = False
-    if 'components' in file_data:
-      components = file_data['components']
-
-      if 'securitySchemes' in components:
-        security_schemes = components['securitySchemes']
-
-        for scheme_name, scheme in security_schemes.items():
-          if scheme.get('type') == 'oauth2':
-            flows = scheme.get('flows')
-
-            if flows and flows.get('clientCredentials'):
-              scopes = flows.get('clientCredentials').get('scopes')
-
-              if scopes is None:
-                return True
-
-            break
-
-    return is_missing
-
-  def __add_oauth2_default_scopes(self, file_data: Dict):
-    if 'components' not in file_data:
-      return
-    components = file_data['components']
-
-    if 'securitySchemes' not in components:
-      return
-    security_schemes = components['securitySchemes']
-
-    oauth_security_scheme = {}
-    for scheme_name, scheme in security_schemes.items():
-      if scheme.get('type') == 'oauth2':
-        oauth_security_scheme = scheme
-        break
-
-    # If empty dict or None
-    if not oauth_security_scheme:
+  # The clientCredentials flow requires scopes, so default them to empty when missing
+  def __ensure_oauth2_scopes(self, file_data: Dict):
+    oauth2_scheme = _first_oauth2_scheme(file_data)
+    if not oauth2_scheme:
       return
 
-    flows = oauth_security_scheme['flows']
-    if not flows:
-      return
+    flows = oauth2_scheme.get('flows')
+    client_credentials = flows.get('clientCredentials') if flows else None
 
-    client_credentials = flows['clientCredentials']
-    if not client_credentials:
-      return
-
-    client_credentials['scopes'] = {}
+    if client_credentials and client_credentials.get('scopes') is None:
+      client_credentials['scopes'] = {}
 
   def __get_most_recent_param(self, literal_params: dict):
     return list(literal_params)[-1] if literal_params else None
@@ -613,11 +598,10 @@ class OpenApiEndpointAdapter():
     return num
 
   def __evaluate_servers(self, servers: SchemaPath) -> List[dict]:
-    result = []
-
     if not servers:
-      default_server = {'url': '/'}
-      return [default_server]
+      return [{'url': '/'}]
+
+    result = []
 
     for server in servers:
       original_url = server["url"]
@@ -627,36 +611,16 @@ class OpenApiEndpointAdapter():
         result.append({'url': original_url})
         continue
 
+      # Splitting on the braces leaves the variable names at the odd positions
       split_url = re.split('{|}', original_url)
-      existent_vars = {}
-      for part in split_url:
-        if part in variables.keys():
-          existent_vars[part] = variables[part]
+      var_to_possible_vals = {
+        part: _server_variable_values(variables[part]) for part in split_url if part in variables.keys()
+      }
 
-      var_to_possible_vals = {}
-      all_possible_vals = []
-
-      for variable_name, variable in existent_vars.items():
-        enum_list = variable.get('enum')
-        if enum_list:
-          var_to_possible_vals[variable_name] = _read_value(enum_list)
-        else:
-          var_to_possible_vals[variable_name] = [_read_value(variable.get('default'))]
-
-      all_possible_vals = list(var_to_possible_vals.values())
-      product = list(itertools.product(*all_possible_vals))
-
-      for permutation in product:
-        split_url_copy = copy.deepcopy(split_url)
-
-        for i, part in enumerate(split_url_copy):
-          for j, var in enumerate(var_to_possible_vals.keys()):
-            if var == part:
-              split_url_copy[i] = permutation[j]
-              break
-
-        evaluated_url = ''.join(split_url_copy)
-        result.append({'url': evaluated_url})
+      # One url per combination of the variables' possible values
+      for permutation in itertools.product(*var_to_possible_vals.values()):
+        values = dict(zip(var_to_possible_vals.keys(), permutation))
+        result.append({'url': _substitute_variables(split_url, values)})
     
     return result
 
