@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from stoobly_agent.app.cli.scaffold.apply_command import OPENCLI_PATH, _kebab_to_snake
-from stoobly_agent.app.cli.scaffold_cli import scaffold
+from stoobly_agent.app.cli.scaffold_cli import is_docker_runtime, scaffold
 
 
 def _load_opencli() -> Dict[str, Any]:
@@ -153,7 +153,12 @@ def _compare_leaf(path: Tuple[str, ...], opencli_cmd: Dict[str, Any], click_cmd:
       )
 
     oc_hidden = bool(oc_opt.get('hidden', False))
-    if oc_hidden != bool(click_opt.hidden):
+    click_hidden = bool(click_opt.hidden)
+    # Docker-runtime options use hidden=not is_docker_runtime in Click, so they may be
+    # hidden here while OpenCLI still documents them as visible for docker apps.
+    if oc_hidden != click_hidden and not (
+      not is_docker_runtime and not oc_hidden and click_hidden
+    ):
       errors.append(
         f"{label}: option '{name}' hidden OpenCLI={oc_hidden} Click={click_opt.hidden}"
       )
