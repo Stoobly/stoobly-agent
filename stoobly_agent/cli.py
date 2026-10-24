@@ -112,10 +112,9 @@ def describe(**kwargs):
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
-  Proxy mode can be "regular", "transparent", "socks5",
-  "reverse:SPEC", or "upstream:SPEC". For reverse and
-  upstream proxy modes, SPEC is host specification in
-  the form of "http[s]://host[:port]".
+  Proxy mode can be "regular" or "reverse:SPEC". 
+  For reverse proxy mode, SPEC is host specification
+  in the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')

@@ -49,6 +49,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.cli.scaffold.workflow_filter import (
   HTTP_METHODS,
   build_include_filter_rule_for_service_url,
+  service_urls_for_include_filter,
   upsert_filter_rule,
   workflow_template_to_filter_mode,
 )
@@ -796,7 +797,7 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
-  help="Sync develop rewrite rules from service upstream hostname, port, and scheme"
+  help="Update rewrite rules to map service URLs to their upstreams"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
@@ -816,7 +817,7 @@ def rewrite(**kwargs):
 
 @workflow.command(
   'filter',
-  help="Configure include filter rules for workflow service(s)"
+  help="Update filter rules to include service URL(s)"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
@@ -1293,15 +1294,17 @@ def __services_filter(app: App, services, workflow_name: str):
     filter_mode = workflow_template_to_filter_mode(workflow_template)
 
     service_config = ServiceConfig(service.dir_path)
-    if not service_config.url:
-      continue
-
-    new_rule = build_include_filter_rule_for_service_url(
+    service_urls = service_urls_for_include_filter(
       service_url=service_config.url,
-      filter_mode=filter_mode,
-      methods=HTTP_METHODS,
+      upstream_url=service_config.upstream_url,
     )
-    upsert_filter_rule(filter_rules=filter_rules, new_rule=new_rule)
+    for service_url in service_urls:
+      new_rule = build_include_filter_rule_for_service_url(
+        service_url=service_url,
+        filter_mode=filter_mode,
+        methods=HTTP_METHODS,
+      )
+      upsert_filter_rule(filter_rules=filter_rules, new_rule=new_rule)
 
   settings.proxy.filter.set_filter_rules(project_id, filter_rules)
   settings.commit()
