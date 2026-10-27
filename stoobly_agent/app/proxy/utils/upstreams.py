@@ -15,6 +15,7 @@ LOG_ID = 'Upstreams'
 
 _ORIGINAL_HOST_ATTR = '_stoobly_upstreams_original_host'
 _ORIGINAL_PORT_ATTR = '_stoobly_upstreams_original_port'
+_ORIGINAL_SCHEME_ATTR = '_stoobly_upstreams_original_scheme'
 
 
 def parse_proxy_regular_upstreams(raw: Optional[str]) -> Dict[str, str]:
@@ -72,6 +73,7 @@ def apply_upstreams(flow: 'MitmproxyHTTPFlow', upstreams: Optional[Dict[str, str
 
     setattr(request, _ORIGINAL_HOST_ATTR, request.host)
     setattr(request, _ORIGINAL_PORT_ATTR, request.port)
+    setattr(request, _ORIGINAL_SCHEME_ATTR, request.scheme)
 
     # Normalize spec: ensure scheme:// prefix and infer port if omitted
     if '://' not in spec:
@@ -83,17 +85,20 @@ def apply_upstreams(flow: 'MitmproxyHTTPFlow', upstreams: Optional[Dict[str, str
 
 
 def restore_upstreams(flow: 'MitmproxyHTTPFlow') -> bool:
-    """Restore host/port stashed by ``apply_upstreams``, if present."""
+    """Restore host/port/scheme stashed by ``apply_upstreams``, if present."""
     request: 'MitmproxyRequest' = flow.request
     original_host = getattr(request, _ORIGINAL_HOST_ATTR, None)
     original_port = getattr(request, _ORIGINAL_PORT_ATTR, None)
-
-    if original_host is None or original_port is None:
+    original_scheme = getattr(request, _ORIGINAL_SCHEME_ATTR, None)
+    
+    if original_host is None or original_port is None or original_scheme is None:
         return False
 
+    request.scheme = original_scheme
     request.host = original_host
     request.port = original_port
 
+    delattr(request, _ORIGINAL_SCHEME_ATTR)
     delattr(request, _ORIGINAL_HOST_ATTR)
     delattr(request, _ORIGINAL_PORT_ATTR)
     return True
