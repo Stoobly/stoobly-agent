@@ -35,6 +35,18 @@ For each service:
 
 If a service has no URL, no rewrite rule is created for that service.
 
+## Why record does not rewrite back to the service URL
+
+When upstream differs from the service URL (for example `--local` maps
+`http://local.api.stoobly:3001` → `http://host.docker.internal:3002`), develop rewrite
+changes the request URL before it is recorded. That means stored requests use the
+upstream URL.
+
+We considered also upserting an inverse **record** rewrite (upstream → service) so
+recordings would keep the original service URL. That approach was rejected: mock
+matching is by URL, so requests recorded under the service URL would not match later
+mock traffic that still arrives (after develop rewrite) as the upstream URL.
+
 ## Workflow template behavior
 
 Rewrite rules are keyed by workflow template when a workflow is custom-templated.  

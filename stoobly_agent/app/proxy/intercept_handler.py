@@ -19,6 +19,7 @@ from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
+from stoobly_agent.app.proxy.utils.upstreams import apply_upstreams, restore_upstreams
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
 from stoobly_agent.config.constants import lifecycle_hooks, mode
@@ -74,9 +75,14 @@ def request(flow: 'MitmproxyHTTPFlow'):
                 flow,
                 "Valid env MODES: %s, Got: %s" % ([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP], active_mode)
             )
+    # Ephemeral reverse-proxy remap from --proxy-regular-upstream; restored in response().
+    apply_upstreams(flow, intercept_settings.regular_upstreams)
 
 def response(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
+
+    # Undo upstreams remap before response handlers see the request URL.
+    restore_upstreams(flow)
 
     try:
         intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)

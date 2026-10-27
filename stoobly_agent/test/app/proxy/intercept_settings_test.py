@@ -733,6 +733,29 @@ class TestPublicDirectoryPath:
         intercept_settings = InterceptSettings(mock_settings, mock_request)
         assert intercept_settings.public_directory_path == header_dir
 
+class TestRegularUpstreams:
+
+    def test_returns_parsed_map_from_env(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        monkeypatch.setenv(
+            env_vars.AGENT_PROXY_REGULAR_UPSTREAM,
+            'local.api.stoobly:3001=host.docker.internal:3002,other:80=backend:8080',
+        )
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.regular_upstreams == {
+            'local.api.stoobly:3001': 'host.docker.internal:3002',
+            'other:80': 'backend:8080',
+        }
+
+    def test_returns_empty_dict_when_env_not_set(self, mock_settings, mock_data_rules, mock_request, monkeypatch):
+        monkeypatch.delenv(env_vars.AGENT_PROXY_REGULAR_UPSTREAM, raising=False)
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.regular_upstreams == {}
+
+
 class TestResponseFixturesPath:
 
     def test_returns_path_from_header_when_set(self, mock_settings, mock_data_rules, mock_request):

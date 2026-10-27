@@ -18,7 +18,7 @@ class ProxySettings:
     self.__filter = FilterSettings(self.__proxy_settings.get('filter'))
     self.__intercept = InterceptSettings(self.__proxy_settings.get('intercept'))
     self.__match = MatchSettings(self.__proxy_settings.get('match'))
-    self.__rewrite = RewriteSettings(self.__proxy_settings.get('rewrite')) 
+    self.__rewrite = RewriteSettings(self.__proxy_settings.get('rewrite'))
     self.__url = self.__proxy_settings.get('url')
 
   @property

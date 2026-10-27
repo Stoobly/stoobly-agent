@@ -133,6 +133,7 @@ class GatewayBase():
     def handle_before_entrypoint(
       lifecycle_hooks_paths,
       openapi_specification_paths,
+      proxy_regular_upstreams,
       public_directory_paths,
       response_fixtures_paths,
     ):
@@ -140,6 +141,7 @@ class GatewayBase():
         self.app_config,
         lifecycle_hooks_paths=lifecycle_hooks_paths,
         openapi_specification_paths=openapi_specification_paths,
+        proxy_regular_upstreams=proxy_regular_upstreams,
         public_directory_paths=public_directory_paths,
         response_fixtures_paths=response_fixtures_paths,
       )

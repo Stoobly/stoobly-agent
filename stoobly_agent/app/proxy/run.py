@@ -159,6 +159,7 @@ def __filter_options(options):
     del options['proxy_host']
     del options['proxy_mode']
     del options['proxy_port']
+    del options['proxy_regular_upstream']
     del options['request_log_enable']
     del options['request_log_level']
     del options['request_log_append']
