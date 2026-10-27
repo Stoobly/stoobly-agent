@@ -9,7 +9,6 @@ from stoobly_agent.app.cli.scaffold.constants import (
 from stoobly_agent.app.cli.scaffold.workflow_filter import (
   HTTP_METHODS,
   build_include_filter_rule_for_service_url,
-  service_urls_for_include_filter,
   upsert_filter_rule,
   workflow_template_to_filter_mode,
 )
@@ -104,30 +103,4 @@ def test_build_workflow_filter_rules_upserts_on_pattern_and_methods():
   assert updated_rules[0].methods == HTTP_METHODS
   assert updated_rules[0].action == filter_action.INCLUDE
   assert updated_rules[0].modes == [mode.RECORD]
-
-
-def test_service_urls_for_include_filter_includes_upstream_when_different():
-  service_url = "http://local.api.stoobly:3001"
-  upstream_url = "http://host.docker.internal:3002"
-
-  assert service_urls_for_include_filter(
-    service_url=service_url,
-    upstream_url=upstream_url,
-  ) == [service_url, upstream_url]
-
-
-def test_service_urls_for_include_filter_skips_upstream_when_same():
-  service_url = "http://api.example.com:3001"
-
-  assert service_urls_for_include_filter(
-    service_url=service_url,
-    upstream_url=service_url,
-  ) == [service_url]
-
-
-def test_service_urls_for_include_filter_skips_empty_service_url():
-  assert service_urls_for_include_filter(
-    service_url='',
-    upstream_url='http://host.docker.internal:3002',
-  ) == []
 

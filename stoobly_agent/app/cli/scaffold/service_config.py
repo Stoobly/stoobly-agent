@@ -231,28 +231,21 @@ class ServiceConfig(Config):
 
   @property
   def url(self):
-    return self.__build_url(self.scheme, self.hostname, self.port)
-
-  @property
-  def upstream_url(self):
-    return self.__build_url(self.upstream_scheme, self.upstream_hostname, self.upstream_port)
-
-  def __build_url(self, scheme, hostname, port):
-    if not hostname:
+    if not self.hostname:
       return ''
 
-    _url = f"{scheme}://{hostname}"
+    _url = f"{self.scheme}://{self.hostname}"
 
-    if not port:
+    if not self.port:
       return _url
 
-    if scheme == 'http' and port == 80:
+    if self.scheme == 'http' and self.port == 80: 
       return _url
 
-    if scheme == 'https' and port == 443:
+    if self.scheme == 'https' and self.port == 443:
       return _url
 
-    return f"{_url}:{port}"
+    return f"{_url}:{self.port}"
 
   def load(self, config = None):
     config = config or self.read()

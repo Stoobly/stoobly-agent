@@ -1,4 +1,5 @@
 from stoobly_agent.app.cli.helpers.set_rewrite_rule_service import set_rewrite_rule
+from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_TEST_TYPE
 from stoobly_agent.app.cli.scaffold.service_config import ServiceConfig
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import method, mode
@@ -32,3 +33,5 @@ def apply_upstream_url_rewrite(service_config: ServiceConfig) -> None:
       port=upstream_port,
       scheme=upstream_scheme,
     )
+
+

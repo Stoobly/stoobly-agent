@@ -42,26 +42,6 @@ def workflow_template_to_filter_mode(workflow_template: str) -> str:
     )
   return filter_mode
 
-def service_urls_for_include_filter(
-  *,
-  service_url: str,
-  upstream_url: str = '',
-) -> List[str]:
-  """
-  URLs to include-filter for a service.
-
-  Always includes the public service URL. When upstream differs (e.g. after a
-  develop rewrite to host.docker.internal), also includes the upstream URL so
-  post-rewrite include checks still match.
-  """
-  if not service_url:
-    return []
-
-  urls = [service_url]
-  if upstream_url and upstream_url != service_url:
-    urls.append(upstream_url)
-  return urls
-
 def build_include_filter_rule_for_service_url(
   *,
   service_url: str,
