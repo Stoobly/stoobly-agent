@@ -12,6 +12,12 @@ from stoobly_agent.app.proxy.utils.upstreams import (
 )
 
 
+def _scheme(request) -> str:
+    """Normalize mitmproxy request.scheme to str (API returns str or bytes by version)."""
+    scheme = request.scheme
+    return scheme.decode() if isinstance(scheme, bytes) else scheme
+
+
 @pytest.fixture
 def mitmproxy_request():
     now = time()
@@ -102,7 +108,7 @@ class TestApplyUpstreams:
         assert apply_upstreams(flow, upstreams) is True
         assert flow.request.host == 'host.docker.internal'
         assert flow.request.port == 3002
-        assert flow.request.scheme == 'http'
+        assert _scheme(flow.request) == 'http'
 
     def test_remaps_with_https_and_explicit_port(self, flow):
         upstreams = {
@@ -112,7 +118,7 @@ class TestApplyUpstreams:
         assert apply_upstreams(flow, upstreams) is True
         assert flow.request.host == 'host.docker.internal'
         assert flow.request.port == 3002
-        assert flow.request.scheme == 'https'
+        assert _scheme(flow.request) == 'https'
 
     def test_remaps_with_https_no_port(self, flow):
         upstreams = {
@@ -122,7 +128,7 @@ class TestApplyUpstreams:
         assert apply_upstreams(flow, upstreams) is True
         assert flow.request.host == 'backend'
         assert flow.request.port == 443  # Default HTTPS port
-        assert flow.request.scheme == 'https'
+        assert _scheme(flow.request) == 'https'
 
     def test_remaps_with_http_no_port(self, flow):
         upstreams = {
@@ -132,7 +138,7 @@ class TestApplyUpstreams:
         assert apply_upstreams(flow, upstreams) is True
         assert flow.request.host == 'backend'
         assert flow.request.port == 80  # Default HTTP port
-        assert flow.request.scheme == 'http'
+        assert _scheme(flow.request) == 'http'
 
     def test_miss_leaves_host_unchanged(self, flow):
         upstreams = {
@@ -195,38 +201,37 @@ class TestRestoreUpstreams:
 
     def test_restores_scheme_after_apply_http_to_https(self, flow):
         """Verify scheme is restored when proxying http to https."""
-        original_scheme = flow.request.scheme
-        assert original_scheme == b'http'
-        
+        assert _scheme(flow.request) == 'http'
+
         upstreams = {
             'local.api.stoobly:3001': 'https://host.docker.internal:3002',
         }
 
         assert apply_upstreams(flow, upstreams) is True
-        assert flow.request.scheme == b'https'
+        assert _scheme(flow.request) == 'https'
         assert flow.request.host == 'host.docker.internal'
         assert flow.request.port == 3002
 
         assert restore_upstreams(flow) is True
-        assert flow.request.scheme == b'http'
+        assert _scheme(flow.request) == 'http'
         assert flow.request.host == 'local.api.stoobly'
         assert flow.request.port == 3001
 
     def test_restores_scheme_after_apply_https_to_http(self, flow):
         """Verify scheme is restored when proxying https to http."""
-        flow.request.scheme = b'https'
+        flow.request.scheme = 'https'
         flow.request.port = 443
-        
+
         upstreams = {
             'local.api.stoobly:443': 'http://host.docker.internal:8080',
         }
 
         assert apply_upstreams(flow, upstreams) is True
-        assert flow.request.scheme == b'http'
+        assert _scheme(flow.request) == 'http'
         assert flow.request.port == 8080
 
         assert restore_upstreams(flow) is True
-        assert flow.request.scheme == b'https'
+        assert _scheme(flow.request) == 'https'
         assert flow.request.port == 443
 
     def test_restores_scheme_with_inferred_ports(self, flow):
@@ -236,9 +241,9 @@ class TestRestoreUpstreams:
         }
 
         assert apply_upstreams(flow, upstreams) is True
-        assert flow.request.scheme == b'https'
+        assert _scheme(flow.request) == 'https'
         assert flow.request.port == 443  # Inferred from https
-        
+
         assert restore_upstreams(flow) is True
-        assert flow.request.scheme == b'http'
+        assert _scheme(flow.request) == 'http'
         assert flow.request.port == 3001  # Restored original

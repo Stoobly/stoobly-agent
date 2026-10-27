@@ -1,6 +1,6 @@
 import os
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, mock_open
 
 from stoobly_agent.app.cli.scaffold.run import iter_commands, run_options
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
@@ -54,8 +54,11 @@ class TestIterCommands:
         assert not called_before_entrypoint
         assert not called_command
 
-    def test_iter_commands_single_command(self, mock_command):
+    @patch('os.path.exists')
+    def test_iter_commands_single_command(self, mock_exists, mock_command):
         """Test iter_commands with single command"""
+        mock_exists.return_value = False  # All paths don't exist
+        
         called_before_entrypoint = False
         called_command_count = 0
 
@@ -68,8 +71,11 @@ class TestIterCommands:
         # Single command is both first and second-to-last, but before_entrypoint requires >= 2 commands
         assert called_command_count == 1
 
-    def test_iter_commands_multiple_commands(self, mock_command, mock_app):
+    @patch('os.path.exists')
+    def test_iter_commands_multiple_commands(self, mock_exists, mock_command, mock_app):
         """Test iter_commands with multiple commands"""
+        mock_exists.return_value = False  # All paths don't exist
+        
         mock_command2 = Mock()
         mock_command2.app = mock_app
         mock_command2.service_config = Mock()
@@ -127,8 +133,14 @@ class TestIterCommands:
         mock_command2.app = mock_app
         mock_command2.service_config = Mock()
         mock_command2.service_config.hostname = 'localhost'
+        mock_command2.service_config.port = 3000
+        mock_command2.service_config.scheme = 'http'
         mock_command2.service_config.upstream_hostname = 'localhost'
+        mock_command2.service_config.upstream_port = 3000
+        mock_command2.service_config.upstream_scheme = 'http'
+        mock_command2.service_config.url = None  # Skip path collection for second command
 
+        # Use actual files which os.path.exists will find
         iter_commands(
             [mock_command, mock_command2],
             handle_before_entrypoint,
@@ -136,6 +148,8 @@ class TestIterCommands:
         )
 
         assert len(received_args) == 5
+        # Arguments are passed in this order: lifecycle_hooks_paths, openapi_specification_paths,
+        # proxy_regular_upstreams, public_directory_paths, response_fixtures_paths
         lifecycle_hooks_paths, openapi_spec_paths, proxy_upstreams, public_dirs, fixtures = received_args
         
         assert '--lifecycle-hooks-path' in lifecycle_hooks_paths
@@ -143,8 +157,11 @@ class TestIterCommands:
         assert '--public-dir-path' in public_dirs
         assert '--response-fixtures-path' in fixtures
 
-    def test_iter_commands_proxy_regular_upstream_added_on_hostname_mismatch(self, mock_app):
+    @patch('os.path.exists')
+    def test_iter_commands_proxy_regular_upstream_added_on_hostname_mismatch(self, mock_exists, mock_app):
         """Test proxy_regular_upstream is added when hostnames differ"""
+        mock_exists.return_value = False  # All paths don't exist
+
         received_args = []
 
         def handle_before_entrypoint(*args):
@@ -175,7 +192,8 @@ class TestIterCommands:
         assert '--proxy-regular-upstream' in proxy_upstreams
         assert 'frontend:3000=http://backend:8080' in proxy_upstreams
 
-    def test_iter_commands_containerized_path_normalization(self, mock_app, tmp_path):
+    @patch('os.path.exists')
+    def test_iter_commands_containerized_path_normalization(self, mock_exists, mock_app, tmp_path):
         """Test containerized mode normalizes paths correctly"""
         # Create temporary directories
         app_dir = tmp_path / 'app'
@@ -196,6 +214,9 @@ class TestIterCommands:
         mock_command.service_config.url = 'http://localhost:3000'
         mock_command.normalize_path = Mock(side_effect=lambda x: x)
 
+        # Mock os.path.exists to return True for public_dir
+        mock_exists.side_effect = lambda path: path == str(public_dir)
+
         received_args = []
 
         def handle_before_entrypoint(*args):
@@ -210,8 +231,11 @@ class TestIterCommands:
         public_dirs = received_args[3]
         assert '--public-dir-path' in public_dirs
 
-    def test_iter_commands_skips_nonexistent_paths(self, mock_app):
+    @patch('os.path.exists')
+    def test_iter_commands_skips_nonexistent_paths(self, mock_exists, mock_app):
         """Test iter_commands skips nonexistent file paths"""
+        mock_exists.return_value = False  # All paths don't exist
+
         received_args = []
 
         def handle_before_entrypoint(*args):
@@ -366,8 +390,8 @@ class TestRunOptions:
         """Test run_options with empty extra_options dict"""
         options = run_options(mock_app_config, **{})
 
-        # Should contain only base options
-        assert len(options) >= 8  # Base options count
+        # Base: --proxy-port, port, --ui-port, port, --request-log-enable, --settings-watch, --ssl-insecure
+        assert len(options) == 7
 
     def test_run_options_with_none_extra_options(self, mock_app_config):
         """Test run_options handles None values in extra_options"""
