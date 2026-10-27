@@ -8,7 +8,7 @@ from stoobly_agent.lib.api.keys.project_key import ProjectKey
 def apply_upstream_url_rewrite(service_config: ServiceConfig) -> None:
   """
   If effective upstream hostname, port, or scheme differs from the service's public
-  hostname, port, or scheme, persist a replay-mode URL rewrite rule mapping the service URL to upstream.
+  hostname, port, or scheme, persist a develop-mode URL rewrite rule mapping the service URL to upstream.
   """
   if not service_config.url:
     return
