@@ -79,10 +79,10 @@ def request(flow: 'MitmproxyHTTPFlow'):
     apply_upstreams(flow, intercept_settings.regular_upstreams)
 
 def response(flow: 'MitmproxyHTTPFlow'):
-    request: 'MitmproxyRequest' = flow.request
-
     # Undo upstreams remap before response handlers see the request URL.
     restore_upstreams(flow)
+
+    request: 'MitmproxyRequest' = flow.request
 
     try:
         intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
