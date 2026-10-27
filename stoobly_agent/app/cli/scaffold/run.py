@@ -34,9 +34,11 @@ def iter_commands(
     # Add --proxy-regular-upstream if hostname:port differs from upstream
     if (service_config.hostname and 
         (service_config.hostname != service_config.upstream_hostname or 
-         service_config.port != service_config.upstream_port)):
+         service_config.port != service_config.upstream_port or
+         service_config.scheme != service_config.upstream_scheme)):
       proxy_regular_upstreams.append('--proxy-regular-upstream')
-      upstream_mapping = f"{service_config.hostname}:{service_config.port}={service_config.upstream_hostname}:{service_config.upstream_port}"
+      upstream_spec = f"{service_config.upstream_scheme}://{service_config.upstream_hostname}:{service_config.upstream_port}"
+      upstream_mapping = f"{service_config.hostname}:{service_config.port}={upstream_spec}"
       proxy_regular_upstreams.append(upstream_mapping)
     
     if url:

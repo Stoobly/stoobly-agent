@@ -52,24 +52,39 @@ class TestNormalizeProxyRegularUpstream:
 
 class TestParseProxyRegularUpstreams:
 
-    def test_parses_single_mapping(self):
+    def test_parses_single_mapping_with_explicit_port(self):
         assert parse_proxy_regular_upstreams(
-            'local.api.stoobly:3001=host.docker.internal:3002'
+            'local.api.stoobly:3001=http://host.docker.internal:3002'
         ) == {
-            'local.api.stoobly:3001': 'host.docker.internal:3002',
+            'local.api.stoobly:3001': 'http://host.docker.internal:3002',
+        }
+
+    def test_parses_mapping_without_port(self):
+        assert parse_proxy_regular_upstreams(
+            'api.example.com:443=https://backend'
+        ) == {
+            'api.example.com:443': 'https://backend',
         }
 
     def test_parses_multiple_mappings(self):
         assert parse_proxy_regular_upstreams(
-            'a:1=b:2,c:3=d:4'
+            'a:1=http://b:2,c:3=https://d:4'
         ) == {
-            'a:1': 'b:2',
-            'c:3': 'd:4',
+            'a:1': 'http://b:2',
+            'c:3': 'https://d:4',
+        }
+
+    def test_parses_mixed_port_specifications(self):
+        assert parse_proxy_regular_upstreams(
+            'api.example.com:443=https://backend:8443,other:80=http://internal'
+        ) == {
+            'api.example.com:443': 'https://backend:8443',
+            'other:80': 'http://internal',
         }
 
     def test_ignores_invalid_entries(self):
-        assert parse_proxy_regular_upstreams('a:1=b:2,invalid,=missing') == {
-            'a:1': 'b:2',
+        assert parse_proxy_regular_upstreams('a:1=http://b:2,invalid,=missing') == {
+            'a:1': 'http://b:2',
         }
 
     def test_empty_returns_empty_dict(self):
@@ -79,14 +94,45 @@ class TestParseProxyRegularUpstreams:
 
 class TestApplyUpstreams:
 
-    def test_remaps_matching_host_port(self, flow):
+    def test_remaps_with_explicit_scheme_and_port(self, flow):
         upstreams = {
-            'local.api.stoobly:3001': 'host.docker.internal:3002',
+            'local.api.stoobly:3001': 'http://host.docker.internal:3002',
         }
 
         assert apply_upstreams(flow, upstreams) is True
         assert flow.request.host == 'host.docker.internal'
         assert flow.request.port == 3002
+        assert flow.request.scheme == 'http'
+
+    def test_remaps_with_https_and_explicit_port(self, flow):
+        upstreams = {
+            'local.api.stoobly:3001': 'https://host.docker.internal:3002',
+        }
+
+        assert apply_upstreams(flow, upstreams) is True
+        assert flow.request.host == 'host.docker.internal'
+        assert flow.request.port == 3002
+        assert flow.request.scheme == 'https'
+
+    def test_remaps_with_https_no_port(self, flow):
+        upstreams = {
+            'local.api.stoobly:3001': 'https://backend',
+        }
+
+        assert apply_upstreams(flow, upstreams) is True
+        assert flow.request.host == 'backend'
+        assert flow.request.port == 443  # Default HTTPS port
+        assert flow.request.scheme == 'https'
+
+    def test_remaps_with_http_no_port(self, flow):
+        upstreams = {
+            'local.api.stoobly:3001': 'http://backend',
+        }
+
+        assert apply_upstreams(flow, upstreams) is True
+        assert flow.request.host == 'backend'
+        assert flow.request.port == 80  # Default HTTP port
+        assert flow.request.scheme == 'http'
 
     def test_miss_leaves_host_unchanged(self, flow):
         upstreams = {

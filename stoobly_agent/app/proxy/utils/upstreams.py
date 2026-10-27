@@ -19,10 +19,14 @@ _ORIGINAL_PORT_ATTR = '_stoobly_upstreams_original_port'
 
 def parse_proxy_regular_upstreams(raw: Optional[str]) -> Dict[str, str]:
     """
-    Parse comma-separated ``HOST:PORT=HOST:PORT`` mappings into a dict.
+    Parse comma-separated ``HOST:PORT=SPEC`` mappings into a dict.
 
-    Example:
-      ``local.api.stoobly:3001=host.docker.internal:3002,other:80=backend:8080``
+    SPEC format matches proxy-mode reverse SPEC: ``http[s]://host[:port]``
+    Port is optional and inferred from scheme if omitted (80 for http, 443 for https).
+
+    Examples:
+      ``local.api.stoobly:3001=http://host.docker.internal:3002``
+      ``api.example.com:443=https://backend,other:80=http://internal:8080``
     """
     if not raw:
         return {}
@@ -48,8 +52,11 @@ def parse_proxy_regular_upstreams(raw: Optional[str]) -> Dict[str, str]:
 def apply_upstreams(flow: 'MitmproxyHTTPFlow', upstreams: Optional[Dict[str, str]] = None) -> bool:
     """
     If the request host:port matches an upstreams entry, reverse-proxy to the mapped
-    host:port for the outbound connection. Stashes the prior host/port so
+    upstream spec for the outbound connection. Stashes the prior host/port so
     ``restore_upstreams`` can undo the change in the response hook.
+    
+    Upstream spec format: http[s]://host[:port]
+    Port is inferred from scheme if omitted (80 for http, 443 for https).
     """
     if not upstreams:
         return False
@@ -59,15 +66,19 @@ def apply_upstreams(flow: 'MitmproxyHTTPFlow', upstreams: Optional[Dict[str, str
     
     request: 'MitmproxyRequest' = flow.request
     match_key = f"{request.host}:{request.port}"
-    mapped = upstreams.get(match_key)
-    if not mapped:
+    spec = upstreams.get(match_key)
+    if not spec:
         return False
 
     setattr(request, _ORIGINAL_HOST_ATTR, request.host)
     setattr(request, _ORIGINAL_PORT_ATTR, request.port)
 
-    reverse_proxy(request, f"{request.scheme}://{mapped}", {})
-    Logger.instance(LOG_ID).debug(f"Remapped {match_key} -> {mapped}")
+    # Normalize spec: ensure scheme:// prefix and infer port if omitted
+    if '://' not in spec:
+        spec = f"http://{spec}"
+    
+    reverse_proxy(request, spec, {})
+    Logger.instance(LOG_ID).debug(f"Remapped {match_key} -> {spec}")
     return True
 
 

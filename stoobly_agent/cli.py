@@ -120,7 +120,7 @@ def describe(**kwargs):
 @click.option(
   '--proxy-regular-upstream',
   multiple=True,
-  help='Map request host:port to an upstream host:port for regular proxy mode. Form: <HOST>:<PORT>=<HOST>:<PORT>.',
+  help='Map request host:port to an upstream for regular proxy mode. Form: <HOST>:<PORT>=<SPEC>, where SPEC is "http[s]://host[:port]".',
 )
 @click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
