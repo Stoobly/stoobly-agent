@@ -796,7 +796,7 @@ def mkcert(**kwargs):
   __services_mkcert(app, services)
 
 @workflow.command(
-  help="Sync develop rewrite rules from service upstream hostname, port, and scheme"
+  help="DEPRECATED: --regular-proxy-mode supersedes this command"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
@@ -809,14 +809,16 @@ def rewrite(**kwargs):
 
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
-  services = __get_services(
-    app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
-  )
-  __services_rewrite(app, services, kwargs['workflow_name'])
+  # DEPRECATED: --regular-proxy-mode supersedes this command
+  # In the future, this command should instead used to apply scaffold.yml service rewrite rules
+  #services = __get_services(
+  #  app, service=kwargs['service'], without_core=True, workflow=[kwargs['workflow_name']]
+  #)
+  #__services_rewrite(app, services, kwargs['workflow_name'])
 
 @workflow.command(
   'filter',
-  help="Configure include filter rules for workflow service(s)"
+  help="Update filter rules to allow service URL(s)"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')

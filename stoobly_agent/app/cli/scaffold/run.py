@@ -17,17 +17,30 @@ def iter_commands(
     commands: List of command objects to process
     handle_before_entrypoint: Optional callback invoked once before the entrypoint
                               (on the second-to-last command). Receives
-                              (public_directory_paths, response_fixtures_paths, openapi_specification_paths, lifecycle_hooks_paths).
+                              (proxy_regular_upstreams, public_directory_paths, response_fixtures_paths, openapi_specification_paths, lifecycle_hooks_paths).
     handle_command: Optional callback invoked for each command. Receives (command).
     containerized: Whether to compute relative paths for containerized runs.
   """
   lifecycle_hooks_paths = []
   openapi_specification_paths = []
+  proxy_regular_upstreams = []
   public_directory_paths = []
   response_fixtures_paths = []
 
   for command in commands:
     url = command.service_config.url
+    service_config = command.service_config
+    
+    # Add --proxy-regular-upstream if hostname:port differs from upstream
+    if (service_config.hostname and 
+        (service_config.hostname != service_config.upstream_hostname or 
+         service_config.port != service_config.upstream_port or
+         service_config.scheme != service_config.upstream_scheme)):
+      proxy_regular_upstreams.append('--proxy-regular-upstream')
+      upstream_spec = f"{service_config.upstream_scheme}://{service_config.upstream_hostname}:{service_config.upstream_port}"
+      upstream_mapping = f"{service_config.hostname}:{service_config.port}={upstream_spec}"
+      proxy_regular_upstreams.append(upstream_mapping)
+    
     if url:
       if os.path.exists(command.public_dir_path):
         public_directory_paths.append('--public-dir-path')
@@ -87,13 +100,14 @@ def iter_commands(
   for command in commands:
     if handle_command:
       handle_command(command)
-
+    
     # If second from last command, run up_command i.e. right before entrypoint
     if len(commands) >= 2 and command == commands[-2]:
       if handle_before_entrypoint:
         handle_before_entrypoint(
           lifecycle_hooks_paths,
           openapi_specification_paths,
+          proxy_regular_upstreams,
           public_directory_paths,
           response_fixtures_paths,
         )
@@ -120,6 +134,9 @@ def run_options(app_config: AppConfig, **extra_options):
   options.extend(['--request-log-enable'])
   options.extend(['--settings-watch'])
   options.extend(['--ssl-insecure']) # For local self-signed HTTPS services, insecure SSL/TLS certificates are allowed
+
+  if extra_options.get('proxy_regular_upstreams'):
+    options.extend(extra_options['proxy_regular_upstreams'])
 
   if extra_options.get('public_directory_paths'):
     options.extend(extra_options['public_directory_paths'])

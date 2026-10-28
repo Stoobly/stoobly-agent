@@ -23,3 +23,9 @@ def normalize_lifecycle_hooks_path(lifecycle_hooks_path: Union[str, List[str]]):
     return ','.join(lifecycle_hooks_path)
   else:
     return lifecycle_hooks_path
+
+def normalize_proxy_regular_upstream(proxy_regular_upstream: Union[str, List[str]]):
+  if isinstance(proxy_regular_upstream, (list, tuple)):
+    return ','.join(proxy_regular_upstream)
+  else:
+    return proxy_regular_upstream

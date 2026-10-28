@@ -162,6 +162,18 @@ class InterceptSettings:
     return None
 
   @property
+  def regular_upstreams(self):
+    """Return host:port → host:port map from ``STOOBLY_AGENT_PROXY_REGULAR_UPSTREAM``.
+
+    Env value is comma-separated ``HOST:PORT=HOST:PORT`` entries set by
+    ``--proxy-regular-upstream``.
+    """
+    from stoobly_agent.app.proxy.utils.upstreams import parse_proxy_regular_upstreams
+
+    raw_value = os.environ.get(env_vars.AGENT_PROXY_REGULAR_UPSTREAM)
+    return parse_proxy_regular_upstreams(raw_value)
+
+  @property
   def remote_project_key(self):
     # When not local project, don't return set remote project_key
     project_key = self.parsed_project_key

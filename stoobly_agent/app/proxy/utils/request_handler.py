@@ -18,8 +18,14 @@ def reverse_proxy(request: 'MitmproxyRequest', service_url: str, options = {}):
 
     request.scheme = uri.scheme
     request.host = uri.hostname
+    
+    # Set port: explicit if provided, otherwise infer from scheme
     if uri.port:
         request.port = uri.port
+    elif uri.scheme == 'https':
+        request.port = 443
+    else:
+        request.port = 80
 
 def build_response(passed, log):
     body = json.dumps({

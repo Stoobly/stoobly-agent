@@ -112,12 +112,16 @@ def describe(**kwargs):
 @click.option('--proxy-host', default='0.0.0.0', help='Address to bind proxy to.')
 @click.option('--proxyless', is_flag=True, default=False, help='Disable starting proxy.')
 @click.option('--proxy-mode', default="regular", help='''
-  Proxy mode can be "regular", "transparent", "socks5",
-  "reverse:SPEC", or "upstream:SPEC". For reverse and
-  upstream proxy modes, SPEC is host specification in
-  the form of "http[s]://host[:port]".
+  Proxy mode can be "regular" or "reverse:SPEC". 
+  For reverse proxy mode, SPEC is host specification
+  in the form of "http[s]://host[:port]".
 ''')
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
+@click.option(
+  '--proxy-regular-upstream',
+  multiple=True,
+  help='Map request host:port to an upstream for regular proxy mode. Form: <HOST>:<PORT>=<SPEC>, where SPEC is "http[s]://host[:port]".',
+)
 @click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
 @click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
@@ -134,7 +138,13 @@ def run(**kwargs):
     import dotenv
 
     from .app.proxy.run import run as run_proxy
-    from .app.cli.helpers.options import normalize_openapi_specification_path, normalize_public_dir_path, normalize_response_fixtures_path, normalize_lifecycle_hooks_path
+    from .app.cli.helpers.options import (
+      normalize_lifecycle_hooks_path,
+      normalize_openapi_specification_path,
+      normalize_proxy_regular_upstream,
+      normalize_public_dir_path,
+      normalize_response_fixtures_path,
+    )
 
     if os.path.exists('.env'):
       dotenv.load_dotenv('.env')
@@ -172,6 +182,11 @@ def run(**kwargs):
     if kwargs.get('openapi_specification_path'):
       os.environ[env_vars.AGENT_OPENAPI_SPECIFICATION_PATH] = normalize_openapi_specification_path(
         kwargs['openapi_specification_path']
+      )
+
+    if kwargs.get('proxy_regular_upstream'):
+      os.environ[env_vars.AGENT_PROXY_REGULAR_UPSTREAM] = normalize_proxy_regular_upstream(
+        kwargs['proxy_regular_upstream']
       )
 
     if kwargs.get('public_dir_path'):
