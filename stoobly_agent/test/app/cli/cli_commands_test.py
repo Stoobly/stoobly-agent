@@ -20,6 +20,7 @@ class TestCliCommandsLoad:
         ['endpoint'],
         ['feature'],
         ['intercept'],
+        ['opencli'],
         ['request'],
         ['scaffold'],
         ['scenario'],
@@ -48,6 +49,8 @@ class TestCliSubcommandsLoad:
 
     SUBCOMMANDS = [
         ['endpoint', 'import'],
+        ['opencli', 'list'],
+        ['opencli', 'show'],
         ['request', 'list'],
         ['request', 'create'],
         ['scaffold', 'app'],

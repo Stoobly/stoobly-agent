@@ -1,0 +1,578 @@
+# OpenCLI Description for stoobly-agent request
+# Source: stoobly_agent/app/cli/request_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: '0.1'
+info:
+  title: stoobly-agent request
+  summary: Manage requests, responses, snapshots, and intercepted request logs
+  description: |
+    CLI contract for the `stoobly-agent request` command group.
+    Invoked as `stoobly-agent request <command> …`.
+    Includes options and subcommands that are feature-gated (local/remote) so the contract is complete.
+  version: 2.5.3
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: ' '
+command:
+  name: request
+  description: Manage requests
+  commands:
+  - name: create
+    description: Create a request
+    arguments:
+    - name: url
+      required: true
+    options:
+    - name: body
+      description: Raw request body.
+      arguments:
+      - name: body
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: header
+      description: 'Set a request header. Format: NAME:VALUE.'
+      arguments:
+      - name: header
+    - name: latency
+      description: Response latency in milliseconds.
+      arguments:
+      - name: latency
+    - name: method
+      description: HTTP method. Defaults to GET.
+      arguments:
+      - name: method
+    - name: response-body
+      description: Raw response body.
+      arguments:
+      - name: response_body
+    - name: response-header
+      description: 'Set a response header. Format: NAME:VALUE.'
+      arguments:
+      - name: response_header
+    - name: scenario-key
+      description: Assign scenario.
+      arguments:
+      - name: scenario_key
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: status
+      description: HTTP status code. Defaults to 200.
+      arguments:
+      - name: status
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: delete
+    description: Delete a request
+    arguments:
+    - name: request_key
+      required: true
+  - name: list
+    description: Show all requests
+    options:
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: page
+      arguments:
+      - name: page
+    - name: project-key
+      arguments:
+      - name: project_key
+    - name: scenario-key
+      arguments:
+      - name: scenario_key
+    - name: search
+      description: Query to filter requests by.
+      arguments:
+      - name: search
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: size
+      arguments:
+      - name: size
+    - name: sort-by
+      description: created_at|path
+      arguments:
+      - name: sort_by
+    - name: sort-order
+      description: asc | desc
+      arguments:
+      - name: sort_order
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: logs
+    description: Manage intercepted requests logs
+    commands:
+    - name: delete
+      description: Delete intercepted requests log entries
+      options:
+      - name: context-dir-path
+        description: Path to Stoobly data directory.
+        arguments:
+        - name: context_dir_path
+    - name: list
+      description: List intercepted requests log entries
+      options:
+      - name: context-dir-path
+        description: Path to Stoobly data directory.
+        arguments:
+        - name: context_dir_path
+      - name: follow
+        description: Follow log output (like tail -f). Ctrl-C to stop.
+        aliases:
+        - f
+      - name: format
+        description: Format output.
+        arguments:
+        - name: format
+          acceptedValues:
+          - json
+          - simple
+      - name: level
+        description: Filter by log level.
+        arguments:
+        - name: level
+          acceptedValues:
+          - DEBUG
+          - INFO
+          - WARNING
+          - ERROR
+      - name: message
+        description: Filter by log message (e.g., "Mock success", "Mock failure").
+        arguments:
+        - name: message
+      - name: method
+        description: Filter by HTTP method.
+        arguments:
+        - name: method
+          acceptedValues:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - HEAD
+          - OPTIONS
+      - name: request-key
+        description: Filter by request key.
+        arguments:
+        - name: request_key
+      - name: scenario-key
+        description: Filter by scenario key.
+        arguments:
+        - name: scenario_key
+      - name: scenario-name
+        description: Filter by scenario name.
+        arguments:
+        - name: scenario_name
+      - name: select
+        description: Select column(s) to display.
+        arguments:
+        - name: select
+      - name: status-code
+        description: Filter by HTTP status code.
+        arguments:
+        - name: status_code
+      - name: test-title
+        description: Filter by test title.
+        arguments:
+        - name: test_title
+      - name: url
+        description: Filter by URL (substring match).
+        arguments:
+        - name: url
+      - name: without-headers
+        description: Disable printing column headers.
+    - name: path
+      description: Get intercepted requests log path
+      options:
+      - name: context-dir-path
+        description: Path to Stoobly data directory.
+        arguments:
+        - name: context_dir_path
+  - name: replay
+    description: Replay a request
+    arguments:
+    - name: request_key
+      required: true
+    options:
+    - name: alias-resolve-strategy
+      description: Strategy for resolving dynamic values for aliases.
+      arguments:
+      - name: alias_resolve_strategy
+        acceptedValues:
+        - none
+        - fifo
+        - lifo
+    - name: assign
+      description: 'Assign alias values. Format: <NAME>=<VALUE>'
+      arguments:
+      - name: assign
+    - name: format
+      description: Format replay response.
+      arguments:
+      - name: format
+        acceptedValues:
+        - body
+        - json
+    - name: group-by
+      description: Repeat for each alias name.
+      arguments:
+      - name: group_by
+    - name: host
+      description: Rewrite request host.
+      arguments:
+      - name: host
+    - name: lifecycle-hooks-path
+      description: Path to lifecycle hooks script.
+      arguments:
+      - name: lifecycle_hooks_path
+    - name: log-level
+      description: Configure which logs to print. Defaults to warning.
+      arguments:
+      - name: log_level
+        acceptedValues:
+        - debug
+        - info
+        - warning
+        - error
+    - name: overwrite
+      description: Replay request and overwrite existing response.
+    - name: record
+      description: Replay request and record.
+    - name: save
+      description: Save results.
+    - name: scenario-key
+      description: Record to scenario.
+      arguments:
+      - name: scenario_key
+    - name: scheme
+      description: Rewrite request scheme.
+      arguments:
+      - name: scheme
+        acceptedValues:
+        - http
+        - https
+    - name: trace-id
+      description: Use existing trace.
+      arguments:
+      - name: trace_id
+    - name: validate
+      description: 'Validate one or more aliases. Format: <NAME>=?<TYPE>'
+      arguments:
+      - name: validate
+  - name: response
+    description: Manage request responses
+    commands:
+    - name: query
+      description: Query properties in response
+      arguments:
+      - name: request_key
+        required: true
+      options:
+      - name: query
+        required: true
+        arguments:
+        - name: query
+    - name: show
+      description: Retrieve mocked response
+      arguments:
+      - name: request_key
+        required: true
+    - name: update
+      description: Update a response
+      arguments:
+      - name: request_key
+        required: true
+      options:
+      - name: body
+        description: Raw response body.
+        arguments:
+        - name: body
+      - name: header
+        description: 'Set or delete a header. Format: NAME:VALUE. Empty VALUE deletes the header.'
+        arguments:
+        - name: header
+      - name: latency
+        description: Response latency in milliseconds.
+        arguments:
+        - name: latency
+      - name: status
+        description: HTTP status code.
+        arguments:
+        - name: status
+  - name: snapshot
+    description: Manage request snapshots
+    commands:
+    - name: create
+      description: Create a request snapshot
+      arguments:
+      - name: request_key
+        required: true
+      options:
+      - name: action
+        description: Sets snapshot action.
+        arguments:
+        - name: action
+          acceptedValues:
+          - DELETE
+          - PUT
+      - name: decode
+        description: Toggles whether to decode response body.
+      - name: lifecycle-hooks-path
+        description: Path to lifecycle hooks script.
+        arguments:
+        - name: lifecycle_hooks_path
+      - name: no-verify
+    - name: diff
+      description: Show diff between current request and its snapshot
+      options:
+      - name: full
+        description: Show full raw diff.
+      - name: request-key
+        description: Show diffs only for this request key.
+        arguments:
+        - name: request_key
+    - name: list
+      description: List request snapshots
+      options:
+      - name: format
+        description: Format output.
+        arguments:
+        - name: format
+          acceptedValues:
+          - json
+          - simple
+      - name: pending
+        description: Lists not yet processed snapshots.
+      - name: scenario-key
+        description: Only include snapshots for this scenario (scenario key).
+        arguments:
+        - name: scenario_key
+      - name: search
+        description: Regex pattern to filter snapshots by.
+        arguments:
+        - name: search
+      - name: select
+        description: Select column(s) to display.
+        arguments:
+        - name: select
+      - name: size
+        description: Number of rows to display.
+        arguments:
+        - name: size
+      - name: without-headers
+        description: Disable printing column headers.
+    - name: reset
+      description: Reset a request to its snapshot state
+      arguments:
+      - name: request_key
+        required: true
+      options:
+      - name: force
+        description: Toggles whether request are hard deleted.
+  - name: test
+    description: Test a request
+    arguments:
+    - name: request_key
+      required: true
+    options:
+    - name: aggregate-failures
+      description: Toggles whether to continue execution on failure.
+    - name: alias-resolve-strategy
+      description: Strategy for resolving dynamic values for aliases.
+      arguments:
+      - name: alias_resolve_strategy
+        acceptedValues:
+        - none
+        - fifo
+        - lifo
+    - name: assign
+      description: 'Assign alias values. Format: <NAME>=<VALUE>'
+      arguments:
+      - name: assign
+    - name: filter
+      description: For iterable responses, selectively test properties.
+      arguments:
+      - name: filter
+        acceptedValues:
+        - all
+        - alias
+        - link
+    - name: format
+      description: Format replay response.
+      arguments:
+      - name: format
+        acceptedValues:
+        - body
+        - json
+    - name: group-by
+      description: Repeat for each alias name.
+      arguments:
+      - name: group_by
+    - name: host
+      description: Rewrite request host.
+      arguments:
+      - name: host
+    - name: lifecycle-hooks-path
+      description: Path to lifecycle hooks script.
+      arguments:
+      - name: lifecycle_hooks_path
+    - name: log-level
+      description: Configure which logs to print. Defaults to warning.
+      arguments:
+      - name: log_level
+        acceptedValues:
+        - debug
+        - info
+        - warning
+        - error
+    - name: openapi-specification-path
+      description: Path to OpenAPI specification file.
+      arguments:
+      - name: openapi_specification_path
+    - name: output-level
+      description: Configure which tests to print. Defaults to passed.
+      arguments:
+      - name: output_level
+        acceptedValues:
+        - failed
+        - skipped
+        - passed
+    - name: public-dir-path
+      description: Path to public files. Used for mocking requests.
+      arguments:
+      - name: public_dir_path
+    - name: remote-project-key
+      description: Use remote project for endpoint definitions.
+      arguments:
+      - name: remote_project_key
+    - name: report-key
+      description: Save to report.
+      arguments:
+      - name: report_key
+    - name: response-fixtures-path
+      description: Path to response fixtures yaml. Used for mocking requests.
+      arguments:
+      - name: response_fixtures_path
+    - name: save
+      description: Saves test results.
+    - name: scheme
+      description: Rewrite request scheme.
+      arguments:
+      - name: scheme
+        acceptedValues:
+        - http
+        - https
+    - name: strategy
+      description: How to test responses.
+      arguments:
+      - name: strategy
+        acceptedValues:
+        - contract
+        - custom
+        - diff
+        - fuzzy
+    - name: trace-id
+      description: Use existing trace.
+      arguments:
+      - name: trace_id
+    - name: validate
+      description: 'Validate one or more aliases. Format: <NAME>=?<TYPE>'
+      arguments:
+      - name: validate
+  - name: update
+    description: Update a request
+    arguments:
+    - name: request_key
+      required: true
+    options:
+    - name: body
+      description: Raw request body.
+      arguments:
+      - name: body
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: header
+      description: 'Set or delete a request header. Format: NAME:VALUE. Empty VALUE deletes the header.'
+      arguments:
+      - name: header
+    - name: host
+      description: Rewrite request host.
+      arguments:
+      - name: host
+    - name: latency
+      description: Response latency in milliseconds.
+      arguments:
+      - name: latency
+    - name: method
+      description: Rewrite request method.
+      arguments:
+      - name: method
+    - name: path
+      description: Rewrite request path.
+      arguments:
+      - name: path
+    - name: port
+      description: Rewrite request port.
+      arguments:
+      - name: port
+    - name: response-body
+      description: Raw response body.
+      arguments:
+      - name: response_body
+    - name: response-header
+      description: 'Set or delete a response header. Format: NAME:VALUE. Empty VALUE deletes the header.'
+      arguments:
+      - name: response_header
+    - name: scenario-key
+      description: Assign scenario. Pass with no value to clear.
+      arguments:
+      - name: scenario_key
+    - name: scheme
+      description: Rewrite request scheme.
+      arguments:
+      - name: scheme
+        acceptedValues:
+        - http
+        - https
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: status
+      description: HTTP status code.
+      arguments:
+      - name: status
+    - name: url
+      description: Rewrite request URL.
+      arguments:
+      - name: url
+    - name: without-headers
+      description: Disable printing column headers.
+  exitCodes:
+  - code: 0
+    description: Success
+  - code: 1
+    description: Validation or runtime error

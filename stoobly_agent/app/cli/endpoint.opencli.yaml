@@ -1,0 +1,75 @@
+# OpenCLI Description for stoobly-agent endpoint
+# Source: stoobly_agent/app/cli/endpoint_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: "0.1"
+info:
+  title: stoobly-agent endpoint
+  summary: Manage endpoints from OpenAPI specs
+  description: |
+    CLI contract for the `stoobly-agent endpoint` command group.
+    Invoked as `stoobly-agent endpoint <command> …`.
+    Includes options that are feature-gated (local/remote) so the contract is complete.
+  version: "2.5.3"
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: " "
+command:
+  name: endpoint
+  description: Manage endpoints
+  exitCodes:
+    - code: 0
+      description: Success
+    - code: 1
+      description: Validation or runtime error
+  commands:
+    - name: apply
+      description: Apply endpoint to requests
+      options:
+        - name: lifecycle-hooks-path
+          description: Path to lifecycle hooks script.
+          arguments:
+            - name: path
+        - name: project-key
+          description: "Project to create endpoint to. Feature-gated: remote."
+          arguments:
+            - name: key
+        - name: remote-project-key
+          description: "Which remote project to apply endpoints from. Feature-gated: local and remote."
+          arguments:
+            - name: key
+        - name: scenario-key
+          description: Which scenario requests to apply the endpoint to. If none, then the endpoint will be applied to all requests.
+          arguments:
+            - name: key
+        - name: source-format
+          required: true
+          description: Spec file format.
+          arguments:
+            - name: format
+              acceptedValues: [openapi]
+        - name: source-path
+          description: Path to spec file.
+          arguments:
+            - name: path
+      examples:
+        - stoobly-agent endpoint apply --source-format openapi --source-path ./openapi.yaml
+        - stoobly-agent endpoint apply --source-format openapi --source-path ./openapi.yaml --scenario-key <key>
+
+    - name: import
+      description: Import endpoints
+      options:
+        - name: source-format
+          required: true
+          description: Spec file format.
+          arguments:
+            - name: format
+              acceptedValues: [openapi]
+        - name: source-path
+          description: Path to spec file.
+          arguments:
+            - name: path
+      examples:
+        - stoobly-agent endpoint import --source-format openapi --source-path ./openapi.yaml

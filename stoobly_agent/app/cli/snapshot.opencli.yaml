@@ -1,0 +1,77 @@
+# OpenCLI Description for stoobly-agent snapshot
+# Source: stoobly_agent/app/cli/snapshot_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: '0.1'
+info:
+  title: stoobly-agent snapshot
+  summary: Manage request and scenario snapshots
+  description: |
+    CLI contract for the `stoobly-agent snapshot` command group.
+    Invoked as `stoobly-agent snapshot <command> …`.
+    Includes options and subcommands that are feature-gated (local/remote) so the contract is complete.
+  version: 2.5.3
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: ' '
+command:
+  name: snapshot
+  description: Manage snapshots
+  commands:
+  - name: apply
+    description: Apply snapshots.
+    arguments:
+    - name: uuid
+      required: false
+    options:
+    - name: force
+      description: Toggles whether resources are hard deleted.
+    - name: lock-timeout
+      description: 'Lock timeout in seconds (default: 60).'
+      arguments:
+      - name: lock_timeout
+  - name: copy
+    description: Copy snapshots to a different data directory.
+    arguments:
+    - name: destination
+      required: true
+    options:
+    - name: request-key
+      arguments:
+      - name: request_key
+    - name: scenario-key
+      arguments:
+      - name: scenario_key
+  - name: prune
+    description: Prune deleted snapshots.
+    options:
+    - name: dry-run
+  - name: reset
+    description: Reset requests and scenarios that have snapshots to their last snapshot state.
+    options:
+    - name: hard
+      description: Delete all requests and scenarios before resetting.
+    - name: lock-timeout
+      description: 'Lock timeout in seconds (default: 60).'
+      arguments:
+      - name: lock_timeout
+    - name: 'yes'
+      description: Proceed without confirmation.
+  - name: update
+    description: Update a snapshot.
+    arguments:
+    - name: file_path
+      required: true
+    options:
+    - name: lifecycle-hooks-path
+      description: Path to lifecycle hooks script.
+      arguments:
+      - name: lifecycle_hooks_path
+    - name: no-verify
+  exitCodes:
+  - code: 0
+    description: Success
+  - code: 1
+    description: Validation or runtime error

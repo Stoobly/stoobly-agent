@@ -1,0 +1,384 @@
+# OpenCLI Description for stoobly-agent scenario
+# Source: stoobly_agent/app/cli/scenario_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: '0.1'
+info:
+  title: stoobly-agent scenario
+  summary: Manage scenarios and scenario snapshots
+  description: |
+    CLI contract for the `stoobly-agent scenario` command group.
+    Invoked as `stoobly-agent scenario <command> …`.
+    Includes options and subcommands that are feature-gated (local/remote) so the contract is complete.
+  version: 2.5.3
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: ' '
+command:
+  name: scenario
+  description: Manage scenarios
+  commands:
+  - name: create
+    description: Create a scenario
+    arguments:
+    - name: name
+      required: true
+    options:
+    - name: description
+      description: Scenario description.
+      arguments:
+      - name: description
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: project-key
+      description: Project to create scenario in.
+      arguments:
+      - name: project_key
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: delete
+    description: Delete a scenario
+    arguments:
+    - name: scenario_key
+      required: true
+  - name: import
+    description: Import a scenario from a file
+    arguments:
+    - name: file
+      required: true
+    options:
+    - name: format
+      description: Import file format.
+      arguments:
+      - name: format
+        acceptedValues:
+        - har
+        - gor
+    - name: overwrite
+      description: Delete existing requests in the target scenario before importing.
+    - name: scenario-key
+      description: Import into an existing scenario. When omitted, creates a new scenario named <filename>-<timestamp>.
+      arguments:
+      - name: scenario_key
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: list
+    description: Show all scenarios
+    options:
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: page
+      arguments:
+      - name: page
+    - name: project-key
+      description: Project to create scenario in.
+      arguments:
+      - name: project_key
+    - name: search
+      description: Query to filter scenarios by
+      arguments:
+      - name: search
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: size
+      arguments:
+      - name: size
+    - name: sort-by
+      description: created_at|name
+      arguments:
+      - name: sort_by
+    - name: sort-order
+      description: asc | desc
+      arguments:
+      - name: sort_order
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: replay
+    description: Replay a scenario
+    arguments:
+    - name: key
+      required: true
+    options:
+    - name: alias-resolve-strategy
+      description: Strategy for resolving dynamic values for aliases.
+      arguments:
+      - name: alias_resolve_strategy
+        acceptedValues:
+        - none
+        - fifo
+        - lifo
+    - name: assign
+      description: 'Assign alias values. Format: <NAME>=<VALUE>'
+      arguments:
+      - name: assign
+    - name: format
+      description: Format replay response.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+    - name: group-by
+      description: Repeat for each alias name.
+      arguments:
+      - name: group_by
+    - name: host
+      description: Rewrite request host.
+      arguments:
+      - name: host
+    - name: lifecycle-hooks-path
+      description: Path to lifecycle hooks script.
+      arguments:
+      - name: lifecycle_hooks_path
+    - name: log-level
+      description: Configure which logs to print. Defaults to warning.
+      arguments:
+      - name: log_level
+        acceptedValues:
+        - debug
+        - info
+        - warning
+        - error
+    - name: overwrite
+      description: Replay scenario and overwrite existing responses.
+    - name: record
+      description: Replay scenario and record.
+    - name: save
+      description: Replay scenario and save to history.
+    - name: scenario-key
+      description: Record to scenario.
+      arguments:
+      - name: scenario_key
+    - name: scheme
+      description: Rewrite request scheme.
+      arguments:
+      - name: scheme
+    - name: trace-id
+      description: Use existing trace.
+      arguments:
+      - name: trace_id
+    - name: validate
+      description: 'Validate one or more aliases. Format: <NAME>=?<TYPE>'
+      arguments:
+      - name: validate
+  - name: show
+    description: Show a scenario
+    arguments:
+    - name: key
+      required: true
+    options:
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: without-headers
+      description: Disable printing column headers.
+  - name: snapshot
+    description: Manage scenario snapshots
+    commands:
+    - name: create
+      description: Create a scenario snapshot
+      arguments:
+      - name: scenario_key
+        required: true
+      options:
+      - name: action
+        description: Sets snapshot action.
+        arguments:
+        - name: action
+          acceptedValues:
+          - DELETE
+          - PUT
+      - name: decode
+        description: Toggles whether to decode response bodies.
+      - name: lifecycle-hooks-path
+        description: Path to lifecycle hooks script.
+        arguments:
+        - name: lifecycle_hooks_path
+      - name: no-verify
+    - name: diff
+      description: Show diff between current scenario and its snapshot
+      options:
+      - name: full
+        description: Show full raw diffs for each request.
+      - name: scenario-key
+        description: Show diffs only for this scenario key.
+        arguments:
+        - name: scenario_key
+    - name: list
+      description: List scenario snapshots
+      options:
+      - name: format
+        description: Format output.
+        arguments:
+        - name: format
+          acceptedValues:
+          - json
+          - simple
+      - name: pending
+        description: Lists not yet processed snapshots.
+      - name: scenario-key
+        description: Only include snapshots for this scenario (scenario key).
+        arguments:
+        - name: scenario_key
+      - name: search
+        description: Regex pattern to filter snapshots by.
+        arguments:
+        - name: search
+      - name: select
+        description: Select column(s) to display.
+        arguments:
+        - name: select
+      - name: size
+        description: Number of rows to display.
+        arguments:
+        - name: size
+      - name: without-headers
+        description: Disable printing column headers.
+    - name: reset
+      description: Reset a scenario to its snapshot state
+      arguments:
+      - name: scenario_key
+        required: true
+      options:
+      - name: force
+        description: Toggles whether resources are hard deleted.
+  - name: test
+    description: Replay and test a scenario
+    arguments:
+    - name: key
+      required: true
+    options:
+    - name: aggregate-failures
+      description: Toggles whether to continue execution on failure.
+    - name: alias-resolve-strategy
+      description: Strategy for resolving dynamic values for aliases.
+      arguments:
+      - name: alias_resolve_strategy
+        acceptedValues:
+        - none
+        - fifo
+        - lifo
+    - name: assign
+      description: 'Assign alias values. Format: <NAME>=<VALUE>'
+      arguments:
+      - name: assign
+    - name: filter
+      description: For iterable responses, selectively test properties.
+      arguments:
+      - name: filter
+        acceptedValues:
+        - all
+        - alias
+        - link
+    - name: format
+      description: Format replay response.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+    - name: group-by
+      description: Repeat for each alias name.
+      arguments:
+      - name: group_by
+    - name: host
+      description: Rewrite request host.
+      arguments:
+      - name: host
+    - name: lifecycle-hooks-path
+      description: Path to lifecycle hooks script.
+      arguments:
+      - name: lifecycle_hooks_path
+    - name: log-level
+      description: Configure which logs to print. Defaults to warning.
+      arguments:
+      - name: log_level
+        acceptedValues:
+        - debug
+        - info
+        - warning
+        - error
+    - name: openapi-specification-path
+      description: Path to OpenAPI specification file.
+      arguments:
+      - name: openapi_specification_path
+    - name: output-level
+      description: Configure which tests to print. Defaults to passed.
+      arguments:
+      - name: output_level
+        acceptedValues:
+        - failed
+        - skipped
+        - passed
+    - name: public-dir-path
+      description: Path to public files. Used for mocking requests.
+      arguments:
+      - name: public_dir_path
+    - name: remote-project-key
+      description: Use remote project for endpoint definitions.
+      arguments:
+      - name: remote_project_key
+    - name: report-key
+      description: Save results to report.
+      arguments:
+      - name: report_key
+    - name: response-fixtures-path
+      description: Path to response fixtures yaml. Used for mocking requests.
+      arguments:
+      - name: response_fixtures_path
+    - name: save
+      description: Save results.
+    - name: scheme
+      description: Rewrite request scheme.
+      arguments:
+      - name: scheme
+    - name: strategy
+      description: How to test responses.
+      arguments:
+      - name: strategy
+        acceptedValues:
+        - contract
+        - custom
+        - diff
+        - fuzzy
+    - name: trace-id
+      description: Use existing trace.
+      arguments:
+      - name: trace_id
+    - name: validate
+      description: 'Validate one or more aliases. Format: <NAME>=?<TYPE>'
+      arguments:
+      - name: validate
+  exitCodes:
+  - code: 0
+    description: Success
+  - code: 1
+    description: Validation or runtime error
