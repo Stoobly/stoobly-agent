@@ -52,7 +52,7 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
           raise
 
-        return self.success(scenario_record.to_dict())
+        return self.success(self.__to_show_response(scenario_record))
     except self.__DuplicateScenarioNameError:
       name = params.get('name') or ''
       if name:
@@ -147,6 +147,8 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
   def __to_show_response(self, scenario: Scenario) -> ScenarioShowResponse:
     res = scenario.to_dict()
+    if not res.get('requests_count'):
+      res['requests_count'] = 0
     return res
 
   def __scenario_not_found(self):
