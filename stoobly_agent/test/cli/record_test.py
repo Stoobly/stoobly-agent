@@ -284,6 +284,45 @@ class TestRecording():
 
         assert Request.count() == 1, 'Request should be included'
 
+  class TestCookie():
+    @pytest.fixture(scope='function', autouse=True)
+    def settings(self):
+      return reset()
+
+    def test_it_sets_cookie_header(self, runner: CliRunner):
+      record_result = runner.invoke(record, ['-b', 'session=abc123; user=john', DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+
+      _request = Request.last()
+      python_request = RawHttpRequestAdapter(_request.raw).to_request()
+
+      assert python_request.headers.get('Cookie') == 'session=abc123; user=john'
+
+    def test_it_sets_cookie_header_from_file(self, runner: CliRunner, tmp_path):
+      cookie_file = tmp_path / 'cookies.txt'
+      cookie_file.write_text('token=xyz; theme=dark')
+
+      record_result = runner.invoke(record, ['-b', str(cookie_file), DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+
+      _request = Request.last()
+      python_request = RawHttpRequestAdapter(_request.raw).to_request()
+
+      assert python_request.headers.get('Cookie') == 'token=xyz; theme=dark'
+
+    def test_it_merges_multiple_cookie_options(self, runner: CliRunner):
+      record_result = runner.invoke(record, [
+        '-b', 'session=abc123',
+        '-b', 'user=john',
+        DETERMINISTIC_GET_REQUEST_URL,
+      ])
+      assert record_result.exit_code == 0
+
+      _request = Request.last()
+      python_request = RawHttpRequestAdapter(_request.raw).to_request()
+
+      assert python_request.headers.get('Cookie') == 'session=abc123; user=john'
+
   class TestScenario():
 
     @pytest.fixture()

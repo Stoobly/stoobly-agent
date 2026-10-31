@@ -294,6 +294,12 @@ def run(**kwargs):
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+  '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]),
+  help=f'''
+    Configure which logs to print. Defaults to {logger.WARNING}.
+  '''
+)
 @click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
@@ -307,6 +313,8 @@ def mock(**kwargs):
   from stoobly_agent.app.cli.helpers.handle_mock_service import print_raw_response
   from stoobly_agent.app.proxy.constants import custom_response_codes
   from stoobly_agent.lib.utils.decode import decode
+
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
   
   if kwargs.get('remote_project_key'):
     validate_project_key(kwargs['remote_project_key'])
@@ -332,6 +340,12 @@ def mock(**kwargs):
 @main.command(
   help="Record request"
 )
+@click.option('-b', '--cookie', multiple=True, help='''
+  Pass the data to the HTTP server in the Cookie header. It is supposedly the
+  data previously received from the server in a Set-Cookie line. The data should
+  be in the format "NAME1=VALUE1; NAME2=VALUE2". If no = sign is used in the
+  argument, it is instead treated as a filename to read previously stored cookie from.
+''')
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
@@ -362,6 +376,8 @@ def record(**kwargs):
 
 def __build_request_from_curl(**kwargs):
   import requests
+
+  from stoobly_agent.app.cli.helpers.cookie_header import build_cookie_header
   
   headers = {}
   for header in kwargs['header']:
@@ -371,6 +387,14 @@ def __build_request_from_curl(**kwargs):
       continue
 
     headers[toks[0].strip()] = toks[1].strip()
+
+  cookie_header = build_cookie_header(kwargs.get('cookie') or (), kwargs['url'])
+  if cookie_header:
+    existing_key = next((key for key in headers if key.lower() == 'cookie'), None)
+    if existing_key:
+      headers[existing_key] = f"{headers[existing_key]}; {cookie_header}"
+    else:
+      headers['Cookie'] = cookie_header
 
   return requests.Request(
     data=kwargs['data'],
