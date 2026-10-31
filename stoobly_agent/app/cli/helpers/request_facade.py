@@ -19,8 +19,36 @@ class RequestFacade(ReplayFacade):
 
   def __init__(self, settings: Settings):
     self.__model = RequestModel(settings)
+    self.__settings = settings
 
     super().__init__(settings)
+
+  def create(self, params: dict):
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
+
+    builder_params = {
+      'method': params.get('method') or 'GET',
+      'url': params['url'],
+      'request_body': params.get('body') if params.get('body') is not None else b'',
+      'request_headers': params.get('headers') or {},
+      'response_body': params.get('response_body') if params.get('response_body') is not None else b'',
+      'response_headers': params.get('response_headers') or {},
+      'status_code': params.get('status') if params.get('status') is not None else 200,
+    }
+
+    if params.get('scenario_id') is not None:
+      builder_params['scenario_id'] = params['scenario_id']
+
+    res, status = RequestBuilder(**builder_params).with_settings(self.__settings).build()
+    if status != 200:
+      return res, status
+
+    created = res['list'][0]
+    latency = params.get('latency')
+    if latency is None:
+      return created, status
+
+    return self.update(created['key'], {'latency': latency})
 
   def delete(self, request_key: str):
     key = RequestKey(request_key)

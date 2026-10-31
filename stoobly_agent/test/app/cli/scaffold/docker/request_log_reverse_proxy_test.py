@@ -136,8 +136,11 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
     return False
 
 
-def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries=20, interval=0.25):
-    """Poll scaffold request logs list until a matching entry appears."""
+def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries=120, interval=0.25):
+    """Poll scaffold request logs list until a matching entry appears.
+
+    Default wait is ~30s so async record uploads (executor + log queue) can finish in CI.
+    """
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [

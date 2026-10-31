@@ -49,6 +49,7 @@ class TestCliSubcommandsLoad:
     SUBCOMMANDS = [
         ['endpoint', 'import'],
         ['request', 'list'],
+        ['request', 'create'],
         ['scaffold', 'app'],
         ['scaffold', 'app', 'create'],
         ['scaffold', 'apply'],

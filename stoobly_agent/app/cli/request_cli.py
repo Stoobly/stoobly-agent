@@ -13,7 +13,7 @@ from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
 from .handlers.request_cli_handler import (
-  delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler, response_update_handler
+  create_handler, delete_handler, get_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler, response_update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -34,6 +34,25 @@ log_levels = [logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]
 @click.pass_context
 def request(ctx):
     pass
+
+if is_local:
+  @request.command(
+    help="Create a request"
+  )
+  @click.option('--body', help='Raw request body.')
+  @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+  @click.option('--header', multiple=True, help='Set a request header. Format: NAME:VALUE.')
+  @click.option('--latency', type=int, help='Response latency in milliseconds.')
+  @click.option('--method', default='GET', help='HTTP method. Defaults to GET.')
+  @click.option('--response-body', help='Raw response body.')
+  @click.option('--response-header', multiple=True, help='Set a response header. Format: NAME:VALUE.')
+  @click.option('--scenario-key', help='Assign scenario.')
+  @click.option('--select', multiple=True, help='Select column(s) to display.')
+  @click.option('--status', type=int, default=200, help='HTTP status code. Defaults to 200.')
+  @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+  @click.argument('url')
+  def create(**kwargs):
+    create_handler(kwargs)
 
 @request.command(
   help="Delete a request"
@@ -100,14 +119,18 @@ if is_local:
   )
   @click.option('--body', help='Raw request body.')
   @click.option('--format', type=click.Choice(FORMATS), help='Format output.')
-  @click.option('--header', multiple=True, help='Set or delete a header. Format: NAME:VALUE. Empty VALUE deletes the header.')
+  @click.option('--header', multiple=True, help='Set or delete a request header. Format: NAME:VALUE. Empty VALUE deletes the header.')
   @click.option('--host', help='Rewrite request host.')
+  @click.option('--latency', type=int, help='Response latency in milliseconds.')
   @click.option('--method', help='Rewrite request method.')
   @click.option('--path', help='Rewrite request path.')
   @click.option('--port', help='Rewrite request port.')
+  @click.option('--response-body', help='Raw response body.')
+  @click.option('--response-header', multiple=True, help='Set or delete a response header. Format: NAME:VALUE. Empty VALUE deletes the header.')
   @click.option('--scenario-key', is_flag=False, flag_value='', default=None, help='Assign scenario. Pass with no value to clear.')
   @click.option('--scheme', type=click.Choice(['http', 'https']), help='Rewrite request scheme.')
   @click.option('--select', multiple=True, help='Select column(s) to display.')
+  @click.option('--status', type=int, help='HTTP status code.')
   @click.option('--url', help='Rewrite request URL.')
   @click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
   @click.argument('request_key')
