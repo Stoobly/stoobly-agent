@@ -67,9 +67,11 @@ class ScenariosController:
                     settings=Settings.instance(),
                 )
             except InvalidRequestFormatError as e:
+                scenario_model.destroy(scenario['uuid'], force=True)
                 return context.bad_request(str(e))
 
             if import_status >= 400:
+                scenario_model.destroy(scenario['uuid'], force=True)
                 error = import_res.get('error') if isinstance(import_res, dict) else import_res
                 return context.bad_request(error or 'Could not import file')
 

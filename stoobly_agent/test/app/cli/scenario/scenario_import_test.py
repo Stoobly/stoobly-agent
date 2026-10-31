@@ -139,8 +139,37 @@ class TestScenarioImportInvalidHar:
     path = tmp_path / 'bad.har'
     path.write_text('not-json')
 
+    before = Scenario.count()
     result = runner.invoke(scenario, ['import', '--format', 'har', str(path)])
     assert result.exit_code != 0
+    assert Scenario.count() == before
+
+  def test_overwrite_preserves_requests_when_import_fails(self, runner: CliRunner, tmp_path):
+    create_result = runner.invoke(
+      scenario, ['create', '--without-headers', '--select', 'key', 'overwrite-fail'],
+    )
+    assert create_result.exit_code == 0
+    scenario_key = create_result.output.strip()
+
+    seed = runner.invoke(request, ['create', 'https://example.com/keep-me', '--scenario-key', scenario_key])
+    assert seed.exit_code == 0
+    scenario_record = Scenario.find_by(uuid=ScenarioKey(scenario_key).id)
+    assert scenario_record.requests.count() == 1
+    kept_path = scenario_record.requests.first().path
+
+    path = tmp_path / 'bad.har'
+    path.write_text('{"log": null}')
+
+    result = runner.invoke(
+      scenario,
+      ['import', '--format', 'har', '--scenario-key', scenario_key, '--overwrite', str(path)],
+    )
+    assert result.exit_code != 0
+
+    scenario_record = Scenario.find_by(uuid=ScenarioKey(scenario_key).id)
+    assert scenario_record is not None
+    assert scenario_record.requests.count() == 1
+    assert scenario_record.requests.first().path == kept_path
 
 
 class TestSharedCreateFirewallAndRewrite:

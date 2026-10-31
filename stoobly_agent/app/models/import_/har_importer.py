@@ -42,18 +42,26 @@ class HarImporter:
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
       return {'error': f'Invalid HAR file: could not parse JSON ({e})'}, 400
 
-    entries = data.get('log', {}).get('entries') if isinstance(data, dict) else None
+    entries = (data.get('log') or {}).get('entries') if isinstance(data, dict) else None
     if not isinstance(entries, list):
       return {'error': 'Invalid HAR file: missing log.entries'}, 400
 
     created = []
     for entry in entries:
+      if not isinstance(entry, dict):
+        continue
+
       resource_type = entry.get('_resourceType')
       if resource_type is not None and resource_type not in ('xhr', 'document'):
         continue
 
       request = entry.get('request') or {}
-      response = self.__preprocess_response(entry.get('response') or {})
+      if not isinstance(request, dict):
+        request = {}
+      response = entry.get('response') or {}
+      if not isinstance(response, dict):
+        response = {}
+      response = self.__preprocess_response(response)
 
       builder = RequestBuilder(
         method=request.get('method') or 'GET',
@@ -66,10 +74,10 @@ class HarImporter:
         scenario_id=scenario_id,
       ).with_settings(settings)
 
-      res, status = builder.build()
+      res, status = builder.build(skip_if_not_allowed=True)
+      if res is None and status is None:
+        continue
       if status != 200:
-        if status == 403:
-          continue
         return res, status
 
       created.append(res['list'][0])

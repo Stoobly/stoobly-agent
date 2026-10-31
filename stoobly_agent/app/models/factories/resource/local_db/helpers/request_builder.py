@@ -68,7 +68,7 @@ class RequestBuilder():
   def url(self):
     return self.__properties.get('url')
 
-  def build(self):
+  def build(self, skip_if_not_allowed: bool = False):
     # Lazy import for runtime usage
     import requests
     req = requests.Request(
@@ -100,6 +100,7 @@ class RequestBuilder():
         model,
         settings=self.settings,
         scenario_id=self.scenario_id,
+        skip_if_not_allowed=skip_if_not_allowed,
       )
     except RequestNotAllowedError as e:
       return {'error': str(e)}, REQUEST_NOT_ALLOWED_STATUS

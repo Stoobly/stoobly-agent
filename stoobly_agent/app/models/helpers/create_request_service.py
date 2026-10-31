@@ -51,7 +51,7 @@ def create_from_flow(
   if not allowed_request(flow.request, intercept_settings, mode.RECORD):
     if skip_if_not_allowed:
       return None, None
-    raise RequestNotAllowedError('Request blocked by firewall rules')
+    raise RequestNotAllowedError('Request blocked by filter rules')
 
   rewrite_request_response(flow, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
 

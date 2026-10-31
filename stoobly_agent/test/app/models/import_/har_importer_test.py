@@ -29,6 +29,34 @@ class TestLooksLikeGor:
     assert not looks_like_gor(har)
 
 
+class TestHarImporterInvalidStructure:
+
+  def test_it_returns_400_when_log_is_null(self, settings: Settings):
+    res, status = HarImporter().import_file('{"log": null}', scenario_id=None, settings=settings)
+    assert status == 400
+    assert 'missing log.entries' in res['error']
+
+  def test_it_skips_non_dict_entries(self, settings: Settings):
+    har = {
+      'log': {
+        'entries': [
+          None,
+          'skip-me',
+          {
+            '_resourceType': 'xhr',
+            'request': {'method': 'GET', 'url': 'https://example.com/ok', 'headers': []},
+            'response': {'status': 200, 'headers': [], 'content': {'text': '{}'}},
+          },
+        ]
+      }
+    }
+    before = Request.count()
+    res, status = HarImporter().import_file(json.dumps(har), scenario_id=None, settings=settings)
+    assert status == 200
+    assert res['total'] == 1
+    assert Request.count() == before + 1
+
+
 class TestHarImporterWrongFormat:
 
   def test_it_returns_clear_error_for_gor_content(self, settings: Settings):

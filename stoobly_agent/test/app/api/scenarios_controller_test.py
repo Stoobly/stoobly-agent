@@ -136,3 +136,18 @@ class TestScenariosControllerCreate:
 
     mock_context.bad_request.assert_called_once()
     mock_context.render.assert_not_called()
+
+  def test_it_destroys_scenario_when_import_fails(self, controller, mock_context):
+    before = Scenario.count()
+    mock_context.params = {
+      'name': 'orphan-scenario',
+      'format': 'har',
+      'file': '{"log": null}',
+    }
+
+    controller.create(mock_context)
+
+    mock_context.bad_request.assert_called_once()
+    mock_context.render.assert_not_called()
+    assert Scenario.count() == before
+    assert Scenario.find_by(name='orphan-scenario') is None
