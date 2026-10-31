@@ -8,10 +8,8 @@ from urllib.parse import urlparse
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
-from stoobly_agent.app.models.helpers.create_request_service import (
-    InvalidRequestFormatError,
-    create_from_gor,
-)
+from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
+from stoobly_agent.app.models.import_ import GOR_FORMAT, IMPORT_FORMATS, get_importer
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
@@ -46,6 +44,11 @@ class RequestsController:
         raw_requests = body_params.get('requests')
         payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER
 
+        format = body_params.get('format')
+        format = decode(format) if format is not None else GOR_FORMAT
+        if format not in IMPORT_FORMATS:
+            return context.bad_request(f"Invalid format. Expected one of: {', '.join(IMPORT_FORMATS)}")
+
         scenario_id = body_params.get('scenario_id')
         scenario_id = int(body_params.get('scenario_id')) if scenario_id else None
 
@@ -56,16 +59,21 @@ class RequestsController:
             except (TypeError, ValueError):
                 return context.bad_request('Invalid sequence_id')
 
+        importer = get_importer(format)
         try:
-            result, status = create_from_gor(
+            result, status = importer.import_file(
                 raw_requests,
-                self.__request_model(context),
-                scenario_id=scenario_id,
+                scenario_id,
+                settings=Settings.instance(),
                 sequence_id=sequence_id,
                 payloads_delimitter=payloads_delimitter,
             )
         except InvalidRequestFormatError as e:
             return context.bad_request(str(e))
+
+        if status >= 400:
+            error = result.get('error') if isinstance(result, dict) else result
+            return context.bad_request(error or 'Could not import requests')
 
         if context.filter_response(result, status):
             return

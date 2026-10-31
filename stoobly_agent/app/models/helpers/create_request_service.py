@@ -110,14 +110,16 @@ def create_from_gor(
   """
   payloads_delimitter = payloads_delimitter or REQUEST_DELIMITTER
   if isinstance(raw_requests, str):
-    raw_requests = raw_requests.encode()
+    raw_bytes = raw_requests.encode()
+  else:
+    raw_bytes = raw_requests
   if isinstance(payloads_delimitter, str):
     payloads_delimitter = payloads_delimitter.encode()
 
-  toks = raw_requests.split(payloads_delimitter)
+  toks = raw_bytes.split(payloads_delimitter)
 
   if len(toks) % 2 != 0:
-    raise InvalidRequestFormatError('Invalid requests format')
+    raise InvalidRequestFormatError('Invalid GOR format')
 
   created_requests = []
 
@@ -126,7 +128,7 @@ def create_from_gor(
     create_params = build_params(raw_request, payloads_delimitter)
 
     if not create_params:
-      raise InvalidRequestFormatError('Could not parse requests')
+      raise InvalidRequestFormatError('Could not parse GOR requests')
 
     res, status = create_from_flow(
       create_params['flow'],

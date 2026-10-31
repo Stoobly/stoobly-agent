@@ -1,26 +1,50 @@
 import base64
 import json
-from typing import List, Tuple
+import re
+from typing import List, Tuple, Union
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
+from stoobly_agent.app.proxy.record import REQUEST_DELIMITTER
 from stoobly_agent.app.settings import Settings
+
+_GOR_CONTROL_LINE = re.compile(rb'^[12] ')
+
+
+def looks_like_gor(raw_data: Union[bytes, bytearray, str]) -> bool:
+  if isinstance(raw_data, str):
+    raw_bytes = raw_data.encode('utf-8', errors='replace')
+  else:
+    raw_bytes = bytes(raw_data)
+
+  if REQUEST_DELIMITTER in raw_bytes:
+    return True
+
+  # GOR payloads start with a type-1 (request) or type-2 (response) control line.
+  # json.loads often parses the leading "1" as a number and fails with Extra data.
+  first_line = raw_bytes.lstrip(b'\r\n').split(b'\n', 1)[0]
+  return bool(_GOR_CONTROL_LINE.match(first_line))
 
 
 class HarImporter:
 
-  def import_file(self, raw_data, scenario_id, settings: Settings = None) -> Tuple[dict, int]:
+  def import_file(self, raw_data, scenario_id, settings: Settings = None, **_kwargs) -> Tuple[dict, int]:
     settings = settings or Settings.instance()
+
+    if looks_like_gor(raw_data):
+      return {
+        'error': 'Content looks like GOR. Try format GOR instead.'
+      }, 400
 
     try:
       if isinstance(raw_data, (bytes, bytearray)):
         raw_data = raw_data.decode('utf-8')
       data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
-      return {'error': f'Invalid JSON: {e}'}, 400
+      return {'error': f'Invalid HAR file: could not parse JSON ({e})'}, 400
 
     entries = data.get('log', {}).get('entries') if isinstance(data, dict) else None
     if not isinstance(entries, list):
-      return {'error': 'Missing log.entries'}, 400
+      return {'error': 'Invalid HAR file: missing log.entries'}, 400
 
     created = []
     for entry in entries:
