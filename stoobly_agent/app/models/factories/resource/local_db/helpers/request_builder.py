@@ -15,6 +15,7 @@ class RequestProperties(TypedDict):
   request_headers: dict
   response_body: bytes
   response_headers: bytes
+  scenario_id: str
   status_code: int
 
 class RequestBuilder():
@@ -46,6 +47,10 @@ class RequestBuilder():
   @property
   def response_headers(self):
     return self.__properties.get('response_headers') or {}
+
+  @property
+  def scenario_id(self):
+    return self.__properties.get('scenario_id')
 
   @property
   def settings(self):
@@ -84,6 +89,8 @@ class RequestBuilder():
     res.status_code = self.status_code
 
     params = build_params_from_python(req, res)
+    if self.scenario_id is not None:
+      params['scenario_id'] = self.scenario_id
 
     model = RequestModel(self.settings)
     return model.create(**params)
@@ -110,7 +117,13 @@ class RequestBuilder():
         return headers[k]
 
   def __serialize_body(self, body: Union[bytes, str], content_type: str):
-    if not isinstance(body, bytes) or not isinstance(body, str): 
-      body = encode_response(body, content_type)
+    if body is None:
+      return b''
+    if isinstance(body, bytes):
+      return body
+    if isinstance(body, str):
+      return body.encode()
+
+    body = encode_response(body, content_type)
     return body if isinstance(body, bytes) else body.encode()
 

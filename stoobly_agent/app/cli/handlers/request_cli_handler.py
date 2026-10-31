@@ -34,6 +34,45 @@ from ..helpers.diff_request_print import print_request_diff
 
 UPDATE_URL_KEYS = ['url', 'method', 'scheme', 'host', 'port', 'path']
 
+def create_handler(kwargs):
+  print_options = select_print_options(kwargs)
+
+  params = {
+    'url': kwargs['url'],
+    'method': kwargs.get('method') or 'GET',
+    'body': kwargs.get('body'),
+    'status': kwargs.get('status'),
+  }
+
+  header_flags = kwargs.get('header') or ()
+  if header_flags:
+    params['headers'] = __apply_header_flags({}, header_flags)
+
+  response_header_flags = kwargs.get('response_header') or ()
+  if response_header_flags:
+    params['response_headers'] = __apply_header_flags({}, response_header_flags)
+
+  response_body = kwargs.get('response_body')
+  if response_body is not None:
+    params['response_body'] = response_body
+
+  scenario_key = kwargs.get('scenario_key')
+  if scenario_key:
+    key = validate_scenario_key(scenario_key)
+    params['scenario_id'] = key.id
+
+  latency = kwargs.get('latency')
+  if latency is not None:
+    params['latency'] = 0 if latency < 0 else latency
+
+  request = RequestFacade(Settings.instance())
+  res, status = request.create(params)
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  print_requests([res], **print_options)
+
 def update_handler(kwargs):
   request_key = kwargs.pop('request_key')
   validate_request_key(request_key)
@@ -41,7 +80,9 @@ def update_handler(kwargs):
   print_options = select_print_options(kwargs)
 
   params = {}
+  response_params = {}
   has_update = False
+  has_response_update = False
 
   scenario_key = kwargs.pop('scenario_key', None)
   if scenario_key is not None:
@@ -68,15 +109,57 @@ def update_handler(kwargs):
     has_update = True
     params['headers'] = __merge_headers(request_key, header_flags)
 
-  if not has_update:
+  response_body = kwargs.pop('response_body', None)
+  if response_body is not None:
+    response_params['text'] = response_body
+    has_response_update = True
+
+  response_header_flags = kwargs.pop('response_header', ()) or ()
+  if response_header_flags:
+    has_response_update = True
+    response_params['headers'] = __merge_headers(request_key, response_header_flags, from_response=True)
+
+  status = kwargs.pop('status', None)
+  if status is not None:
+    response_params['status'] = status
+    has_response_update = True
+
+  latency = kwargs.pop('latency', None)
+  if latency is not None:
+    response_params['latency'] = 0 if latency < 0 else latency
+    has_response_update = True
+
+  if not has_update and not has_response_update:
     print('Error: At least one update option is required.', file=sys.stderr)
     sys.exit(1)
 
   request = RequestFacade(Settings.instance())
-  res, status = request.update(request_key, params)
+  res = None
 
-  if filter_response(res, status):
-    sys.exit(1)
+  if has_update:
+    res, status_code = request.update(request_key, params)
+
+    if filter_response(res, status_code):
+      sys.exit(1)
+
+  if has_response_update:
+    response = ResponseFacade(Settings.instance())
+
+    try:
+      response_res, status_code = response.update(request_key, response_params)
+    except RequestNotFoundError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
+    except ResponseNotFoundError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
+
+    if filter_response(response_res, status_code):
+      sys.exit(1)
+
+    res, status_code = request.show(request_key, {})
+    if filter_response(res, status_code):
+      sys.exit(1)
 
   print_requests([res], **print_options)
 

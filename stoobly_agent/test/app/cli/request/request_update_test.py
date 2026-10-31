@@ -4,9 +4,12 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
+from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
+from stoobly_agent.lib.utils.decode import decode
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 
 
@@ -249,3 +252,106 @@ class TestUpdateScenario:
     def test_it_clears_scenario_id(self, request_in_scenario: Request):
       refreshed = Request.find(request_in_scenario.id)
       assert refreshed.scenario_id is None
+
+
+class TestUpdateResponseOptions:
+
+  @pytest.fixture(autouse=True, scope='class')
+  def recorded_request(self, runner: CliRunner):
+    record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+    assert record_result.exit_code == 0
+    return Request.last()
+
+  @pytest.fixture(autouse=True, scope='class')
+  def update_result(self, runner: CliRunner, recorded_request: Request):
+    result = runner.invoke(
+      request,
+      [
+        'update',
+        recorded_request.key(),
+        '--path', '/updated-path',
+        '--status', '201',
+        '--response-body', '{"id":1}',
+        '--response-header', 'Content-Type:application/json',
+        '--response-header', 'X-Test:1',
+        '--latency', '42',
+      ],
+    )
+    assert result.exit_code == 0
+    return result
+
+  def test_it_updates_request_path(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    assert refreshed.path == '/updated-path'
+
+  def test_it_updates_status(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    assert RawHttpResponseAdapter(refreshed.response.raw).status == 201
+
+  def test_it_updates_response_body(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    python_response = RawHttpResponseAdapter(refreshed.response.raw).to_response()
+    assert decode(python_response.content) == '{"id":1}'
+
+  def test_it_updates_response_headers(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    headers = RawHttpResponseAdapter(refreshed.response.raw).headers
+    assert headers.get('Content-Type') == 'application/json'
+    assert headers.get('X-Test') == '1'
+
+  def test_it_updates_latency(self, recorded_request: Request):
+    refreshed = Request.find(recorded_request.id)
+    control = ResponseStringControl(refreshed.response.control)
+    assert control.latency == 42
+
+  class TestWhenResponseOnly:
+
+    @pytest.fixture(autouse=True, scope='class')
+    def recorded_request(self, runner: CliRunner):
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+      return Request.last()
+
+    @pytest.fixture(autouse=True, scope='class')
+    def update_result(self, runner: CliRunner, recorded_request: Request):
+      result = runner.invoke(
+        request,
+        ['update', recorded_request.key(), '--status', '204'],
+      )
+      assert result.exit_code == 0
+      return result
+
+    def test_it_updates_status(self, recorded_request: Request):
+      refreshed = Request.find(recorded_request.id)
+      assert RawHttpResponseAdapter(refreshed.response.raw).status == 204
+
+  class TestWhenDeletingResponseHeader:
+
+    @pytest.fixture(autouse=True, scope='class')
+    def recorded_request(self, runner: CliRunner):
+      record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+      assert record_result.exit_code == 0
+      return Request.last()
+
+    @pytest.fixture(autouse=True, scope='class')
+    def seed_header(self, runner: CliRunner, recorded_request: Request):
+      result = runner.invoke(
+        request,
+        ['update', recorded_request.key(), '--response-header', 'X-Delete-Me:1'],
+      )
+      assert result.exit_code == 0
+      return result
+
+    @pytest.fixture(autouse=True, scope='class')
+    def delete_header_result(self, runner: CliRunner, recorded_request: Request, seed_header):
+      result = runner.invoke(
+        request,
+        ['update', recorded_request.key(), '--response-header', 'X-Delete-Me:'],
+      )
+      assert result.exit_code == 0
+      return result
+
+    def test_it_deletes_response_header(self, recorded_request: Request):
+      refreshed = Request.find(recorded_request.id)
+      headers = RawHttpResponseAdapter(refreshed.response.raw).headers
+      assert 'X-Delete-Me' not in headers
