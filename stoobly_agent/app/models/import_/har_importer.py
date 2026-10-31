@@ -1,4 +1,5 @@
 import base64
+import binascii
 import json
 import re
 from typing import List, Tuple, Union
@@ -40,7 +41,7 @@ class HarImporter:
         raw_data = raw_data.decode('utf-8')
       data = json.loads(raw_data) if isinstance(raw_data, str) else raw_data
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
-      return {'error': f'Invalid HAR file: could not parse JSON ({e})'}, 400
+      return {'error': f'Invalid HAR file: could not parse JSON'}, 400
 
     entries = (data.get('log') or {}).get('entries') if isinstance(data, dict) else None
     if not isinstance(entries, list):
@@ -61,7 +62,10 @@ class HarImporter:
       response = entry.get('response') or {}
       if not isinstance(response, dict):
         response = {}
-      response = self.__preprocess_response(response)
+      try:
+        response = self.__preprocess_response(response)
+      except (binascii.Error, ValueError):
+        return {'error': 'Invalid HAR file'}, 400
 
       builder = RequestBuilder(
         method=request.get('method') or 'GET',
@@ -129,6 +133,9 @@ class HarImporter:
       ]}
 
     content = response.get('content') or {}
+    if not isinstance(content, dict):
+      raise ValueError('Invalid HAR content')
+
     encoding = content.get('encoding')
     if encoding == 'base64' and content.get('text') is not None:
       decoded = base64.b64decode(content['text'])

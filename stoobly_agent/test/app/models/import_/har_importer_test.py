@@ -56,6 +56,42 @@ class TestHarImporterInvalidStructure:
     assert res['total'] == 1
     assert Request.count() == before + 1
 
+  def test_it_returns_400_for_malformed_base64(self, settings: Settings):
+    har = {
+      'log': {
+        'entries': [
+          {
+            '_resourceType': 'xhr',
+            'request': {'method': 'GET', 'url': 'https://example.com/ok', 'headers': []},
+            'response': {
+              'status': 200,
+              'headers': [],
+              'content': {'encoding': 'base64', 'text': '!!!not-base64!!!'},
+            },
+          },
+        ]
+      }
+    }
+    res, status = HarImporter().import_file(json.dumps(har), scenario_id=None, settings=settings)
+    assert status == 400
+    assert res['error'] == 'Invalid HAR file'
+
+  def test_it_returns_400_for_non_dict_content(self, settings: Settings):
+    har = {
+      'log': {
+        'entries': [
+          {
+            '_resourceType': 'xhr',
+            'request': {'method': 'GET', 'url': 'https://example.com/ok', 'headers': []},
+            'response': {'status': 200, 'headers': [], 'content': 'not-a-dict'},
+          },
+        ]
+      }
+    }
+    res, status = HarImporter().import_file(json.dumps(har), scenario_id=None, settings=settings)
+    assert status == 400
+    assert res['error'] == 'Invalid HAR file'
+
 
 class TestHarImporterWrongFormat:
 
