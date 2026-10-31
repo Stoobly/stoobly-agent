@@ -1,0 +1,373 @@
+# OpenCLI Description for stoobly-agent (main / root)
+# Source: stoobly_agent/cli.py (and lazy-loaded command groups)
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+#
+# This is an index of the top-level CLI. Leaf commands (init, describe, run, mock,
+# record) are fully documented here. Command groups with their own contracts are
+# summarized; load details with: stoobly-agent opencli show <group>
+opencli: "0.1"
+info:
+  title: stoobly-agent
+  summary: Record, mock, and test HTTP(s) requests
+  description: |
+    Root CLI contract for `stoobly-agent`.
+    Use `stoobly-agent opencli show` (no argument) for this root index,
+    `stoobly-agent opencli list` for drill-down groups with detailed contracts,
+    and `stoobly-agent opencli show <group>` for a specific group.
+    The `main` group is the default for `show` and is not listed by `list`.
+  version: "2.5.3"
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: " "
+command:
+  name: stoobly-agent
+  description: Record, mock, and test HTTP(s) requests
+  exitCodes:
+    - code: 0
+      description: Success
+    - code: 1
+      description: Validation or runtime error
+  commands:
+    - name: init
+      description: Initialize a new context
+      examples:
+        - stoobly-agent init
+
+    - name: describe
+      description: Describe settings
+      examples:
+        - stoobly-agent describe
+
+    - name: run
+      description: Run proxy and/or UI
+      options:
+        - name: api-url
+          description: "API URL. Feature-gated: remote."
+          arguments:
+            - name: url
+        - name: ca-certs-dir-path
+          description: Path to ca certs directory used to sign SSL certs.
+          arguments:
+            - name: path
+        - name: certs
+          description: >
+            SSL certificates of the form "[domain=]path". The domain may include a wildcard,
+            and is equal to "*" if not specified. May be passed multiple times.
+          arguments:
+            - name: certs
+        - name: cert-passphrase
+          description: Passphrase for decrypting the private key provided in the --cert option.
+          arguments:
+            - name: passphrase
+        - name: connection-strategy
+          description: Connection strategy. eager, lazy.
+          arguments:
+            - name: strategy
+              acceptedValues: [eager, lazy]
+        - name: context-dir-path
+          description: Path to context directory.
+          arguments:
+            - name: path
+        - name: detached
+          description: Run in detached mode and redirect output to the specified file path.
+          arguments:
+            - name: path
+        - name: flow-detail
+          description: Display detail level for flows in mitmdump (0 quiet to 4 very verbose). Default 1.
+          arguments:
+            - name: level
+              acceptedValues: ["0", "1", "2", "3", "4"]
+        - name: headless
+          description: Disable starting UI.
+        - name: intercept
+          description: Enable intercept on run.
+        - name: intercept-mode
+          description: Set intercept mode.
+          arguments:
+            - name: mode
+              acceptedValues: [develop, mock, record, test]
+        - name: log-level
+          description: Log levels can be debug, info, warning, or error. Default info.
+          arguments:
+            - name: level
+              acceptedValues: [debug, info, warning, error]
+        - name: lifecycle-hooks-path
+          description: "Path to lifecycle hooks script. Form <FILE-PATH>[:<ORIGIN>]. May be specified multiple times."
+          arguments:
+            - name: path
+        - name: openapi-specification-path
+          description: "Path to OpenAPI specification file. Form <FILE-PATH>[:<ORIGIN>]. May be specified multiple times."
+          arguments:
+            - name: path
+        - name: proxy-host
+          description: Address to bind proxy to. Default 0.0.0.0.
+          arguments:
+            - name: host
+        - name: proxyless
+          description: Disable starting proxy.
+        - name: proxy-mode
+          description: >
+            Proxy mode can be "regular" or "reverse:SPEC". For reverse proxy mode, SPEC is host
+            specification in the form of "http[s]://host[:port]". Default regular.
+          arguments:
+            - name: mode
+        - name: proxy-port
+          description: Proxy service port. Default 8080.
+          arguments:
+            - name: port
+        - name: proxy-regular-upstream
+          description: >
+            Map request host:port to an upstream for regular proxy mode.
+            Form: <HOST>:<PORT>=<SPEC>, where SPEC is "http[s]://host[:port]". May be specified multiple times.
+          arguments:
+            - name: mapping
+        - name: public-dir-path
+          description: "Path to public files for mocking. Form <FOLDER-PATH>[:<ORIGIN>]. May be specified multiple times."
+          arguments:
+            - name: path
+        - name: remote-project-key
+          description: "Use remote project for endpoint definitions. Feature-gated: local and remote."
+          arguments:
+            - name: key
+        - name: response-fixtures-path
+          description: "Path to response fixtures yaml. Form <FILE-PATH>[:<ORIGIN>]. May be specified multiple times."
+          arguments:
+            - name: path
+        - name: request-log-enable
+          description: Enable intercepted requests logging.
+        - name: request-log-level
+          description: Log level for intercepted requests. Default info.
+          arguments:
+            - name: level
+              acceptedValues: [debug, info, warning, error]
+        - name: request-log-append
+          description: Append to the intercepted requests log.
+        - name: settings-commit
+          description: Commit options to the settings.yml file.
+        - name: settings-watch
+          description: Watch and apply changes in the settings.yml file.
+        - name: ssl-insecure
+          description: Do not verify upstream server SSL/TLS certificates.
+        - name: ui-host
+          description: Address to bind UI to. Default 0.0.0.0.
+          arguments:
+            - name: host
+        - name: ui-port
+          description: UI service port. Default 4200.
+          arguments:
+            - name: port
+        - name: upstream-auth
+          description: "Add HTTP Basic authentication to upstream proxy and reverse proxy requests. Format username:password."
+          arguments:
+            - name: auth
+      examples:
+        - stoobly-agent run
+        - stoobly-agent run --headless --intercept --intercept-mode mock
+        - stoobly-agent run --proxy-port 8080 --ui-port 4200
+
+    - name: mock
+      description: Mock request
+      arguments:
+        - name: url
+          required: true
+          description: Request URL.
+      options:
+        - name: data
+          aliases: [d]
+          description: HTTP POST data.
+          arguments:
+            - name: data
+        - name: format
+          description: Format response.
+          arguments:
+            - name: format
+              acceptedValues: [raw]
+        - name: header
+          aliases: [H]
+          description: Pass custom header(s) to server. May be specified multiple times.
+          arguments:
+            - name: header
+        - name: lifecycle-hooks-path
+          description: Path to lifecycle hooks script.
+          arguments:
+            - name: path
+        - name: log-level
+          description: Configure which logs to print. Defaults to warning.
+          arguments:
+            - name: level
+              acceptedValues: [debug, info, warning, error]
+        - name: openapi-specification-path
+          description: Path to OpenAPI specification file.
+          arguments:
+            - name: path
+        - name: output
+          aliases: [o]
+          description: Write to file instead of stdout.
+          arguments:
+            - name: path
+        - name: project-key
+          description: "Project key. Feature-gated: remote."
+          arguments:
+            - name: key
+        - name: public-dir-path
+          description: Path to public files. Used for mocking requests.
+          arguments:
+            - name: path
+        - name: remote-project-key
+          description: "Use remote project for endpoint definitions. Feature-gated: local and remote."
+          arguments:
+            - name: key
+        - name: response-fixtures-path
+          description: Path to response fixtures yaml. Used for mocking requests.
+          arguments:
+            - name: path
+        - name: request
+          aliases: [X]
+          description: Specify request command to use. Default GET.
+          arguments:
+            - name: method
+        - name: scenario-key
+          description: Scenario key.
+          arguments:
+            - name: key
+      examples:
+        - stoobly-agent mock https://example.com/api
+        - stoobly-agent mock https://example.com/api -X POST -d '{"a":1}' --format raw
+
+    - name: record
+      description: Record request
+      arguments:
+        - name: url
+          required: true
+          description: Request URL.
+      options:
+        - name: cookie
+          aliases: [b]
+          description: >
+            Pass data to the HTTP server in the Cookie header, or a filename of previously
+            stored cookies. May be specified multiple times.
+          arguments:
+            - name: cookie
+        - name: data
+          aliases: [d]
+          description: HTTP POST data.
+          arguments:
+            - name: data
+        - name: format
+          description: Format response.
+          arguments:
+            - name: format
+              acceptedValues: [raw]
+        - name: header
+          aliases: [H]
+          description: Pass custom header(s) to server. May be specified multiple times.
+          arguments:
+            - name: header
+        - name: lifecycle-hooks-path
+          description: Path to lifecycle hooks script.
+          arguments:
+            - name: path
+        - name: output
+          aliases: [o]
+          description: Write to file instead of stdout.
+          arguments:
+            - name: path
+        - name: project-key
+          description: "Project key. Feature-gated: remote."
+          arguments:
+            - name: key
+        - name: request
+          aliases: [X]
+          description: Specify request command to use. Default GET.
+          arguments:
+            - name: method
+        - name: scenario-key
+          description: Scenario key.
+          arguments:
+            - name: key
+      examples:
+        - stoobly-agent record https://example.com/api
+        - stoobly-agent record https://example.com/api -X POST -H 'Content-Type: application/json' -d '{}'
+
+    - name: opencli
+      description: Show OpenCLI descriptions for command groups
+      commands:
+        - name: list
+          description: List command groups that have an OpenCLI description
+          options:
+            - name: format
+              description: Format output.
+              arguments:
+                - name: format
+                  acceptedValues: [json, simple]
+            - name: select
+              description: Select column(s) to display. May be specified multiple times.
+              arguments:
+                - name: column
+            - name: without-headers
+              description: Disable printing column headers.
+          examples:
+            - stoobly-agent opencli list
+            - stoobly-agent opencli list --format json
+            - stoobly-agent opencli list --select name
+        - name: show
+          description: Print the OpenCLI YAML for a command group. Defaults to main when GROUP is omitted.
+          arguments:
+            - name: group
+              required: false
+              description: OpenCLI group name. Defaults to main.
+          examples:
+            - stoobly-agent opencli show
+            - stoobly-agent opencli show request
+            - stoobly-agent opencli show scaffold
+
+    # Command groups with dedicated OpenCLI contracts (details via opencli show <group>)
+    - name: endpoint
+      description: Manage endpoints. Full contract — stoobly-agent opencli show endpoint
+
+    - name: intercept
+      description: Manage request intercept. Full contract — stoobly-agent opencli show intercept
+
+    - name: request
+      description: Manage requests. Full contract — stoobly-agent opencli show request
+
+    - name: scaffold
+      description: Manage scaffold. Full contract — stoobly-agent opencli show scaffold
+
+    - name: scenario
+      description: Manage scenarios. Full contract — stoobly-agent opencli show scenario
+
+    - name: setting
+      description: Manage settings. Full contract — stoobly-agent opencli show setting
+
+    - name: snapshot
+      description: Manage snapshots. Full contract — stoobly-agent opencli show snapshot
+
+    # Other top-level commands (no dedicated OpenCLI file yet)
+    - name: ca-cert
+      description: Manage CA certificate
+
+    - name: feature
+      description: Manage features
+
+    - name: config
+      hidden: true
+      description: Alias for setting (backward compatibility)
+
+    - name: dev-tools
+      description: "Manage developer tools. Feature-gated: cli.features.dev_tools"
+
+    - name: exec
+      description: "Execute a command with Stoobly proxy env. Feature-gated: cli.features.exec"
+
+    - name: project
+      description: "Manage projects. Feature-gated: remote"
+
+    - name: report
+      description: "Manage reports. Feature-gated: remote"
+
+    - name: trace
+      description: "Manage traces. Feature-gated: remote"

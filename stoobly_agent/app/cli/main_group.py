@@ -47,7 +47,7 @@ class MainGroup(click.Group):
     
     # Add lazy-loadable commands
     lazy_commands = [
-      'ca-cert', 'endpoint', 'feature', 'intercept',
+      'ca-cert', 'endpoint', 'feature', 'intercept', 'opencli',
       'request', 'scaffold', 'scenario', 'setting', 'snapshot'
     ]
     
@@ -86,6 +86,7 @@ class MainGroup(click.Group):
       'endpoint': ('endpoint_cli', 'endpoint'),
       'feature': ('feature_cli', 'feature'),
       'intercept': ('intercept_cli', 'intercept'),
+      'opencli': ('opencli_cli', 'opencli'),
       'request': ('request_cli', 'request'),
       'scaffold': ('scaffold_cli', 'scaffold'),
       'scenario': ('scenario_cli', 'scenario'),
@@ -120,7 +121,7 @@ class MainGroup(click.Group):
     command_groups: List[CommandGroup] = [
       {
         'name': 'Commands',
-        'commands': ['describe', 'dev-tools', 'exec', 'init', 'mock', 'record', 'scaffold'],
+        'commands': ['describe', 'dev-tools', 'exec', 'init', 'mock', 'opencli', 'record', 'scaffold'],
       },
       {
         'name': 'Proxy Commands',

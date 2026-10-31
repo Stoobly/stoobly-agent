@@ -1,0 +1,111 @@
+# OpenCLI Description for stoobly-agent intercept
+# Source: stoobly_agent/app/cli/intercept_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: "0.1"
+info:
+  title: stoobly-agent intercept
+  summary: Manage request intercept mode, policy, order, and strategy
+  description: |
+    CLI contract for the `stoobly-agent intercept` command group.
+    Invoked as `stoobly-agent intercept <command> …`.
+    Valid --order / --policy / --strategy values depend on the active intercept mode.
+  version: "2.5.3"
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: " "
+command:
+  name: intercept
+  description: Manage request intercept
+  exitCodes:
+    - code: 0
+      description: Success
+    - code: 1
+      description: Validation or runtime error
+  commands:
+    - name: enable
+      description: Enable intercept
+      examples:
+        - stoobly-agent intercept enable
+
+    - name: disable
+      description: Disable intercept
+      examples:
+        - stoobly-agent intercept disable
+
+    - name: set
+      description: Set intercept options
+      options:
+        - name: mode
+          description: Intercept mode.
+          arguments:
+            - name: mode
+              acceptedValues: [develop, mock, record, test]
+        - name: order
+          description: >
+            Order to use for recording. Only supported when intercept mode is record.
+            Valid when mode is record: append, overwrite.
+          arguments:
+            - name: order
+        - name: policy
+          description: >
+            Policy for the active intercept mode.
+            mock: all, found, none;
+            record: all, api, found, not_found;
+            develop: all;
+            test: found, none.
+          arguments:
+            - name: policy
+        - name: strategy
+          description: >
+            Strategy for the active intercept mode.
+            record: full, minimal;
+            test: contract, custom, diff, fuzzy.
+            Only supported when mode is record or test.
+          arguments:
+            - name: strategy
+      examples:
+        - stoobly-agent intercept set --mode record
+        - stoobly-agent intercept set --mode record --policy all --order append --strategy full
+        - stoobly-agent intercept set --mode mock --policy found
+        - stoobly-agent intercept set --mode test --policy found --strategy diff
+
+    - name: configure
+      hidden: true
+      description: "Configure intercept (deprecated: use 'set' instead)"
+      options:
+        - name: mode
+          description: Intercept mode.
+          arguments:
+            - name: mode
+              acceptedValues: [develop, mock, record, test]
+        - name: order
+          description: >
+            Order to use for recording. Only supported when intercept mode is record.
+            Valid when mode is record: append, overwrite.
+          arguments:
+            - name: order
+        - name: policy
+          description: >
+            Policy for the active intercept mode.
+            mock: all, found, none;
+            record: all, api, found, not_found;
+            develop: all;
+            test: found, none.
+          arguments:
+            - name: policy
+        - name: strategy
+          description: >
+            Strategy for the active intercept mode.
+            record: full, minimal;
+            test: contract, custom, diff, fuzzy.
+            Only supported when mode is record or test.
+          arguments:
+            - name: strategy
+
+    - name: show
+      description: Show intercept
+      examples:
+        - stoobly-agent intercept show

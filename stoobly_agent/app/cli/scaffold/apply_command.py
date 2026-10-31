@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 import yaml
 
+from stoobly_agent.app.cli.helpers.opencli_resolve import resolve_path
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO, Logger, WARNING
 
@@ -38,7 +39,7 @@ YAML_FORMAT = 'yaml'
 JSON_FORMAT = 'json'
 APPLY_FORMATS = [YAML_FORMAT, JSON_FORMAT]
 
-OPENCLI_PATH = Path(__file__).resolve().parent.parent / 'scaffold.opencli.yaml'
+OPENCLI_PATH = resolve_path('scaffold')
 
 PATH_OPTION_KEYS = frozenset({
   'app_dir_path',

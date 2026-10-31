@@ -96,13 +96,22 @@ def _make_app_dir(base_dir: str, suffix: str) -> str:
     return path
 
 
+def _best_effort_workflow_down(runner, app_dir_path: str, namespace: str) -> None:
+    """Bring a namespace down without raising — used so setup failures still free host ports."""
+    try:
+        ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace=namespace)
+    except AssertionError:
+        pass
+
+
 @pytest.mark.e2e
 class TestDockerMultiNamespaceRequestLogE2e:
     """Docker reverse-proxy multi-namespace CI isolation tests.
 
     Each nested class spins up one or two Traefik namespaces on ports 8180/8181.
-    Classes run sequentially — no port conflicts as each class tears down before
-    the next starts.  Do NOT run with pytest-xdist.
+    Classes run sequentially. Setup fixtures always best-effort ``workflow down``
+    in ``finally`` so a failed readiness assert cannot leak host ports into the
+    next class. Do NOT run with pytest-xdist.
     """
 
     @pytest.fixture(scope='module', autouse=True)
@@ -136,25 +145,33 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns_a(self, runner, app_dir_path_a):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'ns-iso-a', proxy_mode='reverse', ui_port=4200)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='ns-iso-a')
-            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                "NS A proxy did not enter mock-intercept mode on port 8180"
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'ns-iso-a', proxy_mode='reverse', ui_port=4200)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='ns-iso-a')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                    "NS A proxy did not enter mock-intercept mode on port 8180"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path_a, 'ns-iso-a')
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns_b(self, runner, app_dir_path_b):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'ns-iso-b', proxy_mode='reverse', ui_port=4201)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='ns-iso-b')
-            assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                "NS B proxy did not enter mock-intercept mode on port 8181"
-
-        @pytest.fixture(scope='class', autouse=True)
-        def teardown(self, setup_ns_a, setup_ns_b, runner, app_dir_path_a, app_dir_path_b):
-            yield
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='ns-iso-a')
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='ns-iso-b')
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'ns-iso-b', proxy_mode='reverse', ui_port=4201)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='ns-iso-b')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
+                    "NS B proxy did not enter mock-intercept mode on port 8181"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path_b, 'ns-iso-b')
 
         def test_requests_to_ns_a_do_not_appear_in_ns_b_logs(self, runner, app_dir_path_a, app_dir_path_b):
             requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)
@@ -187,19 +204,21 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns(self, runner, app_dir_path):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'all-svc-a', proxy_mode='reverse')
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'http.badssl.com', 'service-a', False, port=8180)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-b', False, port=8180)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='all-svc-a')
-            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                "service-a proxy did not enter mock-intercept mode on port 8180"
-            assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
-                "service-b proxy did not enter mock-intercept mode on port 8180"
-
-        @pytest.fixture(scope='class', autouse=True)
-        def teardown(self, setup_ns, runner, app_dir_path):
-            yield
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='all-svc-a')
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'all-svc-a', proxy_mode='reverse')
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'http.badssl.com', 'service-a', False, port=8180)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-b', False, port=8180)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='all-svc-a')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                    "service-a proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
+                    "service-b proxy did not enter mock-intercept mode on port 8180"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path, 'all-svc-a')
 
         def test_both_services_appear_in_namespace_logs(self, runner, app_dir_path):
             requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)
@@ -230,19 +249,21 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns(self, runner, app_dir_path):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'svc-filter-a', proxy_mode='reverse')
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'http.badssl.com', 'service-alpha', False, port=8180)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-beta', False, port=8180)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='svc-filter-a')
-            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                "service-alpha proxy did not enter mock-intercept mode on port 8180"
-            assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
-                "service-beta proxy did not enter mock-intercept mode on port 8180"
-
-        @pytest.fixture(scope='class', autouse=True)
-        def teardown(self, setup_ns, runner, app_dir_path):
-            yield
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='svc-filter-a')
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'svc-filter-a', proxy_mode='reverse')
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'http.badssl.com', 'service-alpha', False, port=8180)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-beta', False, port=8180)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='svc-filter-a')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                    "service-alpha proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
+                    "service-beta proxy did not enter mock-intercept mode on port 8180"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path, 'svc-filter-a')
 
         def test_service_name_filter_returns_only_target_service(self, runner, app_dir_path):
             requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)
@@ -293,25 +314,33 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns_a(self, runner, app_dir_path_a):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'concurrent-a', proxy_mode='reverse', ui_port=4200)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='concurrent-a')
-            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                "NS A proxy did not enter mock-intercept mode on port 8180"
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'concurrent-a', proxy_mode='reverse', ui_port=4200)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='concurrent-a')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                    "NS A proxy did not enter mock-intercept mode on port 8180"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path_a, 'concurrent-a')
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_ns_b(self, runner, app_dir_path_b):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'concurrent-b', proxy_mode='reverse', ui_port=4201)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='concurrent-b')
-            assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                "NS B proxy did not enter mock-intercept mode on port 8181"
-
-        @pytest.fixture(scope='class', autouse=True)
-        def teardown(self, setup_ns_a, setup_ns_b, runner, app_dir_path_a, app_dir_path_b):
-            yield
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='concurrent-a')
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='concurrent-b')
+            upped = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'concurrent-b', proxy_mode='reverse', ui_port=4201)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='concurrent-b')
+                upped = True
+                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
+                    "NS B proxy did not enter mock-intercept mode on port 8181"
+                yield
+            finally:
+                if upped:
+                    _best_effort_workflow_down(runner, app_dir_path_b, 'concurrent-b')
 
         def test_concurrent_requests_no_cross_namespace_contamination(self, runner, app_dir_path_a, app_dir_path_b):
             paths = [f'/concurrent-{i}' for i in range(5)]
@@ -359,31 +388,37 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         @pytest.fixture(scope='class', autouse=True)
         def setup_both_namespaces(self, runner, app_dir_path_a, app_dir_path_b):
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'teardown-a', proxy_mode='reverse', ui_port=4200)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='teardown-a')
-            assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                "NS A proxy did not enter mock-intercept mode on port 8180"
+            upped_a = False
+            upped_b = False
+            try:
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'teardown-a', proxy_mode='reverse', ui_port=4200)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='teardown-a')
+                upped_a = True
+                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
+                    "NS A proxy did not enter mock-intercept mode on port 8180"
 
-            ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'teardown-b', proxy_mode='reverse', ui_port=4201)
-            ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
-            ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='teardown-b')
-            assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                "NS B proxy did not enter mock-intercept mode on port 8181"
+                ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'teardown-b', proxy_mode='reverse', ui_port=4201)
+                ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
+                ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='teardown-b')
+                upped_b = True
+                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
+                    "NS B proxy did not enter mock-intercept mode on port 8181"
 
-            # Seed at least one log entry in each namespace before tests run
-            requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)
-            requests.get('http://localhost:8181/', headers={'Host': 'example.com'}, timeout=5.0)
-            assert poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path_a, 'teardown-a'), \
-                "Setup: expected seed entry in NS A"
-            assert poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path_b, 'teardown-b'), \
-                "Setup: expected seed entry in NS B"
-
-        @pytest.fixture(scope='class', autouse=True)
-        def teardown_ns_b(self, setup_both_namespaces, runner, app_dir_path_b):
-            yield
-            # NS A is brought down during test_ns_b_logs_survive_ns_a_teardown; only clean up NS B here
-            ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='teardown-b')
+                # Seed at least one log entry in each namespace before tests run
+                requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)
+                requests.get('http://localhost:8181/', headers={'Host': 'example.com'}, timeout=5.0)
+                assert poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path_a, 'teardown-a'), \
+                    "Setup: expected seed entry in NS A"
+                assert poll_for_any_log_entry(runner, WORKFLOW_MOCK_TYPE, app_dir_path_b, 'teardown-b'), \
+                    "Setup: expected seed entry in NS B"
+                yield
+            finally:
+                # NS A may already be down from test_ns_b_logs_survive_ns_a_teardown; always best-effort both
+                if upped_a:
+                    _best_effort_workflow_down(runner, app_dir_path_a, 'teardown-a')
+                if upped_b:
+                    _best_effort_workflow_down(runner, app_dir_path_b, 'teardown-b')
 
         def test_ns_b_logs_survive_ns_a_teardown(self, runner, app_dir_path_a, app_dir_path_b):
             pre_result = runner.invoke(scaffold, [

@@ -12,6 +12,7 @@ SKIP_MIGRATION_COMMANDS = {
   'feature',
   'init',
   'intercept',
+  'opencli',
   'scaffold',
   'setting'
 }

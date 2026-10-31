@@ -1,0 +1,264 @@
+# OpenCLI Description for stoobly-agent setting
+# Source: stoobly_agent/app/cli/setting_cli.py
+# Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
+opencli: '0.1'
+info:
+  title: stoobly-agent setting
+  summary: Manage settings, filter/match/rewrite rules, scenario, UI, and remote project/API key
+  description: |
+    CLI contract for the `stoobly-agent setting` command group.
+    Invoked as `stoobly-agent setting <command> …`.
+    Includes options and subcommands that are feature-gated (local/remote) so the contract is complete.
+  version: 2.5.3
+  license:
+    name: Apache License 2.0
+    identifier: Apache-2.0
+conventions:
+  groupOptions: false
+  optionArgumentSeparator: ' '
+command:
+  name: setting
+  description: Manage settings
+  commands:
+  - name: api-key
+    description: Manage API key
+    commands:
+    - name: set
+      description: Set API Key
+      arguments:
+      - name: api_key
+        required: true
+  - name: filter
+    description: Manage filter rules
+    commands:
+    - name: set
+      description: Set filter rule.
+      options:
+      - name: action
+        description: Action to take on match.
+        required: true
+        arguments:
+        - name: action
+          acceptedValues:
+          - exclude
+          - include
+      - name: method
+        description: HTTP methods.
+        required: true
+        arguments:
+        - name: method
+          acceptedValues:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+          - PUT
+          - PATCH
+      - name: mode
+        required: true
+        arguments:
+        - name: mode
+          acceptedValues:
+          - mock
+          - record
+          - test
+          - develop
+      - name: pattern
+        description: URLs pattern.
+        required: true
+        arguments:
+        - name: pattern
+      - name: project-key
+        description: Project to add filter rule to.
+        arguments:
+        - name: project_key
+  - name: match
+    description: Manage match rules
+    commands:
+    - name: set
+      description: Set match rule
+      options:
+      - name: component
+        description: Request component type.
+        arguments:
+        - name: component
+          acceptedValues:
+          - Body Param
+          - Header
+          - Query Param
+      - name: method
+        description: HTTP methods.
+        required: true
+        arguments:
+        - name: method
+          acceptedValues:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+          - PUT
+          - PATCH
+      - name: mode
+        required: true
+        arguments:
+        - name: mode
+          acceptedValues:
+          - mock
+          - test
+      - name: pattern
+        description: URLs pattern.
+        required: true
+        arguments:
+        - name: pattern
+      - name: project-key
+        description: Project to add match rule to.
+        arguments:
+        - name: project_key
+  - name: project
+    description: Manage active project
+    commands:
+    - name: local
+      description: Use local project.
+    - name: set
+      description: Set active project.
+      arguments:
+      - name: project_key
+        required: true
+    - name: show
+      description: Describe project.
+      options:
+      - name: format
+        description: Format output.
+        arguments:
+        - name: format
+          acceptedValues:
+          - json
+          - simple
+      - name: select
+        description: Select column(s) to display.
+        arguments:
+        - name: select
+      - name: without-headers
+        description: Disable printing column headers.
+  - name: reset
+    description: Reset settings to defaults
+  - name: rewrite
+    description: Manage rewrite rules
+    commands:
+    - name: set
+      description: Set rewrite rule.
+      options:
+      - name: hostname
+        description: Request URL hostname.
+        arguments:
+        - name: hostname
+      - name: method
+        description: HTTP methods.
+        required: true
+        arguments:
+        - name: method
+          acceptedValues:
+          - GET
+          - POST
+          - DELETE
+          - OPTIONS
+          - PUT
+          - PATCH
+      - name: mode
+        required: true
+        arguments:
+        - name: mode
+          acceptedValues:
+          - mock
+          - record
+          - test
+          - develop
+      - name: name
+        description: Name of the request component.
+        arguments:
+        - name: name
+      - name: path
+        description: Request URL path to rewrite to.
+        arguments:
+        - name: path
+      - name: pattern
+        description: URLs to rewrite.
+        required: true
+        arguments:
+        - name: pattern
+      - name: port
+        description: Request URL port to rewrite to.
+        arguments:
+        - name: port
+      - name: project-key
+        description: Project to add rewrite rule to.
+        arguments:
+        - name: project_key
+      - name: scheme
+        description: Request URL scheme to rewrite to.
+        arguments:
+        - name: scheme
+          acceptedValues:
+          - http
+          - https
+      - name: type
+        description: Request component type.
+        arguments:
+        - name: type
+          acceptedValues:
+          - Body Param
+          - Header
+          - Query Param
+          - Response Header
+          - Response Param
+      - name: value
+        description: Rewrite value.
+        arguments:
+        - name: value
+  - name: scenario
+    description: Manage active scenario
+    commands:
+    - name: set
+      description: Set active scenario settings
+      arguments:
+      - name: scenario_key
+        required: true
+    - name: show
+      description: Show active scenario settings
+      options:
+      - name: format
+        description: Format output.
+        arguments:
+        - name: format
+          acceptedValues:
+          - json
+          - simple
+      - name: select
+        description: Select column(s) to display.
+        arguments:
+        - name: select
+      - name: without-headers
+        description: Disable printing column headers.
+  - name: ui
+    description: Manage UI settings
+    commands:
+    - name: disable
+      description: Disable UI.
+    - name: enable
+      description: Enable UI.
+    - name: set
+      description: Set UI settings.
+      options:
+      - name: url
+        description: UI URL.
+        arguments:
+        - name: url
+    - name: show
+      description: Display UI settings
+  - name: validate
+    description: Check settings validity
+  exitCodes:
+  - code: 0
+    description: Success
+  - code: 1
+    description: Validation or runtime error
