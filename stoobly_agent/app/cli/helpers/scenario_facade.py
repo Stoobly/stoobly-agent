@@ -1,7 +1,12 @@
 import pdb
+import time
+from pathlib import Path
 
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
+from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
+from stoobly_agent.app.models.import_ import get_importer
+from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.replay.replay_scenario_service import inject_replay
 from stoobly_agent.app.proxy.replay.trace_context import TraceContext
@@ -14,6 +19,7 @@ class ScenarioFacade(ReplayFacade):
   def __init__(self, settings: Settings):
     super().__init__(settings)
     self.__model = ScenarioModel(settings)
+    self.__settings = settings
 
   def create(self, project_key: str, name: str, description: str = ''):
     key = ProjectKey(project_key)
@@ -22,6 +28,45 @@ class ScenarioFacade(ReplayFacade):
       'description': description,
       'name': name,
     })
+
+  def import_file(
+    self,
+    file_path: str,
+    format: str,
+    scenario_key: str = None,
+    project_key: str = None,
+    overwrite: bool = False,
+  ):
+    path = Path(file_path)
+    raw = path.read_bytes()
+
+    if scenario_key:
+      key = ScenarioKey(scenario_key)
+      scenario, status = self.__model.show(key.id)
+      if status != 200:
+        return scenario, status
+    else:
+      name = f"{path.stem}-{int(time.time())}"
+      scenario, status = self.create(project_key, name)
+      if status != 200:
+        return scenario, status
+      key = ScenarioKey(scenario['key'])
+
+    scenario_id = key.id
+
+    if overwrite:
+      RequestModel(self.__settings).destroy_all(scenario_id=scenario_id)
+
+    importer = get_importer(format)
+    try:
+      import_res, import_status = importer.import_file(raw, scenario_id, settings=self.__settings)
+    except InvalidRequestFormatError as e:
+      return {'error': str(e)}, 400
+
+    if import_status != 200:
+      return import_res, import_status
+
+    return self.__model.show(scenario_id)
 
   def index(self, project_key, cli_options: dict):
     key = ProjectKey(project_key)

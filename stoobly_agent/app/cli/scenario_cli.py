@@ -12,8 +12,10 @@ from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, 
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
+from stoobly_agent.app.models.import_ import IMPORT_FORMATS, HAR_FORMAT
+
 from .handlers.scenario_cli_handler import (
-    create_handler, delete_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler
+    create_handler, delete_handler, import_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.validations import *
@@ -42,6 +44,19 @@ def scenario(ctx):
 @click.argument('name')
 def create(**kwargs):
     create_handler(kwargs)
+
+@scenario.command(
+    name='import',
+    help="Import a scenario from a file"
+)
+@click.option('--format', 'format', type=click.Choice(IMPORT_FORMATS), default=HAR_FORMAT, show_default=True, help='Import file format.')
+@click.option('--overwrite', is_flag=True, default=False, help='Delete existing requests in the target scenario before importing.')
+@click.option('--scenario-key', help='Import into an existing scenario. When omitted, creates a new scenario named <filename>-<timestamp>.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('file', type=click.Path(exists=True, dir_okay=False))
+def import_scenario(**kwargs):
+    import_handler(kwargs)
 
 @scenario.command(
     help="Replay a scenario"
