@@ -3,7 +3,11 @@ import pdb
 from io import BytesIO
 from typing import TypedDict, Union
 
-from stoobly_agent.app.models.helpers.create_request_params_service import build_params_from_python
+from stoobly_agent.app.models.helpers.create_request_service import (
+  RequestNotAllowedError,
+  REQUEST_NOT_ALLOWED_STATUS,
+  create_from_python,
+)
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.settings import Settings
@@ -64,7 +68,7 @@ class RequestBuilder():
   def url(self):
     return self.__properties.get('url')
 
-  def build(self):
+  def build(self, skip_if_not_allowed: bool = False):
     # Lazy import for runtime usage
     import requests
     req = requests.Request(
@@ -88,12 +92,18 @@ class RequestBuilder():
     ) 
     res.status_code = self.status_code
 
-    params = build_params_from_python(req, res)
-    if self.scenario_id is not None:
-      params['scenario_id'] = self.scenario_id
-
     model = RequestModel(self.settings)
-    return model.create(**params)
+    try:
+      return create_from_python(
+        req,
+        res,
+        model,
+        settings=self.settings,
+        scenario_id=self.scenario_id,
+        skip_if_not_allowed=skip_if_not_allowed,
+      )
+    except RequestNotAllowedError as e:
+      return {'error': str(e)}, REQUEST_NOT_ALLOWED_STATUS
 
   def request_headers_value(self, header_name: str):
     headers = self.request_headers

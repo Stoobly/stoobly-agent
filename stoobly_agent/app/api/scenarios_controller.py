@@ -4,6 +4,8 @@ from datetime import datetime
 
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
+from stoobly_agent.app.models.import_ import IMPORT_FORMATS, get_importer
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.orm.scenario import Scenario
@@ -35,6 +37,17 @@ class ScenariosController:
         name = decode(body_params['name'])
         priority = decode(body_params['priority'] if 'priority' in body_params else '0')
 
+        file_content = body_params.get('file')
+        format = body_params.get('format')
+        if format is not None:
+            format = decode(format)
+
+        if file_content is not None or format is not None:
+            if format not in IMPORT_FORMATS:
+                return context.bad_request(f"Invalid format. Expected one of: {', '.join(IMPORT_FORMATS)}")
+            if file_content is None:
+                return context.bad_request('Missing param file')
+
         scenario_model = self.__scenario_model(context)
         scenario, status = scenario_model.create(**{
             'name':name, 
@@ -44,6 +57,27 @@ class ScenariosController:
 
         if context.filter_response(scenario, status):
             return
+
+        if file_content is not None:
+            importer = get_importer(format)
+            try:
+                import_res, import_status = importer.import_file(
+                    file_content,
+                    scenario['uuid'],
+                    settings=Settings.instance(),
+                )
+            except InvalidRequestFormatError as e:
+                scenario_model.destroy(scenario['uuid'], force=True)
+                return context.bad_request(str(e))
+
+            if import_status >= 400:
+                scenario_model.destroy(scenario['uuid'], force=True)
+                error = import_res.get('error') if isinstance(import_res, dict) else import_res
+                return context.bad_request(error or 'Could not import file')
+
+            scenario, status = scenario_model.show(scenario['uuid'])
+            if context.filter_response(scenario, status):
+                return
 
         context.render(
             json = scenario,

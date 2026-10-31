@@ -36,6 +36,35 @@ def create_handler(kwargs):
 
   print_scenarios([res], **print_options)
 
+def import_handler(kwargs):
+  settings = Settings.instance()
+  scenario_key = kwargs.get('scenario_key')
+  project_key = None
+
+  if scenario_key:
+    validate_scenario_key(scenario_key)
+  else:
+    project_key = resolve_project_key_and_validate(kwargs, settings)
+
+  scenario = ScenarioFacade(settings)
+  res, status = scenario.import_file(
+    file_path=kwargs['file'],
+    format=kwargs['format'],
+    scenario_key=scenario_key,
+    project_key=project_key,
+    overwrite=kwargs.get('overwrite', False),
+  )
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  print_options = {
+    'format': None,
+    'select': kwargs.get('select') or (),
+    'without_headers': kwargs.get('without_headers', False),
+  }
+  print_scenarios([res], **print_options)
+
 def delete_handler(kwargs):
   validate_scenario_key(kwargs['scenario_key'])
 

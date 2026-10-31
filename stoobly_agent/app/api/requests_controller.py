@@ -8,7 +8,8 @@ from urllib.parse import urlparse
 from stoobly_agent.app.api.simple_http_request_handler import SimpleHTTPRequestHandler
 from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
-from stoobly_agent.app.models.helpers.create_request_params_service import build_params
+from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
+from stoobly_agent.app.models.import_ import GOR_FORMAT, IMPORT_FORMATS, get_importer
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.proxy.replay.replay_request_service import replay
@@ -42,49 +43,44 @@ class RequestsController:
 
         raw_requests = body_params.get('requests')
         payloads_delimitter = body_params.get('payloads_delimitter') or REQUEST_DELIMITTER
-        toks = raw_requests.split(payloads_delimitter)
 
-        if len(toks) % 2 != 0:
-            return context.bad_request('Invalid requests format')
+        format = body_params.get('format')
+        format = decode(format) if format is not None else GOR_FORMAT
+        if format not in IMPORT_FORMATS:
+            return context.bad_request(f"Invalid format. Expected one of: {', '.join(IMPORT_FORMATS)}")
 
         scenario_id = body_params.get('scenario_id')
         scenario_id = int(body_params.get('scenario_id')) if scenario_id else None
-        created_requests = []
 
-        for i in range(0, len(toks), 2):
-            raw_request = payloads_delimitter.join([toks[i], toks[i + 1]])
-            create_params = build_params(raw_request, payloads_delimitter)
+        sequence_id = None
+        if body_params.get('sequence_id') is not None:
+            try:
+                sequence_id = int(body_params.get('sequence_id'))
+            except (TypeError, ValueError):
+                return context.bad_request('Invalid sequence_id')
 
-            if not create_params:
-                # Rollback
-                return context.bad_request('Could not parse requests')
+        importer = get_importer(format)
+        try:
+            result, status = importer.import_file(
+                raw_requests,
+                scenario_id,
+                settings=Settings.instance(),
+                sequence_id=sequence_id,
+                payloads_delimitter=payloads_delimitter,
+            )
+        except InvalidRequestFormatError as e:
+            return context.bad_request(str(e))
 
-            request_model = self.__request_model(context)
-            create_body = {
-                **create_params,
-                'scenario_id': scenario_id,
-                'uuid': str(uuid.uuid4()),
-            }
-            if body_params.get('sequence_id') is not None:
-                try:
-                    create_body['sequence_id'] = int(body_params.get('sequence_id'))
-                except (TypeError, ValueError):
-                    return context.bad_request('Invalid sequence_id')
+        if status >= 400:
+            error = result.get('error') if isinstance(result, dict) else result
+            return context.bad_request(error or 'Could not import requests')
 
-            request, status = request_model.create(**create_body)
-
-            if context.filter_response(request, status):
-                # Rollback
-                pass
-
-            created_requests.append(request['list'][0])
+        if context.filter_response(result, status):
+            return
 
         context.render(
-            json = {
-                'list': created_requests,
-                'total': len(created_requests),
-            },
-            status = 200
+            json = result,
+            status = status
         )
 
     # GET /requests

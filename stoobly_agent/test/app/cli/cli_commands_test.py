@@ -74,6 +74,7 @@ class TestCliSubcommandsLoad:
         ['scaffold', 'workflow', 'up'],
         ['scaffold', 'workflow', 'validate'],
         ['scenario', 'list'],
+        ['scenario', 'import'],
         ['request', 'snapshot', 'create'],
         ['request', 'snapshot', 'diff'],
         ['request', 'snapshot', 'list'],
