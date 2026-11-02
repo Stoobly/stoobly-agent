@@ -9,7 +9,6 @@ info:
     CLI contract for the `stoobly-agent intercept` command group.
     Invoked as `stoobly-agent intercept <command> …`.
     Valid --order / --policy / --strategy values depend on the active intercept mode.
-  version: "2.5.3"
   license:
     name: Apache License 2.0
     identifier: Apache-2.0

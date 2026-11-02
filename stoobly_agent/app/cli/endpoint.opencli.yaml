@@ -9,7 +9,6 @@ info:
     CLI contract for the `stoobly-agent endpoint` command group.
     Invoked as `stoobly-agent endpoint <command> …`.
     Includes options that are feature-gated (local/remote) so the contract is complete.
-  version: "2.5.3"
   license:
     name: Apache License 2.0
     identifier: Apache-2.0
