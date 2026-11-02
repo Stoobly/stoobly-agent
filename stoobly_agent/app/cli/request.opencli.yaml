@@ -9,7 +9,6 @@ info:
     CLI contract for the `stoobly-agent request` command group.
     Invoked as `stoobly-agent request <command> …`.
     Includes options and subcommands that are feature-gated (local/remote) so the contract is complete.
-  version: 2.5.3
   license:
     name: Apache License 2.0
     identifier: Apache-2.0
@@ -76,6 +75,29 @@ command:
     arguments:
     - name: request_key
       required: true
+  - name: import
+    description: Import requests from a file
+    arguments:
+    - name: file
+      required: true
+    options:
+    - name: format
+      description: Import file format.
+      arguments:
+      - name: format
+        acceptedValues:
+        - har
+        - gor
+    - name: scenario-key
+      description: Assign imported requests to a scenario.
+      arguments:
+      - name: scenario_key
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: without-headers
+      description: Disable printing column headers.
   - name: list
     description: Show all requests
     options:
@@ -295,6 +317,16 @@ command:
       arguments:
       - name: request_key
         required: true
+      options:
+      - name: log-level
+        description: Configure which logs to print. Defaults to warning.
+        arguments:
+        - name: log_level
+          acceptedValues:
+          - debug
+          - info
+          - warning
+          - error
     - name: update
       description: Update a response
       arguments:

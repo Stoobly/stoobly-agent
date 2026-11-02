@@ -1,7 +1,10 @@
 import pdb
+from pathlib import Path
 
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
+from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
+from stoobly_agent.app.models.import_ import get_importer
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.cli.helpers.context import ReplayContext
@@ -22,6 +25,16 @@ class RequestFacade(ReplayFacade):
     self.__settings = settings
 
     super().__init__(settings)
+
+  def import_file(self, file_path: str, format: str, scenario_key: str = None):
+    raw = Path(file_path).read_bytes()
+    scenario_id = ScenarioKey(scenario_key).id if scenario_key else None
+
+    importer = get_importer(format)
+    try:
+      return importer.import_file(raw, scenario_id, settings=self.__settings)
+    except InvalidRequestFormatError as e:
+      return {'error': str(e)}, 400
 
   def create(self, params: dict):
     from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder

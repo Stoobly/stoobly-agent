@@ -34,6 +34,29 @@ from ..helpers.diff_request_print import print_request_diff
 
 UPDATE_URL_KEYS = ['url', 'method', 'scheme', 'host', 'port', 'path']
 
+def import_handler(kwargs):
+  scenario_key = kwargs.get('scenario_key')
+  if scenario_key:
+    validate_scenario_key(scenario_key)
+
+  request = RequestFacade(Settings.instance())
+  res, status = request.import_file(
+    file_path=kwargs['file'],
+    format=kwargs['format'],
+    scenario_key=scenario_key,
+  )
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  print_options = {
+    'format': None,
+    'select': kwargs.get('select') or (),
+    'without_headers': kwargs.get('without_headers', False),
+  }
+  created = res.get('list') if isinstance(res, dict) else None
+  print_requests(created or [], **print_options)
+
 def create_handler(kwargs):
   print_options = select_print_options(kwargs)
 
@@ -235,6 +258,8 @@ def delete_handler(kwargs):
     print('Request deleted!')
 
 def get_handler(kwargs):
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
   validate_request_key(kwargs['request_key'])
 
   request = RequestFacade(Settings.instance())
