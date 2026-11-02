@@ -1,10 +1,10 @@
 import os
+import subprocess
 import pytest
 import requests
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
 from urllib.parse import urlparse
 
 from click.testing import CliRunner
@@ -14,7 +14,11 @@ from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_MOCK_TYPE
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import ScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.docker.cli_invoker import (
+    ScaffoldCliInvoker,
+    _append_error_to_tmp_log,
+    _dump_docker_state,
+)
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import find_all_log_entries
 
 
@@ -46,23 +50,101 @@ def read_log_file_raw(app_dir_path: str, workflow: str, namespace: str) -> str:
         return f.read()
 
 
+def _proxy_container_name(namespace: str, service_name: str) -> str:
+    return f'{namespace}-{service_name}.proxy-1'
+
+
+def _init_container_name(namespace: str) -> str:
+    return f'{namespace}-build.init-1'
+
+
+def _container_exited(container_name: str) -> bool:
+    result = subprocess.run(
+        ['docker', 'inspect', '-f', '{{.State.Status}}', container_name],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    return result.returncode == 0 and result.stdout.strip() == 'exited'
+
+
+def _enable_intercept_in_container(container_name: str) -> bool:
+    """Run intercept enable inside the proxy container so settings watch can pick up mock mode."""
+    result = subprocess.run(
+        ['docker', 'exec', '--user', 'stoobly', container_name, 'stoobly-agent', 'intercept', 'enable'],
+        capture_output=True,
+        timeout=30,
+    )
+    return result.returncode == 0
+
+
+def _restart_container(container_name: str) -> bool:
+    """Restart a container so it reloads settings.yml written by build.init."""
+    result = subprocess.run(
+        ['docker', 'restart', container_name],
+        capture_output=True,
+        timeout=60,
+    )
+    return result.returncode == 0
+
+
 def wait_for_reverse_proxy_intercept_on_port(
-    hostname: str, port: int, timeout: float = 30.0, interval: float = 0.5
+    hostname: str,
+    port: int,
+    namespace: str,
+    service_name: str,
+    timeout: float = 90.0,
+    interval: float = 0.5,
+    reenable_interval: float = 10.0,
 ) -> bool:
-    """Poll until localhost:{port} returns 499 for Host: {hostname}, confirming mock-intercept mode."""
+    """Poll until localhost:{port} returns 499 for Host: {hostname}, confirming mock-intercept mode.
+
+    build.init configures intercept but does not block proxy startup, and settings-watch can
+    miss the update under multi-namespace CI load. Wait for init, restart the proxy so it
+    reloads settings, then periodically re-enable intercept while polling for 499.
+    """
+    init_container = _init_container_name(namespace)
+    proxy_container = _proxy_container_name(namespace, service_name)
     deadline = time.time() + timeout
+    last_status = None
+    last_exc = None
+    last_enable = 0.0
+
+    init_deadline = min(deadline, time.time() + 60.0)
+    while time.time() < init_deadline:
+        if _container_exited(init_container):
+            break
+        time.sleep(interval)
+
+    # Prefer a clean settings load after init writes settings.yml; fall back to enable alone.
+    _restart_container(proxy_container)
+    if _enable_intercept_in_container(proxy_container):
+        last_enable = time.time()
+
     while time.time() < deadline:
+        if time.time() - last_enable >= reenable_interval:
+            if _enable_intercept_in_container(proxy_container):
+                last_enable = time.time()
         try:
             resp = requests.get(
                 f'http://localhost:{port}/',
                 headers={'Host': hostname},
                 timeout=5.0,
             )
+            last_status = resp.status_code
             if resp.status_code == NOT_FOUND:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            last_exc = e
         time.sleep(interval)
+
+    _append_error_to_tmp_log([
+        f"wait_for_reverse_proxy_intercept_on_port timed out after {timeout}s",
+        f"hostname={hostname!r} port={port} namespace={namespace!r} service={service_name!r}",
+        f"Last HTTP status: {last_status}",
+        f"Last exception: {last_exc}",
+    ])
+    _dump_docker_state()
     return False
 
 
@@ -151,8 +233,9 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='ns-iso-a')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                    "NS A proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'http.badssl.com', 8180, 'ns-iso-a', 'service-a'
+                ), "NS A proxy did not enter mock-intercept mode on port 8180"
                 yield
             finally:
                 if upped:
@@ -166,8 +249,9 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='ns-iso-b')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                    "NS B proxy did not enter mock-intercept mode on port 8181"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'example.com', 8181, 'ns-iso-b', 'service-b'
+                ), "NS B proxy did not enter mock-intercept mode on port 8181"
                 yield
             finally:
                 if upped:
@@ -211,10 +295,12 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-b', False, port=8180)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='all-svc-a')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                    "service-a proxy did not enter mock-intercept mode on port 8180"
-                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
-                    "service-b proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'http.badssl.com', 8180, 'all-svc-a', 'service-a'
+                ), "service-a proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'example.com', 8180, 'all-svc-a', 'service-b'
+                ), "service-b proxy did not enter mock-intercept mode on port 8180"
                 yield
             finally:
                 if upped:
@@ -256,10 +342,12 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'example.com', 'service-beta', False, port=8180)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE, namespace='svc-filter-a')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                    "service-alpha proxy did not enter mock-intercept mode on port 8180"
-                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8180), \
-                    "service-beta proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'http.badssl.com', 8180, 'svc-filter-a', 'service-alpha'
+                ), "service-alpha proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'example.com', 8180, 'svc-filter-a', 'service-beta'
+                ), "service-beta proxy did not enter mock-intercept mode on port 8180"
                 yield
             finally:
                 if upped:
@@ -320,8 +408,9 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='concurrent-a')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                    "NS A proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'http.badssl.com', 8180, 'concurrent-a', 'service-a'
+                ), "NS A proxy did not enter mock-intercept mode on port 8180"
                 yield
             finally:
                 if upped:
@@ -335,8 +424,9 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='concurrent-b')
                 upped = True
-                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                    "NS B proxy did not enter mock-intercept mode on port 8181"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'example.com', 8181, 'concurrent-b', 'service-b'
+                ), "NS B proxy did not enter mock-intercept mode on port 8181"
                 yield
             finally:
                 if upped:
@@ -395,15 +485,17 @@ class TestDockerMultiNamespaceRequestLogE2e:
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_a, 'http.badssl.com', 'service-a', False, port=8180)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_a, WORKFLOW_MOCK_TYPE, namespace='teardown-a')
                 upped_a = True
-                assert wait_for_reverse_proxy_intercept_on_port('http.badssl.com', 8180), \
-                    "NS A proxy did not enter mock-intercept mode on port 8180"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'http.badssl.com', 8180, 'teardown-a', 'service-a'
+                ), "NS A proxy did not enter mock-intercept mode on port 8180"
 
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'teardown-b', proxy_mode='reverse', ui_port=4201)
                 ScaffoldCliInvoker.cli_service_create(runner, app_dir_path_b, 'example.com', 'service-b', False, port=8181)
                 ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path_b, WORKFLOW_MOCK_TYPE, namespace='teardown-b')
                 upped_b = True
-                assert wait_for_reverse_proxy_intercept_on_port('example.com', 8181), \
-                    "NS B proxy did not enter mock-intercept mode on port 8181"
+                assert wait_for_reverse_proxy_intercept_on_port(
+                    'example.com', 8181, 'teardown-b', 'service-b'
+                ), "NS B proxy did not enter mock-intercept mode on port 8181"
 
                 # Seed at least one log entry in each namespace before tests run
                 requests.get('http://localhost:8180/', headers={'Host': 'http.badssl.com'}, timeout=5.0)

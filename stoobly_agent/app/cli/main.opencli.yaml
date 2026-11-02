@@ -15,7 +15,6 @@ info:
     `stoobly-agent opencli list` for drill-down groups with detailed contracts,
     and `stoobly-agent opencli show <group>` for a specific group.
     The `main` group is the default for `show` and is not listed by `list`.
-  version: "2.5.3"
   license:
     name: Apache License 2.0
     identifier: Apache-2.0
