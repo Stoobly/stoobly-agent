@@ -78,4 +78,7 @@ class Logger:
         logging.getLogger().setLevel(level)
 
         for logger in self._instances.values():
+            # dictConfig(disable_existing_loggers=True) marks prior loggers disabled;
+            # re-enable so reload to debug does not silence cached named loggers.
+            logger.disabled = False
             logger.setLevel(level)

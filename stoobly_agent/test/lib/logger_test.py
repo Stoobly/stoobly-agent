@@ -4,7 +4,15 @@ import os
 import pytest
 
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
-from stoobly_agent.lib.logger import INFO, Logger, WARNING
+from stoobly_agent.lib.logger import DEBUG, INFO, Logger, WARNING
+
+
+def _reset_named_logger(name='Mock'):
+  named = logging.getLogger(name)
+  named.handlers.clear()
+  named.setLevel(logging.NOTSET)
+  named.disabled = False
+  return named
 
 
 @pytest.fixture(autouse=True)
@@ -19,10 +27,7 @@ def reset_logger_state():
   root = logging.getLogger()
   root.handlers.clear()
   root.setLevel(logging.NOTSET)
-
-  named = logging.getLogger('Mock')
-  named.handlers.clear()
-  named.setLevel(logging.NOTSET)
+  _reset_named_logger()
 
   yield
 
@@ -30,8 +35,7 @@ def reset_logger_state():
   Logger._instances = {}
   root.handlers.clear()
   root.setLevel(logging.NOTSET)
-  named.handlers.clear()
-  named.setLevel(logging.NOTSET)
+  _reset_named_logger()
 
   if previous is None:
     os.environ.pop(LOG_LEVEL, None)
@@ -61,3 +65,14 @@ class TestLoggerLoad:
     assert logger.getEffectiveLevel() == logging.WARNING
     assert not logger.isEnabledFor(logging.INFO)
     assert logger.isEnabledFor(logging.WARNING)
+
+  def test_reload_to_debug_does_not_disable_cached_loggers(self):
+    os.environ[LOG_LEVEL] = INFO
+    logger = Logger.instance('Mock')
+
+    os.environ[LOG_LEVEL] = DEBUG
+    Logger.reload()
+
+    assert not logger.disabled
+    assert logger.getEffectiveLevel() == logging.DEBUG
+    assert logger.isEnabledFor(logging.DEBUG)
