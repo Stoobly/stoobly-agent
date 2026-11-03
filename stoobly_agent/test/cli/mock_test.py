@@ -148,6 +148,54 @@ class TestMocking():
         assert mock_result.exit_code == 0
 
 
+class TestCookie():
+  cookie = 'session=abc123; user=john'
+  url = DETERMINISTIC_GET_REQUEST_URL
+
+  @pytest.fixture(autouse=True, scope='class')
+  def settings(self):
+    return reset()
+
+  @pytest.fixture(autouse=True, scope='class')
+  def recorded_request(self, runner: CliRunner, settings):
+    record_result = runner.invoke(record, ['-b', self.cookie, self.url])
+    assert record_result.exit_code == 0
+    return Request.last()
+
+  def test_it_fails_without_cookie_when_matching_headers(self, runner: CliRunner, recorded_request):
+    match_result = runner.invoke(setting, [
+      'match', 'set',
+      '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
+    ])
+    assert match_result.exit_code == 0
+
+    mock_result = runner.invoke(mock, [self.url])
+    assert mock_result.exit_code == 1
+
+  def test_it_succeeds_with_cookie_option(self, runner: CliRunner, recorded_request):
+    match_result = runner.invoke(setting, [
+      'match', 'set',
+      '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
+    ])
+    assert match_result.exit_code == 0
+
+    mock_result = runner.invoke(mock, ['-b', self.cookie, self.url])
+    assert mock_result.exit_code == 0
+
+  def test_it_succeeds_with_cookie_file(self, runner: CliRunner, recorded_request, tmp_path):
+    match_result = runner.invoke(setting, [
+      'match', 'set',
+      '--method', 'GET', '--mode', mode.MOCK, '--pattern', '.*?', '--component', request_component.HEADER
+    ])
+    assert match_result.exit_code == 0
+
+    cookie_file = tmp_path / 'cookies.txt'
+    cookie_file.write_text(self.cookie)
+
+    mock_result = runner.invoke(mock, ['-b', str(cookie_file), self.url])
+    assert mock_result.exit_code == 0
+
+
 class TestRequestRulesHeaders():
   """Integration tests for X-Stoobly-Request-Match-Rules and X-Stoobly-Request-Rewrite-Rules headers."""
 

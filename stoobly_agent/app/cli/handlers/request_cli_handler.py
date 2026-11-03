@@ -21,6 +21,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
 from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
+from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.utils import jmespath
 
@@ -259,6 +260,7 @@ def delete_handler(kwargs):
 
 def get_handler(kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+  Logger.reload()
 
   validate_request_key(kwargs['request_key'])
 

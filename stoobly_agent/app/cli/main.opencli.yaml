@@ -174,6 +174,13 @@ command:
           required: true
           description: Request URL.
       options:
+        - name: cookie
+          aliases: [b]
+          description: >
+            Pass data to the HTTP server in the Cookie header, or a filename of previously
+            stored cookies. May be specified multiple times.
+          arguments:
+            - name: cookie
         - name: data
           aliases: [d]
           description: HTTP POST data.
@@ -235,6 +242,7 @@ command:
       examples:
         - stoobly-agent mock https://example.com/api
         - stoobly-agent mock https://example.com/api -X POST -d '{"a":1}' --format raw
+        - stoobly-agent mock https://example.com/api -b 'session=abc123'
 
     - name: record
       description: Record request

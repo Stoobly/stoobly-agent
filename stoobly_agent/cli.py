@@ -290,6 +290,12 @@ def run(**kwargs):
 @main.command(
   help="Mock request"
 )
+@click.option('-b', '--cookie', multiple=True, help='''
+  Pass the data to the HTTP server in the Cookie header. It is supposedly the
+  data previously received from the server in a Set-Cookie line. The data should
+  be in the format "NAME1=VALUE1; NAME2=VALUE2". If no = sign is used in the
+  argument, it is instead treated as a filename to read previously stored cookie from.
+''')
 @click.option('-d', '--data', default='', help='HTTP POST data')
 @click.option('--format', type=click.Choice([RAW_FORMAT]), help='Format response')
 @click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')

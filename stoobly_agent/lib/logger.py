@@ -61,14 +61,24 @@ class Logger:
         cls._instance.load()
 
     def load(self):
-        log_level = os.getenv(LOG_LEVEL) or ''
+        log_level = (os.getenv(LOG_LEVEL) or INFO).lower()
+        levels = {
+            DEBUG: logging.DEBUG,
+            INFO: logging.INFO,
+            WARNING: logging.WARNING,
+            ERROR: logging.ERROR,
+        }
+        level = levels.get(log_level, logging.INFO)
 
-        if log_level.lower() == DEBUG:
+        # basicConfig is a no-op once root has handlers; always setLevel so reload works
+        # after CLI commands mutate STOOBLY_AGENT_LOG_LEVEL mid-process.
+        if log_level == DEBUG:
             logging.config.dictConfig({'disable_existing_loggers': True, 'version': 1})
-            logging.basicConfig(level=logging.DEBUG)
-        elif log_level.lower() == WARNING:
-            logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
-        elif log_level.lower() == ERROR:
-            logging.basicConfig(level=logging.ERROR, stream=sys.stderr)
-        else:
-            logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=level, stream=sys.stderr)
+        logging.getLogger().setLevel(level)
+
+        for logger in self._instances.values():
+            # dictConfig(disable_existing_loggers=True) marks prior loggers disabled;
+            # re-enable so reload to debug does not silence cached named loggers.
+            logger.disabled = False
+            logger.setLevel(level)
