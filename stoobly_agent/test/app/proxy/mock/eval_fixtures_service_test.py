@@ -1658,6 +1658,26 @@ class TestEvalFixturesService():
       )
       assert res is None
 
+    def test_malformed_scenario_key_does_not_raise(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+
+      for malformed in ['', 'abc.', 'p1..i2', 'not-a-key']:
+        res = eval_fixtures(
+          mitmproxy_request,
+          response_fixtures=fixtures,
+          scenario_key=malformed,
+        )
+        assert res is None
+
     def test_skips_scenario_fixture_without_scenario_key(
       self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
     ):

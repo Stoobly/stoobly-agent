@@ -8,7 +8,10 @@ class InvalidRequestKey(Exception):
 
 class RequestKey(UuidKey):
   def __init__(self, key: str):
-    super().__init__(key)
+    try:
+      super().__init__(key)
+    except (IndexError, TypeError, ValueError) as e:
+      raise InvalidRequestKey('Malformed key') from e
 
     self.__raw = key
 

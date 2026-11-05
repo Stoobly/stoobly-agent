@@ -8,7 +8,10 @@ class InvalidScenarioKey(Exception):
 class ScenarioKey(UuidKey):
 
   def __init__(self, key: str):
-    super().__init__(key)
+    try:
+      super().__init__(key)
+    except (IndexError, TypeError, ValueError) as e:
+      raise InvalidScenarioKey('Malformed key') from e
 
     self.__raw = key
 
