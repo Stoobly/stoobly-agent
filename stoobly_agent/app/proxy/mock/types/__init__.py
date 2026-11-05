@@ -41,3 +41,4 @@ class MockOptions(TypedDict):
   """Options for mock service."""
   public_directory_path: str
   response_fixtures_path: str                        # Comma-separated list of paths, optionally with origin prefix
+  scenario_key: Optional[str]                        # Active scenario key; used to match fixture scenario_keys

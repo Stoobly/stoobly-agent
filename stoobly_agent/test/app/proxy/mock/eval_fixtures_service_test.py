@@ -1575,3 +1575,166 @@ class TestEvalFixturesService():
       assert res.status_code == 200
       content = json.loads(res.raw.read().decode())
       assert content['message'] == 'Wildcard Match Response'
+
+  class TestScenarioKeys():
+    """Test optional scenario_keys property on fixture entries."""
+
+    SCENARIO_KEY_A = 'p1.i123e4567e89b12d3a456426614174000'
+    SCENARIO_KEY_B = 'p1.i223e4567e89b12d3a456426614174000'
+    SCENARIO_ID_A = '123e4567-e89b-12d3-a456-426614174000'
+
+    @pytest.fixture(scope='class')
+    def request_url(self):
+      return 'https://example.com/users'
+
+    @pytest.fixture(scope='class')
+    def created_request(self, settings: Settings, request_url: str):
+      status = RequestBuilder(
+        method='GET',
+        request_headers={'accept': 'application/json'},
+        response_body='',
+        status_code=200,
+        url=request_url,
+      ).with_settings(settings).build()[1]
+      assert status == 200
+      return Request.last()
+
+    @pytest.fixture()
+    def mitmproxy_request(self, created_request: Request) -> MitmproxyRequest:
+      return MitmproxyRequestAdapter(created_request).adapt()
+
+    @pytest.fixture(scope='class')
+    def scenario_a_file(self):
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      path = os.path.join(tmp_dir_path, 'scenario_a_users.json')
+      with open(path, 'w') as fp:
+        json.dump({'source': 'scenario_a'}, fp)
+      return path
+
+    @pytest.fixture(scope='class')
+    def global_file(self):
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      path = os.path.join(tmp_dir_path, 'global_users.json')
+      with open(path, 'w') as fp:
+        json.dump({'source': 'global'}, fp)
+      return path
+
+    def test_matches_scenario_specific_fixture(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=self.SCENARIO_KEY_A,
+      )
+      assert res is not None
+      assert json.loads(res.raw.read().decode())['source'] == 'scenario_a'
+
+    def test_skips_fixture_for_other_scenario(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=self.SCENARIO_KEY_B,
+      )
+      assert res is None
+
+    def test_skips_scenario_fixture_without_scenario_key(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixtures)
+      assert res is None
+
+    def test_global_fixture_still_matches_without_scenario_key(
+      self, mitmproxy_request: MitmproxyRequest, global_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': global_file,
+          }
+        }
+      }
+
+      res = eval_fixtures(mitmproxy_request, response_fixtures=fixtures)
+      assert res is not None
+      assert json.loads(res.raw.read().decode())['source'] == 'global'
+
+    def test_matches_scenario_id_in_scenario_keys(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_ID_A],
+          }
+        }
+      }
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=self.SCENARIO_KEY_A,
+      )
+      assert res is not None
+      assert json.loads(res.raw.read().decode())['source'] == 'scenario_a'
+
+    def test_response_fixtures_path_respects_scenario_keys(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'scenario_keys_fixtures.yml')
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+      with open(fixtures_file, 'w') as fp:
+        yaml.dump(fixtures, fp, sort_keys=False)
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures_path=fixtures_file,
+        scenario_key=self.SCENARIO_KEY_A,
+      )
+      assert res is not None
+      assert json.loads(res.raw.read().decode())['source'] == 'scenario_a'
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures_path=fixtures_file,
+        scenario_key=self.SCENARIO_KEY_B,
+      )
+      assert res is None
