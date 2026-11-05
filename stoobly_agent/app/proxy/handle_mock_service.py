@@ -22,7 +22,7 @@ from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.request_handler import reverse_proxy
-from .utils.response_handler import apply_response, bad_request, enable_cors
+from .utils.response_handler import apply_cors_headers, apply_response, bad_request, enable_cors
 from .utils.rewrite import rewrite_request, rewrite_response
 
 LOG_ID = 'Mock'
@@ -44,6 +44,10 @@ def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse'
         # Default OPTIONS request to allow CORS
         enable_cors(flow)
         return flow.response
+
+    # Enable CORS on 499 so browsers can surface mock-not-found to the client
+    if response is not None:
+        apply_cors_headers(response)
 
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 

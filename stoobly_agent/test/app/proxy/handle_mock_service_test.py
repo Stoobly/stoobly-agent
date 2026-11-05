@@ -1,10 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from mitmproxy.http import Response as MitmproxyResponse
 
 from stoobly_agent.app.proxy.constants import custom_response_codes
-from stoobly_agent.app.proxy.handle_mock_service import eval_request_with_retry
+from stoobly_agent.app.proxy.handle_mock_service import eval_request_with_retry, handle_mock_failure
 from stoobly_agent.app.proxy.mock.context import MockContext
+from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
+from stoobly_agent.app.proxy.utils.response_handler import CORS_HEADERS
 
 
 def build_context():
@@ -72,3 +75,50 @@ class TestEvalRequestWithRetry:
       res = eval_request_with_retry(context, eval_request)
 
     assert res is not_found
+
+
+class TestCustomNotFoundResponseBuilder:
+  def test_includes_cors_headers(self):
+    res = CustomNotFoundResponseBuilder().build()
+
+    assert res.status_code == custom_response_codes.NOT_FOUND
+    for header, value in CORS_HEADERS.items():
+      assert res.headers[header] == value
+
+
+class TestHandleMockFailureCors:
+  def test_applies_cors_headers_to_not_found_response(self):
+    flow = MagicMock()
+    flow.request = MagicMock()
+    flow.request.method = 'GET'
+    flow.response = MitmproxyResponse.make(
+      custom_response_codes.NOT_FOUND,
+      b'Request not found',
+      {'Content-Type': 'text/plain'},
+    )
+    context = MockContext(flow, MagicMock())
+
+    with patch('stoobly_agent.app.proxy.handle_mock_service.InterceptedRequestsLogger'):
+      handle_mock_failure(context)
+
+    for header, value in CORS_HEADERS.items():
+      assert flow.response.headers[header] == value
+    assert flow.response.status_code == custom_response_codes.NOT_FOUND
+
+  def test_options_replaces_response_with_cors_200(self):
+    flow = MagicMock()
+    flow.request = MagicMock()
+    flow.request.method = 'OPTIONS'
+    flow.response = MitmproxyResponse.make(
+      custom_response_codes.NOT_FOUND,
+      b'Request not found',
+      {'Content-Type': 'text/plain'},
+    )
+    context = MockContext(flow, MagicMock())
+
+    with patch('stoobly_agent.app.proxy.handle_mock_service.InterceptedRequestsLogger'):
+      handle_mock_failure(context)
+
+    assert flow.response.status_code == 200
+    for header, value in CORS_HEADERS.items():
+      assert flow.response.headers[header] == value
