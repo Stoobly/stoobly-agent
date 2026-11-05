@@ -37,17 +37,23 @@ def bad_request(flow: 'MitmproxyHTTPFlow', message: str):
         {'Content-Type': 'text/plain'}  # (optional) headers
     )
 
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS, POST, PATCH, PUT, DELETE',
+    'Access-Control-Allow-Headers': '*',
+}
+
+def apply_cors_headers(response: 'MitmproxyResponse'):
+    for header, value in CORS_HEADERS.items():
+        response.headers[header] = value
+
 def enable_cors(flow: 'MitmproxyHTTPFlow'):
     # Lazy import for runtime usage
     from mitmproxy.http import Response as MitmproxyResponse
     flow.response = MitmproxyResponse.make(
         200,
         '',
-        {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS, POST, PATCH, PUT, DELETE',
-            'Access-Control-Allow-Headers': '*'
-        }
+        CORS_HEADERS,
     )
 
 # Without deleting this header, causes parsing issues when reading response
