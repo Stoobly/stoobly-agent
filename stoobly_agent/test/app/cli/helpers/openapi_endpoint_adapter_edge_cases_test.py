@@ -173,6 +173,38 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (6, 'q3Element', 'q3[*]', 5),
     ]
 
+  def test_required_query_params_are_marked_required(self, tmp_path):
+    operation = {'parameters': [
+      {'name': 'q1', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'q2', 'in': 'query', 'schema': _STRING},
+      {'name': 'q3', 'in': 'query', 'required': True, 'schema': _object({'k': _STRING})},
+    ]}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'q1', 'q1', None, True),
+      (2, 'q2', 'q2', None, False),
+      (3, 'q3', 'q3', None, True),
+      (4, 'k', 'q3.k', 3, False),
+    ]
+
+  def test_required_query_param_name_does_not_mark_a_nested_property_required(self, tmp_path):
+    operation = {'parameters': [
+      {'name': 'name', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'filter', 'in': 'query', 'schema': _object({'name': _STRING})},
+    ]}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'name', 'name', None, True),
+      (2, 'filter', 'filter', None, False),
+      (3, 'name', 'filter.name', 2, False),
+    ]
+
 
 @pytest.mark.openapi
 class TestOpenApiEndpointAdapterServerVariables():

@@ -158,9 +158,9 @@ class _SchemaParamWalker():
     self._last_id = 0
 
   # Ids continue after the params collected so far, e.g. when walking several query params in a row
-  def walk_root(self, name: str, schema):
+  def walk_root(self, name: str, schema, override_required=False):
     self._last_id = len(self.params)
-    self.walk(name, schema)
+    self.walk(name, schema, override_required=override_required)
 
   # `name` is the name of the schema object, i.e. the name of the body_param_name or response_param_name component
   # An anonymous schema (the root of a body/response, or an allOf part) adds no param of its own
@@ -205,16 +205,14 @@ class _SchemaParamWalker():
       return
 
     default_value = _default_python_value(schema.get('type', 'object'))
-    required = override_required or bool(schema.get('required', False))
-    self.params.append(_make_param(name, 'values', [default_value], required, query, node_id, parent_id))
+    self.params.append(_make_param(name, 'values', [default_value], override_required, query, node_id, parent_id))
 
   # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
   def __visit_object(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
     self.__add_required(schema.get('required'))
 
     if name != _ANONYMOUS:
-      required = override_required or bool(schema.get('schema_required', False))
-      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+      self.params.append(_make_param(name, 'value', {}, override_required, query, node_id, parent_id))
 
     for property_key, property_value in schema.get('properties').items():
       is_required = property_key in self.required
@@ -228,15 +226,13 @@ class _SchemaParamWalker():
       self.walk('Element', schema['items'], parent_id, query)
       return
 
-    required = override_required or bool(schema.get('required', False))
-    self.params.append(_make_param(name, 'value', [], required, query, node_id, parent_id))
+    self.params.append(_make_param(name, 'value', [], override_required, query, node_id, parent_id))
     self.walk(f"{name}Element", schema['items'], node_id, query)
 
   # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
   def __visit_all_of(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
     if name != _ANONYMOUS:
-      required = override_required or bool(schema.get('self_required', False))
-      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+      self.params.append(_make_param(name, 'value', {}, override_required, query, node_id, parent_id))
 
     for part in schema.get('allOf'):
       self.__add_required(part.get('required'))
@@ -353,10 +349,7 @@ class OpenApiEndpointAdapter():
     endpoint['query_param_names'] = []
 
     for parameter in parameters:
-      if parameter.get('required'):
-        walker.required.append(parameter['name'])
-
-      walker.walk_root(parameter['name'], parameter.get('schema', {}))
+      walker.walk_root(parameter['name'], parameter.get('schema', {}), bool(parameter.get('required')))
 
     self.__convert_literal_component_param(endpoint, walker.params, 'query_param_name')
 
