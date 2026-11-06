@@ -207,6 +207,20 @@ class TestOpenApiEndpointAdapterSchemaWalking():
 
 
 @pytest.mark.openapi
+class TestOpenApiEndpointAdapterResponseHeaders():
+  def test_response_header_is_required_only_when_declared_required(self, tmp_path):
+    operation = {'responses': {'200': {'description': 'ok', 'headers': {
+      'X-Required': {'required': True, 'schema': _STRING},
+      'X-Optional': {'schema': _STRING},
+    }}}}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    headers = {header['name']: header['is_required'] for header in endpoints[0]['response_header_names']}
+    assert headers == {'X-Required': True, 'X-Optional': False}
+
+
+@pytest.mark.openapi
 class TestOpenApiEndpointAdapterServerVariables():
   def _hosts_and_paths(self, tmp_path, servers: list) -> List[tuple]:
     return [(endpoint['host'], endpoint['path']) for endpoint in _adapt(tmp_path, servers=servers)]

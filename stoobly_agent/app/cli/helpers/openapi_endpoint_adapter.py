@@ -640,7 +640,7 @@ class OpenApiEndpointAdapter():
 
     header_definition = self.__deref(header_definition)
 
-    response_header_name['is_required'] = header_definition.get('is_required', False)
+    response_header_name['is_required'] = bool(header_definition.get('required'))
     response_header_name['is_deterministic'] = True
     response_header_name['values'] = self.__extract_examples(header_definition)
 
