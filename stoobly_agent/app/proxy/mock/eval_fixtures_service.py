@@ -109,6 +109,13 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
         for k, v in _headers.items():
           headers[str(k)] = str(v)
 
+      # Browsers reject Access-Control-Allow-Origin: * with credentials.
+      # If a fixture overrides Allow-Origin to *, drop the credential defaults
+      # (and Vary) that cors_headers() set when request Origin was present.
+      if headers.get('Access-Control-Allow-Origin') == '*':
+        headers.pop('Access-Control-Allow-Credentials', None)
+        headers.pop('Vary', None)
+
       if fixture.get('status_code'):
         status_code = fixture.get('status_code')
 
