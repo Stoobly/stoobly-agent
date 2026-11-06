@@ -8,8 +8,9 @@ import json
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE, DOTENV_FILE
+from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE, DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.docker_runtime import scaffold_namespace_path_for_runtime_check
 from stoobly_agent.app.cli.scaffold.env import Env
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold_cli import LOG_ID, scaffold
@@ -936,3 +937,34 @@ class TestScaffoldServiceFilterWarnings:
     listed = result.output.split()
     for service_name in ['build', 'entrypoint', 'stoobly_ui', 'gateway', 'my-service']:
       assert service_name in listed
+
+
+class TestDockerRuntimeCheckContainerized:
+  def test_containerized_uses_stoobly_home_not_host_app_dir(self):
+    host_app_dir = '/home/jvlarble/github/stoobly-agent-scaffold/missing-host-path'
+    argv = [
+      'stoobly-agent', 'scaffold', 'workflow', 'up',
+      '--containerized',
+      '--app-dir-path', host_app_dir,
+      'record',
+    ]
+
+    path = scaffold_namespace_path_for_runtime_check(argv)
+    assert path == os.path.join(STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE)
+    assert not os.path.exists(host_app_dir)
+    # Must not attempt to create the host app/.stoobly path inside the container
+    assert not os.path.exists(os.path.join(host_app_dir, DATA_DIR_NAME))
+
+  def test_non_containerized_uses_app_dir_path(self, tmp_path):
+    app_dir = tmp_path / 'app'
+    app_dir.mkdir()
+    (app_dir / DATA_DIR_NAME / SERVICES_NAMESPACE).mkdir(parents=True)
+
+    argv = [
+      'stoobly-agent', 'scaffold', 'workflow', 'up',
+      '--app-dir-path', str(app_dir),
+      'record',
+    ]
+
+    path = scaffold_namespace_path_for_runtime_check(argv)
+    assert path == str(app_dir / DATA_DIR_NAME / SERVICES_NAMESPACE)
