@@ -48,6 +48,27 @@ class TestDelete():
       assert Request.last() == None
 
 
+class TestDeleteWithForce():
+
+  @pytest.fixture(autouse=True, scope='class')
+  def request_create_cli_result(self, runner: CliRunner):
+    record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+    assert record_result.exit_code == 0
+    return record_result
+
+  @pytest.fixture(autouse=True, scope='class')
+  def request_delete_cli_results(self, runner: CliRunner):
+    _request = Request.last()
+    request_delete_result = runner.invoke(request, ['delete', '--force', _request.key()])
+    assert request_delete_result.exit_code == 0
+
+    return request_delete_result
+
+  def test_it_hard_deletes(self, request_delete_cli_results):
+    assert Request.last() == None
+    assert 'Request deleted!' in request_delete_cli_results.output
+
+
 class TestDeleteWhenInScenario():
 
   @pytest.fixture(autouse=True, scope='class')

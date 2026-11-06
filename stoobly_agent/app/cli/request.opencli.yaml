@@ -75,6 +75,9 @@ command:
     arguments:
     - name: request_key
       required: true
+    options:
+    - name: force
+      description: Toggles whether the request is hard deleted.
   - name: import
     description: Import requests from a file
     arguments:

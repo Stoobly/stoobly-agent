@@ -80,10 +80,10 @@ class RequestFacade(ReplayFacade):
 
     return self.update(created['key'], {'latency': latency})
 
-  def delete(self, request_key: str):
+  def delete(self, request_key: str, **params):
     key = RequestKey(request_key)
 
-    return self.__model.destroy(key.id)
+    return self.__model.destroy(key.id, **params)
 
   def update(self, request_key: str, params: dict):
     key = RequestKey(request_key)

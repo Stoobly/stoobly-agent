@@ -269,12 +269,13 @@ def delete_handler(kwargs):
     print(f"Error: Could not find request", file=sys.stderr)
     sys.exit(1)
 
-  res = request.delete(kwargs['request_key'])
+  force = kwargs.get('force', False)
+  res = request.delete(kwargs['request_key'], force=force)
   if not res:
     print('Error: Could not delete request', file=sys.stderr)
     sys.exit(1)
 
-  if not is_deleted:
+  if not is_deleted and not force:
     print('Request moved to trash!')
   else:
     print('Request deleted!')
