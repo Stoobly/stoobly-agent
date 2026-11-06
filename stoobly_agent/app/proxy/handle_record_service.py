@@ -40,6 +40,10 @@ from .utils.strategy import get_active_mode_strategy
 
 LOG_ID = 'Record'
 
+# Marks that this agent served a local fixture. Do not infer from
+# X-Stoobly-Fixture-Path — upstream (e.g. a chained mock agent) may set that header.
+_FIXTURE_MOCKED_METADATA_KEY = 'stoobly_fixture_mocked'
+
 # Shared thread pool executor for record operations
 # Limits concurrent record operations and integrates with asyncio event loop
 #
@@ -230,13 +234,11 @@ def __try_mock_fixture(context: ReplayContext) -> bool:
     __mock_hook(lifecycle_hooks.BEFORE_MOCK, mock_context)
     apply_response(flow, fixture)
     handle_mock_success(mock_context)
+    flow.metadata[_FIXTURE_MOCKED_METADATA_KEY] = True
     return True
 
 def __was_fixture_mocked(flow: 'MitmproxyHTTPFlow') -> bool:
-    response = flow.response
-    if not response:
-        return False
-    return bool(response.headers.get(custom_headers.MOCK_FIXTURE_PATH))
+    return bool(flow.metadata.get(_FIXTURE_MOCKED_METADATA_KEY))
 
 def __mock_hook(hook: str, context: MockContext):
     intercept_settings: InterceptSettings = context.intercept_settings

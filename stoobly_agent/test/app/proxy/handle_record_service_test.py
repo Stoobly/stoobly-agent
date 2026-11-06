@@ -10,6 +10,7 @@ def build_replay_context():
   flow = MagicMock()
   flow.request = MagicMock()
   flow.response = None
+  flow.metadata = {}
   intercept_settings = MagicMock()
   intercept_settings.public_directory_path = '/tmp/public'
   intercept_settings.response_fixtures_path = '/tmp/fixtures.yml'
@@ -20,13 +21,16 @@ def build_replay_context():
   return ReplayContext(flow, intercept_settings)
 
 
-def build_record_context(fixture_path=None):
+def build_record_context(fixture_mocked=False, fixture_path=None):
   flow = MagicMock()
   flow.request = MagicMock()
   flow.response = MagicMock()
+  flow.metadata = {}
   headers = {}
   if fixture_path:
     headers[custom_headers.MOCK_FIXTURE_PATH] = fixture_path
+  if fixture_mocked:
+    flow.metadata['stoobly_fixture_mocked'] = True
   flow.response.headers = headers
   intercept_settings = MagicMock()
   intercept_settings.lifecycle_hooks = {}
@@ -64,6 +68,7 @@ class TestHandleRequestRecordFixtures:
     before_mock.assert_called_once()
     apply_response_mock.assert_called_once_with(context.flow, fixture)
     handle_mock_success_mock.assert_called_once()
+    assert context.flow.metadata.get('stoobly_fixture_mocked') is True
 
   def test_skips_mock_lifecycle_when_no_fixture(self):
     context = build_replay_context()
@@ -87,11 +92,12 @@ class TestHandleRequestRecordFixtures:
     before_mock.assert_not_called()
     apply_response_mock.assert_not_called()
     handle_mock_success_mock.assert_not_called()
+    assert 'stoobly_fixture_mocked' not in context.flow.metadata
 
 
 class TestHandleResponseRecordFixtures:
   def test_delegates_to_mock_response_when_fixture_mocked(self):
-    context = build_record_context(fixture_path='/tmp/fixtures/user.json')
+    context = build_record_context(fixture_mocked=True)
 
     with patch(
       'stoobly_agent.app.proxy.handle_record_service.handle_response_mock'
@@ -105,6 +111,29 @@ class TestHandleResponseRecordFixtures:
     handle_response_mock_mock.assert_called_once()
     handle_response_develop_mock.assert_not_called()
     record_request_mock.assert_not_called()
+
+  def test_records_when_upstream_sets_fixture_path_header(self):
+    """Upstream (e.g. chained mock agent) may set X-Stoobly-Fixture-Path; still record."""
+    context = build_record_context(fixture_path='/tmp/fixtures/user.json')
+
+    with patch(
+      'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding'
+    ), patch(
+      'stoobly_agent.app.proxy.handle_record_service.handle_response_develop'
+    ), patch(
+      'stoobly_agent.app.proxy.handle_record_service.handle_response_mock'
+    ) as handle_response_mock_mock, patch(
+      'stoobly_agent.app.proxy.handle_record_service.RequestModel'
+    ), patch(
+      'stoobly_agent.app.proxy.handle_record_service.get_intercept_mode_policy',
+      return_value=record_policy.ALL,
+    ), patch(
+      'stoobly_agent.app.proxy.handle_record_service.__record_request'
+    ) as record_request_mock:
+      handle_response_record(context)
+
+    handle_response_mock_mock.assert_not_called()
+    record_request_mock.assert_called_once()
 
   def test_records_when_not_fixture_mocked(self):
     context = build_record_context()
