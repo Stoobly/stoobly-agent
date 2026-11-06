@@ -1,6 +1,7 @@
 import pdb
 import pytest
 import requests
+import yaml
 
 from urllib.parse import urlparse
 
@@ -11,6 +12,10 @@ from stoobly_agent.app.models.factories.resource.local_db.request_adapter import
 )
 from stoobly_agent.app.models.types.request import RequestIndexSimilarParams
 from stoobly_agent.app.proxy.constants import custom_response_codes
+from stoobly_agent.app.proxy.mock.endpoint_cache import (
+  build_ignored_components_from_openapi_endpoint,
+  load_openapi_endpoints_from_file,
+)
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import HashedRequestDecorator
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
@@ -572,3 +577,57 @@ class TestLocalDBRequestAdapter():
         )
 
         assert response.status_code == 498
+
+      def _openapi_ignored_components(self, tmp_path):
+        spec = {
+          'openapi': '3.0.0',
+          'info': {'title': 'test', 'version': '1.0.0'},
+          'servers': [{'url': 'https://example.com/v1'}],
+          'paths': {'/search': {'get': {
+            'parameters': [
+              {'name': 'a', 'in': 'query', 'required': True, 'schema': {'type': 'integer'}},
+              {'name': 'b', 'in': 'query', 'schema': {'type': 'integer'}},
+            ],
+            'responses': {'200': {'description': 'ok'}},
+          }}},
+        }
+        spec_path = tmp_path / 'spec.yaml'
+        spec_path.write_text(yaml.safe_dump(spec))
+
+        endpoints = load_openapi_endpoints_from_file(str(spec_path))
+        return build_ignored_components_from_openapi_endpoint(endpoints[0])
+
+      # Mirrors the mock retry: hashes are computed without the endpoint's ignored components
+      def _retry_response(self, adapter: LocalDBRequestAdapter, url: str, ignored_components: list):
+        python_request = requests.Request(method='GET', url=url, headers={'x-token': 'abc'})
+        mitmproxy_request = PythonRequestAdapterFactory(python_request).mitmproxy_request()
+        hashed_request = HashedRequestDecorator(mitmproxy_request).with_ignored_components(ignored_components)
+
+        return adapter.response(
+          host='example.com',
+          method='GET',
+          path='/v1/search',
+          port=443,
+          query_params_hash=hashed_request.query_params_hash(),
+          compute=1,
+          retry=True,
+          endpoint_promise=lambda: { 'ignored_components': ignored_components }
+        )
+
+      def test_it_matches_openapi_endpoint_when_only_an_optional_query_param_differs(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request, tmp_path
+      ):
+        ignored_components = self._openapi_ignored_components(tmp_path)
+
+        response = self._retry_response(local_db_request_adapter, 'https://example.com/v1/search?a=1&b=3', ignored_components)
+
+        assert response.status_code == 200
+
+      def test_it_is_not_found_for_openapi_endpoint_when_a_required_query_param_differs(
+        self, local_db_request_adapter: LocalDBRequestAdapter, created_request: Request, tmp_path
+      ):
+        ignored_components = self._openapi_ignored_components(tmp_path)
+
+        response = self._retry_response(local_db_request_adapter, 'https://example.com/v1/search?a=9&b=2', ignored_components)
+
+        assert response.status_code == custom_response_codes.NOT_FOUND
