@@ -16,6 +16,7 @@ def build_context():
   intercept_settings = MagicMock()
   intercept_settings.public_directory_path = '/tmp/public'
   intercept_settings.response_fixtures_path = '/tmp/fixtures.yml'
+  intercept_settings.scenario_key = None
   return MockContext(flow, intercept_settings)
 
 
@@ -59,6 +60,7 @@ class TestEvalRequestWithRetry:
       context.flow.request,
       public_directory_path='/tmp/public',
       response_fixtures_path='/tmp/fixtures.yml',
+      scenario_key=context.intercept_settings.scenario_key,
     )
 
   def test_keeps_not_found_when_no_fixture(self):

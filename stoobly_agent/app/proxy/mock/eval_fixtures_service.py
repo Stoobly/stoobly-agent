@@ -42,11 +42,15 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
     # Try response fixtures in order of preference
     fixture = None
 
+    scenario_key = options.get('scenario_key')
+
     if response_fixtures:
-      fixture = __find_fixture_for_request(request, response_fixtures, request.method)
+      fixture = __find_fixture_for_request(request, response_fixtures, request.method, scenario_key)
 
     if options.get('response_fixtures_path'):
-      fixture = __eval_response_fixtures_from_paths(request, options['response_fixtures_path'])
+      fixture = __eval_response_fixtures_from_paths(
+        request, options['response_fixtures_path'], scenario_key
+      )
     
     if not fixture:
       raw_paths = options.get('public_directory_path')
@@ -132,7 +136,9 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
 
     return response
 
-def __eval_response_fixtures_from_paths(request: 'MitmproxyRequest', fixtures_paths: str):
+def __eval_response_fixtures_from_paths(
+  request: 'MitmproxyRequest', fixtures_paths: str, scenario_key: Optional[str] = None
+):
   """Iterate through response fixtures paths and return the first matching fixture."""
   if not fixtures_paths:
     return None
@@ -166,7 +172,7 @@ def __eval_response_fixtures_from_paths(request: 'MitmproxyRequest', fixtures_pa
         fixtures = yaml.safe_load(stream) or {}
         
         # Try to find a matching fixture in this file
-        fixture = __find_fixture_for_request(request, fixtures, method)
+        fixture = __find_fixture_for_request(request, fixtures, method, scenario_key)
         if fixture:
           # Convert fixture path to absolute path if it's a relative path and if 'path' exists in the fixture
           if fixture.get('path') and not os.path.isabs(fixture['path']):
@@ -207,15 +213,74 @@ def __guess_file_path(file_path: str, content_type):
 
   return file_path
 
-def __find_fixture_for_request(request: 'MitmproxyRequest', fixtures: dict, method: str):
+def __find_fixture_for_request(
+  request: 'MitmproxyRequest',
+  fixtures: dict,
+  method: str,
+  scenario_key: Optional[str] = None,
+):
   """Find a fixture for the given request in the provided fixtures."""
   if not fixtures:
     return None
   
-  return __find_fixture_in_routes(fixtures, method, request.path)
+  return __find_fixture_in_routes(fixtures, method, request.path, scenario_key)
 
-def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
-  """Find a fixture for the given method and path in the provided fixtures."""
+def __scenario_keys_match(fixture: dict, scenario_key: Optional[str]) -> bool:
+  """Return True when the fixture applies to the active scenario.
+
+  - Missing / empty scenario_keys → matches any scenario (global fixture).
+  - Non-empty scenario_keys → matches only when scenario_key equals an entry,
+    or equals the parsed scenario id of an entry that is a full scenario key.
+  """
+  scenario_keys = fixture.get('scenario_keys')
+  if not scenario_keys:
+    return True
+
+  if not isinstance(scenario_keys, list):
+    return False
+
+  if not scenario_key:
+    return False
+
+  from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
+
+  candidates = {scenario_key}
+  try:
+    parsed = ScenarioKey(scenario_key)
+    if parsed.id:
+      candidates.add(parsed.id)
+      candidates.add(parsed.id.replace('-', ''))
+  except InvalidScenarioKey:
+    pass
+
+  for key in scenario_keys:
+    if not isinstance(key, str):
+      continue
+    if key in candidates:
+      return True
+
+    try:
+      parsed_listed = ScenarioKey(key)
+      if parsed_listed.id and parsed_listed.id in candidates:
+        return True
+      if parsed_listed.raw in candidates:
+        return True
+    except InvalidScenarioKey:
+      continue
+
+  return False
+
+def __find_fixture_in_routes(
+  fixtures: dict,
+  method: str,
+  request_path: str,
+  scenario_key: Optional[str] = None,
+):
+  """Find a fixture for the given method and path in the provided fixtures.
+
+  Each path maps to a single fixture dict. Optional scenario_keys on that
+  dict limits the fixture to matching scenarios.
+  """
   routes = fixtures.get(method)
   
   if not isinstance(routes, dict):
@@ -224,13 +289,15 @@ def __find_fixture_in_routes(fixtures: dict, method: str, request_path: str):
   for path_pattern in routes:
     if not re.fullmatch(path_pattern, request_path):
       continue
-      
+
     fixture = routes[path_pattern]
     if not isinstance(fixture, dict):
       continue
 
-    path = fixture.get('path')
+    if not __scenario_keys_match(fixture, scenario_key):
+      continue
 
+    path = fixture.get('path')
     if path:
       fixture['path_pattern'] = path_pattern
       return fixture

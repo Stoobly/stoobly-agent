@@ -25,14 +25,15 @@ class UuidKey(ResourceKey):
     return str(u)
 
   def __decode(self, key: str):
-    toks = key.split(DELIMITTER)
-
     d = {}
 
-    if len(toks) == 0:
+    if not isinstance(key, str) or not key:
       return d
 
-    for tok in toks:
+    for tok in key.split(DELIMITTER):
+      # Skip empty tokens from malformed keys like "abc." or "p1..i2"
+      if not tok:
+        continue
       d[tok[0]] = tok[1:]
 
     return d
