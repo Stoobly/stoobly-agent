@@ -71,6 +71,7 @@ if is_local:
 @request.command(
   help="Delete a request"
 )
+@click.option('--force', default=False, is_flag=True, help="Toggles whether the request is hard deleted.")
 @click.argument('request_key')
 def delete(**kwargs):
   delete_handler(kwargs)
