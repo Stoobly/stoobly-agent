@@ -21,11 +21,18 @@ def _body(schema: dict) -> dict:
   return {'requestBody': {'content': {'application/json': {'schema': schema}}}}
 
 
-def _adapt(tmp_path, operation: Optional[dict] = None, servers: Optional[list] = None, security_schemes: Optional[dict] = None) -> List[dict]:
+def _adapt(
+  tmp_path, operation: Optional[dict] = None, servers: Optional[list] = None, security_schemes: Optional[dict] = None,
+  path_parameters: Optional[list] = None,
+) -> List[dict]:
+  path_item = {'post': {'responses': {'200': {'description': 'ok'}}, **(operation or {})}}
+  if path_parameters:
+    path_item['parameters'] = path_parameters
+
   spec = {
     'openapi': '3.0.0',
     'info': {'title': 'test', 'version': '1.0.0'},
-    'paths': {'/pets': {'post': {'responses': {'200': {'description': 'ok'}}, **(operation or {})}}},
+    'paths': {'/pets': path_item},
     'components': {'schemas': {'Pet': _PET}},
   }
 
@@ -203,6 +210,35 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (1, 'name', 'name', None, True),
       (2, 'filter', 'filter', None, False),
       (3, 'name', 'filter.name', 2, False),
+    ]
+
+
+@pytest.mark.openapi
+class TestOpenApiEndpointAdapterPathLevelParameters():
+  def test_query_params_and_headers_declared_on_the_path_item_apply_to_its_operations(self, tmp_path):
+    path_parameters = [
+      {'name': 'shared', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'X-Shared', 'in': 'header', 'schema': _STRING},
+    ]
+
+    endpoints = _adapt(tmp_path, path_parameters=path_parameters)
+
+    assert [param['name'] for param in endpoints[0]['query_param_names']] == ['shared']
+    assert [header['name'] for header in endpoints[0]['header_names']] == ['X-Shared']
+
+  def test_operation_parameter_overrides_path_item_parameter_with_the_same_name_and_location(self, tmp_path):
+    path_parameters = [
+      {'name': 'q', 'in': 'query', 'schema': _STRING},
+      {'name': 'other', 'in': 'query', 'schema': _STRING},
+    ]
+    operation = {'parameters': [{'name': 'q', 'in': 'query', 'required': True, 'schema': _STRING}]}
+
+    endpoints = _adapt(tmp_path, operation, path_parameters=path_parameters)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'other', 'other', None, False),
+      (2, 'q', 'q', None, True),
     ]
 
 

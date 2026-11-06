@@ -287,16 +287,16 @@ class OpenApiEndpointAdapter():
           if http_method not in path:
             continue
 
-          endpoints.append(self.__build_endpoint(parsed_url, path_name, http_method, path[http_method]))
+          endpoints.append(self.__build_endpoint(parsed_url, path_name, http_method, path[http_method], path))
 
     return endpoints
 
-  def __build_endpoint(self, parsed_url, path_name: str, http_method: str, operation) -> OpenApiEndpointShowResponse:
+  def __build_endpoint(self, parsed_url, path_name: str, http_method: str, operation, path_item) -> OpenApiEndpointShowResponse:
     endpoint: OpenApiEndpointShowResponse = {}
     endpoint['method'] = http_method.upper()
 
     self.__apply_location(endpoint, parsed_url, path_name)
-    self.__apply_parameters(endpoint, operation)
+    self.__apply_parameters(endpoint, self.__merge_parameters(path_item.get("parameters", []), operation.get("parameters", [])))
 
     # TODO: nested servers
 
@@ -325,10 +325,22 @@ class OpenApiEndpointAdapter():
     endpoint['service_id'] = compute_openapi_service_id(parsed_url.hostname, endpoint['port'])
     endpoint['id'] = compute_openapi_endpoint_id(endpoint['service_id'], endpoint['match_pattern'], endpoint['method'])
 
-  def __apply_parameters(self, endpoint: OpenApiEndpointShowResponse, operation):
+  # Parameters declared on the path item apply to all of its operations,
+  # unless the operation declares a parameter with the same name and location
+  def __merge_parameters(self, path_item_parameters, operation_parameters) -> list:
+    overridden = {self.__parameter_key(parameter) for parameter in operation_parameters}
+    inherited = [parameter for parameter in path_item_parameters if self.__parameter_key(parameter) not in overridden]
+
+    return inherited + list(operation_parameters)
+
+  def __parameter_key(self, parameter):
+    parameter = self.__deref(parameter)
+    return (parameter['name'], parameter['in'])
+
+  def __apply_parameters(self, endpoint: OpenApiEndpointShowResponse, parameters):
     query_parameters = []
 
-    for parameter in operation.get("parameters", {}):
+    for parameter in parameters:
       parameter = self.__deref(parameter)
 
       if parameter['in'] == 'query':
