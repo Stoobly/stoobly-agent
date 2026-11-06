@@ -40,6 +40,9 @@ def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse'
     request = flow.request
     response = flow.response
 
+    request_headers = request.headers if request else None
+    origin = request_headers.get('Origin') if request_headers is not None else None
+
     if request.method.upper() == 'OPTIONS':
         # Default OPTIONS request to allow CORS
         enable_cors(flow)
@@ -47,7 +50,7 @@ def handle_mock_failure(context: MockContext) -> Union[None, 'MitmproxyResponse'
 
     # Enable CORS on 499 so browsers can surface mock-not-found to the client
     if response is not None:
-        apply_cors_headers(response)
+        apply_cors_headers(response, origin, request_headers)
 
     InterceptedRequestsLogger.error("Mock failure", request=request, response=response)
 

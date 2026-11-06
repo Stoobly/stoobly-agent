@@ -68,11 +68,11 @@ def eval_request(
     except InvalidScenarioKey:
         Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} scenario key ${scenario_key}")
         # If project_key or scenario_key are invalid, assume custom not found
-        return CustomNotFoundResponseBuilder().build()
+        return CustomNotFoundResponseBuilder().build(request_headers=request.headers)
     except InvalidProjectKey:
         Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} project key ${intercept_settings.project_key}")
         # If project_key or scenario_key are invalid, assume custom not found
-        return CustomNotFoundResponseBuilder().build()
+        return CustomNotFoundResponseBuilder().build(request_headers=request.headers)
 
     ignored_components = __build_ignored_components(ignored_components_list or [])
     query_params_builder.with_params(__build_request_params(request, ignored_components))

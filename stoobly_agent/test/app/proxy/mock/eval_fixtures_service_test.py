@@ -151,10 +151,54 @@ class TestEvalFixturesService():
     def test_it_sets_headers(self, fixtures_response: requests.Response):
       assert fixtures_response.headers['test'] == '1'
       assert fixtures_response.headers['Content-Type'] == 'text/html'
-      # Default CORS headers should always be present
+      # Default CORS headers should always be present (no Origin -> *)
       assert fixtures_response.headers['Access-Control-Allow-Origin'] == '*'
       assert fixtures_response.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
       assert fixtures_response.headers['Access-Control-Allow-Headers'] == '*'
+      assert 'Access-Control-Allow-Credentials' not in fixtures_response.headers
+
+    def test_it_reflects_request_origin_for_cors(
+      self,
+      mitmproxy_request: MitmproxyRequest,
+      response_fixtures: Fixtures,
+    ):
+      """When Origin is present, reflect it and allow credentials."""
+      origin = 'https://app.example.com'
+      mitmproxy_request.headers['Origin'] = origin
+
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'test_response_fixtures_cors_origin.yml')
+      with open(fixtures_file, 'w') as f:
+        yaml.dump(response_fixtures, f, sort_keys=False)
+
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures_path=fixtures_file)
+      assert res is not None
+      assert res.headers['Access-Control-Allow-Origin'] == origin
+      assert res.headers['Access-Control-Allow-Credentials'] == 'true'
+      assert res.headers['Vary'] == 'Origin'
+      assert res.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
+      assert res.headers['Access-Control-Allow-Headers'] == '*'
+
+    def test_it_echoes_access_control_request_headers(
+      self,
+      mitmproxy_request: MitmproxyRequest,
+      response_fixtures: Fixtures,
+    ):
+      """With credentials, echo Access-Control-Request-Headers instead of '*'."""
+      origin = 'https://app.example.com'
+      requested_headers = 'content-type, authorization, x-custom'
+      mitmproxy_request.headers['Origin'] = origin
+      mitmproxy_request.headers['Access-Control-Request-Headers'] = requested_headers
+
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'test_response_fixtures_cors_acrh.yml')
+      with open(fixtures_file, 'w') as f:
+        yaml.dump(response_fixtures, f, sort_keys=False)
+
+      res: requests.Response = eval_fixtures(mitmproxy_request, response_fixtures_path=fixtures_file)
+      assert res is not None
+      assert res.headers['Access-Control-Allow-Headers'] == requested_headers
+      assert res.headers['Vary'] == 'Origin, Access-Control-Request-Headers'
 
     def test_fixture_headers_merge_with_cors_defaults(
       self,
@@ -193,6 +237,78 @@ class TestEvalFixturesService():
       assert res.headers['Access-Control-Allow-Headers'] == '*'
       # Custom header merged
       assert res.headers['X-Custom-Header'] == 'abc'
+
+    def test_fixture_wildcard_origin_drops_credentials(
+      self,
+      mitmproxy_request: MitmproxyRequest,
+      not_found_file_path: str,
+    ):
+      """Fixture Allow-Origin * must not keep credentials defaults from request Origin."""
+      origin = 'https://app.example.com'
+      mitmproxy_request.headers['Origin'] = origin
+      mitmproxy_request.headers['Access-Control-Request-Headers'] = 'content-type, authorization'
+
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'override_cors_wildcard.yml')
+
+      override_fixtures: Fixtures = {
+        'POST': {
+          '/404.html': {
+            'headers': {
+              'Access-Control-Allow-Origin': '*',
+            },
+            'path': not_found_file_path,
+            'status_code': 200,
+          },
+        },
+      }
+
+      with open(fixtures_file, 'w') as f:
+        yaml.dump(override_fixtures, f, sort_keys=False)
+
+      res: requests.Response = eval_fixtures(
+        mitmproxy_request, response_fixtures_path=fixtures_file
+      )
+
+      assert res is not None
+      assert res.headers['Access-Control-Allow-Origin'] == '*'
+      assert 'Access-Control-Allow-Credentials' not in res.headers
+      assert 'Vary' not in res.headers
+      assert res.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
+
+    def test_fixture_headers_cast_non_strings_to_str(
+      self,
+      mitmproxy_request: MitmproxyRequest,
+      not_found_file_path: str,
+    ):
+      """YAML ints/bools in headers should be cast to strings."""
+      tmp_dir_path = DataDir.instance().tmp_dir_path
+      fixtures_file = os.path.join(tmp_dir_path, 'cast_headers.yml')
+
+      # Write raw YAML so ints/bools are parsed as non-strings
+      with open(fixtures_file, 'w') as f:
+        f.write(
+          f"""
+POST:
+  /404.html:
+    headers:
+      X-Retry-After: 60
+      X-Enabled: true
+      Content-Length: 0
+    path: {not_found_file_path}
+    status_code: 200
+"""
+        )
+
+      res: requests.Response = eval_fixtures(
+        mitmproxy_request, response_fixtures_path=fixtures_file
+      )
+
+      assert res is not None
+      assert res.headers['X-Retry-After'] == '60'
+      assert res.headers['X-Enabled'] == 'True'
+      assert res.headers['Content-Length'] == '0'
+      assert isinstance(res.headers['X-Retry-After'], str)
 
     def test_it_sets_status_code(self,  fixtures_response: requests.Response):
       assert fixtures_response.status_code == 404
@@ -732,6 +848,17 @@ class TestEvalFixturesService():
       assert res.headers['Access-Control-Allow-Origin'] == '*'
       assert res.headers['Access-Control-Allow-Methods'] == 'GET, OPTIONS, POST, PATCH, PUT, DELETE'
       assert res.headers['Access-Control-Allow-Headers'] == '*'
+      assert 'Access-Control-Allow-Credentials' not in res.headers
+
+    def test_custom_fixture_path_header_reflects_origin(self, mitmproxy_request: MitmproxyRequest):
+      """Custom fixture path responses should reflect Origin and allow credentials."""
+      origin = 'https://app.example.com'
+      mitmproxy_request.headers['Origin'] = origin
+      res = eval_fixtures(mitmproxy_request)
+      assert res is not None
+      assert res.headers['Access-Control-Allow-Origin'] == origin
+      assert res.headers['Access-Control-Allow-Credentials'] == 'true'
+      assert res.headers['Vary'] == 'Origin'
 
     def test_custom_fixture_path_header_nonexistent_file(self, mitmproxy_request: MitmproxyRequest):
       """Test custom fixture path header pointing to nonexistent file."""
