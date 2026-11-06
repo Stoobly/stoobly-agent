@@ -2,6 +2,7 @@ import os
 import pdb
 import sys
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -57,6 +58,26 @@ def import_handler(kwargs):
   }
   created = res.get('list') if isinstance(res, dict) else None
   print_requests(created or [], **print_options)
+
+def export_handler(kwargs):
+  request_key = kwargs['request_key']
+  validate_request_key(request_key)
+
+  request = RequestFacade(Settings.instance())
+  content, status = request.export(request_key, kwargs.get('format'))
+
+  if status == 404:
+    print('Error: Could not find request', file=sys.stderr)
+    sys.exit(1)
+
+  if filter_response(content, status):
+    sys.exit(1)
+
+  output = kwargs.get('output')
+  if output:
+    Path(output).write_bytes(content)
+  else:
+    sys.stdout.buffer.write(content)
 
 def create_handler(kwargs):
   print_options = select_print_options(kwargs)
