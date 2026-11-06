@@ -47,3 +47,33 @@ class TestExport:
     assert result.exit_code == 1
     assert 'Could not find request' in result.output
     assert not output_path.exists()
+
+  def test_it_errors_when_response_missing(self, runner: CliRunner, tmp_path):
+    create_result = runner.invoke(request, ['create', 'https://example.com/api/no-response'])
+    assert create_result.exit_code == 0
+    created = Request.last()
+    created.response.delete()
+
+    output_path = tmp_path / 'no-response.gor'
+    result = runner.invoke(
+      request,
+      ['export', '--format', 'gor', '--output', str(output_path), created.key()],
+    )
+    assert result.exit_code == 1
+    assert 'Request has no response' in result.output
+    assert not output_path.exists()
+
+  def test_it_errors_when_request_soft_deleted(self, runner: CliRunner, tmp_path):
+    create_result = runner.invoke(request, ['create', 'https://example.com/api/trashed'])
+    assert create_result.exit_code == 0
+    created = Request.last()
+    created.update({'is_deleted': True})
+
+    output_path = tmp_path / 'trashed.gor'
+    result = runner.invoke(
+      request,
+      ['export', '--format', 'gor', '--output', str(output_path), created.key()],
+    )
+    assert result.exit_code == 1
+    assert 'Could not find request' in result.output
+    assert not output_path.exists()

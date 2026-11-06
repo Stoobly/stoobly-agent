@@ -42,8 +42,11 @@ class RequestFacade(ReplayFacade):
     key = RequestKey(request_key)
     request = OrmRequest.find_by(uuid=key.id)
 
-    if not request:
+    if not request or request.is_deleted:
       return None, 404
+
+    if not request.response:
+      return {'error': 'Request has no response'}, 400
 
     if format == GOR_FORMAT:
       return JoinedRequestStringAdapter(request).adapt(), 200
