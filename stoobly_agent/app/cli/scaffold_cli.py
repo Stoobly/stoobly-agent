@@ -25,6 +25,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
   CONFIG_FILE,
   PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT, PROXY_MODE_FORWARD, PROXY_MODE_REVERSE, RUNTIME_DOCKER, RUNTIME_LOCAL, RUNTIME_OPTIONS, SERVICES_NAMESPACE, WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE
 )
+from stoobly_agent.app.cli.scaffold.docker_runtime import is_docker_runtime as detect_docker_runtime
 from stoobly_agent.app.cli.scaffold.docker.workflow.decorators_factory import get_workflow_decorators
 from stoobly_agent.app.cli.scaffold.hosts_file_manager import HostsFileManager
 from stoobly_agent.app.cli.scaffold.rewrite import apply_upstream_url_rewrite
@@ -62,20 +63,7 @@ from .validators.scaffold import validate_app_name, validate_env_pair, validate_
 
 LOG_ID = 'Scaffold'
 
-def __cli_app_dir_path():
-  args = sys.argv
-  for i, arg in enumerate(args):
-    if arg == '--app-dir-path' and i + 1 < len(args):
-      return args[i + 1]
-    if arg.startswith('--app-dir-path='):
-      return arg.split('=', 1)[1]
-  return None
-
-def __is_docker_runtime():
-  app = App(__cli_app_dir_path())
-  return AppConfig(app.scaffold_namespace_path).runtime_docker
-
-is_docker_runtime = __is_docker_runtime()
+is_docker_runtime = detect_docker_runtime()
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",

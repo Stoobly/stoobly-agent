@@ -98,6 +98,22 @@ command:
       - name: select
     - name: without-headers
       description: Disable printing column headers.
+  - name: export
+    description: Export a request to a file
+    arguments:
+    - name: request_key
+      required: true
+    options:
+    - name: format
+      description: Export file format.
+      arguments:
+      - name: format
+        acceptedValues:
+        - gor
+    - name: output
+      description: Write export to file. Defaults to stdout.
+      arguments:
+      - name: output
   - name: list
     description: Show all requests
     options:

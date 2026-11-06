@@ -12,10 +12,10 @@ from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, 
 from stoobly_agent.lib import logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 
-from stoobly_agent.app.models.import_ import IMPORT_FORMATS, HAR_FORMAT
+from stoobly_agent.app.models.import_ import IMPORT_FORMATS, GOR_FORMAT, HAR_FORMAT
 
 from .handlers.request_cli_handler import (
-  create_handler, delete_handler, get_handler, import_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler, response_update_handler
+  create_handler, delete_handler, export_handler, get_handler, import_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_handler, test_handler, diff_handler, update_handler, response_update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -67,6 +67,16 @@ if is_local:
   @click.argument('file', type=click.Path(exists=True, dir_okay=False))
   def import_request(**kwargs):
     import_handler(kwargs)
+
+  @request.command(
+    name='export',
+    help="Export a request to a file"
+  )
+  @click.option('--format', 'format', type=click.Choice([GOR_FORMAT]), default=GOR_FORMAT, show_default=True, help='Export file format.')
+  @click.option('--output', type=click.Path(dir_okay=False), help='Write export to file. Defaults to stdout.')
+  @click.argument('request_key')
+  def export_request(**kwargs):
+    export_handler(kwargs)
 
 @request.command(
   help="Delete a request"

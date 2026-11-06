@@ -3,8 +3,9 @@ from pathlib import Path
 
 from stoobly_agent.app.cli.helpers.replay_facade import ReplayCliOptions, ReplayFacade, TestCliOptions
 from stoobly_agent.app.cli.helpers.iterate_group_by import iterate_group_by
+from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.helpers.create_request_service import InvalidRequestFormatError
-from stoobly_agent.app.models.import_ import get_importer
+from stoobly_agent.app.models.import_ import GOR_FORMAT, get_importer
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.schemas.request import Request
 from stoobly_agent.app.cli.helpers.context import ReplayContext
@@ -14,6 +15,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys import ProjectKey, RequestKey
 from stoobly_agent.lib.api.keys.scenario_key import ScenarioKey
+from stoobly_agent.lib.orm.request import Request as OrmRequest
 
 class RequestNotFoundError(Exception):
   pass
@@ -35,6 +37,21 @@ class RequestFacade(ReplayFacade):
       return importer.import_file(raw, scenario_id, settings=self.__settings)
     except InvalidRequestFormatError as e:
       return {'error': str(e)}, 400
+
+  def export(self, request_key: str, format: str = GOR_FORMAT):
+    key = RequestKey(request_key)
+    request = OrmRequest.find_by(uuid=key.id)
+
+    if not request or request.is_deleted:
+      return None, 404
+
+    if not request.response:
+      return {'error': 'Request has no response'}, 400
+
+    if format == GOR_FORMAT:
+      return JoinedRequestStringAdapter(request).adapt(), 200
+
+    return {'error': 'Invalid format'}, 400
 
   def create(self, params: dict):
     from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
