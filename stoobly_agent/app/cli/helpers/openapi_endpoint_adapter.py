@@ -181,7 +181,7 @@ class _SchemaParamWalker():
       self.__visit_leaf(name, schema, node_id, parent_id, query, override_required)
     elif 'properties' in schema.keys():
       self.__visit_object(name, schema, node_id, parent_id, query, override_required, children_parent_id)
-    elif schema.get('type') == 'array':
+    elif schema.get('type') == 'array' or ('items' in schema.keys() and 'allOf' not in schema.keys()):
       self.__visit_array(name, schema, node_id, parent_id, query, override_required)
     elif 'allOf' in schema.keys():
       self.__visit_all_of(name, schema, node_id, parent_id, query, override_required, children_parent_id)

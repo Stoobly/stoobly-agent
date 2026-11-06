@@ -134,17 +134,15 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (6, 'r', 'r', None, False),
     ]
 
-  # Documents current behavior: a schema with `items` but no `type: array` adds no param,
-  # yet it still takes an id, so the ids that follow skip a number
-  def test_schema_with_items_but_no_array_type_takes_an_id_without_adding_a_param(self, tmp_path):
-    schema = _object({'a': {'items': _STRING}, 'b': _STRING, 'c': _object({'d': _STRING})})
+  def test_schema_with_items_but_no_array_type_is_walked_as_an_array(self, tmp_path):
+    schema = _object({'a': {'items': _STRING}, 'b': _STRING})
 
     params = _body_params(tmp_path, schema)
 
     assert params == [
-      (2, 'b', 'b', None, False),
-      (3, 'c', 'c', None, False),
-      (4, 'd', 'c.d', 3, False),
+      (1, 'a', 'a', None, False),
+      (2, 'aElement', 'a[*]', 1, False),
+      (3, 'b', 'b', None, False),
     ]
 
   def test_response_params_are_walked_like_body_params(self, tmp_path):
