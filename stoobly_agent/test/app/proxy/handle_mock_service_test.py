@@ -7,7 +7,7 @@ from stoobly_agent.app.proxy.constants import custom_response_codes
 from stoobly_agent.app.proxy.handle_mock_service import eval_request_with_retry, handle_mock_failure
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.mock.custom_not_found_response_builder import CustomNotFoundResponseBuilder
-from stoobly_agent.app.proxy.utils.response_handler import CORS_HEADERS
+from stoobly_agent.app.proxy.utils.response_handler import CORS_HEADERS, cors_headers
 
 
 def build_context():
@@ -85,12 +85,22 @@ class TestCustomNotFoundResponseBuilder:
     for header, value in CORS_HEADERS.items():
       assert res.headers[header] == value
 
+  def test_includes_cors_headers_with_origin(self):
+    origin = 'https://app.example.com'
+    res = CustomNotFoundResponseBuilder().build(origin)
+
+    assert res.status_code == custom_response_codes.NOT_FOUND
+    for header, value in cors_headers(origin).items():
+      assert res.headers[header] == value
+
 
 class TestHandleMockFailureCors:
   def test_applies_cors_headers_to_not_found_response(self):
+    origin = 'https://app.example.com'
     flow = MagicMock()
     flow.request = MagicMock()
     flow.request.method = 'GET'
+    flow.request.headers = {'Origin': origin}
     flow.response = MitmproxyResponse.make(
       custom_response_codes.NOT_FOUND,
       b'Request not found',
@@ -101,14 +111,20 @@ class TestHandleMockFailureCors:
     with patch('stoobly_agent.app.proxy.handle_mock_service.InterceptedRequestsLogger'):
       handle_mock_failure(context)
 
-    for header, value in CORS_HEADERS.items():
+    for header, value in cors_headers(origin).items():
       assert flow.response.headers[header] == value
     assert flow.response.status_code == custom_response_codes.NOT_FOUND
 
   def test_options_replaces_response_with_cors_200(self):
+    origin = 'https://app.example.com'
+    requested_headers = 'content-type, authorization, x-custom'
     flow = MagicMock()
     flow.request = MagicMock()
     flow.request.method = 'OPTIONS'
+    flow.request.headers = {
+      'Origin': origin,
+      'Access-Control-Request-Headers': requested_headers,
+    }
     flow.response = MitmproxyResponse.make(
       custom_response_codes.NOT_FOUND,
       b'Request not found',
@@ -120,5 +136,6 @@ class TestHandleMockFailureCors:
       handle_mock_failure(context)
 
     assert flow.response.status_code == 200
-    for header, value in CORS_HEADERS.items():
+    for header, value in cors_headers(origin, flow.request.headers).items():
       assert flow.response.headers[header] == value
+    assert flow.response.headers['Access-Control-Allow-Headers'] == requested_headers

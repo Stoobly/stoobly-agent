@@ -16,6 +16,7 @@ from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
 from .types import MockOptions
 from ..utils.origin_path import parse_public_directory_paths, parse_response_fixtures_paths, request_origin_from_request, origin_matches
+from ..utils.response_handler import cors_headers
 
 LOG_ID = 'Fixture'
 
@@ -26,11 +27,7 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
   
   fixture_path = request.headers.get(MOCK_FIXTURE_PATH)
   # Default CORS-style headers for all mock fixture responses
-  headers = CaseInsensitiveDict({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS, POST, PATCH, PUT, DELETE',
-    'Access-Control-Allow-Headers': '*',
-  })
+  headers = CaseInsensitiveDict(cors_headers(request.headers.get('Origin'), request.headers))
   status_code = 200
 
   if fixture_path:
@@ -106,10 +103,11 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
         
       # If fixture specifies headers, merge them into the defaults.
       # Fixture-provided values override the defaults on conflict.
+      # YAML may parse numbers/bools as non-strings; HTTP headers must be strings.
       _headers = fixture.get('headers')
       if isinstance(_headers, dict):
         for k, v in _headers.items():
-          headers[k] = v
+          headers[str(k)] = str(v)
 
       if fixture.get('status_code'):
         status_code = fixture.get('status_code')
