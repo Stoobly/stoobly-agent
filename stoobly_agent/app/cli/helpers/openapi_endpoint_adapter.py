@@ -158,9 +158,9 @@ class _SchemaParamWalker():
     self._last_id = 0
 
   # Ids continue after the params collected so far, e.g. when walking several query params in a row
-  def walk_root(self, name: str, schema):
+  def walk_root(self, name: str, schema, override_required=False):
     self._last_id = len(self.params)
-    self.walk(name, schema)
+    self.walk(name, schema, override_required=override_required)
 
   # `name` is the name of the schema object, i.e. the name of the body_param_name or response_param_name component
   # An anonymous schema (the root of a body/response, or an allOf part) adds no param of its own
@@ -181,7 +181,7 @@ class _SchemaParamWalker():
       self.__visit_leaf(name, schema, node_id, parent_id, query, override_required)
     elif 'properties' in schema.keys():
       self.__visit_object(name, schema, node_id, parent_id, query, override_required, children_parent_id)
-    elif schema.get('type') == 'array':
+    elif schema.get('type') == 'array' or ('items' in schema.keys() and 'allOf' not in schema.keys()):
       self.__visit_array(name, schema, node_id, parent_id, query, override_required)
     elif 'allOf' in schema.keys():
       self.__visit_all_of(name, schema, node_id, parent_id, query, override_required, children_parent_id)
@@ -205,16 +205,14 @@ class _SchemaParamWalker():
       return
 
     default_value = _default_python_value(schema.get('type', 'object'))
-    required = override_required or bool(schema.get('required', False))
-    self.params.append(_make_param(name, 'values', [default_value], required, query, node_id, parent_id))
+    self.params.append(_make_param(name, 'values', [default_value], override_required, query, node_id, parent_id))
 
   # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
   def __visit_object(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
     self.__add_required(schema.get('required'))
 
     if name != _ANONYMOUS:
-      required = override_required or bool(schema.get('schema_required', False))
-      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+      self.params.append(_make_param(name, 'value', {}, override_required, query, node_id, parent_id))
 
     for property_key, property_value in schema.get('properties').items():
       is_required = property_key in self.required
@@ -228,15 +226,13 @@ class _SchemaParamWalker():
       self.walk('Element', schema['items'], parent_id, query)
       return
 
-    required = override_required or bool(schema.get('required', False))
-    self.params.append(_make_param(name, 'value', [], required, query, node_id, parent_id))
+    self.params.append(_make_param(name, 'value', [], override_required, query, node_id, parent_id))
     self.walk(f"{name}Element", schema['items'], node_id, query)
 
   # Ex: {'Element': {'type': 'object', 'allOf': [{'$ref': '#/components/schemas/NewPet'}, {'type': 'object', 'required': ['id'], 'properties': {'id': {'type': 'integer', 'format': 'int64'}}}]}}
   def __visit_all_of(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
     if name != _ANONYMOUS:
-      required = override_required or bool(schema.get('self_required', False))
-      self.params.append(_make_param(name, 'value', {}, required, query, node_id, parent_id))
+      self.params.append(_make_param(name, 'value', {}, override_required, query, node_id, parent_id))
 
     for part in schema.get('allOf'):
       self.__add_required(part.get('required'))
@@ -291,16 +287,16 @@ class OpenApiEndpointAdapter():
           if http_method not in path:
             continue
 
-          endpoints.append(self.__build_endpoint(parsed_url, path_name, http_method, path[http_method]))
+          endpoints.append(self.__build_endpoint(parsed_url, path_name, http_method, path[http_method], path))
 
     return endpoints
 
-  def __build_endpoint(self, parsed_url, path_name: str, http_method: str, operation) -> OpenApiEndpointShowResponse:
+  def __build_endpoint(self, parsed_url, path_name: str, http_method: str, operation, path_item) -> OpenApiEndpointShowResponse:
     endpoint: OpenApiEndpointShowResponse = {}
     endpoint['method'] = http_method.upper()
 
     self.__apply_location(endpoint, parsed_url, path_name)
-    self.__apply_parameters(endpoint, operation)
+    self.__apply_parameters(endpoint, self.__merge_parameters(path_item.get("parameters", []), operation.get("parameters", [])))
 
     # TODO: nested servers
 
@@ -329,10 +325,22 @@ class OpenApiEndpointAdapter():
     endpoint['service_id'] = compute_openapi_service_id(parsed_url.hostname, endpoint['port'])
     endpoint['id'] = compute_openapi_endpoint_id(endpoint['service_id'], endpoint['match_pattern'], endpoint['method'])
 
-  def __apply_parameters(self, endpoint: OpenApiEndpointShowResponse, operation):
+  # Parameters declared on the path item apply to all of its operations,
+  # unless the operation declares a parameter with the same name and location
+  def __merge_parameters(self, path_item_parameters, operation_parameters) -> list:
+    overridden = {self.__parameter_key(parameter) for parameter in operation_parameters}
+    inherited = [parameter for parameter in path_item_parameters if self.__parameter_key(parameter) not in overridden]
+
+    return inherited + list(operation_parameters)
+
+  def __parameter_key(self, parameter):
+    parameter = self.__deref(parameter)
+    return (parameter['name'], parameter['in'])
+
+  def __apply_parameters(self, endpoint: OpenApiEndpointShowResponse, parameters):
     query_parameters = []
 
-    for parameter in operation.get("parameters", {}):
+    for parameter in parameters:
       parameter = self.__deref(parameter)
 
       if parameter['in'] == 'query':
@@ -353,10 +361,7 @@ class OpenApiEndpointAdapter():
     endpoint['query_param_names'] = []
 
     for parameter in parameters:
-      if parameter.get('required'):
-        walker.required.append(parameter['name'])
-
-      walker.walk_root(parameter['name'], parameter.get('schema', {}))
+      walker.walk_root(parameter['name'], parameter.get('schema', {}), bool(parameter.get('required')))
 
     self.__convert_literal_component_param(endpoint, walker.params, 'query_param_name')
 
@@ -647,7 +652,7 @@ class OpenApiEndpointAdapter():
 
     header_definition = self.__deref(header_definition)
 
-    response_header_name['is_required'] = header_definition.get('is_required', False)
+    response_header_name['is_required'] = bool(header_definition.get('required'))
     response_header_name['is_deterministic'] = True
     response_header_name['values'] = self.__extract_examples(header_definition)
 

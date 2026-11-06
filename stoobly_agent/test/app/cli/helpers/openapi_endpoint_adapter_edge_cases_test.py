@@ -21,11 +21,18 @@ def _body(schema: dict) -> dict:
   return {'requestBody': {'content': {'application/json': {'schema': schema}}}}
 
 
-def _adapt(tmp_path, operation: Optional[dict] = None, servers: Optional[list] = None, security_schemes: Optional[dict] = None) -> List[dict]:
+def _adapt(
+  tmp_path, operation: Optional[dict] = None, servers: Optional[list] = None, security_schemes: Optional[dict] = None,
+  path_parameters: Optional[list] = None,
+) -> List[dict]:
+  path_item = {'post': {'responses': {'200': {'description': 'ok'}}, **(operation or {})}}
+  if path_parameters:
+    path_item['parameters'] = path_parameters
+
   spec = {
     'openapi': '3.0.0',
     'info': {'title': 'test', 'version': '1.0.0'},
-    'paths': {'/pets': {'post': {'responses': {'200': {'description': 'ok'}}, **(operation or {})}}},
+    'paths': {'/pets': path_item},
     'components': {'schemas': {'Pet': _PET}},
   }
 
@@ -127,17 +134,15 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (6, 'r', 'r', None, False),
     ]
 
-  # Documents current behavior: a schema with `items` but no `type: array` adds no param,
-  # yet it still takes an id, so the ids that follow skip a number
-  def test_schema_with_items_but_no_array_type_takes_an_id_without_adding_a_param(self, tmp_path):
-    schema = _object({'a': {'items': _STRING}, 'b': _STRING, 'c': _object({'d': _STRING})})
+  def test_schema_with_items_but_no_array_type_is_walked_as_an_array(self, tmp_path):
+    schema = _object({'a': {'items': _STRING}, 'b': _STRING})
 
     params = _body_params(tmp_path, schema)
 
     assert params == [
-      (2, 'b', 'b', None, False),
-      (3, 'c', 'c', None, False),
-      (4, 'd', 'c.d', 3, False),
+      (1, 'a', 'a', None, False),
+      (2, 'aElement', 'a[*]', 1, False),
+      (3, 'b', 'b', None, False),
     ]
 
   def test_response_params_are_walked_like_body_params(self, tmp_path):
@@ -172,6 +177,81 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (5, 'q3', 'q3', None),
       (6, 'q3Element', 'q3[*]', 5),
     ]
+
+  def test_required_query_params_are_marked_required(self, tmp_path):
+    operation = {'parameters': [
+      {'name': 'q1', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'q2', 'in': 'query', 'schema': _STRING},
+      {'name': 'q3', 'in': 'query', 'required': True, 'schema': _object({'k': _STRING})},
+    ]}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'q1', 'q1', None, True),
+      (2, 'q2', 'q2', None, False),
+      (3, 'q3', 'q3', None, True),
+      (4, 'k', 'q3.k', 3, False),
+    ]
+
+  def test_required_query_param_name_does_not_mark_a_nested_property_required(self, tmp_path):
+    operation = {'parameters': [
+      {'name': 'name', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'filter', 'in': 'query', 'schema': _object({'name': _STRING})},
+    ]}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'name', 'name', None, True),
+      (2, 'filter', 'filter', None, False),
+      (3, 'name', 'filter.name', 2, False),
+    ]
+
+
+@pytest.mark.openapi
+class TestOpenApiEndpointAdapterPathLevelParameters():
+  def test_query_params_and_headers_declared_on_the_path_item_apply_to_its_operations(self, tmp_path):
+    path_parameters = [
+      {'name': 'shared', 'in': 'query', 'required': True, 'schema': _STRING},
+      {'name': 'X-Shared', 'in': 'header', 'schema': _STRING},
+    ]
+
+    endpoints = _adapt(tmp_path, path_parameters=path_parameters)
+
+    assert [param['name'] for param in endpoints[0]['query_param_names']] == ['shared']
+    assert [header['name'] for header in endpoints[0]['header_names']] == ['X-Shared']
+
+  def test_operation_parameter_overrides_path_item_parameter_with_the_same_name_and_location(self, tmp_path):
+    path_parameters = [
+      {'name': 'q', 'in': 'query', 'schema': _STRING},
+      {'name': 'other', 'in': 'query', 'schema': _STRING},
+    ]
+    operation = {'parameters': [{'name': 'q', 'in': 'query', 'required': True, 'schema': _STRING}]}
+
+    endpoints = _adapt(tmp_path, operation, path_parameters=path_parameters)
+
+    params = _summarize(endpoints[0]['query_param_names'], 'query_param_name_id')
+    assert params == [
+      (1, 'other', 'other', None, False),
+      (2, 'q', 'q', None, True),
+    ]
+
+
+@pytest.mark.openapi
+class TestOpenApiEndpointAdapterResponseHeaders():
+  def test_response_header_is_required_only_when_declared_required(self, tmp_path):
+    operation = {'responses': {'200': {'description': 'ok', 'headers': {
+      'X-Required': {'required': True, 'schema': _STRING},
+      'X-Optional': {'schema': _STRING},
+    }}}}
+
+    endpoints = _adapt(tmp_path, operation)
+
+    headers = {header['name']: header['is_required'] for header in endpoints[0]['response_header_names']}
+    assert headers == {'X-Required': True, 'X-Optional': False}
 
 
 @pytest.mark.openapi

@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from stoobly_agent.app.proxy.mock.hashed_request_decorator import COMPONENT_TYPES
 from stoobly_agent.app.cli.helpers.openapi_endpoint_adapter import (
@@ -126,6 +127,33 @@ class TestSearchOpenApiEndpoint:
     names_types = {(c["name"], c["type"], c.get("query")) for c in ig}
     assert ("a", COMPONENT_TYPES["QUERY_PARAM"], "a") in names_types
     assert ("b", COMPONENT_TYPES["QUERY_PARAM"], "b") in names_types
+
+  def test_required_query_params_and_response_headers_are_not_ignored(self, tmp_path):
+    spec = {
+      "openapi": "3.0.0",
+      "info": {"title": "test", "version": "1.0.0"},
+      "servers": [{"url": "http://localhost:80"}],
+      "paths": {"/users": {"get": {
+        "parameters": [
+          {"name": "a", "in": "query", "required": True, "schema": {"type": "integer"}},
+          {"name": "b", "in": "query", "schema": {"type": "integer"}},
+        ],
+        "responses": {"200": {"description": "OK", "headers": {
+          "X-Required": {"required": True, "schema": {"type": "string"}},
+          "X-Optional": {"schema": {"type": "string"}},
+        }}},
+      }}},
+    }
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(yaml.safe_dump(spec))
+
+    eps = load_openapi_endpoints_from_file(str(spec_path))
+
+    ignored = {(c["name"], c["type"]) for c in build_ignored_components_from_openapi_endpoint(eps[0])}
+    assert ignored == {
+      ("b", COMPONENT_TYPES["QUERY_PARAM"]),
+      ("X-Optional", COMPONENT_TYPES["RESPONSE_HEADER"]),
+    }
 
   def test_build_ignored_components_from_cached_endpoint_without_side_effect(
     self, localhost_users_spec_path
