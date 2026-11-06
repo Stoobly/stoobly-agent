@@ -45,6 +45,12 @@ def make_requests_response(status_code=200, content=b''):
 
 class TestMitmproxyFlowMock:
 
+    def test_has_metadata_dict(self):
+        flow = MitmproxyFlowMock()
+        assert flow.metadata == {}
+        flow.metadata['key'] = True
+        assert flow.metadata['key'] is True
+
     class TestRequestSetter:
 
         def test_accepts_mitmproxy_request(self, mitmproxy_request):
@@ -97,3 +103,12 @@ class TestMitmproxyFlowMock:
             copy = flow.copy()
             copy.response.status_code = 500
             assert flow.response.status_code == 200
+
+        def test_copy_metadata_is_independent(self, mitmproxy_request, mitmproxy_response):
+            flow = MitmproxyFlowMock()
+            flow.request = mitmproxy_request
+            flow.response = mitmproxy_response
+            flow.metadata['stoobly_fixture_mocked'] = True
+            copy = flow.copy()
+            copy.metadata['stoobly_fixture_mocked'] = False
+            assert flow.metadata['stoobly_fixture_mocked'] is True

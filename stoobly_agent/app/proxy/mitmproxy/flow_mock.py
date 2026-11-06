@@ -15,6 +15,8 @@ class MitmproxyFlowMock():
     self.__id = str(uuid.uuid4())
     self.__request: 'MitmproxyRequest' = None
     self.__response: 'MitmproxyResponse' = None
+    # Matches mitmproxy.flow.Flow.metadata
+    self.metadata = {}
 
   @property
   def id(self):
@@ -50,4 +52,5 @@ class MitmproxyFlowMock():
     mock = MitmproxyFlowMock()
     mock.request = self.__request.copy()
     mock.response = self.__response.copy()
+    mock.metadata = dict(self.metadata)
     return mock
