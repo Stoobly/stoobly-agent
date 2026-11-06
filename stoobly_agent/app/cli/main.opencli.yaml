@@ -124,7 +124,7 @@ command:
           arguments:
             - name: mapping
         - name: public-dir-path
-          description: "Path to public files for mocking. Form <FOLDER-PATH>[:<ORIGIN>]. May be specified multiple times."
+          description: "Path to public files for mocking in mock and record modes. Form <FOLDER-PATH>[:<ORIGIN>]. May be specified multiple times."
           arguments:
             - name: path
         - name: remote-project-key
@@ -132,7 +132,7 @@ command:
           arguments:
             - name: key
         - name: response-fixtures-path
-          description: "Path to response fixtures yaml. Form <FILE-PATH>[:<ORIGIN>]. May be specified multiple times."
+          description: "Path to response fixtures yaml for mocking in mock and record modes. Form <FILE-PATH>[:<ORIGIN>]. May be specified multiple times."
           arguments:
             - name: path
         - name: request-log-enable
@@ -219,7 +219,7 @@ command:
           arguments:
             - name: key
         - name: public-dir-path
-          description: Path to public files. Used for mocking requests.
+          description: Path to public files. Used for mocking requests in mock and record modes.
           arguments:
             - name: path
         - name: remote-project-key
@@ -227,7 +227,7 @@ command:
           arguments:
             - name: key
         - name: response-fixtures-path
-          description: Path to response fixtures yaml. Used for mocking requests.
+          description: Path to response fixtures yaml. Used for mocking requests in mock and record modes.
           arguments:
             - name: path
         - name: request

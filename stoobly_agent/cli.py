@@ -122,9 +122,9 @@ def describe(**kwargs):
   multiple=True,
   help='Map request host:port to an upstream for regular proxy mode. Form: <HOST>:<PORT>=<SPEC>, where SPEC is "http[s]://host[:port]".',
 )
-@click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
+@click.option('--public-dir-path', multiple=True, help='Path to public files. Used for mocking requests in mock and record modes. Can take the form <FOLDER-PATH>[:<ORIGIN>].')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
-@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests. Can take the form <FILE-PATH>[:<ORIGIN>].')
+@click.option('--response-fixtures-path', multiple=True, help='Path to response fixtures yaml. Used for mocking requests in mock and record modes. Can take the form <FILE-PATH>[:<ORIGIN>].')
 @click.option('--request-log-enable', is_flag=True, default=False, required=False, help='Enable intercepted requests logging.')
 @click.option('--request-log-level', default=logger.INFO, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]), help='Log level for intercepted requests.')
 @click.option('--request-log-append', is_flag=True, default=False, required=False, help='Append to the intercepted requests log.')
@@ -309,9 +309,9 @@ def run(**kwargs):
 @click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
 @click.option('-o', '--output', help='Write to file instead of stdout')
 @ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
-@click.option('--public-dir-path', help='Path to public files. Used for mocking requests.')
+@click.option('--public-dir-path', help='Path to public files. Used for mocking requests in mock and record modes.')
 @ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
-@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests.')
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests in mock and record modes.')
 @click.option('-X', '--request', default='GET', help='Specify request command to use')
 @click.option('--scenario-key')
 @click.argument('url')
