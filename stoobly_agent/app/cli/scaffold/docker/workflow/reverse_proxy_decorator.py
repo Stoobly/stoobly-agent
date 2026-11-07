@@ -22,7 +22,9 @@ class ReverseProxyDecorator(CommandDecorator):
       '--lifecycle-hooks-path', 'lifecycle_hooks.py',
       '--proxy-mode', self.proxy_mode,
       '--proxy-port', f"{SERVICE_PORT}",
+      '--public-dir-path', 'public',
       '--request-log-enable',
+      '--response-fixtures-path', 'fixtures.yml',
       '--ssl-insecure',
       '--settings-watch'
     ]

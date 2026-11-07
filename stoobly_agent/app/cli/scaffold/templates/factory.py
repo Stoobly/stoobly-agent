@@ -44,7 +44,7 @@ def custom_files(workflow: str, workflow_builder: WorkflowBuilder = None):
     elif workflow == WORKFLOW_TEST_TYPE:
       files.extend(TEST_WORKFLOW_CUSTOM_LOCAL_FILES)
 
-  # Fixtures are only relevant if the workflow is mock/test/develop and if the service has a hostname
+  # Public dir is only relevant if the service has a hostname
   if workflow_builder and not workflow_builder.config.hostname:
     if CUSTOM_PUBLIC_GITIGNORE in files:
       files.remove(CUSTOM_PUBLIC_GITIGNORE)

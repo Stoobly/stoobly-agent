@@ -4,6 +4,12 @@
 
 How an **incoming proxied request** is matched to a **recorded row** in the local DB for mocks: **endpoint identity** (host / path / port / method), optional **hash dimensions** enabled by **match-rule allowlists**, **scenario tiebreak** when multiple rows remain, and optional **`compute`** to re-hash stored `raw` when **ignored components** change between record time and the retry path. Custom status codes: **`IGNORE_COMPONENTS = 498`**, **`NOT_FOUND = 499`** ([`custom_response_codes`](../stoobly_agent/app/proxy/constants/custom_response_codes.py)) — not standard HTTP 404/498.
 
+### Fixtures fallback (and record mode)
+
+When local DB mock lookup returns **499**, [`eval_request_with_retry`](../stoobly_agent/app/proxy/handle_mock_service.py) calls [`eval_fixtures`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py): match `fixtures.yml` (`response_fixtures_path`) first, then files under `public` (`public_directory_path`). A match sets `X-Stoobly-Fixture-Path` on the response.
+
+**Record mode** uses the same `eval_fixtures` path **before** proxying upstream ([`handle_record_service`](../stoobly_agent/app/proxy/handle_record_service.py)). On a match it applies the fixture, runs the mock success lifecycle hooks, and skips upstream + recording. There is no DB mock lookup on the record path. See [lifecycle hooks](lifecycle_hooks.md).
+
 ### Endpoint lookup and `compute`
 
 When mocking against **local DB**, [`eval_request`](../stoobly_agent/app/proxy/mock/eval_request_service.py) may attach an `endpoint_promise` from either:
@@ -188,6 +194,9 @@ flowchart TB
 | Concern | Location |
 |--------|----------|
 | Mock entry, retry, fixtures | [`handle_mock_service.py`](../stoobly_agent/app/proxy/handle_mock_service.py) |
+| Record fixture short-circuit | [`handle_record_service.py`](../stoobly_agent/app/proxy/handle_record_service.py) |
+| Fixture / public-dir matching | [`eval_fixtures_service.py`](../stoobly_agent/app/proxy/mock/eval_fixtures_service.py) |
+| Unit: record fixture match | [`handle_record_service_test.py`](../stoobly_agent/test/app/proxy/handle_record_service_test.py) |
 | Query / hashes / match rules / live tiebreak params / `compute` | [`eval_request_service.py`](../stoobly_agent/app/proxy/mock/eval_request_service.py) |
 | Endpoint cache + OpenAPI ignored-component derivation | [`endpoint_cache.py`](../stoobly_agent/app/proxy/mock/endpoint_cache.py) |
 | Remote endpoint search adapter | [`search_endpoint.py`](../stoobly_agent/app/proxy/mock/search_endpoint.py) |

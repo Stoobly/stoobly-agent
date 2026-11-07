@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from mitmproxy.http import Request as MitmproxyRequest
 
 from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop
+from stoobly_agent.app.proxy.handle_mock_service import handle_mock_success, handle_response_mock
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.settings.constants.mode import TEST
 from stoobly_agent.app.models.request_model import RequestModel
@@ -22,6 +23,8 @@ from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLog
 from stoobly_agent.lib.logger import Logger
 
 from .constants import custom_response_codes
+from .mock.context import MockContext
+from .mock.eval_fixtures_service import eval_fixtures
 from .mock.eval_request_service import inject_eval_request
 from .record.context import RecordContext
 from .record.overwrite_scenario_service import overwrite_scenario, overwrite_scenario_with_lock
@@ -30,12 +33,16 @@ from .replay.context import ReplayContext
 from .replay.body_parser_service import is_json, is_xml
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.minimize_headers import minimize_headers
-from .utils.response_handler import bad_request, disable_transfer_encoding 
+from .utils.response_handler import apply_response, bad_request, disable_transfer_encoding 
 from .utils.rewrite import rewrite_request_response
 from .utils.strategy import get_active_mode_strategy
 
 
 LOG_ID = 'Record'
+
+# Marks that this agent served a local fixture. Do not infer from
+# X-Stoobly-Fixture-Path — upstream (e.g. a chained mock agent) may set that header.
+_FIXTURE_MOCKED_METADATA_KEY = 'stoobly_fixture_mocked'
 
 # Shared thread pool executor for record operations
 # Limits concurrent record operations and integrates with asyncio event loop
@@ -48,6 +55,7 @@ _MAX_WORKERS = 10
 ###
 #
 # 1. BEFORE_DEVELOP gets triggered
+# 2. If fixtures.yml/public match: BEFORE_MOCK gets triggered and response is applied (no upstream)
 #
 def handle_request_record(context: ReplayContext) -> None:
     # To differentiate record rewrite rules, outbound request uses develop rules
@@ -61,14 +69,22 @@ def handle_request_record(context: ReplayContext) -> None:
     # 3. Avoids race conditions where multiple requests might record before clearing
     __try_overwrite_scenario(context.intercept_settings, context.flow.request)
 
+    __try_mock_fixture(context)
+
 ###
 # 1. AFTER_DEVELOP gets triggered
 # 2. BEFORE_RECORD gets triggered
 # 3. AFTER_RECORD gets triggered
 #
+# When the request was served from a fixture, delegates to mock response lifecycle instead.
+#
 def handle_response_record(context: RecordContext):
     flow = context.flow
     intercept_settings = context.intercept_settings
+
+    if __was_fixture_mocked(flow):
+        handle_response_mock(MockContext(flow, intercept_settings))
+        return
 
     disable_transfer_encoding(flow.response)
     handle_response_develop(context)
@@ -199,3 +215,34 @@ def __try_overwrite_scenario(intercept_settings: InterceptSettings, request: 'Mi
 
         if scenario_key:
             overwrite_scenario(scenario_key)
+
+def __try_mock_fixture(context: ReplayContext) -> bool:
+    """Match fixtures.yml / public dir; on hit apply mock lifecycle and short-circuit upstream."""
+    flow = context.flow
+    intercept_settings = context.intercept_settings
+
+    fixture = eval_fixtures(
+        flow.request,
+        public_directory_path=intercept_settings.public_directory_path,
+        response_fixtures_path=intercept_settings.response_fixtures_path,
+        scenario_key=intercept_settings.scenario_key,
+    )
+    if not fixture:
+        return False
+
+    mock_context = MockContext(flow, intercept_settings)
+    __mock_hook(lifecycle_hooks.BEFORE_MOCK, mock_context)
+    apply_response(flow, fixture)
+    handle_mock_success(mock_context)
+    flow.metadata[_FIXTURE_MOCKED_METADATA_KEY] = True
+    return True
+
+def __was_fixture_mocked(flow: 'MitmproxyHTTPFlow') -> bool:
+    return bool(flow.metadata.get(_FIXTURE_MOCKED_METADATA_KEY))
+
+def __mock_hook(hook: str, context: MockContext):
+    intercept_settings: InterceptSettings = context.intercept_settings
+    lifecycle_hooks_module = intercept_settings.lifecycle_hooks
+
+    if hook in lifecycle_hooks_module:
+        lifecycle_hooks_module[hook](context)

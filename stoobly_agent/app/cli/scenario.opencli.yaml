@@ -338,7 +338,7 @@ command:
         - skipped
         - passed
     - name: public-dir-path
-      description: Path to public files. Used for mocking requests.
+      description: Path to public files. Used for mocking requests in mock and record modes.
       arguments:
       - name: public_dir_path
     - name: remote-project-key
@@ -350,7 +350,7 @@ command:
       arguments:
       - name: report_key
     - name: response-fixtures-path
-      description: Path to response fixtures yaml. Used for mocking requests.
+      description: Path to response fixtures yaml. Used for mocking requests in mock and record modes.
       arguments:
       - name: response_fixtures_path
     - name: save
