@@ -6,6 +6,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
+from stoobly_agent.config.app_data_dir import AppDataDir
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 
@@ -54,8 +55,8 @@ class App():
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or operational_root)
-      self.__app_dir_path = self.__host_app_dir_path or operational_root
+      self.__app_data_dir = AppDataDir.instance(self.__host_app_dir_path or operational_root)
+      self.__app_dir_path = self.__app_data_dir.context_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
@@ -174,15 +175,13 @@ class App():
 
   @property
   def runtime_app_data_dir(self):
+    t = self.__runtime_app_data_dir.path
+    import pdb; pdb.set_trace()
     return self.__runtime_app_data_dir
 
   @property
-  def runtime_app_dir_path(self):
-    return os.path.abspath(self.__runtime_app_dir_path)
-
-  @property
   def scaffold_namespace_path(self):
-    return os.path.join(self.data_dir_path, self.scaffold_namespace)
+    return os.path.join(self.app_data_dir.path, self.scaffold_namespace)
 
   @property
   def services(self):
@@ -190,7 +189,7 @@ class App():
 
   @property
   def service_paths(self):
-    services_dir = os.path.join(self.data_dir_path, self.scaffold_namespace)
+    services_dir = os.path.join(self.app_data_dir.path, self.scaffold_namespace)
 
     services = []
     for filename in os.listdir(services_dir):
