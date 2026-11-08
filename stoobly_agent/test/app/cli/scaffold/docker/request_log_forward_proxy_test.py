@@ -73,12 +73,8 @@ def wait_for_forward_proxy_ready(proxy_url: str, hostname: str, timeout: float =
                 timeout=5.0,
             )
             return True
-        except requests.exceptions.ProxyError:
-            pass  # mitmproxy not ready yet (ProxyError is a subclass of ConnectionError; must come first)
-        except requests.exceptions.ConnectionError:
-            return True  # proxy forwarded the request; upstream connection failed
         except Exception:
-            pass  # timeout or other transient error — keep polling
+            pass  # proxy not ready or transient error — keep polling
         time.sleep(interval)
     return False
 
