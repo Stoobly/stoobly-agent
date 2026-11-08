@@ -5,6 +5,29 @@ from typing import List
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 
 
+def wait_for_forward_proxy_ready(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 0.5) -> bool:
+    """Poll until the forward proxy is accepting and processing HTTP requests."""
+    import requests
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            requests.get(
+                f'http://{hostname}/',
+                proxies={'http': proxy_url, 'https': proxy_url},
+                verify=False,
+                timeout=5.0,
+            )
+            return True
+        except requests.exceptions.ProxyError:
+            pass  # mitmproxy not ready yet
+        except requests.exceptions.ConnectionError:
+            return True  # proxy forwarded; upstream connection failed
+        except Exception:
+            pass
+        time.sleep(interval)
+    return False
+
+
 def wait_for_forward_proxy_intercept(proxy_url: str, hostname: str, timeout: float = 30.0, interval: float = 1.0) -> bool:
     """Poll until the forward proxy returns 499 for unrecorded requests, confirming intercept mode is active."""
     import requests
