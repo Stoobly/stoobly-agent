@@ -126,8 +126,8 @@ pipx/install:
 		python3 -m pip install --user pipx && python3 -m pipx ensurepath; \
 	fi
 python/validate:
-	@if ! python3 --version | grep -Eq 'Python 3\.(10|11|12)'; then \
-		echo "Error: Python 3.10, 3.11, or 3.12 is required."; \
+	@if ! python3 --version | grep -Eq 'Python 3\.(12|13|14)'; then \
+		echo "Error: Python 3.12, 3.13, or 3.14 is required."; \
 		exit 1; \
 	fi
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run

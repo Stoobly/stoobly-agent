@@ -23,6 +23,7 @@ from stoobly_agent.config.constants import mode
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
+from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_ready
 from stoobly_agent.test.test_helper import reset
 
 @pytest.mark.e2e
@@ -92,10 +93,10 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-      time.sleep(1)
+      assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
@@ -180,10 +181,10 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-      time.sleep(1)
+      assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
@@ -334,10 +335,10 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Start the develop workflow"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-      time.sleep(1)
+      assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
@@ -445,11 +446,11 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings):
+    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
 
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
-      time.sleep(1)
+      assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
