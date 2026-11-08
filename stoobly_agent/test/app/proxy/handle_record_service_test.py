@@ -1,9 +1,17 @@
+import os
+import time
+
+from mitmproxy.http import Headers, Request, Response
+from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 from unittest.mock import MagicMock, patch
 
 from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
 from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, record_policy
+from stoobly_agent.app.settings.constants import intercept_mode
+from stoobly_agent.app.settings.constants.mode import TEST
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, record_policy, record_strategy
+from stoobly_agent.config.constants.env_vars import ENV
 
 
 def build_replay_context():
@@ -156,3 +164,106 @@ class TestHandleResponseRecordFixtures:
 
     handle_response_mock_mock.assert_not_called()
     record_request_mock.assert_called_once()
+
+
+def build_real_record_context(strategy: str):
+  flow = MitmproxyHTTPFlow(client_conn=None, server_conn=None)
+  flow.request = Request(
+    host="api.example.com",
+    port=443,
+    method="POST",
+    scheme="https",
+    authority="api.example.com",
+    path="/api/v1/data",
+    http_version="HTTP/1.1",
+    headers=Headers([
+      (b"Host", b"api.example.com"),
+      (b"Origin", b"https://example.com"),
+      (b"Content-Type", b"application/json"),
+      (b"Authorization", b"Bearer token123"),
+      (b"Cookie", b"session=abc123"),
+      (b"Access-Control-Request-Method", b"POST"),
+    ]),
+    content=b'{"data": "test"}',
+    trailers=None,
+    timestamp_start=time.time(),
+    timestamp_end=time.time() + 1,
+  )
+  flow.response = Response(
+    http_version="HTTP/1.1",
+    status_code=200,
+    reason="OK",
+    headers=Headers([
+      (b"Content-Type", b"application/json"),
+      (b"Access-Control-Allow-Origin", b"https://example.com"),
+      (b"Access-Control-Allow-Credentials", b"true"),
+      (b"Set-Cookie", b"session=new"),
+    ]),
+    content=b'{"ok": true}',
+    trailers=None,
+    timestamp_start=time.time(),
+    timestamp_end=time.time() + 1,
+  )
+
+  intercept_settings = MagicMock()
+  intercept_settings.mode = intercept_mode.RECORD
+  intercept_settings.record_strategy = strategy
+  intercept_settings.record_rewrite_rules = []
+  intercept_settings.lifecycle_hooks = {}
+  return RecordContext(flow, intercept_settings)
+
+
+def record_and_capture_uploaded_flow(context: RecordContext):
+  """Runs the real record path and returns the flow handed to the upload step."""
+  upload = MagicMock()
+
+  with patch.dict(os.environ, {ENV: TEST}), patch(
+    'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding'
+  ), patch(
+    'stoobly_agent.app.proxy.handle_record_service.handle_response_develop'
+  ), patch(
+    'stoobly_agent.app.proxy.handle_record_service.RequestModel'
+  ), patch(
+    'stoobly_agent.app.proxy.handle_record_service.get_intercept_mode_policy',
+    return_value=record_policy.ALL,
+  ), patch(
+    'stoobly_agent.app.proxy.handle_record_service.inject_upload_request',
+    return_value=upload,
+  ):
+    handle_response_record(context)
+
+  upload.assert_called_once()
+  return upload.call_args.args[0]
+
+
+class TestHandleResponseRecordStrategy:
+  def test_minimal_strategy_minimizes_recorded_request_headers_only(self):
+    context = build_real_record_context(record_strategy.MINIMAL)
+    original_request_headers = list(context.flow.request.headers.items())
+    original_response_headers = list(context.flow.response.headers.items())
+
+    recorded_flow = record_and_capture_uploaded_flow(context)
+
+    # Request headers are reduced to the allowlist
+    assert list(recorded_flow.request.headers.keys()) == ["Host", "Origin", "Content-Type"]
+    assert "Authorization" not in recorded_flow.request.headers
+    assert "Cookie" not in recorded_flow.request.headers
+    assert "Access-Control-Request-Method" not in recorded_flow.request.headers
+
+    # Response headers, including access control, are recorded as-is
+    assert list(recorded_flow.response.headers.items()) == original_response_headers
+    assert "Access-Control-Allow-Origin" in recorded_flow.response.headers
+    assert "Access-Control-Allow-Credentials" in recorded_flow.response.headers
+
+    # Only the recorded copy is minimized, not the flow returned to the client
+    assert list(context.flow.request.headers.items()) == original_request_headers
+
+  def test_full_strategy_records_all_headers(self):
+    context = build_real_record_context(record_strategy.FULL)
+    original_request_headers = list(context.flow.request.headers.items())
+    original_response_headers = list(context.flow.response.headers.items())
+
+    recorded_flow = record_and_capture_uploaded_flow(context)
+
+    assert list(recorded_flow.request.headers.items()) == original_request_headers
+    assert list(recorded_flow.response.headers.items()) == original_response_headers
