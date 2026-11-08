@@ -1,6 +1,6 @@
 services:
   stoobly_ui.service:
-    command: --proxyless --ui-host local.stoobly.com --ui-port 4200
+    command: --proxyless --settings-watch --ui-host local.stoobly.com --ui-port 4200
     extends:
       file: ../.docker-compose.base.yml
       service: stoobly_ui.base
