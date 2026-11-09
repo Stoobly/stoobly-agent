@@ -2,6 +2,8 @@ import pdb
 
 from typing import TYPE_CHECKING
 
+from stoobly_agent.config.data_dir import DataDir
+
 if TYPE_CHECKING:
   from stoobly_agent.lib.orm.request import Request
   from stoobly_agent.lib.orm.scenario import Scenario
@@ -16,10 +18,12 @@ def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
   if not __validate_action(action):
     return
 
-  snapshot = RequestSnapshot(request.uuid)
+  data_dir = DataDir.instance(options.get('data_dir_path'))
+
+  snapshot = RequestSnapshot(request.uuid, data_dir)
   snapshot.backup()
 
-  log = Log()
+  log = Log(data_dir)
 
   if action == PUT_ACTION:
     snapshot.write(request, **options)
@@ -44,7 +48,9 @@ def snapshot_scenario(scenario: 'Scenario', **options):
   if not __validate_action(action):
     return
 
-  snapshot = ScenarioSnapshot(scenario.uuid)
+  data_dir = DataDir.instance(options.get('data_dir_path'))
+
+  snapshot = ScenarioSnapshot(scenario.uuid, data_dir)
   snapshot.backup_metadata()
 
   if action == PUT_ACTION:
@@ -54,7 +60,7 @@ def snapshot_scenario(scenario: 'Scenario', **options):
 
   snapshot.backup_requests()
 
-  log = Log()
+  log = Log(data_dir)
   inverted_scenario_index = log.scenario_inverted_index
   if action == PUT_ACTION:
     snapshot.remove_requests(lambda snapshot: log.remove_request_snapshot(snapshot, inverted_scenario_index))
