@@ -5,9 +5,9 @@ from stoobly_agent.config.data_dir import DataDir
 
 class Snapshot():
 
-  def __init__(self, uuid: str):
+  def __init__(self, uuid: str, data_dir: DataDir = None):
     self.__uuid = uuid
-    self.__data_dir: DataDir = DataDir.instance()
+    self.__data_dir: DataDir = data_dir or DataDir.instance()
 
   @property
   def uuid(self):

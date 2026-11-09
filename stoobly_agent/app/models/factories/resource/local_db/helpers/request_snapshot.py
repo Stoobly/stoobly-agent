@@ -1,6 +1,7 @@
 import os
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
@@ -11,8 +12,8 @@ LOG_ID = 'RequestSnapshot'
 
 class RequestSnapshot(Snapshot):
 
-  def __init__(self, uuid: str):
-    super().__init__(uuid)
+  def __init__(self, uuid: str, data_dir: DataDir = None):
+    super().__init__(uuid, data_dir)
     
     self.__requests_dir_path = self.data_dir.snapshots_requests_dir_path
   

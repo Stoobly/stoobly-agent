@@ -18,7 +18,8 @@ class Log():
 
   def __init__(self, data_dir: DataDir = None):
     data_dir = data_dir or DataDir.instance()
-    
+
+    self.__data_dir = data_dir
     self.__log_file_path = data_dir.snapshots_log_file_path
     self.__history_dir_path = data_dir.snapshots_history_dir_path
 
@@ -114,7 +115,7 @@ class Log():
 
   @property
   def version(self):
-    version_file_path = DataDir.instance().snapshosts_version_path
+    version_file_path = self.__data_dir.snapshosts_version_path
     version = ''
 
     if not os.path.exists(version_file_path):
@@ -127,7 +128,7 @@ class Log():
 
   @version.setter
   def version(self, v: str):
-    version_file_path = DataDir.instance().snapshosts_version_path
+    version_file_path = self.__data_dir.snapshosts_version_path
 
     with open(version_file_path, 'w') as fp:
       fp.write(v)
@@ -169,7 +170,7 @@ class Log():
       if not event.is_scenario():
         continue 
 
-      event.snapshot().iter_request_snapshots(handle_snapshot)
+      event.snapshot(self.__data_dir).iter_request_snapshots(handle_snapshot)
 
     return index
 
@@ -240,7 +241,7 @@ class Log():
 
     pruned_events = self.collapse(events)
     for event in pruned_events:
-      snapshot = event.snapshot()
+      snapshot = event.snapshot(self.__data_dir)
       snapshot_exists = snapshot.exists
 
       if event.action == DELETE_ACTION or not snapshot_exists:

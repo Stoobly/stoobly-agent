@@ -4,6 +4,7 @@ import pdb
 
 from typing import Callable, List
 
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.scenario import Scenario
 
 from .snapshot import Snapshot
@@ -12,8 +13,8 @@ from .request_snapshot import RequestSnapshot, RequestSnapshotOptions
 REQUEST_DELIMITTER = "\n"
 
 class ScenarioSnapshot(Snapshot):
-  def __init__(self, uuid: str):
-    super().__init__(uuid)
+  def __init__(self, uuid: str, data_dir: DataDir = None):
+    super().__init__(uuid, data_dir)
 
     self.__scenarios_dir_path = self.data_dir.snapshots_scenarios_dir_path
     self.__requests_dir_path = self.data_dir.snapshots_scenario_requests_dir_path
@@ -114,7 +115,7 @@ class ScenarioSnapshot(Snapshot):
         uuids = list(filter(lambda uuid: len(uuid) == 36, uuids))
 
         for uuid in uuids:
-          request_snapshot = RequestSnapshot(uuid)
+          request_snapshot = RequestSnapshot(uuid, self.data_dir)
           handler(request_snapshot)
 
   def remove(self):
@@ -155,7 +156,7 @@ class ScenarioSnapshot(Snapshot):
       for request in requests:
         uuid = request.uuid
 
-        request_snapshot = RequestSnapshot(uuid)
+        request_snapshot = RequestSnapshot(uuid, self.data_dir)
         request_snapshot.write(request, **options)
 
         uuids.append(uuid)
