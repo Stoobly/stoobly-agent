@@ -4,6 +4,7 @@ import time
 
 from typing import Callable, TypedDict
 
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -100,11 +101,11 @@ class LogEvent():
   def is_scenario(self):
     return self.resource == SCENARIO_RESOURCE
 
-  def snapshot(self):
+  def snapshot(self, data_dir: DataDir = None):
     if self.is_request():
-      return RequestSnapshot(self.resource_uuid)
+      return RequestSnapshot(self.resource_uuid, data_dir)
     elif self.is_scenario():
-      return ScenarioSnapshot(self.resource_uuid)
+      return ScenarioSnapshot(self.resource_uuid, data_dir)
 
   def to_dict(self):
     return {
