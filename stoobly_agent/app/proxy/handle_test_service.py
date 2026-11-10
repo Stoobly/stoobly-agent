@@ -130,9 +130,15 @@ def handle_response_test(context: ReplayContext) -> None:
         )
 
     # Select client-facing response before decorating headers.
-    # When a compare ran, keep the live (tested) response so CLI diffs use received != expected.
+    # For CLI: when a compare ran, keep the live (tested) response so diffs use received != expected.
+    # Non-CLI clients still get the mock when policy is not NONE (previous behavior).
     # Otherwise apply mock policy (e.g. return mock-not-found on failure).
-    if not (test_context and test_context.tested) and _mock_policy != mock_policy.NONE:
+    keep_live = (
+        test_context
+        and test_context.tested
+        and intercept_settings.request_origin == request_origin.CLI
+    )
+    if not keep_live and _mock_policy != mock_policy.NONE:
         flow.response = mock_flow.response
 
     if test_context:

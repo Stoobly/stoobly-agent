@@ -4,7 +4,7 @@ import pytest
 
 from stoobly_agent.app.proxy import handle_test_service as handle_test_service_module
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
-from stoobly_agent.config.constants import mock_policy, test_policy, test_strategy
+from stoobly_agent.config.constants import mock_policy, request_origin, test_policy, test_strategy
 
 append_test_report = getattr(handle_test_service_module, '__append_test_report')
 
@@ -149,3 +149,68 @@ class TestHandleTestService:
 
         passed_mock_context = mock_handle_request_mock_generic.call_args.args[0]
         assert passed_mock_context.flow is flow_copy
+
+    @pytest.mark.parametrize(
+        'origin,expect_live',
+        [
+            (request_origin.CLI, True),
+            ('proxy', False),
+        ],
+    )
+    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_develop')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_mock')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_mock_success_service')
+    @patch.object(handle_test_service_module, '__handle_mock_success')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_request_mock_generic')
+    @patch('stoobly_agent.app.proxy.handle_test_service.get_intercept_mode_policy')
+    def test_handle_response_test_keeps_live_only_for_cli_when_tested(
+        self,
+        mock_get_intercept_mode_policy,
+        mock_handle_request_mock_generic,
+        mock_handle_mock_success,
+        mock_handle_mock_success_service,
+        mock_handle_response_mock,
+        mock_handle_response_develop,
+        mock_disable_transfer_encoding,
+        origin,
+        expect_live,
+    ):
+        live_response = MagicMock(name='live_response')
+        mock_response = MagicMock(name='mock_response')
+
+        flow = MagicMock()
+        flow.response = live_response
+        flow.request = MagicMock()
+        flow.request.headers = {}
+
+        mock_flow = MagicMock()
+        mock_flow.response = mock_response
+        mock_flow.request = MagicMock()
+        mock_flow.request.headers = {}
+        flow.copy.return_value = mock_flow
+
+        intercept_settings = MagicMock()
+        intercept_settings.request_origin = origin
+        mock_get_intercept_mode_policy.side_effect = [test_policy.FOUND, mock_policy.FOUND]
+
+        def handle_mock_success(test_context):
+            test_context.with_tested(True)
+
+        mock_handle_mock_success.side_effect = handle_mock_success
+
+        def invoke_success(mock_context, error=None, failure=None, success=None, policy_override=None, **kwargs):
+            success(mock_context)
+
+        mock_handle_request_mock_generic.side_effect = invoke_success
+
+        context = MagicMock()
+        context.flow = flow
+        context.intercept_settings = intercept_settings
+
+        handle_response_test(context)
+
+        if expect_live:
+            assert flow.response is live_response
+        else:
+            assert flow.response is mock_response
