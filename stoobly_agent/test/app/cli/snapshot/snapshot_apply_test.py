@@ -24,6 +24,21 @@ def write_junk(path: str):
   with open(path, 'w') as fp:
     fp.write('junk')
 
+def create_pending_request_snapshots(runner: CliRunner, urls: List[str]) -> List[LogEvent]:
+  # Mark events from previous tests as processed so only the snapshots created here are pending
+  log = Log()
+  log.version = log.generate_version(log.uuids())
+
+  for url in urls:
+    record_result = runner.invoke(record, [url])
+    assert record_result.exit_code == 0
+    recorded_request = Request.last()
+
+    snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+    assert snapshot_result.exit_code == 0
+
+  return Log().unprocessed_events
+
 @pytest.fixture(scope='module')
 def runner():
     return CliRunner()
@@ -871,25 +886,9 @@ class TestApply():
         return Log()
 
       @pytest.fixture(scope='class', autouse=True)
-      def pending_events(self, runner: CliRunner, log: Log):
-        # Mark any events left over from previous tests as processed
-        log.version = log.generate_version(log.uuids())
-
-        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
-        assert record_result.exit_code == 0
-        first_request = Request.last()
-
-        record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
-        assert record_result.exit_code == 0
-        second_request = Request.last()
-
-        for recorded_request in [first_request, second_request]:
-          snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
-          assert snapshot_result.exit_code == 0
-
-        unprocessed_events = log.unprocessed_events
+      def pending_events(self, runner: CliRunner):
+        unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL])
         assert len(unprocessed_events) == 2
-
         return unprocessed_events
 
       def test_it_marks_applied_event_processed(self, runner: CliRunner, log: Log, pending_events: List[LogEvent]):
@@ -899,6 +898,52 @@ class TestApply():
         unprocessed_uuids = [event.uuid for event in log.unprocessed_events]
         assert pending_events[0].uuid not in unprocessed_uuids
         assert unprocessed_uuids == [pending_events[1].uuid]
+
+    class TestWhenApplyingSnapshotByUuidFails():
+      '''
+      1. Record a request and snapshot it, then corrupt the snapshot file
+      2. Apply the event by uuid
+      3. Expect the apply to fail and the event to remain pending
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      def pending_event(self, runner: CliRunner):
+        unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
+        assert len(unprocessed_events) == 1
+
+        event = unprocessed_events[0]
+        write_junk(event.snapshot().path)
+        return event
+
+      def test_it_leaves_event_pending(self, runner: CliRunner, pending_event: LogEvent):
+        apply_result = runner.invoke(snapshot, ['apply', pending_event.uuid])
+        assert apply_result.exit_code == 1
+
+        unprocessed_uuids = [event.uuid for event in Log().unprocessed_events]
+        assert unprocessed_uuids == [pending_event.uuid]
+
+    class TestWhenApplyingSnapshotByUuidThenAll():
+      '''
+      1. Create two pending snapshots
+      2. Apply the first by uuid
+      3. Apply all
+      4. Expect nothing to remain pending
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      def pending_events(self, runner: CliRunner):
+        unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL])
+        assert len(unprocessed_events) == 2
+        return unprocessed_events
+
+      def test_it_clears_pending(self, runner: CliRunner, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply', pending_events[0].uuid])
+        assert apply_result.exit_code == 0
+
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        assert Log().unprocessed_events == []
 
     class TestLocking():
       def test_concurrent_apply_commands_timeout(self, runner: CliRunner):
