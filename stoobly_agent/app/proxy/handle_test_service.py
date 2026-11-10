@@ -148,7 +148,7 @@ def handle_response_test(context: ReplayContext) -> None:
         if test_context.request_log_row_id:
             __decorate_request_log_row(flow, test_context.request_log_row_id)
 
-def __decorate_request_log_row(flow: 'MitmproxyHTTPFlow', row_id: Union[int, None]):
+def __decorate_request_log_row(flow: 'MitmproxyHTTPFlow', row_id: Union[str, None]):
     if row_id is not None and flow.response is not None:
         flow.response.headers[custom_headers.REQUEST_LOG_ROW_ID] = str(row_id)
 

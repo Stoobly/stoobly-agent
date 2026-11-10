@@ -233,7 +233,7 @@ class TestContext(TestContextABC):
     return self.intercept_settings.test_strategy
 
   @property
-  def request_log_row_id(self) -> Union[int, None]:
+  def request_log_row_id(self) -> Union[str, None]:
     return self.__request_log_row_id
 
   @property
@@ -258,7 +258,7 @@ class TestContext(TestContextABC):
 
     return Trace.find(trace_id)
 
-  def with_request_log_row_id(self, row_id: int):
+  def with_request_log_row_id(self, row_id: str):
     self.__request_log_row_id = row_id
     return self
 

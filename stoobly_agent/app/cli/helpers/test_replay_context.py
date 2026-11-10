@@ -154,9 +154,8 @@ class TestReplayContext(ReplayContext):
     if row_id is None:
       return None
 
-    try:
-      parsed_row_id = int(row_id)
-    except (TypeError, ValueError):
+    parsed_row_id = str(row_id).strip()
+    if not parsed_row_id:
       return None
 
     return SimpleInterceptedRequestsLogger.get_entry(parsed_row_id)

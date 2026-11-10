@@ -10,7 +10,8 @@ import subprocess
 import sys
 import threading
 import time
-from typing import TYPE_CHECKING, Final, Optional
+import uuid
+from typing import TYPE_CHECKING, Final, Optional, Union
 
 if TYPE_CHECKING:
     from requests import Response
@@ -56,8 +57,6 @@ class InterceptedRequestsLogger():
     _file_path: str = None
     _previous_scenario_key: str = None
     _scenario_key_lock: threading.Lock = threading.Lock()
-    _row_id_lock: threading.Lock = threading.Lock()
-    _next_row_id_value: int = 1
 
     # Feature flag: Set to True to enable async queue-based logging
     _USE_ASYNC_QUEUE: bool = True
@@ -147,7 +146,6 @@ class InterceptedRequestsLogger():
         cls._cleanup_handlers()
         base._logger.handlers.clear()
         base._logger.disabled = True
-        cls._reset_row_id_counter(1)
         cls.reset_scenario_key()
 
     @classmethod
@@ -303,52 +301,9 @@ class InterceptedRequestsLogger():
     # --- Template methods (shared logic, delegate to cls._get_file_path) ---
 
     @classmethod
-    def _next_row_id(cls) -> int:
-        """Allocate the next monotonic row id."""
-        base = InterceptedRequestsLogger
-        with base._row_id_lock:
-            row_id = base._next_row_id_value
-            base._next_row_id_value = row_id + 1
-            return row_id
-
-    @classmethod
-    def _reset_row_id_counter(cls, next_value: int = 1) -> None:
-        """Reset the monotonic row id counter."""
-        base = InterceptedRequestsLogger
-        with base._row_id_lock:
-            base._next_row_id_value = max(1, int(next_value))
-
-    @classmethod
-    def _max_row_id_in_file(cls, file_path: str) -> int:
-        """Return the max row_id present in an existing log file, or 0."""
-        if not file_path or not os.path.exists(file_path):
-            return 0
-
-        max_row_id = 0
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    stripped = line.strip()
-                    if not stripped:
-                        continue
-                    try:
-                        entry = json.loads(stripped)
-                    except json.JSONDecodeError:
-                        continue
-                    row_id = entry.get('row_id')
-                    if isinstance(row_id, int) and row_id > max_row_id:
-                        max_row_id = row_id
-                    elif isinstance(row_id, str):
-                        try:
-                            parsed = int(row_id)
-                        except ValueError:
-                            continue
-                        if parsed > max_row_id:
-                            max_row_id = parsed
-        except OSError:
-            return max_row_id
-
-        return max_row_id
+    def _next_row_id(cls) -> str:
+        """Allocate a globally unique row id safe for multi-process writers."""
+        return str(uuid.uuid4())
 
     @classmethod
     def enable_logger_file(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> None:
@@ -370,7 +325,6 @@ class InterceptedRequestsLogger():
                 workflow_namespace=workflow_namespace,
             )
             base._file_path = file_path
-            cls._reset_row_id_counter(cls._max_row_id_in_file(file_path) + 1)
 
             # Create file handler
             base._file_handler = logging.FileHandler(file_path)
@@ -649,8 +603,6 @@ class InterceptedRequestsLogger():
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write('')
 
-            cls._reset_row_id_counter(1)
-
             # Re-enable logging with fresh handlers
             cls.enable_logger_file(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
@@ -762,8 +714,8 @@ class InterceptedRequestsLogger():
         fixture_path: str = None,
         error: bool = False,
         **test_fields,
-    ) -> int:
-        """Append a test-report row and return its monotonic row_id."""
+    ) -> str:
+        """Append a test-report row and return its unique row_id."""
         cls._ensure_logging_enabled()
         extra = cls._setup_logging(request, response, request_key, fixture_path)
 
@@ -782,7 +734,7 @@ class InterceptedRequestsLogger():
     @classmethod
     def get_entry(
         cls,
-        row_id: int,
+        row_id: Union[str, int],
         data_dir_path: str = None,
         workflow: str = None,
         namespace: str = None,
@@ -791,9 +743,11 @@ class InterceptedRequestsLogger():
         delay: float = 0.05,
     ) -> Optional[dict]:
         """Flush pending logs and return the NDJSON entry for row_id."""
-        try:
-            target_row_id = int(row_id)
-        except (TypeError, ValueError):
+        if row_id is None:
+            return None
+
+        target_row_id = str(row_id).strip()
+        if not target_row_id:
             return None
 
         file_path = None
@@ -822,7 +776,7 @@ class InterceptedRequestsLogger():
         return None
 
     @classmethod
-    def _find_entry_by_row_id(cls, file_path: str, row_id: int) -> Optional[dict]:
+    def _find_entry_by_row_id(cls, file_path: str, row_id: str) -> Optional[dict]:
         if not file_path or not os.path.exists(file_path):
             return None
 
@@ -837,11 +791,8 @@ class InterceptedRequestsLogger():
                     except json.JSONDecodeError:
                         continue
                     entry_row_id = entry.get('row_id')
-                    try:
-                        if entry_row_id is not None and int(entry_row_id) == row_id:
-                            return entry
-                    except (TypeError, ValueError):
-                        continue
+                    if entry_row_id is not None and str(entry_row_id) == row_id:
+                        return entry
         except OSError:
             return None
 
