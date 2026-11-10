@@ -5,14 +5,15 @@ import pdb
 import sys
 
 from stoobly_agent.app.cli.helpers.handle_mock_service import RAW_FORMAT
-from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_scenario_key
+from stoobly_agent.app.cli.helpers.validations import validate_project_key, validate_report_key, validate_scenario_key
 from stoobly_agent.app.cli.scaffold.constants import WORKFLOW_NAME_ENV
-from stoobly_agent.config.constants import env_vars, mode
+from stoobly_agent.config.constants import env_vars, mode, test_filter, test_output_level, test_strategy
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from .app.cli import MainGroup
 from .app.cli.helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
+from .app.cli.helpers.handle_replay_service import BODY_FORMAT, JSON_FORMAT
 from .app.settings import Settings
 from .lib import logger
 
@@ -379,6 +380,91 @@ def record(**kwargs):
     else:
       with open(kwargs['output'], 'w') as fp:
         fp.write(content.decode(json.detect_encoding(content))) 
+
+@main.command(
+  help="Test request"
+)
+@click.option('-b', '--cookie', multiple=True, help='''
+  Pass the data to the HTTP server in the Cookie header. It is supposedly the
+  data previously received from the server in a Set-Cookie line. The data should
+  be in the format "NAME1=VALUE1; NAME2=VALUE2". If no = sign is used in the
+  argument, it is instead treated as a filename to read previously stored cookie from.
+''')
+@click.option('-d', '--data', default='', help='HTTP POST data')
+@click.option('--filter', default=test_filter.ALL, type=click.Choice([test_filter.ALL, test_filter.ALIAS, test_filter.LINK]), help='For iterable responses, selectively test properties.')
+@click.option('--format', type=click.Choice([BODY_FORMAT, JSON_FORMAT]), help='Format test output.')
+@click.option('-H', '--header', multiple=True, help='Pass custom header(s) to server')
+@click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+@click.option(
+  '--log-level', default=logger.WARNING, type=click.Choice([logger.DEBUG, logger.INFO, logger.WARNING, logger.ERROR]),
+  help=f'''
+    Configure which logs to print. Defaults to {logger.WARNING}.
+  '''
+)
+@click.option('--openapi-specification-path', help='Path to OpenAPI specification file.')
+@click.option(
+  '--output-level', default=test_output_level.PASSED, type=click.Choice([test_output_level.FAILED, test_output_level.SKIPPED, test_output_level.PASSED]),
+  help=f'''
+    Configure which tests to print. Defaults to {test_output_level.PASSED}.
+  '''
+)
+@ConditionalDecorator(lambda f: click.option('--project-key')(f), is_remote)
+@click.option('--public-dir-path', help='Path to public files. Used for mocking requests in mock and record modes.')
+@ConditionalDecorator(lambda f: click.option('--remote-project-key', help='Use remote project for endpoint definitions.')(f), is_local and is_remote)
+@ConditionalDecorator(lambda f: click.option('--report-key', help='Save to report.')(f), is_remote)
+@click.option('--response-fixtures-path', help='Path to response fixtures yaml. Used for mocking requests in mock and record modes.')
+@click.option('-X', '--request', default='GET', help='Specify request command to use')
+@ConditionalDecorator(lambda f: click.option('--save', is_flag=True, default=False, help='Saves test results.')(f), is_remote)
+@click.option('--scenario-key')
+@click.option('--strategy', default=test_strategy.DIFF, type=click.Choice([test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]), help='How to test responses.')
+@click.argument('url')
+def test(**kwargs):
+  from stoobly_agent.app.cli.helpers.handle_test_service import (
+    SessionContext,
+    exit_on_failure,
+    handle_test_complete,
+    handle_test_session_complete,
+  )
+  from stoobly_agent.app.cli.helpers.test_facade import TestFacade
+  from stoobly_agent.lib.api.keys.project_key import InvalidProjectKey, ProjectKey
+
+  os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
+
+  if kwargs.get('remote_project_key'):
+    validate_project_key(kwargs['remote_project_key'])
+
+  if kwargs.get('report_key'):
+    if not kwargs.get('save'):
+      print("Error: Missing --save option", file=sys.stderr)
+      sys.exit(1)
+    validate_report_key(kwargs['report_key'])
+
+  project_id = -1
+  try:
+    project_id = ProjectKey(settings.proxy.intercept.project_key).id
+  except InvalidProjectKey:
+    pass
+
+  session_context: SessionContext = {
+    'aggregate_failures': False,
+    'passed': 0,
+    'project_id': project_id,
+    'skipped': 0,
+    'test_facade': TestFacade(settings),
+    'total': 0,
+  }
+
+  kwargs['after_replay'] = lambda context: handle_test_complete(
+    context, session_context, format=kwargs.get('format'), output_level=kwargs.get('output_level')
+  )
+  kwargs['test_filter'] = kwargs.pop('filter', test_filter.ALL)
+  kwargs['test_strategy'] = kwargs.pop('strategy', test_strategy.DIFF)
+  kwargs['test_save_results'] = kwargs.pop('save', False)
+
+  __replay(mode.TEST, **kwargs)
+
+  handle_test_session_complete(session_context, format=kwargs.get('format'))
+  exit_on_failure(session_context, format=kwargs.get('format'))
 
 def __build_request_from_curl(**kwargs):
   import requests
