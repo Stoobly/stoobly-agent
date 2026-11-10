@@ -146,14 +146,15 @@ class Apply():
       return False
 
     if self.__logger:
-      self.__logger(f"{bcolors.OKBLUE}Processing Event{bcolors.ENDC} {event.uuid}")
+      self.__logger(f"{bcolors.OKBLUE}Processing Event{bcolors.ENDC} {target_event.uuid}")
 
-    results = event.apply(**self.__handlers())
+    results = target_event.apply(**self.__handlers())
     if results:
       status = results[1]
       if status == 0 or status >= 400:
         return False
 
+    log.mark_processed(target_event.uuid)
     return True
 
   def __handlers(self):

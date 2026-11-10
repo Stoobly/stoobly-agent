@@ -859,6 +859,47 @@ class TestApply():
           assert len(unprocessed_events) == 1
           assert unprocessed_events[0].action == DELETE_ACTION
 
+    class TestWhenApplyingSnapshotByUuid():
+      '''
+      1. Record two requests and snapshot each, leaving two pending events
+      2. Apply the first event by uuid
+      3. Expect only the second event to remain pending
+      '''
+
+      @pytest.fixture(scope='class')
+      def log(self):
+        return Log()
+
+      @pytest.fixture(scope='class', autouse=True)
+      def pending_events(self, runner: CliRunner, log: Log):
+        # Mark any events left over from previous tests as processed
+        log.version = log.generate_version(log.uuids())
+
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        first_request = Request.last()
+
+        record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        second_request = Request.last()
+
+        for recorded_request in [first_request, second_request]:
+          snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+          assert snapshot_result.exit_code == 0
+
+        unprocessed_events = log.unprocessed_events
+        assert len(unprocessed_events) == 2
+
+        return unprocessed_events
+
+      def test_it_marks_applied_event_processed(self, runner: CliRunner, log: Log, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply', pending_events[0].uuid])
+        assert apply_result.exit_code == 0
+
+        unprocessed_uuids = [event.uuid for event in log.unprocessed_events]
+        assert pending_events[0].uuid not in unprocessed_uuids
+        assert unprocessed_uuids == [pending_events[1].uuid]
+
     class TestLocking():
       def test_concurrent_apply_commands_timeout(self, runner: CliRunner):
         """Test that concurrent snapshot apply commands properly timeout"""

@@ -174,6 +174,16 @@ class Log():
 
     return index
 
+  def mark_processed(self, uuid: str):
+    version = self.version.strip()
+    version_uuids = version.split(EVENT_DELIMITTER) if version else []
+
+    if uuid in version_uuids:
+      return
+
+    version_uuids.append(uuid)
+    self.version = self.generate_version(version_uuids)
+
   def next_version(self, last_processed_uuid: str = None):
     uuids = self.uuids()
 
