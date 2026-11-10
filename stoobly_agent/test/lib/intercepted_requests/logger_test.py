@@ -32,6 +32,7 @@ def reset_logger_state():
     InterceptedRequestsLogger._file_handler = None
     InterceptedRequestsLogger._logger.handlers.clear()
     InterceptedRequestsLogger._logger.disabled = True
+    InterceptedRequestsLogger._reset_row_id_counter(1)
     yield
     InterceptedRequestsLogger.shutdown()
 
@@ -1023,3 +1024,79 @@ class TestFollowLog:
             SimpleInterceptedRequestsLogger._follow_log(log_file, None)
 
         mock_proc.terminate.assert_called_once()
+
+
+class TestAppendTestReport:
+    """Tests for append_test_report / get_entry / row_id."""
+
+    @pytest.fixture(autouse=True)
+    def setup_logger(self, temp_log_dir):
+        log_path = os.path.join(temp_log_dir, 'test_report.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+        SimpleInterceptedRequestsLogger.enable_logger_file()
+        yield
+        InterceptedRequestsLogger.shutdown()
+
+    def test_append_test_report_returns_monotonic_row_ids(self, mock_mitmproxy_request, mock_mitmproxy_response):
+        first = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        second = InterceptedRequestsLogger.append_test_report(
+            'Test failure',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            error=True,
+            passed=False,
+            skipped=False,
+            strategy='diff',
+            log='mismatch',
+            expected_response={'format': 'json', 'data': {'a': 1}},
+            expected_latency=10,
+            expected_status_code=200,
+        )
+
+        assert first == 1
+        assert second == 2
+
+        first_entry = SimpleInterceptedRequestsLogger.get_entry(first)
+        second_entry = SimpleInterceptedRequestsLogger.get_entry(second)
+
+        assert first_entry is not None
+        assert first_entry['message'] == 'Test success'
+        assert first_entry['passed'] is True
+        assert 'expected_response' not in first_entry
+
+        assert second_entry is not None
+        assert second_entry['message'] == 'Test failure'
+        assert second_entry['passed'] is False
+        assert second_entry['expected_response'] == {'format': 'json', 'data': {'a': 1}}
+        assert second_entry['expected_latency'] == 10
+        assert second_entry['expected_status_code'] == 200
+
+    def test_truncate_resets_row_id_counter(self, temp_log_dir, mock_mitmproxy_request, mock_mitmproxy_response):
+        InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        SimpleInterceptedRequestsLogger.truncate()
+        row_id = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        assert row_id == 1

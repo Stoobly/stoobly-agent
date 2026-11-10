@@ -449,6 +449,16 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
+        # Test mode also appends a separate test-report row
+        test_entry = find_log_entry(output, 'Test success')
+        assert test_entry is not None, f"Expected Test success log entry, got:\n{output}"
+        assert test_entry['level'] == 'INFO'
+        assert test_entry.get('passed') is True
+        assert test_entry.get('skipped') is False
+        assert 'row_id' in test_entry
+        assert 'expected_response' not in test_entry
+        assert res.headers.get('X-Stoobly-Request-Log-Row') == str(test_entry['row_id'])
+
     def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, non_deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
@@ -473,6 +483,12 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry is not None, f"Expected Mock failure log entry, got:\n{list_result.output}"
         assert entry['level'] == 'ERROR'
         assert entry['status_code'] == NOT_FOUND
+
+        test_entry = find_log_entry(list_result.output, 'Test failure')
+        assert test_entry is not None, f"Expected Test failure log entry, got:\n{list_result.output}"
+        assert test_entry['level'] == 'ERROR'
+        assert test_entry.get('passed') is False
+        assert res.headers.get('X-Stoobly-Request-Log-Row') == str(test_entry['row_id'])
 
     def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""

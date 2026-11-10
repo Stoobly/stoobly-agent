@@ -590,6 +590,16 @@ class TestOpenApiEndpointAdapter():
               'query': '[*]',
               'response_param_name_id': None,
           },
+          {
+              'endpoint_id': _USPTO_EID_POST_RECORDS_HTTPS,
+              'id': 2,
+              'inferred_type': 'Hash',
+              'is_deterministic': True,
+              'is_required': False,
+              'name': 'AdditionalProperty',
+              'query': '[*].*',
+              'response_param_name_id': 1,
+          },
         ],
       }
 
@@ -603,6 +613,7 @@ class TestOpenApiEndpointAdapter():
       http_endpoint_version['body_param_names'][1]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
       http_endpoint_version['body_param_names'][2]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
       http_endpoint_version['response_param_names'][0]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
+      http_endpoint_version['response_param_names'][1]['endpoint_id'] = _USPTO_EID_POST_RECORDS_HTTP
       return http_endpoint_version
 
     def test_adapt_from_file(self, open_api_endpoint_adapter, uspto_file_path, expected_get_root_https, expected_get_root_http, expected_get_dataset_version_fields_https, expected_get_dataset_version_fields_http, expected_post_dataset_version_records_https, expected_post_dataset_version_records_http):

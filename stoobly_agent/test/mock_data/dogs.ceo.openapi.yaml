@@ -1,0 +1,32 @@
+openapi: 3.0.3
+info:
+  title: Dog API
+  description: Access to a collection of dog breeds and sub-breeds.
+  version: 1.0.0
+servers:
+  - url: https://dog.ceo/api
+paths:
+  /breeds/list/all:
+    get:
+      summary: List all breeds
+      description: Returns a complete list of all dog breeds and their sub-breeds.
+      responses:
+        '200':
+          description: A successful response containing a map of breeds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - status
+                properties:
+                  message:
+                    type: object
+                    description: A dictionary where the key is the breed name and the value is an array of sub-breeds.
+                    # Live dog.ceo responses are mostly string arrays, but occasionally include
+                    # non-array values, so leave additionalProperties unconstrained here.
+                  status:
+                    type: string
+                    description: The status of the API request.
+                    example: success

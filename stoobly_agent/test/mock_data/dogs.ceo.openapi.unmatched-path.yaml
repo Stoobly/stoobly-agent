@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Dog API (path that does not match recorded request)
+  version: 1.0.0
+servers:
+  - url: https://dog.ceo/api
+paths:
+  /breeds/list/missing:
+    get:
+      summary: Intentionally unmatched path
+      responses:
+        '200':
+          description: Exists only so OpenAPI loads, but does not match /breeds/list/all.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - status
+                properties:
+                  message:
+                    type: object
+                  status:
+                    type: integer
