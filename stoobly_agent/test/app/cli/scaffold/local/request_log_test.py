@@ -457,7 +457,7 @@ class TestRequestLogWithTestWorkflowE2e():
         assert test_entry.get('skipped') is False
         assert 'row_id' in test_entry
         assert 'expected_response' not in test_entry
-        assert res.headers.get('X-Stoobly-Request-Log-Row') == str(test_entry['row_id'])
+        assert res.headers.get('X-Stoobly-Request-Log-Row-Id') == str(test_entry['row_id'])
 
     def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, non_deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
@@ -488,7 +488,7 @@ class TestRequestLogWithTestWorkflowE2e():
         assert test_entry is not None, f"Expected Test failure log entry, got:\n{list_result.output}"
         assert test_entry['level'] == 'ERROR'
         assert test_entry.get('passed') is False
-        assert res.headers.get('X-Stoobly-Request-Log-Row') == str(test_entry['row_id'])
+        assert res.headers.get('X-Stoobly-Request-Log-Row-Id') == str(test_entry['row_id'])
 
     def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""

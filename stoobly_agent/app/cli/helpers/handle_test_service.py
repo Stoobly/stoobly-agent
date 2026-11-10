@@ -55,10 +55,10 @@ def handle_test_complete(
   if format == JSON_FORMAT:
     format_handler = __json_test_complete_formatter
 
-  # If not context.has_test_results, then test results are from remote
-  # Configure which project test the test results are from
+  # Local results come from RequestLog via X-Stoobly-Request-Log-Row-Id.
+  # If that row is missing, fall back to remote results via X-Stoobly-Test-Id.
   context = TestReplayContext(context)
-  if not context.has_test_results:
+  if not context.has_test_results or context.request_log_entry is None:
     context.project_id = session_context['project_id']
 
   test = context.test_show_response(session_context['test_facade'])
