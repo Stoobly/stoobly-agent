@@ -131,7 +131,7 @@ def handle_response_test(context: ReplayContext) -> None:
 
     # Select client-facing response before decorating headers.
     # For CLI: when a compare ran, keep the live (tested) response so diffs use received != expected.
-    # Non-CLI clients still get the mock when policy is not NONE (previous behavior).
+    # Non-CLI clients still get the mock when policy is not NONE.
     # Otherwise apply mock policy (e.g. return mock-not-found on failure).
     keep_live = (
         test_context
