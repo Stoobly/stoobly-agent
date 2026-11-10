@@ -132,14 +132,14 @@ def __json_test_complete_formatter(
       test['log'] = res['log'] if 'log' in res else ''
       test['response'] = { **__build_json_response(context.response), 'latency': latency}
 
-      if not res['passed']:
+      if not res['passed'] and context.has_expected:
         test_facade = session_context['test_facade']
         expected_response, expected_status_code = context.expected_response_content(test_facade)
 
-        if expected_response:
+        if expected_response is not None:
           test['expected_response'] = { 
             'content': expected_response,
-            'latency': res['expected_latency'],
+            'latency': res.get('expected_latency'),
             'status_code': expected_status_code,
           }
 
@@ -173,11 +173,13 @@ def __default_test_complete_formatter(
       if res['log']:
         print(f"\n{res['log']}")
 
-      if not res['passed'] and not res['skipped']:
+      if not res['passed'] and not res['skipped'] and context.has_expected:
         test_facade = session_context['test_facade']
-        response, status_code, latency = context.diff_response(res, test_facade)
-        print("\n" + response) 
-        print(f"Completed {status_code} in {latency}ms")
+        diff_result = context.diff_response(res, test_facade)
+        if diff_result is not None:
+          response, status_code, latency = diff_result
+          print("\n" + response) 
+          print(f"Completed {status_code} in {latency}ms")
 
 def __default_session_complete_formatter(session_context: SessionContext):
   if 'output' in session_context:

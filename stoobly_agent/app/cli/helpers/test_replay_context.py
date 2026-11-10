@@ -57,9 +57,22 @@ class TestReplayContext(ReplayContext):
   def response_status_code(self):
     return self.response.status_code
 
+  @property
+  def has_expected(self) -> bool:
+    if self.__request_log_entry is not None:
+      return any(
+        key in self.__request_log_entry
+        for key in ('expected_response', 'expected_status_code', 'expected_latency')
+      )
+
+    return self.response.headers.get(custom_headers.TEST_ID) is not None
+
   def diff_response(self, response: TestShowResponse, test_facade: TestFacade):
     if response['passed'] or response['skipped']:
       return (self.response_content, self.response_status_code, self.latency)
+
+    if not self.has_expected:
+      return None
 
     expected_response_content, expected_status_code = self.expected_response_content(test_facade)
     expected_latency = response.get('expected_latency')
@@ -73,6 +86,9 @@ class TestReplayContext(ReplayContext):
     )
 
   def expected_response_content(self, test_facade: TestFacade):
+    if not self.has_expected:
+      return None, None
+
     if self.__request_log_entry and 'expected_response' in self.__request_log_entry:
       expected = decode_expected_response(self.__request_log_entry.get('expected_response'))
       expected_status_code = self.__request_log_entry.get('expected_status_code') or 0
@@ -88,7 +104,7 @@ class TestReplayContext(ReplayContext):
 
       return decode_response(content, content_type), response.status_code
     else:
-      return '', 0
+      return None, None
 
   def test_show_response(self, test_facade = None) -> TestShowResponse:
     if self.__request_log_entry is not None:

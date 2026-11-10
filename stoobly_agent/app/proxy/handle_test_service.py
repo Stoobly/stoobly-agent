@@ -16,7 +16,7 @@ from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy, test_strategy
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
@@ -287,8 +287,8 @@ def __append_test_report(
         'log': log if log is not None else '',
     }
 
-    # expected_* only when the compare failed (not passed, not skipped)
-    if not passed and not skipped:
+    # expected_* only on non-contract failures (contract validates schema, not expected payloads)
+    if not passed and not skipped and strategy != test_strategy.CONTRACT:
         if expected is not None:
             test_fields['expected_response'] = encode_expected_response(expected)
         if expected_latency is not None:

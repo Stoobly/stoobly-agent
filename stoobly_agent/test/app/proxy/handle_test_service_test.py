@@ -2,8 +2,60 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from stoobly_agent.app.proxy import handle_test_service as handle_test_service_module
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
-from stoobly_agent.config.constants import mock_policy, test_policy
+from stoobly_agent.config.constants import mock_policy, test_policy, test_strategy
+
+append_test_report = getattr(handle_test_service_module, '__append_test_report')
+
+
+class TestAppendTestReport:
+    @patch('stoobly_agent.app.proxy.handle_test_service.InterceptedRequestsLogger.append_test_report', return_value=7)
+    def test_omits_expected_fields_for_contract_failure(self, mock_append_test_report):
+        test_context = MagicMock()
+        test_context.flow.request = MagicMock()
+        test_context.flow.response = MagicMock()
+
+        append_test_report(
+            test_context,
+            passed=False,
+            skipped=False,
+            strategy=test_strategy.CONTRACT,
+            log='missing required property',
+            expected={'a': 1},
+            expected_latency=10,
+            expected_status_code=200,
+        )
+
+        kwargs = mock_append_test_report.call_args.kwargs
+        assert kwargs['passed'] is False
+        assert kwargs['strategy'] == test_strategy.CONTRACT
+        assert 'expected_response' not in kwargs
+        assert 'expected_latency' not in kwargs
+        assert 'expected_status_code' not in kwargs
+        test_context.with_request_log_row_id.assert_called_once_with(7)
+
+    @patch('stoobly_agent.app.proxy.handle_test_service.InterceptedRequestsLogger.append_test_report', return_value=8)
+    def test_includes_expected_fields_for_diff_failure(self, mock_append_test_report):
+        test_context = MagicMock()
+        test_context.flow.request = MagicMock()
+        test_context.flow.response = MagicMock()
+
+        append_test_report(
+            test_context,
+            passed=False,
+            skipped=False,
+            strategy=test_strategy.DIFF,
+            log='mismatch',
+            expected={'a': 1},
+            expected_latency=10,
+            expected_status_code=200,
+        )
+
+        kwargs = mock_append_test_report.call_args.kwargs
+        assert kwargs['expected_response'] == {'format': 'json', 'data': {'a': 1}}
+        assert kwargs['expected_latency'] == 10
+        assert kwargs['expected_status_code'] == 200
 
 
 class TestHandleTestService:
