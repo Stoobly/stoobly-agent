@@ -10,6 +10,7 @@ from click.testing import CliRunner
 from unittest.mock import patch
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
+from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
@@ -404,6 +405,10 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(1)
         settings.load()
 
+        # Scaffold defaults test policy to none (mock-only). Use found so Test report rows are emitted.
+        set_result = runner.invoke(intercept, ['set', '--mode', 'test', '--policy', 'found'])
+        assert set_result.exit_code == 0, set_result.output
+        settings.load()
 
         yield
 
@@ -432,7 +437,7 @@ class TestRequestLogWithTestWorkflowE2e():
         if res.status_code != 200:
             assert False, f"Expected successful test (200), got {res.status_code}. Response: {res.text}."
 
-        # Should have a "Mock success" log entry (test workflow uses mock mode)
+        # Mock success is logged, then a separate Test success report row
         output = list_result.output
         entry = find_log_entry(output, 'Mock success')
         assert entry is not None, f"Expected Mock success log entry, got:\n{output}"
@@ -478,7 +483,7 @@ class TestRequestLogWithTestWorkflowE2e():
         list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
-        # Should have a Mock failure entry (test workflow uses mock mode)
+        # Mock failure is logged, then a separate Test failure report row
         entry = find_log_entry(list_result.output, 'Mock failure')
         assert entry is not None, f"Expected Mock failure log entry, got:\n{list_result.output}"
         assert entry['level'] == 'ERROR'
