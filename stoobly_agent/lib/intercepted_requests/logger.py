@@ -136,10 +136,19 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def shutdown(cls) -> None:
-        """Public method to shutdown logger gracefully."""
+        """Public method to shutdown logger gracefully.
+
+        Leaves `_file_path` set so dump_logs/get_entry can still read the file
+        after handlers are closed. Clears handlers and disables the logger so a
+        later enable/append recreates writable handlers (important when the data
+        directory was deleted out from under an open FileHandler).
+        """
         base = InterceptedRequestsLogger
         cls._cleanup_handlers()
         base._logger.handlers.clear()
+        base._logger.disabled = True
+        cls._reset_row_id_counter(1)
+        cls.reset_scenario_key()
 
     @classmethod
     def flush(cls, timeout: float = None) -> None:
@@ -379,6 +388,11 @@ class InterceptedRequestsLogger():
             base._logger.handlers.clear()
             # Prevent propagation to parent loggers which may have console handlers
             base._logger.propagate = False
+            # Own level so we don't inherit a restrictive root (e.g. WARNING from
+            # STOOBLY_AGENT_LOG_LEVEL) and drop INFO mock/test/record rows.
+            # --request-log-level can raise this afterwards.
+            if base._logger.level == logging.NOTSET or base._logger.level > logging.INFO:
+                base._logger.setLevel(logging.INFO)
 
             if base._USE_ASYNC_QUEUE:
                 # Async queue-based logging
@@ -710,10 +724,28 @@ class InterceptedRequestsLogger():
                 base._previous_scenario_key = current_scenario_key
 
     @classmethod
+    def _log_path_is_writable(cls) -> bool:
+        """Return True when the active log file path still exists on disk.
+
+        Handlers can outlive their target when the data directory is recreated
+        (e.g. test reset()): the FileHandler keeps writing to a deleted inode
+        while open(path) from get_entry sees nothing.
+        """
+        base = InterceptedRequestsLogger
+        file_path = base._file_path
+        if not file_path:
+            return False
+        return os.path.exists(file_path)
+
+    @classmethod
     def _ensure_logging_enabled(cls) -> None:
         """Enable simple request logging when no request log file is active."""
         base = InterceptedRequestsLogger
-        if not base._logger.disabled and base._file_handler is not None:
+        if (
+            not base._logger.disabled
+            and base._file_handler is not None
+            and cls._log_path_is_writable()
+        ):
             return
 
         from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger

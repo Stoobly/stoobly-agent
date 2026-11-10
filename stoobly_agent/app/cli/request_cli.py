@@ -345,9 +345,9 @@ def log_list(**kwargs):
     follow=kwargs.get('follow', False),
   )
 
-@log.command(name="delete", help="Delete intercepted requests log entries")
+@log.command(name="truncate", help="Truncate intercepted requests log entries")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-def log_delete(**kwargs):
+def log_truncate(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
   SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
 

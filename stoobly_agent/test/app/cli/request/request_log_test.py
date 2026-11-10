@@ -51,10 +51,10 @@ class TestRequestLogCliParams:
                 follow=False,
             )
 
-    def test_log_delete_calls_truncate(self, runner):
-        """request log delete calls truncate for non-scaffold use."""
+    def test_log_truncate_calls_truncate(self, runner):
+        """request log truncate calls truncate for non-scaffold use."""
         with patch.object(SimpleInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['logs', 'delete'])
+            result = runner.invoke(request, ['logs', 'truncate'])
             assert result.exit_code == 0
             mock_truncate.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
 
@@ -185,8 +185,8 @@ class TestRequestLogE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_log_delete_clears_log_entries(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
-        """Test that request log delete clears all log entries."""
+    def test_log_truncate_clears_log_entries(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
+        """Test that request log truncate clears all log entries."""
         requests.get(
             f'https://{hostname}/another-unrecorded',
             proxies={'http': proxy_url, 'https': proxy_url},
@@ -196,14 +196,14 @@ class TestRequestLogE2e():
 
         result = runner.invoke(request, ['logs', 'list'])
         assert result.exit_code == 0
-        assert result.output.strip(), "Log should have entries before delete"
+        assert result.output.strip(), "Log should have entries before truncate"
 
-        delete_result = runner.invoke(request, ['logs', 'delete'])
-        assert delete_result.exit_code == 0
+        truncate_result = runner.invoke(request, ['logs', 'truncate'])
+        assert truncate_result.exit_code == 0
 
         list_result = runner.invoke(request, ['logs', 'list'])
         assert list_result.exit_code == 0
-        assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+        assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"
 
     def test_log_path_shows_correct_path(self, runner: CliRunner, proxy_pid):
         """Test that request log path outputs the correct simple log path."""
@@ -310,8 +310,8 @@ class TestRequestLogRecordE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_log_delete_clears_log_entries(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
-        """Test that request log delete clears all log entries."""
+    def test_log_truncate_clears_log_entries(self, hostname, proxy_url, runner: CliRunner, proxy_pid):
+        """Test that request log truncate clears all log entries."""
         requests.get(
             f'https://{hostname}/api/breeds/list/all',
             proxies={'http': proxy_url, 'https': proxy_url},
@@ -321,14 +321,14 @@ class TestRequestLogRecordE2e():
 
         result = runner.invoke(request, ['logs', 'list'])
         assert result.exit_code == 0
-        assert result.output.strip(), "Log should have entries before delete"
+        assert result.output.strip(), "Log should have entries before truncate"
 
-        delete_result = runner.invoke(request, ['logs', 'delete'])
-        assert delete_result.exit_code == 0
+        truncate_result = runner.invoke(request, ['logs', 'truncate'])
+        assert truncate_result.exit_code == 0
 
         list_result = runner.invoke(request, ['logs', 'list'])
         assert list_result.exit_code == 0
-        assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+        assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"
 
 
 class TestRequestLogListFiltering:

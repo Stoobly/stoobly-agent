@@ -1100,3 +1100,34 @@ class TestAppendTestReport:
             log='',
         )
         assert row_id == 1
+
+    def test_append_recovers_when_log_path_was_deleted(self, temp_log_dir, mock_mitmproxy_request, mock_mitmproxy_response):
+        first = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        assert SimpleInterceptedRequestsLogger.get_entry(first) is not None
+
+        # Simulate DataDir recreation while a FileHandler is still open.
+        log_path = InterceptedRequestsLogger._file_path
+        shutil.rmtree(os.path.dirname(log_path), ignore_errors=True)
+
+        row_id = InterceptedRequestsLogger.append_test_report(
+            'Test failure',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            error=True,
+            passed=False,
+            skipped=False,
+            strategy='contract',
+            log='status mismatch',
+        )
+        entry = SimpleInterceptedRequestsLogger.get_entry(row_id)
+        assert entry is not None
+        assert entry['message'] == 'Test failure'
+        assert entry['passed'] is False
