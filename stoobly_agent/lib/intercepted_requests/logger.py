@@ -54,7 +54,11 @@ class InterceptedRequestsLogger():
     _SUBSTRING_MATCH_FIELDS: Final[set] = {'url', 'user_agent', 'message', 'scenario_name', 'test_title', 'service_name'}
 
     _settings: Settings = Settings.instance()
+    # Explicit override from set_file_path (tests / scaffold setup).
     _file_path: str = None
+    # Last path opened by enable_logger_file; distinct so a later enable/read
+    # with different data_dir_path/workflow args is not stuck on the first path.
+    _active_file_path: str = None
     _previous_scenario_key: str = None
     _scenario_key_lock: threading.Lock = threading.Lock()
 
@@ -137,10 +141,10 @@ class InterceptedRequestsLogger():
     def shutdown(cls) -> None:
         """Public method to shutdown logger gracefully.
 
-        Leaves `_file_path` set so dump_logs/get_entry can still read the file
-        after handlers are closed. Clears handlers and disables the logger so a
-        later enable/append recreates writable handlers (important when the data
-        directory was deleted out from under an open FileHandler).
+        Leaves `_active_file_path` set so dump_logs/get_entry can still read the
+        file after handlers are closed. Clears handlers and disables the logger
+        so a later enable/append recreates writable handlers (important when the
+        data directory was deleted out from under an open FileHandler).
         """
         base = InterceptedRequestsLogger
         cls._cleanup_handlers()
@@ -178,8 +182,14 @@ class InterceptedRequestsLogger():
 
     @classmethod
     def set_file_path(cls, file_path: str) -> None:
-        """Set a cached file path (used by scaffold mode)."""
+        """Set an explicit file-path override (used by tests / scaffold setup)."""
         InterceptedRequestsLogger._file_path = file_path
+
+    @classmethod
+    def _cached_file_path(cls) -> Optional[str]:
+        """Return set_file_path override, else last path from enable_logger_file."""
+        base = InterceptedRequestsLogger
+        return base._file_path or base._active_file_path
 
     @classmethod
     def reset_scenario_key(cls) -> None:
@@ -324,7 +334,7 @@ class InterceptedRequestsLogger():
                 namespace=namespace,
                 workflow_namespace=workflow_namespace,
             )
-            base._file_path = file_path
+            base._active_file_path = file_path
 
             # Create file handler
             base._file_handler = logging.FileHandler(file_path)
@@ -683,8 +693,7 @@ class InterceptedRequestsLogger():
         (e.g. test reset()): the FileHandler keeps writing to a deleted inode
         while open(path) from get_entry sees nothing.
         """
-        base = InterceptedRequestsLogger
-        file_path = base._file_path
+        file_path = cls._cached_file_path()
         if not file_path:
             return False
         return os.path.exists(file_path)
@@ -759,7 +768,7 @@ class InterceptedRequestsLogger():
                 workflow_namespace=workflow_namespace,
             )
         except NotImplementedError:
-            file_path = InterceptedRequestsLogger._file_path
+            file_path = cls._cached_file_path()
 
         if not file_path:
             from stoobly_agent.lib.intercepted_requests.simple_logger import SimpleInterceptedRequestsLogger

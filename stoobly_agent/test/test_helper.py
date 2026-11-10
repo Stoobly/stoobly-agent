@@ -52,10 +52,11 @@ def reset(dir_name = 'stoobly-agent-test'):
 
   # Drop any open request-log handlers before wiping the temp dir; otherwise
   # they keep writing to a deleted inode and get_entry cannot find rows.
-  # Also clear the cached path so the next enable recomputes against the new DataDir.
+  # Also clear cached paths so the next enable recomputes against the new DataDir.
   from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
   InterceptedRequestsLogger.shutdown()
   InterceptedRequestsLogger._file_path = None
+  InterceptedRequestsLogger._active_file_path = None
 
   # Create a temporary folder using tmpfile
   temp_dir = os.path.join('/tmp', dir_name)

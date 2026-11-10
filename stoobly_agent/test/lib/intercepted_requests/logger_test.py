@@ -26,6 +26,7 @@ def settings():
 def reset_logger_state():
     """Reset class-level state before each test."""
     InterceptedRequestsLogger._file_path = None
+    InterceptedRequestsLogger._active_file_path = None
     InterceptedRequestsLogger._previous_scenario_key = None
     InterceptedRequestsLogger._queue_listener = None
     InterceptedRequestsLogger._log_queue = None
@@ -87,6 +88,45 @@ class TestLoggerSetup:
             InterceptedRequestsLogger.info("Test message")
 
         assert os.path.exists(log_path)
+        assert InterceptedRequestsLogger._active_file_path == log_path
+        assert InterceptedRequestsLogger._file_path == log_path
+
+    def test_enable_logger_file_retargets_active_path(self, temp_log_dir):
+        """Later enable/get_entry with a different data_dir_path must not reuse the first path."""
+        first_dir = os.path.join(temp_log_dir, 'first')
+        second_dir = os.path.join(temp_log_dir, 'second')
+        os.makedirs(first_dir, exist_ok=True)
+        os.makedirs(second_dir, exist_ok=True)
+
+        SimpleInterceptedRequestsLogger.enable_logger_file(data_dir_path=first_dir)
+        first_path = InterceptedRequestsLogger._active_file_path
+        assert first_path.endswith('tmp/logs/requests.json')
+        assert first_dir in first_path
+        assert InterceptedRequestsLogger._file_path is None
+
+        SimpleInterceptedRequestsLogger.enable_logger_file(data_dir_path=second_dir)
+        second_path = InterceptedRequestsLogger._active_file_path
+        assert second_path != first_path
+        assert second_dir in second_path
+        assert InterceptedRequestsLogger._file_path is None
+
+        assert SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=first_dir) == first_path
+        assert SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=second_dir) == second_path
+        assert SimpleInterceptedRequestsLogger._get_file_path() == second_path
+
+    def test_scaffold_enable_retargets_with_explicit_workflow(self, temp_log_dir):
+        """Scaffold path resolution must recompute when workflow/namespace change."""
+        with patch.object(DataDir, 'instance') as mock_data_dir:
+            mock_data_dir.return_value.tmp_dir_path = temp_log_dir
+            ScaffoldInterceptedRequestsLogger.enable_logger_file(workflow='mock', namespace='ns-a')
+            first_path = InterceptedRequestsLogger._active_file_path
+            ScaffoldInterceptedRequestsLogger.enable_logger_file(workflow='record', namespace='ns-b')
+            second_path = InterceptedRequestsLogger._active_file_path
+
+        assert first_path == os.path.join(temp_log_dir, 'ns-a', 'logs', 'mock.requests.json')
+        assert second_path == os.path.join(temp_log_dir, 'ns-b', 'logs', 'record.requests.json')
+        assert first_path != second_path
+        assert InterceptedRequestsLogger._file_path is None
 
     def test_set_log_level(self):
         """Verify log level can be set and retrieved."""
@@ -1119,7 +1159,7 @@ class TestAppendTestReport:
         assert SimpleInterceptedRequestsLogger.get_entry(first) is not None
 
         # Simulate DataDir recreation while a FileHandler is still open.
-        log_path = InterceptedRequestsLogger._file_path
+        log_path = InterceptedRequestsLogger._active_file_path
         shutil.rmtree(os.path.dirname(log_path), ignore_errors=True)
 
         row_id = InterceptedRequestsLogger.append_test_report(

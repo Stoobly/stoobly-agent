@@ -357,6 +357,7 @@ class TestRequestLogListFiltering:
 
         # Cleanup
         InterceptedRequestsLogger._file_path = None
+        InterceptedRequestsLogger._active_file_path = None
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_filter_by_method_via_cli(self):
@@ -480,6 +481,7 @@ class TestRequestLogListSelectBugFixes:
         yield
 
         InterceptedRequestsLogger._file_path = None
+        InterceptedRequestsLogger._active_file_path = None
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_select_hyphen_is_not_normalized(self):
