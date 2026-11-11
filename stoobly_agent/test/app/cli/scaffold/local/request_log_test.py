@@ -10,7 +10,6 @@ from click.testing import CliRunner
 from unittest.mock import patch
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
-from stoobly_agent.app.cli.intercept_cli import intercept
 from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_MOCK_TYPE,
@@ -18,6 +17,7 @@ from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.test.app.cli.scaffold.helpers import set_test_workflow_policy_found
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
@@ -27,6 +27,8 @@ from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInter
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
 from stoobly_agent.test.test_helper import (
+    DETERMINISTIC_GET_REQUEST_HOST,
+    DETERMINISTIC_GET_REQUEST_URL,
     NON_DETERMINISTIC_GET_REQUEST_HOST,
     NON_DETERMINISTIC_GET_REQUEST_URL,
     reset,
@@ -52,6 +54,11 @@ def find_log_entry(output: str, message: str, method: str = None) -> Optional[di
 @pytest.fixture
 def non_deterministic_get_request_unknown_url():
     return NON_DETERMINISTIC_GET_REQUEST_URL.rstrip('/') + '/unknown-endpoint'
+
+
+@pytest.fixture
+def deterministic_get_request_unknown_url():
+    return DETERMINISTIC_GET_REQUEST_URL.rstrip('/') + '/unknown-endpoint'
 
 
 @pytest.mark.e2e
@@ -362,7 +369,8 @@ class TestRequestLogWithTestWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield NON_DETERMINISTIC_GET_REQUEST_HOST
+        # Deterministic API so record-then-test body comparison can pass.
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -376,6 +384,8 @@ class TestRequestLogWithTestWorkflowE2e():
     def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
+        # Scaffold defaults test policy to none; override in this app so Test report rows are emitted.
+        set_test_workflow_policy_found(app_dir_path)
 
     @pytest.fixture(scope="class", autouse=True)
     def record_then_test_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
@@ -391,7 +401,7 @@ class TestRequestLogWithTestWorkflowE2e():
         # Record a request
 
         requests.get(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -403,11 +413,6 @@ class TestRequestLogWithTestWorkflowE2e():
         # Start test workflow
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_TEST_TYPE)
         time.sleep(1)
-        settings.load()
-
-        # Scaffold defaults test policy to none (mock-only). Use found so Test report rows are emitted.
-        set_result = runner.invoke(intercept, ['set', '--mode', 'test', '--policy', 'found'])
-        assert set_result.exit_code == 0, set_result.output
         settings.load()
 
         yield
@@ -423,7 +428,7 @@ class TestRequestLogWithTestWorkflowE2e():
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -445,7 +450,7 @@ class TestRequestLogWithTestWorkflowE2e():
         # Check specific field values
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert NON_DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
         assert 'scenario_key' in entry
 
@@ -464,14 +469,14 @@ class TestRequestLogWithTestWorkflowE2e():
         assert 'expected_response' not in test_entry
         assert res.headers.get('X-Stoobly-Request-Log-Row-Id') == str(test_entry['row_id'])
 
-    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, non_deterministic_get_request_unknown_url: str):
+    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
         runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
-            non_deterministic_get_request_unknown_url,
+            deterministic_get_request_unknown_url,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -502,7 +507,7 @@ class TestRequestLogWithTestWorkflowE2e():
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
