@@ -1,0 +1,27 @@
+openapi: 3.0.3
+info:
+  title: Dog API (invalid message additionalProperties type for contract failure tests)
+  version: 1.0.0
+servers:
+  - url: https://dog.ceo/api
+paths:
+  /breeds/list/all:
+    get:
+      summary: List all breeds with intentionally wrong additionalProperties type
+      responses:
+        '200':
+          description: Breed map values are typed as string so real array responses fail contract tests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - status
+                properties:
+                  message:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  status:
+                    type: string

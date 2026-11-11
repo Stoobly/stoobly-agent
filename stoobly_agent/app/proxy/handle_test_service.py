@@ -14,10 +14,10 @@ from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
-from stoobly_agent.app.proxy.utils.request_handler import build_response
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
-from stoobly_agent.app.proxy.utils.response_handler import apply_response, bad_request, disable_transfer_encoding
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy
+from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
+from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy, test_strategy
+from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
 
 from .handle_mock_service import (
@@ -29,7 +29,7 @@ from .handle_mock_service import (
 )
 from .handle_develop_service import handle_request_develop, handle_response_develop
 from .mock.context import MockContext
-from .test.helpers.test_results_builder import TestResultsBuilder
+from .test.helpers.expected_response_codec import encode_expected_response
 from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
 from .test.test_service import test
@@ -89,7 +89,6 @@ def handle_response_test(context: ReplayContext) -> None:
     handle_response_develop(context)
 
     # Mock policy is used for response handling
-    # Exception is request_origin is CLI, then a custom response is returned for the CLI to process
     _mock_policy = get_intercept_mode_policy(request, intercept_settings, mode.MOCK)
 
     mock_flow = flow.copy()
@@ -130,41 +129,44 @@ def handle_response_test(context: ReplayContext) -> None:
             #infer=intercept_settings.test_strategy == test_strategy.FUZZY, # For fuzzy testing we can use an inferred response
         )
 
-    # If test context was built, and it has test results, override response with test results
-    if test_context:
-        if test_context.test_results:
-            __override_response(flow, test_context.test_results.serialize())
+    # Select client-facing response before decorating headers.
+    # For CLI: when a compare ran, keep the live (tested) response so diffs use received != expected.
+    # Non-CLI clients still get the mock when policy is not NONE.
+    # Otherwise apply mock policy (e.g. return mock-not-found on failure).
+    keep_live = (
+        test_context
+        and test_context.tested
+        and intercept_settings.request_origin == request_origin.CLI
+    )
+    if not keep_live and _mock_policy != mock_policy.NONE:
+        flow.response = mock_flow.response
 
-        # Apply test ID from flow.copy() to the original flow that will returned to the client
+    if test_context:
         if test_context.test_id:
             __decorate_test_id(flow, test_context.test_id)
 
-    # If response was not overridden
-    if not test_context or not test_context.test_results:
-        # If mock policy is not NONE, return mock response
-        # else we return live request response
-        if _mock_policy != mock_policy.NONE:
-            flow.response = mock_flow.response
+        if test_context.request_log_row_id:
+            __decorate_request_log_row(flow, test_context.request_log_row_id)
+
+def __decorate_request_log_row(flow: 'MitmproxyHTTPFlow', row_id: Union[str, None]):
+    if row_id is not None and flow.response is not None:
+        flow.response.headers[custom_headers.REQUEST_LOG_ROW_ID] = str(row_id)
 
 def __decorate_test_id(flow: 'MitmproxyHTTPFlow', test_id: Union[str, None]):
-    if test_id:
+    if test_id and flow.response is not None:
         flow.response.headers[custom_headers.TEST_ID] = str(test_id)
 
 def __handle_mock_error(test_context: TestContext) -> None:
-    intercept_settings = test_context.intercept_settings
-
-    if intercept_settings.request_origin == request_origin.CLI:
-        flow = test_context.mock_context.flow
-        res = build_response(False, 'No test found, due to invalid mock policy')
-        apply_response(flow, res)
+    __append_missing_test_report(
+        test_context,
+        'No test found, due to invalid mock policy',
+    )
 
 def __handle_mock_failure(test_context: TestContext) -> None:
-    intercept_settings = test_context.intercept_settings
-
-    if intercept_settings.request_origin == request_origin.CLI:
-        flow = test_context.mock_context.flow
-        res = build_response(False, 'No test found, due to no mock found')
-        apply_response(flow, res)
+    __append_missing_test_report(
+        test_context,
+        'No test found, due to no mock found',
+    )
 
 def __handle_mock_success(test_context: TestContext) -> None:
     request_id = test_context.mock_request_id
@@ -219,31 +221,98 @@ def __handle_mock_success(test_context: TestContext) -> None:
 
             res = __record_handler(test_context, upload_test_data)
 
-            if res and is_cli:
-                # This CLI path implies save was on; record success as test id, or clear save intent after a failed upload.
+            if res:
                 if res.ok:
                     response = res.json()
                     test_context.with_test_id(response.get('id'))
                 else:
                     Logger.instance().warning(f"{LOG_ID}:TestStatus: Failed to upload results")
-                    test_context.save = False
+                    if is_cli:
+                        test_context.save = False
 
-    # Response handling
-    if is_cli:
-        # Always attach TestResultsBuilder for the response body 
-        upload_test_data['expected_response'] = expected
-        received = test_context.decoded_response_content
+    __append_test_report(
+        test_context,
+        passed=passed,
+        skipped=skipped,
+        strategy=test_context.strategy,
+        log=log,
+        expected=expected,
+        expected_latency=test_context.expected_latency,
+        expected_status_code=test_context.expected_status_code,
+        request_key=request_key,
+    )
+    test_context.with_tested(True)
 
-        builder = TestResultsBuilder(
-            **{ 
-                'expected_latency': test_context.expected_latency,
-                'expected_status_code': test_context.expected_status_code,
-                'received_response': received
-            },
-            **upload_test_data
-        )
+def __append_missing_test_report(test_context: TestContext, log: str) -> None:
+    flow = test_context.flow
+    request_key = None
+    mock_response = test_context.mock_context.flow.response if test_context.mock_context and test_context.mock_context.flow else None
+    if mock_response:
+        request_key = mock_response.headers.get(custom_headers.MOCK_REQUEST_KEY)
 
-        test_context.with_test_results(builder)
+    __append_test_report(
+        test_context,
+        passed=False,
+        skipped=False,
+        strategy=test_context.strategy,
+        log=log,
+        expected=None,
+        expected_latency=None,
+        expected_status_code=None,
+        request_key=request_key,
+        response=flow.response if flow else None,
+    )
+
+def __append_test_report(
+    test_context: TestContext,
+    *,
+    passed: bool,
+    skipped: bool,
+    strategy,
+    log,
+    expected=None,
+    expected_latency=None,
+    expected_status_code=None,
+    request_key=None,
+    response=None,
+) -> None:
+    if skipped:
+        message = 'Test skipped'
+        error = False
+    elif passed:
+        message = 'Test success'
+        error = False
+    else:
+        message = 'Test failure'
+        error = True
+
+    test_fields = {
+        'passed': passed,
+        'skipped': skipped,
+        'strategy': strategy,
+        'log': log if log is not None else '',
+    }
+
+    # expected_* only on non-contract failures (contract validates schema, not expected payloads)
+    if not passed and not skipped and strategy != test_strategy.CONTRACT:
+        if expected is not None:
+            test_fields['expected_response'] = encode_expected_response(expected)
+        if expected_latency is not None:
+            test_fields['expected_latency'] = expected_latency
+        if expected_status_code is not None:
+            test_fields['expected_status_code'] = expected_status_code
+
+    flow = test_context.flow
+
+    row_id = InterceptedRequestsLogger.append_test_report(
+        message,
+        request=flow.request if flow else None,
+        response=response if response is not None else (flow.response if flow else None),
+        request_key=request_key,
+        error=error,
+        **test_fields,
+    )
+    test_context.with_request_log_row_id(row_id)
 
 def __handle_invalid_policy(context: InterceptContext):
     return bad_request(
@@ -251,13 +320,6 @@ def __handle_invalid_policy(context: InterceptContext):
         "Valid test policies: %s, Got: %s" %
         ([test_policy.FOUND, test_policy.NONE], context.intercept_settings.policy)
     )
- 
-def __override_response(flow: 'MitmproxyHTTPFlow', content: bytes):
-    headers = { 'Content-Type': 'text/plain' }
-    headers[custom_headers.CONTENT_TYPE] = custom_headers.CONTENT_TYPE_TEST_RESULTS
-    flow.response.headers = headers
-    flow.response.set_content(content)
-    flow.response.status_code = 200
 
 def __record_handler(context: TestContext, upload_test_data):
     flow = context.flow

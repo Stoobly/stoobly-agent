@@ -8,16 +8,24 @@ class SimpleInterceptedRequestsLogger(InterceptedRequestsLogger):
 
     @classmethod
     def _get_file_path(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace=None) -> str:
-        """Return the simple (non-scaffold) log file path."""
+        """Return the simple (non-scaffold) log file path.
+
+        set_file_path override always wins (tests/CLI fixtures). Otherwise an
+        explicit data_dir_path recomputes. Else fall back to the last
+        enable_logger_file path, then the default DataDir.
+        """
         base = InterceptedRequestsLogger
-        # Use cached path when set (explicit override via set_file_path)
         if base._file_path is not None:
             return base._file_path
 
         if data_dir_path:
             dir_path = DataDir.instance(data_dir_path).path
-        else:
-            dir_path = DataDir.instance().path
+            return f"{dir_path}/tmp/logs/requests.json"
+
+        if base._active_file_path is not None:
+            return base._active_file_path
+
+        dir_path = DataDir.instance().path
         return f"{dir_path}/tmp/logs/requests.json"
 
     @classmethod

@@ -122,7 +122,7 @@ class TestMultiServiceLoggingCompleteness:
         time.sleep(1)
 
     def test_all_services_produce_log_entries(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -146,7 +146,7 @@ class TestMultiServiceLoggingCompleteness:
     def test_service_name_is_entrypoint_in_local_mode(self, app_dir_path, runner):
         """Gap 3: LocalWorkflowRunCommand always sets SERVICE_NAME=entrypoint in the env,
         so every local-mode log entry carries service_name='entrypoint'."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -215,7 +215,7 @@ class TestMultiServiceUrlFilter:
         time.sleep(0.5)
 
     def test_url_filter_returns_only_matching_service(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all_services()
         self._flush()
 
@@ -229,7 +229,7 @@ class TestMultiServiceUrlFilter:
             assert NON_DETERMINISTIC_GET_REQUEST_HOST in e.get('url', ''), f"Expected {NON_DETERMINISTIC_GET_REQUEST_HOST} in URL, got: {e.get('url')}"
 
     def test_url_filter_excludes_other_services(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all_services()
         self._flush()
 
@@ -297,7 +297,7 @@ class TestMultiServiceLevelFilter:
         time.sleep(1)
 
     def test_level_error_filter_returns_only_errors(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         for hostname in SERVICES:
             requests.get(
@@ -318,7 +318,7 @@ class TestMultiServiceLevelFilter:
             assert e.get('level') == 'ERROR', f"Expected ERROR, got {e.get('level')}"
 
     def test_level_info_filter_returns_only_successes(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -350,7 +350,7 @@ class TestMultiServiceLevelFilter:
         assert any(e.get('status_code') == 200 for e in non_deterministic_host_entries), f"Expected 200 entry for {NON_DETERMINISTIC_GET_REQUEST_HOST}"
 
     def test_both_levels_present_without_filter(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -418,7 +418,7 @@ class TestScenarioChangeDelimiter:
         time.sleep(1)
 
     def test_scenario_change_delimiter_appears(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         requests.get(f'https://{NON_DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)
@@ -486,7 +486,7 @@ class TestConcurrentHighTrafficLogging:
 
     @pytest.mark.xfail(strict=False)
     def test_concurrent_requests_do_not_drop_log_entries(self, app_dir_path, runner):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         targets = [
             (hostname, f'/concurrent-{i}')
@@ -557,7 +557,7 @@ class TestConcurrentScenarioChangeRace:
         time.sleep(1)
 
     def test_scenario_change_produces_exactly_one_delimiter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Establish scenario_a so the only transition under test is a→b
         set_scenario_key_on_settings(settings, scenario_a_key)
@@ -635,7 +635,7 @@ class TestMultiScenarioFilter:
         time.sleep(1)
 
     def test_scenario_name_filter_isolates_entries(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Phase A: send to NON_DETERMINISTIC_GET_REQUEST_HOST and example.com under scenario_a
         set_scenario_key_on_settings(settings, scenario_a_key)
@@ -721,7 +721,7 @@ class TestScenarioChangeMidBurst:
 
     @pytest.mark.xfail(strict=False)
     def test_scenario_change_mid_burst_produces_delimiter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
 
@@ -834,7 +834,7 @@ class TestMultiFilterComposition:
 
     def test_url_and_level_filter(self, app_dir_path, runner):
         """--url filter with --level error returns only ERROR entries for the host, excluding other services."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
         self._send_to_all()
         time.sleep(0.5)
 
@@ -850,7 +850,7 @@ class TestMultiFilterComposition:
 
     def test_url_and_scenario_filter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
         """--url filter with --scenario-name returns only matching-scenario entries for the host."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         self._send_to_all()
@@ -873,7 +873,7 @@ class TestMultiFilterComposition:
 
     def test_level_and_scenario_filter(self, settings, app_dir_path, runner, scenario_a_key, scenario_b_key):
         """--level error --scenario-name alpha returns only ERROR entries from the alpha scenario."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         set_scenario_key_on_settings(settings, scenario_a_key)
         self._send_to_all()
@@ -934,7 +934,7 @@ class TestWorkflowRestartLogPersistence:
         """Gap 4: the local workflow calls truncate() on startup (not append), so the log
         file is cleared on each restart. This test verifies the logger is functional
         after a restart — not that entries persist (they don't by default)."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Session 1: log entries from the first proxy process
         for hostname in SERVICES:
@@ -983,7 +983,7 @@ class TestWorkflowRestartLogPersistence:
 
 @pytest.mark.e2e
 class TestPostTruncateNoSpuriousDelimiter:
-    """Gap 5: 'request logs delete' clears the log file. Verifies that the first
+    """Gap 5: 'request logs truncate' clears the log file. Verifies that the first
     post-clear request under the same active scenario does not produce a spurious
     delimiter — the log starts clean with only request entries."""
 
@@ -1030,7 +1030,7 @@ class TestPostTruncateNoSpuriousDelimiter:
         time.sleep(0.5)
         InterceptedRequestsLogger.flush()
 
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Same scenario continues — the post-clear log should have no delimiter
         requests.get(f'https://{NON_DETERMINISTIC_GET_REQUEST_HOST}/', proxies={'http': PROXY_URL, 'https': PROXY_URL}, verify=False)

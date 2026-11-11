@@ -26,6 +26,7 @@ def settings():
 def reset_logger_state():
     """Reset class-level state before each test."""
     InterceptedRequestsLogger._file_path = None
+    InterceptedRequestsLogger._active_file_path = None
     InterceptedRequestsLogger._previous_scenario_key = None
     InterceptedRequestsLogger._queue_listener = None
     InterceptedRequestsLogger._log_queue = None
@@ -87,6 +88,45 @@ class TestLoggerSetup:
             InterceptedRequestsLogger.info("Test message")
 
         assert os.path.exists(log_path)
+        assert InterceptedRequestsLogger._active_file_path == log_path
+        assert InterceptedRequestsLogger._file_path == log_path
+
+    def test_enable_logger_file_retargets_active_path(self, temp_log_dir):
+        """Later enable/get_entry with a different data_dir_path must not reuse the first path."""
+        first_dir = os.path.join(temp_log_dir, 'first')
+        second_dir = os.path.join(temp_log_dir, 'second')
+        os.makedirs(first_dir, exist_ok=True)
+        os.makedirs(second_dir, exist_ok=True)
+
+        SimpleInterceptedRequestsLogger.enable_logger_file(data_dir_path=first_dir)
+        first_path = InterceptedRequestsLogger._active_file_path
+        assert first_path.endswith('tmp/logs/requests.json')
+        assert first_dir in first_path
+        assert InterceptedRequestsLogger._file_path is None
+
+        SimpleInterceptedRequestsLogger.enable_logger_file(data_dir_path=second_dir)
+        second_path = InterceptedRequestsLogger._active_file_path
+        assert second_path != first_path
+        assert second_dir in second_path
+        assert InterceptedRequestsLogger._file_path is None
+
+        assert SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=first_dir) == first_path
+        assert SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=second_dir) == second_path
+        assert SimpleInterceptedRequestsLogger._get_file_path() == second_path
+
+    def test_scaffold_enable_retargets_with_explicit_workflow(self, temp_log_dir):
+        """Scaffold path resolution must recompute when workflow/namespace change."""
+        with patch.object(DataDir, 'instance') as mock_data_dir:
+            mock_data_dir.return_value.tmp_dir_path = temp_log_dir
+            ScaffoldInterceptedRequestsLogger.enable_logger_file(workflow='mock', namespace='ns-a')
+            first_path = InterceptedRequestsLogger._active_file_path
+            ScaffoldInterceptedRequestsLogger.enable_logger_file(workflow='record', namespace='ns-b')
+            second_path = InterceptedRequestsLogger._active_file_path
+
+        assert first_path == os.path.join(temp_log_dir, 'ns-a', 'logs', 'mock.requests.json')
+        assert second_path == os.path.join(temp_log_dir, 'ns-b', 'logs', 'record.requests.json')
+        assert first_path != second_path
+        assert InterceptedRequestsLogger._file_path is None
 
     def test_set_log_level(self):
         """Verify log level can be set and retrieved."""
@@ -1023,3 +1063,116 @@ class TestFollowLog:
             SimpleInterceptedRequestsLogger._follow_log(log_file, None)
 
         mock_proc.terminate.assert_called_once()
+
+
+class TestAppendTestReport:
+    """Tests for append_test_report / get_entry / row_id."""
+
+    @pytest.fixture(autouse=True)
+    def setup_logger(self, temp_log_dir):
+        log_path = os.path.join(temp_log_dir, 'test_report.log')
+        InterceptedRequestsLogger.set_file_path(log_path)
+        SimpleInterceptedRequestsLogger.enable_logger_file()
+        yield
+        InterceptedRequestsLogger.shutdown()
+
+    def test_append_test_report_returns_unique_row_ids(self, mock_mitmproxy_request, mock_mitmproxy_response):
+        first = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        second = InterceptedRequestsLogger.append_test_report(
+            'Test failure',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            error=True,
+            passed=False,
+            skipped=False,
+            strategy='diff',
+            log='mismatch',
+            expected_response={'format': 'json', 'data': {'a': 1}},
+            expected_latency=10,
+            expected_status_code=200,
+        )
+
+        assert isinstance(first, str) and first
+        assert isinstance(second, str) and second
+        assert first != second
+
+        first_entry = SimpleInterceptedRequestsLogger.get_entry(first)
+        second_entry = SimpleInterceptedRequestsLogger.get_entry(second)
+
+        assert first_entry is not None
+        assert first_entry['message'] == 'Test success'
+        assert first_entry['passed'] is True
+        assert first_entry['row_id'] == first
+        assert 'expected_response' not in first_entry
+
+        assert second_entry is not None
+        assert second_entry['message'] == 'Test failure'
+        assert second_entry['passed'] is False
+        assert second_entry['row_id'] == second
+        assert second_entry['expected_response'] == {'format': 'json', 'data': {'a': 1}}
+        assert second_entry['expected_latency'] == 10
+        assert second_entry['expected_status_code'] == 200
+
+    def test_truncate_allows_new_unique_row_ids(self, temp_log_dir, mock_mitmproxy_request, mock_mitmproxy_response):
+        first = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        SimpleInterceptedRequestsLogger.truncate()
+        row_id = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        assert isinstance(row_id, str) and row_id
+        assert row_id != first
+        assert SimpleInterceptedRequestsLogger.get_entry(first) is None
+        assert SimpleInterceptedRequestsLogger.get_entry(row_id) is not None
+
+    def test_append_recovers_when_log_path_was_deleted(self, temp_log_dir, mock_mitmproxy_request, mock_mitmproxy_response):
+        first = InterceptedRequestsLogger.append_test_report(
+            'Test success',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            passed=True,
+            skipped=False,
+            strategy='diff',
+            log='',
+        )
+        assert SimpleInterceptedRequestsLogger.get_entry(first) is not None
+
+        # Simulate DataDir recreation while a FileHandler is still open.
+        log_path = InterceptedRequestsLogger._active_file_path
+        shutil.rmtree(os.path.dirname(log_path), ignore_errors=True)
+
+        row_id = InterceptedRequestsLogger.append_test_report(
+            'Test failure',
+            request=mock_mitmproxy_request,
+            response=mock_mitmproxy_response,
+            error=True,
+            passed=False,
+            skipped=False,
+            strategy='contract',
+            log='status mismatch',
+        )
+        entry = SimpleInterceptedRequestsLogger.get_entry(row_id)
+        assert entry is not None
+        assert entry['message'] == 'Test failure'
+        assert entry['passed'] is False

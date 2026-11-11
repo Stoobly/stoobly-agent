@@ -32,6 +32,10 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
 
     # Check all properties required by contract exist
     for component_name in component_names:
+        # additionalProperties wildcards are not concrete keys that must exist
+        if __is_additional_properties_query(component_name.get('query')):
+            continue
+
         key = component_name['name']
         if not parent_context.param_name_exists(key, actual):
             context = MatchContext(parent_context.to_dict())
@@ -44,6 +48,7 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
                 return param_name_missing_error(context.path_key)
 
     index = parent_context.request_component_names_query_index
+    forbids_additional = __forbids_additional_properties(parent_context)
 
     for key in actual.copy(): # Create a copy, actual might change during loop
         actual_value = actual[key]
@@ -52,22 +57,28 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
 
         path_key = context.path_key
         query = context.query
+        wildcard_query = __additional_properties_query(parent_context.query)
 
-        # Check if the key exists in the contract
-        if not context.param_name_exists(query, index):
-            if not context.handle_param_name_exists_error(actual):
-                if not options.get('strict'):
-                    continue
-                else:
-                    return param_name_exists_error(path_key)
-        
         contracts = index.get(query)
         if not contracts:
-            continue
+            contracts = index.get(wildcard_query)
+            if contracts:
+                # Align query to the wildcard so nested lookups (e.g. message.*[*]) resolve
+                context.query = wildcard_query
+
+        # Check if the key exists in the contract (named property or additionalProperties)
+        if not contracts:
+            if not context.handle_param_name_exists_error(actual):
+                if options.get('strict') or forbids_additional:
+                    return param_name_exists_error(path_key)
+                else:
+                    continue
 
         if not context.value_contract_matches(actual_value, contracts):
             if not context.handle_type_match_error(actual):
-                if context.ignored():
+                # additionalProperties wildcards declare value types for present keys;
+                # enforce them even when the wildcard param is not marked required.
+                if context.ignored() and not __is_additional_properties_query(context.query):
                     continue
                 
                 valid_types = __build_valid_types(contracts)
@@ -93,15 +104,18 @@ def dict_matches(parent_context: MatchContext, actual: dict, **options: Options)
 #
 def list_matches(parent_context: MatchContext, actual: list, **options: Options) -> Tuple[bool, str]:
     parent_path_key = f"{parent_context.path_key}[*]"
+    parent_query_key = f"{parent_context.query}[*]"
     if not parent_context.value_is_list(actual):
         if not parent_context.handle_type_match_error(actual):
             return type_match_error(parent_path_key, list, type(actual))
 
     index = parent_context.request_component_names_query_index
-    contracts: List[RequestComponentName] = index.get(parent_path_key) or []
+    # Prefer query-based lookup so additionalProperties wildcards (message.*[*]) resolve
+    contracts: List[RequestComponentName] = index.get(parent_query_key) or index.get(parent_path_key) or []
 
-    # If required, make sure not empty 
-    if parent_context.required and len(actual) == 0 and len(contracts) > 0:
+    # If list element contract is required, make sure the list is not empty
+    contracts_list = contracts if isinstance(contracts, list) else ([contracts] if contracts else [])
+    if len(actual) == 0 and any(c.get('is_required') for c in contracts_list):
         if not parent_context.handle_length_match_error(actual):
             return length_match_error(parent_path_key, None, actual) 
 
@@ -130,6 +144,23 @@ def list_matches(parent_context: MatchContext, actual: list, **options: Options)
                 return matches, log
 
     return True, ''
+
+def __additional_properties_query(parent_query: str) -> str:
+    return f"{parent_query}.*" if parent_query else '*'
+
+def __is_additional_properties_query(query: Union[str, None]) -> bool:
+    return query == '*' or (isinstance(query, str) and query.endswith('.*'))
+
+def __forbids_additional_properties(parent_context: MatchContext) -> bool:
+    component = parent_context.request_component_name
+    if not component:
+        return False
+
+    contracts = component if isinstance(component, list) else [component]
+    for contract in contracts:
+        if contract.get('allows_additional_properties') is False:
+            return True
+    return False
 
 def __build_valid_types(contracts: Union[None, RequestComponentName, List[RequestComponentName]]):
     valid_types = []

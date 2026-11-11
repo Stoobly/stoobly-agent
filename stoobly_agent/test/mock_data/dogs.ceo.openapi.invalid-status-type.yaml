@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Dog API (invalid status type for contract failure tests)
+  version: 1.0.0
+servers:
+  - url: https://dog.ceo/api
+paths:
+  /breeds/list/all:
+    get:
+      summary: List all breeds with intentionally wrong status type
+      responses:
+        '200':
+          description: Status is typed as integer so real string responses fail contract tests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - status
+                properties:
+                  message:
+                    type: object
+                  status:
+                    type: integer

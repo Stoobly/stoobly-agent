@@ -160,8 +160,8 @@ command:
   - name: logs
     description: Manage intercepted requests logs
     commands:
-    - name: delete
-      description: Delete intercepted requests log entries
+    - name: truncate
+      description: Truncate intercepted requests log entries
       options:
       - name: context-dir-path
         description: Path to Stoobly data directory.

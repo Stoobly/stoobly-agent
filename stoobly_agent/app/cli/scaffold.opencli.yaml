@@ -794,8 +794,8 @@ command:
                 - name: without-headers
                   description: Disable printing column headers.
 
-            - name: delete
-              description: Delete intercepted requests log entries
+            - name: truncate
+              description: Truncate intercepted requests log entries
               arguments:
                 - name: workflow_name
                   required: true
@@ -806,6 +806,6 @@ command:
                   arguments:
                     - name: path
                 - name: namespace
-                  description: Workflow namespace to delete logs for.
+                  description: Workflow namespace to truncate logs for.
                   arguments:
                     - name: namespace
