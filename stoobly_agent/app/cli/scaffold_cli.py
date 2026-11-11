@@ -1434,8 +1434,9 @@ def __print_workflow_status(workflow_info: dict, app: App, app_config: AppConfig
   status_value = click.style("running", fg="green")
 
   # Aligned key-value pairs
-  click.echo(f"  {'Namespace':<12}{namespace}")
   click.echo(f"  {'Status':<12}{status_value}")
+  click.echo(f"  {'Namespace':<12}{namespace}")
+  click.echo(f"  {'Context':<12}{app.context_dir_path}")
 
   if app_config.runtime_local:
     click.echo(f"  {'Runtime':<12}local")
