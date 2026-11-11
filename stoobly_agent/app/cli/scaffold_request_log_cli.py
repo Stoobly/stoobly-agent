@@ -58,11 +58,11 @@ def request_log_list(**kwargs):
         follow=kwargs.get('follow', False),
     )
 
-@request_log.command(name="delete", help="Delete intercepted requests log entries")
+@request_log.command(name="truncate", help="Truncate intercepted requests log entries")
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--namespace', help='Workflow namespace to delete logs for.')
+@click.option('--namespace', help='Workflow namespace to truncate logs for.')
 @click.argument('workflow_name')
-def request_log_delete(**kwargs):
+def request_log_truncate(**kwargs):
     app = App(kwargs['app_dir_path'])
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
     

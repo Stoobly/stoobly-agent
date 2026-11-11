@@ -128,11 +128,14 @@ def _default_python_value(open_api_type: str):
 
 # Generates the entire query string for a property
 # Ex: Pets[*].name for property 'name' of a 'Pet' element in the 'Pets' array
+# Ex: message.* for an additionalProperties value under 'message'
 def _build_query(prefix: str, name: str) -> str:
   if name == _ANONYMOUS:
     return prefix
   if name.endswith('Element'):
     return f"{prefix}[*]"
+  if name.endswith('AdditionalProperty'):
+    return f"{prefix}.*" if prefix else '*'
   if prefix == '':
     return name
   return f"{prefix}.{name}"
@@ -140,6 +143,25 @@ def _build_query(prefix: str, name: str) -> str:
 
 def _make_param(name: str, value_key: str, value, required: bool, query: str, param_id: int, parent_id: int) -> dict:
   return {'name': name, value_key: value, 'required': required, 'query': query, 'id': param_id, 'parent_id': parent_id}
+
+
+def _normalize_additional_properties(schema):
+  """
+  Returns True (allow any), False (forbid extras), or a schema object to walk.
+  Omitted additionalProperties is treated as True (OpenAPI / JSON Schema default).
+  """
+  if not hasattr(schema, 'keys') or 'additionalProperties' not in schema.keys():
+    return True
+
+  additional = schema.get('additionalProperties')
+  if additional is True or additional is False:
+    return additional
+
+  value = _read_value(additional)
+  if value is True or value is False:
+    return value
+
+  return additional
 
 
 class _SchemaParamWalker():
@@ -174,14 +196,24 @@ class _SchemaParamWalker():
     # Ex: the properties of every allOf part are children of the schema declaring the allOf
     children_parent_id = parent_id if anonymous else node_id
 
-    # A schema is traversable if it has one more non-empty nested schema objects
-    traversable = schema.get('properties') or schema.get('items') or schema.get('allOf')
+    additional = _normalize_additional_properties(schema)
+    has_additional_schema = additional is not True and additional is not False
+    explicit_type = schema.get('type')
+    # Explicit scalar types win over a leftover `items` key (invalid but common when editing specs)
+    scalar_types = ('string', 'number', 'integer', 'boolean')
 
-    if not traversable:
+    # A schema is traversable if it has nested schema objects (including additionalProperties)
+    traversable = (
+      schema.get('properties') or schema.get('items') or schema.get('allOf') or has_additional_schema
+    )
+
+    if explicit_type in scalar_types:
       self.__visit_leaf(name, schema, node_id, parent_id, query, override_required)
-    elif 'properties' in schema.keys():
+    elif not traversable:
+      self.__visit_leaf(name, schema, node_id, parent_id, query, override_required)
+    elif 'properties' in schema.keys() or has_additional_schema:
       self.__visit_object(name, schema, node_id, parent_id, query, override_required, children_parent_id)
-    elif schema.get('type') == 'array' or ('items' in schema.keys() and 'allOf' not in schema.keys()):
+    elif explicit_type == 'array' or ('items' in schema.keys() and 'allOf' not in schema.keys()):
       self.__visit_array(name, schema, node_id, parent_id, query, override_required)
     elif 'allOf' in schema.keys():
       self.__visit_all_of(name, schema, node_id, parent_id, query, override_required, children_parent_id)
@@ -210,15 +242,25 @@ class _SchemaParamWalker():
   # Ex: {'tmp': {'type': 'object', 'required': ['name'], 'properties': {'name': {'type': 'string'}, 'tag': {'type': 'string'}}}}
   def __visit_object(self, name, schema, node_id, parent_id, query, override_required, children_parent_id):
     self.__add_required(schema.get('required'))
+    additional = _normalize_additional_properties(schema)
 
     if name != _ANONYMOUS:
-      self.params.append(_make_param(name, 'value', {}, override_required, query, node_id, parent_id))
+      param = _make_param(name, 'value', {}, override_required, query, node_id, parent_id)
+      if additional is False:
+        param['allows_additional_properties'] = False
+      self.params.append(param)
 
-    for property_key, property_value in schema.get('properties').items():
-      is_required = property_key in self.required
-      if is_required:
-        self.required.remove(property_key)
-      self.walk(property_key, property_value, children_parent_id, query, is_required)
+    properties = schema.get('properties')
+    if properties:
+      for property_key, property_value in properties.items():
+        is_required = property_key in self.required
+        if is_required:
+          self.required.remove(property_key)
+        self.walk(property_key, property_value, children_parent_id, query, is_required)
+
+    if additional is not True and additional is not False:
+      # Model additionalProperties values as a wildcard child (query suffix .*)
+      self.walk('AdditionalProperty', additional, children_parent_id, query, False)
 
   # Ex: {'tmp': {'type': 'array', 'items': {'$ref': '#/components/schemas/NewPet'}}}
   def __visit_array(self, name, schema, node_id, parent_id, query, override_required):

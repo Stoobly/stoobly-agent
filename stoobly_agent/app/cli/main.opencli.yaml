@@ -299,6 +299,99 @@ command:
         - stoobly-agent record https://example.com/api
         - stoobly-agent record https://example.com/api -X POST -H 'Content-Type: application/json' -d '{}'
 
+    - name: test
+      description: Test request
+      arguments:
+        - name: url
+          required: true
+          description: Request URL.
+      options:
+        - name: cookie
+          aliases: [b]
+          description: >
+            Pass data to the HTTP server in the Cookie header, or a filename of previously
+            stored cookies. May be specified multiple times.
+          arguments:
+            - name: cookie
+        - name: data
+          aliases: [d]
+          description: HTTP POST data.
+          arguments:
+            - name: data
+        - name: filter
+          description: For iterable responses, selectively test properties. Defaults to all.
+          arguments:
+            - name: filter
+              acceptedValues: [all, alias, link]
+        - name: format
+          description: Format test output.
+          arguments:
+            - name: format
+              acceptedValues: [body, json]
+        - name: header
+          aliases: [H]
+          description: Pass custom header(s) to server. May be specified multiple times.
+          arguments:
+            - name: header
+        - name: lifecycle-hooks-path
+          description: Path to lifecycle hooks script.
+          arguments:
+            - name: path
+        - name: log-level
+          description: Configure which logs to print. Defaults to warning.
+          arguments:
+            - name: level
+              acceptedValues: [debug, info, warning, error]
+        - name: openapi-specification-path
+          description: Path to OpenAPI specification file.
+          arguments:
+            - name: path
+        - name: output-level
+          description: Configure which tests to print. Defaults to passed.
+          arguments:
+            - name: level
+              acceptedValues: [failed, skipped, passed]
+        - name: project-key
+          description: "Project key. Feature-gated: remote."
+          arguments:
+            - name: key
+        - name: public-dir-path
+          description: Path to public files. Used for mocking requests in mock and record modes.
+          arguments:
+            - name: path
+        - name: remote-project-key
+          description: "Use remote project for endpoint definitions. Feature-gated: local and remote."
+          arguments:
+            - name: key
+        - name: report-key
+          description: "Save to report. Feature-gated: remote. Requires --save."
+          arguments:
+            - name: key
+        - name: response-fixtures-path
+          description: Path to response fixtures yaml. Used for mocking requests in mock and record modes.
+          arguments:
+            - name: path
+        - name: request
+          aliases: [X]
+          description: Specify request command to use. Default GET.
+          arguments:
+            - name: method
+        - name: save
+          description: "Saves test results. Feature-gated: remote."
+        - name: scenario-key
+          description: Scenario key.
+          arguments:
+            - name: key
+        - name: strategy
+          description: How to test responses. Defaults to diff.
+          arguments:
+            - name: strategy
+              acceptedValues: [contract, custom, diff, fuzzy]
+      examples:
+        - stoobly-agent test https://example.com/api
+        - stoobly-agent test https://example.com/api --strategy contract --openapi-specification-path ./openapi.yaml
+        - stoobly-agent test https://example.com/api -X POST -d '{"a":1}' --format json
+
     - name: opencli
       description: Show OpenCLI descriptions for command groups
       commands:

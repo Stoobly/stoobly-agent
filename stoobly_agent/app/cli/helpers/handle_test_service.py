@@ -55,10 +55,10 @@ def handle_test_complete(
   if format == JSON_FORMAT:
     format_handler = __json_test_complete_formatter
 
-  # If not context.has_test_results, then test results are from remote
-  # Configure which project test the test results are from
+  # Local results come from RequestLog via X-Stoobly-Request-Log-Row-Id.
+  # If that row is missing, fall back to remote results via X-Stoobly-Test-Id.
   context = TestReplayContext(context)
-  if not context.has_test_results:
+  if not context.has_test_results or context.request_log_entry is None:
     context.project_id = session_context['project_id']
 
   test = context.test_show_response(session_context['test_facade'])
@@ -132,14 +132,14 @@ def __json_test_complete_formatter(
       test['log'] = res['log'] if 'log' in res else ''
       test['response'] = { **__build_json_response(context.response), 'latency': latency}
 
-      if not res['passed']:
+      if not res['passed'] and context.has_expected:
         test_facade = session_context['test_facade']
         expected_response, expected_status_code = context.expected_response_content(test_facade)
 
-        if expected_response:
+        if expected_response is not None:
           test['expected_response'] = { 
             'content': expected_response,
-            'latency': res['expected_latency'],
+            'latency': res.get('expected_latency'),
             'status_code': expected_status_code,
           }
 
@@ -173,11 +173,13 @@ def __default_test_complete_formatter(
       if res['log']:
         print(f"\n{res['log']}")
 
-      if not res['passed'] and not res['skipped']:
+      if not res['passed'] and not res['skipped'] and context.has_expected:
         test_facade = session_context['test_facade']
-        response, status_code, latency = context.diff_response(res, test_facade)
-        print("\n" + response) 
-        print(f"Completed {status_code} in {latency}ms")
+        diff_result = context.diff_response(res, test_facade)
+        if diff_result is not None:
+          response, status_code, latency = diff_result
+          print("\n" + response) 
+          print(f"Completed {status_code} in {latency}ms")
 
 def __default_session_complete_formatter(session_context: SessionContext):
   if 'output' in session_context:

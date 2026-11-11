@@ -37,6 +37,8 @@ class TestContext(TestContextABC):
     self.__skipped = False
 
     # Optional
+    self.__request_log_row_id = None
+    self.__tested = False
     self.__test_id = None
     self.__test_results = None
 
@@ -231,6 +233,14 @@ class TestContext(TestContextABC):
     return self.intercept_settings.test_strategy
 
   @property
+  def request_log_row_id(self) -> Union[str, None]:
+    return self.__request_log_row_id
+
+  @property
+  def tested(self) -> bool:
+    return self.__tested
+
+  @property
   def test_id(self) -> Union[str, None]:
     return self.__test_id
 
@@ -247,6 +257,14 @@ class TestContext(TestContextABC):
       return
 
     return Trace.find(trace_id)
+
+  def with_request_log_row_id(self, row_id: str):
+    self.__request_log_row_id = row_id
+    return self
+
+  def with_tested(self, tested: bool = True):
+    self.__tested = tested
+    return self
 
   def with_test_id(self, test_id: str):
     self.__test_id = test_id
