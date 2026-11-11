@@ -7,7 +7,7 @@ import tempfile
 import time
 
 from click.testing import CliRunner
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold_cli import scaffold
@@ -22,6 +22,7 @@ from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
+from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
@@ -886,6 +887,12 @@ class TestScaffoldRequestLogCliParams:
     def runner(self):
         return CliRunner()
 
+    @pytest.fixture(autouse=True)
+    def skip_scaffold_validation(self):
+        # These tests cover CLI parsing with the logger mocked; scaffold validation is tested separately
+        with patch.object(App, 'valid', new_callable=PropertyMock, return_value=True):
+            yield
+
     def test_log_list_without_args_uses_defaults(self, runner):
         """scaffold request log list with workflow_name passes None for namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
@@ -989,6 +996,12 @@ class TestScaffoldRequestLogListFiltering:
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
         return reset()
+
+    @pytest.fixture(autouse=True)
+    def skip_scaffold_validation(self):
+        # Logs are read from a pre-built file below, not from a scaffold app
+        with patch.object(App, 'valid', new_callable=PropertyMock, return_value=True):
+            yield
 
     @pytest.fixture(autouse=True)
     def setup(self):

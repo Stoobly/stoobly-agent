@@ -56,8 +56,9 @@ class App():
     else:
       self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or operational_root)
       self.__app_dir_path = self.__host_app_dir_path or operational_root
-      self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
-      self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
+      # Fall back to the data dir lazily in the getters so constructing an App does not create cert dirs
+      self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
+      self.__certs_dir_path = self.__host_certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
@@ -77,7 +78,7 @@ class App():
 
   @property
   def ca_certs_dir_path(self):
-    return os.path.abspath(self.__ca_certs_dir_path)
+    return os.path.abspath(self.__ca_certs_dir_path or self.__data_dir.ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
@@ -86,7 +87,7 @@ class App():
 
   @property
   def certs_dir_path(self):
-    return os.path.abspath(self.__certs_dir_path)
+    return os.path.abspath(self.__certs_dir_path or self.__data_dir.certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):

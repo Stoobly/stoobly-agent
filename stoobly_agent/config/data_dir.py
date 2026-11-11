@@ -28,9 +28,6 @@ class DataDir:
                 cwd = os.getcwd()
                 self.__data_dir_path = self.find_data_dir(cwd)
 
-            if not os.path.exists(self.__data_dir_path):
-                self.create(os.path.dirname(self.__data_dir_path))
-
     def __repr__(self) -> str:
       return self.path
 
