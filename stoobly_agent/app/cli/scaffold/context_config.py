@@ -28,7 +28,11 @@ def _ensure_context_dir(context_dir_path: str) -> str:
   abs_context_dir = os.path.abspath(context_dir_path)
 
   DataDir.instance(abs_context_dir).create(abs_context_dir)
-  Settings.instance(abs_context_dir)
+
+  # Write the default template only when missing, so existing settings are kept
+  settings = Settings.instance(abs_context_dir)
+  if not os.path.exists(settings.path):
+    settings.reset()
 
   return abs_context_dir
 
