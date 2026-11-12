@@ -3,7 +3,7 @@ import time
 import yaml
 
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.config.source_dir import SourceDir
 from stoobly_agent.lib.logger import Logger
 
@@ -233,8 +233,12 @@ class Settings:
         with open(SourceDir.instance().settings_template_file_path, 'r') as fp:
             contents = fp.read()
 
-        os.makedirs(os.path.dirname(self.__settings_file_path), exist_ok=True)
-        self.__data_dir.write_gitignore(os.path.dirname(self.__settings_file_path))
+        settings_dir_path = os.path.dirname(self.__settings_file_path)
+        os.makedirs(settings_dir_path, exist_ok=True)
+
+        # AGENT_SETTINGS_PATH can point anywhere, so only a .stoobly data dir gets a .gitignore
+        if os.path.basename(settings_dir_path) == DATA_DIR_NAME:
+            self.__data_dir.write_gitignore(settings_dir_path)
 
         with open(self.__settings_file_path, 'w') as fp:
             fp.write(contents)

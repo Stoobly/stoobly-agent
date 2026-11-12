@@ -30,6 +30,22 @@ class TestSettingsWhenFileIsMissing:
 
         assert os.path.exists(os.path.join(context_dir_path, DATA_DIR_NAME, '.gitignore'))
 
+    def test_write_on_new_data_dir_writes_gitignore(self, tmp_path):
+        context_dir_path = os.path.join(str(tmp_path), 'write-context')
+
+        Settings.instance(context_dir_path).write({'version': 1})
+
+        assert os.path.exists(os.path.join(context_dir_path, DATA_DIR_NAME, '.gitignore'))
+
+    def test_reset_with_settings_path_override_does_not_write_gitignore_outside_data_dir(self, tmp_path, monkeypatch):
+        override_dir_path = os.path.join(str(tmp_path), 'user-config')
+        monkeypatch.setenv(env_vars.AGENT_SETTINGS_PATH, os.path.join(override_dir_path, 'settings.yml'))
+        context_dir_path = os.path.join(str(tmp_path), 'override-context')
+
+        Settings.instance(context_dir_path).reset()
+
+        assert not os.path.exists(os.path.join(override_dir_path, '.gitignore'))
+
     def test_loads_template_defaults_when_file_is_missing(self, tmp_path):
         context_dir_path = os.path.join(str(tmp_path), 'defaults-context')
 
