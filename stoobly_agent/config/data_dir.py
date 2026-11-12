@@ -77,6 +77,7 @@ class DataDir:
 
         if not os.path.exists(tmp_dir_path):
             os.makedirs(tmp_dir_path, exist_ok=True)
+            self.__write_gitignore(self.path)
 
         return tmp_dir_path
 
@@ -86,6 +87,7 @@ class DataDir:
 
         if not os.path.exists(certs_dir_path):
             os.makedirs(certs_dir_path, exist_ok=True)
+            self.__write_gitignore(self.path)
 
             keep_file_path = os.path.join(certs_dir_path, '.keep')
 
@@ -101,6 +103,7 @@ class DataDir:
 
         if not os.path.exists(db_dir_path):
             os.makedirs(db_dir_path, exist_ok=True)
+            self.__write_gitignore(os.path.join(self.context_dir_path, DATA_DIR_NAME))
 
         return db_dir_path
 
@@ -122,6 +125,7 @@ class DataDir:
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
+            self.__write_gitignore(self.path)
 
             keep_file_path = os.path.join(path, '.keep')
 
@@ -230,18 +234,27 @@ class DataDir:
             # Create tmp folder
             os.makedirs(os.path.join(self.__data_dir_path, TMP_DIR_NAME), exist_ok=True)
 
-            with open(os.path.join(self.__data_dir_path, '.gitignore'), 'w') as fp:
-                fp.write(
-                    "\n".join([
-                        'ca_certs',
-                        'certs',
-                        'db',
-                        'settings.yml',
-                        os.path.join('snapshots', 'log'),
-                        os.path.join('snapshots', 'VERSION'),
-                        TMP_DIR_NAME
-                    ])
-                )
+            self.__write_gitignore(self.__data_dir_path)
+
+    # Keeps committed repos from picking up settings, db, or certs, even when a folder is created lazily
+    def __write_gitignore(self, data_dir_path: str):
+        gitignore_path = os.path.join(data_dir_path, '.gitignore')
+
+        if os.path.exists(gitignore_path):
+            return
+
+        with open(gitignore_path, 'w') as fp:
+            fp.write(
+                "\n".join([
+                    'ca_certs',
+                    'certs',
+                    'db',
+                    'settings.yml',
+                    os.path.join('snapshots', 'log'),
+                    os.path.join('snapshots', 'VERSION'),
+                    TMP_DIR_NAME
+                ])
+            )
 
     # If the current working directory does not contain a .stoobly folder,
     # then search in the parent directories until the home directory.

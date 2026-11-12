@@ -120,6 +120,7 @@ class Settings:
         from watchdog.observers import Observer
         observer = Observer()
         watch_dir = os.path.dirname(self.__settings_file_path)
+        os.makedirs(watch_dir, exist_ok=True)
 
         observer.schedule(event_handler, watch_dir)
         observer.start()
