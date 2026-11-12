@@ -33,10 +33,6 @@ class Settings:
         self.__data_dir = DataDir.instance(data_dir_path)
         self.__detect_paths()
 
-        # If the config does not exist, use template
-        if not os.path.exists(self.__settings_file_path):
-            self.__create_default_file()
-
         self.__load_settings()
 
     @classmethod
@@ -147,7 +143,7 @@ class Settings:
         }
 
     def read(self):
-        with open(self.__settings_file_path, 'r') as fp:
+        with open(self.__read_file_path(), 'r') as fp:
             return yaml.safe_load(fp)
 
     def validate(self):
@@ -155,7 +151,7 @@ class Settings:
 
         try:
             schema = yamale.make_schema(self.__schema_file_path)
-            data = yamale.make_data(self.__settings_file_path)
+            data = yamale.make_data(self.__read_file_path())
             yamale.validate(schema, data)
         except yamale.YamaleError as e:
             for result in e.results:
@@ -224,6 +220,8 @@ class Settings:
         lock = FileLock(lock_file_path)
 
         with lock:
+            os.makedirs(os.path.dirname(self.__settings_file_path), exist_ok=True)
+
             with open(self.__settings_file_path, 'w') as fp:
                 yaml.dump(contents, fp, allow_unicode=True)
 
@@ -234,8 +232,17 @@ class Settings:
         with open(SourceDir.instance().settings_template_file_path, 'r') as fp:
             contents = fp.read()
 
+        os.makedirs(os.path.dirname(self.__settings_file_path), exist_ok=True)
+
         with open(self.__settings_file_path, 'w') as fp:
             fp.write(contents)
+
+    # Reads come from the template when the settings file has not been written yet
+    def __read_file_path(self):
+        if os.path.exists(self.__settings_file_path):
+            return self.__settings_file_path
+
+        return SourceDir.instance().settings_template_file_path
 
     def __detect_paths(self):
         self.__settings_file_path = os.environ.get(env_vars.AGENT_SETTINGS_PATH) or self.__data_dir.settings_file_path
@@ -254,7 +261,7 @@ class Settings:
                                      If False, replaces all settings with new values.
                                      Defaults to False.
         """
-        with open(self.__settings_file_path, 'r') as stream:
+        with open(self.__read_file_path(), 'r') as stream:
             try:
                 settings = yaml.safe_load(stream)
                 if not settings:
