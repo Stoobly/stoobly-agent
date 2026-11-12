@@ -1,6 +1,7 @@
 import os
 import shutil
 
+from stoobly_agent.config.data_dir import TMP_DIR_NAME
 from stoobly_agent.lib.logger import Logger
 
 from .app import App
@@ -13,7 +14,9 @@ class WorkflowNamespace():
   def __init__(self, app: App, namespace: str = None, mkdir: bool = True):
     self._app = app
     self._namespace = namespace
-    self._path = os.path.join(app.data_dir.tmp_dir_path, namespace or '')
+    # Read-only lookups (mkdir=False) must not create the tmp dir as a side effect
+    tmp_dir_path = app.data_dir.tmp_dir_path if mkdir else os.path.join(app.data_dir.path, TMP_DIR_NAME)
+    self._path = os.path.join(tmp_dir_path, namespace or '')
 
     if mkdir and not os.path.exists(self._path):
       os.makedirs(self._path, exist_ok=True)
