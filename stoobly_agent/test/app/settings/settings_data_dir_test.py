@@ -23,6 +23,13 @@ class TestSettingsWhenFileIsMissing:
 
         assert not os.path.exists(os.path.join(context_dir_path, DATA_DIR_NAME, 'settings.yml'))
 
+    def test_reset_writes_gitignore_for_new_data_dir(self, tmp_path):
+        context_dir_path = os.path.join(str(tmp_path), 'reset-context')
+
+        Settings.instance(context_dir_path).reset()
+
+        assert os.path.exists(os.path.join(context_dir_path, DATA_DIR_NAME, '.gitignore'))
+
     def test_loads_template_defaults_when_file_is_missing(self, tmp_path):
         context_dir_path = os.path.join(str(tmp_path), 'defaults-context')
 

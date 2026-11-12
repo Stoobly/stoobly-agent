@@ -202,6 +202,9 @@ class DataDir:
     def snapshosts_version_path(self):
         return os.path.join(self.snapshots_dir_path, 'VERSION')
 
+    def write_gitignore(self, data_dir_path: str = None):
+        self.__write_gitignore(data_dir_path or self.path)
+
     def remove(self, directory_path = None):
         if directory_path:
             data_dir_path = os.path.join(directory_path, DATA_DIR_NAME)

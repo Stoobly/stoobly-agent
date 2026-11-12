@@ -234,6 +234,7 @@ class Settings:
             contents = fp.read()
 
         os.makedirs(os.path.dirname(self.__settings_file_path), exist_ok=True)
+        self.__data_dir.write_gitignore(os.path.dirname(self.__settings_file_path))
 
         with open(self.__settings_file_path, 'w') as fp:
             fp.write(contents)
