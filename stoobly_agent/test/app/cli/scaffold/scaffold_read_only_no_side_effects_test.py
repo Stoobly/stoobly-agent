@@ -41,6 +41,12 @@ class TestReadOnlyScaffoldCommandsDoNotCreateDataDir:
         assert result.exit_code != 0, result.output
         self._assert_no_data_dir(empty_dir)
 
+    def test_request_logs_truncate_fails_without_creating_data_dir(self, empty_dir):
+        result = CliRunner().invoke(request, ['logs', 'truncate', 'record', '--app-dir-path', empty_dir])
+
+        assert result.exit_code != 0, result.output
+        self._assert_no_data_dir(empty_dir)
+
     def test_request_logs_path_fails_without_creating_data_dir(self, empty_dir):
         result = CliRunner().invoke(request, ['logs', 'path', 'record', '--app-dir-path', empty_dir])
 
