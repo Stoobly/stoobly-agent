@@ -132,6 +132,39 @@ class TestLazyDirsWriteGitignore:
     finally:
       DataDir._instances = None
 
+  def test_certs_dir_writes_gitignore(self, tmp_path):
+    DataDir._instances = None
+    data_dir_path = os.path.join(str(tmp_path), DATA_DIR_NAME)
+
+    try:
+      DataDir.instance(str(tmp_path)).certs_dir_path
+
+      assert os.path.exists(os.path.join(data_dir_path, '.gitignore'))
+    finally:
+      DataDir._instances = None
+
+  def test_ca_certs_dir_writes_gitignore(self, tmp_path):
+    DataDir._instances = None
+    data_dir_path = os.path.join(str(tmp_path), DATA_DIR_NAME)
+
+    try:
+      DataDir.instance(str(tmp_path)).ca_certs_dir_path
+
+      assert os.path.exists(os.path.join(data_dir_path, '.gitignore'))
+    finally:
+      DataDir._instances = None
+
+  def test_snapshots_dir_writes_gitignore(self, tmp_path):
+    DataDir._instances = None
+    data_dir_path = os.path.join(str(tmp_path), DATA_DIR_NAME)
+
+    try:
+      DataDir.instance(str(tmp_path)).snapshots_dir_path
+
+      assert os.path.exists(os.path.join(data_dir_path, '.gitignore'))
+    finally:
+      DataDir._instances = None
+
   def test_tmp_dir_writes_gitignore(self, tmp_path):
     DataDir._instances = None
     data_dir_path = os.path.join(str(tmp_path), DATA_DIR_NAME)

@@ -149,6 +149,7 @@ class DataDir:
 
         if not os.path.exists(snapshots_dir_path):
             os.makedirs(snapshots_dir_path, exist_ok=True)
+            self.__write_gitignore(os.path.join(self.context_dir_path, DATA_DIR_NAME))
 
         return snapshots_dir_path
 
