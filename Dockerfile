@@ -13,7 +13,7 @@ RUN go build
 
 # Stage 2 (final image): Python runtime only
 # Only the compiled gosu binary is copied from Stage 1 — no Go toolchain included.
-FROM python:3.14.3-slim
+FROM python:3.15.2-slim
 
 RUN useradd -mU stoobly
 
