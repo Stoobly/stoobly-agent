@@ -184,6 +184,7 @@ def create(**kwargs):
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   app = App(kwargs['app_dir_path'])
+  __validate_app(app)
   service = Service(kwargs['service_name'], app)
 
   if not kwargs['quiet'] and os.path.exists(service.dir_path):
@@ -371,6 +372,7 @@ def create(**kwargs):
 @click.argument('destination_workflow_name')
 def copy(**kwargs):
   app = App(kwargs['app_dir_path'], **kwargs)
+  __validate_app(app)
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   for service_name in kwargs['service']:

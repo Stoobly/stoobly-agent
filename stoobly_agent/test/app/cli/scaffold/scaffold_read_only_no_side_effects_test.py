@@ -64,3 +64,17 @@ class TestReadOnlyScaffoldCommandsDoNotCreateDataDir:
 
         assert result.exit_code != 0, result.output
         self._assert_no_data_dir(empty_dir)
+
+    def test_service_create_requires_scaffold_app(self, empty_dir):
+        result = CliRunner().invoke(scaffold, ['service', 'create', 'api', '--app-dir-path', empty_dir, '--quiet'])
+
+        assert result.exit_code != 0, result.output
+        assert 'does not exist' in result.output
+        self._assert_no_data_dir(empty_dir)
+
+    def test_workflow_copy_requires_scaffold_app(self, empty_dir):
+        result = CliRunner().invoke(scaffold, ['workflow', 'copy', 'record', 'dest', '--app-dir-path', empty_dir, '--service', 'api'])
+
+        assert result.exit_code != 0, result.output
+        assert 'does not exist' in result.output
+        self._assert_no_data_dir(empty_dir)
