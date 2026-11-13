@@ -27,7 +27,9 @@ def scaffold_namespace_path_for_runtime_check(argv=None):
   # Resolve the services config from STOOBLY_HOME_DIR so we never DataDir.create() the host path.
   if cli_is_containerized(argv):
     return os.path.join(STOOBLY_HOME_DIR, DATA_DIR_NAME, SERVICES_NAMESPACE)
-  return App(cli_app_dir_path(argv)).scaffold_namespace_path
+
+  app_dir_path = cli_app_dir_path(argv)
+  return App(app_dir_path).scaffold_namespace_path
 
 
 def is_docker_runtime(argv=None):

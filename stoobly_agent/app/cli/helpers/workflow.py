@@ -34,7 +34,8 @@ def workflow_running() -> bool:
   if not os.path.isdir(os.path.join(app_dir, DATA_DIR_NAME)):
     return False
 
-  app = App(app_dir)
+  # Use the resolved app_dir as-is; do not walk up looking for a scaffold app.
+  app = App(app_dir, skip_find_app_dir=True)
   context_lock = ContextLock(app)
   return os.path.exists(context_lock.lock_file_path())
 

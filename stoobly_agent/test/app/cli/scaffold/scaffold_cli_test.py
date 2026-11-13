@@ -957,8 +957,9 @@ class TestDockerRuntimeCheckContainerized:
 
   def test_non_containerized_uses_app_dir_path(self, tmp_path):
     app_dir = tmp_path / 'app'
-    app_dir.mkdir()
-    (app_dir / DATA_DIR_NAME / SERVICES_NAMESPACE).mkdir(parents=True)
+    services_dir = app_dir / DATA_DIR_NAME / SERVICES_NAMESPACE
+    services_dir.mkdir(parents=True)
+    (services_dir / '.config.yml').write_text('')
 
     argv = [
       'stoobly-agent', 'scaffold', 'workflow', 'up',
@@ -967,4 +968,4 @@ class TestDockerRuntimeCheckContainerized:
     ]
 
     path = scaffold_namespace_path_for_runtime_check(argv)
-    assert path == str(app_dir / DATA_DIR_NAME / SERVICES_NAMESPACE)
+    assert path == str(services_dir)

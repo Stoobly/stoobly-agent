@@ -20,7 +20,9 @@ class App():
   # path: path to the folder where data dir directory resides e.g. ~
   def __init__(self, path: str = None, **kwargs):
     containerized = kwargs.get('containerized', False)
-    data_dir_class = DataDir if kwargs.get('skip_find_app_dir') else AppDataDir
+    # `containerized` pins the path to STOOBLY_HOME_DIR; otherwise AppDataDir may walk up for a scaffold.
+    skip_find_app_dir = kwargs.get('skip_find_app_dir', False) or containerized
+    data_dir_class = DataDir if skip_find_app_dir else AppDataDir
 
     # Store host (kwarg) values before remapping operational paths.
     self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
