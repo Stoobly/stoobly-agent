@@ -28,8 +28,22 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         path = kwargs['file']
 
+        # If a public directory is defined (as in ApplicationHTTPRequestHandler),
+        # ensure that the requested path stays within that directory.
+        if hasattr(self, 'public_dir'):
+            base_dir = os.path.normpath(self.public_dir)
+            normalized_path = os.path.normpath(path)
+            if not normalized_path.startswith(base_dir):
+                kwargs['status'] = 404
+                kwargs['data'] = b''
+                self.render_data(kwargs)
+                return
+
         if not os.path.exists(path):
             kwargs['status'] = 404
+            kwargs['data'] = b''
+            self.render_data(kwargs)
+            return
 
         mimetype = mimetypes.guess_type(path)[0]
         kwargs['headers']['Content-Type'] = mimetype or 'text/plain'
