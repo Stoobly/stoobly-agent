@@ -105,13 +105,6 @@ def workflow(ctx):
 def hostname(ctx):
     pass
 
-@scaffold.command()
-def test():
-  app = App(skip_find_app_dir=True)
-  print("skip_find_app_dir", app.app_data_dir.path)
-  app = App()
-  print("without skip_find_app_dir", app.app_data_dir.path)
-
 @app.command(
   help="Scaffold application"
 )

@@ -54,7 +54,6 @@ class DenormalizeService:
         """
         Remove existing destination folder contents if it exists
         """
-        import pdb; pdb.set_trace()
         
         # Within a container, host_scaffold_namespace_path does not exist, check self.destination_path
         destination_path = self.destination_path
