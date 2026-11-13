@@ -30,6 +30,13 @@ class DenormalizeService:
         """Destination path: scaffold_namespace_path in context_dir"""
         return self.denormalized_app.scaffold_namespace_path
 
+    @property
+    def is_denormalized(self):
+        """True when a denormalized scaffold copy exists under the workflow namespace."""
+        if self.source_path == self.destination_path:
+            return False
+        return os.path.exists(self.destination_path)
+
     def denormalize_up(self):
         """
         Copy scaffold namespace from data_dir to context_dir.

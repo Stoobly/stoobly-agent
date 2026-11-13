@@ -60,8 +60,8 @@ class App():
     else:
       self.__app_data_dir = data_dir_class.instance(self.__host_app_dir_path or operational_root)
       self.__app_dir_path = self.__app_data_dir.context_dir_path
-      self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
-      self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
+      self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
+      self.__certs_dir_path = self.__host_certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
@@ -250,6 +250,10 @@ class App():
     from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
     denormalize_service = DenormalizeService(workflow_namespace)
     return denormalize_service.denormalize_down(dry_run=dry_run, script=script)
+
+  def is_denormalized(self, workflow_namespace: 'WorkflowNamespace') -> bool:
+    from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+    return DenormalizeService(workflow_namespace).is_denormalized
   
   def denormalize_up(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
     """

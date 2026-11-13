@@ -8,10 +8,11 @@ import json
 
 from click.testing import CliRunner
 
-from stoobly_agent.app.cli.scaffold.constants import APP_COPY_ON_WORKFLOW_UP_ENV, CONFIG_FILE, DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
+from stoobly_agent.app.cli.scaffold.constants import CONFIG_FILE, DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.docker_runtime import scaffold_namespace_path_for_runtime_check
 from stoobly_agent.app.cli.scaffold.env import Env
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold_cli import LOG_ID, scaffold
 from stoobly_agent.cli import init as cli_init
@@ -91,28 +92,6 @@ def _create_service(
 
 
 class TestScaffoldAppCreateValidation:
-  def test_copy_on_workflow_up_allowed_with_local_runtime(self, runner: CliRunner, tmp_path):
-    docker_socket_path = tmp_path / 'docker.sock'
-    docker_socket_path.touch()
-    _prepare_app_dir(tmp_path)
-
-    result = runner.invoke(scaffold, [
-      'app', 'create',
-      '--app-dir-path', str(tmp_path),
-      '--copy-on-workflow-up',
-      '--docker-socket-path', str(docker_socket_path),
-      '--runtime', 'local',
-      '--quiet',
-      'test-app',
-    ])
-
-    assert result.exit_code == 0
-
-    config_path = tmp_path / DATA_DIR_NAME / 'services' / CONFIG_FILE
-    config = _read_config(config_path)
-    assert config[APP_COPY_ON_WORKFLOW_UP_ENV] is True
-    assert config['APP_RUNTIME'] == 'local'
-
   def test_context_dir_path_must_exist(self, runner: CliRunner, tmp_path):
     app_dir_path = tmp_path / 'app'
     app_dir_path.mkdir()
@@ -129,6 +108,40 @@ class TestScaffoldAppCreateValidation:
     ])
 
     assert result.exit_code != 0
+
+
+class TestScaffoldWorkflowUpCopy:
+  def test_copy_on_workflow_up_creates_denormalized_path(self, runner: CliRunner, tmp_path):
+    _prepare_app_dir(tmp_path)
+
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--app-dir-path', str(tmp_path),
+      '--runtime', 'local',
+      '--quiet',
+      'test-app',
+    ])
+    assert result.exit_code == 0
+
+    _create_service(runner, tmp_path, 'my-service')
+
+    result = runner.invoke(scaffold, [
+      'workflow', 'up',
+      '--app-dir-path', str(tmp_path),
+      '--ca-certs-install-confirm', 'n',
+      '--copy-on-workflow-up',
+      '--dry-run',
+      '--hostname-install-confirm', 'n',
+      'mock',
+    ])
+    assert result.exit_code == 0
+
+    app = App(str(tmp_path))
+    assert app.is_denormalized(WorkflowNamespace(app, 'mock', mkdir=False))
+
+    config_path = tmp_path / DATA_DIR_NAME / 'services' / CONFIG_FILE
+    config = _read_config(config_path)
+    assert 'APP_COPY_ON_WORKFLOW_UP' not in config
 
 
 class TestScaffoldAppCreateEnv:

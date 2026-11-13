@@ -13,6 +13,7 @@ class AppDataDir:
     def __init__(self):
         raise RuntimeError('Call instance() instead')
 
+    # If path is provided, then it is treated as the starting point
     @classmethod
     def instance(cls, path: str = None) -> DataDir:
         _context_dir_path = os.getcwd()

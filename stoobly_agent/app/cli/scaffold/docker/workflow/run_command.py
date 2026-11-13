@@ -191,7 +191,7 @@ class DockerWorkflowRunCommand(WorkflowRunCommand):
       if remove_ingress_network_command:
         self.exec(remove_ingress_network_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    if self.app_config.copy_on_workflow_up:
+    if self.app.is_denormalized(self.workflow_namespace):
       self.app.denormalize_down(
         self.workflow_namespace,
         dry_run=self.dry_run or self.app.containerized,
