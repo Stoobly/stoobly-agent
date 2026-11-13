@@ -23,6 +23,7 @@ class WorkflowDownOptions(TypedDict, total=False):
   extra_entrypoint_compose_path: Optional[str]
   namespace: Optional[str]
   rmi: bool
+  skip_denormalize_down: bool
   user_id: Optional[int]
   # CLI-specific options that get passed through
   containerized: bool

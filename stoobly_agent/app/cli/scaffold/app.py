@@ -246,6 +246,10 @@ class App():
     from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
     denormalize_service = DenormalizeService(workflow_namespace)
     return denormalize_service.denormalize_down(dry_run=dry_run, script=script)
+
+  def is_denormalized(self, workflow_namespace: 'WorkflowNamespace') -> bool:
+    from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+    return DenormalizeService(workflow_namespace).is_denormalized
   
   def denormalize_up(self, workflow_namespace: 'WorkflowNamespace', migrate: bool = False):
     """

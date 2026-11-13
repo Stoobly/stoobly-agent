@@ -224,7 +224,7 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
       except Exception as e:
         Logger.instance(LOG_ID).error(f"Failed to stop {self.workflow_name}: {e}")
 
-    if self.app_config.copy_on_workflow_up:
+    if not options.get('skip_denormalize_down') and self.app.is_denormalized(self.workflow_namespace):
       self.app.denormalize_down(
         self.workflow_namespace,
         dry_run=self.dry_run,
@@ -305,16 +305,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def __handle_up_active(self, folder: str, pid: str, pid_file_path: str):
     # Allow re-running the same workflow, bring workflow down first
     if pid_file_path == self.pid_file_path and os.path.exists(pid_file_path):
-      # Important: At this point, the app has already been denormalized 
-      # Set copy_on_workflow_up to False to prevent the denormalize.down from being called
-      # Otherwise the app will not be denormalized after this
-      copy_on_workflow_up = self.app_config.copy_on_workflow_up
-      self.app_config.copy_on_workflow_up = False
-      try:
-        self.down()
-      finally:
-        # Restore copy_on_workflow_up
-        self.app_config.copy_on_workflow_up = copy_on_workflow_up
+      # Important: At this point, the app has already been denormalized.
+      # Skip denormalize.down so the copy remains for this re-run.
+      self.down(skip_denormalize_down=True)
     else:
       file_name = os.path.basename(pid_file_path)
       workflow_name = self.workflow_name

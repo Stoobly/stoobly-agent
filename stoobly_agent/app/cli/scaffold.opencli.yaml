@@ -76,8 +76,6 @@ command:
                   arity:
                     minimum: 1
                     maximum: 1
-            - name: copy-on-workflow-up
-              description: Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.
             - name: docker-socket-path
               description: Path to Docker socket. Default /var/run/docker.sock.
               arguments:
@@ -416,6 +414,8 @@ command:
               description: Path to Stoobly data directory.
               arguments:
                 - name: path
+            - name: copy-on-workflow-up
+              description: Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.
             - name: detached
               description: If set, will run the highest priority service in the background.
             - name: dry-run
