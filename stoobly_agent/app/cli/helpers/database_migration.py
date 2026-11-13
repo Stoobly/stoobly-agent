@@ -17,6 +17,12 @@ SKIP_MIGRATION_COMMANDS = {
   'setting'
 }
 
+# Command path prefixes that should not trigger automatic database migration.
+# `request logs` only reads the intercepted requests log file, not the database.
+SKIP_MIGRATION_COMMAND_PREFIXES = {
+  ('request', 'logs'),
+}
+
 
 def non_option_args(argv: List[str] = None) -> List[str]:
   """Extract positional command tokens from CLI argv, ignoring flags and their values.
@@ -92,8 +98,9 @@ def should_skip_database_migration(command_path: List[str]) -> bool:
   """Determine whether automatic database migration should be skipped.
 
   Migration is skipped when no command is invoked, when the command manages its
-  own database setup (``init``), or when it runs migration explicitly
-  (``dev-tools migrate``).
+  own database setup (``init``), when it runs migration explicitly
+  (``dev-tools migrate``), or when it matches a skipped prefix such as
+  ``request logs``.
 
   Args:
     command_path: Positional command tokens from :func:`non_option_args`.
@@ -108,5 +115,9 @@ def should_skip_database_migration(command_path: List[str]) -> bool:
 
   if top_level in SKIP_MIGRATION_COMMANDS:
     return True
+
+  for prefix in SKIP_MIGRATION_COMMAND_PREFIXES:
+    if tuple(command_path[:len(prefix)]) == prefix:
+      return True
 
   return False

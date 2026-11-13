@@ -117,7 +117,7 @@ command:
       description: Manage service scaffold
       commands:
         - name: create
-          description: Scaffold a service
+          description: Scaffold a service. Requires an app created with 'app create' or applied with 'scaffold apply' first.
           arguments:
             - name: service_name
               required: true
@@ -341,7 +341,7 @@ command:
             - stoobly-agent scaffold workflow create custom --template record --service api
 
         - name: copy
-          description: Copy a workflow for service(s)
+          description: Copy a workflow for service(s). Requires an app created with 'app create' or applied with 'scaffold apply' first.
           arguments:
             - name: workflow_name
               required: true

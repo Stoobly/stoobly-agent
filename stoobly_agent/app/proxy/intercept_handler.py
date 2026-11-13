@@ -34,7 +34,16 @@ LOG_ID = 'Intercept'
 cache = Cache.instance()
 settings = Settings.instance()
 
-scenario_model = ScenarioModel(settings)
+# Created on first use, instantiating configures the database
+scenario_model: 'ScenarioModel' = None
+
+def __get_scenario_model():
+    global scenario_model
+
+    if scenario_model is None:
+        scenario_model = ScenarioModel(settings)
+
+    return scenario_model
 
 def request(flow: 'MitmproxyHTTPFlow'):
     # Lazy import for runtime usage
@@ -45,7 +54,7 @@ def request(flow: 'MitmproxyHTTPFlow'):
     # Mirror ``flow.id`` on the Request for code paths that only hold ``request`` (not sent upstream).
     set_proxy_request_uuid(flow.request, flow.id)
 
-    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
+    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(__get_scenario_model())
     if not intercept_settings.active:
         return
 
@@ -85,7 +94,7 @@ def response(flow: 'MitmproxyHTTPFlow'):
     request: 'MitmproxyRequest' = flow.request
 
     try:
-        intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(scenario_model)
+        intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(__get_scenario_model())
         intercept_settings.for_response()
 
         if not intercept_settings.active:

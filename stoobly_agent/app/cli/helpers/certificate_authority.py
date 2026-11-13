@@ -16,8 +16,8 @@ MITMPROXY_CN = 'mitmproxy'
 
 class CertificateAuthority():
 
-    def __init__(self, certs_dir = DataDir.instance().ca_certs_dir_path, cn = MITMPROXY_CN):
-        self.certs_dir = certs_dir
+    def __init__(self, certs_dir = None, cn = MITMPROXY_CN):
+        self.certs_dir = certs_dir or DataDir.instance().ca_certs_dir_path
         self.cn = cn
         self.key_size = 2048
 
