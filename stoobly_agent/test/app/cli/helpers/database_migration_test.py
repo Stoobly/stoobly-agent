@@ -50,6 +50,7 @@ class TestShouldSkipDatabaseMigration:
 
   def test_runs_for_other_commands(self):
     assert should_skip_database_migration(['mock']) is False
+    assert should_skip_database_migration(['request']) is False
     assert should_skip_database_migration(['request', 'list']) is False
 
   def test_skips_request_logs_subcommands(self):

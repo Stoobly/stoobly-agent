@@ -98,7 +98,7 @@ def should_skip_database_migration(command_path: List[str]) -> bool:
   """Determine whether automatic database migration should be skipped.
 
   Migration is skipped when no command is invoked, when the command manages its
-  own database setup (``init``), or when it runs migration explicitly
+  own database setup (``init``), when it runs migration explicitly
   (``dev-tools migrate``), or when it matches a skipped prefix such as
   ``request logs``.
 
