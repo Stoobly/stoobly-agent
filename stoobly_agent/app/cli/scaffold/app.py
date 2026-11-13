@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
 from stoobly_agent.config.app_data_dir import AppDataDir
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 
 from .constants import DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 
@@ -20,6 +20,7 @@ class App():
   # path: path to the folder where data dir directory resides e.g. ~
   def __init__(self, path: str = None, **kwargs):
     containerized = kwargs.get('containerized', False)
+    data_dir_class = DataDir if kwargs.get('skip_find_app_dir') else AppDataDir
 
     # Store host (kwarg) values before remapping operational paths.
     self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
@@ -33,11 +34,11 @@ class App():
     elif path is None:
       operational_root = self.__host_app_dir_path
       if operational_root is None:
-        operational_root = DataDir.instance().parent_path
+        operational_root = data_dir_class.instance().parent_path
     else:
       operational_root = os.path.abspath(path)
 
-    data_dir: DataDir = DataDir.instance(operational_root)
+    data_dir: DataDir = data_dir_class.instance(operational_root)
 
     self.__containerized = containerized
     self.__data_dir = data_dir
@@ -55,7 +56,7 @@ class App():
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = AppDataDir.instance(self.__host_app_dir_path or operational_root)
+      self.__app_data_dir = data_dir_class.instance(self.__host_app_dir_path or operational_root)
       self.__app_dir_path = self.__app_data_dir.context_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path or data_dir.ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path or data_dir.certs_dir_path
@@ -175,9 +176,11 @@ class App():
 
   @property
   def runtime_app_data_dir(self):
-    t = self.__runtime_app_data_dir.path
-    import pdb; pdb.set_trace()
     return self.__runtime_app_data_dir
+
+  @property
+  def runtime_app_dir_path(self):
+    return os.path.abspath(self.__runtime_app_dir_path)
 
   @property
   def scaffold_namespace_path(self):
@@ -235,7 +238,7 @@ class App():
 
     self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
     self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
-    self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
+    self.__runtime_app_data_dir = AppDataDir.instance(self.__runtime_app_dir_path)
 
   def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', dry_run: bool = False, script: str = None):
     """

@@ -105,6 +105,13 @@ def workflow(ctx):
 def hostname(ctx):
     pass
 
+@scaffold.command()
+def test():
+  app = App(skip_find_app_dir=True)
+  print("skip_find_app_dir", app.app_data_dir.path)
+  app = App()
+  print("without skip_find_app_dir", app.app_data_dir.path)
+
 @app.command(
   help="Scaffold application"
 )
@@ -139,7 +146,7 @@ def create(**kwargs):
   #  click.echo(error_message, err=True)
   #  sys.exit(1)
 
-  app = App(kwargs['app_dir_path'])
+  app = App(kwargs['app_dir_path'] or os.getcwd(), skip_find_app_dir=True)
 
   if not kwargs['quiet']:
     if os.path.exists(app.scaffold_namespace_path):

@@ -18,7 +18,7 @@ class DenormalizeService:
     def __init__(self, workflow_namespace: WorkflowNamespace):
         self.app = workflow_namespace.app
         self.logger = Logger.instance(LOG_ID)
-        self.denormalized_app = App(workflow_namespace.path)
+        self.denormalized_app = App(workflow_namespace.path, skip_find_app_dir=True)
 
     @property
     def source_path(self):
@@ -54,6 +54,7 @@ class DenormalizeService:
         """
         Remove existing destination folder contents if it exists
         """
+        import pdb; pdb.set_trace()
         
         # Within a container, host_scaffold_namespace_path does not exist, check self.destination_path
         destination_path = self.destination_path

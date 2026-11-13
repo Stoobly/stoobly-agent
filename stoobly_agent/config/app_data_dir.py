@@ -15,8 +15,18 @@ class AppDataDir:
 
     @classmethod
     def instance(cls, path: str = None) -> DataDir:
-        data_dir_path = cls.find_data_dir(path or os.getcwd())
-        cls._instance = DataDir.instance(os.path.dirname(data_dir_path))
+        _context_dir_path = os.getcwd()
+        data_dir_path = cls.find_data_dir(path or _context_dir_path)
+
+        if not data_dir_path:
+            # If no app dir is found, then app dir is the nearest context dir
+            cls._instance = DataDir.instance()
+            return cls._instance
+
+        # If app dir is found, then app dir is the parent of the data dir
+        context_dir_path = os.path.dirname(data_dir_path)
+
+        cls._instance = DataDir.instance(context_dir_path)
 
         return cls._instance
 
@@ -25,10 +35,10 @@ class AppDataDir:
     @classmethod
     def find_data_dir(cls, start_path: str) -> str:
         root_dir = os.path.abspath(os.sep)
-        start_path = os.path.abspath(start_path)
+        _start_path = os.path.abspath(start_path)
 
         while True:
-            data_dir_path = os.path.join(start_path, DATA_DIR_NAME)
+            data_dir_path = os.path.join(_start_path, DATA_DIR_NAME)
             services_config_path = os.path.join(data_dir_path, SERVICES_CONFIG_FILE_PATH)
 
             if (
@@ -39,10 +49,8 @@ class AppDataDir:
                 return data_dir_path
 
             # Root reached
-            if start_path == root_dir:
+            if _start_path == root_dir:
                 break
 
             # Move up one directory
-            start_path = os.path.dirname(start_path)
-
-        return os.path.join(os.path.expanduser('~'), DATA_DIR_NAME)
+            _start_path = os.path.dirname(_start_path)
