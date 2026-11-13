@@ -1,9 +1,17 @@
 import click
+import sys
 
 from stoobly_agent.app.cli.helpers.log_options import build_log_filters, log_list_options
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
+
+def _validate_app(app: App):
+    try:
+        app.valid
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
 
 @click.group(
   epilog="Run 'stoobly-agent scaffold request COMMAND --help' for more information on a command.",
@@ -28,6 +36,7 @@ def request_log(ctx):
 @click.argument('workflow_name')
 def request_log_path(**kwargs):
     app = App(kwargs['app_dir_path'])
+    _validate_app(app)
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'), mkdir=False)
 
     ScaffoldInterceptedRequestsLogger.get_log_file_path(
@@ -44,6 +53,7 @@ def request_log_path(**kwargs):
 @click.argument('workflow_name')
 def request_log_list(**kwargs):
     app = App(kwargs['app_dir_path'])
+    _validate_app(app)
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'), mkdir=False)
     filters = build_log_filters(kwargs, extra_keys=['service_name'])
 
@@ -58,12 +68,13 @@ def request_log_list(**kwargs):
         follow=kwargs.get('follow', False),
     )
 
-@request_log.command(name="delete", help="Delete intercepted requests log entries")
+@request_log.command(name="truncate", help="Truncate intercepted requests log entries")
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--namespace', help='Workflow namespace to delete logs for.')
+@click.option('--namespace', help='Workflow namespace to truncate logs for.')
 @click.argument('workflow_name')
-def request_log_delete(**kwargs):
+def request_log_truncate(**kwargs):
     app = App(kwargs['app_dir_path'])
+    _validate_app(app)
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'))
     
     ScaffoldInterceptedRequestsLogger.truncate(

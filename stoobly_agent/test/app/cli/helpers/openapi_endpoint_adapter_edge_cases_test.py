@@ -159,6 +159,217 @@ class TestOpenApiEndpointAdapterSchemaWalking():
       (3, 'c', 'b.c', 2),
     ]
 
+  def test_additional_properties_schema_emits_wildcard_params(self, tmp_path):
+    # Shape: { status: string, [k: string]: string[] }
+    # Named field + open map of string arrays at the root.
+    schema = _object(
+      {'status': _STRING},
+      additionalProperties={'type': 'array', 'items': _STRING},
+    )
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'status', 'status', None, False),
+      (2, 'AdditionalProperty', '*', None, False),
+      (3, 'AdditionalPropertyElement', '*[*]', 2, False),
+    ]
+
+  def test_additional_properties_only_object_emits_parent_and_wildcard(self, tmp_path):
+    # Shape: { [k: string]: string }
+    # Root object with no named properties — only a map of strings.
+    schema = {
+      'type': 'object',
+      'additionalProperties': {'type': 'string'},
+    }
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'AdditionalProperty', '*', None, False),
+    ]
+
+  def test_nested_additional_properties_map_of_maps(self, tmp_path):
+    # Shape: { [group: string]: { [name: string]: string[] } }
+    # Two levels of dynamic keys; inner values are arrays.
+    schema = {
+      'type': 'object',
+      'additionalProperties': {
+        'type': 'object',
+        'additionalProperties': {'type': 'array', 'items': _STRING},
+      },
+    }
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'AdditionalProperty', '*', None, False),
+      (2, 'AdditionalProperty', '*.*', 1, False),
+      (3, 'AdditionalPropertyElement', '*.*[*]', 2, False),
+    ]
+
+  def test_additional_properties_object_with_named_fields(self, tmp_path):
+    # Shape: { [id: string]: { name: string, tags?: string[] } }
+    # Dynamic keys whose values are objects with fixed fields (name required).
+    schema = {
+      'type': 'object',
+      'additionalProperties': _object({
+        'name': _STRING,
+        'tags': {'type': 'array', 'items': _STRING},
+      }, required=['name']),
+    }
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'AdditionalProperty', '*', None, False),
+      (2, 'name', '*.name', 1, True),
+      (3, 'tags', '*.tags', 1, False),
+      (4, 'tagsElement', '*.tags[*]', 3, False),
+    ]
+
+  def test_named_property_plus_nested_additional_properties(self, tmp_path):
+    # Shape: { status?: string, message: { [breed: string]: string[] } }
+    # Fixed sibling fields next to a nested open map (dogs.ceo-style).
+    schema = _object({
+      'status': _STRING,
+      'message': {
+        'type': 'object',
+        'additionalProperties': {'type': 'array', 'items': _STRING},
+      },
+    }, required=['message'])
+    params = _body_params(tmp_path, schema)
+
+    # Property order follows OpenAPI/YAML serialization, not source dict insertion order.
+    assert params == [
+      (1, 'message', 'message', None, True),
+      (2, 'AdditionalProperty', 'message.*', 1, False),
+      (3, 'AdditionalPropertyElement', 'message.*[*]', 2, False),
+      (4, 'status', 'status', None, False),
+    ]
+
+  def test_array_of_objects_with_additional_properties(self, tmp_path):
+    # Shape: Array<{ [k: string]: integer }>
+    # List elements are open maps of integers.
+    schema = {
+      'type': 'array',
+      'items': {
+        'type': 'object',
+        'additionalProperties': {'type': 'integer'},
+      },
+    }
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'Element', '[*]', None, False),
+      (2, 'AdditionalProperty', '[*].*', 1, False),
+    ]
+
+  def test_array_of_objects_with_named_and_additional_properties(self, tmp_path):
+    # Shape: Array<{ id: integer, [k: string]: string }>
+    # List elements mix a required named field with an open string map.
+    schema = {
+      'type': 'array',
+      'items': _object(
+        {'id': {'type': 'integer'}},
+        additionalProperties=_STRING,
+        required=['id'],
+      ),
+    }
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'Element', '[*]', None, False),
+      (2, 'id', '[*].id', 1, True),
+      (3, 'AdditionalProperty', '[*].*', 1, False),
+    ]
+
+  def test_deeply_nested_additional_properties_under_named_path(self, tmp_path):
+    # Shape: { data: { meta: { [k: string]: { [k: string]: boolean } } } }
+    # Named path down to a map-of-maps of booleans.
+    schema = _object({
+      'data': _object({
+        'meta': {
+          'type': 'object',
+          'additionalProperties': {
+            'type': 'object',
+            'additionalProperties': {'type': 'boolean'},
+          },
+        },
+      }),
+    })
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'data', 'data', None, False),
+      (2, 'meta', 'data.meta', 1, False),
+      (3, 'AdditionalProperty', 'data.meta.*', 2, False),
+      (4, 'AdditionalProperty', 'data.meta.*.*', 3, False),
+    ]
+
+  def test_response_additional_properties_are_walked(self, tmp_path):
+    # Shape (response): { results: { [k: string]: { score: number } } }
+    # Same map-of-objects pattern, adapted from a 200 response schema.
+    operation = {'responses': {'200': {'description': 'ok', 'content': {'application/json': {
+      'schema': _object({
+        'results': {
+          'type': 'object',
+          'additionalProperties': _object({'score': {'type': 'number'}}, required=['score']),
+        },
+      }),
+    }}}}}
+    endpoints = _adapt(tmp_path, operation)
+    params = _summarize(endpoints[0]['response_param_names'], 'response_param_name_id')
+
+    assert params == [
+      (1, 'results', 'results', None, False),
+      (2, 'AdditionalProperty', 'results.*', 1, False),
+      (3, 'score', 'results.*.score', 2, True),
+    ]
+
+  def test_explicit_scalar_type_wins_over_leftover_items(self, tmp_path):
+    # Shape: { message: { [k: string]: string } }
+    # Invalid-but-common edit: type is string while leftover `items` remains; scalar wins.
+    schema = _object({
+      'message': {
+        'type': 'object',
+        'additionalProperties': {'type': 'string', 'items': {'type': 'string'}},
+      },
+    })
+    params = _body_params(tmp_path, schema)
+
+    assert params == [
+      (1, 'message', 'message', None, False),
+      (2, 'AdditionalProperty', 'message.*', 1, False),
+    ]
+    assert next(p for p in _adapt(tmp_path, _body(schema))[0]['body_param_names'] if p['query'] == 'message.*')['inferred_type'] == 'String'
+
+  def test_additional_properties_false_marks_object_closed(self, tmp_path):
+    # Shape: { name?: string } with additionalProperties: false
+    # Closed object — extras forbidden. Root anonymous schemas have no parent to mark;
+    # a named nested object (pet) carries allows_additional_properties=False.
+    schema = _object({'name': _STRING}, additionalProperties=False)
+    endpoints = _adapt(tmp_path, _body(schema))
+    params = endpoints[0]['body_param_names']
+
+    assert [(p['name'], p['query'], p.get('allows_additional_properties')) for p in params] == [
+      ('name', 'name', None),
+    ]
+    nested = _object({'pet': _object({'name': _STRING}, additionalProperties=False)})
+    nested_params = _adapt(tmp_path, _body(nested))[0]['body_param_names']
+    pet = next(p for p in nested_params if p['query'] == 'pet')
+    assert pet.get('allows_additional_properties') is False
+
+  def test_nested_closed_object_under_additional_properties(self, tmp_path):
+    # Shape: { [k: string]: { name: string } } where each value object is closed
+    # Dynamic keys whose values reject unknown fields.
+    schema = {
+      'type': 'object',
+      'additionalProperties': _object({'name': _STRING}, additionalProperties=False, required=['name']),
+    }
+    params = _adapt(tmp_path, _body(schema))[0]['body_param_names']
+
+    assert [(p['query'], p['inferred_type'], p.get('allows_additional_properties'), p['is_required']) for p in params] == [
+      ('*', 'Hash', False, False),
+      ('*.name', 'String', None, True),
+    ]
+
   def test_query_params_share_ids_and_parents_across_params(self, tmp_path):
     operation = {'parameters': [
       {'name': 'q1', 'in': 'query', 'schema': _STRING},

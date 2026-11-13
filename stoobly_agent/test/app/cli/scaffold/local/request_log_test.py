@@ -7,7 +7,7 @@ import tempfile
 import time
 
 from click.testing import CliRunner
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold_cli import scaffold
@@ -17,15 +17,19 @@ from stoobly_agent.app.cli.scaffold.constants import (
     WORKFLOW_RECORD_TYPE,
     WORKFLOW_TEST_TYPE,
 )
+from stoobly_agent.test.app.cli.scaffold.helpers import set_test_workflow_policy_found
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
+from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.lib.intercepted_requests.scaffold_logger import ScaffoldInterceptedRequestsLogger
 from stoobly_agent.test.app.cli.scaffold.local.cli_invoker import LocalScaffoldCliInvoker
 from stoobly_agent.test.app.cli.scaffold.log_test_helpers import wait_for_forward_proxy_intercept
 from stoobly_agent.test.test_helper import (
+    DETERMINISTIC_GET_REQUEST_HOST,
+    DETERMINISTIC_GET_REQUEST_URL,
     NON_DETERMINISTIC_GET_REQUEST_HOST,
     NON_DETERMINISTIC_GET_REQUEST_URL,
     reset,
@@ -51,6 +55,11 @@ def find_log_entry(output: str, message: str, method: str = None) -> Optional[di
 @pytest.fixture
 def non_deterministic_get_request_unknown_url():
     return NON_DETERMINISTIC_GET_REQUEST_URL.rstrip('/') + '/unknown-endpoint'
+
+
+@pytest.fixture
+def deterministic_get_request_unknown_url():
+    return DETERMINISTIC_GET_REQUEST_URL.rstrip('/') + '/unknown-endpoint'
 
 
 @pytest.mark.e2e
@@ -148,8 +157,8 @@ class TestRequestLogE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_log_delete_clears_log_entries(self, app_dir_path, runner: CliRunner, proxy_url: str, hostname, target_workflow_name: str):
-        """Test that scaffold request log delete clears all log entries."""
+    def test_log_truncate_clears_log_entries(self, app_dir_path, runner: CliRunner, proxy_url: str, hostname, target_workflow_name: str):
+        """Test that scaffold request log truncate clears all log entries."""
         # Make another request to ensure we have log entries
         requests.get(
             f'https://{hostname}/another-unrecorded',
@@ -162,16 +171,16 @@ class TestRequestLogE2e():
         # Verify log has entries
         result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert result.exit_code == 0
-        assert result.output.strip(), "Log should have entries before delete"
+        assert result.output.strip(), "Log should have entries before truncate"
 
-        # Delete log entries
-        delete_result = runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
-        assert delete_result.exit_code == 0
+        # Truncate log entries
+        truncate_result = runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
+        assert truncate_result.exit_code == 0
 
         # Verify log is now empty
         list_result = runner.invoke(scaffold, ['request', 'logs', 'list', target_workflow_name, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
-        assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+        assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"
 
 @pytest.mark.e2e
 class TestRequestLogWithRecordedRequestsE2e():
@@ -250,7 +259,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_successful_mock_logged_at_info_level(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful mock requests are logged at INFO level (default)."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with mocked response
         res = requests.get(
@@ -289,7 +298,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_unrecorded_request_logged_as_error(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str, non_deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in mock mode are logged as errors."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger 499
         res = requests.get(
@@ -314,7 +323,7 @@ class TestRequestLogWithRecordedRequestsE2e():
     def test_options_request_not_logged_as_failure(self, app_dir_path, record_then_mock_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as mock failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_MOCK_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
@@ -361,7 +370,8 @@ class TestRequestLogWithTestWorkflowE2e():
 
     @pytest.fixture(scope='class')
     def hostname(self):
-        yield NON_DETERMINISTIC_GET_REQUEST_HOST
+        # Deterministic API so record-then-test body comparison can pass.
+        yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
     def service_name(self):
@@ -375,6 +385,8 @@ class TestRequestLogWithTestWorkflowE2e():
     def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
+        # Scaffold defaults test policy to none; override in this app so Test report rows are emitted.
+        set_test_workflow_policy_found(app_dir_path)
 
     @pytest.fixture(scope="class", autouse=True)
     def record_then_test_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
@@ -390,7 +402,7 @@ class TestRequestLogWithTestWorkflowE2e():
         # Record a request
 
         requests.get(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -404,7 +416,6 @@ class TestRequestLogWithTestWorkflowE2e():
         time.sleep(1)
         settings.load()
 
-
         yield
 
         # Cleanup: stop test workflow
@@ -414,11 +425,11 @@ class TestRequestLogWithTestWorkflowE2e():
     def test_successful_test_logged_at_info_level(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that successful test requests are logged at INFO level."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make the recorded request - should succeed with test comparison
         res = requests.get(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -432,7 +443,7 @@ class TestRequestLogWithTestWorkflowE2e():
         if res.status_code != 200:
             assert False, f"Expected successful test (200), got {res.status_code}. Response: {res.text}."
 
-        # Should have a "Mock success" log entry (test workflow uses mock mode)
+        # Mock success is logged, then a separate Test success report row
         output = list_result.output
         entry = find_log_entry(output, 'Mock success')
         assert entry is not None, f"Expected Mock success log entry, got:\n{output}"
@@ -440,7 +451,7 @@ class TestRequestLogWithTestWorkflowE2e():
         # Check specific field values
         assert entry['level'] == 'INFO'
         assert entry['method'] == 'GET'
-        assert NON_DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
+        assert DETERMINISTIC_GET_REQUEST_HOST in entry.get('url', '')
         assert entry['status_code'] == 200
         assert 'scenario_key' in entry
 
@@ -449,14 +460,24 @@ class TestRequestLogWithTestWorkflowE2e():
         assert entry.get('user_agent'), "user_agent should exist and not be empty"
         assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, non_deterministic_get_request_unknown_url: str):
+        # Test mode also appends a separate test-report row
+        test_entry = find_log_entry(output, 'Test success')
+        assert test_entry is not None, f"Expected Test success log entry, got:\n{output}"
+        assert test_entry['level'] == 'INFO'
+        assert test_entry.get('passed') is True
+        assert test_entry.get('skipped') is False
+        assert 'row_id' in test_entry
+        assert 'expected_response' not in test_entry
+        assert res.headers.get('X-Stoobly-Request-Log-Row-Id') == str(test_entry['row_id'])
+
+    def test_unrecorded_request_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str, deterministic_get_request_unknown_url: str):
         """Test that unrecorded requests in test mode are logged as test failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an unrecorded request - should trigger test failure
         res = requests.get(
-            non_deterministic_get_request_unknown_url,
+            deterministic_get_request_unknown_url,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -468,20 +489,26 @@ class TestRequestLogWithTestWorkflowE2e():
         list_result = runner.invoke(scaffold, ['request', 'logs', 'list', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
         assert list_result.exit_code == 0
 
-        # Should have a Mock failure entry (test workflow uses mock mode)
+        # Mock failure is logged, then a separate Test failure report row
         entry = find_log_entry(list_result.output, 'Mock failure')
         assert entry is not None, f"Expected Mock failure log entry, got:\n{list_result.output}"
         assert entry['level'] == 'ERROR'
         assert entry['status_code'] == NOT_FOUND
 
+        test_entry = find_log_entry(list_result.output, 'Test failure')
+        assert test_entry is not None, f"Expected Test failure log entry, got:\n{list_result.output}"
+        assert test_entry['level'] == 'ERROR'
+        assert test_entry.get('passed') is False
+        assert res.headers.get('X-Stoobly-Request-Log-Row-Id') == str(test_entry['row_id'])
+
     def test_options_request_not_logged_as_test_failure(self, app_dir_path, record_then_test_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as test failures."""
         # Clear log first
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_TEST_TYPE, '--namespace', WORKFLOW_TEST_TYPE, '--app-dir-path', app_dir_path])
 
         # Make an OPTIONS request - should get CORS response, not logged as failure
         res = requests.options(
-            NON_DETERMINISTIC_GET_REQUEST_URL,
+            DETERMINISTIC_GET_REQUEST_URL,
             proxies={'http': proxy_url, 'https': proxy_url},
             verify=False
         )
@@ -557,7 +584,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
     def test_successful_record_logged_at_info_level(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
         """Test that successfully recorded requests are logged at INFO level."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -589,7 +616,7 @@ class TestRequestLogWithRecordWorkflowE2e():
 
     def test_options_request_not_logged_as_failure(self, app_dir_path, record_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as record failures."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_RECORD_TYPE, '--app-dir-path', app_dir_path])
 
         # In record mode, OPTIONS is forwarded to the real server (e.g. returns 405).
         # Unlike mock mode, there is no synthetic CORS 200 — status code is not relevant here.
@@ -666,7 +693,7 @@ class TestRequestLogWithDevelopWorkflowE2e():
 
     def test_successful_develop_logged_at_info_level(self, app_dir_path, develop_workflow, runner: CliRunner, proxy_url: str):
         """Test that successfully developed requests are logged at INFO level."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
 
         res = requests.get(
             NON_DETERMINISTIC_GET_REQUEST_URL,
@@ -698,7 +725,7 @@ class TestRequestLogWithDevelopWorkflowE2e():
 
     def test_options_request_not_logged_as_failure(self, app_dir_path, develop_workflow, runner: CliRunner, proxy_url: str):
         """Test that OPTIONS requests are not logged as develop failures."""
-        runner.invoke(scaffold, ['request', 'logs', 'delete', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', WORKFLOW_DEVELOP_TYPE, '--app-dir-path', app_dir_path])
 
         # In develop mode, OPTIONS is forwarded to the real server.
         # It should not appear as a "Develop failure" in the request log.
@@ -799,7 +826,7 @@ class TestRequestLogFromDifferentWorkingDirectory():
         With --app-dir-path pointing to the correct location, logs are retrieved.
         """
         # Clear any existing logs
-        runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
+        runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
 
         # Make a request to generate log entries
         res = requests.get(
@@ -860,6 +887,12 @@ class TestScaffoldRequestLogCliParams:
     def runner(self):
         return CliRunner()
 
+    @pytest.fixture(autouse=True)
+    def skip_scaffold_validation(self):
+        # These tests cover CLI parsing with the logger mocked; scaffold validation is tested separately
+        with patch.object(App, 'valid', new_callable=PropertyMock, return_value=True):
+            yield
+
     def test_log_list_without_args_uses_defaults(self, runner):
         """scaffold request log list with workflow_name passes None for namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
@@ -872,10 +905,10 @@ class TestScaffoldRequestLogCliParams:
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
-    def test_log_delete_without_args_uses_defaults(self, runner):
-        """scaffold request log delete with workflow_name passes None for namespace."""
+    def test_log_truncate_without_args_uses_defaults(self, runner):
+        """scaffold request log truncate with workflow_name passes None for namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(scaffold, ['request', 'logs', 'delete', 'mock'])
+            result = runner.invoke(scaffold, ['request', 'logs', 'truncate', 'mock'])
             assert result.exit_code == 0
             mock_truncate.assert_called_once()
             call_kwargs = mock_truncate.call_args.kwargs
@@ -920,10 +953,10 @@ class TestScaffoldRequestLogCliParams:
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'prod'
 
-    def test_log_delete_accepts_workflow_name_argument(self, runner):
-        """scaffold request log delete accepts workflow_name as positional argument."""
+    def test_log_truncate_accepts_workflow_name_argument(self, runner):
+        """scaffold request log truncate accepts workflow_name as positional argument."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(scaffold, ['request', 'logs', 'delete', 'mock'])
+            result = runner.invoke(scaffold, ['request', 'logs', 'truncate', 'mock'])
             assert result.exit_code == 0
             mock_truncate.assert_called_once()
             call_kwargs = mock_truncate.call_args.kwargs
@@ -932,10 +965,10 @@ class TestScaffoldRequestLogCliParams:
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'mock'
 
-    def test_log_delete_accepts_namespace_option(self, runner):
-        """scaffold request log delete accepts --namespace option."""
+    def test_log_truncate_accepts_namespace_option(self, runner):
+        """scaffold request log truncate accepts --namespace option."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(scaffold, ['request', 'logs', 'delete', 'mock', '--namespace', 'test-ns'])
+            result = runner.invoke(scaffold, ['request', 'logs', 'truncate', 'mock', '--namespace', 'test-ns'])
             assert result.exit_code == 0
             mock_truncate.assert_called_once()
             call_kwargs = mock_truncate.call_args.kwargs
@@ -944,10 +977,10 @@ class TestScaffoldRequestLogCliParams:
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'test-ns'
 
-    def test_log_delete_accepts_both_workflow_and_namespace(self, runner):
-        """scaffold request log delete accepts both workflow_name and --namespace."""
+    def test_log_truncate_accepts_both_workflow_and_namespace(self, runner):
+        """scaffold request log truncate accepts both workflow_name and --namespace."""
         with patch.object(ScaffoldInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(scaffold, ['request', 'logs', 'delete', 'record', '--namespace', 'prod'])
+            result = runner.invoke(scaffold, ['request', 'logs', 'truncate', 'record', '--namespace', 'prod'])
             assert result.exit_code == 0
             mock_truncate.assert_called_once()
             call_kwargs = mock_truncate.call_args.kwargs
@@ -963,6 +996,12 @@ class TestScaffoldRequestLogListFiltering:
     @pytest.fixture(scope='class', autouse=True)
     def settings(self):
         return reset()
+
+    @pytest.fixture(autouse=True)
+    def skip_scaffold_validation(self):
+        # Logs are read from a pre-built file below, not from a scaffold app
+        with patch.object(App, 'valid', new_callable=PropertyMock, return_value=True):
+            yield
 
     @pytest.fixture(autouse=True)
     def setup(self):

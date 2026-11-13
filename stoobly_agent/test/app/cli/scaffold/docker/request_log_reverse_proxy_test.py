@@ -106,7 +106,7 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
     """Poll until the reverse proxy is actively recording."""
     container_name = f'{workflow_name}-{service_name}.proxy-1'
     runner.invoke(scaffold, [
-        'request', 'logs', 'delete', workflow_name,
+        'request', 'logs', 'truncate', workflow_name,
         '--app-dir-path', app_dir_path
     ])
     _enable_intercept_in_container(container_name)
@@ -157,7 +157,7 @@ def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries
 def wait_for_develop_active_reverse(hostname: str, runner, workflow_name: str, app_dir_path: str, service_name: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
     """Poll until the reverse proxy is actively developing (writing request log entries)."""
     container_name = f'{workflow_name}-{service_name}.proxy-1'
-    runner.invoke(scaffold, ['request', 'logs', 'delete', workflow_name, '--app-dir-path', app_dir_path])
+    runner.invoke(scaffold, ['request', 'logs', 'truncate', workflow_name, '--app-dir-path', app_dir_path])
     _enable_intercept_in_container(container_name)
     last_enable = time.time()
     deadline = time.time() + timeout
@@ -284,7 +284,7 @@ class TestDockerRequestLogE2e():
             assert entry.get('timestamp'), "timestamp should exist and not be empty"
             assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+        def test_log_truncate_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
             """Verify that deleting logs clears all entries."""
             requests.get(
                 'http://localhost:80/another-unrecorded',
@@ -292,28 +292,28 @@ class TestDockerRequestLogE2e():
             )
 
             entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Mock failure')
-            assert entry is not None, "Expected log entries before delete"
+            assert entry is not None, "Expected log entries before truncate"
 
-            delete_result = runner.invoke(scaffold, [
-                'request', 'logs', 'delete', target_workflow_name,
+            truncate_result = runner.invoke(scaffold, [
+                'request', 'logs', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
-            assert delete_result.exit_code == 0
+            assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
-            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+            assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"
 
         def test_high_traffic_no_dropped_entries(self, runner, app_dir_path, hostname, target_workflow_name):
             """Verify the async logger captures all entries under concurrent load — no dropped writes."""
-            delete_result = runner.invoke(scaffold, [
-                'request', 'logs', 'delete', target_workflow_name,
+            truncate_result = runner.invoke(scaffold, [
+                'request', 'logs', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path,
             ])
-            assert delete_result.exit_code == 0, f"Failed to delete logs before test: {delete_result.output}"
+            assert truncate_result.exit_code == 0, f"Failed to truncate logs before test: {truncate_result.output}"
 
             paths = [f'/high-traffic-{i}' for i in range(self._REQUEST_COUNT)]
 
@@ -413,7 +413,7 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
 
             res = requests.get(
                 'http://localhost:80/',
@@ -429,7 +429,7 @@ class TestDockerRecordRequestLogE2e():
             assert entry.get('timestamp'), "timestamp should exist and not be empty"
             assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+        def test_log_truncate_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
             """Verify that deleting logs clears all entries."""
             requests.get(
                 'http://localhost:80/another-path',
@@ -437,20 +437,20 @@ class TestDockerRecordRequestLogE2e():
             )
 
             entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Record success')
-            assert entry is not None, "Expected log entries before delete"
+            assert entry is not None, "Expected log entries before truncate"
 
-            delete_result = runner.invoke(scaffold, [
-                'request', 'logs', 'delete', target_workflow_name,
+            truncate_result = runner.invoke(scaffold, [
+                'request', 'logs', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
-            assert delete_result.exit_code == 0
+            assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
-            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+            assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"
 
 
 @pytest.mark.e2e
@@ -514,7 +514,7 @@ class TestDockerDevelopRequestLogE2e():
 
         def test_develop_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy develop workflow and verify a Develop success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'delete', target_workflow_name, '--app-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
 
             requests.get(
                 'http://localhost:80/',
@@ -530,7 +530,7 @@ class TestDockerDevelopRequestLogE2e():
             assert entry.get('timestamp'), "timestamp should exist and not be empty"
             assert entry.get('latency_ms') is not None, "latency_ms should exist"
 
-        def test_log_delete_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
+        def test_log_truncate_clears_entries(self, runner, app_dir_path, hostname, target_workflow_name):
             """Verify that deleting logs clears all entries."""
             requests.get(
                 'http://localhost:80/another-path',
@@ -538,17 +538,17 @@ class TestDockerDevelopRequestLogE2e():
             )
 
             entry = poll_for_log_entry(runner, target_workflow_name, app_dir_path, 'Develop success')
-            assert entry is not None, "Expected log entries before delete"
+            assert entry is not None, "Expected log entries before truncate"
 
-            delete_result = runner.invoke(scaffold, [
-                'request', 'logs', 'delete', target_workflow_name,
+            truncate_result = runner.invoke(scaffold, [
+                'request', 'logs', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
-            assert delete_result.exit_code == 0
+            assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
                 'request', 'logs', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
-            assert not list_result.output.strip(), f"Log should be empty after delete, got: {list_result.output}"
+            assert not list_result.output.strip(), f"Log should be empty after truncate, got: {list_result.output}"

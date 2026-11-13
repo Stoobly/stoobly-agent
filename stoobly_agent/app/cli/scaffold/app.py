@@ -79,7 +79,7 @@ class App():
 
   @property
   def ca_certs_dir_path(self):
-    return os.path.abspath(self.__ca_certs_dir_path)
+    return os.path.abspath(self.__ca_certs_dir_path or self.__data_dir.ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
@@ -88,7 +88,7 @@ class App():
 
   @property
   def certs_dir_path(self):
-    return os.path.abspath(self.__certs_dir_path)
+    return os.path.abspath(self.__certs_dir_path or self.__data_dir.certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):
@@ -149,7 +149,7 @@ class App():
   @property
   def valid(self):
     if not os.path.exists(self.scaffold_namespace_path):
-      raise ValueError(f"{self.scaffold_namespace_path} does not exist")
+      raise ValueError(f"No scaffold found at {self.app_dir_path} ({self.scaffold_namespace_path} does not exist). Create one with 'stoobly-agent scaffold app create', or with a scaffold.yml applied via 'stoobly-agent scaffold apply'.")
 
     if not os.path.exists(os.path.join(self.context_dir_path, DATA_DIR_NAME)):
       raise ValueError(f"{os.path.join(self.context_dir_path, DATA_DIR_NAME)} does not exist. In that directory, run `stoobly-agent init` to create it.")

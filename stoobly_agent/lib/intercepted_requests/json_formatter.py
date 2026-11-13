@@ -155,4 +155,24 @@ class JSONFormatter(logging.Formatter):
         "fixture_path": record.fixture_path
       })
 
+    if hasattr(record, 'row_id') and record.row_id is not None:
+      log_entry.update({
+        "row_id": record.row_id
+      })
+
+    # Optional test-report metadata (present on Test success/failure/skipped rows)
+    for field in (
+      'passed',
+      'skipped',
+      'strategy',
+      'log',
+      'expected_response',
+      'expected_latency',
+      'expected_status_code',
+    ):
+      if hasattr(record, field):
+        value = getattr(record, field)
+        if value is not None:
+          log_entry[field] = value
+
     return json.dumps(log_entry)

@@ -49,6 +49,36 @@ class TestOpenApiEndpointAdapterAdditionalProps():
           "query": "name",
           "body_param_name_id": None,
           "id": 1
+        },
+        {
+          "endpoint_id": _ADDITIONAL_PROPS_EID,
+          "inferred_type": "Hash",
+          "is_required": False,
+          "is_deterministic": True,
+          "name": "AdditionalProperty",
+          "query": "*",
+          "body_param_name_id": None,
+          "id": 2
+        },
+        {
+          "endpoint_id": _ADDITIONAL_PROPS_EID,
+          "inferred_type": "Array",
+          "is_required": False,
+          "is_deterministic": True,
+          "name": "AdditionalProperty",
+          "query": "*.*",
+          "body_param_name_id": 2,
+          "id": 3
+        },
+        {
+          "endpoint_id": _ADDITIONAL_PROPS_EID,
+          "inferred_type": "String",
+          "is_required": False,
+          "is_deterministic": True,
+          "name": "AdditionalPropertyElement",
+          "query": "*.*[*]",
+          "body_param_name_id": 3,
+          "id": 4
         }
       ],
       'path_segment_names': [

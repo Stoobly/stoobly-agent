@@ -50,6 +50,14 @@ def make_deterministic_get_request_response():
 def reset(dir_name = 'stoobly-agent-test'):
   os.environ[ENV] = TEST
 
+  # Drop any open request-log handlers before wiping the temp dir; otherwise
+  # they keep writing to a deleted inode and get_entry cannot find rows.
+  # Also clear cached paths so the next enable recomputes against the new DataDir.
+  from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
+  InterceptedRequestsLogger.shutdown()
+  InterceptedRequestsLogger._file_path = None
+  InterceptedRequestsLogger._active_file_path = None
+
   # Create a temporary folder using tmpfile
   temp_dir = os.path.join('/tmp', dir_name)
   if os.path.exists(temp_dir):

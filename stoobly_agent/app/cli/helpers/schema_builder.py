@@ -32,6 +32,8 @@ class SchemaBuilder:
         'id': literal_param['id'],
         f"{self.param_column_name}_id": literal_param['parent_id']
       }
+      if 'allows_additional_properties' in literal_param:
+        param['allows_additional_properties'] = literal_param['allows_additional_properties']
       params_list.append(param)
     return params_list
 
