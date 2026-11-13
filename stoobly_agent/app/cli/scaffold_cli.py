@@ -115,7 +115,6 @@ def hostname(ctx):
   type=click.Path(exists=True, file_okay=False, dir_okay=True),
   help='Path to a Stoobly context directory. May be specified multiple times.',
 )
-@click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
 @click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
 @click.option('--env', multiple=True, callback=validate_env_pair, help='Environment variable NAME=VALUE. May be specified multiple times.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
@@ -131,13 +130,6 @@ def create(**kwargs):
     error_message = f"Error: {PROXY_MODE_REVERSE.capitalize()} proxy mode is only supported for {RUNTIME_DOCKER} runtime."
     click.echo(error_message, err=True)
     sys.exit(1)
-
-  # Validate copy-on-workflow-up can only be used with docker runtime
-  # This flag is meant to support parallel workflow runs. However ports will conflict for local runtime.
-  #if kwargs.get('runtime') != RUNTIME_DOCKER and kwargs.get('copy_on_workflow_up'):
-  #  error_message = f"Error: --copy-on-workflow-up is only supported for {RUNTIME_DOCKER} runtime."
-  #  click.echo(error_message, err=True)
-  #  sys.exit(1)
 
   app = App(kwargs['app_dir_path'])
 
@@ -474,7 +466,7 @@ def down(**kwargs):
   # Determine which workflow command to use based on app configuration
   app_config = AppConfig(app.scaffold_namespace_path)
 
-  if app_config.copy_on_workflow_up and not kwargs.get('dry_run'):
+  if app.is_denormalized(workflow_namespace) and not kwargs.get('dry_run'):
     app.denormalize_configure(workflow_namespace)
 
   # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
@@ -652,6 +644,7 @@ def logs(**kwargs):
 @click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+@click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
 @click.option('--detached', is_flag=True, help='If set, will run the highest priority service in the background.')
 @click.option('--dry-run', default=False, is_flag=True, help='If set, runs validation and logs only.')
 @click.option('--hostname-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), hidden=not is_docker_runtime, help='Confirm answer to hostname installation prompt.')
@@ -694,7 +687,7 @@ def up(**kwargs):
 
   app_config = AppConfig(app.scaffold_namespace_path)
 
-  if app_config.copy_on_workflow_up:
+  if kwargs.get('copy_on_workflow_up'):
     app.denormalize_up(workflow_namespace, migrate=True)
 
   if app_config.runtime_local:

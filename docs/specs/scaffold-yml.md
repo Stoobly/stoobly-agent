@@ -75,7 +75,6 @@ commands:
       context_dir_path:
         - ~/monorepo/apps/app-1
         - ~/monorepo/apps/app-2
-      copy_on_workflow_up: true
       ui_port: 4201
       plugin: [playwright]
 
@@ -130,6 +129,7 @@ commands:
       workflow_name: mock
       app_dir_path: ~/monorepo
       context_dir_path: ~/monorepo/apps/app-1
+      copy_on_workflow_up: true
       log_level: warning
       dry_run: true
 ```

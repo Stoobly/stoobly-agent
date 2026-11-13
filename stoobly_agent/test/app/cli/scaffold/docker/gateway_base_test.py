@@ -35,7 +35,6 @@ class TestGatewayBaseWithRunOptions():
   def app_config(self, tmp_path):
     config = AppConfig.__new__(AppConfig)
     config._AppConfig__proxy_hostname = None
-    config._AppConfig__copy_on_workflow_up = False
     config._AppConfig__docker_socket_path = '/var/run/docker.sock'
     config._AppConfig__name = None
     config._AppConfig__plugins = None

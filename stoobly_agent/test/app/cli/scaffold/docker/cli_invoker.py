@@ -62,7 +62,6 @@ class ScaffoldCliInvoker():
 
     command = ['app', 'create',
       '--app-dir-path', app_dir_path,
-      '--copy-on-workflow-up',
       '--quiet',
       '--runtime', 'docker',
       '--proxy-mode', proxy_mode,
@@ -168,6 +167,7 @@ class ScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--ca-certs-install-confirm', 'n',
       '--context-dir-path', app_dir_path,
+      '--copy-on-workflow-up',
       '--hostname-install-confirm', 'n',
     ]
     if namespace is not None:
@@ -212,6 +212,7 @@ class ScaffoldCliInvoker():
   def makefile_workflow_up(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
     command = ['make', '-f', os.path.join(app_dir_path, '.stoobly', 'services', 'Makefile'),
       target_workflow_name,
+      'workflow_up_extra_options=--copy-on-workflow-up',
     ]
 
     # Run the command using subprocess and capture output for debugging.
