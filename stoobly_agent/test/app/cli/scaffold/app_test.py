@@ -576,6 +576,23 @@ class TestApp:
             # runtime_app_dir_path should include relative path to workflow namespace
             assert app.runtime_app_dir_path != original_runtime_path
 
+        def test_denormalize_configure_uses_workflow_namespace_data_dir_not_parent(self, tmp_app_dir):
+            """runtime_app_data_dir must be under the workflow namespace, not the source app.
+
+            AppDataDir walks parents for services/.config.yml; when the denormalized
+            copy is missing that walk would incorrectly resolve to the source app.
+            """
+            from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
+
+            app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+            workflow_namespace = WorkflowNamespace(app, 'mock')
+
+            app.denormalize_configure(workflow_namespace)
+
+            expected = os.path.join(workflow_namespace.path, DATA_DIR_NAME)
+            assert app.runtime_app_data_dir.path == expected
+            assert app.runtime_app_data_dir.path != app.app_data_dir.path
+
     class TestDataDir:
         """Test data_dir related properties"""
 

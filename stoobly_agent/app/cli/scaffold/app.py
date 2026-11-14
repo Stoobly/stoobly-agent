@@ -22,7 +22,8 @@ class App():
     containerized = kwargs.get('containerized', False)
     # `containerized` pins the path to STOOBLY_HOME_DIR; otherwise AppDataDir may walk up for a scaffold.
     skip_find_app_dir = kwargs.get('skip_find_app_dir', False) or containerized
-    data_dir_class = DataDir if skip_find_app_dir else AppDataDir
+
+    self.__data_dir_class = DataDir if skip_find_app_dir else AppDataDir
 
     # Store host (kwarg) values before remapping operational paths.
     self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
@@ -36,11 +37,11 @@ class App():
     elif path is None:
       operational_root = self.__host_app_dir_path
       if operational_root is None:
-        operational_root = data_dir_class.instance().parent_path
+        operational_root = self.__data_dir_class.instance().parent_path
     else:
       operational_root = os.path.abspath(path)
 
-    data_dir: DataDir = data_dir_class.instance(operational_root)
+    data_dir: DataDir = self.__data_dir_class.instance(operational_root)
 
     self.__containerized = containerized
     self.__data_dir = data_dir
@@ -58,7 +59,7 @@ class App():
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = data_dir_class.instance(self.__host_app_dir_path or operational_root)
+      self.__app_data_dir = self.__data_dir_class.instance(self.__host_app_dir_path or operational_root)
       self.__app_dir_path = self.__app_data_dir.context_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path
@@ -240,7 +241,8 @@ class App():
 
     self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
     self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
-    self.__runtime_app_data_dir = AppDataDir.instance(self.__runtime_app_dir_path)
+    # Because we are potentially creating a new app, we need to use DataDir (exact path), not AppDataDir
+    self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
 
   def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', dry_run: bool = False, script: str = None):
     """
