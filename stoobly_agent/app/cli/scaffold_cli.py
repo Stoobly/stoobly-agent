@@ -105,6 +105,66 @@ def workflow(ctx):
 def hostname(ctx):
     pass
 
+@scaffold.command(
+  'debug',
+  hidden=True,
+  help="Debug App host (Docker) vs container path resolution for denormalize_configure.",
+)
+@click.option(
+  '--app-dir-path',
+  default=os.getcwd(),
+  help='Docker host app directory (volume mount source). Kept distinct from container paths.',
+)
+@click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace for denormalize_configure.')
+@click.option(
+  '--containerized',
+  is_flag=True,
+  help='Resolve operational paths under STOOBLY_HOME_DIR; host_* stay as --app-dir-path.',
+)
+def debug(**kwargs):
+  # app_dir_path kwarg is the Docker host path; with --containerized, app_dir_path is the container mount.
+  host_app_dir = kwargs['app_dir_path']
+  app = App(host_app_dir, app_dir_path=host_app_dir, containerized=kwargs['containerized'])
+
+  click.echo(f"containerized:             {app.containerized}")
+  click.echo(f"app_dir_path (container):  {app.app_dir_path}")
+  click.echo(f"host_app_dir_path (host):  {app.host_app_dir_path}")
+  click.echo(f"runtime_app_dir_path:      {app.runtime_app_dir_path}")
+  click.echo(f"host_runtime_app_dir_path: {app.host_runtime_app_dir_path}")
+
+  if app.containerized and app.app_dir_path == app.host_app_dir_path:
+    click.echo("FAIL: container app_dir_path must not equal host_app_dir_path", err=True)
+    sys.exit(1)
+
+  workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
+  relative_path = os.path.relpath(workflow_namespace.path, app.app_dir_path)
+  click.echo(f"workflow_namespace.path:   {workflow_namespace.path}")
+  click.echo(f"relative_path:             {relative_path}")
+
+  app.denormalize_configure(workflow_namespace)
+
+  expected_host_runtime = os.path.join(app.host_app_dir_path, relative_path)
+  click.echo("after denormalize_configure:")
+  click.echo(f"  runtime_app_dir_path:      {app.runtime_app_dir_path}")
+  click.echo(f"  host_runtime_app_dir_path: {app.host_runtime_app_dir_path}")
+
+  # Container runtime follows the in-container tree; host runtime is the same relative path on the host.
+  if app.runtime_app_dir_path != workflow_namespace.path:
+    click.echo("FAIL: runtime_app_dir_path != workflow_namespace.path", err=True)
+    sys.exit(1)
+  if app.host_runtime_app_dir_path != expected_host_runtime:
+    click.echo(
+      f"FAIL: host_runtime_app_dir_path != join(host_app_dir_path, relative_path) "
+      f"({app.host_runtime_app_dir_path} != {expected_host_runtime})",
+      err=True,
+    )
+    sys.exit(1)
+  if app.containerized and app.host_runtime_app_dir_path == app.runtime_app_dir_path:
+    click.echo("FAIL: host_runtime must stay on the Docker host path, not the container path", err=True)
+    sys.exit(1)
+
+  click.echo("OK: host and container runtimes share relative_path but remain distinct bases")
+
 @app.command(
   help="Scaffold application"
 )
@@ -464,111 +524,115 @@ def down(**kwargs):
   mkdir = not kwargs.get('dry_run')
   script = __build_script(app, mkdir=mkdir, workflow_namespace=workflow_namespace, **kwargs)
 
-  # Determine which workflow command to use based on app configuration
-  app_config = AppConfig(app.scaffold_namespace_path)
-
-  if app.is_denormalized(workflow_namespace) and not kwargs.get('dry_run'):
-    app.denormalize_configure(workflow_namespace)
-
-  # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
-  # Local: PID file ctime (approximates when the marker was written for the detached run).
-  # Docker: Unix epoch seconds from the workflow .timestamp file (see DockerWorkflowRunCommand.__create_timestamp_file);
-  #   if read/parse fails, falls back to that file's ctime. Left unset when the marker file is absent.
-  workflow_up_timestamp = None
-
-  if app_config.runtime_local:
-    # Use LocalWorkflowRunCommand for local execution
-    workflow_command = LocalWorkflowRunCommand(
-      app,
-      services=services,
-      script=script,
-      workflow_namespace=workflow_namespace,
-      **kwargs
-    )
-
-    pid_file_path = workflow_command.pid_file_path
-    if os.path.exists(pid_file_path):
-      workflow_up_timestamp = datetime.fromtimestamp(
-        os.path.getctime(pid_file_path),
-        tz=timezone.utc
-      ).isoformat()
-  else:
-    # Use DockerWorkflowRunCommand for Docker execution
-    workflow_command = DockerWorkflowRunCommand(
-      app,
-      services=services,
-      script=script,
-      workflow_namespace=workflow_namespace,
-      **kwargs
-    )
-
-    timestamp_file_path = workflow_command.timestamp_file_path
-    if os.path.exists(timestamp_file_path):
-      try:
-        with open(timestamp_file_path, 'r') as f:
-          unix_ts = float(f.read().strip())
-      except (OSError, ValueError) as e:
-        Logger.instance(LOG_ID).warning(
-          f"Could not read workflow timestamp from {timestamp_file_path}: {e}; using file ctime"
-        )
-        unix_ts = os.path.getctime(timestamp_file_path)
-      workflow_up_timestamp = datetime.fromtimestamp(unix_ts, tz=timezone.utc).isoformat()
-
-  # Snapshot / hostname steps must not skip workflow teardown: down() runs in finally.
   try:
-    # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
-    if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE and not kwargs['dry_run']:
-      if workflow_up_timestamp:
+    # Determine which workflow command to use based on app configuration
+    app_config = AppConfig(app.scaffold_namespace_path)
+
+    if app.is_denormalized(workflow_namespace) and not kwargs.get('dry_run'):
+      app.denormalize_configure(workflow_namespace)
+
+    # UTC ISO-8601 instant used as updated_since when snapshotting scenarios on down (non-test workflows).
+    # Local: PID file ctime (approximates when the marker was written for the detached run).
+    # Docker: Unix epoch seconds from the workflow .timestamp file (see DockerWorkflowRunCommand.__create_timestamp_file);
+    #   if read/parse fails, falls back to that file's ctime. Left unset when the marker file is absent.
+    workflow_up_timestamp = None
+
+    if app_config.runtime_local:
+      # Use LocalWorkflowRunCommand for local execution
+      workflow_command = LocalWorkflowRunCommand(
+        app,
+        services=services,
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
+
+      pid_file_path = workflow_command.pid_file_path
+      if os.path.exists(pid_file_path):
+        workflow_up_timestamp = datetime.fromtimestamp(
+          os.path.getctime(pid_file_path),
+          tz=timezone.utc
+        ).isoformat()
+    else:
+      # Use DockerWorkflowRunCommand for Docker execution
+      workflow_command = DockerWorkflowRunCommand(
+        app,
+        services=services,
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
+
+      timestamp_file_path = workflow_command.timestamp_file_path
+      if os.path.exists(timestamp_file_path):
         try:
-          snapshot_results = snapshot_scenarios_since(
-            workflow_up_timestamp,
-            data_dir_path=app.context_dir_path,
-          )
-
-          for snapshot_result in snapshot_results:
-            scenario = snapshot_result[0]
-            scenario_key = scenario.get('key')
-            scenario_name = scenario.get('name')
-
-            Logger.instance(LOG_ID).info(
-              f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
-            )
-        except Exception as e:
+          with open(timestamp_file_path, 'r') as f:
+            unix_ts = float(f.read().strip())
+        except (OSError, ValueError) as e:
           Logger.instance(LOG_ID).warning(
-            f"Snapshotting scenarios before workflow down failed: {e}"
+            f"Could not read workflow timestamp from {timestamp_file_path}: {e}; using file ctime"
           )
+          unix_ts = os.path.getctime(timestamp_file_path)
+        workflow_up_timestamp = datetime.fromtimestamp(unix_ts, tz=timezone.utc).isoformat()
 
-    if not containerized and not kwargs['dry_run']:
-      if app_config.runtime_docker:
-        # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
-        # Entrypoint container will be within the container network
-        if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+    # Snapshot / hostname steps must not skip workflow teardown: down() runs in finally.
+    try:
+      # Persist snapshots for scenarios updated at or after workflow_up_timestamp (snapshot_scenarios_since).
+      if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE and not kwargs['dry_run']:
+        if workflow_up_timestamp:
           try:
-            # Prompt confirm to install hostnames
-            __hostname_uninstall_with_prompt(
-                app_dir_path=kwargs['app_dir_path'],
-                hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
-                service=kwargs['service'],
-                validate=True,
-                workflow=[kwargs['workflow_name']],
+            snapshot_results = snapshot_scenarios_since(
+              workflow_up_timestamp,
+              data_dir_path=app.context_dir_path,
+            )
+
+            for snapshot_result in snapshot_results:
+              scenario = snapshot_result[0]
+              scenario_key = scenario.get('key')
+              scenario_name = scenario.get('name')
+
+              Logger.instance(LOG_ID).info(
+                f"{bcolors.OKBLUE}Created{bcolors.ENDC} snapshot for scenario {scenario_key} {scenario_name}"
               )
           except Exception as e:
             Logger.instance(LOG_ID).warning(
-              f"Hostname uninstall before workflow down failed: {e}"
+              f"Snapshotting scenarios before workflow down failed: {e}"
             )
 
-  finally:
-    # Execute the workflow down
-    command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
-    workflow_command.down(
-      **command_args,
-      **kwargs
-    )
+      if not containerized and not kwargs['dry_run']:
+        if app_config.runtime_docker:
+          # Because test workflow is completely containerized, we don't need to prompt to install hostnames in /etc/hosts
+          # Entrypoint container will be within the container network
+          if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+            try:
+              # Prompt confirm to install hostnames
+              __hostname_uninstall_with_prompt(
+                  app_dir_path=kwargs['app_dir_path'],
+                  hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
+                  service=kwargs['service'],
+                  validate=True,
+                  workflow=[kwargs['workflow_name']],
+                )
+            except Exception as e:
+              Logger.instance(LOG_ID).warning(
+                f"Hostname uninstall before workflow down failed: {e}"
+              )
 
-  # Options are no longer valid (after successful down; still run if pre-down work failed)
-  data_dir: DataDir = DataDir.instance()
-  if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
-    os.remove(data_dir.mitmproxy_options_json_path)
+    finally:
+      # Execute the workflow down
+      command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
+      workflow_command.down(
+        **command_args,
+        **kwargs
+      )
+
+    # Options are no longer valid (after successful down; still run if pre-down work failed)
+    data_dir: DataDir = DataDir.instance()
+    if containerized and os.path.exists(data_dir.mitmproxy_options_json_path):
+      os.remove(data_dir.mitmproxy_options_json_path)
+  finally:
+    if script:
+      script.close()
 
 @workflow.command(
   help="Show or follow logs from workflow service(s)",
@@ -608,33 +672,37 @@ def logs(**kwargs):
 
   script = __build_script(app, mkdir=False, workflow_namespace=workflow_namespace, **kwargs)
 
-  # Determine which workflow command to use based on app configuration
-  app_config = AppConfig(app.scaffold_namespace_path)
-  if app_config.runtime_local:
-    # Use LocalWorkflowRunCommand for local execution
-    workflow_command = LocalWorkflowRunCommand(
-      app,
-      services=services,
-      script=script,
-      workflow_namespace=workflow_namespace,
-      **kwargs
-    )
-  else:
-    # Use DockerWorkflowRunCommand for Docker execution
-    workflow_command = DockerWorkflowRunCommand(
-      app,
-      services=services,
-      script=script,
-      workflow_namespace=workflow_namespace,
-      **kwargs
-    )
+  try:
+    # Determine which workflow command to use based on app configuration
+    app_config = AppConfig(app.scaffold_namespace_path)
+    if app_config.runtime_local:
+      # Use LocalWorkflowRunCommand for local execution
+      workflow_command = LocalWorkflowRunCommand(
+        app,
+        services=services,
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
+    else:
+      # Use DockerWorkflowRunCommand for Docker execution
+      workflow_command = DockerWorkflowRunCommand(
+        app,
+        services=services,
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
 
-  # Execute the workflow logs
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
-  workflow_command.logs(
-    **command_args,
-    **kwargs
-  )
+    # Execute the workflow logs
+    command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
+    workflow_command.logs(
+      **command_args,
+      **kwargs
+    )
+  finally:
+    if script:
+      script.close()
 
 @workflow.command(
   help="Start a scaffold workflow and bring up service(s)",
@@ -686,77 +754,81 @@ def up(**kwargs):
   workflow_namespace = WorkflowNamespace(app, kwargs['namespace'])
   script = __build_script(app, workflow_namespace=workflow_namespace, **kwargs)
 
-  app_config = AppConfig(app.scaffold_namespace_path)
+  try:
+    app_config = AppConfig(app.scaffold_namespace_path)
 
-  if kwargs.get('copy_on_workflow_up'):
-    app.denormalize_up(workflow_namespace, migrate=True)
+    if kwargs.get('copy_on_workflow_up'):
+      app.denormalize_up(workflow_namespace, migrate=True)
 
-  if app_config.runtime_local:
-    # Use LocalWorkflowRunCommand for local execution
-    workflow_command = LocalWorkflowRunCommand(
-      app, 
-      services=services, 
-      script=script,
-      workflow_namespace=workflow_namespace,
+    if app_config.runtime_local:
+      # Use LocalWorkflowRunCommand for local execution
+      workflow_command = LocalWorkflowRunCommand(
+        app, 
+        services=services, 
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
+    else:
+      # Use DockerWorkflowRunCommand for Docker execution
+      workflow_command = DockerWorkflowRunCommand(
+        app, 
+        services=services, 
+        script=script,
+        workflow_namespace=workflow_namespace,
+        **kwargs
+      )
+
+    if not containerized and not dry_run:
+      # First time running the up command if ca certs folder does not exist or is empty
+      first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
+
+      if first_time:
+        # To improve FTUE, prompt install CA certificate for record workflow
+        if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
+          # Install CA certs for record workflow
+          __prompt_ca_cert_install(
+            app,
+            workflow_name=kwargs['workflow_name'],
+            ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
+          )
+
+      if app_config.runtime_docker:
+        # To improve UX, prompt install hostnames for record and mock workflows
+        # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
+        # Entrypoint container will be within the container network
+        if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
+          __hostname_install_with_prompt(
+            app_dir_path=kwargs['app_dir_path'],
+            hostname_install_confirm=kwargs.get('hostname_install_confirm'),
+            service=kwargs['service'],
+            validate=True,
+            workflow=[kwargs['workflow_name']],
+          )
+
+      options = {}
+
+      if os.getcwd() != app.dir_path:
+        options['app_dir_path'] = app.dir_path
+
+      if kwargs['namespace'] != kwargs['workflow_name']:
+        options['namespace'] = kwargs['namespace']
+
+      options_str = ' '.join([f"--{key} {value}" for key, value in options.items()])
+      if options_str:
+        options_str = f" {options_str}"
+
+      Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow logs{options_str} {kwargs['workflow_name']}`")
+    
+    # Execute the workflow
+    command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
+    workflow_command.up(
+      **command_args,
       **kwargs
     )
-  else:
-    # Use DockerWorkflowRunCommand for Docker execution
-    workflow_command = DockerWorkflowRunCommand(
-      app, 
-      services=services, 
-      script=script,
-      workflow_namespace=workflow_namespace,
-      **kwargs
-    )
-
-  if not containerized and not dry_run:
-    # First time running the up command if ca certs folder does not exist or is empty
-    first_time = not os.path.exists(app.ca_certs_dir_path) or not os.listdir(app.ca_certs_dir_path)
-
-    if first_time:
-      # To improve FTUE, prompt install CA certificate for record workflow
-      if workflow_command.workflow_template == WORKFLOW_RECORD_TYPE:
-        # Install CA certs for record workflow
-        __prompt_ca_cert_install(
-          app,
-          workflow_name=kwargs['workflow_name'],
-          ca_certs_install_confirm=kwargs.get('ca_certs_install_confirm')
-        )
-
-    if app_config.runtime_docker:
-      # To improve UX, prompt install hostnames for record and mock workflows
-      # Because test workflow is complete containerized, we don't need to prompt to install hostnames in /etc/hosts
-      # Entrypoint container will be within the container network
-      if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
-        __hostname_install_with_prompt(
-          app_dir_path=kwargs['app_dir_path'],
-          hostname_install_confirm=kwargs.get('hostname_install_confirm'),
-          service=kwargs['service'],
-          validate=True,
-          workflow=[kwargs['workflow_name']],
-        )
-
-    options = {}
-
-    if os.getcwd() != app.dir_path:
-      options['app_dir_path'] = app.dir_path
-
-    if kwargs['namespace'] != kwargs['workflow_name']:
-      options['namespace'] = kwargs['namespace']
-
-    options_str = ' '.join([f"--{key} {value}" for key, value in options.items()])
-    if options_str:
-      options_str = f" {options_str}"
-
-    Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow logs{options_str} {kwargs['workflow_name']}`")
-  
-  # Execute the workflow
-  command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }
-  workflow_command.up(
-    **command_args,
-    **kwargs
-  )
+  finally:
+    if script:
+      script.close()
 
 @workflow.command(
   help="Generate SSL certs for workflow service(s)"
@@ -993,7 +1065,7 @@ def __get_services(app: App, **kwargs):
 
     if missing_services:
       # Warn if an invalid service is provided
-      Logger.instance(LOG_ID).warn(f"Service(s) {','.join(missing_services)} are not found")
+      Logger.instance(LOG_ID).warning(f"Service(s) {','.join(missing_services)} are not found")
 
     # Remove services that don't exist
       selected_services = list(set(selected_services) - set(missing_services))

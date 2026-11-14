@@ -24,7 +24,8 @@ def _make_scaffold_app_dir(app_dir: str) -> str:
 class TestApp:
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture
@@ -592,6 +593,35 @@ class TestApp:
             expected = os.path.join(workflow_namespace.path, DATA_DIR_NAME)
             assert app.runtime_app_data_dir.path == expected
             assert app.runtime_app_data_dir.path != app.app_data_dir.path
+
+        def test_denormalize_configure_keeps_host_runtime_on_docker_host(
+            self, tmp_app_dir, tmp_path, monkeypatch
+        ):
+            """host_runtime stays on the Docker host path; runtime uses the container path."""
+            from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
+
+            host_app_dir = os.path.join(tmp_path, 'host-app')
+            os.makedirs(host_app_dir, exist_ok=True)
+
+            container_root = tmp_path / 'container'
+            (container_root / DATA_DIR_NAME / SERVICES_NAMESPACE).mkdir(parents=True)
+            monkeypatch.setattr(app_module, 'STOOBLY_HOME_DIR', str(container_root))
+
+            app = App(
+                str(container_root),
+                containerized=True,
+                app_dir_path=host_app_dir,
+            )
+            workflow_namespace = WorkflowNamespace(app, 'mock')
+            relative_path = os.path.relpath(workflow_namespace.path, app.app_dir_path)
+
+            app.denormalize_configure(workflow_namespace)
+
+            assert app.app_dir_path == str(container_root)
+            assert app.host_app_dir_path == os.path.abspath(host_app_dir)
+            assert app.runtime_app_dir_path == workflow_namespace.path
+            assert app.host_runtime_app_dir_path == os.path.join(app.host_app_dir_path, relative_path)
+            assert app.host_runtime_app_dir_path != app.runtime_app_dir_path
 
     class TestDataDir:
         """Test data_dir related properties"""

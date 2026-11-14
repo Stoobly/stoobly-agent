@@ -25,7 +25,11 @@ class App():
 
     self.__data_dir_class = DataDir if skip_find_app_dir else AppDataDir
 
-    # Store host (kwarg) values before remapping operational paths.
+    # host_* = Docker host paths (volume mount sources / compose env).
+    # app_dir_path / runtime_* = operational paths inside the process (on the host when
+    # local; under STOOBLY_HOME_DIR when containerized). They share the same relative
+    # tree but must not be assumed equal — denormalize_configure joins one relative_path
+    # onto each base separately.
     self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
     self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or os.environ.get(env_vars.CA_CERTS_DIR)
     self.__host_certs_dir_path = kwargs.get('certs_dir_path') or os.environ.get(env_vars.CERTS_DIR)
