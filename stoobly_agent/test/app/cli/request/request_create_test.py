@@ -39,7 +39,8 @@ class TestCreate:
 class TestCreateMethod:
 
   @pytest.fixture(autouse=True, scope='class')
-  def create_result(self, runner: CliRunner):
+  @classmethod
+  def create_result(cls, runner: CliRunner):
     result = runner.invoke(
       request,
       ['create', 'https://example.com/api/pets', '--method', 'POST'],
@@ -55,7 +56,8 @@ class TestCreateMethod:
 class TestCreateBodyAndHeaders:
 
   @pytest.fixture(autouse=True, scope='class')
-  def create_result(self, runner: CliRunner):
+  @classmethod
+  def create_result(cls, runner: CliRunner):
     result = runner.invoke(
       request,
       [
@@ -85,7 +87,8 @@ class TestCreateBodyAndHeaders:
 class TestCreateResponse:
 
   @pytest.fixture(autouse=True, scope='class')
-  def create_result(self, runner: CliRunner):
+  @classmethod
+  def create_result(cls, runner: CliRunner):
     result = runner.invoke(
       request,
       [
@@ -122,13 +125,15 @@ class TestCreateResponse:
 class TestCreateScenarioKey:
 
   @pytest.fixture(autouse=True, scope='class')
-  def created_scenario(self, runner: CliRunner):
+  @classmethod
+  def created_scenario(cls, runner: CliRunner):
     result = runner.invoke(scenario, ['create', 'request-create-scenario'])
     assert result.exit_code == 0
     return Scenario.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def create_result(self, runner: CliRunner, created_scenario: Scenario):
+  @classmethod
+  def create_result(cls, runner: CliRunner, created_scenario: Scenario):
     result = runner.invoke(
       request,
       [

@@ -24,19 +24,22 @@ def runner():
 
 class TestUpdate():
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestEventColumns():
 
     @pytest.fixture(scope='class')
-    def recorded_request(self, runner: CliRunner):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner):
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(autouse=True, scope='class')
-    def put_event(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def put_event(cls, runner: CliRunner, recorded_request: Request):
       snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
@@ -45,7 +48,8 @@ class TestUpdate():
       return events[len(events) - 1]
 
     @pytest.fixture(autouse=True, scope='class')
-    def updated_event(self, runner: CliRunner, put_event: LogEvent):
+    @classmethod
+    def updated_event(cls, runner: CliRunner, put_event: LogEvent):
       time.sleep(1) # Simulate update at different time
       
       # Get the snapshot file path from the event
@@ -80,13 +84,15 @@ class TestUpdate():
   class TestVerifyOption():
 
     @pytest.fixture(scope='class')
-    def recorded_request(self, runner: CliRunner):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner):
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(autouse=True, scope='class')
-    def put_event(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def put_event(cls, runner: CliRunner, recorded_request: Request):
       snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
@@ -95,7 +101,8 @@ class TestUpdate():
       return events[len(events) - 1]
 
     @pytest.fixture(autouse=True, scope='class')
-    def snapshot_contents(self, put_event: LogEvent):
+    @classmethod
+    def snapshot_contents(cls, put_event: LogEvent):
       snapshot = put_event.snapshot()
       data_path = snapshot.path
       with open(data_path, 'ab') as fp:
@@ -105,7 +112,8 @@ class TestUpdate():
         return fp.read()
 
     @pytest.fixture(autouse=True, scope='class')
-    def updated_event(self, runner: CliRunner, put_event: LogEvent):
+    @classmethod
+    def updated_event(cls, runner: CliRunner, put_event: LogEvent):
       time.sleep(1) # Simulate update at different time
 
       # Get the snapshot file path from the event
@@ -142,13 +150,15 @@ class TestUpdate():
   class TestWithLifecycleHooks():
 
     @pytest.fixture(scope='class')
-    def recorded_request(self, runner: CliRunner):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner):
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(autouse=True, scope='class')
-    def put_event(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def put_event(cls, runner: CliRunner, recorded_request: Request):
       snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert snapshot_result.exit_code == 0
 
@@ -157,7 +167,8 @@ class TestUpdate():
       return events[len(events) - 1]
 
     @pytest.fixture(autouse=True, scope='class')
-    def migrated_event(self, runner: CliRunner, put_event: LogEvent):
+    @classmethod
+    def migrated_event(cls, runner: CliRunner, put_event: LogEvent):
       time.sleep(1) # Simulate update at different time
 
       current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -180,7 +191,8 @@ class TestUpdate():
       return events[1]
 
     @pytest.fixture(scope='class')
-    def migrated_request(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def migrated_request(cls, runner: CliRunner, recorded_request: Request):
       apply_result = runner.invoke(snapshot, ['apply'], catch_exceptions=False)
       assert apply_result.exit_code == 0
 
@@ -215,25 +227,29 @@ class TestUpdate():
   class TestWithLifecycleHooksAndScenario():
 
     @pytest.fixture(scope='class')
-    def created_scenario(self, runner: CliRunner):
+    @classmethod
+    def created_scenario(cls, runner: CliRunner):
         create_result = runner.invoke(scenario, ['create', 'test'])
         assert create_result.exit_code == 0
         return Scenario.last()
 
     @pytest.fixture(scope='class')
-    def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+    @classmethod
+    def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
       record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(scope='class')
-    def recorded_request_two(self, runner: CliRunner):
+    @classmethod
+    def recorded_request_two(cls, runner: CliRunner):
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(autouse=True, scope='class')
-    def put_event(self, runner: CliRunner, recorded_request_one: Request):
+    @classmethod
+    def put_event(cls, runner: CliRunner, recorded_request_one: Request):
       snapshot_result = runner.invoke(scenario, ['snapshot', 'create', recorded_request_one.scenario.key()])
       assert snapshot_result.exit_code == 0
 
@@ -242,7 +258,8 @@ class TestUpdate():
       return events[len(events) - 1]
 
     @pytest.fixture(autouse=True, scope='class')
-    def put_event_two(self, runner: CliRunner, recorded_request_two: Request):
+    @classmethod
+    def put_event_two(cls, runner: CliRunner, recorded_request_two: Request):
       snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_two.key()])
       assert snapshot_result.exit_code == 0
 
@@ -251,8 +268,9 @@ class TestUpdate():
       return events[len(events) - 1]
 
     @pytest.fixture(autouse=True, scope='class')
+    @classmethod
     def migrated_event(
-      self, runner: CliRunner, put_event: LogEvent, put_event_two: LogEvent, created_scenario: Scenario
+      cls, runner: CliRunner, put_event: LogEvent, put_event_two: LogEvent, created_scenario: Scenario
     ):
       time.sleep(1) # Simulate update at different time
 
@@ -277,7 +295,8 @@ class TestUpdate():
       return events[2]
 
     @pytest.fixture(scope='class')
-    def migrated_request(self, runner: CliRunner, recorded_request_one: Request):
+    @classmethod
+    def migrated_request(cls, runner: CliRunner, recorded_request_one: Request):
       apply_result = runner.invoke(snapshot, ['apply'], catch_exceptions=False)
       assert apply_result.exit_code == 0
 

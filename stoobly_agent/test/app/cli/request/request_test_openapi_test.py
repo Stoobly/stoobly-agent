@@ -51,11 +51,13 @@ def reset_endpoint_cache():
 @pytest.mark.openapi
 class TestRequestTestWithOpenapiSpecification:
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0, record_result.stdout
     return Request.last()

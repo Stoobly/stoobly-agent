@@ -20,31 +20,36 @@ def runner():
 
 class TestScenario():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenReplacing():
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
           return Request.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def recorded_request_two(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def recorded_request_two(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
           return Request.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def snapshot_result(cls, runner: CliRunner, created_scenario: Scenario):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
         return snapshot_result

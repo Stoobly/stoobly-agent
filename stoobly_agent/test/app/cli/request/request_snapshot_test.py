@@ -18,13 +18,15 @@ def runner():
 
 class TestRequestSnapshot():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenReplacing():
 
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
@@ -85,13 +87,15 @@ class TestRequestSnapshot():
     class TestWhenAppending():
 
       @pytest.fixture(scope='class')
-      def recorded_request_one(self, runner: CliRunner):
+      @classmethod
+      def recorded_request_one(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(scope='class')
-      def recorded_request_two(self, runner: CliRunner):
+      @classmethod
+      def recorded_request_two(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
@@ -130,7 +134,8 @@ class TestRequestSnapshot():
     class TestWhenDeleteFirst():
 
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()

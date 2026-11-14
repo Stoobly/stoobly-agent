@@ -169,52 +169,63 @@ def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries
 class TestDockerRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class', autouse=True)
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         data_dir_path = DataDir.instance().path
         tmp_path = data_dir_path[:data_dir_path.rfind('/')]
         yield tmp_path
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self, temp_dir):
+    @classmethod
+    def app_dir_path(cls, temp_dir):
         yield temp_dir
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "http.badssl.com"
 
     class TestForwardProxyMockRequestLog():
 
         @pytest.fixture(scope='class')
-        def app_name(self):
+        @classmethod
+        def app_name(cls):
             yield "docker-request-log-forward"
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             yield "external-service"
 
         @pytest.fixture(scope='class', autouse=True)
-        def target_workflow_name(self):
+        @classmethod
+        def target_workflow_name(cls):
             yield WORKFLOW_MOCK_TYPE
 
         @pytest.fixture(scope='class')
-        def proxy_url(self):
+        @classmethod
+        def proxy_url(cls):
             yield "http://localhost:8080"
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+        @classmethod
+        def create_scaffold_setup(cls, runner, app_dir_path, app_name, hostname, service_name):
             ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
+        @classmethod
+        def setup_workflow_up(cls, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             success = wait_for_forward_proxy_intercept(proxy_url, hostname)
             if not success:
@@ -222,7 +233,8 @@ class TestDockerRequestLogE2e():
             assert success, "Forward proxy did not enter mock-intercept mode"
 
         @pytest.fixture(scope='class', autouse=True)
-        def cleanup_after_all(self, setup_workflow_up, runner, app_dir_path, target_workflow_name):
+        @classmethod
+        def cleanup_after_all(cls, setup_workflow_up, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
@@ -272,59 +284,71 @@ class TestDockerRequestLogE2e():
 class TestDockerRecordRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset('stoobly-agent-test-record')
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class', autouse=True)
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         data_dir_path = DataDir.instance().path
         tmp_path = data_dir_path[:data_dir_path.rfind('/')]
         yield tmp_path
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self, temp_dir):
+    @classmethod
+    def app_dir_path(cls, temp_dir):
         yield temp_dir
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "http.badssl.com"
 
     @pytest.mark.xfail(reason="wait_for_record_active is flaky in CI (host-to-container inotify unreliable on GitHub Actions runners)", strict=False)
     class TestForwardProxyRecordRequestLog():
 
         @pytest.fixture(scope='class')
-        def app_name(self):
+        @classmethod
+        def app_name(cls):
             yield "docker-request-log-forward-record"
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             yield "external-service-record"
 
         @pytest.fixture(scope='class', autouse=True)
-        def target_workflow_name(self):
+        @classmethod
+        def target_workflow_name(cls):
             yield WORKFLOW_RECORD_TYPE
 
         @pytest.fixture(scope='class')
-        def proxy_url(self):
+        @classmethod
+        def proxy_url(cls):
             yield "http://localhost:8080"
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+        @classmethod
+        def create_scaffold_setup(cls, runner, app_dir_path, app_name, hostname, service_name):
             ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
+        @classmethod
+        def setup_workflow_up(cls, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
             assert wait_for_record_active(proxy_url, hostname, runner, target_workflow_name, app_dir_path), "Forward proxy did not enter record mode"
 
         @pytest.fixture(scope='class', autouse=True)
-        def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+        @classmethod
+        def cleanup_after_all(cls, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 
@@ -376,53 +400,64 @@ class TestDockerRecordRequestLogE2e():
 class TestDockerDevelopRequestLogE2e():
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset('stoobly-agent-test-develop')
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class', autouse=True)
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         data_dir_path = DataDir.instance().path
         tmp_path = data_dir_path[:data_dir_path.rfind('/')]
         yield tmp_path
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self, temp_dir):
+    @classmethod
+    def app_dir_path(cls, temp_dir):
         yield temp_dir
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "http.badssl.com"
 
     @pytest.mark.xfail(reason="http.badssl.com unreachable in CI", strict=False)
     class TestForwardProxyDevelopRequestLog():
 
         @pytest.fixture(scope='class')
-        def app_name(self):
+        @classmethod
+        def app_name(cls):
             yield "docker-request-log-forward-develop"
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             yield "external-service-develop"
 
         @pytest.fixture(scope='class', autouse=True)
-        def target_workflow_name(self):
+        @classmethod
+        def target_workflow_name(cls):
             yield WORKFLOW_DEVELOP_TYPE
 
         @pytest.fixture(scope='class')
-        def proxy_url(self):
+        @classmethod
+        def proxy_url(cls):
             yield "http://localhost:8080"
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_scaffold_setup(self, runner, app_dir_path, app_name, hostname, service_name):
+        @classmethod
+        def create_scaffold_setup(cls, runner, app_dir_path, app_name, hostname, service_name):
             ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name, proxy_mode=PROXY_MODE_FORWARD)
             ScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_workflow_up(self, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
+        @classmethod
+        def setup_workflow_up(cls, create_scaffold_setup, runner, app_dir_path, target_workflow_name, proxy_url, hostname):
             ScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
             assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
             success = wait_for_develop_active_forward(proxy_url, hostname, runner, target_workflow_name, app_dir_path)
@@ -431,7 +466,8 @@ class TestDockerDevelopRequestLogE2e():
             assert success, "Forward proxy did not enter develop mode"
 
         @pytest.fixture(scope='class', autouse=True)
-        def cleanup_after_all(self, runner, app_dir_path, target_workflow_name):
+        @classmethod
+        def cleanup_after_all(cls, runner, app_dir_path, target_workflow_name):
             yield
             ScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
 

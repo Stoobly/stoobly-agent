@@ -127,7 +127,8 @@ class CertificateAuthority():
 
         store = CertStore.from_store(self.certs_dir, self.cn, self.key_size)
         organization, alt_names = self.__cert_details(hostname, port)
-        cert_entry = store.get_cert(alt_names[0], alt_names, organization)
+        sans = self.__to_general_names(alt_names)
+        cert_entry = store.get_cert(alt_names[0], sans, organization)
 
         crt_path = os.path.join(dest, f"{hostname}.crt")
         with open(crt_path, 'wb') as fp:
@@ -246,6 +247,22 @@ class CertificateAuthority():
     def __ensure_exists(self, file_path):
         if not os.path.exists(file_path):
             self.generate_certs()
+
+    def __to_general_names(self, alt_names):
+        """Convert string hostnames/IPs to cryptography GeneralName SANs for mitmproxy CertStore."""
+        import ipaddress
+
+        from cryptography import x509
+
+        sans = []
+        for name in alt_names:
+            try:
+                ip = ipaddress.ip_address(name)
+            except ValueError:
+                sans.append(x509.DNSName(name.encode('idna').decode()))
+            else:
+                sans.append(x509.IPAddress(ip))
+        return sans
 
     def __cert_details(self, domain: str, port: int = 443):
         """

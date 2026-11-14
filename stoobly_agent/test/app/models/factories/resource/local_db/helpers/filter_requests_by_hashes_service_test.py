@@ -32,7 +32,8 @@ class TestComponentHashes():
 
 class TestFilterRequestsByHashes():
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='function')

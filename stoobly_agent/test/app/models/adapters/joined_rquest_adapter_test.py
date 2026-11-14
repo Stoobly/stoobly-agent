@@ -5,7 +5,8 @@ from stoobly_agent.app.models.adapters.joined_request_adapter import RequestStri
 class TestJoindRequestStringAdapter():
 
   @pytest.fixture(scope='class', autouse=True)
-  def corrupted_raw_string(self):
+  @classmethod
+  def corrupted_raw_string(cls):
     toks = [
       b"control",
       b"header1",
@@ -17,7 +18,8 @@ class TestJoindRequestStringAdapter():
     return b"\n".join(toks)
 
   @pytest.fixture(scope='class', autouse=True)
-  def repaired_toks(self, corrupted_raw_string: bytes):
+  @classmethod
+  def repaired_toks(cls, corrupted_raw_string: bytes):
     # [b'control', b'header1', b'header2', b'', b'body1\nbody2']
     return JoinedRequestAdapter.repaired_string_toks(corrupted_raw_string, RequestStringCLRF)
 

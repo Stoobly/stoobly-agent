@@ -45,23 +45,27 @@ def runner():
 
 class TestApply():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenDeletingRequest():
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def events(self, runner: CliRunner, recorded_request: Request, log: Log):
+      @classmethod
+      def events(cls, runner: CliRunner, recorded_request: Request, log: Log):
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
@@ -77,7 +81,8 @@ class TestApply():
         return log.events
 
       @pytest.fixture(scope='class')
-      def delete_event(self, events: List[LogEvent]):
+      @classmethod
+      def delete_event(cls, events: List[LogEvent]):
         return events[1]
 
       def test_it_deletes(self, runner: CliRunner, recorded_request: Request, delete_event: LogEvent):
@@ -125,17 +130,20 @@ class TestApply():
     class TestWhenDeletingScenario():
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def events(self, runner: CliRunner, created_scenario: Scenario, log: Log):
+      @classmethod
+      def events(cls, runner: CliRunner, created_scenario: Scenario, log: Log):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create',  created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -151,7 +159,8 @@ class TestApply():
         return log.events
 
       @pytest.fixture(scope='class')
-      def delete_event(self, events):
+      @classmethod
+      def delete_event(cls, events):
         return events[1]
 
       def test_it_deletes(self, runner: CliRunner, created_scenario: Scenario, delete_event: LogEvent):
@@ -165,13 +174,15 @@ class TestApply():
     class TestWhenCreatingScenario():
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -181,7 +192,8 @@ class TestApply():
           return created_scenario.requests
 
       @pytest.fixture(scope='class', autouse=True)
-      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def put_event(cls, runner: CliRunner, created_scenario: Scenario):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -190,7 +202,8 @@ class TestApply():
         return events[len(events) - 1]
 
       @pytest.fixture(scope='class', autouse=True)
-      def recreated_scenario(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def recreated_scenario(cls, runner: CliRunner, created_scenario: Scenario):
         requests = created_scenario.requests
 
         created_scenario.delete()
@@ -223,13 +236,15 @@ class TestApply():
     class TestWhenMergingScenario():
       class TestWhenScenarioNameAlreadyExists():
         @pytest.fixture(scope='class')
-        def source_scenario(self, runner: CliRunner):
+        @classmethod
+        def source_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def put_event(self, runner: CliRunner, source_scenario: Scenario):
+        @classmethod
+        def put_event(cls, runner: CliRunner, source_scenario: Scenario):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', source_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -238,7 +253,8 @@ class TestApply():
           return events[len(events) - 1]
 
         @pytest.fixture(scope='class')
-        def duplicate_named_scenario(self, runner: CliRunner, source_scenario: Scenario):
+        @classmethod
+        def duplicate_named_scenario(cls, runner: CliRunner, source_scenario: Scenario):
           source_scenario.delete()
           assert Scenario.find(source_scenario.id) == None
 
@@ -247,7 +263,8 @@ class TestApply():
           return Scenario.last()
 
         @pytest.fixture(scope='class')
-        def apply_result(self, runner: CliRunner):
+        @classmethod
+        def apply_result(cls, runner: CliRunner):
           return runner.invoke(snapshot, ['apply'])
 
         def test_it_updates_existing_scenario_with_snapshot_uuid(
@@ -275,13 +292,15 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -291,7 +310,8 @@ class TestApply():
           return created_scenario.requests
 
         @pytest.fixture(scope='class', autouse=True)
-        def put_event(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def put_event(cls, runner: CliRunner, created_scenario: Scenario):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -302,7 +322,8 @@ class TestApply():
         # This request was created after the snapshot
         # Later when we apply changes, we expect this request to not exist
         @pytest.fixture(scope='class', autouse=True)
-        def new_scenario_request(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
+        @classmethod
+        def new_scenario_request(cls, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
           assert created_scenario.uuid == put_event.resource_uuid
           assert created_scenario.requests.count() == 2
 
@@ -312,7 +333,8 @@ class TestApply():
           return created_scenario.requests.last()
 
         @pytest.fixture(scope='class')
-        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def apply_result(cls, runner: CliRunner, created_scenario: Scenario):
           created_scenario = Scenario.find(created_scenario.id)
           assert created_scenario.requests_count == 3
           apply_result = runner.invoke(snapshot, ['apply'])
@@ -347,13 +369,15 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -363,7 +387,8 @@ class TestApply():
           return created_scenario.requests
 
         @pytest.fixture(scope='class', autouse=True)
-        def delete_event(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def delete_event(cls, runner: CliRunner, created_scenario: Scenario):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -381,7 +406,8 @@ class TestApply():
           return events[len(events) - 1]
 
         @pytest.fixture(scope='class')
-        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def apply_result(cls, runner: CliRunner, created_scenario: Scenario):
           created_scenario = Scenario.find(created_scenario.id)
           apply_result = runner.invoke(snapshot, ['apply'])
 
@@ -414,25 +440,29 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def recorded_request_one(self, runner: CliRunner):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner):
           record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
           return Request.last()
 
         @pytest.fixture(scope='class')
-        def recorded_request_two(self, runner: CliRunner):
+        @classmethod
+        def recorded_request_two(cls, runner: CliRunner):
           record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
           return Request.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def snapshot_one_result(self, runner: CliRunner, recorded_request_one: Request):
+        @classmethod
+        def snapshot_one_result(cls, runner: CliRunner, recorded_request_one: Request):
           snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_one.key()])
           assert snapshot_result.exit_code == 0
           return snapshot_result
 
         @pytest.fixture(scope='class', autouse=True)
-        def snapshot_two_result(self, runner: CliRunner, recorded_request_two: Request):
+        @classmethod
+        def snapshot_two_result(cls, runner: CliRunner, recorded_request_two: Request):
           snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request_two.key()])
           assert snapshot_result.exit_code == 0
           return snapshot_result
@@ -459,13 +489,15 @@ class TestApply():
     class TestWhenMalformedScenarioMetadata():
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def put_event(cls, runner: CliRunner, created_scenario: Scenario):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -479,7 +511,8 @@ class TestApply():
         return event
 
       @pytest.fixture(scope='class', autouse=True)
-      def removed_scenario(self, created_scenario: Scenario):
+      @classmethod
+      def removed_scenario(cls, created_scenario: Scenario):
         created_scenario.delete()
         assert Scenario.find(created_scenario.id) == None
 
@@ -493,13 +526,15 @@ class TestApply():
     class TestWhenMissingScenarioMetadata():
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def put_event(cls, runner: CliRunner, created_scenario: Scenario):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -512,7 +547,8 @@ class TestApply():
         return event
 
       @pytest.fixture(scope='class', autouse=True)
-      def removed_scenario(self, created_scenario: Scenario):
+      @classmethod
+      def removed_scenario(cls, created_scenario: Scenario):
         created_scenario.delete()
         assert Scenario.find(created_scenario.id) == None
 
@@ -526,13 +562,15 @@ class TestApply():
     class TestWhenMalformedRequest():
 
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def put_event(self, runner: CliRunner, recorded_request: Request):
+      @classmethod
+      def put_event(cls, runner: CliRunner, recorded_request: Request):
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
@@ -546,7 +584,8 @@ class TestApply():
         return event
 
       @pytest.fixture(scope='class', autouse=True)
-      def removed_request(self, recorded_request: Request):
+      @classmethod
+      def removed_request(cls, recorded_request: Request):
         recorded_request.delete()
         assert Request.find(recorded_request.id) == None
 
@@ -565,20 +604,23 @@ class TestApply():
     class TestWhenMalformedScenarioRequest():
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
           return created_scenario.requests
 
       @pytest.fixture(scope='class', autouse=True)
-      def put_event(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def put_event(cls, runner: CliRunner, created_scenario: Scenario):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -590,7 +632,8 @@ class TestApply():
         return event
 
       @pytest.fixture(scope='class', autouse=True)
-      def removed_scenario(self, created_scenario: Scenario):
+      @classmethod
+      def removed_scenario(cls, created_scenario: Scenario):
         created_scenario.delete()
         assert Scenario.find(created_scenario.id) == None
 
@@ -625,13 +668,15 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -641,7 +686,8 @@ class TestApply():
           return created_scenario.requests
 
         @pytest.fixture(scope='class', autouse=True)
-        def delete_event(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+        @classmethod
+        def delete_event(cls, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -656,7 +702,8 @@ class TestApply():
           return events[len(events) - 1]
 
         @pytest.fixture(scope='class')
-        def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def apply_result(cls, runner: CliRunner, created_scenario: Scenario):
           created_scenario = Scenario.find(created_scenario.id)
           assert created_scenario.requests_count == 2
           apply_result = runner.invoke(snapshot, ['apply'])
@@ -690,26 +737,30 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario_one(self, runner: CliRunner):
+        @classmethod
+        def created_scenario_one(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test1'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class')
-        def created_scenario_two(self, runner: CliRunner):
+        @classmethod
+        def created_scenario_two(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test2'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_request(self, runner: CliRunner, created_scenario_one: Scenario):
+        @classmethod
+        def created_scenario_request(cls, runner: CliRunner, created_scenario_one: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario_one.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
           return created_scenario_one.requests[0]
 
         @pytest.fixture(scope='class', autouse=True)
-        def put_event_one(self, runner: CliRunner, created_scenario_one: Scenario, created_scenario_request: Request):
+        @classmethod
+        def put_event_one(cls, runner: CliRunner, created_scenario_one: Scenario, created_scenario_request: Request):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario_one.key()])
           assert snapshot_result.exit_code == 0
 
@@ -718,7 +769,8 @@ class TestApply():
           return events[len(events) - 1]
 
         @pytest.fixture(scope='class', autouse=True)
-        def put_event_two(self, runner: CliRunner, created_scenario_two: Scenario, created_scenario_request: Request):
+        @classmethod
+        def put_event_two(cls, runner: CliRunner, created_scenario_two: Scenario, created_scenario_request: Request):
           created_scenario_request.update(scenario_id=created_scenario_two.id)
 
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario_two.key()])
@@ -729,7 +781,8 @@ class TestApply():
           return events[len(events) - 1]
 
         @pytest.fixture(scope='class')
-        def apply_result(self, runner: CliRunner):
+        @classmethod
+        def apply_result(cls, runner: CliRunner):
           apply_result = runner.invoke(snapshot, ['apply'])
 
           return apply_result
@@ -769,13 +822,15 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -785,7 +840,8 @@ class TestApply():
           return created_scenario.requests
 
         @pytest.fixture(scope='class', autouse=True)
-        def snapshots(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+        @classmethod
+        def snapshots(cls, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -824,13 +880,15 @@ class TestApply():
         '''
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
           create_result = runner.invoke(scenario, ['create', 'test'])
           assert create_result.exit_code == 0
           return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
           assert record_result.exit_code == 0
 
@@ -840,7 +898,8 @@ class TestApply():
           return created_scenario.requests
 
         @pytest.fixture(scope='class', autouse=True)
-        def apply_result(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+        @classmethod
+        def apply_result(cls, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
           snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
           assert snapshot_result.exit_code == 0
 
@@ -882,11 +941,13 @@ class TestApply():
       '''
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='class', autouse=True)
-      def pending_events(self, runner: CliRunner):
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
         unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL])
         assert len(unprocessed_events) == 2
         return unprocessed_events
@@ -907,7 +968,8 @@ class TestApply():
       '''
 
       @pytest.fixture(scope='class', autouse=True)
-      def pending_event(self, runner: CliRunner):
+      @classmethod
+      def pending_event(cls, runner: CliRunner):
         unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
         assert len(unprocessed_events) == 1
 
@@ -931,7 +993,8 @@ class TestApply():
       '''
 
       @pytest.fixture(scope='class', autouse=True)
-      def pending_events(self, runner: CliRunner):
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
         unprocessed_events = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL])
         assert len(unprocessed_events) == 2
         return unprocessed_events

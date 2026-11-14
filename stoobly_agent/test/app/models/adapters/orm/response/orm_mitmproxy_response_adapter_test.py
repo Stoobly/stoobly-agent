@@ -19,25 +19,29 @@ def runner():
 
 class TestOrmPythonResponseAdapter():
   @pytest.fixture(scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def response_body(self):
+  @classmethod
+  def response_body(cls):
     return {
       'first_name': 'John',
       'last_name': 'Smith',
     }
 
   @pytest.fixture(scope='class')
-  def response_headers(self):
+  @classmethod
+  def response_headers(cls):
     return {
       'Content-Type': 'application/json'
     }
 
   @pytest.fixture(scope='class')
+  @classmethod
   def created_response(
-    self, settings: Settings, 
+    cls, settings: Settings, 
     response_headers: dict, response_body: dict
   ):
     status = RequestBuilder(

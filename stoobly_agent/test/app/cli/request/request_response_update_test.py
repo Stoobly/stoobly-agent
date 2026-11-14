@@ -24,7 +24,8 @@ def settings():
 class TestResponseUpdate:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
@@ -42,13 +43,15 @@ class TestResponseUpdate:
 class TestResponseUpdateBody:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def update_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def update_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--body', '{"x":1}'],
@@ -65,13 +68,15 @@ class TestResponseUpdateBody:
 class TestResponseUpdateEmptyBody:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def update_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def update_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--body', ''],
@@ -88,17 +93,20 @@ class TestResponseUpdateEmptyBody:
 class TestResponseUpdateHeaders:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def original_headers(self, recorded_request: Request):
+  @classmethod
+  def original_headers(cls, recorded_request: Request):
     return dict(RawHttpResponseAdapter(recorded_request.response.raw).headers)
 
   @pytest.fixture(autouse=True, scope='class')
-  def set_header_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def set_header_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--header', 'X-Test:1'],
@@ -121,7 +129,8 @@ class TestResponseUpdateHeaders:
   class TestWhenDeletingHeader:
 
     @pytest.fixture(autouse=True, scope='class')
-    def delete_header_result(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def delete_header_result(cls, runner: CliRunner, recorded_request: Request):
       result = runner.invoke(
         request,
         ['response', 'update', recorded_request.key(), '--header', 'X-Test:'],
@@ -137,7 +146,8 @@ class TestResponseUpdateHeaders:
   class TestWhenValueContainsColons:
 
     @pytest.fixture(autouse=True, scope='class')
-    def set_header_result(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def set_header_result(cls, runner: CliRunner, recorded_request: Request):
       result = runner.invoke(
         request,
         ['response', 'update', recorded_request.key(), '--header', 'X-Custom: a:b:c'],
@@ -153,7 +163,8 @@ class TestResponseUpdateHeaders:
   class TestWhenReplacingHeaderWithDifferentCase:
 
     @pytest.fixture(autouse=True, scope='class')
-    def seed_mixed_case_header(self, runner: CliRunner, recorded_request: Request):
+    @classmethod
+    def seed_mixed_case_header(cls, runner: CliRunner, recorded_request: Request):
       result = runner.invoke(
         request,
         ['response', 'update', recorded_request.key(), '--header', 'X-Case-Test:original'],
@@ -161,7 +172,8 @@ class TestResponseUpdateHeaders:
       assert result.exit_code == 0
 
     @pytest.fixture(autouse=True, scope='class')
-    def replace_header_with_lowercase_name(self, runner: CliRunner, recorded_request: Request, seed_mixed_case_header):
+    @classmethod
+    def replace_header_with_lowercase_name(cls, runner: CliRunner, recorded_request: Request, seed_mixed_case_header):
       result = runner.invoke(
         request,
         ['response', 'update', recorded_request.key(), '--header', 'x-case-test:updated'],
@@ -198,13 +210,15 @@ class TestResponseUpdateHeaders:
 class TestResponseUpdateStatus:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def update_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def update_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--status', '201'],
@@ -220,13 +234,15 @@ class TestResponseUpdateStatus:
 class TestResponseUpdateLatency:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def update_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def update_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--latency', '500'],
@@ -243,13 +259,15 @@ class TestResponseUpdateLatency:
 class TestResponseUpdateZeroLatency:
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(autouse=True, scope='class')
-  def update_result(self, runner: CliRunner, recorded_request: Request):
+  @classmethod
+  def update_result(cls, runner: CliRunner, recorded_request: Request):
     result = runner.invoke(
       request,
       ['response', 'update', recorded_request.key(), '--latency', '0'],

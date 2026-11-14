@@ -80,13 +80,15 @@ class TestScenarioImportHarCreate:
 class TestScenarioImportGorAppendAndOverwrite:
 
   @pytest.fixture(scope='class')
-  def seed_request(self, runner: CliRunner):
+  @classmethod
+  def seed_request(cls, runner: CliRunner):
     result = runner.invoke(request, ['create', 'https://example.com/seed'])
     assert result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def gor_path(self, tmp_path_factory, seed_request):
+  @classmethod
+  def gor_path(cls, tmp_path_factory, seed_request):
     path = tmp_path_factory.mktemp('gor') / 'import.gor'
     path.write_bytes(JoinedRequestStringAdapter(seed_request).adapt())
     return path

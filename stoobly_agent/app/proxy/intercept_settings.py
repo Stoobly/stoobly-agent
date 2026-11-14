@@ -546,7 +546,7 @@ class InterceptSettings:
               })
               rules.append(header_rule)
         except (json.JSONDecodeError, ValueError) as e:
-          Logger.instance().warn(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
+          Logger.instance().warning(f"Invalid X-Stoobly-Request-Match-Rules header: {e}")
     return rules
 
   def __select_rewrite_rules(self, mode = None):
@@ -625,7 +625,7 @@ class InterceptSettings:
                 })
                 rules.append(header_rewrite_rule)
       except (json.JSONDecodeError, ValueError, KeyError) as e:
-        Logger.instance().warn(f"Invalid X-Stoobly-Request-Rewrite-Rules header: {e}")
+        Logger.instance().warning(f"Invalid X-Stoobly-Request-Rewrite-Rules header: {e}")
 
     return rules
 

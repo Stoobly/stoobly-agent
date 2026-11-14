@@ -90,33 +90,39 @@ class TestMultiServiceLoggingCompleteness:
     """All services produce log entries when traffic reaches each of them."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-svc-completeness-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -172,33 +178,39 @@ class TestMultiServiceUrlFilter:
     """--url filter isolates logs for one service out of many."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-svc-url-filter-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -249,26 +261,31 @@ class TestMultiServiceLevelFilter:
     """--level filter partitions ERROR vs INFO entries across mixed traffic from multiple services."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-svc-level-filter-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def record_then_mock_workflow(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def record_then_mock_workflow(cls, create_scaffold_setup, runner, app_dir_path, settings):
         """Record NON_DETERMINISTIC_GET_REQUEST_URL, then switch to mock workflow."""
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
 
@@ -379,40 +396,48 @@ class TestScenarioChangeDelimiter:
     """Switching the active scenario_key mid-run produces a delimiter entry in the log."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "scenario-delimiter-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("scenario-alpha")
 
     @pytest.fixture(scope='class')
-    def scenario_b_key(self, settings):
+    @classmethod
+    def scenario_b_key(cls, settings):
         return create_scenario_and_get_key("scenario-beta")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, NON_DETERMINISTIC_GET_REQUEST_HOST, 'www', True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -453,33 +478,39 @@ class TestConcurrentHighTrafficLogging:
     """Async queue-based logger does not drop entries under 30 concurrent requests."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-svc-concurrent-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -517,41 +548,49 @@ class TestConcurrentScenarioChangeRace:
     cannot emit duplicate delimiters for the same scenario transition."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "concurrent-scenario-race-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("race-scenario-alpha")
 
     @pytest.fixture(scope='class')
-    def scenario_b_key(self, settings):
+    @classmethod
+    def scenario_b_key(cls, settings):
         return create_scenario_and_get_key("race-scenario-beta")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -595,41 +634,49 @@ class TestMultiScenarioFilter:
     """--scenario-name filter returns only entries from a specific scenario, across multiple services."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-svc-scenario-filter-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("filter-scenario-alpha")
 
     @pytest.fixture(scope='class')
-    def scenario_b_key(self, settings):
+    @classmethod
+    def scenario_b_key(cls, settings):
         return create_scenario_and_get_key("filter-scenario-beta")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -680,41 +727,49 @@ class TestScenarioChangeMidBurst:
     a correctly placed delimiter with entries on both sides of it."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "mid-burst-scenario-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("burst-scenario-alpha")
 
     @pytest.fixture(scope='class')
-    def scenario_b_key(self, settings):
+    @classmethod
+    def scenario_b_key(cls, settings):
         return create_scenario_and_get_key("burst-scenario-beta")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -785,41 +840,49 @@ class TestMultiFilterComposition:
     Each test combines two filters and asserts that only entries matching both are returned."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "multi-filter-composition-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("compose-scenario-alpha")
 
     @pytest.fixture(scope='class')
-    def scenario_b_key(self, settings):
+    @classmethod
+    def scenario_b_key(cls, settings):
         return create_scenario_and_get_key("compose-scenario-beta")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
@@ -902,26 +965,31 @@ class TestWorkflowRestartLogPersistence:
     that each service produces entries in the new session."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "workflow-restart-persistence-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         for hostname in SERVICES:
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, hostname.split('.')[0], True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_lifecycle(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_lifecycle(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
@@ -988,36 +1056,43 @@ class TestPostTruncateNoSpuriousDelimiter:
     delimiter — the log starts clean with only request entries."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir = DataDir.instance()
         yield os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "post-truncate-delimiter-app"
 
     @pytest.fixture(scope='class')
-    def scenario_a_key(self, settings):
+    @classmethod
+    def scenario_a_key(cls, settings):
         return create_scenario_and_get_key("truncate-scenario-alpha")
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_setup(self, settings, runner, app_dir_path, app_name):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner, app_dir_path, app_name):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, NON_DETERMINISTIC_GET_REQUEST_HOST, 'www', True)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner, app_dir_path, settings):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner, app_dir_path, settings):
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)
         settings.load()
         wait_for_forward_proxy_intercept(PROXY_URL, NON_DETERMINISTIC_GET_REQUEST_HOST)
 
     @pytest.fixture(scope='class', autouse=True)
-    def workflow_down(self, workflow_up, runner, app_dir_path):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner, app_dir_path):
         yield
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, WORKFLOW_MOCK_TYPE)
         time.sleep(1)

@@ -26,31 +26,38 @@ class TestRewrite():
   class TestParameter():
 
     @pytest.fixture(scope='class')
-    def header_name(self):
+    @classmethod
+    def header_name(cls):
       return 'access-token'
 
     @pytest.fixture(scope='class')
-    def header_value(self):
+    @classmethod
+    def header_value(cls):
       return ''
 
     @pytest.fixture(scope='class')
-    def method(self):
+    @classmethod
+    def method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def _mode(self):
+    @classmethod
+    def _mode(cls):
       return mode.RECORD
 
     @pytest.fixture(scope='class')
-    def pattern(self):
+    @classmethod
+    def pattern(cls):
       return '.*?'
 
     @pytest.fixture(scope='class')
-    def _type(self):
+    @classmethod
+    def _type(cls):
       return request_component.HEADER
 
     @pytest.fixture(autouse=True, scope='class')
-    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, header_name, header_value, pattern, _type):
+    @classmethod
+    def rewrite_result(cls, settings: Settings, runner: CliRunner, method, _mode, header_name, header_value, pattern, _type):
       rewrite_result = runner.invoke(setting, [
           'rewrite', 'set', 
           '--method', method, '--mode', _mode, '--name', header_name, '--value', header_value, '--pattern', pattern, '--type', _type
@@ -103,35 +110,43 @@ class TestRewrite():
   class TestUrl():
 
     @pytest.fixture(scope='class')
-    def scheme(self):
+    @classmethod
+    def scheme(cls):
       return 'https'
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
       return 'localhostname'
 
     @pytest.fixture(scope='class')
-    def port(self):
+    @classmethod
+    def port(cls):
       return 80
 
     @pytest.fixture(scope='class')
-    def method(self):
+    @classmethod
+    def method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def _mode(self):
+    @classmethod
+    def _mode(cls):
       return mode.RECORD
 
     @pytest.fixture(scope='class')
-    def path(self):
+    @classmethod
+    def path(cls):
       return '/index.html'
 
     @pytest.fixture(scope='class')
-    def pattern(self):
+    @classmethod
+    def pattern(cls):
       return '.*?'
 
     @pytest.fixture(autouse=True, scope='class')
-    def rewrite_result(self, settings: Settings, runner: CliRunner, method, _mode, path, pattern, scheme, hostname, port):
+    @classmethod
+    def rewrite_result(cls, settings: Settings, runner: CliRunner, method, _mode, path, pattern, scheme, hostname, port):
       rewrite_result = runner.invoke(setting, [
           'rewrite', 'set', 
           '--method', method, '--mode', _mode, '--pattern', pattern, '--hostname', hostname, '--path', path, '--port', port, '--scheme', scheme,

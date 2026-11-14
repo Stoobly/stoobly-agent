@@ -66,11 +66,11 @@ def eval_request(
     try:
         query_params_builder.with_resource_scoping(intercept_settings.project_key, scenario_key)
     except InvalidScenarioKey:
-        Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} scenario key ${scenario_key}")
+        Logger.instance(LOG_ID).warning(f"{bcolors.WARNING}Invalid{bcolors.ENDC} scenario key ${scenario_key}")
         # If project_key or scenario_key are invalid, assume custom not found
         return CustomNotFoundResponseBuilder().build(request_headers=request.headers)
     except InvalidProjectKey:
-        Logger.instance(LOG_ID).warn(f"{bcolors.WARNING}Invalid{bcolors.ENDC} project key ${intercept_settings.project_key}")
+        Logger.instance(LOG_ID).warning(f"{bcolors.WARNING}Invalid{bcolors.ENDC} project key ${intercept_settings.project_key}")
         # If project_key or scenario_key are invalid, assume custom not found
         return CustomNotFoundResponseBuilder().build(request_headers=request.headers)
 

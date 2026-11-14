@@ -23,24 +23,28 @@ def runner():
 
 class TestScenarioTestIntegration():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     class TestWhenDiffTest():
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
             assert create_result.exit_code == 0
             return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def diff_matches(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def diff_matches(cls, runner: CliRunner, created_scenario: Scenario):
             with patch('stoobly_agent.app.proxy.test.test_service.diff_matches') as spy:
                 spy.return_value = (True, '')
                 test_result = runner.invoke(scenario, ['test', created_scenario.key()])
@@ -53,19 +57,22 @@ class TestScenarioTestIntegration():
 
     class TestWhenFuzzyTest():
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
             assert create_result.exit_code == 0
             return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def fuzzy_matches(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def fuzzy_matches(cls, runner: CliRunner, created_scenario: Scenario):
             with patch('stoobly_agent.app.proxy.test.test_service.fuzzy_matches') as spy:
                 spy.return_value = (True, '')
                 test_result = runner.invoke(scenario, ['test', '--strategy', test_strategy.FUZZY, created_scenario.key()])
@@ -78,19 +85,22 @@ class TestScenarioTestIntegration():
 
     class TestWhenCustomTest():
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
             assert create_result.exit_code == 0
             return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def custom_matches(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def custom_matches(cls, runner: CliRunner, created_scenario: Scenario):
             with patch('stoobly_agent.app.proxy.test.test_service.custom_matches') as spy:
                 spy.return_value = (True, '')
                 test_result = runner.invoke(scenario, ['test', '--strategy', test_strategy.CUSTOM, created_scenario.key()])
@@ -103,19 +113,22 @@ class TestScenarioTestIntegration():
 
     class TestWhenContractTest():
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
             assert create_result.exit_code == 0
             return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def contract_matches(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def contract_matches(cls, runner: CliRunner, created_scenario: Scenario):
             with patch('stoobly_agent.app.proxy.test.test_service.contract_matches') as spy:
                 spy.return_value = (True, '')
                 test_result = runner.invoke(scenario, ['test', '--strategy', test_strategy.CONTRACT, created_scenario.key()])

@@ -17,13 +17,15 @@ def runner():
 
 class TestReplay():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     class TestWhenDiffStrategy():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
@@ -35,7 +37,8 @@ class TestReplay():
     class TestWhenContractStrategy():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
@@ -47,7 +50,8 @@ class TestReplay():
     class TestWhenFuzzyStrategy():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
@@ -59,19 +63,22 @@ class TestReplay():
     class TestWhenJson():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
         
         @pytest.fixture(scope='class')
-        def tests_output(self, runner: CliRunner, recorded_request: Request):
+        @classmethod
+        def tests_output(cls, runner: CliRunner, recorded_request: Request):
             replay_result = runner.invoke(request, ['test', '--format', 'json', recorded_request.key()])
             assert replay_result.exit_code == 0
             return json.loads(replay_result.stdout)
 
         @pytest.fixture(scope='class')
-        def test_output(self, tests_output):
+        @classmethod
+        def test_output(cls, tests_output):
             return tests_output['tests'][0]
 
         def test_it_matches(self, tests_output):
@@ -89,13 +96,15 @@ class TestReplay():
     class TestWhenFailedOutputLevel():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
         
         @pytest.fixture(scope='class')
-        def test_output(self, runner: CliRunner, recorded_request: Request):
+        @classmethod
+        def test_output(cls, runner: CliRunner, recorded_request: Request):
             replay_result = runner.invoke(request, ['test', '--output-level', test_output_level.FAILED, recorded_request.key()])
             assert replay_result.exit_code == 0
             return replay_result.stdout
@@ -107,19 +116,22 @@ class TestReplay():
 
         class TestWhenJson():
             @pytest.fixture(scope='class')
-            def recorded_request(self, runner: CliRunner):
+            @classmethod
+            def recorded_request(cls, runner: CliRunner):
                 record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
                 assert record_result.exit_code == 0
                 return Request.last()
             
             @pytest.fixture(scope='class')
-            def tests_output(self, runner, recorded_request: Request):
+            @classmethod
+            def tests_output(cls, runner, recorded_request: Request):
                 replay_result = runner.invoke(request, ['test', '--output-level', test_output_level.FAILED, '--format', 'json', recorded_request.key()])
                 assert replay_result.exit_code == 0
                 return json.loads(replay_result.stdout)
 
             @pytest.fixture(scope='class')
-            def test_output(self, tests_output):
+            @classmethod
+            def test_output(cls, tests_output):
                 return tests_output['tests'][0]
 
             def test_it_has_no_expected_response(self, test_output):

@@ -9,13 +9,15 @@ from stoobly_agent.test.test_helper import reset
 
 class TestLog():
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestRemovingProcessedEvents():
 
     @pytest.fixture(scope='class')
-    def events(self):
+    @classmethod
+    def events(cls):
       return [
         LogEvent(LogEvent.serialize(REQUEST_RESOURCE, '1', PUT_ACTION)),
         LogEvent(LogEvent.serialize(REQUEST_RESOURCE, '2', PUT_ACTION)),
@@ -24,18 +26,21 @@ class TestLog():
       ]
 
     @pytest.fixture(scope='class')
-    def version_uuids(self, events: List[LogEvent]):
+    @classmethod
+    def version_uuids(cls, events: List[LogEvent]):
       log = Log()
       uuids = log.uuids(events)
       return log.generate_version(uuids)
 
     @pytest.fixture(scope='class')
-    def branch_event(self):
+    @classmethod
+    def branch_event(cls):
       return LogEvent(LogEvent.serialize(REQUEST_RESOURCE, 'a', PUT_ACTION))
 
     class TestBranchPointAtStart():
       @pytest.fixture(scope='class')
-      def log_events(self, events: List[LogEvent], branch_event: LogEvent):
+      @classmethod
+      def log_events(cls, events: List[LogEvent], branch_event: LogEvent):
         return [branch_event] + events
 
       def test_it_returns_event_at_start(self, log_events: List[LogEvent], version_uuids: List[str], branch_event: LogEvent):
@@ -45,7 +50,8 @@ class TestLog():
 
     class TestBranchPointAtEnd():
       @pytest.fixture(scope='class')
-      def log_events(self, events: List[LogEvent], branch_event: LogEvent):
+      @classmethod
+      def log_events(cls, events: List[LogEvent], branch_event: LogEvent):
         return events + [branch_event] 
 
       def test_it_returns_event_at_start(self, log_events: List[LogEvent], version_uuids: List[str], branch_event: LogEvent):
@@ -55,7 +61,8 @@ class TestLog():
 
     class TestBranchPointInMiddle():
       @pytest.fixture(scope='class')
-      def log_events(self, events: List[LogEvent], branch_event: LogEvent):
+      @classmethod
+      def log_events(cls, events: List[LogEvent], branch_event: LogEvent):
         midpoint = int(len(events) / 2)
         return events[0:midpoint] + [branch_event] + events[midpoint:]
 
@@ -66,14 +73,16 @@ class TestLog():
 
     class TestMultipleBranchEvents():
       @pytest.fixture(scope='class')
-      def branch_events(self):
+      @classmethod
+      def branch_events(cls):
         return [
           LogEvent(LogEvent.serialize(REQUEST_RESOURCE, 'a', PUT_ACTION)),
           LogEvent(LogEvent.serialize(REQUEST_RESOURCE, 'b', PUT_ACTION))
         ]
 
       @pytest.fixture(scope='class')
-      def log_events(self, events: List[LogEvent], branch_events: LogEvent):
+      @classmethod
+      def log_events(cls, events: List[LogEvent], branch_events: LogEvent):
         midpoint = int(len(events) / 2)
         return events[0:midpoint] + branch_events + events[midpoint:]
 

@@ -23,36 +23,43 @@ from stoobly_agent.test.test_helper import reset
 class TestScaffoldServiceCreate:
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         return CliRunner()
 
     @pytest.fixture(scope='class')
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
         shutil.rmtree(temp_dir)
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         return 'test-app'
 
     @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
+    @classmethod
+    def app_dir_path(cls, temp_dir, app_name):
         return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_app(self, runner: CliRunner, app_dir_path: str, app_name: str):
+    @classmethod
+    def create_scaffold_app(cls, runner: CliRunner, app_dir_path: str, app_name: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         yield
 
     class TestCreateBasicService:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'basic-service'
 
         def test_create_basic_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
@@ -72,15 +79,18 @@ class TestScaffoldServiceCreate:
     class TestCreateWithHostname:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'hostname-service'
 
         @pytest.fixture(scope='class')
-        def hostname(self):
+        @classmethod
+        def hostname(cls):
             return 'example.com'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -99,15 +109,18 @@ class TestScaffoldServiceCreate:
     class TestCreateWithPort:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'port-service'
 
         @pytest.fixture(scope='class')
-        def port(self):
+        @classmethod
+        def port(cls):
             return 8080
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, port: int):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, port: int):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -126,15 +139,18 @@ class TestScaffoldServiceCreate:
     class TestCreateWithScheme:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'scheme-service'
 
         @pytest.fixture(scope='class')
-        def scheme(self):
+        @classmethod
+        def scheme(cls):
             return 'https'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, scheme: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, scheme: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -153,11 +169,13 @@ class TestScaffoldServiceCreate:
     class TestCreateWithOpenapiSpecification:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'openapi-spec-service'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -182,11 +200,13 @@ class TestScaffoldServiceCreate:
     class TestCreateWithSingleWorkflow:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'workflow-service'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -204,11 +224,13 @@ class TestScaffoldServiceCreate:
     class TestCreateWithMultipleWorkflows:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'multi-workflow-service'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,
@@ -230,11 +252,13 @@ class TestScaffoldServiceCreate:
     class TestCreateWithDefaultWorkflows:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'default-workflow-service'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
                 '--app-dir-path', app_dir_path,

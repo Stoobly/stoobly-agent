@@ -28,7 +28,8 @@ def runner():
 
 class TestRecording():
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestMocking():
@@ -400,14 +401,16 @@ class TestRecording():
   class TestOverwriteOrder():
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_scenario(self, runner: CliRunner):
+    @classmethod
+    def created_scenario(cls, runner: CliRunner):
       scenario_create_result = runner.invoke(scenario, ['create', 'test'])
       assert scenario_create_result.exit_code == 0
 
       return Scenario.last()
 
     @pytest.fixture(scope='class', autouse=True)
-    def recorded_requests(self, runner: CliRunner, created_scenario: Scenario):
+    @classmethod
+    def recorded_requests(cls, runner: CliRunner, created_scenario: Scenario):
       record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
@@ -415,7 +418,8 @@ class TestRecording():
       return Request.all()
 
     @pytest.fixture(scope='class', autouse=True)
-    def enable_overwrite_results(self, runner: CliRunner, created_scenario: Scenario, recorded_requests: List[Request]):
+    @classmethod
+    def enable_overwrite_results(cls, runner: CliRunner, created_scenario: Scenario, recorded_requests: List[Request]):
       _created_scenario = Scenario.find(created_scenario.id)
       assert _created_scenario.requests_count == len(recorded_requests)
 
@@ -427,7 +431,8 @@ class TestRecording():
       return config_results
 
     @pytest.fixture(scope='class')
-    def recorded_new_requests(self, runner: CliRunner, created_scenario: Scenario, recorded_requests: List[Request]):
+    @classmethod
+    def recorded_new_requests(cls, runner: CliRunner, created_scenario: Scenario, recorded_requests: List[Request]):
       _created_scenario = Scenario.find(created_scenario.id)
       assert _created_scenario.requests_count == len(recorded_requests)
       assert _created_scenario.overwritable

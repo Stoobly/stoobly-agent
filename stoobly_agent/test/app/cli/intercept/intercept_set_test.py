@@ -38,18 +38,21 @@ class TestInterceptSet():
 
     class TestScenario():
       @pytest.fixture(scope='class')
-      def scenario_name(self):
+      @classmethod
+      def scenario_name(cls):
         return 'Login 1.0.0'
 
       @pytest.fixture(scope='class', autouse=True)
-      def scenario(self, runner: CliRunner, scenario_name: str):
+      @classmethod
+      def scenario(cls, runner: CliRunner, scenario_name: str):
         scenario_create_result = runner.invoke(scenario, ['create', '--without-headers', '--select', 'key', scenario_name])
         assert scenario_create_result.exit_code == 0
 
         return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def set(self, runner: CliRunner, scenario: Scenario):
+      @classmethod
+      def set(cls, runner: CliRunner, scenario: Scenario):
         set_result = runner.invoke(setting, ['scenario', 'set', scenario.key()])
         assert set_result.exit_code == 0
 

@@ -44,22 +44,26 @@ def mock():
 
 class TestCliMockIntegration():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     class TestWhenRemoteProjectKey():
         @pytest.fixture(scope='class')
-        def project_key(self):
+        @classmethod
+        def project_key(cls):
             return ProjectKey(ProjectKey.encode(1, 1))
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner):
             record_result = runner.invoke(cli.record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def search_endpoint(self, runner: CliRunner, mock, project_key: ProjectKey):
+        @classmethod
+        def search_endpoint(cls, runner: CliRunner, mock, project_key: ProjectKey):
             with patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint') as spy:
                 # inject_search_endpoint returns a callable; its result is used as the endpoint dict
                 # for headers. A bare MagicMock breaks mitmproxy (header values must be str/bytes).
@@ -82,7 +86,8 @@ class TestCliMockIntegration():
 
     class TestWhenNotFound():
         @pytest.fixture(scope='class', autouse=True)
-        def enable_match_rules(self, settings):
+        @classmethod
+        def enable_match_rules(cls, settings):
             # Empty proxy.match in test settings makes __filter_by_match_rules drop all hashes, so no
             # ENDPOINT_PROMISE reaches __handle_request_not_found. Enable a catch-all mock rule that
             # keeps all request components so ignored-components handling runs.
@@ -99,11 +104,13 @@ class TestCliMockIntegration():
             Settings.instance().proxy.match.set_match_rules('0', [rule])
 
         @pytest.fixture(scope='class')
-        def project_key(self):
+        @classmethod
+        def project_key(cls):
             return ProjectKey(ProjectKey.encode(1, 1))
 
         @pytest.fixture(scope='class')
-        def spies(self, runner: CliRunner, mock, project_key: ProjectKey, enable_match_rules):
+        @classmethod
+        def spies(cls, runner: CliRunner, mock, project_key: ProjectKey, enable_match_rules):
             @patch('stoobly_agent.app.proxy.mock.eval_request_service.inject_search_endpoint')
             @patch.object(
                 CustomNotFoundResponseBuilder,
@@ -127,15 +134,18 @@ class TestCliMockIntegration():
             return spy_on()
 
         @pytest.fixture(scope='class')
-        def search_endpoint(self, spies):
+        @classmethod
+        def search_endpoint(cls, spies):
             return spies[0]
 
         @pytest.fixture(scope='class')
-        def custom_not_found_build(self, spies):
+        @classmethod
+        def custom_not_found_build(cls, spies):
             return spies[1]
 
         @pytest.fixture(scope='class')
-        def ignore_components_build(self, spies):
+        @classmethod
+        def ignore_components_build(cls, spies):
             return spies[2]
 
         def test_it_calls_custom_not_found_once(self, custom_not_found_build: MagicMock):

@@ -30,16 +30,19 @@ def settings():
 class TestEvalFixturesService():
   class TestResponseFixtures():
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'POST'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://petstore.swagger.io/404.html'
 
     @pytest.fixture(scope='class')
+    @classmethod
     def created_request(
-      self, settings: Settings, request_method: str, request_url: str
+      cls, settings: Settings, request_method: str, request_url: str
     ):
       status = RequestBuilder(
         method=request_method,
@@ -52,19 +55,23 @@ class TestEvalFixturesService():
       return Request.last()
 
     @pytest.fixture(scope='class')
-    def default_file_contents(self):
+    @classmethod
+    def default_file_contents(cls):
       return b'Default'
 
     @pytest.fixture(scope='class')
-    def not_found_file_contents(self):
+    @classmethod
+    def not_found_file_contents(cls):
       return b'Not Found'
 
     @pytest.fixture(scope='class')
-    def user_file_contents(self):
+    @classmethod
+    def user_file_contents(cls):
       return b'{"id": 1, "name": "John Doe"}'
 
     @pytest.fixture(scope='class')
-    def public_directory(self):
+    @classmethod
+    def public_directory(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'public') 
       if not os.path.exists(public_dir_path):
@@ -72,28 +79,32 @@ class TestEvalFixturesService():
       return public_dir_path
 
     @pytest.fixture(autouse=True, scope='class')
-    def not_found_file_path(self, public_directory: str, not_found_file_contents: bytes):
+    @classmethod
+    def not_found_file_path(cls, public_directory: str, not_found_file_contents: bytes):
       path = os.path.join(public_directory, '404.html')
       with open(path, 'wb') as fp:
         fp.write(not_found_file_contents)
       return path
 
     @pytest.fixture(autouse=True, scope='class')
-    def user_file_path(self, public_directory: str, user_file_contents: bytes):
+    @classmethod
+    def user_file_path(cls, public_directory: str, user_file_contents: bytes):
       path = os.path.join(public_directory, 'user.json')
       with open(path, 'wb') as fp:
         fp.write(user_file_contents)
       return path
 
     @pytest.fixture(autouse=True, scope='class')
-    def default_file_path(self, public_directory: str, default_file_contents: bytes):
+    @classmethod
+    def default_file_path(cls, public_directory: str, default_file_contents: bytes):
       path = os.path.join(public_directory, 'index.html')
       with open(path, 'wb') as fp:
         fp.write(default_file_contents)
       return path
 
     @pytest.fixture(scope='class')
-    def response_fixtures(self, public_directory: str, request_method: str, not_found_file_path: str) -> Fixtures:
+    @classmethod
+    def response_fixtures(cls, public_directory: str, request_method: str, not_found_file_path: str) -> Fixtures:
       fixtures = {}
       fixtures[request_method] = {
         '/404.html': {
@@ -321,16 +332,19 @@ POST:
 
   class TestPublicDirectory():
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://petstore.swagger.io'
 
     @pytest.fixture(scope='class')
+    @classmethod
     def created_request(
-      self, settings: Settings, request_method: str, request_url: str
+      cls, settings: Settings, request_method: str, request_url: str
     ):
       status = RequestBuilder(
         method=request_method,
@@ -348,7 +362,8 @@ POST:
       return MitmproxyRequestAdapter(created_request).adapt()
 
     @pytest.fixture(scope='class')
-    def public_directory(self):
+    @classmethod
+    def public_directory(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'public') 
       if not os.path.exists(public_dir_path):
@@ -356,11 +371,13 @@ POST:
       return public_dir_path
 
     @pytest.fixture(scope='class')
-    def index_file_contents(self):
+    @classmethod
+    def index_file_contents(cls):
       return b'Hello World!'
 
     @pytest.fixture(autouse=True, scope='class')
-    def index_file_path(self, public_directory: str, index_file_contents: str):
+    @classmethod
+    def index_file_path(cls, public_directory: str, index_file_contents: str):
       path = os.path.join(public_directory, 'index.html')
       with open(path, 'wb') as fp:
         fp.write(index_file_contents)
@@ -396,20 +413,24 @@ POST:
 
   class TestMultiplePublicDirectories():
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://petstore.swagger.io'
     
     @pytest.fixture(scope='class')
-    def api_request_url(self):
+    @classmethod
+    def api_request_url(cls):
       return 'https://api.example.com'
     
     @pytest.fixture(scope='class')
+    @classmethod
     def created_request(
-      self, settings: Settings, request_method: str, request_url: str
+      cls, settings: Settings, request_method: str, request_url: str
     ):
       status = RequestBuilder(
         method=request_method,
@@ -423,8 +444,9 @@ POST:
       return Request.last()
     
     @pytest.fixture(scope='class')
+    @classmethod
     def api_created_request(
-      self, settings: Settings, request_method: str, api_request_url: str
+      cls, settings: Settings, request_method: str, api_request_url: str
     ):
       status = RequestBuilder(
         method=request_method,
@@ -446,7 +468,8 @@ POST:
       return MitmproxyRequestAdapter(api_created_request).adapt()
 
     @pytest.fixture(scope='class')
-    def main_public_directory(self):
+    @classmethod
+    def main_public_directory(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'main_public') 
       if not os.path.exists(public_dir_path):
@@ -454,7 +477,8 @@ POST:
       return public_dir_path
     
     @pytest.fixture(scope='class')
-    def api_public_directory(self):
+    @classmethod
+    def api_public_directory(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'api_public') 
       if not os.path.exists(public_dir_path):
@@ -462,7 +486,8 @@ POST:
       return public_dir_path
     
     @pytest.fixture(scope='class')
-    def fallback_public_directory(self):
+    @classmethod
+    def fallback_public_directory(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       public_dir_path = os.path.join(tmp_dir_path, 'fallback_public') 
       if not os.path.exists(public_dir_path):
@@ -470,19 +495,23 @@ POST:
       return public_dir_path
 
     @pytest.fixture(scope='class')
-    def main_file_contents(self):
+    @classmethod
+    def main_file_contents(cls):
       return b'Main Site Content'
     
     @pytest.fixture(scope='class')
-    def api_file_contents(self):
+    @classmethod
+    def api_file_contents(cls):
       return b'API Documentation'
     
     @pytest.fixture(scope='class')
-    def fallback_file_contents(self):
+    @classmethod
+    def fallback_file_contents(cls):
       return b'Fallback Content'
 
     @pytest.fixture(autouse=True, scope='class')
-    def setup_files(self, main_public_directory: str, api_public_directory: str, fallback_public_directory: str,
+    @classmethod
+    def setup_files(cls, main_public_directory: str, api_public_directory: str, fallback_public_directory: str,
                    main_file_contents: bytes, api_file_contents: bytes, fallback_file_contents: bytes):
       # Create index.html in main directory
       main_path = os.path.join(main_public_directory, 'index.html')
@@ -670,15 +699,18 @@ POST:
     """Test error handling and edge cases."""
     
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://example.com/test'
     
     @pytest.fixture(scope='class')
-    def created_request(self, settings: Settings, request_method: str, request_url: str):
+    @classmethod
+    def created_request(cls, settings: Settings, request_method: str, request_url: str):
       status = RequestBuilder(
         method=request_method,
         request_headers={'accept': 'application/json'},
@@ -795,19 +827,23 @@ POST:
     """Test custom header handling."""
     
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://example.com/test'
     
     @pytest.fixture(scope='class')
-    def test_file_contents(self):
+    @classmethod
+    def test_file_contents(cls):
       return b'Test content'
 
     @pytest.fixture(scope='class')
-    def test_file_path(self, test_file_contents: bytes):
+    @classmethod
+    def test_file_path(cls, test_file_contents: bytes):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       file_path = os.path.join(tmp_dir_path, 'custom_headers_test.txt')
       with open(file_path, 'wb') as f:
@@ -815,7 +851,8 @@ POST:
       return file_path
     
     @pytest.fixture(scope='class')
-    def created_request(self, settings: Settings, request_method: str, request_url: str):
+    @classmethod
+    def created_request(cls, settings: Settings, request_method: str, request_url: str):
       from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
       status = RequestBuilder(
         method=request_method,
@@ -872,15 +909,18 @@ POST:
     """Test content type guessing and file extension handling."""
     
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://example.com/api/data'
     
     @pytest.fixture(scope='class')
-    def created_request(self, settings: Settings, request_method: str, request_url: str):
+    @classmethod
+    def created_request(cls, settings: Settings, request_method: str, request_url: str):
       status = RequestBuilder(
         method=request_method,
         request_headers={'accept': 'application/json,text/html;q=0.9,*/*;q=0.8'},
@@ -984,19 +1024,23 @@ POST:
     """Test regex pattern matching for fixture routes."""
     
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://example.com/api/users/123'
     
     @pytest.fixture(scope='class')
-    def test_file_contents(self):
+    @classmethod
+    def test_file_contents(cls):
       return b'User 123 data'
 
     @pytest.fixture(scope='class')
-    def test_file_path(self, test_file_contents: bytes):
+    @classmethod
+    def test_file_path(cls, test_file_contents: bytes):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       file_path = os.path.join(tmp_dir_path, 'user_data.json')
       with open(file_path, 'wb') as f:
@@ -1004,7 +1048,8 @@ POST:
       return file_path
     
     @pytest.fixture(scope='class')
-    def created_request(self, settings: Settings, request_method: str, request_url: str):
+    @classmethod
+    def created_request(cls, settings: Settings, request_method: str, request_url: str):
       status = RequestBuilder(
         method=request_method,
         request_headers={'accept': 'application/json'},
@@ -1085,19 +1130,23 @@ POST:
 
   class TestMultipleResponseFixtures():
     @pytest.fixture(scope='class')
-    def request_method(self):
+    @classmethod
+    def request_method(cls):
       return 'GET'
 
     @pytest.fixture(scope='class')
-    def api_request_url(self):
+    @classmethod
+    def api_request_url(cls):
       return 'https://api.example.com/users'
     
     @pytest.fixture(scope='class')
-    def main_request_url(self):
+    @classmethod
+    def main_request_url(cls):
       return 'https://petstore.swagger.io/users'
     
     @pytest.fixture(scope='class')
-    def api_created_request(self, settings: Settings, request_method: str, api_request_url: str):
+    @classmethod
+    def api_created_request(cls, settings: Settings, request_method: str, api_request_url: str):
       status = RequestBuilder(
         method=request_method,
         request_headers={'accept': 'application/json'},
@@ -1109,7 +1158,8 @@ POST:
       return Request.last()
     
     @pytest.fixture(scope='class')
-    def main_created_request(self, settings: Settings, request_method: str, main_request_url: str):
+    @classmethod
+    def main_created_request(cls, settings: Settings, request_method: str, main_request_url: str):
       status = RequestBuilder(
         method=request_method,
         request_headers={'accept': 'application/json'},
@@ -1129,7 +1179,8 @@ POST:
       return MitmproxyRequestAdapter(main_created_request).adapt()
 
     @pytest.fixture(scope='class')
-    def api_fixture_file_path(self):
+    @classmethod
+    def api_fixture_file_path(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       file_path = os.path.join(tmp_dir_path, 'api_users.json')
       with open(file_path, 'w') as fp:
@@ -1137,7 +1188,8 @@ POST:
       return file_path
     
     @pytest.fixture(scope='class')
-    def main_fixture_file_path(self):
+    @classmethod
+    def main_fixture_file_path(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       file_path = os.path.join(tmp_dir_path, 'main_users.json')
       with open(file_path, 'w') as fp:
@@ -1145,7 +1197,8 @@ POST:
       return file_path
     
     @pytest.fixture(scope='class')
-    def fallback_fixture_file_path(self):
+    @classmethod
+    def fallback_fixture_file_path(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       file_path = os.path.join(tmp_dir_path, 'fallback_users.json')
       with open(file_path, 'w') as fp:
@@ -1153,7 +1206,8 @@ POST:
       return file_path
 
     @pytest.fixture(scope='class')
-    def origin_specific_fixtures(self, api_fixture_file_path: str, main_fixture_file_path: str):
+    @classmethod
+    def origin_specific_fixtures(cls, api_fixture_file_path: str, main_fixture_file_path: str):
       """Response fixtures with origin-specific routing."""
       return {
         '_origins': {
@@ -1177,7 +1231,8 @@ POST:
       }
     
     @pytest.fixture(scope='class')
-    def mixed_fixtures(self, api_fixture_file_path: str, fallback_fixture_file_path: str):
+    @classmethod
+    def mixed_fixtures(cls, api_fixture_file_path: str, fallback_fixture_file_path: str):
       """Response fixtures with both origin-specific and fallback routes."""
       return {
         '_origins': {
@@ -1577,7 +1632,8 @@ POST:
 
   class TestFullOriginFormatParsing():
     @pytest.fixture(scope='class')
-    def tmp_dir_path(self):
+    @classmethod
+    def tmp_dir_path(cls):
       return DataDir.instance().tmp_dir_path
 
     def test_full_url_origin_parsing_response_fixtures(self, settings: Settings, tmp_dir_path: str):
@@ -1711,11 +1767,13 @@ POST:
     SCENARIO_ID_A = '123e4567-e89b-12d3-a456-426614174000'
 
     @pytest.fixture(scope='class')
-    def request_url(self):
+    @classmethod
+    def request_url(cls):
       return 'https://example.com/users'
 
     @pytest.fixture(scope='class')
-    def created_request(self, settings: Settings, request_url: str):
+    @classmethod
+    def created_request(cls, settings: Settings, request_url: str):
       status = RequestBuilder(
         method='GET',
         request_headers={'accept': 'application/json'},
@@ -1731,7 +1789,8 @@ POST:
       return MitmproxyRequestAdapter(created_request).adapt()
 
     @pytest.fixture(scope='class')
-    def scenario_a_file(self):
+    @classmethod
+    def scenario_a_file(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       path = os.path.join(tmp_dir_path, 'scenario_a_users.json')
       with open(path, 'w') as fp:
@@ -1739,7 +1798,8 @@ POST:
       return path
 
     @pytest.fixture(scope='class')
-    def global_file(self):
+    @classmethod
+    def global_file(cls):
       tmp_dir_path = DataDir.instance().tmp_dir_path
       path = os.path.join(tmp_dir_path, 'global_users.json')
       with open(path, 'w') as fp:

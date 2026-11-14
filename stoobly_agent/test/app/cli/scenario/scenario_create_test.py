@@ -21,22 +21,26 @@ def settings():
 
 class TestCreate():
   @pytest.fixture(scope='class')
-  def scenario_name(self):
+  @classmethod
+  def scenario_name(cls):
     return 'Login 1.0.0'
 
   @pytest.fixture(scope='class')
-  def scenario_description(self):
+  @classmethod
+  def scenario_description(cls):
     return 'Login flow for service A'
 
   @pytest.fixture(scope='class')
-  def scenario_create_cli_results(self, runner: CliRunner, scenario_name: str, scenario_description: str):
+  @classmethod
+  def scenario_create_cli_results(cls, runner: CliRunner, scenario_name: str, scenario_description: str):
     scenario_create_result = runner.invoke(scenario, ['create', '--without-headers', '--description', scenario_description, '--select', 'key', scenario_name])
     assert scenario_create_result.exit_code == 0
 
     return scenario_create_result
 
   @pytest.fixture(scope='class')
-  def scenario_key(self, scenario_create_cli_results):
+  @classmethod
+  def scenario_key(cls, scenario_create_cli_results):
     output = scenario_create_cli_results.stdout
     return output.strip()
 

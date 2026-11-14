@@ -23,38 +23,44 @@ def runner():
 
 class TestReplayIntegration():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     class TestWhenNoOptions():
 
         @pytest.fixture(scope='class')
-        def created_scenario(self, runner: CliRunner):
+        @classmethod
+        def created_scenario(cls, runner: CliRunner):
             create_result = runner.invoke(scenario, ['create', 'test'])
             assert create_result.exit_code == 0
             return Scenario.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_one(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_one(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class', autouse=True)
-        def recorded_request_two(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def recorded_request_two(cls, runner: CliRunner, created_scenario: Scenario):
             record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def replay_spy(self, runner: CliRunner, created_scenario: Scenario):
+        @classmethod
+        def replay_spy(cls, runner: CliRunner, created_scenario: Scenario):
             with patch('stoobly_agent.app.proxy.replay.replay_request_service.replay') as test_patch:
                 replay_result = runner.invoke(scenario, ['replay', created_scenario.key()])
                 assert replay_result.exit_code == 0
                 return test_patch
 
         @pytest.fixture(scope='class')
-        def replay_options(self, replay_spy: MagicMock) -> ReplayRequestOptions:
+        @classmethod
+        def replay_options(cls, replay_spy: MagicMock) -> ReplayRequestOptions:
             return replay_spy.call_args.args[1]
             
         def test_it_called_twice(self, replay_spy: MagicMock):
@@ -70,29 +76,34 @@ class TestReplayIntegration():
 
         class TestWhenScenario():
             @pytest.fixture(scope='class', autouse=True)
-            def settings(self):
+            @classmethod
+            def settings(cls):
                 return reset()
 
             @pytest.fixture(scope='class')
-            def source_scenario(self, runner: CliRunner):
+            @classmethod
+            def source_scenario(cls, runner: CliRunner):
                 create_result = runner.invoke(scenario, ['create', 'test-source'])
                 assert create_result.exit_code == 0
                 return Scenario.last()
 
             @pytest.fixture(scope='class')
-            def destination_scenario(self, runner: CliRunner):
+            @classmethod
+            def destination_scenario(cls, runner: CliRunner):
                 create_result = runner.invoke(scenario, ['create', 'test-destination'])
                 assert create_result.exit_code == 0
                 return Scenario.last()
 
             @pytest.fixture(scope='class', autouse=True)
-            def recorded_request(self, runner: CliRunner, source_scenario: Scenario):
+            @classmethod
+            def recorded_request(cls, runner: CliRunner, source_scenario: Scenario):
                 record_result = runner.invoke(record, ['--scenario-key', source_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
                 assert record_result.exit_code == 0
                 return Request.last()
 
             @pytest.fixture(scope='class')
-            def spies(self, runner: CliRunner, source_scenario: Scenario, destination_scenario: Scenario):
+            @classmethod
+            def spies(cls, runner: CliRunner, source_scenario: Scenario, destination_scenario: Scenario):
                 @patch.object(LocalDBRequestAdapter, 'create', wraps=LocalDBRequestAdapter(Request, Response).create)
                 @patch('stoobly_agent.app.proxy.record.upload_request_service.upload_request', wraps=upload_request)
                 @patch('stoobly_agent.app.proxy.replay.replay_request_service.replay', wraps=replay)
@@ -104,27 +115,33 @@ class TestReplayIntegration():
                 return spy_on()
 
             @pytest.fixture(scope='class')
-            def replay_spy(self, spies: Tuple[MagicMock]):
+            @classmethod
+            def replay_spy(cls, spies: Tuple[MagicMock]):
                 return spies[0]
 
             @pytest.fixture(scope='class')
-            def replay_options(self, replay_spy: MagicMock) -> ReplayRequestOptions:
+            @classmethod
+            def replay_options(cls, replay_spy: MagicMock) -> ReplayRequestOptions:
                 return replay_spy.call_args.args[1]
 
             @pytest.fixture(scope='class')
-            def upload_request_spy(self, spies: Tuple[MagicMock]):
+            @classmethod
+            def upload_request_spy(cls, spies: Tuple[MagicMock]):
                 return spies[1]
 
             @pytest.fixture(scope='class')
-            def upload_request_intercept_settings(self, upload_request_spy: MagicMock):
+            @classmethod
+            def upload_request_intercept_settings(cls, upload_request_spy: MagicMock):
                 return upload_request_spy.call_args.args[1]
 
             @pytest.fixture(scope='class')
-            def create_spy(self, spies: Tuple[MagicMock]):
+            @classmethod
+            def create_spy(cls, spies: Tuple[MagicMock]):
                 return spies[2]
 
             @pytest.fixture(scope='class')
-            def create_kwargs(self, create_spy: MagicMock):
+            @classmethod
+            def create_kwargs(cls, create_spy: MagicMock):
                 return create_spy.call_args.kwargs
 
             def test_replay_called_once(self, replay_spy: MagicMock):

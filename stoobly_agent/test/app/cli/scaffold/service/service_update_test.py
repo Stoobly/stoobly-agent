@@ -17,48 +17,58 @@ from stoobly_agent.test.test_helper import reset
 class TestScaffoldServiceUpdate:
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         return CliRunner()
 
     @pytest.fixture(scope='class')
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
         shutil.rmtree(temp_dir)
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         return "test-app"
 
     @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
+    @classmethod
+    def app_dir_path(cls, temp_dir, app_name):
         return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_app(self, runner: CliRunner, app_dir_path: str, app_name: str):
+    @classmethod
+    def create_scaffold_app(cls, runner: CliRunner, app_dir_path: str, app_name: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         yield
 
     class TestUpdateHostname:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'hostname-update-service'
 
         @pytest.fixture(scope='class')
-        def initial_hostname(self):
+        @classmethod
+        def initial_hostname(cls):
             return 'initial.example.com'
 
         @pytest.fixture(scope='class')
-        def updated_hostname(self):
+        @classmethod
+        def updated_hostname(cls):
             return 'updated.example.com'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, initial_hostname: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, initial_hostname: str):
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, initial_hostname, service_name, True)
 
         def test_update_hostname(self, runner: CliRunner, app_dir_path: str, service_name: str, initial_hostname: str, updated_hostname: str):
@@ -79,19 +89,23 @@ class TestScaffoldServiceUpdate:
     class TestUpdatePort:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'port-update-service'
 
         @pytest.fixture(scope='class')
-        def hostname(self):
+        @classmethod
+        def hostname(cls):
             return 'port-test.example.com'
 
         @pytest.fixture(scope='class')
-        def updated_port(self):
+        @classmethod
+        def updated_port(cls):
             return 9090
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         def test_update_port(self, runner: CliRunner, app_dir_path: str, service_name: str, updated_port: int):
@@ -112,19 +126,23 @@ class TestScaffoldServiceUpdate:
     class TestUpdateName:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'name-update-service'
 
         @pytest.fixture(scope='class')
-        def hostname(self):
+        @classmethod
+        def hostname(cls):
             return 'name-test.example.com'
 
         @pytest.fixture(scope='class')
-        def new_service_name(self):
+        @classmethod
+        def new_service_name(cls):
             return 'renamed-service'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
         def test_update_name(self, runner: CliRunner, app_dir_path: str, service_name: str, new_service_name: str):
@@ -150,15 +168,18 @@ class TestScaffoldServiceUpdate:
     class TestUpdateOpenapiSpecification:
 
         @pytest.fixture(scope='class')
-        def service_name(self):
+        @classmethod
+        def service_name(cls):
             return 'openapi-update-service'
 
         @pytest.fixture(scope='class')
-        def hostname(self):
+        @classmethod
+        def hostname(cls):
             return 'openapi-update.example.com'
 
         @pytest.fixture(scope='class', autouse=True)
-        def create_service(self, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
+        @classmethod
+        def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, False)
 
         def test_update_openapi_specification(self, runner: CliRunner, app_dir_path: str, service_name: str):
