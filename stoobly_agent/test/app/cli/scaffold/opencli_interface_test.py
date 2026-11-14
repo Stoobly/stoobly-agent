@@ -189,7 +189,8 @@ def _compare_leaf(path: Tuple[str, ...], opencli_cmd: Dict[str, Any], click_cmd:
 
 class TestScaffoldOpencliInterface:
   @pytest.fixture(scope='class')
-  def opencli(self):
+  @classmethod
+  def opencli(cls):
     return _load_opencli()
 
   def test_opencli_file_exists(self):
@@ -219,7 +220,10 @@ class TestScaffoldOpencliInterface:
           continue
 
         opencli_children = {child['name'] for child in children if 'name' in child}
-        click_children = set(click_cmd.commands.keys())
+        # Hidden Click commands (e.g. scaffold debug) are internal and need not appear in OpenCLI.
+        click_children = {
+          name for name, child in click_cmd.commands.items() if not child.hidden
+        }
         for name in sorted(opencli_children - click_children):
           errors.append(f"{label}: OpenCLI subcommand '{name}' missing in Click")
         for name in sorted(click_children - opencli_children):
