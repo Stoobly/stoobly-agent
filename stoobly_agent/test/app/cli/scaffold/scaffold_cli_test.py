@@ -429,8 +429,12 @@ class TestScaffoldAppCreateContextDirPaths:
     context_dir_path = tmp_path / 'context'
     context_dir_path.mkdir()
 
-    with runner.isolated_filesystem(temp_dir=str(context_dir_path)):
+    cwd = os.getcwd()
+    try:
+      os.chdir(context_dir_path)
       result = runner.invoke(cli_init, [])
+    finally:
+      os.chdir(cwd)
 
     assert result.exit_code == 0
     assert not _context_config_path(context_dir_path).exists()

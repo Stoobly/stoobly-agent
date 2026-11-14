@@ -18,24 +18,28 @@ def runner():
 
 class TestMocking():
   @pytest.fixture(scope='class')
-  def lifecycle_hooks_path(self):
+  @classmethod
+  def lifecycle_hooks_path(cls):
     return str(Path(__file__).parent / 'mock_scenario_lifecycle_hooks.py')
 
   class TestScenario():
     @pytest.fixture(scope='class')
-    def scenario_key(self, runner: CliRunner):
+    @classmethod
+    def scenario_key(cls, runner: CliRunner):
       res = runner.invoke(scenario, ['create', '--select', 'key', '--without-headers', 'test-scenario'])
       assert res.exit_code == 0
       return ScenarioKey(res.stdout.strip()).raw
 
     @pytest.fixture(autouse=True, scope='class')
-    def recorded_request1(self, runner: CliRunner, scenario_key: str):
+    @classmethod
+    def recorded_request1(cls, runner: CliRunner, scenario_key: str):
       record_result = runner.invoke(record, ['--scenario-key', scenario_key, DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()
 
     @pytest.fixture(autouse=True, scope='class')
-    def recorded_request2(self, runner: CliRunner, scenario_key: str):
+    @classmethod
+    def recorded_request2(cls, runner: CliRunner, scenario_key: str):
       record_result = runner.invoke(record, ['--scenario-key', scenario_key, DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       return Request.last()

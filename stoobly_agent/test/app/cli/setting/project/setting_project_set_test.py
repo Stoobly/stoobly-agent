@@ -22,7 +22,8 @@ def setting():
 class TestSettingsProjectSet():
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestWhenRecordPolicyOverwrite():

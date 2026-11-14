@@ -14,19 +14,23 @@ from stoobly_agent.test.mock_data.endpoint_show_response import endpoint_show_re
 @pytest.mark.openapi
 class TestSynchronizeRequestService():
   @pytest.fixture(scope='class')
-  def synchronize_request_service(self) -> SynchronizeRequestService:
+  @classmethod
+  def synchronize_request_service(cls) -> SynchronizeRequestService:
     return SynchronizeRequestService(local_db_request_adapter=None)
 
   @pytest.fixture(scope='class')
-  def query_synchronize_handler(self) -> RequestSynchronizeHandler:
+  @classmethod
+  def query_synchronize_handler(cls) -> RequestSynchronizeHandler:
     return RequestSynchronizeHandler(request_component.QUERY_PARAM, {})
 
   @pytest.fixture(scope='class')
-  def body_synchronize_handler(self) -> RequestSynchronizeHandler:
+  @classmethod
+  def body_synchronize_handler(cls) -> RequestSynchronizeHandler:
     return RequestSynchronizeHandler(request_component.BODY_PARAM, {})
 
   @pytest.fixture(scope='class')
-  def response_synchronize_handler(self) -> RequestSynchronizeHandler:
+  @classmethod
+  def response_synchronize_handler(cls) -> RequestSynchronizeHandler:
     return RequestSynchronizeHandler(request_component.RESPONSE_PARAM, {})
   
   @pytest.fixture(scope='function')

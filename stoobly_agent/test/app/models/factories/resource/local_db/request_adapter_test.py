@@ -26,15 +26,18 @@ from stoobly_agent.test.test_helper import reset
 
 class TestIndex():
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def adapter(self):
+  @classmethod
+  def adapter(cls):
     return LocalDBRequestAdapter(request_orm=Request, response_orm=Response)
 
   @pytest.fixture(autouse=True, scope='class')
-  def active_request(self, settings: Settings):
+  @classmethod
+  def active_request(cls, settings: Settings):
     status = RequestBuilder(
       method='GET',
       request_body='',
@@ -49,7 +52,8 @@ class TestIndex():
     record.delete()
 
   @pytest.fixture(autouse=True, scope='class')
-  def trashed_request(self, settings: Settings, active_request: Request):
+  @classmethod
+  def trashed_request(cls, settings: Settings, active_request: Request):
     status = RequestBuilder(
       method='GET',
       request_body='',
@@ -78,11 +82,13 @@ class TestIndex():
 
 class TestLocalDBRequestAdapter():
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def local_db_request_adapter(self):
+  @classmethod
+  def local_db_request_adapter(cls):
     adapter = LocalDBRequestAdapter(request_orm=Request, response_orm=Response)
     return adapter
 
@@ -234,24 +240,29 @@ class TestLocalDBRequestAdapter():
   class TestWhenResponse():
     class TestTiebreakScenarioRequest():
       @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
+      @classmethod
+      def settings(cls):
         return reset()
 
       @pytest.fixture(scope='class')
-      def request_method(self):
+      @classmethod
+      def request_method(cls):
         return 'POST'
 
       @pytest.fixture(scope='class')
-      def request_url(self):
+      @classmethod
+      def request_url(cls):
         return 'https://petstore.swagger.io/v2/pets'
 
       @pytest.fixture(scope='class')
-      def created_scenario(self):
+      @classmethod
+      def created_scenario(cls):
         return Scenario.create(name='test')
 
       @pytest.fixture(autouse=True, scope='class')
+      @classmethod
       def created_request_one(
-        self, settings: Settings, 
+        cls, settings: Settings, 
         request_method: str, request_url: str, created_scenario: Scenario,
       ):
         status = RequestBuilder(
@@ -270,8 +281,9 @@ class TestLocalDBRequestAdapter():
         return request
 
       @pytest.fixture(autouse=True, scope='class')
+      @classmethod
       def created_request_two(
-        self, settings: Settings, 
+        cls, settings: Settings, 
         request_method: str, request_url: str, created_scenario: Scenario
       ):
         status = RequestBuilder(
@@ -289,7 +301,8 @@ class TestLocalDBRequestAdapter():
         return request
 
       @pytest.fixture(scope='class')
-      def requests(self, created_request_one: Request, created_request_two: Request):
+      @classmethod
+      def requests(cls, created_request_one: Request, created_request_two: Request):
         return [created_request_one, created_request_two]
 
       def test_it_returns_request_one(self, request_url: str, created_scenario: Scenario, local_db_request_adapter: LocalDBRequestAdapter):
@@ -315,15 +328,18 @@ class TestLocalDBRequestAdapter():
 
     class TestMostRecentWithoutScenario():
       @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
+      @classmethod
+      def settings(cls):
         return reset()
 
       @pytest.fixture(scope='class')
-      def request_url(self):
+      @classmethod
+      def request_url(cls):
         return 'https://example.com/v1/unordered'
 
       @pytest.fixture(autouse=True, scope='class')
-      def created_request_one(self, settings: Settings, request_url: str):
+      @classmethod
+      def created_request_one(cls, settings: Settings, request_url: str):
         status = RequestBuilder(
           method='GET',
           request_body='',
@@ -336,7 +352,8 @@ class TestLocalDBRequestAdapter():
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def created_request_two(self, settings: Settings, request_url: str, created_request_one: Request):
+      @classmethod
+      def created_request_two(cls, settings: Settings, request_url: str, created_request_one: Request):
         status = RequestBuilder(
           method='GET',
           request_body='',
@@ -369,15 +386,18 @@ class TestLocalDBRequestAdapter():
 
     class TestHeuristicTiebreak():
       @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
+      @classmethod
+      def settings(cls):
         return reset()
 
       @pytest.fixture(scope='class')
-      def created_scenario(self):
+      @classmethod
+      def created_scenario(cls):
         return Scenario.create(name='heuristic-tiebreak')
 
       @pytest.fixture(autouse=True, scope='class')
-      def created_request_admin(self, settings: Settings, created_scenario: Scenario):
+      @classmethod
+      def created_request_admin(cls, settings: Settings, created_scenario: Scenario):
         status = RequestBuilder(
           method='GET',
           request_body='',
@@ -392,7 +412,8 @@ class TestLocalDBRequestAdapter():
         return request
 
       @pytest.fixture(autouse=True, scope='class')
-      def created_request_user(self, settings: Settings, created_scenario: Scenario):
+      @classmethod
+      def created_request_user(cls, settings: Settings, created_scenario: Scenario):
         status = RequestBuilder(
           method='GET',
           request_body='',
@@ -442,7 +463,8 @@ class TestLocalDBRequestAdapter():
 
     class TestNotFound():
       @pytest.fixture(autouse=True, scope='class')
-      def settings(self):
+      @classmethod
+      def settings(cls):
         return reset()
 
       def test_it_returns_499_when_no_matching_row(self, local_db_request_adapter: LocalDBRequestAdapter):

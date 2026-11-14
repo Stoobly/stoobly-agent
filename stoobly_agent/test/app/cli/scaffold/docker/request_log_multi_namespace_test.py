@@ -197,15 +197,18 @@ class TestDockerMultiNamespaceRequestLogE2e:
     """
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset('stoobly-agent-test-multi-ns')
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='module')
-    def base_dir(self):
+    @classmethod
+    def base_dir(cls):
         """Parent directory of the DataDir .stoobly/ folder; shared by all nested classes."""
         data_dir_path = DataDir.instance().path
         yield data_dir_path[:data_dir_path.rfind('/')]
@@ -218,15 +221,18 @@ class TestDockerMultiNamespaceRequestLogE2e:
         """Requests in NS A must never appear in NS B's logs and vice versa."""
 
         @pytest.fixture(scope='class')
-        def app_dir_path_a(self, base_dir):
+        @classmethod
+        def app_dir_path_a(cls, base_dir):
             yield _make_app_dir(base_dir, 'ns-iso-a')
 
         @pytest.fixture(scope='class')
-        def app_dir_path_b(self, base_dir):
+        @classmethod
+        def app_dir_path_b(cls, base_dir):
             yield _make_app_dir(base_dir, 'ns-iso-b')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns_a(self, runner, app_dir_path_a):
+        @classmethod
+        def setup_ns_a(cls, runner, app_dir_path_a):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'ns-iso-a', proxy_mode='reverse', ui_port=4200)
@@ -242,7 +248,8 @@ class TestDockerMultiNamespaceRequestLogE2e:
                     _best_effort_workflow_down(runner, app_dir_path_a, 'ns-iso-a')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns_b(self, runner, app_dir_path_b):
+        @classmethod
+        def setup_ns_b(cls, runner, app_dir_path_b):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'ns-iso-b', proxy_mode='reverse', ui_port=4201)
@@ -283,11 +290,13 @@ class TestDockerMultiNamespaceRequestLogE2e:
         """Both services in a namespace must produce log entries."""
 
         @pytest.fixture(scope='class')
-        def app_dir_path(self, base_dir):
+        @classmethod
+        def app_dir_path(cls, base_dir):
             yield _make_app_dir(base_dir, 'all-svc-a')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns(self, runner, app_dir_path):
+        @classmethod
+        def setup_ns(cls, runner, app_dir_path):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'all-svc-a', proxy_mode='reverse')
@@ -330,11 +339,13 @@ class TestDockerMultiNamespaceRequestLogE2e:
         """--service-name filter returns only entries from the target service container."""
 
         @pytest.fixture(scope='class')
-        def app_dir_path(self, base_dir):
+        @classmethod
+        def app_dir_path(cls, base_dir):
             yield _make_app_dir(base_dir, 'svc-filter-a')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns(self, runner, app_dir_path):
+        @classmethod
+        def setup_ns(cls, runner, app_dir_path):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, 'svc-filter-a', proxy_mode='reverse')
@@ -393,15 +404,18 @@ class TestDockerMultiNamespaceRequestLogE2e:
         """Concurrent traffic to both namespaces must produce no cross-namespace log contamination."""
 
         @pytest.fixture(scope='class')
-        def app_dir_path_a(self, base_dir):
+        @classmethod
+        def app_dir_path_a(cls, base_dir):
             yield _make_app_dir(base_dir, 'concurrent-a')
 
         @pytest.fixture(scope='class')
-        def app_dir_path_b(self, base_dir):
+        @classmethod
+        def app_dir_path_b(cls, base_dir):
             yield _make_app_dir(base_dir, 'concurrent-b')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns_a(self, runner, app_dir_path_a):
+        @classmethod
+        def setup_ns_a(cls, runner, app_dir_path_a):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_a, 'concurrent-a', proxy_mode='reverse', ui_port=4200)
@@ -417,7 +431,8 @@ class TestDockerMultiNamespaceRequestLogE2e:
                     _best_effort_workflow_down(runner, app_dir_path_a, 'concurrent-a')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_ns_b(self, runner, app_dir_path_b):
+        @classmethod
+        def setup_ns_b(cls, runner, app_dir_path_b):
             upped = False
             try:
                 ScaffoldCliInvoker.cli_app_create(runner, app_dir_path_b, 'concurrent-b', proxy_mode='reverse', ui_port=4201)
@@ -469,15 +484,18 @@ class TestDockerMultiNamespaceRequestLogE2e:
         """Bringing down NS A must leave NS B's logs and workflow intact."""
 
         @pytest.fixture(scope='class')
-        def app_dir_path_a(self, base_dir):
+        @classmethod
+        def app_dir_path_a(cls, base_dir):
             yield _make_app_dir(base_dir, 'teardown-a')
 
         @pytest.fixture(scope='class')
-        def app_dir_path_b(self, base_dir):
+        @classmethod
+        def app_dir_path_b(cls, base_dir):
             yield _make_app_dir(base_dir, 'teardown-b')
 
         @pytest.fixture(scope='class', autouse=True)
-        def setup_both_namespaces(self, runner, app_dir_path_a, app_dir_path_b):
+        @classmethod
+        def setup_both_namespaces(cls, runner, app_dir_path_a, app_dir_path_b):
             upped_a = False
             upped_b = False
             try:

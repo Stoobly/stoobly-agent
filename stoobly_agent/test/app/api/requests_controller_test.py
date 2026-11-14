@@ -68,7 +68,8 @@ class TestUpdate:
     class TestWhenMovingToTrash:
 
         @pytest.fixture(autouse=True, scope='class')
-        def active_request(self, settings: Settings):
+        @classmethod
+        def active_request(cls, settings: Settings):
             status = RequestBuilder(
                 method='GET',
                 request_body='',
@@ -103,7 +104,8 @@ class TestUpdate:
     class TestWhenTrashingAlreadyTrashedRequest:
 
         @pytest.fixture(autouse=True, scope='class')
-        def trashed_request(self, settings: Settings):
+        @classmethod
+        def trashed_request(cls, settings: Settings):
             status = RequestBuilder(
                 method='GET',
                 request_body='',
@@ -135,13 +137,15 @@ class TestUpdate:
     class TestWhenMovingToTrashFromScenario:
 
         @pytest.fixture(autouse=True, scope='class')
-        def scenario(self):
+        @classmethod
+        def scenario(cls):
             record = Scenario.create(name='test scenario')
             yield record
             record.delete()
 
         @pytest.fixture(autouse=True, scope='class')
-        def request_in_scenario(self, settings: Settings, scenario: Scenario):
+        @classmethod
+        def request_in_scenario(cls, settings: Settings, scenario: Scenario):
             status = RequestBuilder(
                 method='GET',
                 request_body='',
@@ -174,13 +178,15 @@ class TestUpdate:
     class TestWhenRestoringFromTrashIntoScenario:
 
         @pytest.fixture(autouse=True, scope='class')
-        def scenario(self):
+        @classmethod
+        def scenario(cls):
             record = Scenario.create(name='restore target scenario')
             yield record
             record.delete()
 
         @pytest.fixture(autouse=True, scope='class')
-        def trashed_request(self, settings: Settings):
+        @classmethod
+        def trashed_request(cls, settings: Settings):
             status = RequestBuilder(
                 method='GET',
                 request_body='',
@@ -241,13 +247,15 @@ class TestUpdate:
         """Round-trip: request was in a scenario, trashed, then restored back into a scenario."""
 
         @pytest.fixture(autouse=True, scope='class')
-        def scenario(self):
+        @classmethod
+        def scenario(cls):
             record = Scenario.create(name='round-trip scenario')
             yield record
             record.delete()
 
         @pytest.fixture(autouse=True, scope='class')
-        def trashed_request(self, settings: Settings, scenario: Scenario):
+        @classmethod
+        def trashed_request(cls, settings: Settings, scenario: Scenario):
             status = RequestBuilder(
                 method='GET',
                 request_body='',

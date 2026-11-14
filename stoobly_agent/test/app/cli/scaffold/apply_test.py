@@ -22,7 +22,8 @@ from stoobly_agent.test.test_helper import reset
 class TestScaffoldApply:
 
   @pytest.fixture(scope='module', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(autouse=True)

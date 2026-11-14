@@ -8,7 +8,8 @@ class TestBuilder():
 
   class TestWhenValid():
     @pytest.fixture(scope='class')
-    def test_results(self) -> DownloadTestData:
+    @classmethod
+    def test_results(cls) -> DownloadTestData:
       return {
         'expected_response': b'expected',
         'log': 'test',
@@ -21,7 +22,8 @@ class TestBuilder():
       }
 
     @pytest.fixture(scope='class')
-    def builder(self, test_results) -> Builder:
+    @classmethod
+    def builder(cls, test_results) -> Builder:
       _builder = Builder(**test_results)
       builder = Builder()
       builder.deserialize(_builder.serialize())
@@ -53,14 +55,16 @@ class TestBuilder():
 
   class TestWhenEmptyResponse():
     @pytest.fixture(scope='class')
-    def test_results(self) -> DownloadTestData:
+    @classmethod
+    def test_results(cls) -> DownloadTestData:
       return {
         'expected_response': '',
         'received_response': '',
       }
 
     @pytest.fixture(scope='class')
-    def builder(self, test_results) -> Builder:
+    @classmethod
+    def builder(cls, test_results) -> Builder:
       _builder = Builder(**test_results)
       builder = Builder()
       builder.deserialize(_builder.serialize())
@@ -74,14 +78,16 @@ class TestBuilder():
 
   class TestWhenTraversibleResponse():
     @pytest.fixture(scope='class')
-    def test_results(self) -> DownloadTestData:
+    @classmethod
+    def test_results(cls) -> DownloadTestData:
       return {
         'expected_response': {},
         'received_response': {},
       }
 
     @pytest.fixture(scope='class')
-    def builder(self, test_results) -> Builder:
+    @classmethod
+    def builder(cls, test_results) -> Builder:
       _builder = Builder(**test_results)
       builder = Builder()
       builder.deserialize(_builder.serialize())

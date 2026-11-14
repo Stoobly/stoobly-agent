@@ -13,11 +13,13 @@ from stoobly_agent.test.test_helper import reset
 class TestContextLock():
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def app_dir_path(self):
+  @classmethod
+  def app_dir_path(cls):
     data_dir: DataDir = DataDir.instance()
     path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
     yield path

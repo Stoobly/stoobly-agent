@@ -19,59 +19,72 @@ from stoobly_agent.test.test_helper import reset
 class TestScaffoldCli():
 
   @pytest.fixture(scope='module', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='module')
-  def runner(self):
+  @classmethod
+  def runner(cls):
     yield CliRunner()
 
   @pytest.fixture(scope='class')
-  def app_name(self):
+  @classmethod
+  def app_name(cls):
     yield "0.0.1"
 
   @pytest.fixture(scope='class', autouse=True)
-  def temp_dir(self):
+  @classmethod
+  def temp_dir(cls):
     data_dir_path = DataDir.instance().path
     tmp_path = data_dir_path[:data_dir_path.rfind('/')]
 
     yield tmp_path
 
   @pytest.fixture(scope='class', autouse=True)
-  def app_dir_path(self, temp_dir, app_name):
+  @classmethod
+  def app_dir_path(cls, temp_dir, app_name):
     yield temp_dir
 
   @pytest.fixture(scope='class')
-  def hostname(self):
+  @classmethod
+  def hostname(cls):
     yield "http.badssl.com"
 
   @pytest.fixture(scope='class')
-  def https_service_hostname(self):
+  @classmethod
+  def https_service_hostname(cls):
     yield "example.com"
   
   @pytest.fixture(scope='class')
-  def external_service_name(self):
+  @classmethod
+  def external_service_name(cls):
     yield "external-service"
 
   @pytest.fixture(scope='class')
-  def external_https_service_name(self):
+  @classmethod
+  def external_https_service_name(cls):
     yield "external-https-service"
 
   class TestServiceDelete():
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
       yield WORKFLOW_RECORD_TYPE
 
     @pytest.fixture(scope='class')
-    def external_service_docker_compose(self, app_dir_path, target_workflow_name, external_service_name, hostname):
+    @classmethod
+    def external_service_docker_compose(cls, app_dir_path, target_workflow_name, external_service_name, hostname):
       yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_service_name, hostname=hostname)
     
     @pytest.fixture(scope='class')
-    def external_https_service_docker_compose(self, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
+    @classmethod
+    def external_https_service_docker_compose(cls, app_dir_path, target_workflow_name, external_https_service_name, https_service_hostname):
       yield ServiceDockerCompose(app_dir_path=app_dir_path, namespace=target_workflow_name, workflow_name=target_workflow_name, service_name=external_https_service_name, hostname=https_service_hostname)
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_setup(self, runner, app_dir_path, app_name, external_service_docker_compose, external_https_service_docker_compose):
+    @classmethod
+    def create_setup(cls, runner, app_dir_path, app_name, external_service_docker_compose, external_https_service_docker_compose):
       
       ScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 

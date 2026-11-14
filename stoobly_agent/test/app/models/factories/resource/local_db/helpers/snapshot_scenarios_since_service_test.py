@@ -115,7 +115,8 @@ def test_snapshot_scenarios_since_passes_custom_snapshot_options(monkeypatch):
 class TestWhenDataDirPathDiffersFromCwd():
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture

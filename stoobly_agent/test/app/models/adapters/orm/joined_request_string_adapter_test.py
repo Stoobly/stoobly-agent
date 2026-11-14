@@ -17,18 +17,21 @@ def runner():
 
 class TestJoindRequestStringAdapter():
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestWhenEncoded():
     @pytest.fixture(scope='class')
-    def record_result(self, runner: CliRunner) -> Result:
+    @classmethod
+    def record_result(cls, runner: CliRunner) -> Result:
       url = DETERMINISTIC_GET_REQUEST_URL
       record_result = runner.invoke(record, ['--header', 'Accept-Encoding: gzip', url])
       return record_result
 
     @pytest.fixture(scope='class')
-    def created_request(self, record_result: Result):
+    @classmethod
+    def created_request(cls, record_result: Result):
       assert record_result.exit_code == 0
       return Request.last()
 
@@ -48,13 +51,15 @@ class TestJoindRequestStringAdapter():
 
   class TestWhenNotEncoded():
     @pytest.fixture(scope='class')
-    def record_result(self, runner: CliRunner) -> Result:
+    @classmethod
+    def record_result(cls, runner: CliRunner) -> Result:
       url = DETERMINISTIC_GET_REQUEST_URL
       record_result = runner.invoke(record, [url])
       return record_result
 
     @pytest.fixture(scope='class')
-    def created_request(self, record_result: Result):
+    @classmethod
+    def created_request(cls, record_result: Result):
       assert record_result.exit_code == 0
       return Request.last()
 

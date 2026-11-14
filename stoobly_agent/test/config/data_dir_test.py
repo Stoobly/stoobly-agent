@@ -10,11 +10,13 @@ from stoobly_agent.test.test_helper import reset
 
 class TestDataDir():
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def original_cwd(self) -> str:
+  @classmethod
+  def original_cwd(cls) -> str:
     return os.getcwd()
 
   def test_in_home(self, original_cwd: str):

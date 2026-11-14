@@ -27,11 +27,13 @@ def _reset_singletons():
 
 class TestAppDataDir:
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def original_cwd(self) -> str:
+  @classmethod
+  def original_cwd(cls) -> str:
     return os.getcwd()
 
   def test_init_raises(self):

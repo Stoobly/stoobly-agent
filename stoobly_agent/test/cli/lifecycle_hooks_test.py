@@ -23,15 +23,18 @@ def runner():
 
 class TestLifecycleHooks():
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def lifecycle_hooks_path(self):
+  @classmethod
+  def lifecycle_hooks_path(cls):
     return str(Path(__file__).parent.parent / 'mock_data' / 'lifecycle_hooks.py')
 
   @pytest.fixture(scope='class')
-  def record_result(self, runner: CliRunner, lifecycle_hooks_path: str):
+  @classmethod
+  def record_result(cls, runner: CliRunner, lifecycle_hooks_path: str):
     record_result = runner.invoke(record, [
       '--lifecycle-hooks-path', lifecycle_hooks_path, '--output', '/dev/null', DETERMINISTIC_GET_REQUEST_URL
     ])
@@ -39,11 +42,13 @@ class TestLifecycleHooks():
     return record_result
 
   @pytest.fixture(scope='class')
-  def recorded_request(self):
+  @classmethod
+  def recorded_request(cls):
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def mock_result(self, runner: CliRunner, lifecycle_hooks_path: str):
+  @classmethod
+  def mock_result(cls, runner: CliRunner, lifecycle_hooks_path: str):
     mock_result = runner.invoke(mock, [
       '--lifecycle-hooks-path', lifecycle_hooks_path, '--output', '/dev/null', DETERMINISTIC_GET_REQUEST_URL
     ])
@@ -51,7 +56,8 @@ class TestLifecycleHooks():
     return mock_result
 
   @pytest.fixture(scope='class')
-  def test_result(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+  @classmethod
+  def test_result(cls, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
     test_result = runner.invoke(request, [
       'test', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key() 
     ])
@@ -59,7 +65,8 @@ class TestLifecycleHooks():
     return test_result
 
   @pytest.fixture(scope='class')
-  def replay_result(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+  @classmethod
+  def replay_result(cls, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
     replay_result = runner.invoke(request, [
       'replay', '--format', 'json', '--lifecycle-hooks-path', lifecycle_hooks_path, recorded_request.key()
     ])
@@ -92,15 +99,18 @@ class TestLifecycleHooks():
 
   class TestWithTestPolicyNone():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     @pytest.fixture(scope='class')
-    def lifecycle_hooks_path(self):
+    @classmethod
+    def lifecycle_hooks_path(cls):
       return str(Path(__file__).parent.parent / 'mock_data' / 'lifecycle_hooks.py')
 
     @pytest.fixture(scope='class')
-    def test_result(self, runner: CliRunner, lifecycle_hooks_path: str):
+    @classmethod
+    def test_result(cls, runner: CliRunner, lifecycle_hooks_path: str):
       settings = Settings.instance()
       project_key = ProjectKey(settings.proxy.intercept.project_key)
       data_rule = settings.proxy.data.data_rules(project_key.id)
@@ -130,15 +140,18 @@ class TestRecordModifications():
   """Test that lifecycle hooks can modify requests and responses in record mode."""
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def lifecycle_hooks_path(self):
+  @classmethod
+  def lifecycle_hooks_path(cls):
     return str(Path(__file__).parent.parent / 'mock_data' / 'lifecycle_hooks_modify.py')
 
   @pytest.fixture(scope='class')
-  def record_result(self, runner: CliRunner, lifecycle_hooks_path: str):
+  @classmethod
+  def record_result(cls, runner: CliRunner, lifecycle_hooks_path: str):
     # Don't use --output /dev/null so we can verify stdout contains lifecycle hook prints
     record_result = runner.invoke(record, [
       '--lifecycle-hooks-path', lifecycle_hooks_path, DETERMINISTIC_GET_REQUEST_URL
@@ -147,19 +160,23 @@ class TestRecordModifications():
     return record_result
 
   @pytest.fixture(scope='class')
-  def recorded_request(self, record_result):
+  @classmethod
+  def recorded_request(cls, record_result):
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def recorded_response(self, record_result):
+  @classmethod
+  def recorded_response(cls, record_result):
     return Response.last()
 
   @pytest.fixture(scope='class')
-  def python_request(self, recorded_request: Request):
+  @classmethod
+  def python_request(cls, recorded_request: Request):
     return RawHttpRequestAdapter(recorded_request.raw).to_request()
 
   @pytest.fixture(scope='class')
-  def python_response(self, recorded_response: Response):
+  @classmethod
+  def python_response(cls, recorded_response: Response):
     return RawHttpResponseAdapter(recorded_response.raw).to_response()
 
   class TestBeforeDevelopHook():
@@ -358,16 +375,19 @@ class TestTestModifications():
   """
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def lifecycle_hooks_path(self):
+  @classmethod
+  def lifecycle_hooks_path(cls):
     from stoobly_agent.test.mock_data import lifecycle_hooks_test_modify
     return str(Path(lifecycle_hooks_test_modify.__file__).resolve())
 
   @pytest.fixture(scope='class')
-  def recorded_request(self, runner: CliRunner):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner):
     # Keep this fixture independent from policy mutations in earlier tests.
     settings = Settings.instance()
     project_key = ProjectKey(settings.proxy.intercept.project_key)
@@ -382,7 +402,8 @@ class TestTestModifications():
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def test_result_found(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+  @classmethod
+  def test_result_found(cls, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
     settings = Settings.instance()
     project_key = ProjectKey(settings.proxy.intercept.project_key)
     data_rule = settings.proxy.data.data_rules(project_key.id)
@@ -397,7 +418,8 @@ class TestTestModifications():
     return test_result
 
   @pytest.fixture(scope='class')
-  def test_result_none(self, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
+  @classmethod
+  def test_result_none(cls, runner: CliRunner, lifecycle_hooks_path: str, recorded_request: Request):
     settings = Settings.instance()
     project_key = ProjectKey(settings.proxy.intercept.project_key)
     data_rule = settings.proxy.data.data_rules(project_key.id)

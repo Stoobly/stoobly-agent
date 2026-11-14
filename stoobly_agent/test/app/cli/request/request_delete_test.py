@@ -21,13 +21,15 @@ def settings():
 class TestDelete():
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_create_cli_result(self, runner: CliRunner):
+  @classmethod
+  def request_create_cli_result(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return record_result
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_delete_cli_results(self, runner: CliRunner):
+  @classmethod
+  def request_delete_cli_results(cls, runner: CliRunner):
     _request = Request.last()
     request_delete_result = runner.invoke(request, ['delete', _request.key()])
     assert request_delete_result.exit_code == 0
@@ -51,13 +53,15 @@ class TestDelete():
 class TestDeleteWithForce():
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_create_cli_result(self, runner: CliRunner):
+  @classmethod
+  def request_create_cli_result(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return record_result
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_delete_cli_results(self, runner: CliRunner):
+  @classmethod
+  def request_delete_cli_results(cls, runner: CliRunner):
     _request = Request.last()
     request_delete_result = runner.invoke(request, ['delete', '--force', _request.key()])
     assert request_delete_result.exit_code == 0
@@ -72,13 +76,15 @@ class TestDeleteWithForce():
 class TestDeleteWhenInScenario():
 
   @pytest.fixture(autouse=True, scope='class')
-  def scenario(self):
+  @classmethod
+  def scenario(cls):
     record = Scenario.create(name='delete scenario test')
     yield record
     record.delete()
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_in_scenario(self, runner: CliRunner, scenario: Scenario):
+  @classmethod
+  def request_in_scenario(cls, runner: CliRunner, scenario: Scenario):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     _request = Request.last()
@@ -86,7 +92,8 @@ class TestDeleteWhenInScenario():
     return _request
 
   @pytest.fixture(autouse=True, scope='class')
-  def soft_delete(self, runner: CliRunner, request_in_scenario: Request):
+  @classmethod
+  def soft_delete(cls, runner: CliRunner, request_in_scenario: Request):
     result = runner.invoke(request, ['delete', request_in_scenario.key()])
     assert result.exit_code == 0
 

@@ -13,37 +13,45 @@ from stoobly_agent.test.test_helper import reset
 class TestScaffoldServiceList:
 
     @pytest.fixture(scope='module', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         return CliRunner()
 
     @pytest.fixture(scope='class')
-    def temp_dir(self):
+    @classmethod
+    def temp_dir(cls):
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
         shutil.rmtree(temp_dir)
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         return 'test-app'
 
     @pytest.fixture(scope='class')
-    def app_dir_path(self, temp_dir, app_name):
+    @classmethod
+    def app_dir_path(cls, temp_dir, app_name):
         return os.path.join(temp_dir, app_name)
 
     @pytest.fixture(scope='class')
-    def service_name_1(self):
+    @classmethod
+    def service_name_1(cls):
         return 'list-service-one'
 
     @pytest.fixture(scope='class')
-    def service_name_2(self):
+    @classmethod
+    def service_name_2(cls):
         return 'list-service-two'
 
     @pytest.fixture(scope='class', autouse=True)
-    def create_scaffold_app(self, runner: CliRunner, app_dir_path: str, app_name: str, service_name_1: str, service_name_2: str):
+    @classmethod
+    def create_scaffold_app(cls, runner: CliRunner, app_dir_path: str, app_name: str, service_name_1: str, service_name_2: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'service-one.example.com', service_name_1, False)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, 'service-two.example.com', service_name_2, False)

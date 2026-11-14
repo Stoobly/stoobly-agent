@@ -37,25 +37,30 @@ def settings():
 
 class TestTiebreakScenarioRequest():
   @pytest.fixture(scope='class')
-  def created_request_one(self):
+  @classmethod
+  def created_request_one(cls):
     return RequestMock(1)
 
   @pytest.fixture(scope='class')
-  def created_request_two(self):
+  @classmethod
+  def created_request_two(cls):
     return RequestMock(2)
 
   @pytest.fixture(scope='class')
-  def created_request_three(self):
+  @classmethod
+  def created_request_three(cls):
     return RequestMock(3)
 
   @pytest.fixture(scope='class')
-  def session_id(self):
+  @classmethod
+  def session_id(cls):
     return generate_session_id({
       'scenario_id': 'test'
     })
 
   @pytest.fixture(scope='class')
-  def requests(self, created_request_one: Request, created_request_two: Request):
+  @classmethod
+  def requests(cls, created_request_one: Request, created_request_two: Request):
     return [created_request_one, created_request_two]
 
   def test_it_returns_request_one(self, session_id: str, requests: List[Request]):
@@ -83,7 +88,8 @@ class TestTiebreakScenarioRequest():
 
   class TestWhenTimeout():
     @pytest.fixture(autouse=True, scope='class')
-    def cache(self):
+    @classmethod
+    def cache(cls):
       cache = Cache.instance()
       return cache
 
@@ -105,11 +111,13 @@ class TestTiebreakScenarioRequest():
 
   class TestWhenResetSessions():
     @pytest.fixture(scope='class')
-    def created_request_one(self):
+    @classmethod
+    def created_request_one(cls):
       return RequestMock(1)
 
     @pytest.fixture(autouse=True, scope='class')
-    def cache(self):
+    @classmethod
+    def cache(cls):
       cache = Cache.instance()
       return cache
 

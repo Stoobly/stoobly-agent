@@ -21,29 +21,34 @@ def runner():
 
 class TestOrmPythonResponseAdapter():
   @pytest.fixture(scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def response_body(self):
+  @classmethod
+  def response_body(cls):
     return {
       'first_name': 'John',
       'last_name': 'Smith',
     }
 
   @pytest.fixture(scope='class')
-  def response_headers(self):
+  @classmethod
+  def response_headers(cls):
     return {
       'Content-Type': 'application/json'
     }
 
   @pytest.fixture(scope='class')
-  def local_db_request_adapter(self):
+  @classmethod
+  def local_db_request_adapter(cls):
     adapter = LocalDBRequestAdapter(request_orm=Request, response_orm=Response)
     return adapter
 
   @pytest.fixture(scope='class')
-  def local_db_response_adapter(self):
+  @classmethod
+  def local_db_response_adapter(cls):
     adapter = LocalDBResponseAdapter(request_orm=Request)
     return adapter
 

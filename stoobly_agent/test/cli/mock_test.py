@@ -24,7 +24,8 @@ class TestMocking():
   class TestRewriting():
 
     @pytest.fixture(autouse=True, scope='class')
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenHeaders():
@@ -33,8 +34,9 @@ class TestMocking():
       url = DETERMINISTIC_GET_REQUEST_URL
 
       @pytest.fixture(autouse=True, scope='class')
-      def recorded_request(self, runner: CliRunner):
-        record_result = runner.invoke(record, [self.url, '-H', f"{self.header_name}: {self.header_value}"])
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        record_result = runner.invoke(record, [cls.url, '-H', f"{cls.header_name}: {cls.header_value}"])
         assert record_result.exit_code == 0
         return Request.last()
 
@@ -72,8 +74,9 @@ class TestMocking():
       url = DETERMINISTIC_GET_REQUEST_URL
 
       @pytest.fixture(autouse=True, scope='class')
-      def recorded_request(self, runner: CliRunner):
-        record_result = runner.invoke(record, [f"{self.url}?{self.query_param_name}={self.query_param_value}"])
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        record_result = runner.invoke(record, [f"{cls.url}?{cls.query_param_name}={cls.query_param_value}"])
         assert record_result.exit_code == 0
         return Request.last()
 
@@ -110,9 +113,10 @@ class TestMocking():
       url = DETERMINISTIC_GET_REQUEST_URL
 
       @pytest.fixture(autouse=True, scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         content = {}
-        content[self.body_param_name] = self.body_param_value
+        content[cls.body_param_name] = cls.body_param_value
         body = json.dumps(content)
 
         url = DETERMINISTIC_GET_REQUEST_URL
@@ -153,12 +157,14 @@ class TestCookie():
   url = DETERMINISTIC_GET_REQUEST_URL
 
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner, settings):
-    record_result = runner.invoke(record, ['-b', self.cookie, self.url])
+  @classmethod
+  def recorded_request(cls, runner: CliRunner, settings):
+    record_result = runner.invoke(record, ['-b', cls.cookie, cls.url])
     assert record_result.exit_code == 0
     return Request.last()
 
@@ -200,7 +206,8 @@ class TestRequestRulesHeaders():
   """Integration tests for X-Stoobly-Request-Match-Rules and X-Stoobly-Request-Rewrite-Rules headers."""
 
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestMatchRulesHeader():
@@ -211,9 +218,10 @@ class TestRequestRulesHeaders():
     url = DETERMINISTIC_GET_REQUEST_URL
 
     @pytest.fixture(autouse=True, scope='class')
-    def recorded_request(self, runner: CliRunner):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner):
       """Record a request with a specific header."""
-      record_result = runner.invoke(record, [self.url, '-H', f"{self.header_name}: {self.header_value}"])
+      record_result = runner.invoke(record, [cls.url, '-H', f"{cls.header_name}: {cls.header_value}"])
       assert record_result.exit_code == 0
       return Request.last()
 
@@ -253,9 +261,10 @@ class TestRequestRulesHeaders():
     url = DETERMINISTIC_GET_REQUEST_URL
 
     @pytest.fixture(autouse=True, scope='class')
-    def recorded_request(self, runner: CliRunner):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner):
       """Record a request with a specific header."""
-      record_result = runner.invoke(record, [self.url, '-H', f"{self.header_name}: {self.header_value}"])
+      record_result = runner.invoke(record, [cls.url, '-H', f"{cls.header_name}: {cls.header_value}"])
       assert record_result.exit_code == 0
       return Request.last()
 
@@ -300,33 +309,39 @@ class TestPathHeaders():
   public_file_url = 'http://localhost:8080/index.html'
 
   @pytest.fixture(autouse=True, scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(autouse=True, scope='class')
-  def recorded_request(self, runner: CliRunner, settings):
+  @classmethod
+  def recorded_request(cls, runner: CliRunner, settings):
     """Record a request for mocking."""
-    record_result = runner.invoke(record, [self.url])
+    record_result = runner.invoke(record, [cls.url])
     assert record_result.exit_code == 0
     return Request.last()
 
   @pytest.fixture(scope='class')
-  def mock_data_dir(self):
+  @classmethod
+  def mock_data_dir(cls):
     """Get path to mock_data directory."""
     return Path(__file__).parent.parent / 'mock_data'
 
   @pytest.fixture(scope='class')
-  def lifecycle_hooks_path(self, mock_data_dir):
+  @classmethod
+  def lifecycle_hooks_path(cls, mock_data_dir):
     """Get path to lifecycle hooks file."""
     return str(mock_data_dir / 'lifecycle_hooks.py')
 
   @pytest.fixture(scope='class')
-  def response_fixtures_path(self, mock_data_dir):
+  @classmethod
+  def response_fixtures_path(cls, mock_data_dir):
     """Get path to response fixtures file."""
     return str(mock_data_dir / 'test_fixtures.yaml')
 
   @pytest.fixture(scope='class')
-  def public_dir_path(self, mock_data_dir):
+  @classmethod
+  def public_dir_path(cls, mock_data_dir):
     """Get path to public directory."""
     return str(mock_data_dir / 'scaffold')
 

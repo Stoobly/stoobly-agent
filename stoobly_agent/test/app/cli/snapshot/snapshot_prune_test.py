@@ -21,23 +21,27 @@ def runner():
 
 class TestPrune():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenDeletingRequest():
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def events(self, runner: CliRunner, recorded_request: Request, log: Log):
+      @classmethod
+      def events(cls, runner: CliRunner, recorded_request: Request, log: Log):
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
@@ -61,7 +65,8 @@ class TestPrune():
     class TestWhenCreatingRequest():
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='function')
@@ -87,7 +92,8 @@ class TestPrune():
     class TestWhenMissingSnapshot():
 
       @pytest.fixture(scope='class')
-      def log(self):
+      @classmethod
+      def log(cls):
         return Log()
 
       @pytest.fixture(scope='function')
@@ -126,13 +132,15 @@ class TestPrune():
       '''
 
       @pytest.fixture(scope='class')
-      def created_scenario(self, runner: CliRunner):
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
         create_result = runner.invoke(scenario, ['create', 'test'])
         assert create_result.exit_code == 0
         return Scenario.last()
 
       @pytest.fixture(scope='class', autouse=True)
-      def created_scenario_requests(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def created_scenario_requests(cls, runner: CliRunner, created_scenario: Scenario):
         record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
 
@@ -142,7 +150,8 @@ class TestPrune():
         return created_scenario.requests
 
       @pytest.fixture(scope='class', autouse=True)
-      def delete_event(self, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
+      @classmethod
+      def delete_event(cls, runner: CliRunner, created_scenario: Scenario, created_scenario_requests: List[Request]):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
@@ -157,7 +166,8 @@ class TestPrune():
         return events[len(events) - 1]
 
       @pytest.fixture(scope='class')
-      def apply_result(self, runner: CliRunner, created_scenario: Scenario):
+      @classmethod
+      def apply_result(cls, runner: CliRunner, created_scenario: Scenario):
         prune_result = runner.invoke(snapshot, ['prune'])
         assert prune_result.exit_code == 0
 

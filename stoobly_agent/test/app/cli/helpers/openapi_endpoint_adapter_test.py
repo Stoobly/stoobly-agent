@@ -57,43 +57,51 @@ _SWAGGER_IO_EID_DELETE_USER_BY_NAME = compute_openapi_endpoint_id(_SWAGGER_IO_SI
 @pytest.mark.openapi
 class TestOpenApiEndpointAdapter():
   @pytest.fixture(scope='class')
-  def mock_data_directory_path(self):
+  @classmethod
+  def mock_data_directory_path(cls):
     return Path(__file__).parent.parent.parent.parent / 'mock_data'
 
   @pytest.fixture(scope='class')
-  def petstore_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def petstore_expanded_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_expanded_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore-expanded.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def petstore_references_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_references_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore-references.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def uspto_file_path(self, mock_data_directory_path):
+  @classmethod
+  def uspto_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "uspto.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def petstore_swagger_io_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_swagger_io_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore-swagger-io.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def open_api_endpoint_adapter(self):
+  @classmethod
+  def open_api_endpoint_adapter(cls):
     adapter = OpenApiEndpointAdapter()
     return adapter
 
   class TestWhenAdaptingPestoreExpanded():
 
     @pytest.fixture(scope='class')
-    def expected_v2_get_pets_endpoint(self) -> Dict:
+    @classmethod
+    def expected_v2_get_pets_endpoint(cls) -> Dict:
       return {
         'id': _PETSTORE_EXPANDED_EID_GET_PETS,
         'service_id': _PETSTORE_EXPANDED_SID,
@@ -191,7 +199,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_v2_post_pets_endpoint(self) -> Dict:
+    @classmethod
+    def expected_v2_post_pets_endpoint(cls) -> Dict:
       return {
         'id': _PETSTORE_EXPANDED_EID_POST_PETS,
         'service_id': _PETSTORE_EXPANDED_SID,
@@ -270,7 +279,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_v2_get_pets_id_endpoint(self) -> Dict:
+    @classmethod
+    def expected_v2_get_pets_id_endpoint(cls) -> Dict:
       return {
         'id': _PETSTORE_EXPANDED_EID_GET_PETS_ID,
         'service_id': _PETSTORE_EXPANDED_SID,
@@ -331,7 +341,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_v2_delete_pets_id_endpoint(self) -> Dict:
+    @classmethod
+    def expected_v2_delete_pets_id_endpoint(cls) -> Dict:
       return {
         'id': _PETSTORE_EXPANDED_EID_DELETE_PETS_ID,
         'service_id': _PETSTORE_EXPANDED_SID,
@@ -379,7 +390,8 @@ class TestOpenApiEndpointAdapter():
   class TestWhenAdaptingUspto():
 
     @pytest.fixture(scope='class')
-    def expected_get_root_https(self) -> Dict:
+    @classmethod
+    def expected_get_root_https(cls) -> Dict:
       return {
         'id': _USPTO_EID_GET_ROOT_HTTPS,
         'service_id': _USPTO_SID_HTTPS,
@@ -469,7 +481,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_get_root_http(self, expected_get_root_https) -> Dict:
+    @classmethod
+    def expected_get_root_http(cls, expected_get_root_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_get_root_https)
       http_endpoint_version['id'] = _USPTO_EID_GET_ROOT_HTTP
       http_endpoint_version['service_id'] = _USPTO_SID_HTTP
@@ -479,7 +492,8 @@ class TestOpenApiEndpointAdapter():
       return http_endpoint_version
 
     @pytest.fixture(scope='class')
-    def expected_get_dataset_version_fields_https(self) -> Dict:
+    @classmethod
+    def expected_get_dataset_version_fields_https(cls) -> Dict:
       return {
         'id': _USPTO_EID_GET_FIELDS_HTTPS,
         'service_id': _USPTO_SID_HTTPS,
@@ -510,7 +524,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_get_dataset_version_fields_http(self, expected_get_dataset_version_fields_https) -> Dict:
+    @classmethod
+    def expected_get_dataset_version_fields_http(cls, expected_get_dataset_version_fields_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_get_dataset_version_fields_https)
       http_endpoint_version['id'] = _USPTO_EID_GET_FIELDS_HTTP
       http_endpoint_version['service_id'] = _USPTO_SID_HTTP
@@ -518,7 +533,8 @@ class TestOpenApiEndpointAdapter():
       return http_endpoint_version
 
     @pytest.fixture(scope='class')
-    def expected_post_dataset_version_records_https(self) -> Dict:
+    @classmethod
+    def expected_post_dataset_version_records_https(cls) -> Dict:
       return {
         'id': _USPTO_EID_POST_RECORDS_HTTPS,
         'service_id': _USPTO_SID_HTTPS,
@@ -604,7 +620,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_post_dataset_version_records_http(self, expected_post_dataset_version_records_https) -> Dict:
+    @classmethod
+    def expected_post_dataset_version_records_http(cls, expected_post_dataset_version_records_https) -> Dict:
       http_endpoint_version = copy.deepcopy(expected_post_dataset_version_records_https)
       http_endpoint_version['id'] = _USPTO_EID_POST_RECORDS_HTTP
       http_endpoint_version['service_id'] = _USPTO_SID_HTTP
@@ -642,7 +659,8 @@ class TestOpenApiEndpointAdapter():
   class TestWhenAdaptingPetstoreReferences():
 
     @pytest.fixture(scope='class')
-    def expected_get_v1_pets_ref(self) -> Dict:
+    @classmethod
+    def expected_get_v1_pets_ref(cls) -> Dict:
       return {
         'id': _PETSTORE_REF_EID_POST_V1,
         'service_id': _PETSTORE_REF_SID,
@@ -751,7 +769,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_get_v2_pets_ref(self) -> Dict:
+    @classmethod
+    def expected_get_v2_pets_ref(cls) -> Dict:
       return {
         'host': 'petstore.swagger.io',
         'id': _PETSTORE_REF_EID_POST_V2,
@@ -895,7 +914,8 @@ class TestOpenApiEndpointAdapter():
   class TestWhenAdaptingPetstoreSwaggerIo():
 
     @pytest.fixture(scope='class')
-    def expected_put_v3_pets_ref(self) -> Dict:
+    @classmethod
+    def expected_put_v3_pets_ref(cls) -> Dict:
       return {
         'host': '-',
         'id': _SWAGGER_IO_EID_PUT_PET,
@@ -1165,7 +1185,8 @@ class TestOpenApiEndpointAdapter():
       }
 
     @pytest.fixture(scope='class')
-    def expected_post_v3_user_createwithlist(self) -> Dict:
+    @classmethod
+    def expected_post_v3_user_createwithlist(cls) -> Dict:
       return {
         'host': '-',
         'id': _SWAGGER_IO_EID_POST_USER_CREATE_WITH_LIST,
@@ -1384,12 +1405,14 @@ class TestOpenApiEndpointAdapter():
     """Test cases for non-component references (e.g., #/paths/... instead of #/components/...)"""
 
     @pytest.fixture(scope='class')
-    def non_component_ref_spec_path(self, mock_data_directory_path):
+    @classmethod
+    def non_component_ref_spec_path(cls, mock_data_directory_path):
       path = mock_data_directory_path / "petstore-non-component-refs.yaml"
       return path
 
     @pytest.fixture(scope='class')
-    def expected_post_pets_with_path_ref(self) -> Dict:
+    @classmethod
+    def expected_post_pets_with_path_ref(cls) -> Dict:
       return {
         'id': _PETSTORE_REF_EID_POST_V1,
         'service_id': _PETSTORE_REF_SID,
@@ -1689,7 +1712,8 @@ class TestOpenApiEndpointAdapter():
     """Test cases for allOf schema handling"""
 
     @pytest.fixture(scope='class')
-    def open_api_endpoint_adapter(self):
+    @classmethod
+    def open_api_endpoint_adapter(cls):
       return OpenApiEndpointAdapter()
 
     def test_allof_with_ref_and_inline_properties(self, open_api_endpoint_adapter):

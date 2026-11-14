@@ -30,58 +30,71 @@ from stoobly_agent.test.test_helper import reset
 class TestLocalScaffoldE2e():
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='module')
-  def runner(self):
+  @classmethod
+  def runner(cls):
     yield CliRunner()
 
   @pytest.fixture(scope='class')
-  def app_name(self):
+  @classmethod
+  def app_name(cls):
     yield "local-test-app"
 
   @pytest.fixture(scope='class', autouse=True)
-  def app_dir_path(self):
+  @classmethod
+  def app_dir_path(cls):
     data_dir: DataDir = DataDir.instance()
     path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
     yield path
 
   @pytest.fixture(scope='class')
-  def hostname(self):
+  @classmethod
+  def hostname(cls):
     yield "api.example.com"
 
   @pytest.fixture(scope='class')
-  def https_service_hostname(self):
+  @classmethod
+  def https_service_hostname(cls):
     yield "docs.stoobly.com"
   
   @pytest.fixture(scope='class')
-  def external_service_name(self):
+  @classmethod
+  def external_service_name(cls):
     yield "external-api"
 
   @pytest.fixture(scope='class')
-  def external_https_service_name(self):
+  @classmethod
+  def external_https_service_name(cls):
     yield "external-secure-api"
 
   @pytest.fixture(scope='class')
-  def local_hostname(self):
+  @classmethod
+  def local_hostname(cls):
     yield "local-service.dev"
 
   @pytest.fixture(scope='class')
-  def local_service_name(self):
+  @classmethod
+  def local_service_name(cls):
     yield "local-service"
 
   @pytest.fixture(scope="class", autouse=True)
-  def proxy_url(self):
+  @classmethod
+  def proxy_url(cls):
     return "http://localhost:8081"
 
   class TestRecordWorkflow():
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
       yield WORKFLOW_RECORD_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
       # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -93,14 +106,16 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
       assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
-    def test_workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    @classmethod
+    def test_workflow_down(cls, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
       """Test workflow down command for local execution"""
       yield
 
@@ -166,11 +181,13 @@ class TestLocalScaffoldE2e():
 
   class TestMockWorkflow():
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
       yield WORKFLOW_MOCK_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
       # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -181,14 +198,16 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
       assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_down(self, runner, app_dir_path, proxy_url: str, target_workflow_name):
+    @classmethod
+    def workflow_down(cls, runner, app_dir_path, proxy_url: str, target_workflow_name):
       yield
 
       """Test workflow down command for local execution"""
@@ -319,11 +338,13 @@ class TestLocalScaffoldE2e():
 
   class TestDevelopWorkflow():
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
       yield WORKFLOW_DEVELOP_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, runner: CliRunner, app_dir_path: str, app_name: str, external_service_name: str, external_https_service_name: str, local_service_name: str, hostname: str, https_service_hostname: str, local_hostname: str):
       # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -335,14 +356,16 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Start the develop workflow"""
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
       assert wait_for_forward_proxy_ready(proxy_url, hostname), "Forward proxy did not become ready"
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
-    def test_workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    @classmethod
+    def test_workflow_down(cls, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
       yield
 
       LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
@@ -423,19 +446,23 @@ class TestLocalScaffoldE2e():
 
   class TestTestWorkflow():
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
       yield WORKFLOW_TEST_TYPE
 
     @pytest.fixture(scope='class')
-    def assets_service_name(self):
+    @classmethod
+    def assets_service_name(cls):
       yield "assets"
     
     @pytest.fixture(scope='class')
-    def assets_hostname(self):
+    @classmethod
+    def assets_hostname(cls):
       yield "assets.local"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, runner: CliRunner, app_name: str, app_dir_path: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, runner: CliRunner, app_name: str, app_dir_path: str, external_service_name: str, hostname: str, local_service_name: str, local_hostname: str):
       # Create app with local runtime
       LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
 
@@ -446,7 +473,8 @@ class TestLocalScaffoldE2e():
       LocalScaffoldCliInvoker.cli_service_create_local(runner, app_dir_path, local_hostname, local_service_name)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
       """Test workflow up command for local execution"""
 
       LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
@@ -454,7 +482,8 @@ class TestLocalScaffoldE2e():
       settings.load()
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_down(self, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    @classmethod
+    def workflow_down(cls, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
       yield
 
       """Test workflow down command for local execution"""

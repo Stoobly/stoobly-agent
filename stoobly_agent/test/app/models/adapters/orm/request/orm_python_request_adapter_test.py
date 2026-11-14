@@ -19,33 +19,39 @@ def runner():
 
 class TestOrmPythonRequestAdapter():
   @pytest.fixture(scope='class')
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   @pytest.fixture(scope='class')
-  def request_method(self):
+  @classmethod
+  def request_method(cls):
     return 'POST'
 
   @pytest.fixture(scope='class')
-  def request_url(self):
+  @classmethod
+  def request_url(cls):
     return 'https://petstore.swagger.io/v2/pets'
 
   @pytest.fixture(scope='class')
-  def request_body(self):
+  @classmethod
+  def request_body(cls):
     return {
       'first_name': 'John',
       'last_name': 'Smith',
     }
 
   @pytest.fixture(scope='class')
-  def request_headers(self):
+  @classmethod
+  def request_headers(cls):
     return {
       'Content-Type': 'application/json'
     }
 
   @pytest.fixture(scope='class')
+  @classmethod
   def created_request(
-    self, settings: Settings, 
+    cls, settings: Settings, 
     request_method: str, request_url: str, request_headers: dict, request_body: dict
   ):
     status = RequestBuilder(

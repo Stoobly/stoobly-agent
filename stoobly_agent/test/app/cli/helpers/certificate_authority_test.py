@@ -14,7 +14,8 @@ def settings():
 class TestCertificateAuthority():
 
   @pytest.fixture(autouse=True, scope='class')
-  def certificate_authority(self):
+  @classmethod
+  def certificate_authority(cls):
     return CertificateAuthority(DataDir.instance().certs_dir_path)
 
   class TestWhenCertDirConfigured():
@@ -29,7 +30,8 @@ class TestCertificateAuthority():
   class TestWhenCertDirNotConfigured():
 
     @pytest.fixture(autouse=True, scope='class')
-    def certificate_authority(self):
+    @classmethod
+    def certificate_authority(cls):
       return CertificateAuthority()
 
     def test_defaults_to_mitmproxy_confdir(self, certificate_authority: CertificateAuthority):
@@ -40,11 +42,13 @@ class TestCertificateAuthority():
     class TestWhenExistentHostname():
 
       @pytest.fixture(scope='class')
-      def hostname(self):
+      @classmethod
+      def hostname(cls):
         return 'www.google.com'
 
       @pytest.fixture(autouse=True, scope='class')
-      def sign(self, certificate_authority: CertificateAuthority, hostname: str):
+      @classmethod
+      def sign(cls, certificate_authority: CertificateAuthority, hostname: str):
         certificate_authority.sign(hostname)
 
       def test_signed(self, certificate_authority: CertificateAuthority, hostname: str):
@@ -53,11 +57,13 @@ class TestCertificateAuthority():
     class TestWhenNonExistentHostname():
 
       @pytest.fixture(scope='class')
-      def hostname(self):
+      @classmethod
+      def hostname(cls):
         return 'test.stoobly.com'
 
       @pytest.fixture(autouse=True, scope='class')
-      def sign(self, certificate_authority: CertificateAuthority, hostname: str):
+      @classmethod
+      def sign(cls, certificate_authority: CertificateAuthority, hostname: str):
         certificate_authority.sign(hostname)
 
       def test_signed(self, certificate_authority: CertificateAuthority, hostname: str):
@@ -66,11 +72,13 @@ class TestCertificateAuthority():
     class TestWhenSigned():
 
       @pytest.fixture(scope='class')
-      def hostname(self):
+      @classmethod
+      def hostname(cls):
         return 'www.google.com'
 
       @pytest.fixture(autouse=True, scope='class')
-      def sign(self, certificate_authority: CertificateAuthority, hostname: str):
+      @classmethod
+      def sign(cls, certificate_authority: CertificateAuthority, hostname: str):
         certificate_authority.sign(hostname)
 
       def test_it_does_not_sign(self, certificate_authority: CertificateAuthority, hostname: str):
@@ -79,11 +87,13 @@ class TestCertificateAuthority():
     class TestWhenSignedByDifferentCA():
 
       @pytest.fixture(scope='class')
-      def hostname(self):
+      @classmethod
+      def hostname(cls):
         return 'test.stoobly.com'
 
       @pytest.fixture(scope='class')
-      def other_ca_dir(self):
+      @classmethod
+      def other_ca_dir(cls):
         """Create a temporary directory for a different CA"""
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
@@ -92,21 +102,24 @@ class TestCertificateAuthority():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
       @pytest.fixture(autouse=True, scope='class')
-      def setup_cas(self, certificate_authority: CertificateAuthority, other_ca_dir: str):
+      @classmethod
+      def setup_cas(cls, certificate_authority: CertificateAuthority, other_ca_dir: str):
         """Ensure both CAs have their certificates generated"""
         # Generate certificates for the first CA (if not already generated)
         if not certificate_authority.certs_generated:
           certificate_authority.generate_certs()
 
       @pytest.fixture(scope='class')
-      def other_ca(self, other_ca_dir):
+      @classmethod
+      def other_ca(cls, other_ca_dir):
         """Create a second CertificateAuthority with a different CA"""
         other_ca = CertificateAuthority(other_ca_dir)
         other_ca.generate_certs()
         return other_ca
 
       @pytest.fixture(autouse=True, scope='class')
-      def sign_with_other_ca(self, other_ca: CertificateAuthority, hostname: str, other_ca_dir):
+      @classmethod
+      def sign_with_other_ca(cls, other_ca: CertificateAuthority, hostname: str, other_ca_dir):
         """Sign a certificate with the different CA"""
         other_ca.sign(hostname, dest=other_ca_dir)
 

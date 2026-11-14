@@ -20,13 +20,15 @@ def settings():
 
 class TestSnapshotResetConfirmation():
   @pytest.fixture(scope='class')
-  def created_scenario(self, runner: CliRunner):
+  @classmethod
+  def created_scenario(cls, runner: CliRunner):
     create_result = runner.invoke(scenario, ['create', 'test'])
     assert create_result.exit_code == 0
     return Scenario.last()
 
   @pytest.fixture(scope='class', autouse=True)
-  def recorded_requests(self, runner: CliRunner, created_scenario: Scenario):
+  @classmethod
+  def recorded_requests(cls, runner: CliRunner, created_scenario: Scenario):
     record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
@@ -34,7 +36,8 @@ class TestSnapshotResetConfirmation():
     return created_scenario.requests
 
   @pytest.fixture(scope='class', autouse=True)
-  def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
+  @classmethod
+  def snapshot_result(cls, runner: CliRunner, created_scenario: Scenario):
     snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
@@ -61,13 +64,15 @@ class TestSnapshotResetConfirmation():
 
 class TestSnapshotResetYesFlag():
   @pytest.fixture(scope='class')
-  def created_scenario(self, runner: CliRunner):
+  @classmethod
+  def created_scenario(cls, runner: CliRunner):
     create_result = runner.invoke(scenario, ['create', 'test-yes'])
     assert create_result.exit_code == 0
     return Scenario.last()
 
   @pytest.fixture(scope='class', autouse=True)
-  def recorded_requests(self, runner: CliRunner, created_scenario: Scenario):
+  @classmethod
+  def recorded_requests(cls, runner: CliRunner, created_scenario: Scenario):
     record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
@@ -75,7 +80,8 @@ class TestSnapshotResetYesFlag():
     return created_scenario.requests
 
   @pytest.fixture(scope='class', autouse=True)
-  def snapshot_result(self, runner: CliRunner, created_scenario: Scenario):
+  @classmethod
+  def snapshot_result(cls, runner: CliRunner, created_scenario: Scenario):
     snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
@@ -94,13 +100,15 @@ class TestSnapshotResetYesFlag():
 
 class TestSnapshotResetHard():
   @pytest.fixture(scope='class')
-  def primary_scenario(self, runner: CliRunner):
+  @classmethod
+  def primary_scenario(cls, runner: CliRunner):
     create_result = runner.invoke(scenario, ['create', 'primary'])
     assert create_result.exit_code == 0
     return Scenario.last()
 
   @pytest.fixture(scope='class', autouse=True)
-  def primary_requests(self, runner: CliRunner, primary_scenario: Scenario):
+  @classmethod
+  def primary_requests(cls, runner: CliRunner, primary_scenario: Scenario):
     record_result = runner.invoke(record, ['--scenario-key', primary_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     record_result = runner.invoke(record, ['--scenario-key', primary_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL])
@@ -108,19 +116,22 @@ class TestSnapshotResetHard():
     return primary_scenario.requests
 
   @pytest.fixture(scope='class', autouse=True)
-  def primary_snapshot(self, runner: CliRunner, primary_scenario: Scenario):
+  @classmethod
+  def primary_snapshot(cls, runner: CliRunner, primary_scenario: Scenario):
     snapshot_result = runner.invoke(scenario, ['snapshot', 'create', primary_scenario.key()])
     assert snapshot_result.exit_code == 0
     return snapshot_result
 
   @pytest.fixture(scope='class')
-  def extra_scenario(self, runner: CliRunner):
+  @classmethod
+  def extra_scenario(cls, runner: CliRunner):
     create_result = runner.invoke(scenario, ['create', 'extra'])
     assert create_result.exit_code == 0
     return Scenario.last()
 
   @pytest.fixture(scope='class', autouse=True)
-  def extra_request(self, runner: CliRunner):
+  @classmethod
+  def extra_request(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return Request.last()

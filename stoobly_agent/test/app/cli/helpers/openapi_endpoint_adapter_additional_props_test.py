@@ -16,21 +16,25 @@ _ADDITIONAL_PROPS_EID = compute_openapi_endpoint_id(_ADDITIONAL_PROPS_SID, "/v1/
 @pytest.mark.openapi
 class TestOpenApiEndpointAdapterAdditionalProps():
   @pytest.fixture(scope='class')
-  def mock_data_directory_path(self):
+  @classmethod
+  def mock_data_directory_path(cls):
     return Path(__file__).parent.parent.parent.parent / 'mock_data'
 
   @pytest.fixture(scope='class')
-  def petstore_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore-additional-props.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def open_api_endpoint_adapter(self):
+  @classmethod
+  def open_api_endpoint_adapter(cls):
     adapter = OpenApiEndpointAdapter()
     return adapter
 
   @pytest.fixture(scope='class')
-  def expected_post_pets_endpoint(self) -> Dict:
+  @classmethod
+  def expected_post_pets_endpoint(cls) -> Dict:
     return {
       "id": _ADDITIONAL_PROPS_EID,
       "service_id": _ADDITIONAL_PROPS_SID,

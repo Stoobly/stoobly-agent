@@ -22,11 +22,13 @@ def runner():
 class TestTraceContext():
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class')
-    def request_show_response(self, runner: CliRunner):
+    @classmethod
+    def request_show_response(cls, runner: CliRunner):
       record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
       assert record_result.exit_code == 0
       request = Request.last()
@@ -39,7 +41,8 @@ class TestTraceContext():
 
 
     @pytest.fixture(scope='class')
-    def endpoint_show_response(self):
+    @classmethod
+    def endpoint_show_response(cls):
       return {
         'aliases': [],
         'body_param_names': [],
@@ -51,31 +54,37 @@ class TestTraceContext():
     class TestWhenFifoStrategy():
 
       @pytest.fixture(scope='class')
-      def trace_context(self):
+      @classmethod
+      def trace_context(cls):
         context = TraceContext(endpoint_cache)
         context.alias_resolve_strategy = alias_resolve_strategy.FIFO
         return context
 
       @pytest.fixture(scope='class')
-      def request_schema(self, request_show_response):
+      @classmethod
+      def request_schema(cls, request_show_response):
         return RequestSchema(request_show_response)
 
       class TestWhenHeader():
 
         @pytest.fixture(scope='class')
-        def accept_encodings(self):
+        @classmethod
+        def accept_encodings(cls):
           return ['identity'] # Overriden by intercept handler
 
         @pytest.fixture(scope='class')
-        def access_token(self):
+        @classmethod
+        def access_token(cls):
           return 'abc123'
 
         @pytest.fixture(scope='class')
-        def cache_controls(self):
+        @classmethod
+        def cache_controls(cls):
           return ['no-cache', 'no-store'] # Overriden by intercept handler
 
         @pytest.fixture(scope='class')
-        def aliases(self):
+        @classmethod
+        def aliases(cls):
           return [
             {
               'id': 1,
@@ -92,7 +101,8 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def header_names(self, aliases):
+        @classmethod
+        def header_names(cls, aliases):
           accept_encoding_alias = aliases[0]
           access_token_alias = aliases[1]
           cache_control_alias = aliases[2]
@@ -115,13 +125,15 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def decorated_endpoint_show_response(self, endpoint_show_response, aliases, header_names):
+        @classmethod
+        def decorated_endpoint_show_response(cls, endpoint_show_response, aliases, header_names):
           endpoint_show_response['aliases'] = aliases
           endpoint_show_response['header_names'] = header_names
           return endpoint_show_response
 
         @pytest.fixture(scope='class')
-        def decorated_request_schema(self, request_schema: RequestSchema, accept_encodings: list, access_token: str, cache_controls: list):
+        @classmethod
+        def decorated_request_schema(cls, request_schema: RequestSchema, accept_encodings: list, access_token: str, cache_controls: list):
           headers = request_schema.headers
           headers.add('Accept-Encoding', accept_encodings[0])
           headers.add('Access-Token', access_token)
@@ -131,17 +143,20 @@ class TestTraceContext():
           return request_schema
 
         @pytest.fixture(scope='class')
-        def accept_encoding_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def accept_encoding_trace_alias(cls, trace_context: TraceContext, aliases):
           accept_encoding_alias = aliases[0]
           return trace_context.create_trace_alias(accept_encoding_alias['name'], '1')
 
         @pytest.fixture(scope='class')
-        def access_token_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def access_token_trace_alias(cls, trace_context: TraceContext, aliases):
           access_token_alias = aliases[1]
           return trace_context.create_trace_alias(access_token_alias['name'], '1')
 
         @pytest.fixture(scope='class')
-        def cache_control_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def cache_control_trace_alias(cls, trace_context: TraceContext, aliases):
           cache_control_alias = aliases[2]
           return trace_context.create_trace_alias(cache_control_alias['name'], '1')
 
@@ -187,15 +202,18 @@ class TestTraceContext():
       class TestWhenQueryParam():
 
         @pytest.fixture(scope='class')
-        def filter(self):
+        @classmethod
+        def filter(cls):
           return ['1', '2']
 
         @pytest.fixture(scope='class')
-        def page(self):
+        @classmethod
+        def page(cls):
           return '0'
 
         @pytest.fixture(scope='class')
-        def aliases(self):
+        @classmethod
+        def aliases(cls):
           return [
             {
               'id': 1,
@@ -208,7 +226,8 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def query_param_names(self, aliases):
+        @classmethod
+        def query_param_names(cls, aliases):
           filter_alias = aliases[0]
           page_alias = aliases[1]
           return [
@@ -225,13 +244,15 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def decorated_endpoint_show_response(self, endpoint_show_response, aliases, query_param_names):
+        @classmethod
+        def decorated_endpoint_show_response(cls, endpoint_show_response, aliases, query_param_names):
           endpoint_show_response['aliases'] = aliases
           endpoint_show_response['query_param_names'] = query_param_names
           return endpoint_show_response
 
         @pytest.fixture(scope='class')
-        def decorated_request_schema(self, request_schema: RequestSchema, filter, page):
+        @classmethod
+        def decorated_request_schema(cls, request_schema: RequestSchema, filter, page):
           query_params = request_schema.query_params
 
           for v in filter:
@@ -242,12 +263,14 @@ class TestTraceContext():
           return request_schema
 
         @pytest.fixture(scope='class')
-        def filter_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def filter_trace_alias(cls, trace_context: TraceContext, aliases):
           filter_alias = aliases[0]
           return trace_context.create_trace_alias(filter_alias['name'], '1')
 
         @pytest.fixture(scope='class')
-        def page_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def page_trace_alias(cls, trace_context: TraceContext, aliases):
           page_alias = aliases[1]
           return trace_context.create_trace_alias(page_alias['name'], '1')
 
@@ -280,15 +303,18 @@ class TestTraceContext():
       class TestWhenQueryParam():
 
         @pytest.fixture(scope='class')
-        def filter(self):
+        @classmethod
+        def filter(cls):
           return ['1', '2']
 
         @pytest.fixture(scope='class')
-        def page(self):
+        @classmethod
+        def page(cls):
           return '0'
 
         @pytest.fixture(scope='class')
-        def aliases(self):
+        @classmethod
+        def aliases(cls):
           return [
             {
               'id': 1,
@@ -301,7 +327,8 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def query_param_names(self, aliases):
+        @classmethod
+        def query_param_names(cls, aliases):
           filter_alias = aliases[0]
           page_alias = aliases[1]
           return [
@@ -318,13 +345,15 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def decorated_endpoint_show_response(self, endpoint_show_response, aliases, query_param_names):
+        @classmethod
+        def decorated_endpoint_show_response(cls, endpoint_show_response, aliases, query_param_names):
           endpoint_show_response['aliases'] = aliases
           endpoint_show_response['query_param_names'] = query_param_names
           return endpoint_show_response
 
         @pytest.fixture(scope='class')
-        def decorated_request_schema(self, request_schema: RequestSchema, filter, page):
+        @classmethod
+        def decorated_request_schema(cls, request_schema: RequestSchema, filter, page):
           query_params = request_schema.query_params
 
           for v in filter:
@@ -335,12 +364,14 @@ class TestTraceContext():
           return request_schema
 
         @pytest.fixture(scope='class')
-        def filter_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def filter_trace_alias(cls, trace_context: TraceContext, aliases):
           filter_alias = aliases[0]
           return trace_context.create_trace_alias(filter_alias['name'], '1')
 
         @pytest.fixture(scope='class')
-        def page_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def page_trace_alias(cls, trace_context: TraceContext, aliases):
           page_alias = aliases[1]
           return trace_context.create_trace_alias(page_alias['name'], '1')
 
@@ -373,11 +404,13 @@ class TestTraceContext():
       class TestWhenBodyParam():
 
         @pytest.fixture(scope='class')
-        def email(self):
+        @classmethod
+        def email(cls):
           return 'test@stoobly.com'
 
         @pytest.fixture(scope='class')
-        def aliases(self):
+        @classmethod
+        def aliases(cls):
           return [
             {
               'id': 1,
@@ -386,7 +419,8 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def body_param_names(self, aliases):
+        @classmethod
+        def body_param_names(cls, aliases):
           email_alias = aliases[0]
           return [
             {
@@ -397,13 +431,15 @@ class TestTraceContext():
           ]
 
         @pytest.fixture(scope='class')
-        def decorated_endpoint_show_response(self, endpoint_show_response, aliases, body_param_names):
+        @classmethod
+        def decorated_endpoint_show_response(cls, endpoint_show_response, aliases, body_param_names):
           endpoint_show_response['aliases'] = aliases
           endpoint_show_response['body_param_names'] = body_param_names
           return endpoint_show_response
 
         @pytest.fixture(scope='class')
-        def decorated_request_schema(self, request_schema: RequestSchema, email):
+        @classmethod
+        def decorated_request_schema(cls, request_schema: RequestSchema, email):
           headers = request_schema.headers
           headers['content-type'] = 'application/json'
           request_schema.headers = headers
@@ -411,7 +447,8 @@ class TestTraceContext():
           return request_schema
 
         @pytest.fixture(scope='class')
-        def email_trace_alias(self, trace_context: TraceContext, aliases):
+        @classmethod
+        def email_trace_alias(cls, trace_context: TraceContext, aliases):
           filter_alias = aliases[0]
           return trace_context.create_trace_alias(filter_alias['name'], '1')
 

@@ -60,7 +60,7 @@ class WorkflowCommand(ServiceCommand):
       with open(self.custom_compose_path, 'r') as fp:
         compose = yaml.safe_load(fp)
         if compose and not isinstance(compose, dict):
-          Logger.instance(LOG_ID).warn(f"Could not parse {self.custom_compose_path} as YAML")
+          Logger.instance(LOG_ID).warning(f"Could not parse {self.custom_compose_path} as YAML")
           return {}
         return compose
 

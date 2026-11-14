@@ -21,7 +21,8 @@ def settings():
 class TestResponseGet():
 
   @pytest.fixture(autouse=True, scope='class')
-  def request_create_cli_result(self, runner: CliRunner):
+  @classmethod
+  def request_create_cli_result(cls, runner: CliRunner):
     record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
     assert record_result.exit_code == 0
     return record_result

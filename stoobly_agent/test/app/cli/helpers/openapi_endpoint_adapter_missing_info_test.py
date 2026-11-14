@@ -16,21 +16,25 @@ _DEFAULT_SERVER_GET_PETS_EID = compute_openapi_endpoint_id(_DEFAULT_SERVER_SID, 
 @pytest.mark.openapi
 class TestOpenApiEndpointAdapterMissingInfo():
   @pytest.fixture(scope='class')
-  def mock_data_directory_path(self):
+  @classmethod
+  def mock_data_directory_path(cls):
     return Path(__file__).parent.parent.parent.parent / 'mock_data'
 
   @pytest.fixture(scope='class')
-  def petstore_file_path(self, mock_data_directory_path):
+  @classmethod
+  def petstore_file_path(cls, mock_data_directory_path):
     path = mock_data_directory_path / "petstore-missing-info.yaml"
     return path
 
   @pytest.fixture(scope='class')
-  def open_api_endpoint_adapter(self):
+  @classmethod
+  def open_api_endpoint_adapter(cls):
     adapter = OpenApiEndpointAdapter()
     return adapter
 
   @pytest.fixture(scope='class')
-  def expected_get_pets_endpoint(self) -> Dict:
+  @classmethod
+  def expected_get_pets_endpoint(cls) -> Dict:
     return {
       "id": _DEFAULT_SERVER_GET_PETS_EID,
       "service_id": _DEFAULT_SERVER_SID,

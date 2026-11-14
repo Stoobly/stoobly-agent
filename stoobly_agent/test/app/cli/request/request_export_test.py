@@ -23,7 +23,8 @@ def settings():
 class TestExport:
 
   @pytest.fixture(autouse=True, scope='class')
-  def created_request(self, runner: CliRunner):
+  @classmethod
+  def created_request(cls, runner: CliRunner):
     result = runner.invoke(request, ['create', 'https://example.com/api/pets'])
     assert result.exit_code == 0
     return Request.last()

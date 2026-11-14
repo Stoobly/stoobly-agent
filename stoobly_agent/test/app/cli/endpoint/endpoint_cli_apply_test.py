@@ -31,18 +31,21 @@ def petstore_expanded_file_path(mock_data_directory_path) -> str:
 @pytest.mark.openapi
 class TestApply():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='class')
-    def request_body_one(self):
+    @classmethod
+    def request_body_one(cls):
         return {
             'name': 'pet1',
             'tag': 'best',
         }
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_request_extra_body_param(self, settings: Settings, request_body_one):
+    @classmethod
+    def created_request_extra_body_param(cls, settings: Settings, request_body_one):
         body = {
             **request_body_one,
             'delete': 1,
@@ -66,13 +69,15 @@ class TestApply():
         return Request.last()
 
     @pytest.fixture(scope='class')
-    def request_body_two(self):
+    @classmethod
+    def request_body_two(cls):
         return {
             'name': 'pet1',
         }
 
     @pytest.fixture(scope='class', autouse=True)
-    def created_request_missing_body_param(self, settings: Settings):
+    @classmethod
+    def created_request_missing_body_param(cls, settings: Settings):
         body = {
           'tag': 'best',
         }
@@ -97,7 +102,8 @@ class TestApply():
     class TestWhenApplyingPestoreExpanded():
 
         @pytest.fixture(scope='class', autouse=True)
-        def import_result(self, runner: CliRunner, petstore_expanded_file_path: str):
+        @classmethod
+        def import_result(cls, runner: CliRunner, petstore_expanded_file_path: str):
             record_result = runner.invoke(endpoint, ['apply', '--source-format', OPENAPI_FORMAT, '--source-path', petstore_expanded_file_path])
             assert record_result.exit_code == 0
             return record_result

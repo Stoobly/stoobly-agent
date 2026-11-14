@@ -30,7 +30,8 @@ class TestRequestLogCliParams:
     """Unit tests for non-scaffold request log CLI parameter handling."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture
@@ -86,34 +87,41 @@ class TestRequestLogE2e():
     """E2e tests for non-scaffold request log commands using stoobly-agent run."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "docs.stoobly.com"
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_port(self):
+    @classmethod
+    def proxy_port(cls):
         yield 8082
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_url(self, proxy_port):
+    @classmethod
+    def proxy_url(cls, proxy_port):
         return f"http://localhost:{proxy_port}"
 
     @pytest.fixture(scope='class', autouse=True)
-    def configure_mock_policy(self, settings):
+    @classmethod
+    def configure_mock_policy(cls, settings):
         """Set mock policy to ALL so unmatched requests return 499 instead of proxying upstream."""
         runner = CliRunner()
         result = runner.invoke(intercept, ['set', '--mode', 'mock', '--policy', 'all'])
         assert result.exit_code == 0
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_pid(self, settings, proxy_port, configure_mock_policy):
+    @classmethod
+    def proxy_pid(cls, settings, proxy_port, configure_mock_policy):
         """Start stoobly-agent run in detached mode with request logging enabled."""
         log_output_path = os.path.join(os.getcwd(), 'proxy-run.log')
 
@@ -217,34 +225,41 @@ class TestRequestLogRecordE2e():
     """E2e tests for non-scaffold request log in record mode using stoobly-agent run."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "dog.ceo"
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_port(self):
+    @classmethod
+    def proxy_port(cls):
         yield 8082
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_url(self, proxy_port):
+    @classmethod
+    def proxy_url(cls, proxy_port):
         return f"http://localhost:{proxy_port}"
 
     @pytest.fixture(scope='class', autouse=True)
-    def configure_record_policy(self, settings):
+    @classmethod
+    def configure_record_policy(cls, settings):
         """Set record policy to ALL so requests are intercepted for recording."""
         runner = CliRunner()
         result = runner.invoke(intercept, ['set', '--mode', 'record', '--policy', 'all'])
         assert result.exit_code == 0
 
     @pytest.fixture(scope='class', autouse=True)
-    def proxy_pid(self, settings, proxy_port, configure_record_policy):
+    @classmethod
+    def proxy_pid(cls, settings, proxy_port, configure_record_policy):
         """Start stoobly-agent run in detached mode with request logging enabled in record mode."""
         log_output_path = os.path.join(os.getcwd(), 'proxy-run.log')
 

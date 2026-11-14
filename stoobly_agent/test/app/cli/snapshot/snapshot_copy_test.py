@@ -19,18 +19,21 @@ def runner():
 
 class TestCopy():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
       return reset()
 
     class TestWhenRequest():
       @pytest.fixture(scope='class')
-      def recorded_request(self, runner: CliRunner):
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
         record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
       @pytest.fixture(autouse=True, scope='class')
-      def snapshot_result(self, runner: CliRunner, recorded_request: Request):
+      @classmethod
+      def snapshot_result(cls, runner: CliRunner, recorded_request: Request):
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
         return snapshot_result

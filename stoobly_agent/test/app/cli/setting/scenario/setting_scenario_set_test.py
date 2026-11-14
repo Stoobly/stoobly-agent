@@ -22,12 +22,14 @@ def runner():
 class TestSettingsScenarioSet():
 
   @pytest.fixture(scope='class', autouse=True)
-  def settings(self):
+  @classmethod
+  def settings(cls):
     return reset()
 
   class TestWhenRecordOrderOverwrite():
     @pytest.fixture(scope='class')
-    def created_scenario(self, runner: CliRunner):
+    @classmethod
+    def created_scenario(cls, runner: CliRunner):
       scenario_create_result = runner.invoke(scenario, ['create', 'test'])
       assert scenario_create_result.exit_code == 0
       _scenario = Scenario.last()
@@ -35,20 +37,23 @@ class TestSettingsScenarioSet():
       return _scenario
 
     @pytest.fixture(scope='class')
-    def recorded_request(self, runner: CliRunner, created_scenario: Scenario):
+    @classmethod
+    def recorded_request(cls, runner: CliRunner, created_scenario: Scenario):
         record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
         assert record_result.exit_code == 0
         return Request.last()
 
     @pytest.fixture(scope='class')
-    def new_scenario(self, runner: CliRunner):
+    @classmethod
+    def new_scenario(cls, runner: CliRunner):
       scenario_create_result = runner.invoke(scenario, ['create', 'test-new'])
       assert scenario_create_result.exit_code == 0
 
       return Scenario.last() 
 
     @pytest.fixture(scope='class', autouse=True)
-    def change_scenario_results(self, runner: CliRunner, settings: Settings, created_scenario: Scenario, new_scenario: Scenario):
+    @classmethod
+    def change_scenario_results(cls, runner: CliRunner, settings: Settings, created_scenario: Scenario, new_scenario: Scenario):
       project_key = settings.proxy.intercept.project_key
       _project_key = ProjectKey(project_key)
 

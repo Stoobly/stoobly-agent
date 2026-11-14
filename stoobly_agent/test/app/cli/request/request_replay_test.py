@@ -20,19 +20,22 @@ def runner():
 
 class TestReplay():
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     class TestWhenNoOptions():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def recorded_response_raw(self, recorded_request: Request):
+        @classmethod
+        def recorded_response_raw(cls, recorded_request: Request):
             return recorded_request.response.raw
             
         def test_it_matches_recorded_response(self, runner, recorded_request: Request, recorded_response_raw: bytes):
@@ -49,13 +52,15 @@ class TestReplay():
     class TestWhenOverwritting():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [NON_DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
 
         @pytest.fixture(scope='class')
-        def recorded_response_raw(self, recorded_request: Request):
+        @classmethod
+        def recorded_response_raw(cls, recorded_request: Request):
             return recorded_request.response.raw
 
         def test_it_overwrites_response_raw(self, runner: CliRunner, recorded_request: Request, recorded_response_raw: bytes):
@@ -75,7 +80,8 @@ class TestReplay():
     class TestWhenRecord():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
@@ -88,11 +94,13 @@ class TestReplay():
 
         class TestWhenScenario():
             @pytest.fixture(scope='class', autouse=True)
-            def settings(self):
+            @classmethod
+            def settings(cls):
                 return reset()
 
             @pytest.fixture(scope='class')
-            def recorded_request(self, runner: CliRunner):
+            @classmethod
+            def recorded_request(cls, runner: CliRunner):
                 record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
                 assert record_result.exit_code == 0
                 return Request.last()
@@ -115,7 +123,8 @@ class TestReplay():
     class TestWhenScheme():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
@@ -130,7 +139,8 @@ class TestReplay():
     class TestWhenHost():
 
         @pytest.fixture(scope='class')
-        def recorded_request(self, runner: CliRunner):
+        @classmethod
+        def recorded_request(cls, runner: CliRunner):
             record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
             assert record_result.exit_code == 0
             return Request.last()
