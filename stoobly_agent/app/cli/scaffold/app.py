@@ -6,8 +6,9 @@ import shutil
 from typing import TYPE_CHECKING
 
 from stoobly_agent.app.cli.scaffold.docker.constants import APP_EGRESS_NETWORK_TEMPLATE
+from stoobly_agent.config.app_data_dir import AppDataDir
 from stoobly_agent.config.constants import env_vars
-from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 
 from .constants import DOTENV_FILE, SERVICES_NAMESPACE, STOOBLY_HOME_DIR
 
@@ -19,8 +20,16 @@ class App():
   # path: path to the folder where data dir directory resides e.g. ~
   def __init__(self, path: str = None, **kwargs):
     containerized = kwargs.get('containerized', False)
+    # `containerized` pins the path to STOOBLY_HOME_DIR; otherwise AppDataDir may walk up for a scaffold.
+    skip_find_app_dir = kwargs.get('skip_find_app_dir', False) or containerized
 
-    # Store host (kwarg) values before remapping operational paths.
+    self.__data_dir_class = DataDir if skip_find_app_dir else AppDataDir
+
+    # host_* = Docker host paths (volume mount sources / compose env).
+    # app_dir_path / runtime_* = operational paths inside the process (on the host when
+    # local; under STOOBLY_HOME_DIR when containerized). They share the same relative
+    # tree but must not be assumed equal — denormalize_configure joins one relative_path
+    # onto each base separately.
     self.__host_app_dir_path = kwargs.get('app_dir_path') or os.environ.get(env_vars.APP_DIR)
     self.__host_ca_certs_dir_path = kwargs.get('ca_certs_dir_path') or os.environ.get(env_vars.CA_CERTS_DIR)
     self.__host_certs_dir_path = kwargs.get('certs_dir_path') or os.environ.get(env_vars.CERTS_DIR)
@@ -32,11 +41,11 @@ class App():
     elif path is None:
       operational_root = self.__host_app_dir_path
       if operational_root is None:
-        operational_root = DataDir.instance().parent_path
+        operational_root = self.__data_dir_class.instance().parent_path
     else:
       operational_root = os.path.abspath(path)
 
-    data_dir: DataDir = DataDir.instance(operational_root)
+    data_dir: DataDir = self.__data_dir_class.instance(operational_root)
 
     self.__containerized = containerized
     self.__data_dir = data_dir
@@ -54,9 +63,8 @@ class App():
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = DataDir.instance(self.__host_app_dir_path or operational_root)
-      self.__app_dir_path = self.__host_app_dir_path or operational_root
-      # Fall back to the data dir lazily in the getters so constructing an App does not create cert dirs
+      self.__app_data_dir = self.__data_dir_class.instance(self.__host_app_dir_path or operational_root)
+      self.__app_dir_path = self.__app_data_dir.context_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path
       self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
@@ -183,7 +191,7 @@ class App():
 
   @property
   def scaffold_namespace_path(self):
-    return os.path.join(self.data_dir_path, self.scaffold_namespace)
+    return os.path.join(self.app_data_dir.path, self.scaffold_namespace)
 
   @property
   def services(self):
@@ -191,7 +199,7 @@ class App():
 
   @property
   def service_paths(self):
-    services_dir = os.path.join(self.data_dir_path, self.scaffold_namespace)
+    services_dir = os.path.join(self.app_data_dir.path, self.scaffold_namespace)
 
     services = []
     for filename in os.listdir(services_dir):
@@ -237,6 +245,7 @@ class App():
 
     self.__runtime_app_dir_path = os.path.join(self.app_dir_path, relative_path)
     self.__host_runtime_app_dir_path = os.path.join(self.host_app_dir_path, relative_path)
+    # Because we are potentially creating a new app, we need to use DataDir (exact path), not AppDataDir
     self.__runtime_app_data_dir = DataDir.instance(self.__runtime_app_dir_path)
 
   def denormalize_down(self, workflow_namespace: 'WorkflowNamespace', dry_run: bool = False, script: str = None):

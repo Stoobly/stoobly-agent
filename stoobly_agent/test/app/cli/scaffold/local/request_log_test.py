@@ -66,46 +66,56 @@ def deterministic_get_request_unknown_url():
 class TestRequestLogE2e():
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-test-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "docs.stoobly.com"
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "test-api"
 
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
         yield WORKFLOW_MOCK_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
         """Start mock workflow for testing."""
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
@@ -114,7 +124,8 @@ class TestRequestLogE2e():
         wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
         yield
 
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
@@ -187,42 +198,51 @@ class TestRequestLogWithRecordedRequestsE2e():
     """Test logging behavior when we have both recorded and unrecorded requests."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-recorded-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield NON_DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "dog-api"
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def record_then_mock_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+    @classmethod
+    def record_then_mock_workflow(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Record a request, then switch to mock workflow for testing."""
         # Pre-generate CA certs so workflow up skips sudo cert install
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
@@ -351,45 +371,54 @@ class TestRequestLogWithTestWorkflowE2e():
     """Test logging behavior for the test scaffold workflow."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-test-workflow-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         # Deterministic API so record-then-test body comparison can pass.
         yield DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "dog-api-test"
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
         # Scaffold defaults test policy to none; override in this app so Test report rows are emitted.
         set_test_workflow_policy_found(app_dir_path)
 
     @pytest.fixture(scope="class", autouse=True)
-    def record_then_test_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+    @classmethod
+    def record_then_test_workflow(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Record a request, then switch to test workflow for testing."""
         # Pre-generate CA certs so workflow up skips sudo cert install
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
@@ -532,42 +561,51 @@ class TestRequestLogWithRecordWorkflowE2e():
     """Test that request logging works in the record scaffold workflow."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-record-workflow-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield NON_DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "dog-api-record"
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def record_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+    @classmethod
+    def record_workflow(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Start record workflow for testing."""
         # Pre-generate CA certs so workflow up skips sudo cert install
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
@@ -641,42 +679,51 @@ class TestRequestLogWithDevelopWorkflowE2e():
     """Test that request logging works in the develop scaffold workflow."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-develop-workflow-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield NON_DETERMINISTIC_GET_REQUEST_HOST
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "dog-api-develop"
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def develop_workflow(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
+    @classmethod
+    def develop_workflow(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, proxy_url: str, settings: Settings):
         """Start develop workflow for testing."""
         # Pre-generate CA certs so workflow up skips sudo cert install
         CertificateAuthority(certs_dir=DataDir.instance().ca_certs_dir_path).generate_certs()
@@ -750,25 +797,30 @@ class TestRequestLogFromDifferentWorkingDirectory():
     """Test that --app-dir-path flag allows viewing logs from a different working directory."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(scope='module')
-    def runner(self):
+    @classmethod
+    def runner(cls):
         yield CliRunner()
 
     @pytest.fixture(scope='class')
-    def app_name(self):
+    @classmethod
+    def app_name(cls):
         yield "request-log-diff-cwd-app"
 
     @pytest.fixture(scope='class', autouse=True)
-    def app_dir_path(self):
+    @classmethod
+    def app_dir_path(cls):
         data_dir: DataDir = DataDir.instance()
         path = os.path.abspath(os.path.join(data_dir.tmp_dir_path, '..', '..'))
         yield path
 
     @pytest.fixture(scope='class')
-    def different_working_dir(self):
+    @classmethod
+    def different_working_dir(cls):
         """Create a completely different directory to simulate user's actual working directory.
 
         Uses tempfile.mkdtemp directly in /tmp to ensure the directory is truly isolated
@@ -779,28 +831,34 @@ class TestRequestLogFromDifferentWorkingDirectory():
         shutil.rmtree(different_dir, ignore_errors=True)
 
     @pytest.fixture(scope='class')
-    def hostname(self):
+    @classmethod
+    def hostname(cls):
         yield "docs.stoobly.com"
 
     @pytest.fixture(scope='class')
-    def service_name(self):
+    @classmethod
+    def service_name(cls):
         yield "test-api-diff-cwd"
 
     @pytest.fixture(scope='class', autouse=True)
-    def target_workflow_name(self):
+    @classmethod
+    def target_workflow_name(cls):
         yield WORKFLOW_MOCK_TYPE
 
     @pytest.fixture(scope="class", autouse=True)
-    def proxy_url(self):
+    @classmethod
+    def proxy_url(cls):
         return "http://localhost:8081"
 
     @pytest.fixture(scope="class", autouse=True)
-    def create_scaffold_setup(self, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
+    @classmethod
+    def create_scaffold_setup(cls, settings, runner: CliRunner, app_dir_path: str, app_name: str, service_name: str, hostname: str):
         LocalScaffoldCliInvoker.cli_app_create(runner, app_dir_path, app_name)
         LocalScaffoldCliInvoker.cli_service_create(runner, app_dir_path, hostname, service_name, True)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_up(self, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
+    @classmethod
+    def workflow_up(cls, create_scaffold_setup, runner: CliRunner, app_dir_path: str, target_workflow_name: str, settings: Settings, proxy_url: str, hostname: str):
         """Start mock workflow for testing."""
         LocalScaffoldCliInvoker.cli_workflow_up(runner, app_dir_path, target_workflow_name)
         time.sleep(1)
@@ -809,7 +867,8 @@ class TestRequestLogFromDifferentWorkingDirectory():
         wait_for_forward_proxy_intercept(proxy_url, hostname)
 
     @pytest.fixture(scope="class", autouse=True)
-    def workflow_down(self, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
+    @classmethod
+    def workflow_down(cls, workflow_up, runner: CliRunner, app_dir_path: str, proxy_url: str, target_workflow_name: str):
         yield
 
         LocalScaffoldCliInvoker.cli_workflow_down(runner, app_dir_path, target_workflow_name)
@@ -880,7 +939,8 @@ class TestScaffoldRequestLogCliParams:
     """Unit tests for scaffold request log CLI parameter handling."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture
@@ -994,7 +1054,8 @@ class TestScaffoldRequestLogListFiltering:
     """Unit tests for scaffold request log list filtering via CLI options."""
 
     @pytest.fixture(scope='class', autouse=True)
-    def settings(self):
+    @classmethod
+    def settings(cls):
         return reset()
 
     @pytest.fixture(autouse=True)

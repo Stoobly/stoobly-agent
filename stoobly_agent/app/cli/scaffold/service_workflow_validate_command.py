@@ -164,7 +164,11 @@ class ServiceWorkflowValidateCommand(ServiceCommand, ValidateCommand):
   def validate_hostname(self, hostname: str, port: int) -> None:
     print(f"Validating hostname: {hostname}")
 
-    self.hostname_exists(hostname)
+    # Hosts file mappings are only installed for reverse proxy mode (see
+    # __hostname_install_with_prompt). In forward mode, clients reach services
+    # through the proxy, so /etc/hosts entries are neither installed nor required.
+    if self.service_config.app_config.proxy_mode == PROXY_MODE_REVERSE:
+      self.hostname_exists(hostname)
 
     self.hostname_reachable(hostname, port)
 
