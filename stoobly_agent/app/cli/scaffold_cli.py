@@ -131,7 +131,8 @@ def create(**kwargs):
     click.echo(error_message, err=True)
     sys.exit(1)
 
-  app = App(kwargs['app_dir_path'])
+  # Because we are creating a new app, we need to skip finding the app dir
+  app = App(kwargs['app_dir_path'] or os.getcwd(), skip_find_app_dir=True)
 
   if not kwargs['quiet']:
     if os.path.exists(app.scaffold_namespace_path):

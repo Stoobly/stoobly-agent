@@ -6,8 +6,19 @@ import shutil
 from stoobly_agent.app.cli.scaffold import app as app_module
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
+from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
+
+
+def _make_scaffold_app_dir(app_dir: str) -> str:
+    """Create .stoobly/services/.config.yml so AppDataDir resolves app_dir."""
+    services_config_path = os.path.join(app_dir, DATA_DIR_NAME, SERVICES_CONFIG_FILE_PATH)
+    os.makedirs(os.path.dirname(services_config_path), exist_ok=True)
+    if not os.path.exists(services_config_path):
+        with open(services_config_path, 'w') as fp:
+            fp.write('')
+    return app_dir
 
 
 class TestApp:
@@ -18,10 +29,10 @@ class TestApp:
 
     @pytest.fixture
     def tmp_app_dir(self, tmp_path):
-        """Create a temporary app directory"""
+        """Create a temporary scaffold app directory"""
         app_dir = os.path.join(tmp_path, 'test-app')
         os.makedirs(app_dir, exist_ok=True)
-        return app_dir
+        return _make_scaffold_app_dir(app_dir)
 
     @pytest.fixture
     def tmp_context_dir(self, tmp_path):
@@ -33,15 +44,13 @@ class TestApp:
     @pytest.fixture
     def app_with_scaffold(self, tmp_app_dir):
         """Create an app with scaffold structure"""
-        # Create scaffold namespace directory
-        data_dir_path = os.path.join(tmp_app_dir, DATA_DIR_NAME)
-        scaffold_path = os.path.join(data_dir_path, SERVICES_NAMESPACE)
+        scaffold_path = os.path.join(tmp_app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE)
         os.makedirs(scaffold_path, exist_ok=True)
-        
+
         # Create a dummy service
         service_path = os.path.join(scaffold_path, 'test-service')
         os.makedirs(service_path, exist_ok=True)
-        
+
         return App(tmp_app_dir)
 
     class TestInit:
@@ -64,11 +73,10 @@ class TestApp:
 
         def test_init_with_custom_app_dir_path(self, tmp_app_dir, tmp_path):
             """Test initialization with custom app_dir_path"""
-            custom_app_dir = os.path.join(tmp_path, 'custom-app')
-            os.makedirs(custom_app_dir, exist_ok=True)
-            
+            custom_app_dir = _make_scaffold_app_dir(os.path.join(tmp_path, 'custom-app'))
+
             app = App(tmp_app_dir, app_dir_path=custom_app_dir)
-            
+
             assert app.dir_path == os.path.abspath(tmp_app_dir)
             assert app.app_dir_path == os.path.abspath(custom_app_dir)
             assert app.host_app_dir_path == os.path.abspath(custom_app_dir)
@@ -322,10 +330,13 @@ class TestApp:
     class TestValid:
         """Test App.valid property"""
 
-        def test_valid_returns_false_when_scaffold_does_not_exist(self, tmp_app_dir):
+        def test_valid_returns_false_when_scaffold_does_not_exist(self, tmp_path):
             """Test valid raises ValueError when scaffold namespace path doesn't exist"""
-            app = App(tmp_app_dir)
-            
+            empty_app_dir = os.path.join(tmp_path, 'empty-app')
+            os.makedirs(empty_app_dir, exist_ok=True)
+            # skip_find_app_dir keeps App bound to empty_app_dir (no services/.config.yml)
+            app = App(empty_app_dir, skip_find_app_dir=True)
+
             with pytest.raises(ValueError, match="does not exist"):
                 app.valid
 
@@ -564,6 +575,23 @@ class TestApp:
             
             # runtime_app_dir_path should include relative path to workflow namespace
             assert app.runtime_app_dir_path != original_runtime_path
+
+        def test_denormalize_configure_uses_workflow_namespace_data_dir_not_parent(self, tmp_app_dir):
+            """runtime_app_data_dir must be under the workflow namespace, not the source app.
+
+            AppDataDir walks parents for services/.config.yml; when the denormalized
+            copy is missing that walk would incorrectly resolve to the source app.
+            """
+            from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
+
+            app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+            workflow_namespace = WorkflowNamespace(app, 'mock')
+
+            app.denormalize_configure(workflow_namespace)
+
+            expected = os.path.join(workflow_namespace.path, DATA_DIR_NAME)
+            assert app.runtime_app_data_dir.path == expected
+            assert app.runtime_app_data_dir.path != app.app_data_dir.path
 
     class TestDataDir:
         """Test data_dir related properties"""
