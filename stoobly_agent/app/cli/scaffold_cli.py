@@ -59,6 +59,7 @@ from stoobly_agent.lib.api.keys.project_key import ProjectKey
 from stoobly_agent.lib.logger import bcolors, DEBUG, ERROR, INFO, Logger, WARNING
 from .helpers.print_service import FORMATS, print_services, select_print_options
 from .scaffold_request_log_cli import request
+from .scaffold_setting_cli import setting
 from .validators.scaffold import validate_app_name, validate_env_pair, validate_hostname, validate_namespace, validate_service_name
 
 LOG_ID = 'Scaffold'
@@ -1012,6 +1013,7 @@ scaffold.add_command(service)
 scaffold.add_command(workflow)
 scaffold.add_command(hostname)
 scaffold.add_command(request)
+scaffold.add_command(setting)
 
 def __prompt_ca_cert_install(app: App, workflow_name: str, ca_certs_install_confirm: str = None):
   """Prompt user to install CA certificate for record workflow."""

@@ -1,5 +1,5 @@
 # OpenCLI Description for stoobly-agent scaffold
-# Source: stoobly_agent/app/cli/scaffold_cli.py (and scaffold_request_log_cli.py)
+# Source: stoobly_agent/app/cli/scaffold_cli.py (and scaffold_request_log_cli.py, scaffold_setting_cli.py)
 # Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
 opencli: "0.1"
 info:
@@ -809,3 +809,152 @@ command:
                   description: Workflow namespace to truncate logs for.
                   arguments:
                     - name: namespace
+
+    - name: setting
+      description: Manage scaffold settings written to build workflow init scripts
+      commands:
+        - name: filter
+          description: Manage filter rules
+          commands:
+            - name: set
+              description: Set filter rule.
+              options:
+                - name: action
+                  description: Action to take on match.
+                  required: true
+                  arguments:
+                    - name: action
+                      acceptedValues: [exclude, include]
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: method
+                  description: HTTP methods. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: method
+                      acceptedValues: [GET, POST, DELETE, OPTIONS, PUT, PATCH]
+                - name: mode
+                  description: Intercept mode. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: mode
+                      acceptedValues: [mock, record, test, develop]
+                - name: pattern
+                  description: URLs pattern.
+                  required: true
+                  arguments:
+                    - name: pattern
+                - name: workflow
+                  description: Workflow(s) whose build init script to update. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: workflow
+              examples:
+                - stoobly-agent scaffold setting filter set --action exclude --method GET --mode record --pattern '.*' --workflow record
+
+        - name: match
+          description: Manage match rules
+          commands:
+            - name: set
+              description: Set match rule
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: component
+                  description: Request component type. May be specified multiple times.
+                  arguments:
+                    - name: component
+                      acceptedValues: [Body Param, Header, Query Param]
+                - name: method
+                  description: HTTP methods. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: method
+                      acceptedValues: [GET, POST, DELETE, OPTIONS, PUT, PATCH]
+                - name: mode
+                  description: Intercept mode. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: mode
+                      acceptedValues: [mock, test]
+                - name: pattern
+                  description: URLs pattern.
+                  required: true
+                  arguments:
+                    - name: pattern
+                - name: workflow
+                  description: Workflow(s) whose build init script to update. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: workflow
+              examples:
+                - stoobly-agent scaffold setting match set --method POST --mode mock --pattern '.*' --component Header --workflow mock
+
+        - name: rewrite
+          description: Manage rewrite rules
+          commands:
+            - name: set
+              description: Set rewrite rule.
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: hostname
+                  description: Request URL hostname.
+                  arguments:
+                    - name: hostname
+                - name: method
+                  description: HTTP methods. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: method
+                      acceptedValues: [GET, POST, DELETE, OPTIONS, PUT, PATCH]
+                - name: mode
+                  description: Intercept mode. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: mode
+                      acceptedValues: [mock, record, test, develop]
+                - name: name
+                  description: Name of the request component.
+                  arguments:
+                    - name: name
+                - name: path
+                  description: Request URL path to rewrite to.
+                  arguments:
+                    - name: path
+                - name: pattern
+                  description: URLs to rewrite.
+                  required: true
+                  arguments:
+                    - name: pattern
+                - name: port
+                  description: Request URL port to rewrite to.
+                  arguments:
+                    - name: port
+                - name: scheme
+                  description: Request URL scheme to rewrite to.
+                  arguments:
+                    - name: scheme
+                      acceptedValues: [http, https]
+                - name: type
+                  description: Request component type.
+                  arguments:
+                    - name: type
+                      acceptedValues: [Body Param, Header, Query Param, Response Header, Response Param]
+                - name: value
+                  description: Rewrite value.
+                  arguments:
+                    - name: value
+                - name: workflow
+                  description: Workflow(s) whose build init script to update. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: workflow
+              examples:
+                - stoobly-agent scaffold setting rewrite set --method GET --mode record --pattern '.*' --name authorization --type Header --value '' --workflow record
