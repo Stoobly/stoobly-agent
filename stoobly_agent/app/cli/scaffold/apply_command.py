@@ -50,7 +50,7 @@ PATH_OPTION_KEYS = frozenset({
   'docker_socket_path',
 })
 
-# Commands that write to build init SETTINGS / INTERCEPT sections.
+# Commands that write to the build init INIT section.
 INIT_SECTION_RESOURCES = frozenset({'setting', 'intercept'})
 
 

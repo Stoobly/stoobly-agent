@@ -96,7 +96,7 @@ def rewrite(ctx):
   help='Request URL scheme to rewrite to.'
 )
 @click.option('--value', help='Rewrite value.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def rewrite_set(**kwargs):
   if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -148,7 +148,7 @@ def match(ctx):
   type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def match_set(**kwargs):
   _apply_setting_command('match', kwargs)
@@ -188,7 +188,7 @@ def _filter(ctx):
   type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def filter_set(**kwargs):
   _apply_setting_command('filter', kwargs)

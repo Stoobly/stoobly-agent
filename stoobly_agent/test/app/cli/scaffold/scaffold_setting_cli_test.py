@@ -5,8 +5,8 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
-  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
-  SCAFFOLD_SETTINGS_DELIMITER_END,
+  SCAFFOLD_INIT_DELIMITER_BEGIN,
+  SCAFFOLD_INIT_DELIMITER_END,
 )
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_setting_cli import setting
@@ -38,10 +38,10 @@ def _create_build_init(app_dir: str, workflow_name: str, contents: str = None) -
   return init_path
 
 
-def _settings_block(contents: str) -> str:
-  begin = contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN)
-  end = contents.index(SCAFFOLD_SETTINGS_DELIMITER_END)
-  return contents[begin:end + len(SCAFFOLD_SETTINGS_DELIMITER_END)]
+def _init_block(contents: str) -> str:
+  begin = contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+  end = contents.index(SCAFFOLD_INIT_DELIMITER_END)
+  return contents[begin:end + len(SCAFFOLD_INIT_DELIMITER_END)]
 
 
 class TestScaffoldSettingCli:
@@ -64,7 +64,7 @@ class TestScaffoldSettingCli:
     os.makedirs(os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE), exist_ok=True)
     return app_dir
 
-  def test_rewrite_set_prepends_settings_block(self, app_dir):
+  def test_rewrite_set_prepends_init_block(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
     result = CliRunner().invoke(setting, [
@@ -84,10 +84,10 @@ class TestScaffoldSettingCli:
       contents = fp.read()
 
     assert contents.startswith('#! /bin/bash\n')
-    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN in contents
-    assert SCAFFOLD_SETTINGS_DELIMITER_END in contents
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN in contents
+    assert SCAFFOLD_INIT_DELIMITER_END in contents
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting rewrite set" in block
     assert "--method GET" in block
     assert "--mode record" in block
@@ -95,8 +95,8 @@ class TestScaffoldSettingCli:
     assert "--name authorization" in block
     assert "--type Header" in block
     assert "# Add custom initialization here" in contents
-    # Settings block must appear before the rest of the custom content.
-    assert contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
+    # Init block must appear before the rest of the custom content.
+    assert contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
 
   def test_second_set_appends_inside_markers(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
@@ -129,10 +129,10 @@ class TestScaffoldSettingCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_END) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting rewrite set" in block
     assert "stoobly-agent setting filter set" in block
     assert block.index("stoobly-agent setting rewrite set") < block.index("stoobly-agent setting filter set")
@@ -154,12 +154,12 @@ class TestScaffoldSettingCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting match set" in block
     assert "--component Header" in block
     assert "--mode mock" in block
 
-  def test_overwrite_replaces_settings_section(self, app_dir):
+  def test_overwrite_replaces_init_section(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
     runner = CliRunner()
 
@@ -191,10 +191,10 @@ class TestScaffoldSettingCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_END) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert 'stoobly-agent setting filter set' in block
     assert 'stoobly-agent setting rewrite set' not in block
 
@@ -215,7 +215,7 @@ class TestScaffoldSettingCli:
     for init_path in (record_init, mock_init):
       with open(init_path) as fp:
         contents = fp.read()
-      assert "stoobly-agent setting filter set" in _settings_block(contents)
+      assert "stoobly-agent setting filter set" in _init_block(contents)
 
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(setting, [

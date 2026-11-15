@@ -13,10 +13,8 @@ from stoobly_agent.app.cli.scaffold.apply_command import LOG_ID, sort_init_secti
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service import Service
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
-  SCAFFOLD_INTERCEPT_DELIMITER_BEGIN,
-  SCAFFOLD_INTERCEPT_DELIMITER_END,
-  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
-  SCAFFOLD_SETTINGS_DELIMITER_END,
+  SCAFFOLD_INIT_DELIMITER_BEGIN,
+  SCAFFOLD_INIT_DELIMITER_END,
 )
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_cli import scaffold
@@ -470,9 +468,9 @@ class TestScaffoldApply:
     with open(init_path, 'w') as fp:
       fp.write(
         "#! /bin/bash\n"
-        f"{SCAFFOLD_SETTINGS_DELIMITER_BEGIN}\n"
+        f"{SCAFFOLD_INIT_DELIMITER_BEGIN}\n"
         "stoobly-agent setting filter set --action exclude --method GET --mode record --pattern '.*'\n"
-        f"{SCAFFOLD_SETTINGS_DELIMITER_END}\n"
+        f"{SCAFFOLD_INIT_DELIMITER_END}\n"
         "\n# Add custom initialization here\n"
       )
 
@@ -513,19 +511,17 @@ class TestScaffoldApply:
     with open(init_path) as fp:
       contents = fp.read()
 
-    settings_begin = contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN)
-    settings_end = contents.index(SCAFFOLD_SETTINGS_DELIMITER_END)
-    settings_block = contents[settings_begin:settings_end + len(SCAFFOLD_SETTINGS_DELIMITER_END)]
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
 
-    assert 'stoobly-agent setting rewrite set' in settings_block
-    assert 'stoobly-agent setting filter set' not in settings_block
-    assert 'stoobly-agent intercept enable' not in settings_block
+    init_begin = contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+    init_end = contents.index(SCAFFOLD_INIT_DELIMITER_END)
+    init_block = contents[init_begin:init_end + len(SCAFFOLD_INIT_DELIMITER_END)]
 
-    intercept_begin = contents.index(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN)
-    intercept_end = contents.index(SCAFFOLD_INTERCEPT_DELIMITER_END)
-    intercept_block = contents[intercept_begin:intercept_end + len(SCAFFOLD_INTERCEPT_DELIMITER_END)]
-    assert 'stoobly-agent intercept enable' in intercept_block
-    assert settings_end < intercept_begin
+    assert 'stoobly-agent setting rewrite set' in init_block
+    assert 'stoobly-agent setting filter set' not in init_block
+    assert 'stoobly-agent intercept enable' in init_block
+    assert init_block.index('stoobly-agent setting rewrite set') < init_block.index('stoobly-agent intercept enable')
 
   def test_incomplete_nested_action_is_group(self, runner: CliRunner, temp_dir: str):
     config_path = os.path.join(temp_dir, 'scaffold.yml')

@@ -56,7 +56,7 @@ def intercept(ctx):
   help="Enable intercept"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold intercept section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def enable(**kwargs):
   _apply_intercept_command('enable', kwargs)
@@ -66,7 +66,7 @@ def enable(**kwargs):
   help="Disable intercept"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold intercept section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def disable(**kwargs):
   _apply_intercept_command('disable', kwargs)
@@ -80,7 +80,7 @@ def disable(**kwargs):
 @click.option('--order', help=f"Order to use for recording. Valid options: {ORDER_OPTIONS}")
 @click.option('--policy', help=f"Policy to use for intercept. Valid options: {POLICY_OPTIONS}")
 @click.option('--strategy', help=f"Strategy to use for intercept. Valid options: {STRATEGY_OPTIONS}")
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold intercept section.')
+@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def set(**kwargs):
   if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy'] and not kwargs['strategy']:
