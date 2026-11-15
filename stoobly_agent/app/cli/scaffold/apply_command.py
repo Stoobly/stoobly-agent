@@ -5,7 +5,7 @@ import sys
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import click
 import yaml
@@ -441,12 +441,52 @@ def _is_enable_action(step: Dict[str, Any]) -> bool:
   return bool(segments) and segments[-1] == 'enable'
 
 
-def _clear_init_sections_for_options(options: Dict[str, Any]) -> None:
-  app = App(options.get('app_dir_path'))
-  workflows = options.get('workflow') or ()
+def _normalize_workflows(workflows: Any) -> Optional[List[str]]:
+  """Return a workflow list, or None when unset (meaning all build workflows)."""
+  if not workflows:
+    return None
   if isinstance(workflows, str):
-    workflows = [workflows]
-  clear_init_sections(app.app_data_dir.path, workflows)
+    return [workflows]
+  return list(workflows)
+
+
+def _clear_init_sections_for_commands(commands: List[Dict[str, Any]], config_dir: str) -> None:
+  """Clear INIT sections for the union of workflows across all init-section steps.
+
+  Setting steps often target only ``record`` while intercept enable targets all
+  CORE_WORKFLOWS. Clearing only the first step's workflows leaves stale/duplicate
+  commands in the remaining workflows on re-apply.
+  """
+  # app_dir_path -> None (clear all) or set of workflow names
+  by_app: Dict[Any, Optional[Set[str]]] = {}
+
+  for step in commands:
+    if not _is_init_section_step(step):
+      continue
+
+    options = expand_options(step.get('options') or {}, config_dir)
+    app_dir = options.get('app_dir_path')
+    workflows = _normalize_workflows(options.get('workflow'))
+
+    if workflows is None:
+      by_app[app_dir] = None
+      continue
+
+    existing = by_app.get(app_dir)
+    if existing is None and app_dir in by_app:
+      # Already clearing all workflows for this app.
+      continue
+    if existing is None:
+      by_app[app_dir] = set(workflows)
+    else:
+      existing.update(workflows)
+
+  for app_dir, workflows in by_app.items():
+    app = App(app_dir)
+    clear_init_sections(
+      app.app_data_dir.path,
+      () if workflows is None else list(workflows),
+    )
 
 
 def sort_init_section_commands(commands: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -515,7 +555,7 @@ def apply_config(
       continue
 
     if _is_init_section_step(step) and overwrite_init_section:
-      _clear_init_sections_for_options(options)
+      _clear_init_sections_for_commands(commands, config_dir)
       overwrite_init_section = False
 
     try:

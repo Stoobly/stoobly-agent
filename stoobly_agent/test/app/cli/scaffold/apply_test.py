@@ -523,6 +523,94 @@ class TestScaffoldApply:
     assert 'stoobly-agent intercept enable' in init_block
     assert init_block.index('stoobly-agent setting rewrite set') < init_block.index('stoobly-agent intercept enable')
 
+  def test_apply_clears_union_of_init_workflows_on_reapply(self, runner: CliRunner, temp_dir: str):
+    """Setting steps may target only record while intercept enable targets all CORE_WORKFLOWS.
+
+    Re-apply must clear the union so non-record workflows do not accumulate duplicate
+    enable lines or keep stale init commands.
+    """
+    DataDir._instances = None
+    AppDataDir._instance = None
+
+    app_dir = os.path.join(temp_dir, 'union-clear-app')
+    os.makedirs(os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE), exist_ok=True)
+    services_config = os.path.join(app_dir, DATA_DIR_NAME, SERVICES_CONFIG_FILE_PATH)
+    os.makedirs(os.path.dirname(services_config), exist_ok=True)
+    with open(services_config, 'w') as fp:
+      fp.write('')
+
+    stale_line = "stoobly-agent setting filter set --action exclude --method GET --mode record --pattern '.*'\n"
+    init_paths = {}
+    for workflow_name in ('record', 'mock'):
+      init_path = os.path.join(
+        app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE, CORE_BUILD_SERVICE_NAME, workflow_name, CUSTOM_INIT
+      )
+      os.makedirs(os.path.dirname(init_path), exist_ok=True)
+      with open(init_path, 'w') as fp:
+        fp.write(
+          "#! /bin/bash\n"
+          f"{SCAFFOLD_INIT_DELIMITER_BEGIN}\n"
+          f"{stale_line}"
+          "stoobly-agent intercept enable\n"
+          f"{SCAFFOLD_INIT_DELIMITER_END}\n"
+          "\n# Add custom initialization here\n"
+        )
+      init_paths[workflow_name] = init_path
+
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'setting',
+          'action': 'rewrite set',
+          'options': {
+            'method': ['GET'],
+            'mode': ['record'],
+            'name': 'authorization',
+            'pattern': '.*',
+            'type': 'Header',
+            'value': '',
+            'workflow': ['record'],
+            'app_dir_path': app_dir,
+          },
+        },
+        {
+          'resource': 'intercept',
+          'action': 'enable',
+          'options': {
+            'workflow': ['record', 'mock'],
+            'app_dir_path': app_dir,
+          },
+        },
+      ],
+    })
+
+    for _ in range(2):
+      result = runner.invoke(scaffold, ['apply', config_path])
+      assert result.exit_code == 0, result.output
+
+    with open(init_paths['record']) as fp:
+      record_contents = fp.read()
+    with open(init_paths['mock']) as fp:
+      mock_contents = fp.read()
+
+    record_begin = record_contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+    record_end = record_contents.index(SCAFFOLD_INIT_DELIMITER_END)
+    record_block = record_contents[record_begin:record_end + len(SCAFFOLD_INIT_DELIMITER_END)]
+
+    mock_begin = mock_contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+    mock_end = mock_contents.index(SCAFFOLD_INIT_DELIMITER_END)
+    mock_block = mock_contents[mock_begin:mock_end + len(SCAFFOLD_INIT_DELIMITER_END)]
+
+    assert record_block.count('stoobly-agent intercept enable') == 1
+    assert 'stoobly-agent setting rewrite set' in record_block
+    assert 'stoobly-agent setting filter set' not in record_block
+
+    assert mock_block.count('stoobly-agent intercept enable') == 1
+    assert 'stoobly-agent setting filter set' not in mock_block
+    assert 'stoobly-agent setting rewrite set' not in mock_block
+
   def test_incomplete_nested_action_is_group(self, runner: CliRunner, temp_dir: str):
     config_path = os.path.join(temp_dir, 'scaffold.yml')
     self._write_yaml(config_path, {
