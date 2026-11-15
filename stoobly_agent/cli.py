@@ -50,7 +50,7 @@ def init(**kwargs):
     settings.reset_and_load()
 
 @main.command(
-    help="Describe settings"
+    help="Describe configuration"
 )
 def describe(**kwargs):
     data_dir = DataDir.instance()
