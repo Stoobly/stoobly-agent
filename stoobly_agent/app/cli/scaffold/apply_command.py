@@ -50,6 +50,9 @@ PATH_OPTION_KEYS = frozenset({
   'docker_socket_path',
 })
 
+# Commands that write to build init SETTINGS / INTERCEPT sections.
+INIT_SECTION_RESOURCES = frozenset({'setting', 'intercept'})
+
 
 class ApplyConfigError(Exception):
   pass
@@ -146,26 +149,55 @@ def _validate_option_values(
       )
 
 
+def _action_segments(action: str) -> List[str]:
+  return [segment for segment in str(action).split() if segment]
+
+
+def _resolve_opencli_action(
+  resource: str,
+  action: str,
+  opencli_commands: Dict[str, Dict[str, Any]],
+) -> Dict[str, Any]:
+  resource_spec = opencli_commands.get(str(resource))
+  if resource_spec is None:
+    raise ApplyConfigError(f"Unknown resource: {resource}")
+
+  current_commands = _commands_by_name(resource_spec.get('commands'))
+  if not current_commands:
+    raise ApplyConfigError(f"Resource '{resource}' is not a command group")
+
+  segments = _action_segments(action)
+  if not segments:
+    raise ApplyConfigError(f"Unknown action '{action}' for resource '{resource}'")
+
+  action_spec: Optional[Dict[str, Any]] = None
+  walked: List[str] = []
+  for segment in segments:
+    walked.append(segment)
+    action_spec = current_commands.get(segment)
+    if action_spec is None:
+      walked_action = ' '.join(walked)
+      raise ApplyConfigError(f"Unknown action '{walked_action}' for resource '{resource}'")
+    nested = _commands_by_name(action_spec.get('commands'))
+    if nested:
+      current_commands = nested
+    else:
+      current_commands = {}
+
+  assert action_spec is not None
+  if _commands_by_name(action_spec.get('commands')):
+    raise ApplyConfigError(f"Action '{action}' for resource '{resource}' is a group, not a command")
+
+  return action_spec
+
+
 def validate_command_step(step: Dict[str, Any], index: int, opencli_commands: Dict[str, Dict[str, Any]]) -> None:
   prefix = f"commands[{index}]"
   resource = step['resource']
   action = step['action']
   options = step['options']
 
-  resource_spec = opencli_commands.get(str(resource))
-  if resource_spec is None:
-    raise ApplyConfigError(f"Unknown resource: {resource}")
-
-  resource_commands = _commands_by_name(resource_spec.get('commands'))
-  if not resource_commands:
-    raise ApplyConfigError(f"Resource '{resource}' is not a command group")
-
-  action_spec = resource_commands.get(str(action))
-  if action_spec is None:
-    raise ApplyConfigError(f"Unknown action '{action}' for resource '{resource}'")
-
-  if _commands_by_name(action_spec.get('commands')):
-    raise ApplyConfigError(f"Action '{action}' for resource '{resource}' is a group, not a command")
+  action_spec = _resolve_opencli_action(str(resource), str(action), opencli_commands)
 
   allowed: Dict[str, Tuple[Dict[str, Any], bool, bool]] = {}
   for argument in action_spec.get('arguments') or []:
@@ -257,7 +289,16 @@ def expand_options(options: Dict[str, Any], config_dir: str) -> Dict[str, Any]:
   return expanded
 
 
-def resolve_command(scaffold_group: click.Group, resource: str, action: str) -> click.Command:
+def resolve_command_path(
+  scaffold_group: click.Group,
+  resource: str,
+  action: str,
+) -> Tuple[List[click.Command], click.Command]:
+  """Resolve nested Click path: scaffold → resource → action segments → leaf.
+
+  Returns (intermediate_groups, leaf_command) where intermediate_groups starts
+  with the resource group and includes any nested groups before the leaf.
+  """
   resource_cmd = scaffold_group.commands.get(resource)
   if resource_cmd is None:
     raise ApplyConfigError(f"Unknown resource: {resource}")
@@ -265,14 +306,38 @@ def resolve_command(scaffold_group: click.Group, resource: str, action: str) -> 
   if not isinstance(resource_cmd, click.Group):
     raise ApplyConfigError(f"Resource '{resource}' is not a command group")
 
-  action_cmd = resource_cmd.commands.get(action)
-  if action_cmd is None:
+  segments = _action_segments(action)
+  if not segments:
     raise ApplyConfigError(f"Unknown action '{action}' for resource '{resource}'")
 
-  if isinstance(action_cmd, click.Group):
+  groups: List[click.Command] = [resource_cmd]
+  current: click.Command = resource_cmd
+  walked: List[str] = []
+
+  for segment in segments:
+    walked.append(segment)
+    if not isinstance(current, click.Group):
+      walked_action = ' '.join(walked)
+      raise ApplyConfigError(f"Unknown action '{walked_action}' for resource '{resource}'")
+
+    next_cmd = current.commands.get(segment)
+    if next_cmd is None:
+      walked_action = ' '.join(walked)
+      raise ApplyConfigError(f"Unknown action '{walked_action}' for resource '{resource}'")
+
+    current = next_cmd
+    if isinstance(current, click.Group):
+      groups.append(current)
+
+  if isinstance(current, click.Group):
     raise ApplyConfigError(f"Action '{action}' for resource '{resource}' is a group, not a command")
 
-  return action_cmd
+  return groups, current
+
+
+def resolve_command(scaffold_group: click.Group, resource: str, action: str) -> click.Command:
+  _groups, leaf = resolve_command_path(scaffold_group, resource, action)
+  return leaf
 
 
 def _option_flag_name(param: click.Option) -> str:
@@ -345,21 +410,49 @@ def invoke_step(
   ctx: click.Context,
   scaffold_group: click.Group,
   resource: str,
-  command: click.Command,
+  action: str,
   argv: List[str],
 ) -> None:
-  resource_cmd = scaffold_group.commands[resource]
   scaffold_ctx = _scaffold_parent_context(ctx, scaffold_group)
+  groups, leaf = resolve_command_path(scaffold_group, resource, action)
 
-  # Parent chain must be scaffold → resource → action so Click usage/help shows
-  # e.g. "stoobly-agent scaffold app create", not "scaffold apply PATH create".
-  resource_ctx = click.Context(resource_cmd, info_name=resource, parent=scaffold_ctx)
+  # Parent chain must be scaffold → resource → … → leaf so Click usage/help shows
+  # e.g. "stoobly-agent scaffold setting rewrite set", not nested under apply.
+  parent_ctx = scaffold_ctx
+  for group in groups:
+    parent_ctx = click.Context(group, info_name=group.name, parent=parent_ctx)
+
   try:
-    with command.make_context(command.name, argv, parent=resource_ctx) as cmd_ctx:
-      command.invoke(cmd_ctx)
+    with leaf.make_context(leaf.name, argv, parent=parent_ctx) as cmd_ctx:
+      leaf.invoke(cmd_ctx)
   except click.ClickException as e:
     e.show()
     raise SystemExit(e.exit_code) from e
+
+
+def _is_init_section_step(step: Dict[str, Any]) -> bool:
+  return str(step.get('resource') or '') in INIT_SECTION_RESOURCES
+
+
+def _is_enable_action(step: Dict[str, Any]) -> bool:
+  segments = _action_segments(str(step.get('action') or ''))
+  return bool(segments) and segments[-1] == 'enable'
+
+
+def sort_init_section_commands(commands: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+  """Keep non-init steps fixed; among setting/intercept steps, put enable last."""
+  indices = [i for i, step in enumerate(commands) if _is_init_section_step(step)]
+  if not indices:
+    return commands
+
+  subset = [commands[i] for i in indices]
+  # Stable: non-enable first, enable last; relative order within each group preserved.
+  subset_sorted = sorted(subset, key=lambda step: 1 if _is_enable_action(step) else 0)
+
+  result = list(commands)
+  for index, step in zip(indices, subset_sorted):
+    result[index] = step
+  return result
 
 
 def apply_config(
@@ -384,12 +477,18 @@ def apply_config(
     logger.error(f"Failed to read config file: {e}")
     sys.exit(1)
 
+  commands = sort_init_section_commands(commands)
   config_dir = os.path.dirname(os.path.abspath(path))
+  overwrite_init_section = True
 
   for index, step in enumerate(commands):
     resource = step['resource']
     action = step['action']
     options = expand_options(step.get('options') or {}, config_dir)
+
+    if _is_init_section_step(step) and overwrite_init_section:
+      options = {**options, 'overwrite': True}
+      overwrite_init_section = False
 
     try:
       command = resolve_command(scaffold_group, str(resource), str(action))
@@ -408,7 +507,13 @@ def apply_config(
       continue
 
     try:
-      invoke_step(ctx, scaffold_group, str(resource), command, option_argv + positionals)
+      invoke_step(
+        ctx,
+        scaffold_group,
+        str(resource),
+        str(action),
+        option_argv + positionals,
+      )
     except SystemExit as e:
       code = e.code if isinstance(e.code, int) else (1 if e.code else 0)
       if code != 0:

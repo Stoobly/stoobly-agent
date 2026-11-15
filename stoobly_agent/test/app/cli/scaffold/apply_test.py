@@ -9,10 +9,16 @@ import yaml
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.app import App
-from stoobly_agent.app.cli.scaffold.apply_command import LOG_ID
+from stoobly_agent.app.cli.scaffold.apply_command import LOG_ID, sort_init_section_commands
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.service import Service
+from stoobly_agent.app.cli.scaffold.settings_init_manager import (
+  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
+  SCAFFOLD_SETTINGS_DELIMITER_END,
+)
+from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_cli import scaffold
+from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH, AppDataDir
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.lib.logger import Logger
@@ -372,6 +378,158 @@ class TestScaffoldApply:
       'version': 1,
       'commands': [
         {'resource': 'request', 'action': 'logs', 'options': {}},
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', config_path])
+    assert result.exit_code != 0
+    combined = result.output + (result.stderr or '')
+    assert 'is a group' in combined
+
+  def test_nested_setting_rewrite_set_dry_run(self, runner: CliRunner, temp_dir: str):
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'setting',
+          'action': 'rewrite set',
+          'options': {
+            'method': ['GET'],
+            'mode': ['record'],
+            'name': 'authorization',
+            'pattern': '.*',
+            'type': 'Header',
+            'value': '',
+            'workflow': ['record'],
+          },
+        },
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', config_path, '--dry-run'])
+    assert result.exit_code == 0, result.output
+    combined = result.output + (result.stderr or '')
+    assert 'would apply setting rewrite set' in combined
+
+  def test_nested_setting_intercept_enable_dry_run(self, runner: CliRunner, temp_dir: str):
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'setting',
+          'action': 'intercept enable',
+          'options': {
+            'workflow': ['develop', 'mock', 'record', 'test'],
+          },
+        },
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', config_path, '--dry-run'])
+    assert result.exit_code == 0, result.output
+    combined = result.output + (result.stderr or '')
+    assert 'would apply setting intercept enable' in combined
+
+  def test_sort_init_section_commands_puts_enable_last(self):
+    commands = [
+      {'resource': 'app', 'action': 'create', 'options': {}},
+      {'resource': 'setting', 'action': 'intercept enable', 'options': {}},
+      {'resource': 'setting', 'action': 'rewrite set', 'options': {'name': 'a'}},
+      {'resource': 'service', 'action': 'create', 'options': {}},
+      {'resource': 'setting', 'action': 'rewrite set', 'options': {'name': 'b'}},
+    ]
+
+    sorted_commands = sort_init_section_commands(commands)
+
+    assert [c['resource'] for c in sorted_commands] == ['app', 'setting', 'setting', 'service', 'setting']
+    assert sorted_commands[1]['action'] == 'rewrite set'
+    assert sorted_commands[1]['options']['name'] == 'a'
+    assert sorted_commands[2]['action'] == 'rewrite set'
+    assert sorted_commands[2]['options']['name'] == 'b'
+    assert sorted_commands[4]['action'] == 'intercept enable'
+
+  def test_apply_sorts_enable_last_and_overwrites_on_first_setting(self, runner: CliRunner, temp_dir: str):
+    DataDir._instances = None
+    AppDataDir._instance = None
+
+    app_dir = os.path.join(temp_dir, 'overwrite-app')
+    os.makedirs(os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE), exist_ok=True)
+    services_config = os.path.join(app_dir, DATA_DIR_NAME, SERVICES_CONFIG_FILE_PATH)
+    os.makedirs(os.path.dirname(services_config), exist_ok=True)
+    with open(services_config, 'w') as fp:
+      fp.write('')
+
+    init_path = os.path.join(
+      app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE, CORE_BUILD_SERVICE_NAME, 'record', CUSTOM_INIT
+    )
+    os.makedirs(os.path.dirname(init_path), exist_ok=True)
+    with open(init_path, 'w') as fp:
+      fp.write(
+        "#! /bin/bash\n"
+        f"{SCAFFOLD_SETTINGS_DELIMITER_BEGIN}\n"
+        "stoobly-agent setting filter set --action exclude --method GET --mode record --pattern '.*'\n"
+        f"{SCAFFOLD_SETTINGS_DELIMITER_END}\n"
+        "\n# Add custom initialization here\n"
+      )
+
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'setting',
+          'action': 'intercept enable',
+          'options': {
+            'workflow': ['record'],
+            'app_dir_path': app_dir,
+          },
+        },
+        {
+          'resource': 'setting',
+          'action': 'rewrite set',
+          'options': {
+            'method': ['GET'],
+            'mode': ['record'],
+            'name': 'authorization',
+            'pattern': '.*',
+            'type': 'Header',
+            'value': '',
+            'workflow': ['record'],
+            'app_dir_path': app_dir,
+          },
+        },
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', config_path])
+    assert result.exit_code == 0, result.output
+    combined = result.output + (result.stderr or '')
+    assert combined.index('applying setting rewrite set') < combined.index('applying setting intercept enable')
+
+    with open(init_path) as fp:
+      contents = fp.read()
+
+    begin = contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN)
+    end = contents.index(SCAFFOLD_SETTINGS_DELIMITER_END)
+    block = contents[begin:end + len(SCAFFOLD_SETTINGS_DELIMITER_END)]
+
+    assert 'stoobly-agent setting rewrite set' in block
+    assert 'stoobly-agent intercept enable' in block
+    assert 'stoobly-agent setting filter set' not in block
+    assert block.index('stoobly-agent setting rewrite set') < block.index('stoobly-agent intercept enable')
+
+  def test_incomplete_nested_action_is_group(self, runner: CliRunner, temp_dir: str):
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'setting',
+          'action': 'rewrite',
+          'options': {},
+        },
       ],
     })
 

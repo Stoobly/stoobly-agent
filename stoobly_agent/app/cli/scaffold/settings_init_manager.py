@@ -10,7 +10,7 @@ SCAFFOLD_SETTINGS_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD SETTINGS BEGIN #####
 SCAFFOLD_SETTINGS_DELIMITER_END = "##### STOOBLY SCAFFOLD SETTINGS END #####"
 
 # Options that belong to the scaffold CLI, not the emitted stoobly-agent setting command.
-EXCLUDED_SETTING_KWARGS = frozenset({'workflow', 'app_dir_path'})
+EXCLUDED_SETTING_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite'})
 
 
 def build_init_path(app_data_dir_path: str, workflow_name: str) -> str:
@@ -80,8 +80,8 @@ def _append_option(parts: List[str], key: str, value: Any) -> None:
   parts.append(shlex.quote(str(value)))
 
 
-def prepend_or_append_setting_command(init_path: str, command: str) -> None:
-  """Prepend a SETTINGS marker block or append the command inside an existing block."""
+def prepend_or_append_setting_command(init_path: str, command: str, overwrite: bool = False) -> None:
+  """Prepend a SETTINGS marker block or append/overwrite the command inside an existing block."""
   if not os.path.exists(init_path):
     print(f"Error: Init script not found at {init_path}", file=sys.stderr)
     sys.exit(1)
@@ -90,20 +90,35 @@ def prepend_or_append_setting_command(init_path: str, command: str) -> None:
     contents = fp.read()
 
   command_line = command if command.endswith('\n') else f"{command}\n"
-  updated = _insert_command(contents, command_line)
+  updated = _insert_command(contents, command_line, overwrite=overwrite)
 
   with open(init_path, 'w') as fp:
     fp.write(updated)
 
 
-def _insert_command(contents: str, command_line: str) -> str:
+def _insert_command(contents: str, command_line: str, overwrite: bool = False) -> str:
   begin = SCAFFOLD_SETTINGS_DELIMITER_BEGIN
   end = SCAFFOLD_SETTINGS_DELIMITER_END
 
   if begin in contents and end in contents:
+    if overwrite:
+      return _overwrite_inside_markers(contents, begin, end, command_line)
     return _append_inside_markers(contents, begin, end, command_line)
 
   return _prepend_marker_block(contents, begin, end, command_line)
+
+
+def _overwrite_inside_markers(contents: str, begin: str, end: str, command_line: str) -> str:
+  begin_index = contents.index(begin)
+  end_index = contents.index(end, begin_index)
+
+  before = contents[: begin_index + len(begin)]
+  after = contents[end_index:]
+
+  if before and not before.endswith('\n'):
+    before += '\n'
+
+  return f"{before}{command_line}{after}"
 
 
 def _append_inside_markers(contents: str, begin: str, end: str, command_line: str) -> str:

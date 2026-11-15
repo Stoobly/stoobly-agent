@@ -10,6 +10,7 @@ from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FORMAT, apply_config
+from stoobly_agent.app.cli.scaffold.create_command import create_scaffold_yml
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -992,6 +993,15 @@ def describe(**kwargs):
     sys.exit(1)
 
   __print_scaffold_describe(context_dir, app_dir)
+
+@scaffold.command(
+  'create',
+  help="Create a default .stoobly/scaffold.yml if it does not already exist",
+)
+def scaffold_create():
+  path = create_scaffold_yml()
+  click.echo(f"Created {path}")
+  click.echo("Review the file, then run: stoobly-agent scaffold apply")
 
 @scaffold.command(
   help="Apply scaffold commands from a config file",

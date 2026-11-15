@@ -43,6 +43,11 @@ command:
         - stoobly-agent scaffold apply scaffold.yml --dry-run
         - stoobly-agent scaffold apply scaffold.json --format json
 
+    - name: create
+      description: Create a default .stoobly/scaffold.yml if it does not already exist
+      examples:
+        - stoobly-agent scaffold create
+
     - name: describe
       description: Describe scaffold configuration
       options:
@@ -813,6 +818,26 @@ command:
     - name: setting
       description: Manage scaffold settings written to build workflow init scripts
       commands:
+        - name: intercept
+          description: Manage intercept settings written to build workflow init scripts
+          commands:
+            - name: enable
+              description: Enable intercept in build workflow init script(s).
+              options:
+                - name: app-dir-path
+                  description: Path to application directory.
+                  arguments:
+                    - name: path
+                - name: overwrite
+                  description: Overwrite the scaffold settings section.
+                - name: workflow
+                  description: Workflow(s) whose build init script to update. May be specified multiple times.
+                  required: true
+                  arguments:
+                    - name: workflow
+              examples:
+                - stoobly-agent scaffold setting intercept enable --workflow develop --workflow mock --workflow record --workflow test
+
         - name: filter
           description: Manage filter rules
           commands:
@@ -846,6 +871,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
+                - name: overwrite
+                  description: Overwrite the scaffold settings section.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. May be specified multiple times.
                   required: true
@@ -886,6 +913,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
+                - name: overwrite
+                  description: Overwrite the scaffold settings section.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. May be specified multiple times.
                   required: true
@@ -951,6 +980,8 @@ command:
                   description: Rewrite value.
                   arguments:
                     - name: value
+                - name: overwrite
+                  description: Overwrite the scaffold settings section.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. May be specified multiple times.
                   required: true

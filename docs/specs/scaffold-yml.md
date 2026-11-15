@@ -22,10 +22,12 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 | Key | Required | Description |
 |-----|----------|-------------|
 | `resource` | yes | Scaffold command group (`app`, `service`, `workflow`, `hostname`, …). |
-| `action` | yes | Subcommand under that group (`create`, `up`, `copy`, …). |
+| `action` | yes | Subcommand under that group (`create`, `up`, `copy`, …). For nested groups, use a space-separated path to the leaf (for example `rewrite set` under `setting`). |
 | `options` | no | Mapping of options and positionals. Defaults to `{}`. |
 
 `resource` + `action` are validated against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml). Unknown resource/action, an action that is itself a group (not a leaf command), unknown option keys, invalid `acceptedValues`, or missing required options/arguments is an error. Steps are then invoked via the matching Click command.
+
+A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
 
 ### Options
 
