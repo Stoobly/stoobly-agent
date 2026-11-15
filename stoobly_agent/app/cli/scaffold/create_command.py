@@ -59,8 +59,8 @@ def default_scaffold_config(app_name: str = None) -> Dict[str, Any]:
         'options': _rewrite_set_options('cookie'),
       },
       {
-        'resource': 'setting',
-        'action': 'intercept enable',
+        'resource': 'intercept',
+        'action': 'enable',
         'options': {
           'workflow': list(CORE_WORKFLOWS),
         },

@@ -2,42 +2,22 @@ import click
 import pdb
 import sys
 
+from stoobly_agent.app.cli.helpers.intercept_options import (
+  get_order_options,
+  get_policy_options,
+  get_strategy_options,
+  validate_options_for_mode,
+)
 from stoobly_agent.app.settings import Settings
-from stoobly_agent.config.constants import mode, mock_policy, develop_policy, record_order, record_policy, record_strategy, test_policy, test_strategy
+from stoobly_agent.config.constants import mode
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
 
 settings: Settings = Settings.instance()
 active_mode = settings.proxy.intercept.mode
 
-def __get_order_options(active_mode: str) -> list[str]:
-    if active_mode == mode.RECORD:
-        return [record_order.APPEND, record_order.OVERWRITE]
-    else:
-        return []
-
-def __get_policy_options(active_mode: str) -> list[str]:
-    if active_mode == mode.MOCK:
-        return [mock_policy.ALL, mock_policy.FOUND, mock_policy.NONE]
-    elif active_mode == mode.RECORD:
-        return [record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND]
-    elif active_mode == mode.DEVELOP:
-        return [develop_policy.ALL]
-    elif active_mode == mode.TEST:
-        return [test_policy.FOUND, test_policy.NONE]
-    else:
-        return []
-
-def __get_strategy_options(active_mode: str) -> list[str]:
-    if active_mode == mode.RECORD:
-        return [record_strategy.FULL, record_strategy.MINIMAL]
-    elif active_mode == mode.TEST:
-        return [test_strategy.CONTRACT, test_strategy.CUSTOM, test_strategy.DIFF, test_strategy.FUZZY]
-    else:
-        return []
-
-order_options = __get_order_options(active_mode)
-policy_options = __get_policy_options(active_mode)
-strategy_options = __get_strategy_options(active_mode)
+order_options = get_order_options(active_mode)
+policy_options = get_policy_options(active_mode)
+strategy_options = get_strategy_options(active_mode)
 
 @click.group(
     epilog="Run 'stoobly-agent intercept COMMAND --help' for more information on a command.",
@@ -103,20 +83,11 @@ def set(**kwargs):
 
             print(f"Updating intercept mode to {kwargs['mode']}")
 
-    _mode = kwargs['mode'] or settings.proxy.intercept.mode 
+    _mode = kwargs['mode'] or settings.proxy.intercept.mode
+
+    validate_options_for_mode(kwargs, settings.proxy.intercept.mode)
 
     if kwargs['order']:
-        active_mode = settings.proxy.intercept.mode
-        valid_orders = __get_order_options(active_mode)
-
-        if not valid_orders:
-            print("Error: set --mode to a intercept mode that supports the order option", file=sys.stderr)
-            sys.exit(1)
-
-        if kwargs['order'] not in valid_orders:
-            print(f"Error: Valid orders for {active_mode} are {valid_orders}", file=sys.stderr)
-            sys.exit(1)
-
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
         data_rule.record_order = kwargs['order']
@@ -127,16 +98,10 @@ def set(**kwargs):
         print(f"Updating {_mode} order to {kwargs['order']}")
 
     if kwargs['policy']:
-        active_mode = settings.proxy.intercept.mode
-        valid_policies = __get_policy_options(active_mode)
-
-        if kwargs['policy'] not in valid_policies:
-            print(f"Error: Valid policies for {active_mode} are {valid_policies}", file=sys.stderr)
-            sys.exit(1)
-
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
-        
+        active_mode = settings.proxy.intercept.mode
+
         if active_mode == mode.MOCK:
             data_rule.mock_policy = kwargs['policy']
         elif active_mode == mode.RECORD:
@@ -149,19 +114,9 @@ def set(**kwargs):
         print(f"Updating {_mode} policy to {kwargs['policy']}")
 
     if kwargs['strategy']:
-        active_mode = settings.proxy.intercept.mode
-        valid_strategies = __get_strategy_options(active_mode)
-
-        if not valid_strategies:
-            print("Error: set --strategy to a intercept mode that supports the strategy option", file=sys.stderr)
-            sys.exit(1)
-
-        if kwargs['strategy'] not in valid_strategies:
-            print(f"Error: Valid strategies for {active_mode} are {valid_strategies}", file=sys.stderr)
-            sys.exit(1)
-
         project_key = ProjectKey(settings.proxy.intercept.project_key)
         data_rule = settings.proxy.data.data_rules(project_key.id)
+        active_mode = settings.proxy.intercept.mode
 
         if active_mode == mode.RECORD:
             data_rule.record_strategy = kwargs['strategy']

@@ -93,8 +93,8 @@ class TestScaffoldCreate:
       assert options['workflow'] == ['record']
 
     intercept_step = commands[4]
-    assert intercept_step['resource'] == 'setting'
-    assert intercept_step['action'] == 'intercept enable'
+    assert intercept_step['resource'] == 'intercept'
+    assert intercept_step['action'] == 'enable'
     assert intercept_step['options']['workflow'] == list(CORE_WORKFLOWS)
 
   def test_errors_when_scaffold_yml_exists(self, runner: CliRunner, temp_dir: str):

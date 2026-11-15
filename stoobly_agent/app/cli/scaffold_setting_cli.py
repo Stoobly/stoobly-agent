@@ -6,6 +6,7 @@ from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   build_init_path,
   build_setting_command,
   prepend_or_append_setting_command,
+  resolve_workflows,
 )
 from stoobly_agent.app.cli.validators.scaffold import validate_hostname
 from stoobly_agent.app.settings.constants import filter_action, request_component
@@ -20,30 +21,27 @@ def _validate_app(app: App):
     sys.exit(1)
 
 
-def _apply_init_command(command: str, kwargs: dict):
-  workflows = kwargs.get('workflow') or ()
-  if not workflows:
-    click.echo("Error: Missing option '--workflow'", err=True)
-    sys.exit(1)
-
+def _apply_setting_command(subgroup: str, kwargs: dict):
   app = App(kwargs.get('app_dir_path'))
   _validate_app(app)
 
+  workflows = resolve_workflows(app.app_data_dir.path, kwargs.get('workflow'))
+  if not workflows:
+    click.echo("Error: No build workflow init scripts found", err=True)
+    sys.exit(1)
+
+  command = build_setting_command(subgroup, kwargs)
   overwrite = bool(kwargs.get('overwrite'))
+
   for workflow_name in workflows:
     init_path = build_init_path(app.app_data_dir.path, workflow_name)
     prepend_or_append_setting_command(init_path, command, overwrite=overwrite)
     click.echo(f"Updated {init_path}")
 
 
-def _apply_setting_command(subgroup: str, kwargs: dict):
-  command = build_setting_command(subgroup, kwargs)
-  _apply_init_command(command, kwargs)
-
-
 @click.group(
   epilog="Run 'stoobly-agent scaffold setting COMMAND --help' for more information on a command.",
-  help="Manage scaffold settings written to build workflow init scripts"
+  help="Manage scaffold settings"
 )
 @click.pass_context
 def setting(ctx):
@@ -99,7 +97,7 @@ def rewrite(ctx):
 )
 @click.option('--value', help='Rewrite value.')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
-@click.option('--workflow', multiple=True, required=True, help='Workflow(s) whose build init script to update.')
+@click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def rewrite_set(**kwargs):
   if kwargs['name'] or kwargs['value'] or kwargs['type']:
     if kwargs['name'] is None:
@@ -151,7 +149,7 @@ def match(ctx):
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
-@click.option('--workflow', multiple=True, required=True, help='Workflow(s) whose build init script to update.')
+@click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def match_set(**kwargs):
   _apply_setting_command('match', kwargs)
 
@@ -191,31 +189,11 @@ def _filter(ctx):
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
-@click.option('--workflow', multiple=True, required=True, help='Workflow(s) whose build init script to update.')
+@click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def filter_set(**kwargs):
   _apply_setting_command('filter', kwargs)
 
 
-@click.group(
-  help="Manage intercept settings written to build workflow init scripts"
-)
-@click.pass_context
-def intercept(ctx):
-  pass
-
-
-@intercept.command(
-  'enable',
-  help="Enable intercept in build workflow init script(s)."
-)
-@click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold settings section.')
-@click.option('--workflow', multiple=True, required=True, help='Workflow(s) whose build init script to update.')
-def intercept_enable(**kwargs):
-  _apply_init_command('stoobly-agent intercept enable', kwargs)
-
-
 setting.add_command(_filter)
-setting.add_command(intercept)
 setting.add_command(match)
 setting.add_command(rewrite)

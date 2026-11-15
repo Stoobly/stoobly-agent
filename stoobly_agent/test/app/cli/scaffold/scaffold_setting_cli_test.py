@@ -159,24 +159,6 @@ class TestScaffoldSettingCli:
     assert "--component Header" in block
     assert "--mode mock" in block
 
-  def test_intercept_enable_writes_command_for_workflows(self, app_dir):
-    develop_init = _create_build_init(app_dir, 'develop')
-    mock_init = _create_build_init(app_dir, 'mock')
-
-    result = CliRunner().invoke(setting, [
-      'intercept', 'enable',
-      '--workflow', 'develop',
-      '--workflow', 'mock',
-      '--app-dir-path', app_dir,
-    ])
-
-    assert result.exit_code == 0, result.output
-    for init_path in (develop_init, mock_init):
-      with open(init_path) as fp:
-        contents = fp.read()
-      block = _settings_block(contents)
-      assert 'stoobly-agent intercept enable' in block
-
   def test_overwrite_replaces_settings_section(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
     runner = CliRunner()
@@ -216,31 +198,24 @@ class TestScaffoldSettingCli:
     assert 'stoobly-agent setting filter set' in block
     assert 'stoobly-agent setting rewrite set' not in block
 
-  def test_intercept_overwrite_replaces_settings_section(self, app_dir):
-    init_path = _create_build_init(app_dir, 'mock')
-    runner = CliRunner()
+  def test_defaults_to_all_workflows(self, app_dir):
+    record_init = _create_build_init(app_dir, 'record')
+    mock_init = _create_build_init(app_dir, 'mock')
 
-    first = runner.invoke(setting, [
-      'match', 'set',
+    result = CliRunner().invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
       '--method', 'GET',
-      '--mode', 'mock',
+      '--mode', 'record',
       '--pattern', '.*',
-      '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
-    assert first.exit_code == 0, first.output
 
-    second = runner.invoke(setting, [
-      'intercept', 'enable',
-      '--overwrite',
-      '--workflow', 'mock',
-      '--app-dir-path', app_dir,
-    ])
-    assert second.exit_code == 0, second.output
-
-    block = _settings_block(open(init_path).read())
-    assert 'stoobly-agent intercept enable' in block
-    assert 'stoobly-agent setting match set' not in block
+    assert result.exit_code == 0, result.output
+    for init_path in (record_init, mock_init):
+      with open(init_path) as fp:
+        contents = fp.read()
+      assert "stoobly-agent setting filter set" in _settings_block(contents)
 
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(setting, [

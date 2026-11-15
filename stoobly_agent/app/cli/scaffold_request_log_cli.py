@@ -15,7 +15,7 @@ def _validate_app(app: App):
 
 @click.group(
   epilog="Run 'stoobly-agent scaffold request COMMAND --help' for more information on a command.",
-  help="Manage scaffold request logs"
+  help="Manage scaffold requests"
 )
 @click.pass_context
 def request(ctx):
