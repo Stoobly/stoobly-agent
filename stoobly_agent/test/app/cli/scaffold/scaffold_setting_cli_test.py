@@ -159,6 +159,25 @@ class TestScaffoldSettingCli:
     assert "--component Header" in block
     assert "--mode mock" in block
 
+  def test_defaults_to_all_workflows(self, app_dir):
+    record_init = _create_build_init(app_dir, 'record')
+    mock_init = _create_build_init(app_dir, 'mock')
+
+    result = CliRunner().invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
+      '--method', 'GET',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--app-dir-path', app_dir,
+    ])
+
+    assert result.exit_code == 0, result.output
+    for init_path in (record_init, mock_init):
+      with open(init_path) as fp:
+        contents = fp.read()
+      assert "stoobly-agent setting filter set" in _settings_block(contents)
+
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(setting, [
       'filter', 'set',
