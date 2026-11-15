@@ -126,7 +126,7 @@ def set(**kwargs):
         valid_policies = __get_policy_options(active_mode)
 
         if kwargs['policy'] not in valid_policies:
-            print("Error: Valid policies for {active_mode} are {valid_policies}", file=sys.stderr)
+            print(f"Error: Valid policies for {active_mode} are {valid_policies}", file=sys.stderr)
             sys.exit(1)
 
         project_key = ProjectKey(settings.proxy.intercept.project_key)
