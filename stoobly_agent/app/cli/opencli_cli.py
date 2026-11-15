@@ -15,7 +15,7 @@ from stoobly_agent.app.cli.helpers.tabulate_print_service import tabulate_print
 
 @click.group(
   epilog="Run 'stoobly-agent opencli COMMAND --help' for more information on a command.",
-  help="Show OpenCLI descriptions for command groups",
+  help="Show OpenCLI descriptions",
 )
 @click.pass_context
 def opencli(ctx):
