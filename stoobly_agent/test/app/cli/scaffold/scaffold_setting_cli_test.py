@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
@@ -159,44 +160,70 @@ class TestScaffoldSettingCli:
     assert "--component Header" in block
     assert "--mode mock" in block
 
-  def test_overwrite_replaces_init_section(self, app_dir):
-    init_path = _create_build_init(app_dir, 'record')
-    runner = CliRunner()
+  def test_save_creates_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    assert not os.path.exists(scaffold_path)
 
-    first = runner.invoke(setting, [
-      'rewrite', 'set',
-      '--method', 'GET',
-      '--mode', 'record',
-      '--pattern', '.*',
-      '--name', 'authorization',
-      '--type', 'Header',
-      '--value', '',
-      '--workflow', 'record',
-      '--app-dir-path', app_dir,
-    ])
-    assert first.exit_code == 0, first.output
-
-    second = runner.invoke(setting, [
+    result = CliRunner().invoke(setting, [
       'filter', 'set',
       '--action', 'exclude',
       '--method', 'POST',
       '--mode', 'record',
       '--pattern', '.*',
-      '--overwrite',
+      '--save',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
-    assert second.exit_code == 0, second.output
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert f'Updated {scaffold_path}' in result.output
 
-    with open(init_path) as fp:
-      contents = fp.read()
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
 
-    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
+    assert data['version'] == 1
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['resource'] == 'setting'
+    assert step['action'] == 'filter set'
+    assert step['options']['action'] == 'exclude'
+    assert step['options']['method'] == ['POST']
+    assert step['options']['mode'] == ['record']
+    assert step['options']['pattern'] == '.*'
+    assert step['options']['workflow'] == ['record']
+    assert step['options']['app_dir_path'] == app_dir
+    assert 'save' not in step['options']
 
-    block = _init_block(contents)
-    assert 'stoobly-agent setting filter set' in block
-    assert 'stoobly-agent setting rewrite set' not in block
+  def test_save_appends_to_existing_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    with open(scaffold_path, 'w') as fp:
+      yaml.safe_dump({
+        'version': 1,
+        'commands': [
+          {'resource': 'app', 'action': 'create', 'options': {'app_name': 'existing'}},
+        ],
+      }, fp)
+
+    result = CliRunner().invoke(setting, [
+      'match', 'set',
+      '--method', 'GET',
+      '--mode', 'mock',
+      '--pattern', '.*',
+      '--save',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 2
+    assert data['commands'][0]['resource'] == 'app'
+    assert data['commands'][1]['resource'] == 'setting'
+    assert data['commands'][1]['action'] == 'match set'
 
   def test_defaults_to_all_workflows(self, app_dir):
     record_init = _create_build_init(app_dir, 'record')

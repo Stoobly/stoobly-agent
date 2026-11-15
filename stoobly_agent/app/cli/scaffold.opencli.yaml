@@ -715,8 +715,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
-            - name: overwrite
-              description: Overwrite the scaffold intercept section.
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -732,8 +732,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
-            - name: overwrite
-              description: Overwrite the scaffold intercept section.
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -769,8 +769,8 @@ command:
               arguments:
                 - name: strategy
                   acceptedValues: [contract, custom, diff, full, fuzzy, minimal]
-            - name: overwrite
-              description: Overwrite the scaffold intercept section.
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -925,8 +925,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
-                - name: overwrite
-                  description: Overwrite the scaffold settings section.
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -967,8 +967,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
-                - name: overwrite
-                  description: Overwrite the scaffold settings section.
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -1034,8 +1034,8 @@ command:
                   description: Rewrite value.
                   arguments:
                     - name: value
-                - name: overwrite
-                  description: Overwrite the scaffold settings section.
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:

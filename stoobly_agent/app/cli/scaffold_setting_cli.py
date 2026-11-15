@@ -2,6 +2,7 @@ import click
 import sys
 
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.create_command import save_scaffold_command
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   build_init_path,
   build_setting_command,
@@ -31,12 +32,20 @@ def _apply_setting_command(subgroup: str, kwargs: dict):
     sys.exit(1)
 
   command = build_setting_command(subgroup, kwargs)
-  overwrite = bool(kwargs.get('overwrite'))
 
   for workflow_name in workflows:
     init_path = build_init_path(app.app_data_dir.path, workflow_name)
-    prepend_or_append_setting_command(init_path, command, overwrite=overwrite)
+    prepend_or_append_setting_command(init_path, command)
     click.echo(f"Updated {init_path}")
+
+  if kwargs.get('save'):
+    scaffold_path = save_scaffold_command(
+      app.app_data_dir.scaffold_file_path,
+      'setting',
+      f'{subgroup} set',
+      kwargs,
+    )
+    click.echo(f"Updated {scaffold_path}")
 
 
 @click.group(
@@ -96,7 +105,7 @@ def rewrite(ctx):
   help='Request URL scheme to rewrite to.'
 )
 @click.option('--value', help='Rewrite value.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
+@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def rewrite_set(**kwargs):
   if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -148,7 +157,7 @@ def match(ctx):
   type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
+@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def match_set(**kwargs):
   _apply_setting_command('match', kwargs)
@@ -188,7 +197,7 @@ def _filter(ctx):
   type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold init section.')
+@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def filter_set(**kwargs):
   _apply_setting_command('filter', kwargs)

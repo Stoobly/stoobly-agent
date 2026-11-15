@@ -11,6 +11,8 @@ import click
 import yaml
 
 from stoobly_agent.app.cli.helpers.opencli_resolve import resolve_path
+from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.settings_init_manager import clear_init_sections
 from stoobly_agent.config.constants.env_vars import LOG_LEVEL
 from stoobly_agent.lib.logger import DEBUG, ERROR, INFO, Logger, WARNING
 
@@ -439,6 +441,14 @@ def _is_enable_action(step: Dict[str, Any]) -> bool:
   return bool(segments) and segments[-1] == 'enable'
 
 
+def _clear_init_sections_for_options(options: Dict[str, Any]) -> None:
+  app = App(options.get('app_dir_path'))
+  workflows = options.get('workflow') or ()
+  if isinstance(workflows, str):
+    workflows = [workflows]
+  clear_init_sections(app.app_data_dir.path, workflows)
+
+
 def sort_init_section_commands(commands: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
   """Keep non-init steps fixed; among setting/intercept steps, put enable last."""
   indices = [i for i, step in enumerate(commands) if _is_init_section_step(step)]
@@ -485,10 +495,8 @@ def apply_config(
     resource = step['resource']
     action = step['action']
     options = expand_options(step.get('options') or {}, config_dir)
-
-    if _is_init_section_step(step) and overwrite_init_section:
-      options = {**options, 'overwrite': True}
-      overwrite_init_section = False
+    # --save persists CLI changes into scaffold.yml; never re-save during apply.
+    options.pop('save', None)
 
     try:
       command = resolve_command(scaffold_group, str(resource), str(action))
@@ -505,6 +513,10 @@ def apply_config(
 
     if dry_run:
       continue
+
+    if _is_init_section_step(step) and overwrite_init_section:
+      _clear_init_sections_for_options(options)
+      overwrite_init_section = False
 
     try:
       invoke_step(

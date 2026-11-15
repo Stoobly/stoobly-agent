@@ -10,7 +10,7 @@ SCAFFOLD_INIT_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD INIT BEGIN #####"
 SCAFFOLD_INIT_DELIMITER_END = "##### STOOBLY SCAFFOLD INIT END #####"
 
 # Options that belong to the scaffold CLI, not the emitted stoobly-agent command.
-EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite'})
+EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite', 'save'})
 EXCLUDED_SETTING_KWARGS = EXCLUDED_SCAFFOLD_KWARGS
 
 
@@ -118,6 +118,34 @@ def _append_option(parts: List[str], key: str, value: Any) -> None:
 
   parts.append(option)
   parts.append(shlex.quote(str(value)))
+
+
+def clear_init_section(init_path: str) -> None:
+  """Clear commands inside an existing INIT marker block. No-op if missing."""
+  if not os.path.exists(init_path):
+    return
+
+  with open(init_path, 'r') as fp:
+    contents = fp.read()
+
+  if SCAFFOLD_INIT_DELIMITER_BEGIN not in contents or SCAFFOLD_INIT_DELIMITER_END not in contents:
+    return
+
+  updated = _overwrite_inside_markers(
+    contents,
+    SCAFFOLD_INIT_DELIMITER_BEGIN,
+    SCAFFOLD_INIT_DELIMITER_END,
+    '',
+  )
+
+  with open(init_path, 'w') as fp:
+    fp.write(updated)
+
+
+def clear_init_sections(app_data_dir_path: str, workflows) -> None:
+  """Clear INIT sections for the given workflows (or all build workflows)."""
+  for workflow_name in resolve_workflows(app_data_dir_path, workflows):
+    clear_init_section(build_init_path(app_data_dir_path, workflow_name))
 
 
 def prepend_or_append_setting_command(init_path: str, command: str, overwrite: bool = False) -> None:

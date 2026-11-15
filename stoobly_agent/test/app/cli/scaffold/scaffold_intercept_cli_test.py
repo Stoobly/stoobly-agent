@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
@@ -141,36 +142,58 @@ class TestScaffoldInterceptCli:
     assert "stoobly-agent intercept enable" in block
     assert block.index("stoobly-agent intercept set") < block.index("stoobly-agent intercept enable")
 
-  def test_overwrite_replaces_init_section(self, app_dir):
-    init_path = _create_build_init(app_dir, 'mock')
-    runner = CliRunner()
+  def test_save_creates_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    assert not os.path.exists(scaffold_path)
 
-    first = runner.invoke(intercept, [
-      'set',
-      '--mode', 'mock',
-      '--policy', 'all',
-      '--workflow', 'mock',
-      '--app-dir-path', app_dir,
-    ])
-    assert first.exit_code == 0, first.output
-
-    second = runner.invoke(intercept, [
+    result = CliRunner().invoke(intercept, [
       'enable',
-      '--overwrite',
+      '--save',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
-    assert second.exit_code == 0, second.output
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert f'Updated {scaffold_path}' in result.output
 
-    with open(init_path) as fp:
-      contents = fp.read()
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
 
-    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
+    assert data['version'] == 1
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['resource'] == 'intercept'
+    assert step['action'] == 'enable'
+    assert step['options']['workflow'] == ['mock']
+    assert step['options']['app_dir_path'] == app_dir
+    assert 'save' not in step['options']
 
-    block = _init_block(contents)
-    assert 'stoobly-agent intercept enable' in block
-    assert 'stoobly-agent intercept set' not in block
+  def test_save_appends_to_existing_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    with open(scaffold_path, 'w') as fp:
+      yaml.safe_dump({
+        'version': 1,
+        'commands': [
+          {'resource': 'intercept', 'action': 'set', 'options': {'mode': 'mock'}},
+        ],
+      }, fp)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--save',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 2
+    assert data['commands'][0]['action'] == 'set'
+    assert data['commands'][1]['action'] == 'enable'
 
   def test_setting_and_intercept_share_init_section(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')

@@ -90,3 +90,68 @@ def create_scaffold_yml(path: str = None, app_name: str = None) -> str:
     yaml.safe_dump(config, fp, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
   return scaffold_path
+
+
+# Options that belong to the scaffold CLI only and should not be persisted.
+EXCLUDED_SAVE_KWARGS = frozenset({'save'})
+
+
+def build_scaffold_command_step(resource: str, action: str, kwargs: dict) -> Dict[str, Any]:
+  """Build a scaffold.yml command step from Click kwargs."""
+  options: Dict[str, Any] = {}
+  for key, value in kwargs.items():
+    if key in EXCLUDED_SAVE_KWARGS:
+      continue
+    if value is None or value == () or value == []:
+      continue
+    if isinstance(value, bool) and not value:
+      continue
+    if isinstance(value, tuple):
+      value = list(value)
+    options[key] = value
+
+  step: Dict[str, Any] = {
+    'resource': resource,
+    'action': action,
+  }
+  if options:
+    step['options'] = options
+  return step
+
+
+def save_scaffold_command(path: str, resource: str, action: str, kwargs: dict) -> str:
+  """Append a command step to scaffold.yml, creating the file if missing.
+
+  Returns the path written.
+  """
+  step = build_scaffold_command_step(resource, action, kwargs)
+
+  if os.path.exists(path):
+    with open(path, 'r') as fp:
+      data = yaml.safe_load(fp)
+
+    if not isinstance(data, dict):
+      data = {}
+
+    commands = data.get('commands')
+    if not isinstance(commands, list):
+      commands = []
+
+    if data.get('version') is None:
+      data['version'] = 1
+
+    commands.append(step)
+    data['commands'] = commands
+  else:
+    parent = os.path.dirname(path)
+    if parent:
+      os.makedirs(parent, exist_ok=True)
+    data = {
+      'version': 1,
+      'commands': [step],
+    }
+
+  with open(path, 'w') as fp:
+    yaml.safe_dump(data, fp, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+  return path
