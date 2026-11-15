@@ -265,6 +265,22 @@ class TestScaffoldInterceptCli:
     assert result.exit_code != 0
     assert 'Missing an option' in result.output or 'Missing an option' in (result.exception and str(result.exception) or '')
 
+  def test_set_invalid_policy_for_mode(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+
+    result = CliRunner().invoke(intercept, [
+      'set',
+      '--mode', 'mock',
+      '--policy', 'test',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+
+    assert result.exit_code == 1
+    assert "Error: Valid policies for mock are" in result.output
+    assert "Invalid value for '--policy'" not in result.output
+
+
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(intercept, [
       'enable',

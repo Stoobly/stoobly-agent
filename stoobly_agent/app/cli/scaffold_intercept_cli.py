@@ -77,21 +77,9 @@ def disable(**kwargs):
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--mode', type=click.Choice(mode.options), help='Intercept mode.')
-@click.option(
-  '--order',
-  type=click.Choice(ORDER_OPTIONS),
-  help=f"Order to use for recording. Valid options: {ORDER_OPTIONS}",
-)
-@click.option(
-  '--policy',
-  type=click.Choice(POLICY_OPTIONS),
-  help=f"Policy to use for intercept. Valid options: {POLICY_OPTIONS}",
-)
-@click.option(
-  '--strategy',
-  type=click.Choice(STRATEGY_OPTIONS),
-  help=f"Strategy to use for intercept. Valid options: {STRATEGY_OPTIONS}",
-)
+@click.option('--order', help=f"Order to use for recording. Valid options: {ORDER_OPTIONS}")
+@click.option('--policy', help=f"Policy to use for intercept. Valid options: {POLICY_OPTIONS}")
+@click.option('--strategy', help=f"Strategy to use for intercept. Valid options: {STRATEGY_OPTIONS}")
 @click.option('--overwrite', is_flag=True, default=False, help='Overwrite the scaffold intercept section.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def set(**kwargs):

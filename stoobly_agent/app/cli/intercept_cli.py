@@ -71,6 +71,9 @@ def set(**kwargs):
         print("Error: Missing an option")
         sys.exit(1)
 
+    _mode = kwargs['mode'] or settings.proxy.intercept.mode
+    validate_options_for_mode(kwargs, _mode)
+
     if kwargs['mode']:
         if settings.proxy.intercept.mode != kwargs['mode']:
             if settings.proxy.intercept.active:
@@ -82,10 +85,6 @@ def set(**kwargs):
             settings.proxy.intercept.mode = kwargs['mode']
 
             print(f"Updating intercept mode to {kwargs['mode']}")
-
-    _mode = kwargs['mode'] or settings.proxy.intercept.mode
-
-    validate_options_for_mode(kwargs, settings.proxy.intercept.mode)
 
     if kwargs['order']:
         project_key = ProjectKey(settings.proxy.intercept.project_key)
