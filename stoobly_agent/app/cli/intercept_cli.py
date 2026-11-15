@@ -107,14 +107,19 @@ def set(**kwargs):
 
     if kwargs['order']:
         active_mode = settings.proxy.intercept.mode
+        valid_orders = __get_order_options(active_mode)
 
-        if active_mode == mode.RECORD:
-            project_key = ProjectKey(settings.proxy.intercept.project_key)
-            data_rule = settings.proxy.data.data_rules(project_key.id)
-            data_rule.record_order = kwargs['order']
-        else:
+        if not valid_orders:
             print("Error: set --mode to a intercept mode that supports the order option", file=sys.stderr)
             sys.exit(1)
+
+        if kwargs['order'] not in valid_orders:
+            print(f"Error: Valid orders for {active_mode} are {valid_orders}", file=sys.stderr)
+            sys.exit(1)
+
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+        data_rule.record_order = kwargs['order']
 
         from .helpers.handle_config_update_service import handle_order_update
         handle_order_update(settings)
@@ -145,18 +150,23 @@ def set(**kwargs):
 
     if kwargs['strategy']:
         active_mode = settings.proxy.intercept.mode
+        valid_strategies = __get_strategy_options(active_mode)
 
-        if active_mode == mode.RECORD or active_mode == mode.TEST:
-            project_key = ProjectKey(settings.proxy.intercept.project_key)
-            data_rule = settings.proxy.data.data_rules(project_key.id)
-
-            if active_mode == mode.RECORD:
-                data_rule.record_strategy = kwargs['strategy']
-            elif active_mode == mode.TEST:
-                data_rule.test_strategy = kwargs['strategy']
-        else:
+        if not valid_strategies:
             print("Error: set --strategy to a intercept mode that supports the strategy option", file=sys.stderr)
             sys.exit(1)
+
+        if kwargs['strategy'] not in valid_strategies:
+            print(f"Error: Valid strategies for {active_mode} are {valid_strategies}", file=sys.stderr)
+            sys.exit(1)
+
+        project_key = ProjectKey(settings.proxy.intercept.project_key)
+        data_rule = settings.proxy.data.data_rules(project_key.id)
+
+        if active_mode == mode.RECORD:
+            data_rule.record_strategy = kwargs['strategy']
+        elif active_mode == mode.TEST:
+            data_rule.test_strategy = kwargs['strategy']
 
         from .helpers.handle_config_update_service import handle_strategy_update
         handle_strategy_update(settings)

@@ -69,6 +69,19 @@ class TestInterceptSet():
 
           assert not Scenario.find(scenario.id).overwritable
 
+    class TestInvalidOrderInput():
+
+      def test_order_invalid_for_record_mode(self, runner: CliRunner):
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.RECORD, '--order', 'test'])
+        assert set_result.exit_code == 1
+        assert "Error: Valid orders for" in set_result.output
+        assert "TypeError" not in set_result.output
+
+      def test_order_unsupported_mode_error(self, runner: CliRunner):
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.MOCK, '--order', record_order.APPEND])
+        assert set_result.exit_code == 1
+        assert "Error: set --mode to a intercept mode that supports the order option" in set_result.output
+
   class TestPolicy():
 
     class TestMockPolicy():
@@ -313,3 +326,9 @@ class TestInterceptSet():
         set_result = runner.invoke(intercept, ['set', '--strategy', record_strategy.FULL])
         assert set_result.exit_code == 1
         assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
+
+      def test_strategy_invalid_for_record_mode(self, runner: CliRunner):
+        set_result = runner.invoke(intercept, ['set', '--mode', mode.RECORD, '--strategy', 'test'])
+        assert set_result.exit_code == 1
+        assert "Error: Valid strategies for" in set_result.output
+        assert "TypeError" not in set_result.output
