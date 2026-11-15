@@ -134,17 +134,28 @@ def prepend_or_append_setting_command(init_path: str, command: str) -> None:
 
 
 def prepend_or_append_intercept_command(init_path: str, command: str) -> None:
-  """Prepend an INTERCEPT marker block or append the command inside an existing block."""
+  """Insert an INTERCEPT marker block after SETTINGS, or append inside an existing block."""
   prepend_or_append_command(
     init_path,
     command,
     SCAFFOLD_INTERCEPT_DELIMITER_BEGIN,
     SCAFFOLD_INTERCEPT_DELIMITER_END,
+    after_end=SCAFFOLD_SETTINGS_DELIMITER_END,
   )
 
 
-def prepend_or_append_command(init_path: str, command: str, begin: str, end: str) -> None:
-  """Prepend a marker block or append the command inside an existing block."""
+def prepend_or_append_command(
+  init_path: str,
+  command: str,
+  begin: str,
+  end: str,
+  after_end: str = None,
+) -> None:
+  """Prepend a marker block or append the command inside an existing block.
+
+  When the block does not exist and after_end is set, insert the new block
+  immediately after that marker (so INTERCEPT stays after SETTINGS).
+  """
   if not os.path.exists(init_path):
     print(f"Error: Init script not found at {init_path}", file=sys.stderr)
     sys.exit(1)
@@ -153,17 +164,43 @@ def prepend_or_append_command(init_path: str, command: str, begin: str, end: str
     contents = fp.read()
 
   command_line = command if command.endswith('\n') else f"{command}\n"
-  updated = _insert_command(contents, command_line, begin, end)
+  updated = _insert_command(contents, command_line, begin, end, after_end=after_end)
 
   with open(init_path, 'w') as fp:
     fp.write(updated)
 
 
-def _insert_command(contents: str, command_line: str, begin: str, end: str) -> str:
+def _insert_command(
+  contents: str,
+  command_line: str,
+  begin: str,
+  end: str,
+  after_end: str = None,
+) -> str:
   if begin in contents and end in contents:
     return _append_inside_markers(contents, begin, end, command_line)
 
+  if after_end and after_end in contents:
+    return _insert_block_after_marker(contents, after_end, begin, end, command_line)
+
   return _prepend_marker_block(contents, begin, end, command_line)
+
+
+def _insert_block_after_marker(
+  contents: str,
+  after_marker: str,
+  begin: str,
+  end: str,
+  command_line: str,
+) -> str:
+  insert_at = contents.index(after_marker) + len(after_marker)
+  if insert_at < len(contents) and contents[insert_at] == '\n':
+    insert_at += 1
+
+  before = contents[:insert_at]
+  after = contents[insert_at:]
+  block = f"{begin}\n{command_line}{end}\n"
+  return f"{before}{block}{after}"
 
 
 def _append_inside_markers(contents: str, begin: str, end: str, command_line: str) -> str:

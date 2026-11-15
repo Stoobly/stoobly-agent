@@ -7,9 +7,12 @@ from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   SCAFFOLD_INTERCEPT_DELIMITER_BEGIN,
   SCAFFOLD_INTERCEPT_DELIMITER_END,
+  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
+  SCAFFOLD_SETTINGS_DELIMITER_END,
 )
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_intercept_cli import intercept
+from stoobly_agent.app.cli.scaffold_setting_cli import setting
 from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH
 from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.test.test_helper import reset
@@ -139,6 +142,37 @@ class TestScaffoldInterceptCli:
     assert "stoobly-agent intercept set" in block
     assert "stoobly-agent intercept enable" in block
     assert block.index("stoobly-agent intercept set") < block.index("stoobly-agent intercept enable")
+
+  def test_intercept_block_uses_intercept_delimiter_after_settings(self, app_dir):
+    init_path = _create_build_init(app_dir, 'record')
+    runner = CliRunner()
+
+    setting_result = runner.invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
+      '--method', 'GET',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert setting_result.exit_code == 0, setting_result.output
+
+    intercept_result = runner.invoke(intercept, [
+      'enable',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert intercept_result.exit_code == 0, intercept_result.output
+
+    with open(init_path) as fp:
+      contents = fp.read()
+
+    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN in contents
+    assert SCAFFOLD_INTERCEPT_DELIMITER_BEGIN in contents
+    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN not in _intercept_block(contents)
+    assert contents.index(SCAFFOLD_SETTINGS_DELIMITER_END) < contents.index(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN)
+    assert "stoobly-agent intercept enable" in _intercept_block(contents)
 
   def test_disable_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'test')

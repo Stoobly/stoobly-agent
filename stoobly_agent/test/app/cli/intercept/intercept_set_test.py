@@ -301,15 +301,15 @@ class TestInterceptSet():
       def test_strategy_mock_mode_error(self, runner: CliRunner):
         set_result = runner.invoke(intercept, ['set', '--mode', mode.MOCK, '--strategy', record_strategy.FULL])
         assert set_result.exit_code == 1
-        assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
+        assert "Error: set --mode to an intercept mode that supports the strategy option" in set_result.output
 
       def test_strategy_replay_mode_error(self, runner: CliRunner):
         set_result = runner.invoke(intercept, ['set', '--mode', mode.DEVELOP, '--strategy', record_strategy.FULL])
         assert set_result.exit_code == 1
-        assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
+        assert "Error: set --mode to an intercept mode that supports the strategy option" in set_result.output
 
       def test_strategy_without_mode_unsupported_existing(self, runner: CliRunner):
         runner.invoke(intercept, ['set', '--mode', mode.MOCK])
         set_result = runner.invoke(intercept, ['set', '--strategy', record_strategy.FULL])
         assert set_result.exit_code == 1
-        assert "Error: set --strategy to a intercept mode that supports the strategy option" in set_result.output
+        assert "Error: set --mode to an intercept mode that supports the strategy option" in set_result.output

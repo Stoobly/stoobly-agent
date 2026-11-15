@@ -1,6 +1,12 @@
 import click
 import sys
 
+from stoobly_agent.app.cli.helpers.intercept_options import (
+  ORDER_OPTIONS,
+  POLICY_OPTIONS,
+  STRATEGY_OPTIONS,
+  validate_options_for_mode,
+)
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   build_init_path,
@@ -8,16 +14,7 @@ from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   prepend_or_append_intercept_command,
   resolve_workflows,
 )
-from stoobly_agent.config.constants import (
-  mode,
-  mock_policy,
-  develop_policy,
-  record_order,
-  record_policy,
-  record_strategy,
-  test_policy,
-  test_strategy,
-)
+from stoobly_agent.config.constants import mode
 
 
 def _validate_app(app: App):
@@ -72,31 +69,6 @@ def disable(**kwargs):
   _apply_intercept_command('disable', kwargs)
 
 
-_POLICY_OPTIONS = sorted({
-  mock_policy.ALL,
-  mock_policy.FOUND,
-  mock_policy.NONE,
-  record_policy.ALL,
-  record_policy.API,
-  record_policy.FOUND,
-  record_policy.NOT_FOUND,
-  develop_policy.ALL,
-  test_policy.FOUND,
-  test_policy.NONE,
-})
-
-_STRATEGY_OPTIONS = sorted({
-  record_strategy.FULL,
-  record_strategy.MINIMAL,
-  test_strategy.CONTRACT,
-  test_strategy.CUSTOM,
-  test_strategy.DIFF,
-  test_strategy.FUZZY,
-})
-
-_ORDER_OPTIONS = [record_order.APPEND, record_order.OVERWRITE]
-
-
 @intercept.command(
   help="Set intercept options"
 )
@@ -104,23 +76,25 @@ _ORDER_OPTIONS = [record_order.APPEND, record_order.OVERWRITE]
 @click.option('--mode', type=click.Choice(mode.options), help='Intercept mode.')
 @click.option(
   '--order',
-  type=click.Choice(_ORDER_OPTIONS),
-  help=f"Order to use for recording. Valid options: {_ORDER_OPTIONS}",
+  type=click.Choice(ORDER_OPTIONS),
+  help=f"Order to use for recording. Valid options: {ORDER_OPTIONS}",
 )
 @click.option(
   '--policy',
-  type=click.Choice(_POLICY_OPTIONS),
-  help=f"Policy to use for intercept. Valid options: {_POLICY_OPTIONS}",
+  type=click.Choice(POLICY_OPTIONS),
+  help=f"Policy to use for intercept. Valid options: {POLICY_OPTIONS}",
 )
 @click.option(
   '--strategy',
-  type=click.Choice(_STRATEGY_OPTIONS),
-  help=f"Strategy to use for intercept. Valid options: {_STRATEGY_OPTIONS}",
+  type=click.Choice(STRATEGY_OPTIONS),
+  help=f"Strategy to use for intercept. Valid options: {STRATEGY_OPTIONS}",
 )
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def set(**kwargs):
   if not kwargs['mode'] and not kwargs['order'] and not kwargs['policy'] and not kwargs['strategy']:
     click.echo("Error: Missing an option", err=True)
     sys.exit(1)
+
+  validate_options_for_mode(kwargs)
 
   _apply_intercept_command('set', kwargs)
