@@ -1,5 +1,5 @@
 # OpenCLI Description for stoobly-agent scaffold
-# Source: stoobly_agent/app/cli/scaffold_cli.py (and scaffold_request_log_cli.py, scaffold_setting_cli.py)
+# Source: stoobly_agent/app/cli/scaffold_cli.py (and scaffold_intercept_cli.py, scaffold_request_log_cli.py, scaffold_setting_cli.py)
 # Spec: https://opencli.org/ (OpenCLI 0.1 proposal)
 opencli: "0.1"
 info:
@@ -700,6 +700,74 @@ command:
               arguments:
                 - name: workflow
 
+    - name: intercept
+      description: Manage scaffold intercept written to build workflow init scripts
+      commands:
+        - name: enable
+          description: Enable intercept
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: workflow
+              description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
+              arguments:
+                - name: workflow
+          examples:
+            - stoobly-agent scaffold intercept enable --workflow record
+            - stoobly-agent scaffold intercept enable
+
+        - name: disable
+          description: Disable intercept
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: workflow
+              description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
+              arguments:
+                - name: workflow
+          examples:
+            - stoobly-agent scaffold intercept disable --workflow record
+            - stoobly-agent scaffold intercept disable
+
+        - name: set
+          description: Set intercept options
+          options:
+            - name: app-dir-path
+              description: Path to application directory.
+              arguments:
+                - name: path
+            - name: mode
+              description: Intercept mode.
+              arguments:
+                - name: mode
+                  acceptedValues: [develop, mock, record, test]
+            - name: order
+              description: Order to use for recording.
+              arguments:
+                - name: order
+                  acceptedValues: [append, overwrite]
+            - name: policy
+              description: Policy to use for intercept.
+              arguments:
+                - name: policy
+                  acceptedValues: [all, api, found, none, not_found]
+            - name: strategy
+              description: Strategy to use for intercept.
+              arguments:
+                - name: strategy
+                  acceptedValues: [contract, custom, diff, full, fuzzy, minimal]
+            - name: workflow
+              description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
+              arguments:
+                - name: workflow
+          examples:
+            - stoobly-agent scaffold intercept set --mode record --policy all --workflow record
+            - stoobly-agent scaffold intercept set --mode mock --policy found
+
     - name: request
       description: Manage scaffold request logs
       commands:
@@ -847,12 +915,12 @@ command:
                   arguments:
                     - name: pattern
                 - name: workflow
-                  description: Workflow(s) whose build init script to update. May be specified multiple times.
-                  required: true
+                  description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
                     - name: workflow
               examples:
                 - stoobly-agent scaffold setting filter set --action exclude --method GET --mode record --pattern '.*' --workflow record
+                - stoobly-agent scaffold setting filter set --action exclude --method GET --mode record --pattern '.*'
 
         - name: match
           description: Manage match rules
@@ -887,12 +955,12 @@ command:
                   arguments:
                     - name: pattern
                 - name: workflow
-                  description: Workflow(s) whose build init script to update. May be specified multiple times.
-                  required: true
+                  description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
                     - name: workflow
               examples:
                 - stoobly-agent scaffold setting match set --method POST --mode mock --pattern '.*' --component Header --workflow mock
+                - stoobly-agent scaffold setting match set --method POST --mode mock --pattern '.*' --component Header
 
         - name: rewrite
           description: Manage rewrite rules
@@ -952,9 +1020,9 @@ command:
                   arguments:
                     - name: value
                 - name: workflow
-                  description: Workflow(s) whose build init script to update. May be specified multiple times.
-                  required: true
+                  description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
                     - name: workflow
               examples:
                 - stoobly-agent scaffold setting rewrite set --method GET --mode record --pattern '.*' --name authorization --type Header --value '' --workflow record
+                - stoobly-agent scaffold setting rewrite set --method GET --mode record --pattern '.*' --name authorization --type Header --value ''
