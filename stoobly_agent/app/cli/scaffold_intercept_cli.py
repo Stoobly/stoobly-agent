@@ -54,7 +54,7 @@ def _apply_intercept_command(subcommand: str, kwargs: dict):
 
 @click.group(
   epilog="Run 'stoobly-agent scaffold intercept COMMAND --help' for more information on a command.",
-  help="Manage scaffold intercept written to build workflow init scripts"
+  help="Manage scaffold request intercept"
 )
 @click.pass_context
 def intercept(ctx):

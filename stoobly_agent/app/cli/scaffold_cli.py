@@ -997,7 +997,7 @@ def describe(**kwargs):
 
 @scaffold.command(
   'create',
-  help="Create a default .stoobly/scaffold.yml if it does not already exist",
+  help="Create a default .stoobly/scaffold.yml",
 )
 def scaffold_create():
   path = create_scaffold_yml()

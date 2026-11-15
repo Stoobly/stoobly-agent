@@ -44,7 +44,7 @@ command:
         - stoobly-agent scaffold apply scaffold.json --format json
 
     - name: create
-      description: Create a default .stoobly/scaffold.yml if it does not already exist
+      description: Create a default .stoobly/scaffold.yml
       examples:
         - stoobly-agent scaffold create
 
@@ -706,7 +706,7 @@ command:
                 - name: workflow
 
     - name: intercept
-      description: Manage scaffold intercept written to build workflow init scripts
+      description: Manage scaffold request intercept
       commands:
         - name: enable
           description: Enable intercept
@@ -890,7 +890,7 @@ command:
                     - name: namespace
 
     - name: setting
-      description: Manage scaffold settings written to build workflow init scripts
+      description: Manage scaffold settings
       commands:
         - name: filter
           description: Manage filter rules
