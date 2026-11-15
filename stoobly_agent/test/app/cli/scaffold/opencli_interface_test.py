@@ -172,7 +172,12 @@ def _compare_leaf(path: Tuple[str, ...], opencli_cmd: Dict[str, Any], click_cmd:
         )
     elif accepted is not None and choices is None:
       # Non-flag bool options are documented with true/false accepted values.
-      if not (_bool_accepted_values(accepted) and click_opt.type.name == 'boolean'):
+      # String options may document acceptedValues when Click validates at runtime
+      # instead of via Choice (e.g. mode-dependent order/policy/strategy).
+      if not (
+        (_bool_accepted_values(accepted) and click_opt.type.name == 'boolean')
+        or click_opt.type.name == 'text'
+      ):
         errors.append(
           f"{label}: option '{name}' acceptedValues {accepted} but Click type is {click_opt.type}"
         )

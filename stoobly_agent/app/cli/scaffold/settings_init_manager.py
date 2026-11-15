@@ -6,14 +6,11 @@ from typing import Any, List
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 
-SCAFFOLD_SETTINGS_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD SETTINGS BEGIN #####"
-SCAFFOLD_SETTINGS_DELIMITER_END = "##### STOOBLY SCAFFOLD SETTINGS END #####"
-
-SCAFFOLD_INTERCEPT_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD INTERCEPT BEGIN #####"
-SCAFFOLD_INTERCEPT_DELIMITER_END = "##### STOOBLY SCAFFOLD INTERCEPT END #####"
+SCAFFOLD_INIT_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD INIT BEGIN #####"
+SCAFFOLD_INIT_DELIMITER_END = "##### STOOBLY SCAFFOLD INIT END #####"
 
 # Options that belong to the scaffold CLI, not the emitted stoobly-agent command.
-EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path'})
+EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite', 'save'})
 EXCLUDED_SETTING_KWARGS = EXCLUDED_SCAFFOLD_KWARGS
 
 
@@ -123,24 +120,52 @@ def _append_option(parts: List[str], key: str, value: Any) -> None:
   parts.append(shlex.quote(str(value)))
 
 
-def prepend_or_append_setting_command(init_path: str, command: str) -> None:
-  """Prepend a SETTINGS marker block or append the command inside an existing block."""
-  prepend_or_append_command(
-    init_path,
-    command,
-    SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
-    SCAFFOLD_SETTINGS_DELIMITER_END,
+def clear_init_section(init_path: str) -> None:
+  """Clear commands inside an existing INIT marker block. No-op if missing."""
+  if not os.path.exists(init_path):
+    return
+
+  with open(init_path, 'r') as fp:
+    contents = fp.read()
+
+  if SCAFFOLD_INIT_DELIMITER_BEGIN not in contents or SCAFFOLD_INIT_DELIMITER_END not in contents:
+    return
+
+  updated = _overwrite_inside_markers(
+    contents,
+    SCAFFOLD_INIT_DELIMITER_BEGIN,
+    SCAFFOLD_INIT_DELIMITER_END,
+    '',
   )
 
+  with open(init_path, 'w') as fp:
+    fp.write(updated)
 
-def prepend_or_append_intercept_command(init_path: str, command: str) -> None:
-  """Insert an INTERCEPT marker block after SETTINGS, or append inside an existing block."""
+
+def clear_init_sections(app_data_dir_path: str, workflows) -> None:
+  """Clear INIT sections for the given workflows (or all build workflows)."""
+  for workflow_name in resolve_workflows(app_data_dir_path, workflows):
+    clear_init_section(build_init_path(app_data_dir_path, workflow_name))
+
+
+def prepend_or_append_setting_command(init_path: str, command: str, overwrite: bool = False) -> None:
+  """Prepend an INIT marker block or append/overwrite the command inside an existing block."""
+  prepend_or_append_init_command(init_path, command, overwrite=overwrite)
+
+
+def prepend_or_append_intercept_command(init_path: str, command: str, overwrite: bool = False) -> None:
+  """Prepend an INIT marker block or append/overwrite the command inside an existing block."""
+  prepend_or_append_init_command(init_path, command, overwrite=overwrite)
+
+
+def prepend_or_append_init_command(init_path: str, command: str, overwrite: bool = False) -> None:
+  """Prepend an INIT marker block or append/overwrite the command inside an existing block."""
   prepend_or_append_command(
     init_path,
     command,
-    SCAFFOLD_INTERCEPT_DELIMITER_BEGIN,
-    SCAFFOLD_INTERCEPT_DELIMITER_END,
-    after_end=SCAFFOLD_SETTINGS_DELIMITER_END,
+    SCAFFOLD_INIT_DELIMITER_BEGIN,
+    SCAFFOLD_INIT_DELIMITER_END,
+    overwrite=overwrite,
   )
 
 
@@ -149,13 +174,9 @@ def prepend_or_append_command(
   command: str,
   begin: str,
   end: str,
-  after_end: str = None,
+  overwrite: bool = False,
 ) -> None:
-  """Prepend a marker block or append the command inside an existing block.
-
-  When the block does not exist and after_end is set, insert the new block
-  immediately after that marker (so INTERCEPT stays after SETTINGS).
-  """
+  """Prepend a marker block or append/overwrite the command inside an existing block."""
   if not os.path.exists(init_path):
     print(f"Error: Init script not found at {init_path}", file=sys.stderr)
     sys.exit(1)
@@ -164,7 +185,13 @@ def prepend_or_append_command(
     contents = fp.read()
 
   command_line = command if command.endswith('\n') else f"{command}\n"
-  updated = _insert_command(contents, command_line, begin, end, after_end=after_end)
+  updated = _insert_command(
+    contents,
+    command_line,
+    begin,
+    end,
+    overwrite=overwrite,
+  )
 
   with open(init_path, 'w') as fp:
     fp.write(updated)
@@ -175,32 +202,27 @@ def _insert_command(
   command_line: str,
   begin: str,
   end: str,
-  after_end: str = None,
+  overwrite: bool = False,
 ) -> str:
   if begin in contents and end in contents:
+    if overwrite:
+      return _overwrite_inside_markers(contents, begin, end, command_line)
     return _append_inside_markers(contents, begin, end, command_line)
-
-  if after_end and after_end in contents:
-    return _insert_block_after_marker(contents, after_end, begin, end, command_line)
 
   return _prepend_marker_block(contents, begin, end, command_line)
 
 
-def _insert_block_after_marker(
-  contents: str,
-  after_marker: str,
-  begin: str,
-  end: str,
-  command_line: str,
-) -> str:
-  insert_at = contents.index(after_marker) + len(after_marker)
-  if insert_at < len(contents) and contents[insert_at] == '\n':
-    insert_at += 1
+def _overwrite_inside_markers(contents: str, begin: str, end: str, command_line: str) -> str:
+  begin_index = contents.index(begin)
+  end_index = contents.index(end, begin_index)
 
-  before = contents[:insert_at]
-  after = contents[insert_at:]
-  block = f"{begin}\n{command_line}{end}\n"
-  return f"{before}{block}{after}"
+  before = contents[: begin_index + len(begin)]
+  after = contents[end_index:]
+
+  if before and not before.endswith('\n'):
+    before += '\n'
+
+  return f"{before}{command_line}{after}"
 
 
 def _append_inside_markers(contents: str, begin: str, end: str, command_line: str) -> str:

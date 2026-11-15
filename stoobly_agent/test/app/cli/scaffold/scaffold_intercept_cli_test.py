@@ -1,14 +1,13 @@
 import os
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
-  SCAFFOLD_INTERCEPT_DELIMITER_BEGIN,
-  SCAFFOLD_INTERCEPT_DELIMITER_END,
-  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
-  SCAFFOLD_SETTINGS_DELIMITER_END,
+  SCAFFOLD_INIT_DELIMITER_BEGIN,
+  SCAFFOLD_INIT_DELIMITER_END,
 )
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_intercept_cli import intercept
@@ -41,10 +40,10 @@ def _create_build_init(app_dir: str, workflow_name: str, contents: str = None) -
   return init_path
 
 
-def _intercept_block(contents: str) -> str:
-  begin = contents.index(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN)
-  end = contents.index(SCAFFOLD_INTERCEPT_DELIMITER_END)
-  return contents[begin:end + len(SCAFFOLD_INTERCEPT_DELIMITER_END)]
+def _init_block(contents: str) -> str:
+  begin = contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+  end = contents.index(SCAFFOLD_INIT_DELIMITER_END)
+  return contents[begin:end + len(SCAFFOLD_INIT_DELIMITER_END)]
 
 
 class TestScaffoldInterceptCli:
@@ -66,7 +65,7 @@ class TestScaffoldInterceptCli:
     os.makedirs(os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE), exist_ok=True)
     return app_dir
 
-  def test_enable_prepends_intercept_block(self, app_dir):
+  def test_enable_prepends_init_block(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
     result = CliRunner().invoke(intercept, [
@@ -80,13 +79,13 @@ class TestScaffoldInterceptCli:
       contents = fp.read()
 
     assert contents.startswith('#! /bin/bash\n')
-    assert SCAFFOLD_INTERCEPT_DELIMITER_BEGIN in contents
-    assert SCAFFOLD_INTERCEPT_DELIMITER_END in contents
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN in contents
+    assert SCAFFOLD_INIT_DELIMITER_END in contents
 
-    block = _intercept_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent intercept enable" in block
     assert "# Add custom initialization here" in contents
-    assert contents.index(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
+    assert contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
 
   def test_set_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
@@ -105,7 +104,7 @@ class TestScaffoldInterceptCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    block = _intercept_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent intercept set" in block
     assert "--mode record" in block
     assert "--policy all" in block
@@ -135,15 +134,68 @@ class TestScaffoldInterceptCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    assert contents.count(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_INTERCEPT_DELIMITER_END) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
 
-    block = _intercept_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent intercept set" in block
     assert "stoobly-agent intercept enable" in block
     assert block.index("stoobly-agent intercept set") < block.index("stoobly-agent intercept enable")
 
-  def test_intercept_block_uses_intercept_delimiter_after_settings(self, app_dir):
+  def test_save_creates_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    assert not os.path.exists(scaffold_path)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--save',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert f'Updated {scaffold_path}' in result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert data['version'] == 1
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['resource'] == 'intercept'
+    assert step['action'] == 'enable'
+    assert step['options']['workflow'] == ['mock']
+    assert step['options']['app_dir_path'] == app_dir
+    assert 'save' not in step['options']
+
+  def test_save_appends_to_existing_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    with open(scaffold_path, 'w') as fp:
+      yaml.safe_dump({
+        'version': 1,
+        'commands': [
+          {'resource': 'intercept', 'action': 'set', 'options': {'mode': 'mock'}},
+        ],
+      }, fp)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--save',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 2
+    assert data['commands'][0]['action'] == 'set'
+    assert data['commands'][1]['action'] == 'enable'
+
+  def test_setting_and_intercept_share_init_section(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
     runner = CliRunner()
 
@@ -168,11 +220,12 @@ class TestScaffoldInterceptCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN in contents
-    assert SCAFFOLD_INTERCEPT_DELIMITER_BEGIN in contents
-    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN not in _intercept_block(contents)
-    assert contents.index(SCAFFOLD_SETTINGS_DELIMITER_END) < contents.index(SCAFFOLD_INTERCEPT_DELIMITER_BEGIN)
-    assert "stoobly-agent intercept enable" in _intercept_block(contents)
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
+    block = _init_block(contents)
+    assert "stoobly-agent setting filter set" in block
+    assert "stoobly-agent intercept enable" in block
+    assert block.index("stoobly-agent setting filter set") < block.index("stoobly-agent intercept enable")
 
   def test_disable_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'test')
@@ -187,7 +240,7 @@ class TestScaffoldInterceptCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    block = _intercept_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent intercept disable" in block
 
   def test_multiple_workflows(self, app_dir):
@@ -205,7 +258,7 @@ class TestScaffoldInterceptCli:
     for init_path in (record_init, mock_init):
       with open(init_path) as fp:
         contents = fp.read()
-      assert "stoobly-agent intercept enable" in _intercept_block(contents)
+      assert "stoobly-agent intercept enable" in _init_block(contents)
 
   def test_defaults_to_all_workflows(self, app_dir):
     record_init = _create_build_init(app_dir, 'record')
@@ -220,7 +273,7 @@ class TestScaffoldInterceptCli:
     for init_path in (record_init, mock_init):
       with open(init_path) as fp:
         contents = fp.read()
-      assert "stoobly-agent intercept enable" in _intercept_block(contents)
+      assert "stoobly-agent intercept enable" in _init_block(contents)
 
   def test_set_requires_an_option(self, app_dir):
     _create_build_init(app_dir, 'record')
@@ -233,6 +286,22 @@ class TestScaffoldInterceptCli:
 
     assert result.exit_code != 0
     assert 'Missing an option' in result.output or 'Missing an option' in (result.exception and str(result.exception) or '')
+
+  def test_set_invalid_policy_for_mode(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+
+    result = CliRunner().invoke(intercept, [
+      'set',
+      '--mode', 'mock',
+      '--policy', 'test',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+
+    assert result.exit_code == 1
+    assert "Error: Valid policies for mock are" in result.output
+    assert "Invalid value for '--policy'" not in result.output
+
 
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(intercept, [

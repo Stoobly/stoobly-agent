@@ -1,12 +1,13 @@
 import os
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
-  SCAFFOLD_SETTINGS_DELIMITER_BEGIN,
-  SCAFFOLD_SETTINGS_DELIMITER_END,
+  SCAFFOLD_INIT_DELIMITER_BEGIN,
+  SCAFFOLD_INIT_DELIMITER_END,
 )
 from stoobly_agent.app.cli.scaffold.templates.constants import CORE_BUILD_SERVICE_NAME, CUSTOM_INIT
 from stoobly_agent.app.cli.scaffold_setting_cli import setting
@@ -38,10 +39,10 @@ def _create_build_init(app_dir: str, workflow_name: str, contents: str = None) -
   return init_path
 
 
-def _settings_block(contents: str) -> str:
-  begin = contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN)
-  end = contents.index(SCAFFOLD_SETTINGS_DELIMITER_END)
-  return contents[begin:end + len(SCAFFOLD_SETTINGS_DELIMITER_END)]
+def _init_block(contents: str) -> str:
+  begin = contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN)
+  end = contents.index(SCAFFOLD_INIT_DELIMITER_END)
+  return contents[begin:end + len(SCAFFOLD_INIT_DELIMITER_END)]
 
 
 class TestScaffoldSettingCli:
@@ -64,7 +65,7 @@ class TestScaffoldSettingCli:
     os.makedirs(os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE), exist_ok=True)
     return app_dir
 
-  def test_rewrite_set_prepends_settings_block(self, app_dir):
+  def test_rewrite_set_prepends_init_block(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
     result = CliRunner().invoke(setting, [
@@ -84,10 +85,10 @@ class TestScaffoldSettingCli:
       contents = fp.read()
 
     assert contents.startswith('#! /bin/bash\n')
-    assert SCAFFOLD_SETTINGS_DELIMITER_BEGIN in contents
-    assert SCAFFOLD_SETTINGS_DELIMITER_END in contents
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN in contents
+    assert SCAFFOLD_INIT_DELIMITER_END in contents
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting rewrite set" in block
     assert "--method GET" in block
     assert "--mode record" in block
@@ -95,8 +96,8 @@ class TestScaffoldSettingCli:
     assert "--name authorization" in block
     assert "--type Header" in block
     assert "# Add custom initialization here" in contents
-    # Settings block must appear before the rest of the custom content.
-    assert contents.index(SCAFFOLD_SETTINGS_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
+    # Init block must appear before the rest of the custom content.
+    assert contents.index(SCAFFOLD_INIT_DELIMITER_BEGIN) < contents.index('# Add custom initialization here')
 
   def test_second_set_appends_inside_markers(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
@@ -129,10 +130,10 @@ class TestScaffoldSettingCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_BEGIN) == 1
-    assert contents.count(SCAFFOLD_SETTINGS_DELIMITER_END) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_BEGIN) == 1
+    assert contents.count(SCAFFOLD_INIT_DELIMITER_END) == 1
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting rewrite set" in block
     assert "stoobly-agent setting filter set" in block
     assert block.index("stoobly-agent setting rewrite set") < block.index("stoobly-agent setting filter set")
@@ -154,10 +155,75 @@ class TestScaffoldSettingCli:
     with open(init_path) as fp:
       contents = fp.read()
 
-    block = _settings_block(contents)
+    block = _init_block(contents)
     assert "stoobly-agent setting match set" in block
     assert "--component Header" in block
     assert "--mode mock" in block
+
+  def test_save_creates_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    assert not os.path.exists(scaffold_path)
+
+    result = CliRunner().invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
+      '--method', 'POST',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--save',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert f'Updated {scaffold_path}' in result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert data['version'] == 1
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['resource'] == 'setting'
+    assert step['action'] == 'filter set'
+    assert step['options']['action'] == 'exclude'
+    assert step['options']['method'] == ['POST']
+    assert step['options']['mode'] == ['record']
+    assert step['options']['pattern'] == '.*'
+    assert step['options']['workflow'] == ['record']
+    assert step['options']['app_dir_path'] == app_dir
+    assert 'save' not in step['options']
+
+  def test_save_appends_to_existing_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    with open(scaffold_path, 'w') as fp:
+      yaml.safe_dump({
+        'version': 1,
+        'commands': [
+          {'resource': 'app', 'action': 'create', 'options': {'app_name': 'existing'}},
+        ],
+      }, fp)
+
+    result = CliRunner().invoke(setting, [
+      'match', 'set',
+      '--method', 'GET',
+      '--mode', 'mock',
+      '--pattern', '.*',
+      '--save',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 2
+    assert data['commands'][0]['resource'] == 'app'
+    assert data['commands'][1]['resource'] == 'setting'
+    assert data['commands'][1]['action'] == 'match set'
 
   def test_defaults_to_all_workflows(self, app_dir):
     record_init = _create_build_init(app_dir, 'record')
@@ -176,7 +242,7 @@ class TestScaffoldSettingCli:
     for init_path in (record_init, mock_init):
       with open(init_path) as fp:
         contents = fp.read()
-      assert "stoobly-agent setting filter set" in _settings_block(contents)
+      assert "stoobly-agent setting filter set" in _init_block(contents)
 
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(setting, [

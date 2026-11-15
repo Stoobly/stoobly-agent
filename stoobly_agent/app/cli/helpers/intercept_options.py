@@ -71,8 +71,12 @@ def validate_options_for_mode(kwargs: dict, active_mode: str = None) -> None:
   mode_value = active_mode if active_mode is not None else kwargs.get('mode')
 
   if kwargs.get('order'):
-    if kwargs['order'] not in get_order_options(mode_value or ''):
+    valid_orders = get_order_options(mode_value or '')
+    if not valid_orders:
       print("Error: set --mode to an intercept mode that supports the order option", file=sys.stderr)
+      sys.exit(1)
+    if kwargs['order'] not in valid_orders:
+      print(f"Error: Valid orders for {mode_value} are {valid_orders}", file=sys.stderr)
       sys.exit(1)
 
   if kwargs.get('policy'):
@@ -86,6 +90,10 @@ def validate_options_for_mode(kwargs: dict, active_mode: str = None) -> None:
       sys.exit(1)
 
   if kwargs.get('strategy'):
-    if kwargs['strategy'] not in get_strategy_options(mode_value or ''):
+    valid_strategies = get_strategy_options(mode_value or '')
+    if not valid_strategies:
       print("Error: set --mode to an intercept mode that supports the strategy option", file=sys.stderr)
+      sys.exit(1)
+    if kwargs['strategy'] not in valid_strategies:
+      print(f"Error: Valid strategies for {mode_value} are {valid_strategies}", file=sys.stderr)
       sys.exit(1)

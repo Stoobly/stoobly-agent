@@ -43,6 +43,11 @@ command:
         - stoobly-agent scaffold apply scaffold.yml --dry-run
         - stoobly-agent scaffold apply scaffold.json --format json
 
+    - name: create
+      description: Create a default .stoobly/scaffold.yml
+      examples:
+        - stoobly-agent scaffold create
+
     - name: describe
       description: Describe scaffold configuration
       options:
@@ -701,7 +706,7 @@ command:
                 - name: workflow
 
     - name: intercept
-      description: Manage scaffold intercept written to build workflow init scripts
+      description: Manage scaffold request intercept
       commands:
         - name: enable
           description: Enable intercept
@@ -710,6 +715,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -725,6 +732,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -760,6 +769,8 @@ command:
               arguments:
                 - name: strategy
                   acceptedValues: [contract, custom, diff, full, fuzzy, minimal]
+            - name: save
+              description: Save the command to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -879,7 +890,7 @@ command:
                     - name: namespace
 
     - name: setting
-      description: Manage scaffold settings written to build workflow init scripts
+      description: Manage scaffold settings
       commands:
         - name: filter
           description: Manage filter rules
@@ -914,6 +925,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -954,6 +967,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -1019,6 +1034,8 @@ command:
                   description: Rewrite value.
                   arguments:
                     - name: value
+                - name: save
+                  description: Save the command to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
