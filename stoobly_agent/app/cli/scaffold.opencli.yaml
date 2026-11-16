@@ -82,7 +82,7 @@ command:
                     minimum: 1
                     maximum: 1
             - name: docker-socket-path
-              description: Path to Docker socket. Default /var/run/docker.sock.
+              description: Path to Docker socket. Default /var/run/docker.sock. Must exist when --runtime is docker.
               arguments:
                 - name: path
             - name: env
@@ -110,6 +110,8 @@ command:
               arguments:
                 - name: runtime
                   acceptedValues: [docker, local]
+            - name: apply
+              description: Create scaffold files. Without this, only write to scaffold.yml.
             - name: ui-port
               description: UI service port. Default 4200.
               arguments:
@@ -160,6 +162,8 @@ command:
                 - name: priority
             - name: quiet
               description: Disable log output.
+            - name: apply
+              description: Create scaffold files. Without this, only write to scaffold.yml.
             - name: scheme
               description: Defaults to https if hostname is set.
               arguments:
@@ -250,6 +254,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
+            - name: apply
+              description: Apply without saving to scaffold.yml.
 
         - name: update
           description: Update a service config
@@ -332,6 +338,8 @@ command:
                 - name: path
             - name: quiet
               description: Disable log output.
+            - name: apply
+              description: Create scaffold files. Without this, only write to scaffold.yml.
             - name: service
               description: Specify the service(s) to create the workflow for. May be specified multiple times.
               arguments:
@@ -363,6 +371,8 @@ command:
               description: Path to Stoobly data directory.
               arguments:
                 - name: path
+            - name: apply
+              description: Apply without saving to scaffold.yml.
             - name: service
               description: Specify service(s) to add the workflow to. May be specified multiple times.
               arguments:
@@ -715,8 +725,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
-            - name: save
-              description: Save the command to scaffold.yml.
+            - name: apply
+              description: Apply to build init scripts. Without this, only write to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -732,8 +742,8 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
-            - name: save
-              description: Save the command to scaffold.yml.
+            - name: apply
+              description: Apply to build init scripts. Without this, only write to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -769,8 +779,8 @@ command:
               arguments:
                 - name: strategy
                   acceptedValues: [contract, custom, diff, full, fuzzy, minimal]
-            - name: save
-              description: Save the command to scaffold.yml.
+            - name: apply
+              description: Apply to build init scripts. Without this, only write to scaffold.yml.
             - name: workflow
               description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
               arguments:
@@ -925,8 +935,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
-                - name: save
-                  description: Save the command to scaffold.yml.
+                - name: apply
+                  description: Apply to build init scripts. Without this, only write to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -967,8 +977,8 @@ command:
                   required: true
                   arguments:
                     - name: pattern
-                - name: save
-                  description: Save the command to scaffold.yml.
+                - name: apply
+                  description: Apply to build init scripts. Without this, only write to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:
@@ -1034,8 +1044,8 @@ command:
                   description: Rewrite value.
                   arguments:
                     - name: value
-                - name: save
-                  description: Save the command to scaffold.yml.
+                - name: apply
+                  description: Apply to build init scripts. Without this, only write to scaffold.yml.
                 - name: workflow
                   description: Workflow(s) whose build init script to update. Defaults to all. May be specified multiple times.
                   arguments:

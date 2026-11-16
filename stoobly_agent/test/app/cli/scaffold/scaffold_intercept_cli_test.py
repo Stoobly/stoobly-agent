@@ -68,8 +68,7 @@ class TestScaffoldInterceptCli:
   def test_enable_prepends_init_block(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
-    result = CliRunner().invoke(intercept, [
-      'enable',
+    result = CliRunner().invoke(intercept, ['enable', '--apply',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
@@ -90,8 +89,7 @@ class TestScaffoldInterceptCli:
   def test_set_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
-    result = CliRunner().invoke(intercept, [
-      'set',
+    result = CliRunner().invoke(intercept, ['set', '--apply',
       '--mode', 'record',
       '--policy', 'all',
       '--order', 'append',
@@ -115,8 +113,7 @@ class TestScaffoldInterceptCli:
     init_path = _create_build_init(app_dir, 'mock')
 
     runner = CliRunner()
-    first = runner.invoke(intercept, [
-      'set',
+    first = runner.invoke(intercept, ['set', '--apply',
       '--mode', 'mock',
       '--policy', 'all',
       '--workflow', 'mock',
@@ -124,8 +121,7 @@ class TestScaffoldInterceptCli:
     ])
     assert first.exit_code == 0, first.output
 
-    second = runner.invoke(intercept, [
-      'enable',
+    second = runner.invoke(intercept, ['enable', '--apply',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
@@ -142,20 +138,24 @@ class TestScaffoldInterceptCli:
     assert "stoobly-agent intercept enable" in block
     assert block.index("stoobly-agent intercept set") < block.index("stoobly-agent intercept enable")
 
-  def test_save_creates_scaffold_yml(self, app_dir):
-    _create_build_init(app_dir, 'mock')
+  def test_saves_scaffold_yml_by_default(self, app_dir):
+    init_path = _create_build_init(app_dir, 'mock')
+    before = open(init_path).read()
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
     assert not os.path.exists(scaffold_path)
 
     result = CliRunner().invoke(intercept, [
       'enable',
-      '--save',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
     assert result.exit_code == 0, result.output
     assert os.path.exists(scaffold_path)
-    assert f'Updated {scaffold_path}' in result.output
+    relative_path = os.path.relpath(scaffold_path)
+    assert f'Updated {relative_path}, run `' in result.output
+    assert f'scaffold apply {relative_path}' in result.output
+    assert open(init_path).read() == before
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN not in before
 
     with open(scaffold_path) as fp:
       data = yaml.safe_load(fp)
@@ -167,7 +167,57 @@ class TestScaffoldInterceptCli:
     assert step['action'] == 'enable'
     assert step['options']['workflow'] == ['mock']
     assert step['options']['app_dir_path'] == app_dir
+    assert 'apply' not in step['options']
     assert 'save' not in step['options']
+
+  def test_saves_scaffold_yml_without_applied_scaffold(self, tmp_path):
+    app_dir = os.path.join(str(tmp_path), 'declare-only-app')
+    os.makedirs(app_dir)
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    services_path = os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE)
+    assert not os.path.exists(services_path)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert not os.path.exists(services_path)
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert data['commands'][0]['resource'] == 'intercept'
+    assert data['commands'][0]['action'] == 'enable'
+
+  def test_apply_requires_applied_scaffold(self, tmp_path):
+    app_dir = os.path.join(str(tmp_path), 'declare-only-app')
+    os.makedirs(app_dir)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--apply',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 1
+    assert 'No scaffold found' in result.output
+
+  def test_apply_updates_init_without_scaffold_yml(self, app_dir):
+    init_path = _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--apply',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert not os.path.exists(scaffold_path)
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN in open(init_path).read()
 
   def test_save_appends_to_existing_scaffold_yml(self, app_dir):
     _create_build_init(app_dir, 'mock')
@@ -182,7 +232,6 @@ class TestScaffoldInterceptCli:
 
     result = CliRunner().invoke(intercept, [
       'enable',
-      '--save',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
@@ -195,12 +244,62 @@ class TestScaffoldInterceptCli:
     assert data['commands'][0]['action'] == 'set'
     assert data['commands'][1]['action'] == 'enable'
 
+  def test_enable_upserts_same_workflow(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    runner = CliRunner()
+
+    first = runner.invoke(intercept, [
+      'enable',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert first.exit_code == 0, first.output
+
+    second = runner.invoke(intercept, [
+      'enable',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert second.exit_code == 0, second.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 1
+    assert data['commands'][0]['action'] == 'enable'
+    assert data['commands'][0]['options']['workflow'] == ['mock']
+
+  def test_set_then_enable_same_workflow_both_remain(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    runner = CliRunner()
+
+    set_result = runner.invoke(intercept, [
+      'set',
+      '--mode', 'mock',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert set_result.exit_code == 0, set_result.output
+
+    enable_result = runner.invoke(intercept, [
+      'enable',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert enable_result.exit_code == 0, enable_result.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert [c['action'] for c in data['commands']] == ['set', 'enable']
+
   def test_setting_and_intercept_share_init_section(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
     runner = CliRunner()
 
-    setting_result = runner.invoke(setting, [
-      'filter', 'set',
+    setting_result = runner.invoke(setting, ['filter', 'set', '--apply',
       '--action', 'exclude',
       '--method', 'GET',
       '--mode', 'record',
@@ -210,8 +309,7 @@ class TestScaffoldInterceptCli:
     ])
     assert setting_result.exit_code == 0, setting_result.output
 
-    intercept_result = runner.invoke(intercept, [
-      'enable',
+    intercept_result = runner.invoke(intercept, ['enable', '--apply',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
@@ -230,8 +328,7 @@ class TestScaffoldInterceptCli:
   def test_disable_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'test')
 
-    result = CliRunner().invoke(intercept, [
-      'disable',
+    result = CliRunner().invoke(intercept, ['disable', '--apply',
       '--workflow', 'test',
       '--app-dir-path', app_dir,
     ])
@@ -247,8 +344,7 @@ class TestScaffoldInterceptCli:
     record_init = _create_build_init(app_dir, 'record')
     mock_init = _create_build_init(app_dir, 'mock')
 
-    result = CliRunner().invoke(intercept, [
-      'enable',
+    result = CliRunner().invoke(intercept, ['enable', '--apply',
       '--workflow', 'record',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
@@ -264,8 +360,7 @@ class TestScaffoldInterceptCli:
     record_init = _create_build_init(app_dir, 'record')
     mock_init = _create_build_init(app_dir, 'mock')
 
-    result = CliRunner().invoke(intercept, [
-      'enable',
+    result = CliRunner().invoke(intercept, ['enable', '--apply',
       '--app-dir-path', app_dir,
     ])
 
@@ -306,6 +401,7 @@ class TestScaffoldInterceptCli:
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(intercept, [
       'enable',
+      '--apply',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
@@ -316,6 +412,7 @@ class TestScaffoldInterceptCli:
   def test_no_build_workflows_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(intercept, [
       'enable',
+      '--apply',
       '--app-dir-path', app_dir,
     ])
 

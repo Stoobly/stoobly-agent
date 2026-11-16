@@ -36,11 +36,12 @@ class LocalScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--proxy-port', '8081',
       '--runtime', 'local',
+      '--apply',
       '--quiet',
       app_name
     ])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     output = result.stdout
     assert not output
 
@@ -60,6 +61,7 @@ class LocalScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
+      '--apply',
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'develop',
@@ -79,6 +81,7 @@ class LocalScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', 'https' if https else 'http',
       '--port', '3000',
+      '--apply',
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'develop',
@@ -106,6 +109,7 @@ class LocalScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--service', service_name,
       '--template', 'mock',
+      '--apply',
       'ci',
     ])
 

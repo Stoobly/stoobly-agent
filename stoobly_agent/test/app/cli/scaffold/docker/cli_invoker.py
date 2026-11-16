@@ -60,8 +60,12 @@ class ScaffoldCliInvoker():
   def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str, proxy_mode: str = 'reverse', proxy_port: int = None, ui_port: int = None):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
 
+    # Keep the real Docker socket (default). A placeholder path gets written to
+    # APP_DOCKER_SOCKET_PATH and mounted into Traefik, which then cannot discover
+    # routers and returns 404 for Host-based reverse-proxy routes.
     command = ['app', 'create',
       '--app-dir-path', app_dir_path,
+      '--apply',
       '--quiet',
       '--runtime', 'docker',
       '--proxy-mode', proxy_mode,
@@ -103,6 +107,7 @@ class ScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', actual_port,
+      '--apply',
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'develop',
@@ -132,6 +137,7 @@ class ScaffoldCliInvoker():
       '--upstream-port', 80,
       '--upstream-scheme', 'http',
       '--detached',
+      '--apply',
       '--quiet',
       '--workflow', 'test',
       service_name
@@ -156,6 +162,7 @@ class ScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--service', service_name,
       '--template', 'mock',
+      '--apply',
       'ci',
     ])
 

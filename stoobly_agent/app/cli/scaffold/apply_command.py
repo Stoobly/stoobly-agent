@@ -193,6 +193,13 @@ def _resolve_opencli_action(
   return action_spec
 
 
+def _command_has_apply_option(action_spec: Dict[str, Any]) -> bool:
+  return any(
+    _cli_param_name(option) == 'apply'
+    for option in (action_spec.get('options') or [])
+  )
+
+
 def validate_command_step(step: Dict[str, Any], index: int, opencli_commands: Dict[str, Dict[str, Any]]) -> None:
   prefix = f"commands[{index}]"
   resource = step['resource']
@@ -200,6 +207,11 @@ def validate_command_step(step: Dict[str, Any], index: int, opencli_commands: Di
   options = step['options']
 
   action_spec = _resolve_opencli_action(str(resource), str(action), opencli_commands)
+
+  if not _command_has_apply_option(action_spec):
+    raise ApplyConfigError(
+      f"{prefix}: Command '{resource} {action}' does not support --apply and cannot be used with scaffold apply"
+    )
 
   allowed: Dict[str, Tuple[Dict[str, Any], bool, bool]] = {}
   for argument in action_spec.get('arguments') or []:
@@ -535,11 +547,11 @@ def apply_config(
     resource = step['resource']
     action = step['action']
     options = expand_options(step.get('options') or {}, config_dir)
-    # --save persists CLI changes into scaffold.yml; never re-save during apply.
-    options.pop('save', None)
-
     try:
       command = resolve_command(scaffold_group, str(resource), str(action))
+      # Validated steps must support --apply; force it on replay so creates mutate
+      # and recorded steps do not re-save.
+      options['apply'] = True
       option_argv, positionals = options_to_argv(command, options)
     except ApplyConfigError as e:
       logger.error(f"commands[{index}]: {e}")

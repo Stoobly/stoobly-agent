@@ -32,8 +32,11 @@ def runner():
   return CliRunner()
 
 
-def _prepare_app_dir(app_dir_path: pathlib.Path):
+def _prepare_app_dir(app_dir_path: pathlib.Path) -> pathlib.Path:
   pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
+  docker_socket_path = app_dir_path / 'docker.sock'
+  docker_socket_path.touch(exist_ok=True)
+  return docker_socket_path
 
 
 def _context_config_path(context_dir_path: pathlib.Path) -> pathlib.Path:
@@ -64,6 +67,8 @@ def _create_app_with_context(runner: CliRunner, app_dir_path: pathlib.Path, cont
 
   result = runner.invoke(scaffold, [
     'app', 'create',
+    '--apply',
+    '--docker-socket-path', str(app_dir_path / 'docker.sock'),
     '--app-dir-path', str(app_dir_path),
     '--context-dir-path', str(context_dir_path),
     '--quiet',
@@ -80,6 +85,7 @@ def _create_service(
 ):
   command = [
     'service', 'create',
+    '--apply',
     '--app-dir-path', str(app_dir_path),
     '--quiet',
     service_name,
@@ -101,6 +107,8 @@ class TestScaffoldAppCreateValidation:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(missing_context_dir),
       '--quiet',
@@ -116,6 +124,8 @@ class TestScaffoldWorkflowUpCopy:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(tmp_path / 'docker.sock'),
       '--app-dir-path', str(tmp_path),
       '--runtime', 'local',
       '--quiet',
@@ -150,6 +160,8 @@ class TestScaffoldAppCreateEnv:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(tmp_path / 'docker.sock'),
       '--app-dir-path', str(tmp_path),
       '--env', 'FOO=bar',
       '--env', 'BAZ=qux',
@@ -172,6 +184,8 @@ class TestScaffoldAppCreateEnv:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(tmp_path / 'docker.sock'),
       '--app-dir-path', str(tmp_path),
       '--env', 'FOO',
       '--quiet',
@@ -187,6 +201,8 @@ class TestScaffoldAppCreateEnv:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--env', 'FOO=bar',
       '--env', 'APP_NAME=custom-name',
@@ -216,6 +232,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -238,6 +256,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -261,6 +281,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_a),
       '--context-dir-path', str(context_b),
@@ -289,6 +311,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--quiet',
       'test-app',
@@ -311,6 +335,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -319,6 +345,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -343,6 +371,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -364,6 +394,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -372,6 +404,7 @@ class TestScaffoldAppCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -382,6 +415,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -400,6 +435,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -414,6 +451,8 @@ class TestScaffoldAppCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -450,6 +489,8 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -458,6 +499,7 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -478,6 +520,8 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--quiet',
       'test-app',
@@ -485,6 +529,7 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--context-dir-path', str(context_dir_path),
       '--quiet',
       'api',
@@ -507,6 +552,8 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_a),
       '--context-dir-path', str(context_b),
@@ -516,6 +563,7 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_a),
       '--quiet',
@@ -524,6 +572,7 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_a),
       '--context-dir-path', str(context_b),
@@ -545,6 +594,8 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_dir_path),
       '--quiet',
@@ -554,6 +605,7 @@ class TestScaffoldServiceCreateContextDirPaths:
     for _ in range(2):
       runner.invoke(scaffold, [
         'service', 'create',
+        '--apply',
         '--app-dir-path', str(app_dir_path),
         '--context-dir-path', str(context_dir_path),
         '--quiet',
@@ -572,6 +624,8 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--quiet',
       'test-app',
@@ -579,6 +633,7 @@ class TestScaffoldServiceCreateContextDirPaths:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(tmp_path / 'missing-context'),
       '--quiet',
@@ -686,6 +741,8 @@ class TestScaffoldDescribe:
 
     create_result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--quiet',
       'my-app',
@@ -746,6 +803,8 @@ class TestScaffoldDescribe:
 
     create_result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir_path / 'docker.sock'),
       '--app-dir-path', str(app_dir_path),
       '--context-dir-path', str(context_a),
       '--context-dir-path', str(context_b),
@@ -865,6 +924,8 @@ class TestScaffoldServiceFilterWarnings:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(tmp_path / 'docker.sock'),
       '--app-dir-path', str(tmp_path),
       '--runtime', 'local',
       '--quiet',
@@ -874,6 +935,7 @@ class TestScaffoldServiceFilterWarnings:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(tmp_path),
       '--hostname', 'api.example.com',
       '--scheme', 'https',
@@ -918,6 +980,7 @@ class TestScaffoldServiceFilterWarnings:
 
     result = runner.invoke(scaffold, [
       'app', 'create',
+      '--apply',
       '--app-dir-path', str(tmp_path),
       '--docker-socket-path', str(docker_socket_path),
       '--runtime', 'docker',
@@ -928,6 +991,7 @@ class TestScaffoldServiceFilterWarnings:
 
     result = runner.invoke(scaffold, [
       'service', 'create',
+      '--apply',
       '--app-dir-path', str(tmp_path),
       '--hostname', 'api.example.com',
       '--scheme', 'https',

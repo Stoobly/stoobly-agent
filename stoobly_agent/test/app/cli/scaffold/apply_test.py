@@ -386,6 +386,28 @@ class TestScaffoldApply:
     combined = result.output + (result.stderr or '')
     assert 'is a group' in combined
 
+  def test_command_without_apply_option_is_rejected(self, runner: CliRunner, temp_dir: str):
+    config_path = os.path.join(temp_dir, 'scaffold.yml')
+    self._write_yaml(config_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'service',
+          'action': 'update',
+          'options': {
+            'service_name': 'api',
+            'port': 8443,
+          },
+        },
+      ],
+    })
+
+    result = runner.invoke(scaffold, ['apply', config_path])
+    assert result.exit_code != 0
+    combined = result.output + (result.stderr or '')
+    assert 'does not support --apply' in combined
+    assert 'service update' in combined
+
   def test_nested_setting_rewrite_set_dry_run(self, runner: CliRunner, temp_dir: str):
     config_path = os.path.join(temp_dir, 'scaffold.yml')
     self._write_yaml(config_path, {

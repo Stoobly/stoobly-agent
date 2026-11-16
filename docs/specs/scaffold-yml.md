@@ -25,9 +25,24 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 | `action` | yes | Subcommand under that group (`create`, `up`, `copy`, …). For nested groups, use a space-separated path to the leaf (for example `rewrite set` under `setting`). |
 | `options` | no | Mapping of options and positionals. Defaults to `{}`. |
 
-`resource` + `action` are validated against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml). Unknown resource/action, an action that is itself a group (not a leaf command), unknown option keys, invalid `acceptedValues`, or missing required options/arguments is an error. Steps are then invoked via the matching Click command.
+`resource` + `action` are validated against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml). Unknown resource/action, an action that is itself a group (not a leaf command), a command that does not support `--apply`, unknown option keys, invalid `acceptedValues`, or missing required options/arguments is an error. Steps are then invoked via the matching Click command. Only commands that expose `--apply` may appear in an apply config.
 
 A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
+
+`app`/`service`/`workflow` `create`, plus `setting` and `intercept` commands, write to `scaffold.yml` by default and only mutate scaffold files when `--apply` is set. `service delete` and `workflow copy` still mutate by default and skip recording when `--apply` is passed. Replaying via `scaffold apply` forces `--apply` so steps run and are never re-saved into the file.
+
+`service update` always applies and does **not** support `--apply`. Instead of recording an `update` step, it merges the changed options into the matching `service create` step (creating one if missing). Rename via `--name` updates that create step’s `service_name`.
+
+Recording uses **upsert by identity** for some commands (matching step replaced in place); others still append:
+
+| Commands | Identity |
+|----------|----------|
+| `app` / `service` / `workflow` `create` | name (`app_name` / `service_name` / `workflow_name`) |
+| `setting` `filter set` / `match set` | action + `pattern` + `method` |
+| `setting` `rewrite set` | action + `pattern` + `method` + `type` + `name` |
+| `intercept` `enable` / `disable` / `set` | action + `workflow` (omitted `workflow` means all workflows) |
+
+`service delete`, `workflow copy`, and other recorded commands without a rule above still append.
 
 ### Options
 
@@ -125,15 +140,6 @@ commands:
       detached: true
       workflow: [test]
 
-  - resource: workflow
-    action: up
-    options:
-      workflow_name: mock
-      app_dir_path: ~/monorepo
-      context_dir_path: ~/monorepo/apps/app-1
-      copy_on_workflow_up: true
-      log_level: warning
-      dry_run: true
 ```
 
 ## Validation errors
@@ -150,6 +156,7 @@ All of the following are checked **before** any step is invoked. Failures exit 1
 | Step missing `resource` or `action` | Exit 1 |
 | Unknown resource or action (per OpenCLI) | Exit 1 (`Unknown resource` / `Unknown action`) |
 | Action is a group, not a leaf command | Exit 1 (`… is a group, not a command`) |
+| Command does not support `--apply` | Exit 1 (`does not support --apply and cannot be used with scaffold apply`) |
 | Unknown option key (per OpenCLI) | Exit 1 (`Unknown options for command: …`) |
 | Option value not in `acceptedValues` | Exit 1 (`Accepted values: …`) |
 | Missing required option/argument | Exit 1 (`missing required option(s): …`) |

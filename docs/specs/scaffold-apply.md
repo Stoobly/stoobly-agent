@@ -33,7 +33,7 @@ flowchart LR
 ```
 
 1. Parse the file using `--format` (`yaml` or `json`).
-2. Validate `version` and `commands` (see [config schema](scaffold-yml.md)). Each step’s `resource` / `action` / `options` are checked against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml) before any step runs.
+2. Validate `version` and `commands` (see [config schema](scaffold-yml.md)). Each step’s `resource` / `action` / `options` are checked against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml) before any step runs. Only commands that declare `--apply` are allowed.
 3. For each step in order:
    - Expand path options (relative to the config file’s directory).
    - Resolve `resource` / `action` on the Click `scaffold` group.
@@ -74,6 +74,6 @@ Config validation errors (missing/unsupported `version`, missing `commands`, unk
 | Logging | `applying app create <name>` / `applying service create <name>`; option flags not present in output |
 | Dry-run | `--dry-run` logs `would apply …`, exits 0, and does not create scaffold artifacts |
 | JSON | `--format json` applies a JSON config |
-| Validation | Missing/unsupported version; missing `commands` / `resource`; unknown resource/action/option; invalid accepted value; missing required argument; action that is a group |
+| Validation | Missing/unsupported version; missing `commands` / `resource`; unknown resource/action/option; command without `--apply`; invalid accepted value; missing required argument; action that is a group |
 | Missing file | Non-existent `PATH` exits non-zero |
 | Usage path | On invoke failure, usage shows `scaffold app create` (not nested under `apply`) |

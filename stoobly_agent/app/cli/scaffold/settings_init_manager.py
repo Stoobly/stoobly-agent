@@ -10,7 +10,7 @@ SCAFFOLD_INIT_DELIMITER_BEGIN = "##### STOOBLY SCAFFOLD INIT BEGIN #####"
 SCAFFOLD_INIT_DELIMITER_END = "##### STOOBLY SCAFFOLD INIT END #####"
 
 # Options that belong to the scaffold CLI, not the emitted stoobly-agent command.
-EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite', 'save'})
+EXCLUDED_SCAFFOLD_KWARGS = frozenset({'workflow', 'app_dir_path', 'overwrite', 'apply', 'save'})
 EXCLUDED_SETTING_KWARGS = EXCLUDED_SCAFFOLD_KWARGS
 
 

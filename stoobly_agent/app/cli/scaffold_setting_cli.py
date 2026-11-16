@@ -1,8 +1,12 @@
 import click
+import os
 import sys
 
 from stoobly_agent.app.cli.scaffold.app import App
-from stoobly_agent.app.cli.scaffold.create_command import save_scaffold_command
+from stoobly_agent.app.cli.scaffold.create_command import (
+  echo_scaffold_yml_updated,
+  save_scaffold_command,
+)
 from stoobly_agent.app.cli.scaffold.settings_init_manager import (
   build_init_path,
   build_setting_command,
@@ -12,6 +16,8 @@ from stoobly_agent.app.cli.scaffold.settings_init_manager import (
 from stoobly_agent.app.cli.validators.scaffold import validate_hostname
 from stoobly_agent.app.settings.constants import filter_action, request_component
 from stoobly_agent.config.constants import mode
+
+APPLY_HELP = 'Apply to build init scripts. Without this, only write to scaffold.yml.'
 
 
 def _validate_app(app: App):
@@ -23,29 +29,32 @@ def _validate_app(app: App):
 
 
 def _apply_setting_command(subgroup: str, kwargs: dict):
-  app = App(kwargs.get('app_dir_path'))
-  _validate_app(app)
+  if kwargs.get('apply'):
+    app = App(kwargs.get('app_dir_path'))
+    _validate_app(app)
+    workflows = resolve_workflows(app.app_data_dir.path, kwargs.get('workflow'))
+    if not workflows:
+      click.echo("Error: No build workflow init scripts found", err=True)
+      sys.exit(1)
 
-  workflows = resolve_workflows(app.app_data_dir.path, kwargs.get('workflow'))
-  if not workflows:
-    click.echo("Error: No build workflow init scripts found", err=True)
-    sys.exit(1)
+    command = build_setting_command(subgroup, kwargs)
 
-  command = build_setting_command(subgroup, kwargs)
+    for workflow_name in workflows:
+      init_path = build_init_path(app.app_data_dir.path, workflow_name)
+      prepend_or_append_setting_command(init_path, command)
+      click.echo(f"Updated {init_path}")
+    return
 
-  for workflow_name in workflows:
-    init_path = build_init_path(app.app_data_dir.path, workflow_name)
-    prepend_or_append_setting_command(init_path, command)
-    click.echo(f"Updated {init_path}")
-
-  if kwargs.get('save'):
-    scaffold_path = save_scaffold_command(
-      app.app_data_dir.scaffold_file_path,
-      'setting',
-      f'{subgroup} set',
-      kwargs,
-    )
-    click.echo(f"Updated {scaffold_path}")
+  # Pin to app_dir/cwd so declare-only writes land in that scaffold.yml even
+  # before app create --apply has created services/.config.yml.
+  app = App(kwargs.get('app_dir_path') or os.getcwd(), skip_find_app_dir=True)
+  scaffold_path = save_scaffold_command(
+    app.app_data_dir.scaffold_file_path,
+    'setting',
+    f'{subgroup} set',
+    kwargs,
+  )
+  echo_scaffold_yml_updated(scaffold_path)
 
 
 @click.group(
@@ -105,7 +114,7 @@ def rewrite(ctx):
   help='Request URL scheme to rewrite to.'
 )
 @click.option('--value', help='Rewrite value.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help=APPLY_HELP)
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def rewrite_set(**kwargs):
   if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -157,7 +166,7 @@ def match(ctx):
   type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help=APPLY_HELP)
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def match_set(**kwargs):
   _apply_setting_command('match', kwargs)
@@ -197,7 +206,7 @@ def _filter(ctx):
   type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help=APPLY_HELP)
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def filter_set(**kwargs):
   _apply_setting_command('filter', kwargs)
