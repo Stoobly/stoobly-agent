@@ -264,10 +264,16 @@ class TestScaffoldSaveCli:
     assert step['options']['hostname'] == 'api.example.com'
     assert 'name' not in step['options']
 
-  def test_service_delete_appends_by_default(self, runner: CliRunner, app_dir: str):
+  def test_service_delete_removes_matching_create(self, runner: CliRunner, app_dir: str):
     _create_app(runner, app_dir, '--apply')
-    _create_service(runner, app_dir, 'api', '--apply')
+    _create_service(
+      runner, app_dir, 'api',
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+    )
     scaffold_path = _scaffold_path(app_dir)
+    _apply_scaffold(runner, scaffold_path)
 
     result = runner.invoke(scaffold, [
       'service', 'delete',
@@ -275,14 +281,11 @@ class TestScaffoldSaveCli:
       'api',
     ])
     assert result.exit_code == 0, result.output
+    assert f'Updated {scaffold_path}' in result.output or os.path.relpath(scaffold_path) in result.output
+    assert not os.path.exists(os.path.join(app_dir, DATA_DIR_NAME, 'services', 'api'))
 
     data = _read_scaffold(scaffold_path)
-    assert len(data['commands']) == 1
-    step = data['commands'][0]
-    assert step['resource'] == 'service'
-    assert step['action'] == 'delete'
-    assert step['options']['service_name'] == 'api'
-    assert 'apply' not in step['options']
+    assert data['commands'] == []
 
   def test_workflow_create_saves_by_default(self, runner: CliRunner, app_dir: str):
     _create_app(runner, app_dir, '--apply')

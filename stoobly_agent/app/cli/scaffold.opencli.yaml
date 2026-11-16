@@ -244,7 +244,7 @@ command:
               description: Disable printing column headers.
 
         - name: delete
-          description: Delete a service
+          description: Delete a service. Always applies and removes the matching service create step from scaffold.yml.
           arguments:
             - name: service_name
               required: true
@@ -254,8 +254,6 @@ command:
               description: Path to application directory.
               arguments:
                 - name: path
-            - name: apply
-              description: Apply without saving to scaffold.yml.
 
         - name: update
           description: Update a service config

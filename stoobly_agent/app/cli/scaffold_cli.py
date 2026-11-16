@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FOR
 from stoobly_agent.app.cli.scaffold.create_command import (
   create_scaffold_yml,
   echo_scaffold_yml_updated,
+  remove_scaffold_create_command,
   save_scaffold_command,
   update_scaffold_create_command,
 )
@@ -337,7 +338,6 @@ def show(ctx, **kwargs):
   help="Delete a service",
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.argument('service_name')
 def delete(**kwargs):
   app = App(kwargs['app_dir_path'])
@@ -352,7 +352,13 @@ def delete(**kwargs):
     __scaffold_delete(app, **kwargs)
     print(f"Successfully deleted service: {service.service_name}")
 
-  __maybe_save_scaffold_command(app, 'service', 'delete', kwargs)
+  # Always apply + remove the matching service create step (no --apply).
+  scaffold_path = remove_scaffold_create_command(
+    app.app_data_dir.scaffold_file_path,
+    'service',
+    kwargs,
+  )
+  click.echo(f"Updated {scaffold_path}")
 
 @service.command(
   help="Update a service config"
