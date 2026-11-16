@@ -17,6 +17,7 @@ def build_context():
   intercept_settings.public_directory_path = '/tmp/public'
   intercept_settings.response_fixtures_path = '/tmp/fixtures.yml'
   intercept_settings.scenario_key = None
+  intercept_settings.scenario_name = None
   return MockContext(flow, intercept_settings)
 
 
@@ -56,12 +57,14 @@ class TestEvalRequestWithRetry:
       res = eval_request_with_retry(context, eval_request)
 
     assert res is fixture
-    eval_fixtures.assert_called_once_with(
-      context.flow.request,
-      public_directory_path='/tmp/public',
-      response_fixtures_path='/tmp/fixtures.yml',
-      scenario_key=context.intercept_settings.scenario_key,
-    )
+    eval_fixtures.assert_called_once()
+    args, kwargs = eval_fixtures.call_args
+    assert args == (context.flow.request,)
+    assert kwargs['public_directory_path'] == '/tmp/public'
+    assert kwargs['response_fixtures_path'] == '/tmp/fixtures.yml'
+    assert kwargs['scenario_key'] == context.intercept_settings.scenario_key
+    assert callable(kwargs['scenario_name'])
+    assert kwargs['scenario_name']() == context.intercept_settings.scenario_name
 
   def test_keeps_not_found_when_no_fixture(self):
     context = build_context()

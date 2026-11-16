@@ -439,6 +439,76 @@ class TestScenarioKey:
         scenario_model.create.assert_not_called()
 
 
+class TestScenarioName:
+
+    def test_returns_scenario_name_from_header_when_set(
+      self, mock_settings, mock_data_rules, mock_request
+    ):
+        scenario_name = 'login-flow'
+        mock_request.headers = Headers(**{custom_headers.SCENARIO_NAME: scenario_name})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings, mock_request)
+        assert intercept_settings.scenario_name == scenario_name
+
+    def test_returns_none_when_no_scenario_name_or_key(
+      self, mock_settings, mock_data_rules
+    ):
+        mock_data_rules.scenario_key = None
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(mock_settings)
+        assert intercept_settings.scenario_name is None
+
+    def test_reverse_looks_up_name_from_scenario_key(
+      self, mock_settings, mock_data_rules, mock_request, scenario_model
+    ):
+        scenario_id = '123e4567-e89b-12d3-a456-426614174000'
+        scenario_key = 'p1.i123e4567e89b12d3a456426614174000'
+        scenario_name = 'login-flow'
+
+        mock_request.headers = Headers(**{custom_headers.SCENARIO_KEY: scenario_key})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        scenario_model.show.return_value = ({'name': scenario_name, 'key': scenario_key}, 200)
+
+        intercept_settings = InterceptSettings(
+          mock_settings, mock_request, scenario_model=scenario_model
+        )
+        assert intercept_settings.scenario_name == scenario_name
+        scenario_model.show.assert_called_once_with(scenario_id)
+
+    def test_returns_none_when_reverse_lookup_fails(
+      self, mock_settings, mock_data_rules, mock_request, scenario_model
+    ):
+        scenario_key = 'p1.i123e4567e89b12d3a456426614174000'
+        mock_request.headers = Headers(**{custom_headers.SCENARIO_KEY: scenario_key})
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+        scenario_model.show.return_value = (None, 404)
+
+        intercept_settings = InterceptSettings(
+          mock_settings, mock_request, scenario_model=scenario_model
+        )
+        assert intercept_settings.scenario_name is None
+
+    def test_prioritizes_scenario_name_header_over_key_lookup(
+      self, mock_settings, mock_data_rules, mock_request, scenario_model
+    ):
+        scenario_key = 'p1.i123e4567e89b12d3a456426614174000'
+        header_name = 'from-header'
+
+        mock_request.headers = Headers(**{
+          custom_headers.SCENARIO_KEY: scenario_key,
+          custom_headers.SCENARIO_NAME: header_name,
+        })
+        mock_settings.proxy.data.data_rules.return_value = mock_data_rules
+
+        intercept_settings = InterceptSettings(
+          mock_settings, mock_request, scenario_model=scenario_model
+        )
+        assert intercept_settings.scenario_name == header_name
+        scenario_model.show.assert_not_called()
+
+
 class TestRequestMatchRules:
 
     def test_appends_rule_from_header_when_valid_base64_json(self, mock_settings, mock_data_rules, mock_request):

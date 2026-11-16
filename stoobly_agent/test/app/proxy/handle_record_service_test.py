@@ -23,6 +23,7 @@ def build_replay_context():
   intercept_settings.public_directory_path = '/tmp/public'
   intercept_settings.response_fixtures_path = '/tmp/fixtures.yml'
   intercept_settings.scenario_key = None
+  intercept_settings.scenario_name = None
   intercept_settings.order_from_header = None
   intercept_settings.order = None
   intercept_settings.lifecycle_hooks = {}
@@ -67,12 +68,14 @@ class TestHandleRequestRecordFixtures:
     ) as handle_mock_success_mock:
       handle_request_record(context)
 
-    eval_fixtures_mock.assert_called_once_with(
-      context.flow.request,
-      public_directory_path='/tmp/public',
-      response_fixtures_path='/tmp/fixtures.yml',
-      scenario_key=None,
-    )
+    eval_fixtures_mock.assert_called_once()
+    args, kwargs = eval_fixtures_mock.call_args
+    assert args == (context.flow.request,)
+    assert kwargs['public_directory_path'] == '/tmp/public'
+    assert kwargs['response_fixtures_path'] == '/tmp/fixtures.yml'
+    assert kwargs['scenario_key'] is None
+    assert callable(kwargs['scenario_name'])
+    assert kwargs['scenario_name']() is None
     before_mock.assert_called_once()
     apply_response_mock.assert_called_once_with(context.flow, fixture)
     handle_mock_success_mock.assert_called_once()

@@ -297,6 +297,36 @@ class InterceptSettings:
     return self.__data_rules.scenario_key
 
   @property
+  def scenario_name(self) -> Optional[str]:
+    """Active scenario name for fixture matching.
+
+    Prefer X-Stoobly-Scenario-Name when present. Otherwise reverse-lookup
+    the name from scenario_key via ScenarioModel when available.
+    """
+    if self.__headers and custom_headers.SCENARIO_NAME in self.__headers:
+      scenario_name = self.__headers[custom_headers.SCENARIO_NAME]
+      if scenario_name:
+        return scenario_name
+
+    _scenario_key = self.scenario_key
+    if not _scenario_key or not self.__scenario_model:
+      return None
+
+    try:
+      parsed = ScenarioKey(_scenario_key)
+    except InvalidScenarioKey:
+      return None
+
+    try:
+      scenario, status = self.__scenario_model.show(parsed.id)
+      if status == 200 and scenario:
+        return scenario.get('name')
+    except Exception as e:
+      Logger.instance().error(f"Error querying scenario name by key: {e}")
+
+    return None
+
+  @property
   def parsed_scenario_key(self):
     _scenario_key = self.scenario_key
     if not _scenario_key:
