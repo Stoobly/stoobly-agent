@@ -65,6 +65,7 @@ class TestScaffoldServiceCreate:
         def test_create_basic_service(self, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--quiet',
                 service_name,
@@ -93,6 +94,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, hostname: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--hostname', hostname,
                 '--quiet',
@@ -123,6 +125,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, port: int):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--port', str(port),
                 '--quiet',
@@ -153,6 +156,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str, scheme: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--scheme', scheme,
                 '--quiet',
@@ -178,6 +182,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--openapi-specification',
                 '--quiet',
@@ -209,6 +214,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--workflow', WORKFLOW_MOCK_TYPE,
                 '--quiet',
@@ -233,6 +239,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--workflow', WORKFLOW_DEVELOP_TYPE,
                 '--workflow', WORKFLOW_MOCK_TYPE,
@@ -261,6 +268,7 @@ class TestScaffoldServiceCreate:
         def create_service(cls, runner: CliRunner, app_dir_path: str, service_name: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--quiet',
                 service_name,
@@ -278,6 +286,7 @@ class TestScaffoldServiceCreate:
         def test_invalid_port_fails(self, runner: CliRunner, app_dir_path: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--port', '70000',
                 'invalid-port-service',
@@ -287,6 +296,7 @@ class TestScaffoldServiceCreate:
         def test_invalid_scheme_fails(self, runner: CliRunner, app_dir_path: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--scheme', 'ftp',
                 'invalid-scheme-service',
@@ -296,6 +306,7 @@ class TestScaffoldServiceCreate:
         def test_invalid_workflow_fails(self, runner: CliRunner, app_dir_path: str):
             result = runner.invoke(scaffold, [
                 'service', 'create',
+                '--apply',
                 '--app-dir-path', app_dir_path,
                 '--workflow', 'invalid-workflow',
                 'invalid-workflow-service',

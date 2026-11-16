@@ -79,7 +79,7 @@ class TestReadOnlyScaffoldCommandsDoNotCreateDataDir:
         assert "scaffold.yml" in result.output
 
     def test_service_create_requires_scaffold_app(self, empty_dir):
-        result = CliRunner().invoke(scaffold, ['service', 'create', 'api', '--app-dir-path', empty_dir, '--quiet'])
+        result = CliRunner().invoke(scaffold, ['service', 'create', '--apply', 'api', '--app-dir-path', empty_dir, '--quiet'])
 
         assert result.exit_code != 0, result.output
         assert 'does not exist' in result.output

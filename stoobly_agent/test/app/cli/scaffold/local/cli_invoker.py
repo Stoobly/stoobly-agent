@@ -31,16 +31,20 @@ class LocalScaffoldCliInvoker():
   @staticmethod
   def cli_app_create(runner: CliRunner, app_dir_path: str, app_name: str):
     pathlib.Path(f"{app_dir_path}/{DATA_DIR_NAME}").mkdir(parents=True, exist_ok=True)
+    docker_socket_path = pathlib.Path(app_dir_path) / 'docker.sock'
+    docker_socket_path.touch(exist_ok=True)
 
     result = runner.invoke(scaffold, ['app', 'create',
       '--app-dir-path', app_dir_path,
+      '--docker-socket-path', str(docker_socket_path),
       '--proxy-port', '8081',
       '--runtime', 'local',
+      '--apply',
       '--quiet',
       app_name
     ])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     output = result.stdout
     assert not output
 
@@ -60,6 +64,7 @@ class LocalScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', scheme,
       '--port', port,
+      '--apply',
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'develop',
@@ -79,6 +84,7 @@ class LocalScaffoldCliInvoker():
       '--hostname', hostname,
       '--scheme', 'https' if https else 'http',
       '--port', '3000',
+      '--apply',
       '--quiet',
       '--workflow', 'mock',
       '--workflow', 'develop',
@@ -106,6 +112,7 @@ class LocalScaffoldCliInvoker():
       '--app-dir-path', app_dir_path,
       '--service', service_name,
       '--template', 'mock',
+      '--apply',
       'ci',
     ])
 

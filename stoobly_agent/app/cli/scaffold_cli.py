@@ -10,7 +10,12 @@ from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FORMAT, apply_config
-from stoobly_agent.app.cli.scaffold.create_command import create_scaffold_yml, save_scaffold_command
+from stoobly_agent.app.cli.scaffold.create_command import (
+  create_scaffold_yml,
+  echo_scaffold_yml_updated,
+  save_scaffold_command,
+  update_scaffold_create_command,
+)
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -185,7 +190,7 @@ def debug(**kwargs):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
-@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Create scaffold files. Without this, only write to scaffold.yml.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
@@ -198,22 +203,23 @@ def create(**kwargs):
   # Because we are creating a new app, we need to skip finding the app dir
   app = App(kwargs['app_dir_path'] or os.getcwd(), skip_find_app_dir=True)
 
-  if not kwargs['quiet']:
-    if os.path.exists(app.scaffold_namespace_path):
-      print(f"{app.app_dir_path} already exists, updating scaffold maintained files...")
-    else:
-      print(f"Creating scaffold in {app.app_dir_path}")
+  if kwargs.get('apply'):
+    if not kwargs['quiet']:
+      if os.path.exists(app.scaffold_namespace_path):
+        print(f"{app.app_dir_path} already exists, updating scaffold maintained files...")
+      else:
+        print(f"Creating scaffold in {app.app_dir_path}")
 
-  res = AppCreateCommand(app, **kwargs).build()
+    res = AppCreateCommand(app, **kwargs).build()
 
-  context_dir_paths = kwargs.get('context_dir_path') or ()
-  for context_dir_path in context_dir_paths:
-    init_context_dir(context_dir_path, app.app_dir_path)
+    context_dir_paths = kwargs.get('context_dir_path') or ()
+    for context_dir_path in context_dir_paths:
+      init_context_dir(context_dir_path, app.app_dir_path)
 
-  init_app_context_config(app.app_dir_path, context_dir_paths)
+    init_app_context_config(app.app_dir_path, context_dir_paths)
 
-  for warning in res['warnings']:
-    print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
+    for warning in res['warnings']:
+      print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
 
   __maybe_save_scaffold_command(app, 'app', 'create', kwargs)
 
@@ -235,7 +241,7 @@ def create(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
-@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Create scaffold files. Without this, only write to scaffold.yml.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
@@ -244,16 +250,18 @@ def create(**kwargs):
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
   app = App(kwargs['app_dir_path'])
-  __validate_app(app)
-  service = Service(kwargs['service_name'], app)
 
-  if not kwargs['quiet'] and os.path.exists(service.dir_path):
-    print(f"{service.dir_path} already exists, updating scaffold maintained files...")
+  if kwargs.get('apply'):
+    __validate_app(app)
+    service = Service(kwargs['service_name'], app)
 
-  __scaffold_build(app, **kwargs)
+    if not kwargs['quiet'] and os.path.exists(service.dir_path):
+      print(f"{service.dir_path} already exists, updating scaffold maintained files...")
 
-  for context_dir_path in kwargs.get('context_dir_path') or ():
-    add_context_service(context_dir_path, app.app_dir_path, kwargs['service_name'])
+    __scaffold_build(app, **kwargs)
+
+    for context_dir_path in kwargs.get('context_dir_path') or ():
+      add_context_service(context_dir_path, app.app_dir_path, kwargs['service_name'])
 
   __maybe_save_scaffold_command(app, 'service', 'create', kwargs)
 
@@ -338,7 +346,6 @@ def delete(**kwargs):
 @click.option('--openapi-specification', type=bool, default=None, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
-@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
@@ -400,7 +407,13 @@ def update(**kwargs):
 
   service_config.write()
 
-  __maybe_save_scaffold_command(app, 'service', 'update', kwargs)
+  # Always apply + merge into the matching service create step (no --apply).
+  scaffold_path = update_scaffold_create_command(
+    app.app_data_dir.scaffold_file_path,
+    'service',
+    kwargs,
+  )
+  click.echo(f"Updated {scaffold_path}")
 
 @workflow.command(
   help="Create workflow for service(s)"
@@ -408,7 +421,7 @@ def update(**kwargs):
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
-@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Create scaffold files. Without this, only write to scaffold.yml.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
@@ -416,20 +429,21 @@ def create(**kwargs):
   app = App(kwargs['app_dir_path'], **kwargs)
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
-  for service_name in kwargs['service']:
-    config = { **kwargs }
-    del config['service']
-    config['service_name'] = service_name
+  if kwargs.get('apply'):
+    for service_name in kwargs['service']:
+      config = { **kwargs }
+      del config['service']
+      config['service_name'] = service_name
 
-    service = Service(service_name, app)
-    __validate_service_dir(service.dir_path)
+      service = Service(service_name, app)
+      __validate_service_dir(service.dir_path)
 
-    workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
+      workflow_dir_path = service.workflow_dir_path(kwargs['workflow_name'])
 
-    if not kwargs['quiet'] and os.path.exists(workflow_dir_path):
-      print(f"{workflow_dir_path} already exists, updating scaffold maintained files...")
+      if not kwargs['quiet'] and os.path.exists(workflow_dir_path):
+        print(f"{workflow_dir_path} already exists, updating scaffold maintained files...")
 
-    __workflow_create(app, **config)
+      __workflow_create(app, **config)
 
   __maybe_save_scaffold_command(app, 'workflow', 'create', kwargs)
 
@@ -1087,7 +1101,7 @@ def __maybe_save_scaffold_command(app: App, resource: str, action: str, kwargs: 
     action,
     kwargs,
   )
-  click.echo(f"Updated {scaffold_path}")
+  echo_scaffold_yml_updated(scaffold_path)
 
 def __apply_context_service_defaults(context_dir_path, kwargs):
   if kwargs.get('service'):

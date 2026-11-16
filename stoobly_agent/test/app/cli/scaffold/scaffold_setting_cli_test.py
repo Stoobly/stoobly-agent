@@ -68,8 +68,7 @@ class TestScaffoldSettingCli:
   def test_rewrite_set_prepends_init_block(self, app_dir):
     init_path = _create_build_init(app_dir, 'record')
 
-    result = CliRunner().invoke(setting, [
-      'rewrite', 'set',
+    result = CliRunner().invoke(setting, ['rewrite', 'set', '--apply',
       '--method', 'GET',
       '--mode', 'record',
       '--pattern', '.*',
@@ -103,8 +102,7 @@ class TestScaffoldSettingCli:
     init_path = _create_build_init(app_dir, 'record')
 
     runner = CliRunner()
-    first = runner.invoke(setting, [
-      'rewrite', 'set',
+    first = runner.invoke(setting, ['rewrite', 'set', '--apply',
       '--method', 'GET',
       '--mode', 'record',
       '--pattern', '.*',
@@ -116,8 +114,7 @@ class TestScaffoldSettingCli:
     ])
     assert first.exit_code == 0, first.output
 
-    second = runner.invoke(setting, [
-      'filter', 'set',
+    second = runner.invoke(setting, ['filter', 'set', '--apply',
       '--action', 'exclude',
       '--method', 'POST',
       '--mode', 'record',
@@ -141,8 +138,7 @@ class TestScaffoldSettingCli:
   def test_match_set_writes_command(self, app_dir):
     init_path = _create_build_init(app_dir, 'mock')
 
-    result = CliRunner().invoke(setting, [
-      'match', 'set',
+    result = CliRunner().invoke(setting, ['match', 'set', '--apply',
       '--method', 'POST',
       '--mode', 'mock',
       '--pattern', '.*',
@@ -161,7 +157,8 @@ class TestScaffoldSettingCli:
     assert "--mode mock" in block
 
   def test_saves_scaffold_yml_by_default(self, app_dir):
-    _create_build_init(app_dir, 'record')
+    init_path = _create_build_init(app_dir, 'record')
+    before = open(init_path).read()
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
     assert not os.path.exists(scaffold_path)
 
@@ -176,7 +173,10 @@ class TestScaffoldSettingCli:
     ])
     assert result.exit_code == 0, result.output
     assert os.path.exists(scaffold_path)
-    assert f'Updated {scaffold_path}' in result.output
+    relative_path = os.path.relpath(scaffold_path)
+    assert f'Updated {relative_path}, run `' in result.output
+    assert f'scaffold apply {relative_path}' in result.output
+    assert open(init_path).read() == before
 
     with open(scaffold_path) as fp:
       data = yaml.safe_load(fp)
@@ -195,8 +195,8 @@ class TestScaffoldSettingCli:
     assert 'apply' not in step['options']
     assert 'save' not in step['options']
 
-  def test_apply_skips_scaffold_yml(self, app_dir):
-    _create_build_init(app_dir, 'record')
+  def test_apply_updates_init_without_scaffold_yml(self, app_dir):
+    init_path = _create_build_init(app_dir, 'record')
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
 
     result = CliRunner().invoke(setting, [
@@ -211,6 +211,7 @@ class TestScaffoldSettingCli:
     ])
     assert result.exit_code == 0, result.output
     assert not os.path.exists(scaffold_path)
+    assert SCAFFOLD_INIT_DELIMITER_BEGIN in open(init_path).read()
 
   def test_save_appends_to_existing_scaffold_yml(self, app_dir):
     _create_build_init(app_dir, 'record')
@@ -305,8 +306,7 @@ class TestScaffoldSettingCli:
     record_init = _create_build_init(app_dir, 'record')
     mock_init = _create_build_init(app_dir, 'mock')
 
-    result = CliRunner().invoke(setting, [
-      'filter', 'set',
+    result = CliRunner().invoke(setting, ['filter', 'set', '--apply',
       '--action', 'exclude',
       '--method', 'GET',
       '--mode', 'record',
@@ -323,6 +323,7 @@ class TestScaffoldSettingCli:
   def test_missing_init_exits_nonzero(self, app_dir):
     result = CliRunner().invoke(setting, [
       'filter', 'set',
+      '--apply',
       '--action', 'include',
       '--method', 'GET',
       '--mode', 'mock',
