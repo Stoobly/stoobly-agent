@@ -188,6 +188,33 @@ class TestScaffoldSaveCli:
     assert step['options']['service'] == ['api']
     assert 'apply' not in step['options']
 
+  def test_service_create_upserts_same_name(self, runner: CliRunner, app_dir: str):
+    _create_app(runner, app_dir, '--apply')
+    scaffold_path = _scaffold_path(app_dir)
+
+    _create_service(
+      runner, app_dir, 'api',
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+    )
+    result = _create_service(
+      runner, app_dir, 'api',
+      '--hostname', 'api.updated.com',
+      '--scheme', 'https',
+      '--port', '8443',
+    )
+    assert result.exit_code == 0, result.output
+
+    data = _read_scaffold(scaffold_path)
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['resource'] == 'service'
+    assert step['action'] == 'create'
+    assert step['options']['service_name'] == 'api'
+    assert step['options']['hostname'] == 'api.updated.com'
+    assert step['options']['port'] == 8443
+
   def test_scaffold_apply_does_not_reappend(self, runner: CliRunner, tmp_path):
     app_dir = os.path.join(str(tmp_path), 'apply-app')
     _create_app(runner, app_dir, '--apply')

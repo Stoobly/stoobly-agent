@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import yaml
@@ -9,6 +9,17 @@ from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
 from stoobly_agent.config.data_dir import DataDir
 
 HTTP_METHODS = ['GET', 'POST', 'OPTIONS', 'PATCH', 'PUT', 'DELETE']
+
+# Sentinel identity value for omitted intercept --workflow (means all workflows).
+_WORKFLOW_ALL = None
+
+_CREATE_NAME_KEYS = {
+  ('app', 'create'): 'app_name',
+  ('service', 'create'): 'service_name',
+  ('workflow', 'create'): 'workflow_name',
+}
+
+_SETTING_PATTERN_ACTIONS = frozenset({'filter set', 'match set', 'rewrite set'})
 
 
 def _rewrite_set_options(name: str) -> Dict[str, Any]:
@@ -119,10 +130,73 @@ def build_scaffold_command_step(resource: str, action: str, kwargs: dict) -> Dic
   return step
 
 
-def save_scaffold_command(path: str, resource: str, action: str, kwargs: dict) -> str:
-  """Append a command step to scaffold.yml, creating the file if missing.
+def _option_frozenset(options: dict, key: str) -> Optional[frozenset]:
+  value = options.get(key)
+  if value is None or value == () or value == []:
+    return None
+  if isinstance(value, str):
+    return frozenset([value])
+  return frozenset(value)
 
-  Returns the path written.
+
+def scaffold_command_identity(step: dict) -> Optional[Tuple]:
+  """Return a uniqueness key for a scaffold.yml step, or None if not upserted.
+
+  Identity rules:
+  - app/service/workflow create: name field
+  - setting filter/match set: action + pattern + method
+  - setting rewrite set: action + pattern + method + type + name
+  - intercept enable/disable/set: action + workflow (omitted workflow means all)
+  """
+  if not isinstance(step, dict):
+    return None
+
+  resource = step.get('resource')
+  action = step.get('action')
+  options = step.get('options') or {}
+  if not isinstance(options, dict):
+    options = {}
+
+  name_key = _CREATE_NAME_KEYS.get((resource, action))
+  if name_key is not None:
+    name = options.get(name_key)
+    if name is None or name == '':
+      return None
+    return (resource, action, name)
+
+  if resource == 'setting' and action in _SETTING_PATTERN_ACTIONS:
+    pattern = options.get('pattern')
+    methods = _option_frozenset(options, 'method')
+    if pattern is None or methods is None:
+      return None
+    if action == 'rewrite set':
+      return (resource, action, pattern, methods, options.get('type'), options.get('name'))
+    return (resource, action, pattern, methods)
+
+  if resource == 'intercept' and action in ('enable', 'disable', 'set'):
+    workflows = _option_frozenset(options, 'workflow')
+    if workflows is None:
+      return (resource, action, _WORKFLOW_ALL)
+    return (resource, action, workflows)
+
+  return None
+
+
+def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
+  identity = scaffold_command_identity(step)
+  if identity is not None:
+    for i, existing in enumerate(commands):
+      if scaffold_command_identity(existing) == identity:
+        commands[i] = step
+        return
+  commands.append(step)
+
+
+def save_scaffold_command(path: str, resource: str, action: str, kwargs: dict) -> str:
+  """Upsert a command step into scaffold.yml, creating the file if missing.
+
+  Steps with a uniqueness identity replace a matching existing step in place;
+  otherwise the step is appended. Returns the path written.
   """
   step = build_scaffold_command_step(resource, action, kwargs)
 
@@ -140,7 +214,7 @@ def save_scaffold_command(path: str, resource: str, action: str, kwargs: dict) -
     if data.get('version') is None:
       data['version'] = 1
 
-    commands.append(step)
+    _upsert_scaffold_command(commands, step)
     data['commands'] = commands
   else:
     parent = os.path.dirname(path)

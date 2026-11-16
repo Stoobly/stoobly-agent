@@ -29,7 +29,18 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 
 A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
 
-Structural CLI commands (`app create`, `service create`/`update`/`delete`, `workflow create`/`copy`, plus `setting` and `intercept` commands) append the invoked step to `scaffold.yml` by default. Pass `--apply` to mutate without recording. That keeps an append-only command journal for later `scaffold apply`; it does not rewrite earlier steps (for example `service update` does not mutate a prior `service create`). Replaying via `scaffold apply` forces `--apply` so steps are never re-saved into the file.
+Structural CLI commands (`app create`, `service create`/`update`/`delete`, `workflow create`/`copy`, plus `setting` and `intercept` commands) record the invoked step in `scaffold.yml` by default. Pass `--apply` to mutate without recording. Replaying via `scaffold apply` forces `--apply` so steps are never re-saved into the file.
+
+Recording uses **upsert by identity** for some commands (matching step replaced in place); others still append:
+
+| Commands | Identity |
+|----------|----------|
+| `app` / `service` / `workflow` `create` | name (`app_name` / `service_name` / `workflow_name`) |
+| `setting` `filter set` / `match set` | action + `pattern` + `method` |
+| `setting` `rewrite set` | action + `pattern` + `method` + `type` + `name` |
+| `intercept` `enable` / `disable` / `set` | action + `workflow` (omitted `workflow` means all workflows) |
+
+`service update`/`delete`, `workflow copy`, and other recorded commands without a rule above still append. For example, `service update` does not mutate a prior `service create`.
 
 ### Options
 

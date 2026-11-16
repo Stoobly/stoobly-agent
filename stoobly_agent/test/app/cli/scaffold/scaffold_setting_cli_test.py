@@ -241,6 +241,66 @@ class TestScaffoldSettingCli:
     assert data['commands'][1]['resource'] == 'setting'
     assert data['commands'][1]['action'] == 'match set'
 
+  def test_filter_set_upserts_same_pattern_and_methods(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    runner = CliRunner()
+
+    first = runner.invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
+      '--method', 'GET',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert first.exit_code == 0, first.output
+
+    second = runner.invoke(setting, [
+      'filter', 'set',
+      '--action', 'include',
+      '--method', 'GET',
+      '--mode', 'mock',
+      '--pattern', '.*',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert second.exit_code == 0, second.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 1
+    step = data['commands'][0]
+    assert step['action'] == 'filter set'
+    assert step['options']['action'] == 'include'
+    assert step['options']['mode'] == ['mock']
+
+  def test_rewrite_set_keeps_distinct_names(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    runner = CliRunner()
+    common = [
+      '--method', 'GET',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--type', 'Header',
+      '--value', '',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ]
+
+    first = runner.invoke(setting, ['rewrite', 'set', '--name', 'authorization', *common])
+    assert first.exit_code == 0, first.output
+    second = runner.invoke(setting, ['rewrite', 'set', '--name', 'cookie', *common])
+    assert second.exit_code == 0, second.output
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert [c['options']['name'] for c in data['commands']] == ['authorization', 'cookie']
+
   def test_defaults_to_all_workflows(self, app_dir):
     record_init = _create_build_init(app_dir, 'record')
     mock_init = _create_build_init(app_dir, 'mock')
