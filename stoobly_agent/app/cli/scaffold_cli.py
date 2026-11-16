@@ -201,11 +201,18 @@ def create(**kwargs):
     sys.exit(1)
 
   # Existence depends on runtime; Click cannot express that on the option type alone.
+  # Use exists (not isfile): Docker sockets are Unix domain sockets, which are not regular files.
   if kwargs.get('runtime') == RUNTIME_DOCKER:
     docker_socket_path = kwargs.get('docker_socket_path')
-    if not docker_socket_path or not os.path.exists(docker_socket_path) or not os.path.isfile(docker_socket_path):
+    if not docker_socket_path or not os.path.exists(docker_socket_path):
       click.echo(
         f"Error: Invalid value for '--docker-socket-path': Path '{docker_socket_path}' does not exist.",
+        err=True,
+      )
+      sys.exit(1)
+    if os.path.isdir(docker_socket_path):
+      click.echo(
+        f"Error: Invalid value for '--docker-socket-path': Path '{docker_socket_path}' is a directory.",
         err=True,
       )
       sys.exit(1)
