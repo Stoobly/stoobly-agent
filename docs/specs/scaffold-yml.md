@@ -29,9 +29,9 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 
 A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
 
-`app`/`service`/`workflow` `create`, plus `setting` and `intercept` commands, write to `scaffold.yml` by default and only mutate scaffold files when `--apply` is set. `service delete` and `workflow copy` still mutate by default and skip recording when `--apply` is passed. Replaying via `scaffold apply` forces `--apply` so steps run and are never re-saved into the file.
+`app`/`service`/`workflow` `create`, plus `setting` and `intercept` commands, write to `scaffold.yml` by default and only mutate scaffold files when `--apply` is set. `workflow copy` still mutates by default and skips recording when `--apply` is passed. Replaying via `scaffold apply` forces `--apply` so steps run and are never re-saved into the file.
 
-`service update` always applies and does **not** support `--apply`. Instead of recording an `update` step, it merges the changed options into the matching `service create` step (creating one if missing). Rename via `--name` updates that create step’s `service_name`.
+`service update` and `service delete` always apply and do **not** support `--apply`. Instead of recording an `update`/`delete` step, they change the matching `service create` step: update merges options (creating a create step if missing; rename via `--name` updates `service_name`), and delete removes that create step.
 
 Recording uses **upsert by identity** for some commands (matching step replaced in place); others still append:
 
@@ -42,7 +42,7 @@ Recording uses **upsert by identity** for some commands (matching step replaced 
 | `setting` `rewrite set` | action + `pattern` + `method` + `type` + `name` |
 | `intercept` `enable` / `disable` / `set` | action + `workflow` (omitted `workflow` means all workflows) |
 
-`service delete`, `workflow copy`, and other recorded commands without a rule above still append.
+`workflow copy` and other recorded commands without a rule above still append.
 
 ### Options
 
