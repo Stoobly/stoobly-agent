@@ -62,7 +62,8 @@ class TestEvalRequestWithRetry:
     assert args == (context.flow.request,)
     assert kwargs['public_directory_path'] == '/tmp/public'
     assert kwargs['response_fixtures_path'] == '/tmp/fixtures.yml'
-    assert kwargs['scenario_key'] == context.intercept_settings.scenario_key
+    assert callable(kwargs['scenario_key'])
+    assert kwargs['scenario_key']() == context.intercept_settings.scenario_key
     assert callable(kwargs['scenario_name'])
     assert kwargs['scenario_name']() == context.intercept_settings.scenario_name
 

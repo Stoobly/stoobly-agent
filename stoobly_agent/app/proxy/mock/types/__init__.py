@@ -37,12 +37,13 @@ class OpenapiSpecificationPath(TypedDict):
   origin: Optional[str]  # Optional origin (e.g., "https://api.example.com:8080")
   path: str              # File system path to the OpenAPI specification file
 
-# str, or a zero-arg callable resolved just-in-time when a fixture uses scenario_names
+# str, or a zero-arg callable resolved just-in-time when a fixture uses the matching field
+ScenarioKeyOption = Optional[Union[str, Callable[[], Optional[str]]]]
 ScenarioNameOption = Optional[Union[str, Callable[[], Optional[str]]]]
 
 class MockOptions(TypedDict):
   """Options for mock service."""
   public_directory_path: str
   response_fixtures_path: str                        # Comma-separated list of paths, optionally with origin prefix
-  scenario_key: Optional[str]                        # Active scenario key; used to match fixture scenario_keys
+  scenario_key: ScenarioKeyOption                    # Active scenario key (or lazy getter) for scenario_keys
   scenario_name: ScenarioNameOption                  # Active scenario name (or lazy getter) for scenario_names

@@ -73,7 +73,8 @@ class TestHandleRequestRecordFixtures:
     assert args == (context.flow.request,)
     assert kwargs['public_directory_path'] == '/tmp/public'
     assert kwargs['response_fixtures_path'] == '/tmp/fixtures.yml'
-    assert kwargs['scenario_key'] is None
+    assert callable(kwargs['scenario_key'])
+    assert kwargs['scenario_key']() is None
     assert callable(kwargs['scenario_name'])
     assert kwargs['scenario_name']() is None
     before_mock.assert_called_once()

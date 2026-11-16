@@ -225,7 +225,7 @@ def __try_mock_fixture(context: ReplayContext) -> bool:
         flow.request,
         public_directory_path=intercept_settings.public_directory_path,
         response_fixtures_path=intercept_settings.response_fixtures_path,
-        scenario_key=intercept_settings.scenario_key,
+        scenario_key=lambda: intercept_settings.scenario_key,
         scenario_name=lambda: intercept_settings.scenario_name,
     )
     if not fixture:

@@ -1915,6 +1915,55 @@ POST:
       assert res is not None
       assert json.loads(res.raw.read().decode())['source'] == 'scenario_a'
 
+    def test_lazy_scenario_key_not_resolved_without_scenario_keys(
+      self, mitmproxy_request: MitmproxyRequest, global_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': global_file,
+          }
+        }
+      }
+      calls = {'count': 0}
+
+      def get_key():
+        calls['count'] += 1
+        return self.SCENARIO_KEY_A
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=get_key,
+      )
+      assert res is not None
+      assert calls['count'] == 0
+
+    def test_lazy_scenario_key_resolved_once_when_needed(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_keys': [self.SCENARIO_KEY_A],
+          }
+        }
+      }
+      calls = {'count': 0}
+
+      def get_key():
+        calls['count'] += 1
+        return self.SCENARIO_KEY_A
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=get_key,
+      )
+      assert res is not None
+      assert calls['count'] == 1
+
     def test_response_fixtures_path_respects_scenario_keys(
       self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
     ):
@@ -2030,6 +2079,32 @@ POST:
       )
       assert res is not None
       assert calls['count'] == 0
+
+    def test_lazy_scenario_key_not_resolved_when_only_scenario_names(
+      self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
+    ):
+      fixtures = {
+        'GET': {
+          '/users': {
+            'path': scenario_a_file,
+            'scenario_names': [self.SCENARIO_NAME_A],
+          }
+        }
+      }
+      key_calls = {'count': 0}
+
+      def get_key():
+        key_calls['count'] += 1
+        return self.SCENARIO_KEY_A
+
+      res = eval_fixtures(
+        mitmproxy_request,
+        response_fixtures=fixtures,
+        scenario_key=get_key,
+        scenario_name=self.SCENARIO_NAME_A,
+      )
+      assert res is not None
+      assert key_calls['count'] == 0
 
     def test_lazy_scenario_name_resolved_once_when_needed(
       self, mitmproxy_request: MitmproxyRequest, scenario_a_file: str
