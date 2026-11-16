@@ -183,7 +183,7 @@ def debug(**kwargs):
   type=click.Path(exists=True, file_okay=False, dir_okay=True),
   help='Path to a Stoobly context directory. May be specified multiple times.',
 )
-@click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(exists=True, file_okay=True, dir_okay=False), help='Path to Docker socket.')
+@click.option('--docker-socket-path', default='/var/run/docker.sock', type=click.Path(file_okay=True, dir_okay=False), help='Path to Docker socket. Required to exist when --runtime is docker.')
 @click.option('--env', multiple=True, callback=validate_env_pair, help='Environment variable NAME=VALUE. May be specified multiple times.')
 @click.option('--plugin', multiple=True, type=click.Choice([PLUGIN_CYPRESS, PLUGIN_PLAYWRIGHT]), help='Scaffold integrations.')
 @click.option('--proxy-mode', default=PROXY_MODE_FORWARD, type=click.Choice([PROXY_MODE_FORWARD, PROXY_MODE_REVERSE]), help='Determines how to proxy requests to the upstream service(s).')
@@ -199,6 +199,16 @@ def create(**kwargs):
     error_message = f"Error: {PROXY_MODE_REVERSE.capitalize()} proxy mode is only supported for {RUNTIME_DOCKER} runtime."
     click.echo(error_message, err=True)
     sys.exit(1)
+
+  # Existence depends on runtime; Click cannot express that on the option type alone.
+  if kwargs.get('runtime') == RUNTIME_DOCKER:
+    docker_socket_path = kwargs.get('docker_socket_path')
+    if not docker_socket_path or not os.path.exists(docker_socket_path) or not os.path.isfile(docker_socket_path):
+      click.echo(
+        f"Error: Invalid value for '--docker-socket-path': Path '{docker_socket_path}' does not exist.",
+        err=True,
+      )
+      sys.exit(1)
 
   # Because we are creating a new app, we need to skip finding the app dir
   app = App(kwargs['app_dir_path'] or os.getcwd(), skip_find_app_dir=True)

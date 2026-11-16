@@ -82,7 +82,7 @@ command:
                     minimum: 1
                     maximum: 1
             - name: docker-socket-path
-              description: Path to Docker socket. Default /var/run/docker.sock.
+              description: Path to Docker socket. Default /var/run/docker.sock. Must exist when --runtime is docker.
               arguments:
                 - name: path
             - name: env
