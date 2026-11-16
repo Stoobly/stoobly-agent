@@ -337,3 +337,36 @@ def update_scaffold_create_command(path: str, resource: str, kwargs: dict) -> st
   options[name_key] = target_name
   commands.append(step)
   return _write_scaffold_data(path, data)
+
+
+def remove_scaffold_create_command(path: str, resource: str, kwargs: dict) -> str:
+  """Remove the matching create step from scaffold.yml.
+
+  Finds create step(s) by name identity and deletes them. If the file does not
+  exist and nothing is removed, does not create an empty file. Always writes
+  when the file already existed (delete has no --apply). Returns the path.
+  """
+  name_key = _CREATE_NAME_KEYS.get((resource, 'create'))
+  if name_key is None:
+    raise ValueError(f"No create identity for resource: {resource}")
+
+  current_name = kwargs.get(name_key)
+  if current_name is None or current_name == '':
+    raise ValueError(f"Missing {name_key} for {resource} delete")
+
+  file_existed = os.path.exists(path)
+  data = _load_scaffold_data(path)
+  commands = data['commands']
+  identity = (resource, 'create', current_name)
+
+  match_indexes = [
+    i for i, existing in enumerate(commands)
+    if scaffold_command_identity(existing) == identity
+  ]
+  if not match_indexes and not file_existed:
+    return path
+
+  for i in reversed(match_indexes):
+    del commands[i]
+
+  return _write_scaffold_data(path, data)

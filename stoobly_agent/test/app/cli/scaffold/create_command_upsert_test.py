@@ -4,6 +4,7 @@ import yaml
 
 from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
 from stoobly_agent.app.cli.scaffold.create_command import (
+  remove_scaffold_create_command,
   save_scaffold_command,
   scaffold_command_identity,
   update_scaffold_create_command,
@@ -352,3 +353,45 @@ class TestUpdateScaffoldCreateCommand:
     assert data['commands'][0]['options']['service_name'] == 'api-v2'
     assert data['commands'][0]['options']['port'] == 8443
     assert 'name' not in data['commands'][0]['options']
+
+
+class TestRemoveScaffoldCreateCommand:
+  def test_removes_matching_create(self, tmp_path):
+    path = os.path.join(str(tmp_path), 'scaffold.yml')
+    save_scaffold_command(path, 'service', 'create', {
+      'service_name': 'api',
+      'hostname': 'api.example.com',
+    })
+    save_scaffold_command(path, 'app', 'create', {'app_name': 'app'})
+    save_scaffold_command(path, 'service', 'create', {
+      'service_name': 'web',
+      'hostname': 'web.example.com',
+    })
+
+    remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    with open(path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 2
+    assert data['commands'][0]['resource'] == 'app'
+    assert data['commands'][1]['options']['service_name'] == 'web'
+
+  def test_missing_create_leaves_file_unchanged(self, tmp_path):
+    path = os.path.join(str(tmp_path), 'scaffold.yml')
+    save_scaffold_command(path, 'app', 'create', {'app_name': 'app'})
+
+    remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    with open(path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert len(data['commands']) == 1
+    assert data['commands'][0]['resource'] == 'app'
+
+  def test_missing_file_does_not_create_empty(self, tmp_path):
+    path = os.path.join(str(tmp_path), 'scaffold.yml')
+
+    remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    assert not os.path.exists(path)
