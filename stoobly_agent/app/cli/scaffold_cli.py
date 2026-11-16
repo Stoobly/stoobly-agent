@@ -266,9 +266,8 @@ def create(**kwargs):
 @click.option('--workflow', multiple=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Include pre-defined workflows.')
 @click.argument('service_name', callback=validate_service_name)
 def create(**kwargs):
-  app = App(kwargs['app_dir_path'])
-
   if kwargs.get('apply'):
+    app = App(kwargs['app_dir_path'])
     __validate_app(app)
     service = Service(kwargs['service_name'], app)
 
@@ -279,8 +278,11 @@ def create(**kwargs):
 
     for context_dir_path in kwargs.get('context_dir_path') or ():
       add_context_service(context_dir_path, app.app_dir_path, kwargs['service_name'])
-
-  __maybe_save_scaffold_command(app, 'service', 'create', kwargs)
+  else:
+    # Pin to app_dir/cwd so declare-only writes land in that scaffold.yml even
+    # before app create --apply has created services/.config.yml.
+    app = App(kwargs.get('app_dir_path') or os.getcwd(), skip_find_app_dir=True)
+    __maybe_save_scaffold_command(app, 'service', 'create', kwargs)
 
 @service.command(
   help="List services",
@@ -443,10 +445,10 @@ def update(**kwargs):
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
 def create(**kwargs):
-  app = App(kwargs['app_dir_path'], **kwargs)
-  __apply_context_service_defaults(app.context_dir_path, kwargs)
-
   if kwargs.get('apply'):
+    app = App(kwargs['app_dir_path'], **kwargs)
+    __apply_context_service_defaults(app.context_dir_path, kwargs)
+
     for service_name in kwargs['service']:
       config = { **kwargs }
       del config['service']
@@ -461,8 +463,12 @@ def create(**kwargs):
         print(f"{workflow_dir_path} already exists, updating scaffold maintained files...")
 
       __workflow_create(app, **config)
-
-  __maybe_save_scaffold_command(app, 'workflow', 'create', kwargs)
+  else:
+    # Pin to app_dir/cwd so declare-only writes land in that scaffold.yml even
+    # before app create --apply has created services/.config.yml.
+    app = App(kwargs.get('app_dir_path') or os.getcwd(), skip_find_app_dir=True)
+    __apply_context_service_defaults(app.context_dir_path, kwargs)
+    __maybe_save_scaffold_command(app, 'workflow', 'create', kwargs)
 
 @workflow.command(
   help="Copy a workflow for service(s)",

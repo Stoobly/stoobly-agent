@@ -134,6 +134,32 @@ class TestScaffoldSaveCli:
     assert step['options']['hostname'] == 'api.example.com'
     assert 'apply' not in step['options']
 
+  def test_service_create_saves_without_applied_scaffold(self, runner: CliRunner, app_dir: str):
+    # Declare-only app create leaves no services/.config.yml; service create must
+    # still pin scaffold.yml to app_dir instead of falling back to cwd data dir.
+    _create_app(runner, app_dir)
+    scaffold_path = _scaffold_path(app_dir)
+    services_path = os.path.join(app_dir, DATA_DIR_NAME, 'services')
+    assert os.path.exists(scaffold_path)
+    assert not os.path.exists(services_path)
+
+    result = _create_service(
+      runner, app_dir, 'api',
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+    )
+    _assert_scaffold_yml_updated_message(result.output, scaffold_path)
+    assert not os.path.exists(services_path)
+
+    data = _read_scaffold(scaffold_path)
+    assert len(data['commands']) == 2
+    step = data['commands'][1]
+    assert step['resource'] == 'service'
+    assert step['action'] == 'create'
+    assert step['options']['service_name'] == 'api'
+    assert step['options']['hostname'] == 'api.example.com'
+
   def test_service_create_apply_creates_without_save(self, runner: CliRunner, app_dir: str):
     _create_app(runner, app_dir, '--apply')
     scaffold_path = _scaffold_path(app_dir)
@@ -281,6 +307,33 @@ class TestScaffoldSaveCli:
     assert step['options']['template'] == 'mock'
     assert step['options']['service'] == ['api']
     assert 'apply' not in step['options']
+
+  def test_workflow_create_saves_without_applied_scaffold(self, runner: CliRunner, app_dir: str):
+    _create_app(runner, app_dir)
+    scaffold_path = _scaffold_path(app_dir)
+    services_path = os.path.join(app_dir, DATA_DIR_NAME, 'services')
+    assert os.path.exists(scaffold_path)
+    assert not os.path.exists(services_path)
+
+    result = runner.invoke(scaffold, [
+      'workflow', 'create',
+      '--app-dir-path', app_dir,
+      '--service', 'api',
+      '--template', 'mock',
+      '--quiet',
+      'ci',
+    ])
+    assert result.exit_code == 0, result.output
+    assert not os.path.exists(services_path)
+
+    data = _read_scaffold(scaffold_path)
+    assert len(data['commands']) == 2
+    step = data['commands'][1]
+    assert step['resource'] == 'workflow'
+    assert step['action'] == 'create'
+    assert step['options']['workflow_name'] == 'ci'
+    assert step['options']['template'] == 'mock'
+    assert step['options']['service'] == ['api']
 
   def test_service_create_upserts_same_name(self, runner: CliRunner, app_dir: str):
     _create_app(runner, app_dir, '--apply')
