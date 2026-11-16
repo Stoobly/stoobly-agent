@@ -38,7 +38,7 @@ def _apply_setting_command(subgroup: str, kwargs: dict):
     prepend_or_append_setting_command(init_path, command)
     click.echo(f"Updated {init_path}")
 
-  if kwargs.get('save'):
+  if not kwargs.get('apply'):
     scaffold_path = save_scaffold_command(
       app.app_data_dir.scaffold_file_path,
       'setting',
@@ -105,7 +105,7 @@ def rewrite(ctx):
   help='Request URL scheme to rewrite to.'
 )
 @click.option('--value', help='Rewrite value.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def rewrite_set(**kwargs):
   if kwargs['name'] or kwargs['value'] or kwargs['type']:
@@ -157,7 +157,7 @@ def match(ctx):
   type=click.Choice([mode.MOCK, mode.TEST])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def match_set(**kwargs):
   _apply_setting_command('match', kwargs)
@@ -197,7 +197,7 @@ def _filter(ctx):
   type=click.Choice([mode.MOCK, mode.RECORD, mode.TEST, mode.DEVELOP])
 )
 @click.option('--pattern', required=True, help='URLs pattern.')
-@click.option('--save', is_flag=True, default=False, help='Save the command to scaffold.yml.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--workflow', multiple=True, help='Workflow(s) whose build init script to update. Defaults to all.')
 def filter_set(**kwargs):
   _apply_setting_command('filter', kwargs)

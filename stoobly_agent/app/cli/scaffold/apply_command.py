@@ -535,11 +535,13 @@ def apply_config(
     resource = step['resource']
     action = step['action']
     options = expand_options(step.get('options') or {}, config_dir)
-    # --save persists CLI changes into scaffold.yml; never re-save during apply.
-    options.pop('save', None)
-
     try:
       command = resolve_command(scaffold_group, str(resource), str(action))
+      # Default CLI behavior appends to scaffold.yml; force --apply on replay so
+      # steps do not re-save. Drop legacy save if present in older configs.
+      options.pop('save', None)
+      if any(param.name == 'apply' for param in command.params):
+        options['apply'] = True
       option_argv, positionals = options_to_argv(command, options)
     except ApplyConfigError as e:
       logger.error(f"commands[{index}]: {e}")

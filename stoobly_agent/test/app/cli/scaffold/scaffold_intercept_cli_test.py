@@ -142,14 +142,13 @@ class TestScaffoldInterceptCli:
     assert "stoobly-agent intercept enable" in block
     assert block.index("stoobly-agent intercept set") < block.index("stoobly-agent intercept enable")
 
-  def test_save_creates_scaffold_yml(self, app_dir):
+  def test_saves_scaffold_yml_by_default(self, app_dir):
     _create_build_init(app_dir, 'mock')
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
     assert not os.path.exists(scaffold_path)
 
     result = CliRunner().invoke(intercept, [
       'enable',
-      '--save',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])
@@ -167,7 +166,21 @@ class TestScaffoldInterceptCli:
     assert step['action'] == 'enable'
     assert step['options']['workflow'] == ['mock']
     assert step['options']['app_dir_path'] == app_dir
+    assert 'apply' not in step['options']
     assert 'save' not in step['options']
+
+  def test_apply_skips_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'mock')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--apply',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert not os.path.exists(scaffold_path)
 
   def test_save_appends_to_existing_scaffold_yml(self, app_dir):
     _create_build_init(app_dir, 'mock')
@@ -182,7 +195,6 @@ class TestScaffoldInterceptCli:
 
     result = CliRunner().invoke(intercept, [
       'enable',
-      '--save',
       '--workflow', 'mock',
       '--app-dir-path', app_dir,
     ])

@@ -93,7 +93,7 @@ def create_scaffold_yml(path: str = None, app_name: str = None) -> str:
 
 
 # Options that belong to the scaffold CLI only and should not be persisted.
-EXCLUDED_SAVE_KWARGS = frozenset({'save'})
+EXCLUDED_SAVE_KWARGS = frozenset({'apply', 'save', 'service_path'})
 
 
 def build_scaffold_command_step(resource: str, action: str, kwargs: dict) -> Dict[str, Any]:

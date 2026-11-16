@@ -10,7 +10,7 @@ from stoobly_agent.app.cli.ca_cert_cli import ca_cert_install
 from stoobly_agent.app.cli.helpers.certificate_authority import CertificateAuthority
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.apply_command import APPLY_FORMATS, YAML_FORMAT, apply_config
-from stoobly_agent.app.cli.scaffold.create_command import create_scaffold_yml
+from stoobly_agent.app.cli.scaffold.create_command import create_scaffold_yml, save_scaffold_command
 from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
@@ -185,6 +185,7 @@ def debug(**kwargs):
 @click.option('--proxy-port', default=8080, type=click.IntRange(1, 65535), help='Proxy service port.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
 @click.option('--runtime', type=click.Choice(RUNTIME_OPTIONS), default=RUNTIME_LOCAL, help=f"Runtime environments to support (default: {RUNTIME_LOCAL}).")
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--ui-port', default=4200, type=click.IntRange(1, 65535), help='UI service port.')
 @click.argument('app_name', callback=validate_app_name)
 def create(**kwargs):
@@ -214,6 +215,8 @@ def create(**kwargs):
   for warning in res['warnings']:
     print(f"{bcolors.WARNING}WARNING{bcolors.ENDC}: {warning}")
 
+  __maybe_save_scaffold_command(app, 'app', 'create', kwargs)
+
 @service.command(
   help="Scaffold a service",
 )
@@ -232,6 +235,7 @@ def create(**kwargs):
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', default=5, type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
@@ -250,6 +254,8 @@ def create(**kwargs):
 
   for context_dir_path in kwargs.get('context_dir_path') or ():
     add_context_service(context_dir_path, app.app_dir_path, kwargs['service_name'])
+
+  __maybe_save_scaffold_command(app, 'service', 'create', kwargs)
 
 @service.command(
   help="List services",
@@ -304,6 +310,7 @@ def show(ctx, **kwargs):
   help="Delete a service",
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.argument('service_name')
 def delete(**kwargs):
   app = App(kwargs['app_dir_path'])
@@ -318,6 +325,8 @@ def delete(**kwargs):
     __scaffold_delete(app, **kwargs)
     print(f"Successfully deleted service: {service.service_name}")
 
+  __maybe_save_scaffold_command(app, 'service', 'delete', kwargs)
+
 @service.command(
   help="Update a service config"
 )
@@ -329,6 +338,7 @@ def delete(**kwargs):
 @click.option('--openapi-specification', type=bool, default=None, help='Enable using OpenAPI specification for this service.')
 @click.option('--port', type=click.IntRange(1, 65535), help='Service port.')
 @click.option('--priority', type=click.FloatRange(1.0, 9.0), help='Determines the service run order. Lower values run first.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--scheme', type=click.Choice(['http', 'https']), help='Defaults to https if hostname is set.')
 @click.option('--upstream-hostname', callback=validate_hostname, help='Upstream service hostname.')
 @click.option('--upstream-port', type=click.IntRange(1, 65535), help='Upstream service port.')
@@ -390,12 +400,15 @@ def update(**kwargs):
 
   service_config.write()
 
+  __maybe_save_scaffold_command(app, 'service', 'update', kwargs)
+
 @workflow.command(
   help="Create workflow for service(s)"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--quiet', is_flag=True, help='Disable log output.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--service', multiple=True, help='Specify the service(s) to create the workflow for.')
 @click.option('--template', required=True, type=click.Choice([WORKFLOW_DEVELOP_TYPE, WORKFLOW_MOCK_TYPE, WORKFLOW_RECORD_TYPE, WORKFLOW_TEST_TYPE]), help='Select which workflow to use as a template.')
 @click.argument('workflow_name')
@@ -418,11 +431,14 @@ def create(**kwargs):
 
     __workflow_create(app, **config)
 
+  __maybe_save_scaffold_command(app, 'workflow', 'create', kwargs)
+
 @workflow.command(
   help="Copy a workflow for service(s)",
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
+@click.option('--apply', is_flag=True, default=False, help='Apply without saving to scaffold.yml.')
 @click.option('--service', multiple=True, help='Specify service(s) to add the workflow to.')
 @click.argument('workflow_name')
 @click.argument('destination_workflow_name')
@@ -443,6 +459,8 @@ def copy(**kwargs):
       sys.exit(1)
 
     command.copy(kwargs['destination_workflow_name'])
+
+  __maybe_save_scaffold_command(app, 'workflow', 'copy', kwargs)
 
 @workflow.command(
   help="Show information about running workflow(s)"
@@ -1058,6 +1076,18 @@ def __build_script(app: App, mkdir: bool = True, workflow_namespace: WorkflowNam
     pass
 
   return open(script_path, 'a')
+
+def __maybe_save_scaffold_command(app: App, resource: str, action: str, kwargs: dict):
+  if kwargs.get('apply'):
+    return
+
+  scaffold_path = save_scaffold_command(
+    app.app_data_dir.scaffold_file_path,
+    resource,
+    action,
+    kwargs,
+  )
+  click.echo(f"Updated {scaffold_path}")
 
 def __apply_context_service_defaults(context_dir_path, kwargs):
   if kwargs.get('service'):

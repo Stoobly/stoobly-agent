@@ -29,6 +29,8 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 
 A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
 
+Structural CLI commands (`app create`, `service create`/`update`/`delete`, `workflow create`/`copy`, plus `setting` and `intercept` commands) append the invoked step to `scaffold.yml` by default. Pass `--apply` to mutate without recording. That keeps an append-only command journal for later `scaffold apply`; it does not rewrite earlier steps (for example `service update` does not mutate a prior `service create`). Replaying via `scaffold apply` forces `--apply` so steps are never re-saved into the file.
+
 ### Options
 
 Keys use **snake_case** matching Click parameter names (for example `app_dir_path`, `copy_on_workflow_up`).

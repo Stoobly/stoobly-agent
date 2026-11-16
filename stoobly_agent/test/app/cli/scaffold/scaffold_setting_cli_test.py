@@ -160,7 +160,7 @@ class TestScaffoldSettingCli:
     assert "--component Header" in block
     assert "--mode mock" in block
 
-  def test_save_creates_scaffold_yml(self, app_dir):
+  def test_saves_scaffold_yml_by_default(self, app_dir):
     _create_build_init(app_dir, 'record')
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
     assert not os.path.exists(scaffold_path)
@@ -171,7 +171,6 @@ class TestScaffoldSettingCli:
       '--method', 'POST',
       '--mode', 'record',
       '--pattern', '.*',
-      '--save',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
@@ -193,7 +192,25 @@ class TestScaffoldSettingCli:
     assert step['options']['pattern'] == '.*'
     assert step['options']['workflow'] == ['record']
     assert step['options']['app_dir_path'] == app_dir
+    assert 'apply' not in step['options']
     assert 'save' not in step['options']
+
+  def test_apply_skips_scaffold_yml(self, app_dir):
+    _create_build_init(app_dir, 'record')
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+
+    result = CliRunner().invoke(setting, [
+      'filter', 'set',
+      '--action', 'exclude',
+      '--method', 'POST',
+      '--mode', 'record',
+      '--pattern', '.*',
+      '--apply',
+      '--workflow', 'record',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert not os.path.exists(scaffold_path)
 
   def test_save_appends_to_existing_scaffold_yml(self, app_dir):
     _create_build_init(app_dir, 'record')
@@ -211,7 +228,6 @@ class TestScaffoldSettingCli:
       '--method', 'GET',
       '--mode', 'mock',
       '--pattern', '.*',
-      '--save',
       '--workflow', 'record',
       '--app-dir-path', app_dir,
     ])
