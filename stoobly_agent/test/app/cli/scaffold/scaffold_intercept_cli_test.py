@@ -170,6 +170,41 @@ class TestScaffoldInterceptCli:
     assert 'apply' not in step['options']
     assert 'save' not in step['options']
 
+  def test_saves_scaffold_yml_without_applied_scaffold(self, tmp_path):
+    app_dir = os.path.join(str(tmp_path), 'declare-only-app')
+    os.makedirs(app_dir)
+    scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')
+    services_path = os.path.join(app_dir, DATA_DIR_NAME, SERVICES_NAMESPACE)
+    assert not os.path.exists(services_path)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 0, result.output
+    assert os.path.exists(scaffold_path)
+    assert not os.path.exists(services_path)
+
+    with open(scaffold_path) as fp:
+      data = yaml.safe_load(fp)
+
+    assert data['commands'][0]['resource'] == 'intercept'
+    assert data['commands'][0]['action'] == 'enable'
+
+  def test_apply_requires_applied_scaffold(self, tmp_path):
+    app_dir = os.path.join(str(tmp_path), 'declare-only-app')
+    os.makedirs(app_dir)
+
+    result = CliRunner().invoke(intercept, [
+      'enable',
+      '--apply',
+      '--workflow', 'mock',
+      '--app-dir-path', app_dir,
+    ])
+    assert result.exit_code == 1
+    assert 'No scaffold found' in result.output
+
   def test_apply_updates_init_without_scaffold_yml(self, app_dir):
     init_path = _create_build_init(app_dir, 'mock')
     scaffold_path = os.path.join(app_dir, DATA_DIR_NAME, 'scaffold.yml')

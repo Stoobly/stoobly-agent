@@ -550,8 +550,7 @@ def apply_config(
     try:
       command = resolve_command(scaffold_group, str(resource), str(action))
       # Validated steps must support --apply; force it on replay so creates mutate
-      # and recorded steps do not re-save. Drop legacy save if present in older configs.
-      options.pop('save', None)
+      # and recorded steps do not re-save.
       options['apply'] = True
       option_argv, positionals = options_to_argv(command, options)
     except ApplyConfigError as e:

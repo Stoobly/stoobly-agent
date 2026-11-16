@@ -1,4 +1,5 @@
 import click
+import os
 import sys
 
 from stoobly_agent.app.cli.scaffold.app import App
@@ -28,10 +29,9 @@ def _validate_app(app: App):
 
 
 def _apply_setting_command(subgroup: str, kwargs: dict):
-  app = App(kwargs.get('app_dir_path'))
-  _validate_app(app)
-
   if kwargs.get('apply'):
+    app = App(kwargs.get('app_dir_path'))
+    _validate_app(app)
     workflows = resolve_workflows(app.app_data_dir.path, kwargs.get('workflow'))
     if not workflows:
       click.echo("Error: No build workflow init scripts found", err=True)
@@ -45,6 +45,9 @@ def _apply_setting_command(subgroup: str, kwargs: dict):
       click.echo(f"Updated {init_path}")
     return
 
+  # Pin to app_dir/cwd so declare-only writes land in that scaffold.yml even
+  # before app create --apply has created services/.config.yml.
+  app = App(kwargs.get('app_dir_path') or os.getcwd(), skip_find_app_dir=True)
   scaffold_path = save_scaffold_command(
     app.app_data_dir.scaffold_file_path,
     'setting',
