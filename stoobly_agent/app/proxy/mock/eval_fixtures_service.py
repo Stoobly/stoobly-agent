@@ -5,7 +5,7 @@ import re
 import yaml
 
 from io import BytesIO
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 if TYPE_CHECKING:
     from requests import Response
@@ -14,11 +14,28 @@ if TYPE_CHECKING:
 from stoobly_agent.lib.logger import bcolors, Logger
 from stoobly_agent.config.constants.custom_headers import MOCK_FIXTURE_PATH
 
-from .types import MockOptions
+from .types import MockOptions, ScenarioKeyOption, ScenarioNameOption
 from ..utils.origin_path import parse_public_directory_paths, parse_response_fixtures_paths, request_origin_from_request, origin_matches
 from ..utils.response_handler import cors_headers
 
 LOG_ID = 'Fixture'
+
+def __lazy_optional_str(
+  value: Union[ScenarioKeyOption, ScenarioNameOption]
+) -> Callable[[], Optional[str]]:
+  """Wrap a str or getter so resolution runs at most once per eval_fixtures call."""
+  if callable(value):
+    cache = {'done': False, 'value': None}
+
+    def get_value() -> Optional[str]:
+      if not cache['done']:
+        cache['value'] = value()
+        cache['done'] = True
+      return cache['value']
+
+    return get_value
+
+  return lambda: value
 
 def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union['Response', None]:
   # Lazy import for runtime
@@ -39,14 +56,17 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
     # Try response fixtures in order of preference
     fixture = None
 
-    scenario_key = options.get('scenario_key')
+    scenario_key = __lazy_optional_str(options.get('scenario_key'))
+    scenario_name = __lazy_optional_str(options.get('scenario_name'))
 
     if response_fixtures:
-      fixture = __find_fixture_for_request(request, response_fixtures, request.method, scenario_key)
+      fixture = __find_fixture_for_request(
+        request, response_fixtures, request.method, scenario_key, scenario_name
+      )
 
     if options.get('response_fixtures_path'):
       fixture = __eval_response_fixtures_from_paths(
-        request, options['response_fixtures_path'], scenario_key
+        request, options['response_fixtures_path'], scenario_key, scenario_name
       )
     
     if not fixture:
@@ -142,7 +162,10 @@ def eval_fixtures(request: 'MitmproxyRequest', **options: MockOptions) -> Union[
     return response
 
 def __eval_response_fixtures_from_paths(
-  request: 'MitmproxyRequest', fixtures_paths: str, scenario_key: Optional[str] = None
+  request: 'MitmproxyRequest',
+  fixtures_paths: str,
+  scenario_key: Optional[Callable[[], Optional[str]]] = None,
+  scenario_name: Optional[Callable[[], Optional[str]]] = None,
 ):
   """Iterate through response fixtures paths and return the first matching fixture."""
   if not fixtures_paths:
@@ -177,7 +200,9 @@ def __eval_response_fixtures_from_paths(
         fixtures = yaml.safe_load(stream) or {}
         
         # Try to find a matching fixture in this file
-        fixture = __find_fixture_for_request(request, fixtures, method, scenario_key)
+        fixture = __find_fixture_for_request(
+          request, fixtures, method, scenario_key, scenario_name
+        )
         if fixture:
           # Convert fixture path to absolute path if it's a relative path and if 'path' exists in the fixture
           if fixture.get('path') and not os.path.isabs(fixture['path']):
@@ -222,24 +247,27 @@ def __find_fixture_for_request(
   request: 'MitmproxyRequest',
   fixtures: dict,
   method: str,
-  scenario_key: Optional[str] = None,
+  scenario_key: Optional[Callable[[], Optional[str]]] = None,
+  scenario_name: Optional[Callable[[], Optional[str]]] = None,
 ):
   """Find a fixture for the given request in the provided fixtures."""
   if not fixtures:
     return None
   
-  return __find_fixture_in_routes(fixtures, method, request.path, scenario_key)
+  return __find_fixture_in_routes(
+    fixtures, method, request.path, scenario_key, scenario_name
+  )
 
 def __scenario_keys_match(fixture: dict, scenario_key: Optional[str]) -> bool:
-  """Return True when the fixture applies to the active scenario.
+  """Return True when fixture scenario_keys matches the active scenario key.
 
-  - Missing / empty scenario_keys → matches any scenario (global fixture).
+  - Missing / empty scenario_keys → no key constraint (caller handles combined logic).
   - Non-empty scenario_keys → matches only when scenario_key equals an entry,
     or equals the parsed scenario id of an entry that is a full scenario key.
   """
   scenario_keys = fixture.get('scenario_keys')
   if not scenario_keys:
-    return True
+    return False
 
   if not isinstance(scenario_keys, list):
     return False
@@ -275,16 +303,71 @@ def __scenario_keys_match(fixture: dict, scenario_key: Optional[str]) -> bool:
 
   return False
 
+def __scenario_names_match(fixture: dict, scenario_name: Optional[str]) -> bool:
+  """Return True when fixture scenario_names matches the active scenario name.
+
+  - Missing / empty scenario_names → no name constraint (caller handles combined logic).
+  - Non-empty scenario_names → matches only when scenario_name equals a string entry.
+  """
+  scenario_names = fixture.get('scenario_names')
+  if not scenario_names:
+    return False
+
+  if not isinstance(scenario_names, list):
+    return False
+
+  if not scenario_name:
+    return False
+
+  for name in scenario_names:
+    if isinstance(name, str) and name == scenario_name:
+      return True
+
+  return False
+
+def __scenario_matches(
+  fixture: dict,
+  scenario_key: Optional[Callable[[], Optional[str]]] = None,
+  scenario_name: Optional[Callable[[], Optional[str]]] = None,
+) -> bool:
+  """Return True when the fixture applies to the active scenario.
+
+  - Neither scenario_keys nor scenario_names set → global fixture (matches any).
+  - Only one set → that constraint must match.
+  - Both set → either key/UUID or name match is enough (OR).
+
+  scenario_key / scenario_name are zero-arg getters resolved only when the
+  corresponding fixture field is present (and earlier OR branches did not match).
+  """
+  has_keys = bool(fixture.get('scenario_keys'))
+  has_names = bool(fixture.get('scenario_names'))
+
+  if not has_keys and not has_names:
+    return True
+
+  if has_keys:
+    resolved_key = scenario_key() if scenario_key else None
+    if __scenario_keys_match(fixture, resolved_key):
+      return True
+
+  if has_names:
+    resolved_name = scenario_name() if scenario_name else None
+    if __scenario_names_match(fixture, resolved_name):
+      return True
+
+  return False
+
 def __find_fixture_in_routes(
   fixtures: dict,
   method: str,
   request_path: str,
-  scenario_key: Optional[str] = None,
+  scenario_key: Optional[Callable[[], Optional[str]]] = None,
+  scenario_name: Optional[Callable[[], Optional[str]]] = None,
 ):
   """Find a fixture for the given method and path in the provided fixtures.
 
-  Each path maps to a single fixture dict. Optional scenario_keys on that
-  dict limits the fixture to matching scenarios.
+  Each path maps to a single fixture dict. Optional scenario_keys / scenario_names
+  on that dict limits the fixture to matching scenarios.
   """
   routes = fixtures.get(method)
   
@@ -299,7 +382,7 @@ def __find_fixture_in_routes(
     if not isinstance(fixture, dict):
       continue
 
-    if not __scenario_keys_match(fixture, scenario_key):
+    if not __scenario_matches(fixture, scenario_key, scenario_name):
       continue
 
     path = fixture.get('path')
