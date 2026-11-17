@@ -74,7 +74,7 @@ All commands that support context service defaults accept `--context-dir-path`:
 | `scaffold workflow create` | Specify the service(s) to create the workflow for. |
 | `scaffold workflow copy` | Specify service(s) to add the workflow to. |
 | `scaffold workflow down` | Select which services to tear down. Defaults to all. |
-| `scaffold workflow logs` | Select which services to log. Defaults to all. |
+| `scaffold workflow tail` | Select which services to log. Defaults to all. |
 | `scaffold workflow up` | Select which services to run. Defaults to all. |
 | `scaffold workflow mkcert` | Select specific services. Defaults to all. |
 | `scaffold workflow rewrite` | Select specific services. Defaults to all. |

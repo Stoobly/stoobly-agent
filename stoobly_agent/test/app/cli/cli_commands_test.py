@@ -70,7 +70,7 @@ class TestCliSubcommandsLoad:
         ['scaffold', 'workflow', 'create'],
         ['scaffold', 'workflow', 'down'],
         ['scaffold', 'workflow', 'filter'],
-        ['scaffold', 'workflow', 'logs'],
+        ['scaffold', 'workflow', 'tail'],
         ['scaffold', 'workflow', 'mkcert'],
         ['scaffold', 'workflow', 'rewrite'],
         ['scaffold', 'workflow', 'show'],

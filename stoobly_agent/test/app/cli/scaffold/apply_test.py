@@ -377,7 +377,7 @@ class TestScaffoldApply:
     self._write_yaml(config_path, {
       'version': 1,
       'commands': [
-        {'resource': 'request', 'action': 'logs', 'options': {}},
+        {'resource': 'request', 'action': 'log', 'options': {}},
       ],
     })
 

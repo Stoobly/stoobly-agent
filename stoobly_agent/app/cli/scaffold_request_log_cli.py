@@ -23,18 +23,18 @@ def request(ctx):
 
 
 @click.group(
-  epilog="Run 'stoobly-agent scaffold request logs COMMAND --help' for more information on a command.",
+  epilog="Run 'stoobly-agent scaffold request log COMMAND --help' for more information on a command.",
   help="Manage intercepted requests logs for workflows"
 )
 @click.pass_context
 def request_log(ctx):
     pass
 
-@request_log.command(name="path", help="Get intercepted requests log path")
+@request_log.command(name="describe", help="Describe intercepted requests log")
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
 @click.option('--namespace', help='Workflow namespace to get logs for.')
 @click.argument('workflow_name')
-def request_log_path(**kwargs):
+def request_log_describe(**kwargs):
     app = App(kwargs['app_dir_path'])
     _validate_app(app)
     workflow_namespace = WorkflowNamespace(app, kwargs.get('namespace') or kwargs.get('workflow_name'), mkdir=False)
@@ -83,4 +83,4 @@ def request_log_truncate(**kwargs):
         workflow_namespace=workflow_namespace,
     )
 
-request.add_command(request_log, name="logs")
+request.add_command(request_log, name="log")

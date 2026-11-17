@@ -157,7 +157,7 @@ command:
       - name: sort_order
     - name: without-headers
       description: Disable printing column headers.
-  - name: logs
+  - name: log
     description: Manage intercepted requests logs
     commands:
     - name: truncate
@@ -240,8 +240,8 @@ command:
         - name: url
       - name: without-headers
         description: Disable printing column headers.
-    - name: path
-      description: Get intercepted requests log path
+    - name: describe
+      description: Describe intercepted requests log
       options:
       - name: context-dir-path
         description: Path to Stoobly data directory.

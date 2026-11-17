@@ -15,7 +15,7 @@
 # Overridable Options
 #
 # workflow_down_extra_options e.g. $(eval workflow_down_extra_options=<OPTIONS>)
-# workflow_log_extra_options e.g. $(eval workflow_log_extra_options=<OPTIONS>)
+# workflow_tail_extra_options e.g. $(eval workflow_tail_extra_options=<OPTIONS>)
 # workflow_up_extra_options e.g. $(eval workflow_up_extra_options=<OPTIONS>)
 # 
 # For full list, see targets with EXEC_OPTIONS
@@ -51,7 +51,7 @@ certs_dir_options=--ca-certs-dir-path $(ca_certs_dir) --certs-dir-path $(certs_d
 working_dir_options=--app-dir-path $(app_dir) --context-dir-path $(context_dir)
 
 workflow_down_options=$(working_dir_options) --user-id $(USER_ID) $(workflow_down_extra_options)
-workflow_log_options=$(workflow_log_extra_options)
+workflow_tail_options=$(workflow_tail_extra_options)
 workflow_run_options=--namespace $(workflow_namespace) --script-path $(workflow_script) $(workflow_service_options)
 workflow_request_log_options=--app-dir-path /home/stoobly --namespace $(workflow_namespace)
 workflow_up_options=$(working_dir_options) $(certs_dir_options) --user-id $(USER_ID) $(workflow_up_extra_options)
@@ -108,17 +108,15 @@ intercept/enable:
 	$(stoobly_exec)
 develop: workflow/develop workflow/up nameservers workflow/hostname/install workflow/up/run
 develop/down: workflow/develop workflow/down workflow/down/run workflow/hostname/uninstall
-develop/logs: workflow/develop workflow/logs workflow/logs/run
-develop/request/logs/delete: workflow/develop workflow/request/logs/delete
-develop/request/logs/path: workflow/develop workflow/request/logs/path
-develop/request/logs: workflow/develop workflow/request/logs
+develop/tail: workflow/develop workflow/tail workflow/tail/run
+develop/request/log/delete: workflow/develop workflow/request/log/delete
+develop/request/log: workflow/develop workflow/request/log
 develop/services: workflow/develop workflow/services
 mock: workflow/mock workflow/up nameservers workflow/hostname/install workflow/up/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
-mock/logs: workflow/mock workflow/logs workflow/logs/run
-mock/request/logs/delete: workflow/mock workflow/request/logs/delete
-mock/request/logs/path: workflow/mock workflow/request/logs/path
-mock/request/logs: workflow/mock workflow/request/logs
+mock/tail: workflow/mock workflow/tail workflow/tail/run
+mock/request/log/delete: workflow/mock workflow/request/log/delete
+mock/request/log: workflow/mock workflow/request/log
 mock/services: workflow/mock workflow/services
 pipx/install:
 	@if ! command -v pipx >/dev/null 2>&1; then \
@@ -132,10 +130,9 @@ python/validate:
 	fi
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
 record/down: workflow/record workflow/down workflow/down/run workflow/hostname/uninstall
-record/logs: workflow/record workflow/logs workflow/logs/run
-record/request/logs/delete: workflow/record workflow/request/logs/delete
-record/request/logs/path: workflow/record workflow/request/logs/path
-record/request/logs: workflow/record workflow/request/logs
+record/tail: workflow/record workflow/tail workflow/tail/run
+record/request/log/delete: workflow/record workflow/request/log/delete
+record/request/log: workflow/record workflow/request/log
 record/services: workflow/record workflow/services
 scenario/create:
 # Create a scenario
@@ -168,10 +165,9 @@ stoobly/install: python/validate pipx/install
 	fi
 test: workflow/test workflow/up workflow/up/run
 test/down: workflow/test workflow/down workflow/down/run
-test/logs: workflow/test workflow/logs workflow/logs/run
-test/request/logs/delete: workflow/test workflow/request/logs/delete
-test/request/logs/path: workflow/test workflow/request/logs/path
-test/request/logs: workflow/test workflow/request/logs
+test/tail: workflow/test workflow/tail workflow/tail/run
+test/request/log/delete: workflow/test workflow/request/log/delete
+test/request/log: workflow/test workflow/request/log
 test/services: workflow/test workflow/services
 tmpdir:
 	@mkdir -p $(app_tmp_dir)
@@ -190,10 +186,10 @@ workflow/hostname: stoobly/install
 	stoobly-agent scaffold hostname $(action) --validate --app-dir-path $(app_dir) --workflow $(workflow) $(workflow_service_options);
 workflow/hostname/install: action/install workflow/hostname
 workflow/hostname/uninstall: action/uninstall workflow/hostname  
-workflow/logs:
-	@export EXEC_COMMAND=scaffold/.logs EXEC_OPTIONS="$(workflow_log_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
+workflow/tail:
+	@export EXEC_COMMAND=scaffold/.tail EXEC_OPTIONS="$(workflow_tail_options) $(workflow_run_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
-workflow/logs/run:
+workflow/tail/run:
 	@cd "$(app_dir)" && bash "$(workflow_script)"
 workflow/develop:
 	$(eval workflow=develop)
@@ -203,15 +199,10 @@ workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
-workflow/request/logs/delete:
+workflow/request/log/delete:
 	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
-workflow/request/logs/path:
-	@_ctx=$(context_dir) && \
-	_ctx_escaped=$$(printf '%s' "$$_ctx" | sed 's/[&|\\]/\\&/g') && \
-	export EXEC_COMMAND=request/log/.path EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec) | sed "s|/home/stoobly|$$_ctx_escaped|g"
-workflow/request/logs:
+workflow/request/log:
 	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
 workflow/services:
