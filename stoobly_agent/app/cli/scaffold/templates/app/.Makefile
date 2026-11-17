@@ -109,13 +109,11 @@ intercept/enable:
 develop: workflow/develop workflow/up nameservers workflow/hostname/install workflow/up/run
 develop/down: workflow/develop workflow/down workflow/down/run workflow/hostname/uninstall
 develop/tail: workflow/develop workflow/tail workflow/tail/run
-develop/request/log/delete: workflow/develop workflow/request/log/delete
 develop/request/log: workflow/develop workflow/request/log
 develop/services: workflow/develop workflow/services
 mock: workflow/mock workflow/up nameservers workflow/hostname/install workflow/up/run
 mock/down: workflow/mock workflow/down workflow/down/run workflow/hostname/uninstall
 mock/tail: workflow/mock workflow/tail workflow/tail/run
-mock/request/log/delete: workflow/mock workflow/request/log/delete
 mock/request/log: workflow/mock workflow/request/log
 mock/services: workflow/mock workflow/services
 pipx/install:
@@ -131,7 +129,6 @@ python/validate:
 record: workflow/record ca-cert/install workflow/up nameservers workflow/hostname/install workflow/up/run
 record/down: workflow/record workflow/down workflow/down/run workflow/hostname/uninstall
 record/tail: workflow/record workflow/tail workflow/tail/run
-record/request/log/delete: workflow/record workflow/request/log/delete
 record/request/log: workflow/record workflow/request/log
 record/services: workflow/record workflow/services
 scenario/create:
@@ -166,7 +163,6 @@ stoobly/install: python/validate pipx/install
 test: workflow/test workflow/up workflow/up/run
 test/down: workflow/test workflow/down workflow/down/run
 test/tail: workflow/test workflow/tail workflow/tail/run
-test/request/log/delete: workflow/test workflow/request/log/delete
 test/request/log: workflow/test workflow/request/log
 test/services: workflow/test workflow/services
 tmpdir:
@@ -199,9 +195,6 @@ workflow/namespace: tmpdir
 	@mkdir -p $(workflow_namespace_dir)
 workflow/record:
 	$(eval workflow=record)
-workflow/request/log/delete:
-	@export EXEC_COMMAND=request/log/.delete EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
-	$(stoobly_exec)
 workflow/request/log:
 	@export EXEC_COMMAND=request/log/.list EXEC_OPTIONS="$(workflow_request_log_options) $(options)" EXEC_ARGS="$(workflow)" && \
 	$(stoobly_exec)
