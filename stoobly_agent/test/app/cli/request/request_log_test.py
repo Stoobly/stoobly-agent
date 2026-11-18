@@ -52,12 +52,16 @@ class TestRequestLogCliParams:
                 follow=False,
             )
 
-    def test_log_truncate_calls_truncate(self, runner):
-        """request log truncate calls truncate for non-scaffold use."""
+    def test_log_truncate_calls_truncate(self, runner, tmp_path):
+        """request log truncate calls truncate for non-scaffold use when a log exists."""
+        log_file_path = SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=str(tmp_path))
+        os.makedirs(os.path.dirname(log_file_path))
+        open(log_file_path, 'w').close()
+
         with patch.object(SimpleInterceptedRequestsLogger, 'truncate') as mock_truncate:
-            result = runner.invoke(request, ['logs', 'truncate'])
+            result = runner.invoke(request, ['logs', 'truncate', '--context-dir-path', str(tmp_path)])
             assert result.exit_code == 0
-            mock_truncate.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+            mock_truncate.assert_called_once_with(data_dir_path=str(tmp_path))
 
     def test_log_path_calls_get_log_file_path(self, runner):
         """request log path calls get_log_file_path for non-scaffold use."""
@@ -65,6 +69,46 @@ class TestRequestLogCliParams:
             result = runner.invoke(request, ['logs', 'path'])
             assert result.exit_code == 0
             mock_get.assert_called_once_with(data_dir_path=DataDir.instance().context_dir_path)
+
+
+class TestRequestLogTruncateContextDir:
+    """request logs truncate must not create files in a context dir that has no log."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    @classmethod
+    def settings(cls):
+        return reset()
+
+    @pytest.fixture(autouse=True)
+    def reset_logger_state(self):
+        InterceptedRequestsLogger._file_path = None
+        InterceptedRequestsLogger._active_file_path = None
+        yield
+        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger._active_file_path = None
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_truncate_creates_nothing_when_log_is_missing(self, runner, tmp_path):
+        context_dir_path = str(tmp_path)
+
+        result = runner.invoke(request, ['logs', 'truncate', '--context-dir-path', context_dir_path])
+
+        assert result.exit_code == 0
+        assert os.listdir(context_dir_path) == []
+
+    def test_truncate_clears_existing_log(self, runner, tmp_path):
+        log_dir_path = tmp_path / '.stoobly' / 'tmp' / 'logs'
+        log_dir_path.mkdir(parents=True)
+        log_file_path = log_dir_path / 'requests.json'
+        log_file_path.write_text('{"message": "entry"}\n')
+
+        result = runner.invoke(request, ['logs', 'truncate', '--context-dir-path', str(tmp_path)])
+
+        assert result.exit_code == 0
+        assert log_file_path.read_text() == ''
 
 
 def find_log_entry(output: str, message: str, method: str = None) -> Optional[dict]:
