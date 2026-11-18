@@ -1,3 +1,4 @@
+import os
 import sys
 
 import click
@@ -349,6 +350,11 @@ def log_list(**kwargs):
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 def log_truncate(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
+
+  # truncate creates the log file when it is missing, so skip it to avoid creating .stoobly/ for nothing
+  if not os.path.exists(SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=context_dir_path)):
+    return
+
   SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
 
 request.add_command(response)
