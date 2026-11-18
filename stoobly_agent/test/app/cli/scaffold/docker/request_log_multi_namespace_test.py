@@ -156,11 +156,11 @@ def poll_for_any_log_entry(
     max_retries: int = 30,
     interval: float = 0.25,
 ) -> str:
-    """Poll scaffold request logs list until ≥1 entry appears. Returns full output or '' on timeout."""
+    """Poll scaffold request log list until ≥1 entry appears. Returns full output or '' on timeout."""
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
-            'request', 'logs', 'list', workflow_name,
+            'request', 'log', 'list', workflow_name,
             '--app-dir-path', app_dir_path,
             '--namespace', namespace,
         ])
@@ -379,7 +379,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
             assert alpha_service_name, "service_name should be set on log entries in Docker reverse proxy mode"
 
             result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
+                'request', 'log', 'list', WORKFLOW_MOCK_TYPE,
                 '--app-dir-path', app_dir_path,
                 '--namespace', 'svc-filter-a',
                 '--service-name', alpha_service_name,
@@ -532,7 +532,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
 
         def test_ns_b_logs_survive_ns_a_teardown(self, runner, app_dir_path_a, app_dir_path_b):
             pre_result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
+                'request', 'log', 'list', WORKFLOW_MOCK_TYPE,
                 '--app-dir-path', app_dir_path_b,
                 '--namespace', 'teardown-b',
             ])
@@ -544,7 +544,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
             time.sleep(2)
 
             result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
+                'request', 'log', 'list', WORKFLOW_MOCK_TYPE,
                 '--app-dir-path', app_dir_path_b,
                 '--namespace', 'teardown-b',
             ])
@@ -561,7 +561,7 @@ class TestDockerMultiNamespaceRequestLogE2e:
         def test_ns_a_log_file_readable_after_teardown(self, runner, app_dir_path_a):
             # NS A was torn down in the previous test; the log file must survive workflow down
             result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', WORKFLOW_MOCK_TYPE,
+                'request', 'log', 'list', WORKFLOW_MOCK_TYPE,
                 '--app-dir-path', app_dir_path_a,
                 '--namespace', 'teardown-a',
             ])

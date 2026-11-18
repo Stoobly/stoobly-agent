@@ -11,7 +11,7 @@ from stoobly_agent.test.test_helper import reset
 
 
 class TestScaffoldRequestLogCli:
-    """Command-level tests for `scaffold request logs ...` that build a REAL scaffold
+    """Command-level tests for `scaffold request log ...` that build a REAL scaffold
     app first (via `scaffold app create`), so the invocations match how the command is
     actually run rather than hand-crafted paths."""
 
@@ -42,12 +42,12 @@ class TestScaffoldRequestLogCli:
         return os.path.join(app_dir, DATA_DIR_NAME, DATA_DIR_NAME)
 
     def test_realistic_request_logs_list_does_not_nest(self, scaffold_app):
-        """Realistic flow: with a real scaffold app, invoke request logs the way the
+        """Realistic flow: with a real scaffold app, invoke request log the way the
         Makefile does -- `--app-dir-path <app>` (the parent). Asserts the command works
         and produces no nested `<app>/.stoobly/.stoobly`."""
         runner = CliRunner()
 
-        result = runner.invoke(request, ['logs', 'list', 'mock', '--app-dir-path', scaffold_app])
+        result = runner.invoke(request, ['log', 'list', 'mock', '--app-dir-path', scaffold_app])
 
         assert result.exit_code == 0, result.output
         assert not os.path.exists(self._nested_data_dir(scaffold_app)), (
@@ -57,7 +57,7 @@ class TestScaffoldRequestLogCli:
     def test_list_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
         """Running `logs list` for a workflow that doesn't exist must not create the tmp dir."""
         runner = CliRunner()
-        result = runner.invoke(request, ['logs', 'list', 'mock123', '--app-dir-path', scaffold_app])
+        result = runner.invoke(request, ['log', 'list', 'mock123', '--app-dir-path', scaffold_app])
 
         assert result.exit_code == 0, result.output
         tmp_workflow_dir = os.path.join(scaffold_app, DATA_DIR_NAME, 'tmp', 'mock123')
@@ -65,36 +65,36 @@ class TestScaffoldRequestLogCli:
             f"`logs list` created unexpected directory: {tmp_workflow_dir}"
         )
 
-    def test_path_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
-        """Running `logs path` for a workflow that doesn't exist must not create the tmp dir."""
+    def test_describe_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
+        """Running `log describe` for a workflow that doesn't exist must not create the tmp dir."""
         runner = CliRunner()
-        result = runner.invoke(request, ['logs', 'path', 'mock123', '--app-dir-path', scaffold_app])
+        result = runner.invoke(request, ['log', 'describe', 'mock123', '--app-dir-path', scaffold_app])
 
         assert result.exit_code == 0, result.output
         tmp_workflow_dir = os.path.join(scaffold_app, DATA_DIR_NAME, 'tmp', 'mock123')
         assert not os.path.exists(tmp_workflow_dir), (
-            f"`logs path` created unexpected directory: {tmp_workflow_dir}"
+            f"`log describe` created unexpected directory: {tmp_workflow_dir}"
         )
 
-    def test_workflow_logs_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
-        """Running `workflow logs` for a workflow that was never started must not create the tmp dir."""
+    def test_workflow_tail_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
+        """Running `workflow tail` for a workflow that was never started must not create the tmp dir."""
         runner = CliRunner()
-        result = runner.invoke(scaffold, ['workflow', 'logs', 'asdf123', '--app-dir-path', scaffold_app])
+        result = runner.invoke(scaffold, ['workflow', 'tail', 'asdf123', '--app-dir-path', scaffold_app])
 
         assert result.exit_code == 1, result.output
         assert 'not running' in result.output, result.output
         tmp_workflow_dir = os.path.join(scaffold_app, DATA_DIR_NAME, 'tmp', 'asdf123')
         assert not os.path.exists(tmp_workflow_dir), (
-            f"`workflow logs` created unexpected directory: {tmp_workflow_dir}"
+            f"`workflow tail` created unexpected directory: {tmp_workflow_dir}"
         )
 
-    def test_workflow_logs_dry_run_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
-        """Running `workflow logs --dry-run` for a nonexistent workflow must not create the tmp dir."""
+    def test_workflow_tail_dry_run_nonexistent_workflow_does_not_create_tmp_folder(self, scaffold_app):
+        """Running `workflow tail --dry-run` for a nonexistent workflow must not create the tmp dir."""
         runner = CliRunner()
-        result = runner.invoke(scaffold, ['workflow', 'logs', 'asdf123', '--dry-run', '--app-dir-path', scaffold_app])
+        result = runner.invoke(scaffold, ['workflow', 'tail', 'asdf123', '--dry-run', '--app-dir-path', scaffold_app])
 
         assert result.exit_code == 0, result.output
         tmp_workflow_dir = os.path.join(scaffold_app, DATA_DIR_NAME, 'tmp', 'asdf123')
         assert not os.path.exists(tmp_workflow_dir), (
-            f"`workflow logs --dry-run` created unexpected directory: {tmp_workflow_dir}"
+            f"`workflow tail --dry-run` created unexpected directory: {tmp_workflow_dir}"
         )

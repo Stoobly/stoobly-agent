@@ -713,7 +713,7 @@ def down(**kwargs):
 @click.option('--script-path', help='Path to intermediate script path.')
 @click.option('--service', multiple=True, help='Select which services to log. Defaults to all.')
 @click.argument('workflow_name')
-def logs(**kwargs):
+def tail(**kwargs):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
 
   __with_namespace_defaults(kwargs)
@@ -882,7 +882,7 @@ def up(**kwargs):
       if options_str:
         options_str = f" {options_str}"
 
-      Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow logs{options_str} {kwargs['workflow_name']}`")
+      Logger.instance(LOG_ID).info(f"To view logs, run `stoobly-agent scaffold workflow tail{options_str} {kwargs['workflow_name']}`")
     
     # Execute the workflow
     command_args = { 'print_service_header': lambda service_name: __print_header(f"service {service_name}") }

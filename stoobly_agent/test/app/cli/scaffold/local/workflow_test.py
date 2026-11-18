@@ -152,9 +152,9 @@ class TestLocalScaffoldE2e():
       assert external_service_name in services, f"External service {external_service_name} should exist"
       assert local_service_name in services, f"Local service {local_service_name} should exist"
 
-    def test_workflow_logs(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
-      """Test workflow logs command for local execution"""
-      LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+    def test_workflow_tail(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+      """Test workflow tail command for local execution"""
+      LocalScaffoldCliInvoker.cli_workflow_tail(runner, app_dir_path, target_workflow_name)
 
     def test_intercept_mode_record(self, settings: Settings):
       # Check stoobly-agent intercept show output starts with Mock
@@ -285,9 +285,9 @@ class TestLocalScaffoldE2e():
       assert res.status_code == 200
       assert res.text == contents
 
-    def test_workflow_logs(self, runner, app_dir_path, target_workflow_name):
-      """Test workflow logs command for local execution"""
-      LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+    def test_workflow_tail(self, runner, app_dir_path, target_workflow_name):
+      """Test workflow tail command for local execution"""
+      LocalScaffoldCliInvoker.cli_workflow_tail(runner, app_dir_path, target_workflow_name)
 
     def test_lifecycle_hooks(self, app_dir_path: str, local_service_name: str, proxy_url: str, target_workflow_name: str):
       """Write a lifecycle hooks file, send a request, and assert response mutated by hooks."""
@@ -431,9 +431,9 @@ class TestLocalScaffoldE2e():
       assert res.status_code == 200
       assert res.headers.get('X-After-Develop-Header') == 'after-develop-value'
 
-    def test_workflow_logs(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+    def test_workflow_tail(self, runner: CliRunner, app_dir_path: str, target_workflow_name: str):
       """Workflow logs command should succeed"""
-      LocalScaffoldCliInvoker.cli_workflow_logs(runner, app_dir_path, target_workflow_name)
+      LocalScaffoldCliInvoker.cli_workflow_tail(runner, app_dir_path, target_workflow_name)
 
     def test_access_file_exists(self, app_dir_path: str, target_workflow_name: str):
       """Access count should be >= 1 after workflow up"""
