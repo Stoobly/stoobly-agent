@@ -54,7 +54,7 @@ class TestShouldSkipDatabaseMigration:
     assert should_skip_database_migration(['request', 'list']) is False
 
   def test_skips_request_logs_subcommands(self):
-    assert should_skip_database_migration(['request', 'logs']) is True
-    assert should_skip_database_migration(['request', 'logs', 'list']) is True
-    assert should_skip_database_migration(['request', 'logs', 'path']) is True
-    assert should_skip_database_migration(['request', 'logs', 'truncate']) is True
+    assert should_skip_database_migration(['request', 'log']) is True
+    assert should_skip_database_migration(['request', 'log', 'list']) is True
+    assert should_skip_database_migration(['request', 'log', 'describe']) is True
+    assert should_skip_database_migration(['request', 'log', 'truncate']) is True

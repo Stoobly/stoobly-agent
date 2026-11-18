@@ -2,7 +2,7 @@
 
 extra_options=$EXEC_OPTIONS
 
-stoobly-agent scaffold workflow logs \
+stoobly-agent scaffold workflow tail \
   --containerized \
   --log-level warning \
   $extra_options "$1" > /dev/null

@@ -106,7 +106,7 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
     """Poll until the reverse proxy is actively recording."""
     container_name = f'{workflow_name}-{service_name}.proxy-1'
     runner.invoke(scaffold, [
-        'request', 'logs', 'truncate', workflow_name,
+        'request', 'log', 'truncate', workflow_name,
         '--app-dir-path', app_dir_path
     ])
     _enable_intercept_in_container(container_name)
@@ -127,7 +127,7 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
             pass
         time.sleep(interval)
         result = runner.invoke(scaffold, [
-            'request', 'logs', 'list', workflow_name,
+            'request', 'log', 'list', workflow_name,
             '--app-dir-path', app_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
@@ -137,14 +137,14 @@ def wait_for_reverse_proxy_record_active(hostname: str, runner, workflow_name: s
 
 
 def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries=120, interval=0.25):
-    """Poll scaffold request logs list until a matching entry appears.
+    """Poll scaffold request log list until a matching entry appears.
 
     Default wait is ~30s so async record uploads (executor + log queue) can finish in CI.
     """
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
-            'request', 'logs', 'list', workflow_name,
+            'request', 'log', 'list', workflow_name,
             '--app-dir-path', app_dir_path
         ])
         if result.exit_code == 0 and result.output.strip():
@@ -157,7 +157,7 @@ def poll_for_log_entry(runner, workflow_name, app_dir_path, message, max_retries
 def wait_for_develop_active_reverse(hostname: str, runner, workflow_name: str, app_dir_path: str, service_name: str, timeout: float = 60.0, interval: float = 0.5, reenable_interval: float = 10.0) -> bool:
     """Poll until the reverse proxy is actively developing (writing request log entries)."""
     container_name = f'{workflow_name}-{service_name}.proxy-1'
-    runner.invoke(scaffold, ['request', 'logs', 'truncate', workflow_name, '--app-dir-path', app_dir_path])
+    runner.invoke(scaffold, ['request', 'log', 'truncate', workflow_name, '--app-dir-path', app_dir_path])
     _enable_intercept_in_container(container_name)
     last_enable = time.time()
     deadline = time.time() + timeout
@@ -170,7 +170,7 @@ def wait_for_develop_active_reverse(hostname: str, runner, workflow_name: str, a
         except Exception:
             pass
         time.sleep(interval)
-        result = runner.invoke(scaffold, ['request', 'logs', 'list', workflow_name, '--app-dir-path', app_dir_path])
+        result = runner.invoke(scaffold, ['request', 'log', 'list', workflow_name, '--app-dir-path', app_dir_path])
         if result.exit_code == 0 and result.output.strip():
             if find_log_entry(result.output, 'Develop success') or find_log_entry(result.output, 'Develop failure'):
                 return True
@@ -190,14 +190,14 @@ def poll_until_log_count_stable(
     for _ in range(max_retries):
         time.sleep(interval)
         result = runner.invoke(scaffold, [
-            'request', 'logs', 'list', workflow_name,
+            'request', 'log', 'list', workflow_name,
             '--app-dir-path', app_dir_path,
         ])
         if result.exit_code != 0:
             consecutive_errors += 1
             if consecutive_errors >= 5:
                 raise RuntimeError(
-                    f"'scaffold request logs list' failed {consecutive_errors} times in a row; "
+                    f"'scaffold request log list' failed {consecutive_errors} times in a row; "
                     f"last output: {result.output!r}"
                 )
             continue
@@ -306,13 +306,13 @@ class TestDockerRequestLogE2e():
             assert entry is not None, "Expected log entries before truncate"
 
             truncate_result = runner.invoke(scaffold, [
-                'request', 'logs', 'truncate', target_workflow_name,
+                'request', 'log', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', target_workflow_name,
+                'request', 'log', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
@@ -321,7 +321,7 @@ class TestDockerRequestLogE2e():
         def test_high_traffic_no_dropped_entries(self, runner, app_dir_path, hostname, target_workflow_name):
             """Verify the async logger captures all entries under concurrent load — no dropped writes."""
             truncate_result = runner.invoke(scaffold, [
-                'request', 'logs', 'truncate', target_workflow_name,
+                'request', 'log', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path,
             ])
             assert truncate_result.exit_code == 0, f"Failed to truncate logs before test: {truncate_result.output}"
@@ -435,7 +435,7 @@ class TestDockerRecordRequestLogE2e():
 
         def test_record_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy record workflow and verify a Record success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'log', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
 
             res = requests.get(
                 'http://localhost:80/',
@@ -462,13 +462,13 @@ class TestDockerRecordRequestLogE2e():
             assert entry is not None, "Expected log entries before truncate"
 
             truncate_result = runner.invoke(scaffold, [
-                'request', 'logs', 'truncate', target_workflow_name,
+                'request', 'log', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', target_workflow_name,
+                'request', 'log', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0
@@ -547,7 +547,7 @@ class TestDockerDevelopRequestLogE2e():
 
         def test_develop_success_logged(self, runner, app_dir_path, hostname, target_workflow_name):
             """Make a request through the reverse proxy develop workflow and verify a Develop success log entry appears."""
-            runner.invoke(scaffold, ['request', 'logs', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
+            runner.invoke(scaffold, ['request', 'log', 'truncate', target_workflow_name, '--app-dir-path', app_dir_path])
 
             requests.get(
                 'http://localhost:80/',
@@ -574,13 +574,13 @@ class TestDockerDevelopRequestLogE2e():
             assert entry is not None, "Expected log entries before truncate"
 
             truncate_result = runner.invoke(scaffold, [
-                'request', 'logs', 'truncate', target_workflow_name,
+                'request', 'log', 'truncate', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert truncate_result.exit_code == 0
 
             list_result = runner.invoke(scaffold, [
-                'request', 'logs', 'list', target_workflow_name,
+                'request', 'log', 'list', target_workflow_name,
                 '--app-dir-path', app_dir_path
             ])
             assert list_result.exit_code == 0

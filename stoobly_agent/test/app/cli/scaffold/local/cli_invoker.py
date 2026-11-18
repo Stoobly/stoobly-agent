@@ -140,8 +140,8 @@ class LocalScaffoldCliInvoker():
     return result
 
   @staticmethod
-  def cli_workflow_logs(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
-    command = ['workflow', 'logs',
+  def cli_workflow_tail(runner: CliRunner, app_dir_path: str, target_workflow_name: str):
+    command = ['workflow', 'tail',
       '--app-dir-path', app_dir_path,
       target_workflow_name,
     ]
@@ -149,7 +149,7 @@ class LocalScaffoldCliInvoker():
 
     if result.exit_code != 0:
       _append_error_to_tmp_log([
-        f"cli_workflow_logs failed with exit code {result.exit_code}",
+        f"cli_workflow_tail failed with exit code {result.exit_code}",
         f"Output: {result.output}",
         f"Exception: {result.exception}",
       ])

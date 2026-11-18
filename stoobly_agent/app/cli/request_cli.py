@@ -316,16 +316,16 @@ if is_local:
     response_update_handler(kwargs)
 
 @click.group(
-  epilog="Run 'stoobly-agent request logs COMMAND --help' for more information on a command.",
+  epilog="Run 'stoobly-agent request log COMMAND --help' for more information on a command.",
   help="Manage intercepted requests logs"
 )
 @click.pass_context
 def log(ctx):
     pass
 
-@log.command(name="path", help="Get intercepted requests log path")
+@log.command(name="describe", help="Describe intercepted requests log")
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
-def log_path(**kwargs):
+def log_describe(**kwargs):
   context_dir_path = kwargs.get('context_dir_path') or DataDir.instance().context_dir_path
   SimpleInterceptedRequestsLogger.get_log_file_path(data_dir_path=context_dir_path)
 
@@ -352,4 +352,4 @@ def log_truncate(**kwargs):
   SimpleInterceptedRequestsLogger.truncate(data_dir_path=context_dir_path)
 
 request.add_command(response)
-request.add_command(log, name='logs')
+request.add_command(log, name='log')

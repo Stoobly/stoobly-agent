@@ -517,7 +517,7 @@ command:
               arguments:
                 - name: uid
 
-        - name: logs
+        - name: tail
           description: Show or follow logs from workflow service(s)
           arguments:
             - name: workflow_name
@@ -790,11 +790,11 @@ command:
     - name: request
       description: Manage scaffold request logs
       commands:
-        - name: logs
+        - name: log
           description: Manage intercepted requests logs for workflows
           commands:
-            - name: path
-              description: Get intercepted requests log path
+            - name: describe
+              description: Describe intercepted requests log
               arguments:
                 - name: workflow_name
                   required: true
