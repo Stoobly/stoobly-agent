@@ -34,6 +34,14 @@ class TestRequestLogCliParams:
     def settings(cls):
         return reset()
 
+    @pytest.fixture(autouse=True)
+    def reset_logger_state(self):
+        InterceptedRequestsLogger._file_path = None
+        InterceptedRequestsLogger._active_file_path = None
+        yield
+        InterceptedRequestsLogger.shutdown()
+        InterceptedRequestsLogger._active_file_path = None
+
     @pytest.fixture
     def runner(self):
         return CliRunner()
@@ -55,7 +63,7 @@ class TestRequestLogCliParams:
     def test_log_truncate_calls_truncate(self, runner, tmp_path):
         """request log truncate calls truncate for non-scaffold use when a log exists."""
         log_file_path = SimpleInterceptedRequestsLogger._get_file_path(data_dir_path=str(tmp_path))
-        os.makedirs(os.path.dirname(log_file_path))
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
         open(log_file_path, 'w').close()
 
         with patch.object(SimpleInterceptedRequestsLogger, 'truncate') as mock_truncate:
