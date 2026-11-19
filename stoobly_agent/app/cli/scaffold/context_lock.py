@@ -89,11 +89,12 @@ class ContextLock:
 
   def access_file_path(self):
     """Get the path to the access file."""
-    return os.path.join(self._app.context_data_dir.tmp_dir_path, f".{self._filename_hash}.access")
+    # Access/lock files live under APP_DIR tmp (keyed by CONTEXT_DIR hash).
+    return os.path.join(self._app.app_data_dir.tmp_dir_path, f".{self._filename_hash}.access")
 
   def lock_file_path(self):
     """Get the path to the lock file."""
-    return os.path.join(self._app.context_data_dir.tmp_dir_path, f".{self._filename_hash}.lock")
+    return os.path.join(self._app.app_data_dir.tmp_dir_path, f".{self._filename_hash}.lock")
 
   def release(self):
     """Release the lock file and decrement the count.

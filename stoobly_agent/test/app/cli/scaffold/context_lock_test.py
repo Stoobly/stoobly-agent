@@ -177,12 +177,12 @@ class TestContextLock():
   class TestFilePaths():
     def test_access_file_path(self, context_lock, filename_hash, app):
       """Test that access_file_path returns correct path with hash"""
-      expected_path = os.path.join(app.context_data_dir.tmp_dir_path, f".{filename_hash}.access")
+      expected_path = os.path.join(app.app_data_dir.tmp_dir_path, f".{filename_hash}.access")
       assert context_lock.access_file_path() == expected_path
 
     def test_lock_file_path(self, context_lock, filename_hash, app):
       """Test that lock_file_path returns correct path with hash"""
-      expected_path = os.path.join(app.context_data_dir.tmp_dir_path, f".{filename_hash}.lock")
+      expected_path = os.path.join(app.app_data_dir.tmp_dir_path, f".{filename_hash}.lock")
       assert context_lock.lock_file_path() == expected_path
 
   class TestAccessAndRelease():

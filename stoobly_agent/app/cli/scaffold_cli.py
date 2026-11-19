@@ -1513,7 +1513,7 @@ def __is_docker_workflow_running(namespace: str) -> bool:
 def __find_running_workflows(app: App, app_config: AppConfig):
   """Scan for running workflows and return their info."""
   found_workflows = []
-  tmp_dir_path = app.context_data_dir.tmp_dir_path
+  tmp_dir_path = app.app_data_dir.tmp_dir_path
 
   if not os.path.exists(tmp_dir_path):
     return found_workflows

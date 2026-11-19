@@ -20,7 +20,7 @@ All paths below use `DataDir` resolved from the `App` constructor path. For non-
 |-----------|-----------------|
 | **Context lock** (`context_lock.py`) | `.{md5(CONTEXT_DIR)}.access` and `.{md5(CONTEXT_DIR)}.lock` — keyed by **host context directory**, not by namespace |
 | **Workflow namespace** (`workflow_namespace.py`) | `APP_DIR/.stoobly/tmp/{namespace}/` — `.env`, `run.sh`, `nameservers`, `traefik.yml`, `.timestamp`, `.pid`, logs |
-| **Active workflow scan** (`docker/local` `workflow/run_command.py`) | Scans subdirectories of `app.data_dir.tmp_dir_path` for `.timestamp` files to detect conflicting runs |
+| **Active workflow scan** (`docker/local` `workflow/run_command.py`) | Scans subdirectories of `app.app_data_dir.tmp_dir_path` for `.timestamp` files to detect conflicting runs |
 
 The Makefile template aligns with this: `app_tmp_dir=$(app_data_dir)/tmp` where `app_data_dir` is under `app_dir`.
 
@@ -131,7 +131,7 @@ So parallel runs with different namespaces do **not** conflict on `.access` beca
 
 ### Does binding `APP_DIR/.stoobly/tmp` introduce new `.access` conflicts?
 
-**No.** The host always wrote `.access` under `APP_DIR/.stoobly/tmp` (via `app.data_dir.tmp_dir_path`). Adding an explicit bind mount only aligns the container’s `/home/stoobly/.stoobly/tmp` with that directory. It does not change how many processes write, which hashes are used, or lock behavior.
+**No.** The host always wrote `.access` under `APP_DIR/.stoobly/tmp` (via `app.app_data_dir.tmp_dir_path`). Adding an explicit bind mount only aligns the container’s `/home/stoobly/.stoobly/tmp` with that directory. It does not change how many processes write, which hashes are used, or lock behavior.
 
 When `CONTEXT_DIR ≠ APP_DIR`, the **old** mount (`CONTEXT_DIR/.stoobly` only) could expose a **different** `tmp` tree in the container than the one the host updated; that mismatch did not create host-side `.access` races, but it meant the container filesystem was not the source of truth for host-written tmp state. The APP_DIR `tmp` mount fixes alignment; it does not add cross-process contention on `.access`.
 
@@ -139,7 +139,7 @@ When `CONTEXT_DIR ≠ APP_DIR`, the **old** mount (`CONTEXT_DIR/.stoobly` only) 
 
 | Topic | Takeaway |
 |-------|----------|
-| **Where host writes `tmp`** | `APP_DIR/.stoobly/tmp` (via `app.data_dir.tmp_dir_path`) |
+| **Where host writes `tmp`** | `APP_DIR/.stoobly/tmp` (via `app.app_data_dir.tmp_dir_path`) |
 | **Mount alignment** | Bind `APP_DIR/.stoobly/tmp` into the container’s `.stoobly/tmp` when CONTEXT_DIR can differ from APP_DIR |
 | **Parallel runs** | Use distinct `--namespace` values; access files remain per-CONTEXT_DIR via hash |
 | **`.access` file** | Host-only; keyed by CONTEXT_DIR hash; `FileLock` on `.lock`; no new conflicts from the APP_DIR `tmp` mount |
