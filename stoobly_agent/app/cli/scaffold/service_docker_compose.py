@@ -10,5 +10,5 @@ class ServiceDockerCompose():
     self.init_container_name = f"{namespace}-{service_name}.init-1"
 
     app = App(app_dir_path)
-    self.docker_compose_path = f"{app.data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/docker-compose.yml"
-    self.init_script_path = f"{app.data_dir_path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/init"
+    self.docker_compose_path = f"{app.app_data_dir.path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/docker-compose.yml"
+    self.init_script_path = f"{app.app_data_dir.path}/{SERVICES_NAMESPACE}/{service_name}/{workflow_name}/init"

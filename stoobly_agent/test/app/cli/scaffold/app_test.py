@@ -110,6 +110,37 @@ class TestApp:
             app.app_dir_path = non_existent
             assert app.app_dir_path == non_existent
 
+        def test_context_uses_datadir_not_app_path(self, tmp_app_dir, tmp_context_dir, tmp_path):
+            """App path must not become context; context comes from DataDir / context_dir_path."""
+            context_stoobly = os.path.join(tmp_context_dir, DATA_DIR_NAME)
+            os.makedirs(context_stoobly, exist_ok=True)
+
+            prev = os.getcwd()
+            try:
+                os.chdir(tmp_context_dir)
+                DataDir.handle_chdir()
+
+                # From a nested context cwd, app_dir alone must not hijack context.
+                app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+                assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+                assert app.context_dir_path == os.path.abspath(tmp_context_dir)
+                assert app.data_dir_path == os.path.join(app.context_dir_path, DATA_DIR_NAME)
+                assert app.app_data_dir.path == os.path.join(app.app_dir_path, DATA_DIR_NAME)
+
+                # Explicit context_dir_path still wins over cwd.
+                other_context = os.path.join(tmp_path, 'other-context')
+                os.makedirs(os.path.join(other_context, DATA_DIR_NAME), exist_ok=True)
+                app_explicit = App(
+                    tmp_app_dir,
+                    app_dir_path=tmp_app_dir,
+                    context_dir_path=other_context,
+                )
+                assert app_explicit.context_dir_path == os.path.abspath(other_context)
+                assert app_explicit.app_dir_path == os.path.abspath(tmp_app_dir)
+            finally:
+                os.chdir(prev)
+                DataDir.handle_chdir()
+
     class TestProperties:
         """Test App property getters and setters"""
 
@@ -145,10 +176,10 @@ class TestApp:
             assert app.data_dir_path == expected
 
         def test_scaffold_namespace_path(self, tmp_app_dir):
-            """Test scaffold_namespace_path combines data_dir_path and namespace"""
+            """Test scaffold_namespace_path combines app_data_dir and namespace"""
             app = App(tmp_app_dir)
             
-            expected = os.path.join(app.data_dir_path, SERVICES_NAMESPACE)
+            expected = os.path.join(app.app_data_dir.path, SERVICES_NAMESPACE)
             assert app.scaffold_namespace_path == expected
 
         def test_network_is_md5_of_context_dir(self, tmp_app_dir):

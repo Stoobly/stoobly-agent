@@ -872,10 +872,13 @@ class TestScaffoldDescribeAppDirPathAlone:
   def _run_describe_from(self, runner: CliRunner, cwd: pathlib.Path, args: list):
     prev = os.getcwd()
     os.chdir(str(cwd))
+    # invalidate cwd-based DataDir cache after chdir (reset() leaves a stale None entry)
+    DataDir.handle_chdir()
     try:
       return runner.invoke(scaffold, ['describe', *args])
     finally:
       os.chdir(prev)
+      DataDir.handle_chdir()
 
   def test_app_dir_path_alone_resolves_local_context(self, runner: CliRunner, layout):
     app_dir_path, context_dir_path = layout

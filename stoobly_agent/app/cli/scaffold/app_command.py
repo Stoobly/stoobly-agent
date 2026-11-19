@@ -50,7 +50,8 @@ class AppCommand(Command):
 
   @property
   def data_dir_path(self):
-    return self.app.data_dir_path
+    # Service scaffold files live under the app data dir, not the context data dir.
+    return self.app.app_data_dir.path
 
   @property
   def plugins_root_dir(self):
