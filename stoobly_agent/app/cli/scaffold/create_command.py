@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import yaml
+from ruamel.yaml import YAML
 
 from stoobly_agent import COMMAND
 from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
@@ -213,6 +214,24 @@ def scaffold_command_identity(step: dict) -> Optional[Tuple]:
   return None
 
 
+def _replace_map_in_place(target: dict, source: dict) -> None:
+  """Make target equal source, leaving unchanged keys alone.
+
+  Mutating the loaded map instead of swapping in a new dict keeps the comments,
+  key order and flow style attached to the parts that did not change.
+  """
+  for key in [k for k in target if k not in source]:
+    del target[key]
+
+  for key, value in source.items():
+    if key in target and target[key] == value:
+      continue
+    if isinstance(target.get(key), dict) and isinstance(value, dict):
+      _replace_map_in_place(target[key], value)
+    else:
+      target[key] = value
+
+
 def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
   identity = scaffold_command_identity(step)
   if identity is not None:
@@ -221,17 +240,29 @@ def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
       if scaffold_command_identity(existing) == identity
     ]
     if match_indexes:
-      commands[match_indexes[0]] = step
+      _replace_map_in_place(commands[match_indexes[0]], step)
       for i in reversed(match_indexes[1:]):
         del commands[i]
       return
   commands.append(step)
 
 
+def _round_trip_yaml() -> YAML:
+  """YAML round-tripper that keeps comments, blank lines and flow style.
+
+  PyYAML drops comments on load, so scaffold.yml edits must go through ruamel.
+  """
+  round_trip = YAML()
+  round_trip.preserve_quotes = True
+  round_trip.width = 4096 # Never wrap long patterns
+  round_trip.indent(mapping=2, sequence=2, offset=0)
+  return round_trip
+
+
 def _load_scaffold_data(path: str) -> Dict[str, Any]:
   if os.path.exists(path):
     with open(path, 'r') as fp:
-      data = yaml.safe_load(fp)
+      data = _round_trip_yaml().load(fp)
 
     if not isinstance(data, dict):
       data = {}
@@ -258,7 +289,7 @@ def _load_scaffold_data(path: str) -> Dict[str, Any]:
 
 def _write_scaffold_data(path: str, data: Dict[str, Any]) -> str:
   with open(path, 'w') as fp:
-    yaml.safe_dump(data, fp, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    _round_trip_yaml().dump(data, fp)
   return path
 
 
@@ -325,7 +356,7 @@ def update_scaffold_create_command(path: str, resource: str, kwargs: dict) -> st
       'action': 'create',
       'options': merged,
     }
-    commands[i] = step
+    _replace_map_in_place(existing, step)
     return _write_scaffold_data(path, data)
 
   create_kwargs = dict(kwargs)

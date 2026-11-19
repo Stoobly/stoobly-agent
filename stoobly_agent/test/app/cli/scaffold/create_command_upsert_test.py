@@ -395,3 +395,120 @@ class TestRemoveScaffoldCreateCommand:
     remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
 
     assert not os.path.exists(path)
+
+
+HAND_WRITTEN_SCAFFOLD = """\
+# Hand-maintained scaffold
+version: 1
+plugin: [playwright]
+
+commands:
+- resource: app  # the app
+  action: create
+  options:
+    app_name: app
+
+# backend service
+- resource: service
+  action: create
+  options:
+    service_name: api
+    hostname: api.example.com
+    workflow: [mock, test]  # keep flow style
+"""
+
+
+def _write_hand_written_scaffold(tmp_path) -> str:
+  path = os.path.join(str(tmp_path), 'scaffold.yml')
+  with open(path, 'w') as fp:
+    fp.write(HAND_WRITTEN_SCAFFOLD)
+  return path
+
+
+def _read_text(path: str) -> str:
+  with open(path) as fp:
+    return fp.read()
+
+
+class TestScaffoldYmlFormattingPreserved:
+  def test_append_only_adds_the_new_step(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+
+    save_scaffold_command(path, 'setting', 'filter set', {
+      'pattern': 'http://localhost:3000/api/rest/dog/.*',
+      'method': ['GET'],
+      'action': 'include',
+      'mode': ['mock'],
+    })
+
+    text = _read_text(path)
+    assert text.startswith(HAND_WRITTEN_SCAFFOLD)
+
+    data = yaml.safe_load(text)
+    assert len(data['commands']) == 3
+    assert data['commands'][2]['action'] == 'filter set'
+
+  def test_upsert_keeps_comments_on_other_steps(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+
+    save_scaffold_command(path, 'service', 'create', {
+      'service_name': 'api',
+      'hostname': 'api.updated.com',
+    })
+
+    text = _read_text(path)
+    assert '# Hand-maintained scaffold' in text
+    assert 'plugin: [playwright]' in text
+    assert '- resource: app  # the app' in text
+    assert '# backend service' in text
+
+    data = yaml.safe_load(text)
+    assert len(data['commands']) == 2
+    assert data['commands'][1]['options']['hostname'] == 'api.updated.com'
+
+  def test_update_keeps_comments_and_flow_style(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+
+    update_scaffold_create_command(path, 'service', {
+      'service_name': 'api',
+      'port': 8443,
+    })
+
+    text = _read_text(path)
+    assert '# Hand-maintained scaffold' in text
+    assert 'plugin: [playwright]' in text
+    assert '- resource: app  # the app' in text
+    assert '\n\n# backend service\n' in text
+    assert 'workflow: [mock, test]  # keep flow style' in text
+
+    data = yaml.safe_load(text)
+    assert data['commands'][1]['options']['port'] == 8443
+    assert data['commands'][1]['options']['hostname'] == 'api.example.com'
+
+  def test_remove_keeps_comments_on_other_steps(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+
+    remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    text = _read_text(path)
+    assert '# Hand-maintained scaffold' in text
+    assert 'plugin: [playwright]' in text
+    assert '- resource: app  # the app' in text
+
+    data = yaml.safe_load(text)
+    assert len(data['commands']) == 1
+    assert data['commands'][0]['resource'] == 'app'
+
+  def test_long_pattern_is_not_wrapped(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+    pattern = 'http://localhost:3000/api/' + ' '.join(['segment'] * 15) + '/.*'
+
+    save_scaffold_command(path, 'setting', 'filter set', {
+      'pattern': pattern,
+      'method': ['GET'],
+      'action': 'include',
+    })
+
+    text = _read_text(path)
+    assert f'pattern: {pattern}\n' in text
+    assert yaml.safe_load(text)['commands'][2]['options']['pattern'] == pattern
