@@ -105,7 +105,7 @@ class App():
 
   @property
   def ca_certs_dir_path(self):
-    return os.path.abspath(self.__ca_certs_dir_path or self.__context_data_dir.ca_certs_dir_path)
+    return os.path.abspath(self.__ca_certs_dir_path or self.__app_data_dir.ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
@@ -114,7 +114,7 @@ class App():
 
   @property
   def certs_dir_path(self):
-    return os.path.abspath(self.__certs_dir_path or self.__context_data_dir.certs_dir_path)
+    return os.path.abspath(self.__certs_dir_path or self.__app_data_dir.certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):

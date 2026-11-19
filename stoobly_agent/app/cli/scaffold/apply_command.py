@@ -210,7 +210,7 @@ def validate_command_step(step: Dict[str, Any], index: int, opencli_commands: Di
 
   if not _command_has_apply_option(action_spec):
     raise ApplyConfigError(
-      f"{prefix}: Command '{resource} {action}' does not support --apply and cannot be used with scaffold apply"
+      f"{prefix}: Command '{resource} {action}' cannot be used with scaffold apply"
     )
 
   allowed: Dict[str, Tuple[Dict[str, Any], bool, bool]] = {}

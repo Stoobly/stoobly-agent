@@ -141,6 +141,21 @@ class TestApp:
                 os.chdir(prev)
                 DataDir.handle_chdir()
 
+        def test_certs_default_to_app_not_context(self, tmp_app_dir, tmp_context_dir):
+            """ca_certs and certs default under APP_DIR, not CONTEXT_DIR."""
+            os.makedirs(os.path.join(tmp_context_dir, DATA_DIR_NAME), exist_ok=True)
+
+            app = App(
+                tmp_app_dir,
+                app_dir_path=tmp_app_dir,
+                context_dir_path=tmp_context_dir,
+            )
+
+            assert app.ca_certs_dir_path == os.path.join(app.app_data_dir.path, 'ca_certs')
+            assert app.certs_dir_path == os.path.join(app.app_data_dir.path, 'certs')
+            assert not app.ca_certs_dir_path.startswith(app.context_data_dir_path)
+            assert not app.certs_dir_path.startswith(app.context_data_dir_path)
+
     class TestProperties:
         """Test App property getters and setters"""
 

@@ -4,7 +4,7 @@
 
 Config file consumed by [`scaffold apply`](scaffold-apply.md). It declares an ordered list of scaffold CLI commands. Each step maps 1:1 to `stoobly-agent scaffold <resource> <action> …`.
 
-Supported formats: **YAML** (default; often named `scaffold.yml`) and **JSON**. When `PATH` is omitted, apply reads `.stoobly/scaffold.yml` in the current context (`DataDir.scaffold_file_path`).
+Supported formats: **YAML** (default; often named `scaffold.yml`) and **JSON**. When `PATH` is omitted, apply reads the scaffold app’s `.stoobly/scaffold.yml` (`AppDataDir.scaffold_file_path`), falling back to the nearest context when no app exists yet.
 
 ## Schema (version 1)
 
@@ -25,7 +25,7 @@ Missing or unsupported `version`, missing `commands`, or an empty `commands` lis
 | `action` | yes | Subcommand under that group (`create`, `up`, `copy`, …). For nested groups, use a space-separated path to the leaf (for example `rewrite set` under `setting`). |
 | `options` | no | Mapping of options and positionals. Defaults to `{}`. |
 
-`resource` + `action` are validated against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml). Unknown resource/action, an action that is itself a group (not a leaf command), a command that does not support `--apply`, unknown option keys, invalid `acceptedValues`, or missing required options/arguments is an error. Steps are then invoked via the matching Click command. Only commands that expose `--apply` may appear in an apply config.
+`resource` + `action` are validated against [`scaffold.opencli.yaml`](../../stoobly_agent/app/cli/scaffold.opencli.yaml). Unknown resource/action, an action that is itself a group (not a leaf command), a command that cannot be used with scaffold apply, unknown option keys, invalid `acceptedValues`, or missing required options/arguments is an error. Steps are then invoked via the matching Click command. Only commands that expose `--apply` may appear in an apply config.
 
 A default config can be created with `stoobly-agent scaffold create`, which writes `.stoobly/scaffold.yml` in the current working directory only when it does not already exist.
 
@@ -156,7 +156,7 @@ All of the following are checked **before** any step is invoked. Failures exit 1
 | Step missing `resource` or `action` | Exit 1 |
 | Unknown resource or action (per OpenCLI) | Exit 1 (`Unknown resource` / `Unknown action`) |
 | Action is a group, not a leaf command | Exit 1 (`… is a group, not a command`) |
-| Command does not support `--apply` | Exit 1 (`does not support --apply and cannot be used with scaffold apply`) |
+| Command cannot be used with scaffold apply | Exit 1 (`cannot be used with scaffold apply`) |
 | Unknown option key (per OpenCLI) | Exit 1 (`Unknown options for command: …`) |
 | Option value not in `acceptedValues` | Exit 1 (`Accepted values: …`) |
 | Missing required option/argument | Exit 1 (`missing required option(s): …`) |

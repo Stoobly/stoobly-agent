@@ -60,6 +60,7 @@ from stoobly_agent.app.cli.scaffold.workflow_filter import (
   upsert_filter_rule,
   workflow_template_to_filter_mode,
 )
+from stoobly_agent.config.app_data_dir import AppDataDir
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
@@ -774,9 +775,9 @@ def tail(**kwargs):
   help="Start a scaffold workflow and bring up service(s)",
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
-@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
@@ -900,8 +901,8 @@ def up(**kwargs):
   help="Generate SSL certs for workflow service(s)"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
-@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
@@ -1076,7 +1077,9 @@ def scaffold_create():
   'path',
   type=click.Path(exists=True, file_okay=True, dir_okay=False),
   required=False,
-  default=lambda: DataDir.instance().scaffold_file_path,
+  # Prefer APP/.stoobly/scaffold.yml (where create/update write). AppDataDir falls
+  # back to the nearest context DataDir when no scaffold app has been created yet.
+  default=lambda: AppDataDir.instance().scaffold_file_path,
 )
 @click.pass_context
 def apply(ctx, path, format, dry_run):

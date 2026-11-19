@@ -16,7 +16,7 @@ stoobly-agent scaffold apply [PATH] [--format yaml|json] [--dry-run]
 
 | Argument / option | Description |
 |-------------------|-------------|
-| `PATH` | Path to the config file. Must exist and be a file. Defaults to `.stoobly/scaffold.yml` in the current context (`DataDir.scaffold_file_path`). |
+| `PATH` | Path to the config file. Must exist and be a file. Defaults to the scaffold app’s `.stoobly/scaffold.yml` (`AppDataDir.scaffold_file_path`), falling back to the nearest context when no app exists yet. |
 | `--format` | Config file format. Choices: `yaml`, `json`. Default: `yaml`. |
 | `--dry-run` | Validate and log each step as `would apply …` without invoking any commands. |
 
@@ -69,7 +69,7 @@ Config validation errors (missing/unsupported `version`, missing `commands`, unk
 | Area | Assertions |
 |------|------------|
 | Help | `scaffold apply --help` exits 0 and documents `PATH` |
-| Default path | Omitting `PATH` applies `DataDir.scaffold_file_path` (`.stoobly/scaffold.yml`) |
+| Default path | Omitting `PATH` applies `AppDataDir.scaffold_file_path` (app `.stoobly/scaffold.yml`, else nearest context) |
 | Happy path | Ordered `app create` then `service create`; services and scaffold namespace exist afterward |
 | Logging | `applying app create <name>` / `applying service create <name>`; option flags not present in output |
 | Dry-run | `--dry-run` logs `would apply …`, exits 0, and does not create scaffold artifacts |

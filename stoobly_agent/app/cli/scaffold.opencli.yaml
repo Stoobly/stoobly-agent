@@ -28,7 +28,7 @@ command:
       arguments:
         - name: path
           required: false
-          description: Path to the config file. Must exist and be a file. Defaults to .stoobly/scaffold.yml in the current context.
+          description: Path to the config file. Must exist and be a file. Defaults to the scaffold app .stoobly/scaffold.yml (falls back to nearest context when no app exists).
       options:
         - name: dry-run
           description: If set, runs validation and logs only.
@@ -408,7 +408,7 @@ command:
               arguments:
                 - name: path
             - name: ca-certs-dir-path
-              description: Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.
+              description: Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).
               arguments:
                 - name: path
             - name: ca-certs-install-confirm
@@ -417,7 +417,7 @@ command:
                 - name: confirm
                   acceptedValues: [y, Y, n, N]
             - name: certs-dir-path
-              description: Path to certs directory. Defaults to the certs dir of the context.
+              description: Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).
               arguments:
                 - name: path
             - name: containerized
@@ -569,11 +569,11 @@ command:
               arguments:
                 - name: path
             - name: ca-certs-dir-path
-              description: Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.
+              description: Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).
               arguments:
                 - name: path
             - name: certs-dir-path
-              description: Path to certs directory. Defaults to the certs dir of the context.
+              description: Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).
               arguments:
                 - name: path
             - name: containerized

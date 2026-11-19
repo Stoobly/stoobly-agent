@@ -78,7 +78,7 @@ All commands that support context service defaults accept `--context-dir-path`:
 | `scaffold workflow up` | Select which services to run. Defaults to all. |
 | `scaffold workflow mkcert` | Select specific services. Defaults to all. |
 | `scaffold workflow rewrite` | Select specific services. Defaults to all. |
-| `scaffold workflow filter` | Select specific services. Defaults to all. |
+| `scaffold workflow filter` | Select specific services. Defaults to all. Service URLs come from the **app**; filter rules are written to this **context**’s `settings.yml` (see [scaffold-workflow-filter.md](scaffold-workflow-filter.md)). |
 | `scaffold hostname install` | Select specific services. Defaults to all. |
 | `scaffold hostname uninstall` | Select specific services. Defaults to all. |
 

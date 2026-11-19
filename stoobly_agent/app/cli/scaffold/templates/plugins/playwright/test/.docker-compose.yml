@@ -18,3 +18,4 @@ services:
       - ${WORKFLOW_NAME}
     volumes:
       - ${CONTEXT_DIR}:/home/stoobly
+      - ${APP_DIR}/.stoobly/ca_certs:/home/stoobly/.stoobly/ca_certs
