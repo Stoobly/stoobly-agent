@@ -80,11 +80,15 @@ class App():
       self.__context_data_dir_path = context_data_dir.path
       self.__app_data_dir = app_data_dir
       self.__app_dir_path = app_data_dir.context_dir_path
+      # Non-containerized: host mirrors the resolved scaffold app, not the raw search
+      # path (e.g. a nested context cwd that AppDataDir walked up from).
+      self.__host_app_dir_path = self.__app_dir_path
+      self.__host_runtime_app_dir_path = self.__app_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path
       self.__context_dir_path = context_data_dir.context_dir_path
       self.__runtime_app_data_dir = self.__app_data_dir
-      self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
+      self.__runtime_app_dir_path = self.__app_dir_path
 
   @property
   def app_data_dir(self):

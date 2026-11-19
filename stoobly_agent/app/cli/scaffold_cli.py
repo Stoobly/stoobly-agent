@@ -124,7 +124,7 @@ def hostname(ctx):
   default=os.getcwd(),
   help='Docker host app directory (volume mount source). Kept distinct from container paths.',
 )
-@click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace for denormalize_configure.')
+@click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace.')
 @click.option(
   '--containerized',
   is_flag=True,
@@ -138,6 +138,8 @@ def debug(**kwargs):
   click.echo(f"containerized:             {app.containerized}")
   click.echo(f"app_dir_path (container):  {app.app_dir_path}")
   click.echo(f"host_app_dir_path (host):  {app.host_app_dir_path}")
+  click.echo(f"context_dir_path:          {app.context_dir_path}")
+  click.echo(f"host_context_dir_path:     {app.host_context_dir_path}")
   click.echo(f"runtime_app_dir_path:      {app.runtime_app_dir_path}")
   click.echo(f"host_runtime_app_dir_path: {app.host_runtime_app_dir_path}")
 

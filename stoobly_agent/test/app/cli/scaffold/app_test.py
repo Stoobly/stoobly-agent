@@ -264,19 +264,37 @@ class TestApp:
         """Test host_* properties that return kwarg values"""
 
         def test_host_app_dir_path_with_kwarg(self, tmp_app_dir, tmp_path):
-            """Test host_app_dir_path returns kwarg value when provided"""
-            custom_app_dir = os.path.join(tmp_path, 'custom-app')
-            os.makedirs(custom_app_dir, exist_ok=True)
-            
+            """Non-containerized host_app_dir_path mirrors the resolved app scaffold."""
+            custom_app_dir = _make_scaffold_app_dir(os.path.join(tmp_path, 'custom-app'))
+
             app = App(tmp_app_dir, app_dir_path=custom_app_dir)
-            
-            assert app.host_app_dir_path == os.path.abspath(custom_app_dir)
+
+            assert app.app_dir_path == os.path.abspath(custom_app_dir)
+            assert app.host_app_dir_path == app.app_dir_path
 
         def test_host_app_dir_path_without_kwarg(self, tmp_app_dir):
-            """Test host_app_dir_path falls back to app_dir_path"""
+            """Test host_app_dir_path equals app_dir_path when not containerized"""
             app = App(tmp_app_dir)
             
             assert app.host_app_dir_path == app.app_dir_path
+
+        def test_host_app_dir_path_matches_resolved_app_from_nested_context(self, tmp_app_dir, tmp_path):
+            """Search path under the app (nested context) must not stick as host_app_dir_path."""
+            nested_context = os.path.join(tmp_app_dir, 'apps', 'app-1')
+            os.makedirs(os.path.join(nested_context, DATA_DIR_NAME), exist_ok=True)
+
+            prev = os.getcwd()
+            try:
+                os.chdir(nested_context)
+                DataDir.handle_chdir()
+                app = App(nested_context, app_dir_path=nested_context)
+            finally:
+                os.chdir(prev)
+                DataDir.handle_chdir()
+
+            assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+            assert app.host_app_dir_path == app.app_dir_path
+            assert app.context_dir_path == os.path.abspath(nested_context)
 
         def test_host_ca_certs_dir_path_with_kwarg(self, tmp_app_dir, tmp_path):
             """Test host_ca_certs_dir_path returns kwarg value when provided"""
