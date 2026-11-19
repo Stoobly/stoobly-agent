@@ -140,10 +140,10 @@ class ScenarioFacade(ReplayFacade):
       **self.__common_replay_options(scenario_key),
     })
 
-  def delete(self, scenario_key: str):
+  def delete(self, scenario_key: str, **params):
     key = ScenarioKey(scenario_key)
 
-    return self.__model.destroy(key.id)
+    return self.__model.destroy(key.id, **params)
 
   def __common_replay_options(self, scenario_key: str):
     return {

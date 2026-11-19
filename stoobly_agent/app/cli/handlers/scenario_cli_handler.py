@@ -79,12 +79,13 @@ def delete_handler(kwargs):
     print(f"Error: Could not find scenario", file=sys.stderr)
     sys.exit(1)
 
-  res = scenario.delete(kwargs['scenario_key'])
+  force = kwargs.get('force', False)
+  res = scenario.delete(kwargs['scenario_key'], force=force)
   if not res:
     print('Error: Could not delete scenario', file=sys.stderr)
     sys.exit(1)
 
-  if not is_deleted:
+  if not is_deleted and not force:
     print('Scenario moved to trash!')
   else:
     print('Scenario deleted!')

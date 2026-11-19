@@ -121,6 +121,7 @@ def show(**kwargs):
 @scenario.command(
   help="Delete a scenario"
 )
+@click.option('--force', default=False, is_flag=True, help="Toggles whether the scenario is hard deleted.")
 @click.argument('scenario_key')
 def delete(**kwargs):
     delete_handler(kwargs)
