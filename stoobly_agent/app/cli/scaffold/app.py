@@ -45,8 +45,8 @@ class App():
       data_dir = DataDir.instance(operational_root)
 
       self.__dir_path = operational_root
-      self.__data_dir = data_dir
-      self.__data_dir_path = data_dir.path
+      self.__context_data_dir = data_dir
+      self.__context_data_dir_path = data_dir.path
       self.__app_data_dir = data_dir
       self.__app_dir_path = operational_root
       self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
@@ -58,9 +58,9 @@ class App():
       # Context: DataDir — --context-dir-path / CONTEXT_DIR, else cwd's .stoobly parent.
       # Never use the app path here; that incorrectly collapses context onto the scaffold app.
       if self.__host_context_dir_path:
-        data_dir = DataDir.instance(self.__host_context_dir_path)
+        context_data_dir = DataDir.instance(self.__host_context_dir_path)
       else:
-        data_dir = DataDir.instance()
+        context_data_dir = DataDir.instance()
 
       # App: AppDataDir — --app-dir-path / positional path, else search from cwd.
       app_search_root = self.__host_app_dir_path or path
@@ -76,13 +76,13 @@ class App():
         operational_root = self.__host_app_dir_path or app_data_dir.context_dir_path
 
       self.__dir_path = operational_root
-      self.__data_dir = data_dir
-      self.__data_dir_path = data_dir.path
+      self.__context_data_dir = context_data_dir
+      self.__context_data_dir_path = context_data_dir.path
       self.__app_data_dir = app_data_dir
       self.__app_dir_path = app_data_dir.context_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path
-      self.__context_dir_path = data_dir.context_dir_path
+      self.__context_dir_path = context_data_dir.context_dir_path
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
 
@@ -101,7 +101,7 @@ class App():
 
   @property
   def ca_certs_dir_path(self):
-    return os.path.abspath(self.__ca_certs_dir_path or self.__data_dir.ca_certs_dir_path)
+    return os.path.abspath(self.__ca_certs_dir_path or self.__context_data_dir.ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
@@ -110,7 +110,7 @@ class App():
 
   @property
   def certs_dir_path(self):
-    return os.path.abspath(self.__certs_dir_path or self.__data_dir.certs_dir_path)
+    return os.path.abspath(self.__certs_dir_path or self.__context_data_dir.certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):
@@ -122,21 +122,21 @@ class App():
     return self.__containerized
 
   @property
+  def context_data_dir(self):
+    return self.__context_data_dir
+
+  @property
+  def context_data_dir_path(self):
+    return self.__context_data_dir_path
+
+  @property
   def context_dir_path(self):
     return os.path.abspath(self.__context_dir_path)
 
   @context_dir_path.setter
   def context_dir_path(self, v: str):
     self.__validate_path(v)
-    self.__context_dir_path = v 
-
-  @property
-  def data_dir(self):
-    return self.__data_dir
-
-  @property
-  def data_dir_path(self):
-    return self.__data_dir_path
+    self.__context_dir_path = v
 
   @property
   def host_app_dir_path(self):

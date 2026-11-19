@@ -124,7 +124,7 @@ class TestApp:
                 app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
                 assert app.app_dir_path == os.path.abspath(tmp_app_dir)
                 assert app.context_dir_path == os.path.abspath(tmp_context_dir)
-                assert app.data_dir_path == os.path.join(app.context_dir_path, DATA_DIR_NAME)
+                assert app.context_data_dir_path == os.path.join(app.context_dir_path, DATA_DIR_NAME)
                 assert app.app_data_dir.path == os.path.join(app.app_dir_path, DATA_DIR_NAME)
 
                 # Explicit context_dir_path still wins over cwd.
@@ -168,12 +168,12 @@ class TestApp:
             
             assert os.path.isabs(app.context_dir_path)
 
-        def test_data_dir_path_combines_context_and_data_dir_name(self, tmp_app_dir):
-            """Test data_dir_path is context_dir_path + DATA_DIR_NAME"""
+        def test_context_data_dir_path_combines_context_and_data_dir_name(self, tmp_app_dir):
+            """Test context_data_dir_path is context_dir_path + DATA_DIR_NAME"""
             app = App(tmp_app_dir)
             
             expected = os.path.join(app.context_dir_path, DATA_DIR_NAME)
-            assert app.data_dir_path == expected
+            assert app.context_data_dir_path == expected
 
         def test_scaffold_namespace_path(self, tmp_app_dir):
             """Test scaffold_namespace_path combines app_data_dir and namespace"""
@@ -655,13 +655,13 @@ class TestApp:
             assert app.host_runtime_app_dir_path != app.runtime_app_dir_path
 
     class TestDataDir:
-        """Test data_dir related properties"""
+        """Test context_data_dir / app_data_dir related properties"""
 
-        def test_data_dir_returns_data_dir_instance(self, tmp_app_dir):
-            """Test data_dir returns DataDir instance"""
+        def test_context_data_dir_returns_data_dir_instance(self, tmp_app_dir):
+            """Test context_data_dir returns DataDir instance"""
             app = App(tmp_app_dir)
             
-            assert isinstance(app.data_dir, DataDir)
+            assert isinstance(app.context_data_dir, DataDir)
 
         def test_app_data_dir_returns_data_dir_instance(self, tmp_app_dir):
             """Test app_data_dir returns DataDir instance"""
@@ -669,9 +669,9 @@ class TestApp:
             
             assert isinstance(app.app_data_dir, DataDir)
 
-        def test_data_dir_path_property_returns_string(self, tmp_app_dir):
-            """Test data_dir_path property returns string path"""
+        def test_context_data_dir_path_property_returns_string(self, tmp_app_dir):
+            """Test context_data_dir_path property returns string path"""
             app = App(tmp_app_dir)
             
-            assert isinstance(app.data_dir_path, str)
-            assert DATA_DIR_NAME in app.data_dir_path
+            assert isinstance(app.context_data_dir_path, str)
+            assert DATA_DIR_NAME in app.context_data_dir_path

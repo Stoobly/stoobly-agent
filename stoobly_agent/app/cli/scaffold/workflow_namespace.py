@@ -15,7 +15,7 @@ class WorkflowNamespace():
     self._app = app
     self._namespace = namespace
     # Read-only lookups (mkdir=False) must not create the tmp dir as a side effect
-    tmp_dir_path = app.data_dir.tmp_dir_path if mkdir else os.path.join(app.data_dir.path, TMP_DIR_NAME)
+    tmp_dir_path = app.context_data_dir.tmp_dir_path if mkdir else os.path.join(app.context_data_dir.path, TMP_DIR_NAME)
     self._path = os.path.join(tmp_dir_path, namespace or '')
 
     if mkdir and not os.path.exists(self._path):
