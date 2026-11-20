@@ -17,7 +17,10 @@ from stoobly_agent.app.cli.scaffold.create_command import (
   save_scaffold_command,
   update_scaffold_create_command,
 )
-from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
+from stoobly_agent.app.cli.scaffold.cli_app import (
+  app_from_kwargs as __app_from_kwargs,
+  validate_app as __validate_app,
+)
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.config import Config
@@ -1449,18 +1452,6 @@ def __services_filter(app: App, services, workflow_name: str):
 
   settings.proxy.filter.set_filter_rules(project_id, filter_rules)
   settings.commit()
-
-def __app_from_kwargs(kwargs):
-  if kwargs.get('containerized'):
-    return ContainerizedApp(**kwargs)
-  return App(kwargs['app_dir_path'], **kwargs)
-
-def __validate_app(app: App):
-  try:
-    app.valid
-  except ValueError as e:
-    print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
 
 def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
