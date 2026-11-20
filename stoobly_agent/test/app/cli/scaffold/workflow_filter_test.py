@@ -1,6 +1,7 @@
 import os
 import pathlib
 import tempfile
+from urllib.parse import urlparse
 
 import pytest
 import yaml
@@ -134,6 +135,19 @@ def _filter_patterns(settings: dict) -> list:
   return patterns
 
 
+def _pattern_hostname(pattern):
+  if not pattern or not isinstance(pattern, str):
+    return None
+
+  parsed = urlparse(pattern)
+  if parsed.hostname:
+    return parsed.hostname
+
+  # Handle URL-like patterns without scheme, e.g. "api.example.com/path"
+  parsed = urlparse(f'//{pattern}')
+  return parsed.hostname
+
+
 def test_workflow_filter_writes_settings_to_context_dir_not_cwd():
   """With --context-dir-path != cwd, filter rules must land in that context's settings.yml."""
   reset()
@@ -184,12 +198,12 @@ def test_workflow_filter_writes_settings_to_context_dir_not_cwd():
       os.chdir(original_cwd)
 
     context_patterns = _filter_patterns(_read_settings(context_dir))
-    assert any('api.example.com' in (pattern or '') for pattern in context_patterns)
+    assert any(_pattern_hostname(pattern) == 'api.example.com' for pattern in context_patterns)
 
     app_settings_path = app_dir / DATA_DIR_NAME / 'settings.yml'
     if app_settings_path.exists():
       app_patterns = _filter_patterns(_read_settings(app_dir))
-      assert not any('api.example.com' in (pattern or '') for pattern in app_patterns)
+      assert not any(_pattern_hostname(pattern) == 'api.example.com' for pattern in app_patterns)
   finally:
     import shutil
     shutil.rmtree(temp_dir, ignore_errors=True)
