@@ -6,7 +6,10 @@ import shutil
 from stoobly_agent.app.cli.scaffold import app as app_module
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
+from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
@@ -647,8 +650,6 @@ class TestApp:
             AppDataDir walks parents for services/.config.yml; when the denormalized
             copy is missing that walk would incorrectly resolve to the source app.
             """
-            from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
-
             app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
             workflow_namespace = WorkflowNamespace(app, 'mock')
 
@@ -657,6 +658,24 @@ class TestApp:
             expected = os.path.join(workflow_namespace.path, DATA_DIR_NAME)
             assert app.runtime_app_data_dir.path == expected
             assert app.runtime_app_data_dir.path != app.app_data_dir.path
+
+        def test_denormalize_destination_ignores_stoobly_app_dir_env(self, tmp_app_dir, monkeypatch):
+            """STOOBLY_APP_DIR must not make source == destination for --copy-on-workflow-up."""
+            monkeypatch.setenv(env_vars.APP_DIR, tmp_app_dir)
+
+            app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+            workflow_namespace = WorkflowNamespace(app, 'mock')
+            service = DenormalizeService(workflow_namespace)
+
+            assert service.source_path == app.scaffold_namespace_path
+            assert service.destination_path == os.path.join(
+                workflow_namespace.path, DATA_DIR_NAME, SERVICES_NAMESPACE
+            )
+            assert service.source_path != service.destination_path
+
+            assert service.denormalize_up() is True
+            assert os.path.exists(service.destination_path)
+            assert app.is_denormalized(workflow_namespace)
 
         def test_denormalize_configure_keeps_host_runtime_on_docker_host(
             self, tmp_app_dir, tmp_path, monkeypatch
