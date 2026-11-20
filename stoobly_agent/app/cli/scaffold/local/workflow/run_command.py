@@ -337,9 +337,9 @@ class LocalWorkflowRunCommand(WorkflowRunCommand):
   def __iterate_active_workflows(self, **kwargs):
     handle_active: FunctionType = kwargs.get('handle_active')
     handle_stale: FunctionType = kwargs.get('handle_stale')
-    tmp_dir_path = self.app.data_dir.tmp_dir_path
+    tmp_dir_path = self.app.app_data_dir.tmp_dir_path
 
-    # For each folder in self.app.data_dir.tmp_dir_path
+    # For each folder in self.app.app_data_dir.tmp_dir_path
     for folder in os.listdir(tmp_dir_path):
       folder_path = os.path.join(tmp_dir_path, folder)
 

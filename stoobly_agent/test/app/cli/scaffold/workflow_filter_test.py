@@ -1,4 +1,11 @@
+import os
+import pathlib
+import tempfile
+from urllib.parse import urlparse
+
 import pytest
+import yaml
+from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scaffold.constants import (
   WORKFLOW_DEVELOP_TYPE,
@@ -12,8 +19,11 @@ from stoobly_agent.app.cli.scaffold.workflow_filter import (
   upsert_filter_rule,
   workflow_template_to_filter_mode,
 )
+from stoobly_agent.app.cli.scaffold_cli import scaffold
 from stoobly_agent.app.settings.constants import filter_action
 from stoobly_agent.config.constants import mode
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
+from stoobly_agent.test.test_helper import reset
 
 
 def build_workflow_filter_rules(
@@ -103,4 +113,98 @@ def test_build_workflow_filter_rules_upserts_on_pattern_and_methods():
   assert updated_rules[0].methods == HTTP_METHODS
   assert updated_rules[0].action == filter_action.INCLUDE
   assert updated_rules[0].modes == [mode.RECORD]
+
+
+def _read_settings(context_dir: pathlib.Path) -> dict:
+  settings_path = context_dir / DATA_DIR_NAME / 'settings.yml'
+  with open(settings_path, 'r') as fp:
+    return yaml.safe_load(fp)
+
+
+def _filter_patterns(settings: dict) -> list:
+  # proxy.filter is a map of project_id -> [rule dicts]
+  filter_section = ((settings or {}).get('proxy') or {}).get('filter') or {}
+  patterns = []
+  if not isinstance(filter_section, dict):
+    return patterns
+  for value in filter_section.values():
+    rules = value if isinstance(value, list) else [value]
+    for rule in rules:
+      if isinstance(rule, dict) and rule.get('pattern'):
+        patterns.append(rule['pattern'])
+  return patterns
+
+
+def _pattern_hostname(pattern):
+  if not pattern or not isinstance(pattern, str):
+    return None
+
+  parsed = urlparse(pattern)
+  if parsed.hostname:
+    return parsed.hostname
+
+  # Handle URL-like patterns without scheme, e.g. "api.example.com/path"
+  parsed = urlparse(f'//{pattern}')
+  return parsed.hostname
+
+
+def test_workflow_filter_writes_settings_to_context_dir_not_cwd():
+  """With --context-dir-path != cwd, filter rules must land in that context's settings.yml."""
+  reset()
+  runner = CliRunner()
+  temp_dir = tempfile.mkdtemp()
+  app_dir = pathlib.Path(temp_dir) / 'app'
+  context_dir = pathlib.Path(temp_dir) / 'e2e'
+  app_dir.mkdir()
+  context_dir.mkdir()
+  (app_dir / DATA_DIR_NAME).mkdir()
+  (app_dir / 'docker.sock').touch()
+
+  try:
+    result = runner.invoke(scaffold, [
+      'app', 'create',
+      '--apply',
+      '--docker-socket-path', str(app_dir / 'docker.sock'),
+      '--app-dir-path', str(app_dir),
+      '--context-dir-path', str(context_dir),
+      '--quiet',
+      'filter-context-app',
+    ])
+    assert result.exit_code == 0, result.output
+
+    result = runner.invoke(scaffold, [
+      'service', 'create',
+      '--apply',
+      '--app-dir-path', str(app_dir),
+      '--context-dir-path', str(context_dir),
+      '--hostname', 'api.example.com',
+      '--quiet',
+      'api',
+    ])
+    assert result.exit_code == 0, result.output
+
+    original_cwd = os.getcwd()
+    try:
+      os.chdir(app_dir)
+      result = runner.invoke(scaffold, [
+        'workflow', 'filter',
+        '--app-dir-path', str(app_dir),
+        '--context-dir-path', str(context_dir),
+        '--service', 'api',
+        'record',
+      ])
+      assert result.exit_code == 0, result.output
+    finally:
+      os.chdir(original_cwd)
+
+    context_patterns = _filter_patterns(_read_settings(context_dir))
+    assert any(_pattern_hostname(pattern) == 'api.example.com' for pattern in context_patterns)
+
+    app_settings_path = app_dir / DATA_DIR_NAME / 'settings.yml'
+    if app_settings_path.exists():
+      app_patterns = _filter_patterns(_read_settings(app_dir))
+      assert not any(_pattern_hostname(pattern) == 'api.example.com' for pattern in app_patterns)
+  finally:
+    import shutil
+    shutil.rmtree(temp_dir, ignore_errors=True)
 

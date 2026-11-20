@@ -51,6 +51,9 @@ command:
     arguments:
     - name: scenario_key
       required: true
+    options:
+    - name: force
+      description: Toggles whether the scenario is hard deleted.
   - name: import
     description: Import a scenario from a file
     arguments:

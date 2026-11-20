@@ -13,6 +13,7 @@ from .local_db_adapter import LocalDBAdapter
 
 class LocalDBScenarioAdapter(LocalDBAdapter):
   __scenario_orm = None
+  NAME_MAX_LENGTH = 255
 
   def __init__(self, scenario_orm: Scenario.__class__ = Scenario):
     self.__scenario_orm = scenario_orm
@@ -35,6 +36,12 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     )
 
   def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
+    name = params.get('name') or ''
+    if len(name) > self.NAME_MAX_LENGTH:
+      return self.bad_request(
+        f'Scenario name must be at most {self.NAME_MAX_LENGTH} characters'
+      )
+
     try:
       with ORM.instance().db.transaction():
         try:
@@ -54,7 +61,6 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
         return self.success(self.__to_show_response(scenario_record))
     except self.__DuplicateScenarioNameError:
-      name = params.get('name') or ''
       if name:
         return self.conflict(f'Scenario name "{name}" already exists')
       return self.conflict('Scenario name already exists')

@@ -20,7 +20,8 @@ from stoobly_agent.app.cli.scaffold.constants import (
 from stoobly_agent.test.app.cli.scaffold.helpers import set_test_workflow_policy_found
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.constants.custom_response_codes import NOT_FOUND
-from stoobly_agent.config.data_dir import DataDir
+from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH
+from stoobly_agent.config.data_dir import DATA_DIR_NAME, DataDir
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
@@ -1048,6 +1049,51 @@ class TestScaffoldRequestLogCliParams:
             assert call_kwargs['namespace'] == 'prod'
             assert isinstance(call_kwargs['workflow_namespace'], WorkflowNamespace)
             assert call_kwargs['workflow_namespace'].namespace == 'prod'
+
+
+class TestScaffoldRequestLogAppDirPathFromDifferentCwd:
+    """Unit test: --app-dir-path must work outside a Stoobly context cwd."""
+
+    @pytest.fixture(scope='class', autouse=True)
+    @classmethod
+    def settings(cls):
+        return reset()
+
+    def test_log_list_with_app_dir_path_does_not_require_cwd_context(self, tmp_path):
+        """
+        After App split context from app dir, App.valid requires cwd's .stoobly.
+        Request log list only needs the scaffold under --app-dir-path, so it must
+        succeed when cwd has no Stoobly context.
+        """
+        app_dir = tmp_path / 'scaffold-app'
+        services_config = app_dir / DATA_DIR_NAME / SERVICES_CONFIG_FILE_PATH
+        services_config.parent.mkdir(parents=True)
+        services_config.write_text('')
+
+        other_cwd = tempfile.mkdtemp(prefix='request_log_cwd_', dir='/tmp')
+        original_cwd = os.getcwd()
+        original_data_dir_instances = DataDir._instances
+
+        try:
+            os.chdir(other_cwd)
+            DataDir._instances = None
+
+            with patch.object(ScaffoldInterceptedRequestsLogger, 'dump_logs') as mock_dump:
+                runner = CliRunner()
+                result = runner.invoke(
+                    scaffold,
+                    ['request', 'log', 'list', 'mock', '--app-dir-path', str(app_dir)],
+                )
+
+            assert result.exit_code == 0, result.output or result.exception
+            mock_dump.assert_called_once()
+            workflow_namespace = mock_dump.call_args.kwargs['workflow_namespace']
+            assert isinstance(workflow_namespace, WorkflowNamespace)
+            assert workflow_namespace.app.app_dir_path == os.path.abspath(str(app_dir))
+        finally:
+            os.chdir(original_cwd)
+            DataDir._instances = original_data_dir_instances
+            shutil.rmtree(other_cwd, ignore_errors=True)
 
 
 class TestScaffoldRequestLogListFiltering:

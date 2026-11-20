@@ -15,6 +15,7 @@ from stoobly_agent.app.cli.scaffold.env import Env
 from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.app.cli.scaffold.workflow_run_command import WorkflowRunCommand
 from stoobly_agent.app.cli.scaffold_cli import LOG_ID, scaffold
+from stoobly_agent.app.cli.scaffold_cli import __get_hostnames as get_hostnames
 from stoobly_agent.cli import init as cli_init
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
@@ -872,10 +873,13 @@ class TestScaffoldDescribeAppDirPathAlone:
   def _run_describe_from(self, runner: CliRunner, cwd: pathlib.Path, args: list):
     prev = os.getcwd()
     os.chdir(str(cwd))
+    # invalidate cwd-based DataDir cache after chdir (reset() leaves a stale None entry)
+    DataDir.handle_chdir()
     try:
       return runner.invoke(scaffold, ['describe', *args])
     finally:
       os.chdir(prev)
+      DataDir.handle_chdir()
 
   def test_app_dir_path_alone_resolves_local_context(self, runner: CliRunner, layout):
     app_dir_path, context_dir_path = layout
@@ -1050,3 +1054,58 @@ class TestDockerRuntimeCheckContainerized:
 
     path = scaffold_namespace_path_for_runtime_check(argv)
     assert path == str(services_dir)
+
+
+class TestHostnameHelpersPreserveContext:
+  """Hostname helpers must use the caller's App, not rebuild from app_dir_path alone."""
+
+  @pytest.fixture(autouse=True)
+  def isolate_data_dir_cache(self):
+    DataDir._instances = None
+    yield
+    DataDir._instances = None
+
+  @pytest.fixture
+  def layout(self, runner, tmp_path):
+    app_dir_path = tmp_path / 'app'
+    context_dir_path = tmp_path / 'context'
+    outside = tmp_path / 'outside'
+    outside.mkdir()
+
+    _create_app_with_context(runner, app_dir_path, context_dir_path)
+
+    result = runner.invoke(scaffold, [
+      'service', 'create',
+      '--apply',
+      '--app-dir-path', str(app_dir_path),
+      '--context-dir-path', str(context_dir_path),
+      '--hostname', 'api.example.com',
+      '--scheme', 'https',
+      '--port', '443',
+      '--quiet',
+      'svc-api',
+    ])
+    assert result.exit_code == 0
+
+    return app_dir_path, context_dir_path, outside
+
+  def test_get_hostnames_with_resolved_app_from_non_context_cwd(
+    self, layout, monkeypatch
+  ):
+    app_dir_path, context_dir_path, outside = layout
+    monkeypatch.chdir(outside)
+    monkeypatch.delenv(env_vars.APP_DIR, raising=False)
+    # Force a context with no .stoobly (cwd alone may walk up to ~/.stoobly).
+    monkeypatch.setenv(env_vars.CONTEXT_DIR, str(outside))
+    DataDir._instances = None
+
+    # Old helpers rebuilt App(app_dir_path) and inherited CONTEXT_DIR / cwd context.
+    with pytest.raises(ValueError, match=r'\.stoobly.*does not exist'):
+      App(str(app_dir_path)).valid
+
+    # Passing the command-resolved App keeps --context-dir-path.
+    app = App(str(app_dir_path), context_dir_path=str(context_dir_path))
+    hostnames = get_hostnames(app, service=(), workflow=())
+
+    assert app.context_dir_path == str(context_dir_path)
+    assert any(hostname == 'api.example.com' for hostname in hostnames)

@@ -17,13 +17,13 @@ if TYPE_CHECKING:
 
 class App():
 
-  # path: path to the folder where data dir directory resides e.g. ~
+  # path: optional starting path for app resolution (prefer app_dir_path kwarg).
+  # Context is always resolved via DataDir (cwd's .stoobly parent, or context_dir_path).
+  # App scaffold is always resolved via AppDataDir (unless skip_find_app_dir).
   def __init__(self, path: str = None, **kwargs):
     containerized = kwargs.get('containerized', False)
     # `containerized` pins the path to STOOBLY_HOME_DIR; otherwise AppDataDir may walk up for a scaffold.
     skip_find_app_dir = kwargs.get('skip_find_app_dir', False) or containerized
-
-    self.__data_dir_class = DataDir if skip_find_app_dir else AppDataDir
 
     # host_* = Docker host paths (volume mount sources / compose env).
     # app_dir_path / runtime_* = operational paths inside the process (on the host when
@@ -36,25 +36,17 @@ class App():
     self.__host_context_dir_path = kwargs.get('context_dir_path') or os.environ.get(env_vars.CONTEXT_DIR)
     self.__host_runtime_app_dir_path = self.__host_app_dir_path if self.__host_app_dir_path else None
 
-    if containerized:
-      operational_root = STOOBLY_HOME_DIR
-    elif path is None:
-      operational_root = self.__host_app_dir_path
-      if operational_root is None:
-        operational_root = self.__data_dir_class.instance().parent_path
-    else:
-      operational_root = os.path.abspath(path)
-
-    data_dir: DataDir = self.__data_dir_class.instance(operational_root)
-
     self.__containerized = containerized
-    self.__data_dir = data_dir
-    self.__data_dir_path = data_dir.path
-    self.__dir_path = operational_root
     self.__scaffold_namespace = kwargs.get('scaffold_namespace') or SERVICES_NAMESPACE
     self.__skip_validate_path = not not kwargs.get('dry_run')
 
     if containerized:
+      operational_root = STOOBLY_HOME_DIR
+      data_dir = DataDir.instance(operational_root)
+
+      self.__dir_path = operational_root
+      self.__context_data_dir = data_dir
+      self.__context_data_dir_path = data_dir.path
       self.__app_data_dir = data_dir
       self.__app_dir_path = operational_root
       self.__ca_certs_dir_path = data_dir.ca_certs_dir_path
@@ -63,13 +55,40 @@ class App():
       self.__runtime_app_data_dir = self.__app_data_dir
       self.__runtime_app_dir_path = self.__app_dir_path
     else:
-      self.__app_data_dir = self.__data_dir_class.instance(self.__host_app_dir_path or operational_root)
-      self.__app_dir_path = self.__app_data_dir.context_dir_path
+      # Context: DataDir — --context-dir-path / CONTEXT_DIR, else cwd's .stoobly parent.
+      # Never use the app path here; that incorrectly collapses context onto the scaffold app.
+      if self.__host_context_dir_path:
+        context_data_dir = DataDir.instance(self.__host_context_dir_path)
+      else:
+        context_data_dir = DataDir.instance()
+
+      # App: AppDataDir — --app-dir-path / positional path, else search from cwd.
+      app_search_root = self.__host_app_dir_path or path
+      if skip_find_app_dir:
+        app_root = os.path.abspath(app_search_root or os.getcwd())
+        app_data_dir = DataDir.instance(app_root)
+      else:
+        app_data_dir = AppDataDir.instance(app_search_root)
+
+      if path is not None:
+        operational_root = os.path.abspath(path)
+      else:
+        operational_root = self.__host_app_dir_path or app_data_dir.context_dir_path
+
+      self.__dir_path = operational_root
+      self.__context_data_dir = context_data_dir
+      self.__context_data_dir_path = context_data_dir.path
+      self.__app_data_dir = app_data_dir
+      self.__app_dir_path = app_data_dir.context_dir_path
+      # Non-containerized: host mirrors the resolved scaffold app, not the raw search
+      # path (e.g. a nested context cwd that AppDataDir walked up from).
+      self.__host_app_dir_path = self.__app_dir_path
+      self.__host_runtime_app_dir_path = self.__app_dir_path
       self.__ca_certs_dir_path = self.__host_ca_certs_dir_path
       self.__certs_dir_path = self.__host_certs_dir_path
-      self.__context_dir_path = self.__host_context_dir_path or data_dir.context_dir_path
+      self.__context_dir_path = context_data_dir.context_dir_path
       self.__runtime_app_data_dir = self.__app_data_dir
-      self.__runtime_app_dir_path = self.__host_runtime_app_dir_path or self.__app_dir_path
+      self.__runtime_app_dir_path = self.__app_dir_path
 
   @property
   def app_data_dir(self):
@@ -86,7 +105,7 @@ class App():
 
   @property
   def ca_certs_dir_path(self):
-    return os.path.abspath(self.__ca_certs_dir_path or self.__data_dir.ca_certs_dir_path)
+    return os.path.abspath(self.__ca_certs_dir_path or self.__app_data_dir.ca_certs_dir_path)
 
   @ca_certs_dir_path.setter
   def ca_certs_dir_path(self, v: str):
@@ -95,7 +114,7 @@ class App():
 
   @property
   def certs_dir_path(self):
-    return os.path.abspath(self.__certs_dir_path or self.__data_dir.certs_dir_path)
+    return os.path.abspath(self.__certs_dir_path or self.__app_data_dir.certs_dir_path)
 
   @certs_dir_path.setter
   def certs_dir_path(self, v: str):
@@ -107,21 +126,21 @@ class App():
     return self.__containerized
 
   @property
+  def context_data_dir(self):
+    return self.__context_data_dir
+
+  @property
+  def context_data_dir_path(self):
+    return self.__context_data_dir_path
+
+  @property
   def context_dir_path(self):
     return os.path.abspath(self.__context_dir_path)
 
   @context_dir_path.setter
   def context_dir_path(self, v: str):
     self.__validate_path(v)
-    self.__context_dir_path = v 
-
-  @property
-  def data_dir(self):
-    return self.__data_dir
-
-  @property
-  def data_dir_path(self):
-    return self.__data_dir_path
+    self.__context_dir_path = v
 
   @property
   def host_app_dir_path(self):

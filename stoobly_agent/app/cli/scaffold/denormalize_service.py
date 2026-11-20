@@ -18,8 +18,13 @@ class DenormalizeService:
     def __init__(self, workflow_namespace: WorkflowNamespace):
         self.app = workflow_namespace.app
         self.logger = Logger.instance(LOG_ID)
-        # Because we are creating a new app, we need to skip finding the app dir
-        self.denormalized_app = App(workflow_namespace.path, skip_find_app_dir=True)
+        # Pin app_dir_path so STOOBLY_APP_DIR / APP_DIR env cannot collapse
+        # destination back onto the source app (source == destination no-op).
+        self.denormalized_app = App(
+            workflow_namespace.path,
+            app_dir_path=workflow_namespace.path,
+            skip_find_app_dir=True,
+        )
 
     @property
     def source_path(self):

@@ -1,14 +1,31 @@
-# Scaffold Docker: `.stoobly/tmp` mount (APP_DIR vs CONTEXT_DIR)
+# Scaffold Docker: APP_DIR overlays on CONTEXT_DIR (tmp, certs)
 
-This document explains how the scaffold workflow uses `tmp` under `.stoobly`, how host paths are resolved, and what to consider when mounting `${APP_DIR}/.stoobly/tmp` into containers (for example at `/home/stoobly/.stoobly/tmp`) alongside the broader `${CONTEXT_DIR}/.stoobly` mount.
+This document explains how scaffold workflow state under `.stoobly` is resolved on the host, and what to consider when mounting `${APP_DIR}/.stoobly/{tmp,ca_certs,certs}` into containers alongside the broader `${CONTEXT_DIR}/.stoobly` mount.
 
 ## Background
 
 In `.docker-compose.base.yml`, services typically mount:
 
 - `${CONTEXT_DIR}/.stoobly:/home/stoobly/.stoobly`
+- `${APP_DIR}/.stoobly/ca_certs:/home/stoobly/.stoobly/ca_certs`
+- `${APP_DIR}/.stoobly/certs:/home/stoobly/.stoobly/certs`
+- `${APP_DIR}/.stoobly/tmp:/home/stoobly/.stoobly/tmp`
 
-A repo has one **APP_DIR** (application / scaffold root) but may use multiple **CONTEXT_DIR** values (Stoobly data directories). Host-side scaffold code does **not** always write temporary workflow state under `CONTEXT_DIR`; it writes under **APP_DIR**’s data directory. Aligning the container mount with that behavior avoids subtle mismatches.
+A repo has one **APP_DIR** (application / scaffold root) but may use multiple **CONTEXT_DIR** values (Stoobly data directories). Host-side scaffold code does **not** always write under `CONTEXT_DIR`; workflow tmp and TLS material live under **APP_DIR**. Aligning the container mounts with that behavior avoids subtle mismatches.
+
+## Certs and CA certs
+
+**Host canonical location:** `APP_DIR/.stoobly/ca_certs/` and `APP_DIR/.stoobly/certs/`
+
+| Source | Default |
+|--------|---------|
+| `App.ca_certs_dir_path` / `App.certs_dir_path` | `app.app_data_dir` (APP) |
+| Makefile `ca_certs_dir` / `certs_dir` | `$(app_data_dir)/…` (APP) |
+| Compose overlay | `${APP_DIR}/.stoobly/{ca_certs,certs}` |
+
+When `APP_DIR != CONTEXT_DIR`, MITM CA generation, hostname signing, and `ca-cert install` must use the APP trees so the container overlay sees the same files. Context `.stoobly/ca_certs` is not the runtime source of truth.
+
+Cypress/Playwright test services mount `${CONTEXT_DIR}:/home/stoobly` and also overlay `${APP_DIR}/.stoobly/ca_certs:/home/stoobly/.stoobly/ca_certs` so their entrypoint trusts the same MITM CA as proxy containers.
 
 ## What lives in `tmp`
 
@@ -20,7 +37,7 @@ All paths below use `DataDir` resolved from the `App` constructor path. For non-
 |-----------|-----------------|
 | **Context lock** (`context_lock.py`) | `.{md5(CONTEXT_DIR)}.access` and `.{md5(CONTEXT_DIR)}.lock` — keyed by **host context directory**, not by namespace |
 | **Workflow namespace** (`workflow_namespace.py`) | `APP_DIR/.stoobly/tmp/{namespace}/` — `.env`, `run.sh`, `nameservers`, `traefik.yml`, `.timestamp`, `.pid`, logs |
-| **Active workflow scan** (`docker/local` `workflow/run_command.py`) | Scans subdirectories of `app.data_dir.tmp_dir_path` for `.timestamp` files to detect conflicting runs |
+| **Active workflow scan** (`docker/local` `workflow/run_command.py`) | Scans subdirectories of `app.app_data_dir.tmp_dir_path` for `.timestamp` files to detect conflicting runs |
 
 The Makefile template aligns with this: `app_tmp_dir=$(app_data_dir)/tmp` where `app_data_dir` is under `app_dir`.
 
@@ -131,7 +148,7 @@ So parallel runs with different namespaces do **not** conflict on `.access` beca
 
 ### Does binding `APP_DIR/.stoobly/tmp` introduce new `.access` conflicts?
 
-**No.** The host always wrote `.access` under `APP_DIR/.stoobly/tmp` (via `app.data_dir.tmp_dir_path`). Adding an explicit bind mount only aligns the container’s `/home/stoobly/.stoobly/tmp` with that directory. It does not change how many processes write, which hashes are used, or lock behavior.
+**No.** The host always wrote `.access` under `APP_DIR/.stoobly/tmp` (via `app.app_data_dir.tmp_dir_path`). Adding an explicit bind mount only aligns the container’s `/home/stoobly/.stoobly/tmp` with that directory. It does not change how many processes write, which hashes are used, or lock behavior.
 
 When `CONTEXT_DIR ≠ APP_DIR`, the **old** mount (`CONTEXT_DIR/.stoobly` only) could expose a **different** `tmp` tree in the container than the one the host updated; that mismatch did not create host-side `.access` races, but it meant the container filesystem was not the source of truth for host-written tmp state. The APP_DIR `tmp` mount fixes alignment; it does not add cross-process contention on `.access`.
 
@@ -139,8 +156,9 @@ When `CONTEXT_DIR ≠ APP_DIR`, the **old** mount (`CONTEXT_DIR/.stoobly` only) 
 
 | Topic | Takeaway |
 |-------|----------|
-| **Where host writes `tmp`** | `APP_DIR/.stoobly/tmp` (via `app.data_dir.tmp_dir_path`) |
-| **Mount alignment** | Bind `APP_DIR/.stoobly/tmp` into the container’s `.stoobly/tmp` when CONTEXT_DIR can differ from APP_DIR |
+| **Where host writes `tmp`** | `APP_DIR/.stoobly/tmp` (via `app.app_data_dir.tmp_dir_path`) |
+| **Where host writes certs** | `APP_DIR/.stoobly/{ca_certs,certs}` (via `app.app_data_dir`; Compose overlays match) |
+| **Mount alignment** | Bind `APP_DIR/.stoobly/{tmp,ca_certs,certs}` into the container when CONTEXT_DIR can differ from APP_DIR |
 | **Parallel runs** | Use distinct `--namespace` values; access files remain per-CONTEXT_DIR via hash |
 | **`.access` file** | Host-only; keyed by CONTEXT_DIR hash; `FileLock` on `.lock`; no new conflicts from the APP_DIR `tmp` mount |
 | **`options.json`** | Written fresh at every agent startup; only `ssl_insecure` is ever read back, and only without a live master; conflict risk is very low in practice |

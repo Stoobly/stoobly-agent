@@ -14,8 +14,9 @@ class WorkflowNamespace():
   def __init__(self, app: App, namespace: str = None, mkdir: bool = True):
     self._app = app
     self._namespace = namespace
-    # Read-only lookups (mkdir=False) must not create the tmp dir as a side effect
-    tmp_dir_path = app.data_dir.tmp_dir_path if mkdir else os.path.join(app.data_dir.path, TMP_DIR_NAME)
+    # Workflow tmp lives under APP_DIR (see docs/scaffold-docker-tmp-mount.md), not CONTEXT_DIR.
+    # Read-only lookups (mkdir=False) must not create the tmp dir as a side effect.
+    tmp_dir_path = app.app_data_dir.tmp_dir_path if mkdir else os.path.join(app.app_data_dir.path, TMP_DIR_NAME)
     self._path = os.path.join(tmp_dir_path, namespace or '')
 
     if mkdir and not os.path.exists(self._path):

@@ -17,7 +17,10 @@ from stoobly_agent.app.cli.scaffold.create_command import (
   save_scaffold_command,
   update_scaffold_create_command,
 )
-from stoobly_agent.app.cli.scaffold.containerized_app import ContainerizedApp
+from stoobly_agent.app.cli.scaffold.cli_app import (
+  app_from_kwargs as __app_from_kwargs,
+  validate_app as __validate_app,
+)
 from stoobly_agent.app.cli.scaffold.app_config import AppConfig
 from stoobly_agent.app.cli.scaffold.app_create_command import AppCreateCommand
 from stoobly_agent.app.cli.scaffold.config import Config
@@ -60,6 +63,7 @@ from stoobly_agent.app.cli.scaffold.workflow_filter import (
   upsert_filter_rule,
   workflow_template_to_filter_mode,
 )
+from stoobly_agent.config.app_data_dir import AppDataDir
 from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.lib.api.keys.project_key import ProjectKey
@@ -124,7 +128,12 @@ def hostname(ctx):
   default=os.getcwd(),
   help='Docker host app directory (volume mount source). Kept distinct from container paths.',
 )
-@click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace for denormalize_configure.')
+@click.option(
+  '--context-dir-path',
+  default=None,
+  help='Path to Stoobly context directory.',
+)
+@click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace.')
 @click.option(
   '--containerized',
   is_flag=True,
@@ -133,11 +142,18 @@ def hostname(ctx):
 def debug(**kwargs):
   # app_dir_path kwarg is the Docker host path; with --containerized, app_dir_path is the container mount.
   host_app_dir = kwargs['app_dir_path']
-  app = App(host_app_dir, app_dir_path=host_app_dir, containerized=kwargs['containerized'])
+  app = App(
+    host_app_dir,
+    app_dir_path=host_app_dir,
+    context_dir_path=kwargs.get('context_dir_path'),
+    containerized=kwargs['containerized'],
+  )
 
   click.echo(f"containerized:             {app.containerized}")
   click.echo(f"app_dir_path (container):  {app.app_dir_path}")
   click.echo(f"host_app_dir_path (host):  {app.host_app_dir_path}")
+  click.echo(f"context_dir_path:          {app.context_dir_path}")
+  click.echo(f"host_context_dir_path:     {app.host_context_dir_path}")
   click.echo(f"runtime_app_dir_path:      {app.runtime_app_dir_path}")
   click.echo(f"host_runtime_app_dir_path: {app.host_runtime_app_dir_path}")
 
@@ -171,8 +187,6 @@ def debug(**kwargs):
   if app.containerized and app.host_runtime_app_dir_path == app.runtime_app_dir_path:
     click.echo("FAIL: host_runtime must stay on the Docker host path, not the container path", err=True)
     sys.exit(1)
-
-  click.echo("OK: host and container runtimes share relative_path but remain distinct bases")
 
 @app.command(
   help="Scaffold application"
@@ -671,7 +685,7 @@ def down(**kwargs):
             try:
               # Prompt confirm to install hostnames
               __hostname_uninstall_with_prompt(
-                  app_dir_path=kwargs['app_dir_path'],
+                  app,
                   hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
                   service=kwargs['service'],
                   validate=True,
@@ -772,9 +786,9 @@ def tail(**kwargs):
   help="Start a scaffold workflow and bring up service(s)",
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).')
 @click.option('--ca-certs-install-confirm', default=None, type=click.Choice(['y', 'Y', 'n', 'N']), help='Confirm answer to CA certificate installation prompt.')
-@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--copy-on-workflow-up', is_flag=True, help='Copy app scaffold from --app-dir-path to isolated tmp path on workflow up.')
@@ -863,7 +877,7 @@ def up(**kwargs):
         # Entrypoint container will be within the container network
         if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
           __hostname_install_with_prompt(
-            app_dir_path=kwargs['app_dir_path'],
+            app,
             hostname_install_confirm=kwargs.get('hostname_install_confirm'),
             service=kwargs['service'],
             validate=True,
@@ -898,8 +912,8 @@ def up(**kwargs):
   help="Generate SSL certs for workflow service(s)"
 )
 @click.option('--app-dir-path', default=None, help='Path to application directory.')
-@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the ca_certs dir of the context.')
-@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the certs dir of the context.')
+@click.option('--ca-certs-dir-path', default=None, help='Path to ca certs directory used to sign SSL certs. Defaults to the app ca_certs dir (APP_DIR/.stoobly/ca_certs).')
+@click.option('--certs-dir-path', help='Path to certs directory. Defaults to the app certs dir (APP_DIR/.stoobly/certs).')
 @click.option('--containerized', is_flag=True, hidden=True, help='Set if run from within a container.')
 @click.option('--context-dir-path', default=None, help='Path to Stoobly data directory.')
 @click.option('--service', multiple=True, help='Select specific services. Defaults to all.')
@@ -1009,7 +1023,7 @@ def install(**kwargs):
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_install_with_prompt(
-    app_dir_path=kwargs['app_dir_path'],
+    app,
     hostname_install_confirm=kwargs.get('hostname_install_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
@@ -1030,7 +1044,7 @@ def uninstall(**kwargs):
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_uninstall_with_prompt(
-    app_dir_path=kwargs['app_dir_path'],
+    app,
     hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
@@ -1074,7 +1088,9 @@ def scaffold_create():
   'path',
   type=click.Path(exists=True, file_okay=True, dir_okay=False),
   required=False,
-  default=lambda: DataDir.instance().scaffold_file_path,
+  # Prefer APP/.stoobly/scaffold.yml (where create/update write). AppDataDir falls
+  # back to the nearest context DataDir when no scaffold app has been created yet.
+  default=lambda: AppDataDir.instance().scaffold_file_path,
 )
 @click.pass_context
 def apply(ctx, path, format, dry_run):
@@ -1176,9 +1192,12 @@ def __get_services(app: App, **kwargs):
 
   return services
 
-def __get_hostnames(**kwargs):
-  """Get list of hostnames from services in the workflow."""
-  app = App(kwargs['app_dir_path'])
+def __get_hostnames(app: App, **kwargs):
+  """Get list of hostnames from services in the workflow.
+
+  Uses the caller's resolved App so --context-dir-path is preserved (do not rebuild
+  App from app_dir_path alone — that drops context and can fail App.valid).
+  """
   __validate_app(app)
 
   services = __get_services(
@@ -1197,8 +1216,8 @@ def __get_hostnames(**kwargs):
   return hostnames
 
 def __hostname_install_with_prompt(
+  app: App,
   workflow: tuple,
-  app_dir_path: str,
   service: tuple,
   hostname_install_confirm: str = None,
   validate: bool = False,
@@ -1206,13 +1225,10 @@ def __hostname_install_with_prompt(
 ):
   """Prompt user to install hostnames and install them if confirmed."""
 
-  hostnames = __get_hostnames(
-    app_dir_path=app_dir_path, service=service, workflow=workflow
-  )
+  hostnames = __get_hostnames(app, service=service, workflow=workflow)
 
   if validate:
     # Check app_config.proxy_mode is reverse
-    app = App(app_dir_path)
     app_config = AppConfig(app.scaffold_namespace_path)
 
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
@@ -1232,16 +1248,13 @@ def __hostname_install_with_prompt(
 
   if confirm == "y" or confirm == "Y":
     __hostname_install(
-      app_dir_path=app_dir_path,
       hosts_file_path=hosts_file_path,
       hostnames=hostnames,
-      service=service,
-      workflow=workflow,
     )
 
 def __hostname_uninstall_with_prompt(
+  app: App,
   workflow: tuple,
-  app_dir_path: str,
   service: tuple,
   hostname_uninstall_confirm: str = None,
   validate: bool = False,
@@ -1249,11 +1262,10 @@ def __hostname_uninstall_with_prompt(
 ):
   """Prompt user to uninstall hostnames and uninstall them if confirmed."""
 
-  hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=workflow)
+  hostnames = __get_hostnames(app, service=service, workflow=workflow)
 
   if validate:
     # Check app_config.proxy_mode is reverse
-    app = App(app_dir_path)
     app_config = AppConfig(app.scaffold_namespace_path)
 
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
@@ -1273,11 +1285,8 @@ def __hostname_uninstall_with_prompt(
 
   if confirm == "y" or confirm == "Y":
     __hostname_uninstall(
-      app_dir_path=app_dir_path,
       hosts_file_path=hosts_file_path,
       hostnames=hostnames,
-      service=service,
-      workflow=workflow,
     )
 
 def __prepare_temp_hosts(hosts_file_path: str) -> str:
@@ -1422,7 +1431,8 @@ def __services_rewrite(app: App, services, workflow_name: str):
     apply_upstream_url_rewrite(service_config)
 
 def __services_filter(app: App, services, workflow_name: str):
-  settings = Settings.instance()
+  # Filter rules belong on the context the proxy mounts, not cwd/app by accident.
+  settings = Settings.instance(app.context_dir_path)
   project_key = ProjectKey(settings.proxy.intercept.project_key)
   project_id = project_key.id
   filter_rules = settings.proxy.filter.filter_rules(project_id)
@@ -1450,18 +1460,6 @@ def __services_filter(app: App, services, workflow_name: str):
 
   settings.proxy.filter.set_filter_rules(project_id, filter_rules)
   settings.commit()
-
-def __app_from_kwargs(kwargs):
-  if kwargs.get('containerized'):
-    return ContainerizedApp(**kwargs)
-  return App(kwargs['app_dir_path'], **kwargs)
-
-def __validate_app(app: App):
-  try:
-    app.valid
-  except ValueError as e:
-    print(f"Error: {e}", file=sys.stderr)
-    sys.exit(1)
 
 def __validate_service_dir(service_dir_path):
   if not os.path.exists(service_dir_path):
@@ -1511,7 +1509,7 @@ def __is_docker_workflow_running(namespace: str) -> bool:
 def __find_running_workflows(app: App, app_config: AppConfig):
   """Scan for running workflows and return their info."""
   found_workflows = []
-  tmp_dir_path = app.data_dir.tmp_dir_path
+  tmp_dir_path = app.app_data_dir.tmp_dir_path
 
   if not os.path.exists(tmp_dir_path):
     return found_workflows
@@ -1591,7 +1589,6 @@ def __print_workflow_status(workflow_info: dict, app: App, app_config: AppConfig
   # Aligned key-value pairs
   click.echo(f"  {'Status':<12}{status_value}")
   click.echo(f"  {'Namespace':<12}{namespace}")
-  click.echo(f"  {'Context':<12}{app.context_dir_path}")
 
   if app_config.runtime_local:
     click.echo(f"  {'Runtime':<12}local")

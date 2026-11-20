@@ -3,6 +3,7 @@ import os
 import sys
 
 from stoobly_agent.app.cli.scaffold.app import App
+from stoobly_agent.app.cli.scaffold.cli_app import app_from_kwargs, validate_app
 from stoobly_agent.app.cli.scaffold.create_command import (
   echo_scaffold_yml_updated,
   save_scaffold_command,
@@ -20,18 +21,10 @@ from stoobly_agent.config.constants import mode
 APPLY_HELP = 'Apply to build init scripts. Without this, only write to scaffold.yml.'
 
 
-def _validate_app(app: App):
-  try:
-    app.valid
-  except ValueError as e:
-    click.echo(f"Error: {e}", err=True)
-    sys.exit(1)
-
-
 def _apply_setting_command(subgroup: str, kwargs: dict):
   if kwargs.get('apply'):
-    app = App(kwargs.get('app_dir_path'))
-    _validate_app(app)
+    app = app_from_kwargs(kwargs)
+    validate_app(app)
     workflows = resolve_workflows(app.app_data_dir.path, kwargs.get('workflow'))
     if not workflows:
       click.echo("Error: No build workflow init scripts found", err=True)

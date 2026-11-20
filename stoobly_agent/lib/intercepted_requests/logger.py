@@ -80,7 +80,7 @@ class InterceptedRequestsLogger():
         raise NotImplementedError("Subclasses must implement _get_file_path")
 
     @classmethod
-    def _get_log_path_message(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None) -> str:
+    def _get_log_path_message(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> str:
         """Return the print message for get_log_file_path. Must be implemented by subclasses."""
         raise NotImplementedError("Subclasses must implement _get_log_path_message")
 
@@ -387,7 +387,12 @@ class InterceptedRequestsLogger():
         """Get the log file path and print it."""
         file_path = cls._get_file_path(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace, workflow_namespace=workflow_namespace)
 
-        print(cls._get_log_path_message(data_dir_path=data_dir_path, workflow=workflow, namespace=namespace))
+        print(cls._get_log_path_message(
+            data_dir_path=data_dir_path,
+            workflow=workflow,
+            namespace=namespace,
+            workflow_namespace=workflow_namespace,
+        ))
 
         if not os.path.exists(file_path):
             return

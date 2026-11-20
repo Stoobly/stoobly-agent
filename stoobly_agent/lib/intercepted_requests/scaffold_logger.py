@@ -47,7 +47,12 @@ class ScaffoldInterceptedRequestsLogger(InterceptedRequestsLogger):
         return f"{tmp_dir_path}/{ns}/logs/{wf}.requests.json"
 
     @classmethod
-    def _get_log_path_message(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None) -> str:
+    def _get_log_path_message(cls, data_dir_path: str = None, workflow: str = None, namespace: str = None, workflow_namespace: 'WorkflowNamespace' = None) -> str:
         """Return the print message for the scaffold log file path."""
-        file_path = cls._get_file_path(workflow=workflow, namespace=namespace)
+        file_path = cls._get_file_path(
+            data_dir_path=data_dir_path,
+            workflow=workflow,
+            namespace=namespace,
+            workflow_namespace=workflow_namespace,
+        )
         return f"Requests log path for workflow: {workflow}, namespace: {namespace}\nFile path: {file_path}"

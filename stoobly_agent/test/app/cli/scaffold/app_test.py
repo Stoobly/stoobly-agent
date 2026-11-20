@@ -6,7 +6,10 @@ import shutil
 from stoobly_agent.app.cli.scaffold import app as app_module
 from stoobly_agent.app.cli.scaffold.app import App
 from stoobly_agent.app.cli.scaffold.constants import SERVICES_NAMESPACE
+from stoobly_agent.app.cli.scaffold.denormalize_service import DenormalizeService
+from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
 from stoobly_agent.config.app_data_dir import SERVICES_CONFIG_FILE_PATH
+from stoobly_agent.config.constants import env_vars
 from stoobly_agent.config.data_dir import DataDir, DATA_DIR_NAME
 from stoobly_agent.test.test_helper import reset
 
@@ -110,6 +113,52 @@ class TestApp:
             app.app_dir_path = non_existent
             assert app.app_dir_path == non_existent
 
+        def test_context_uses_datadir_not_app_path(self, tmp_app_dir, tmp_context_dir, tmp_path):
+            """App path must not become context; context comes from DataDir / context_dir_path."""
+            context_stoobly = os.path.join(tmp_context_dir, DATA_DIR_NAME)
+            os.makedirs(context_stoobly, exist_ok=True)
+
+            prev = os.getcwd()
+            try:
+                os.chdir(tmp_context_dir)
+                DataDir.handle_chdir()
+
+                # From a nested context cwd, app_dir alone must not hijack context.
+                app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+                assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+                assert app.context_dir_path == os.path.abspath(tmp_context_dir)
+                assert app.context_data_dir_path == os.path.join(app.context_dir_path, DATA_DIR_NAME)
+                assert app.app_data_dir.path == os.path.join(app.app_dir_path, DATA_DIR_NAME)
+
+                # Explicit context_dir_path still wins over cwd.
+                other_context = os.path.join(tmp_path, 'other-context')
+                os.makedirs(os.path.join(other_context, DATA_DIR_NAME), exist_ok=True)
+                app_explicit = App(
+                    tmp_app_dir,
+                    app_dir_path=tmp_app_dir,
+                    context_dir_path=other_context,
+                )
+                assert app_explicit.context_dir_path == os.path.abspath(other_context)
+                assert app_explicit.app_dir_path == os.path.abspath(tmp_app_dir)
+            finally:
+                os.chdir(prev)
+                DataDir.handle_chdir()
+
+        def test_certs_default_to_app_not_context(self, tmp_app_dir, tmp_context_dir):
+            """ca_certs and certs default under APP_DIR, not CONTEXT_DIR."""
+            os.makedirs(os.path.join(tmp_context_dir, DATA_DIR_NAME), exist_ok=True)
+
+            app = App(
+                tmp_app_dir,
+                app_dir_path=tmp_app_dir,
+                context_dir_path=tmp_context_dir,
+            )
+
+            assert app.ca_certs_dir_path == os.path.join(app.app_data_dir.path, 'ca_certs')
+            assert app.certs_dir_path == os.path.join(app.app_data_dir.path, 'certs')
+            assert not app.ca_certs_dir_path.startswith(app.context_data_dir_path)
+            assert not app.certs_dir_path.startswith(app.context_data_dir_path)
+
     class TestProperties:
         """Test App property getters and setters"""
 
@@ -137,18 +186,18 @@ class TestApp:
             
             assert os.path.isabs(app.context_dir_path)
 
-        def test_data_dir_path_combines_context_and_data_dir_name(self, tmp_app_dir):
-            """Test data_dir_path is context_dir_path + DATA_DIR_NAME"""
+        def test_context_data_dir_path_combines_context_and_data_dir_name(self, tmp_app_dir):
+            """Test context_data_dir_path is context_dir_path + DATA_DIR_NAME"""
             app = App(tmp_app_dir)
             
             expected = os.path.join(app.context_dir_path, DATA_DIR_NAME)
-            assert app.data_dir_path == expected
+            assert app.context_data_dir_path == expected
 
         def test_scaffold_namespace_path(self, tmp_app_dir):
-            """Test scaffold_namespace_path combines data_dir_path and namespace"""
+            """Test scaffold_namespace_path combines app_data_dir and namespace"""
             app = App(tmp_app_dir)
             
-            expected = os.path.join(app.data_dir_path, SERVICES_NAMESPACE)
+            expected = os.path.join(app.app_data_dir.path, SERVICES_NAMESPACE)
             assert app.scaffold_namespace_path == expected
 
         def test_network_is_md5_of_context_dir(self, tmp_app_dir):
@@ -233,19 +282,37 @@ class TestApp:
         """Test host_* properties that return kwarg values"""
 
         def test_host_app_dir_path_with_kwarg(self, tmp_app_dir, tmp_path):
-            """Test host_app_dir_path returns kwarg value when provided"""
-            custom_app_dir = os.path.join(tmp_path, 'custom-app')
-            os.makedirs(custom_app_dir, exist_ok=True)
-            
+            """Non-containerized host_app_dir_path mirrors the resolved app scaffold."""
+            custom_app_dir = _make_scaffold_app_dir(os.path.join(tmp_path, 'custom-app'))
+
             app = App(tmp_app_dir, app_dir_path=custom_app_dir)
-            
-            assert app.host_app_dir_path == os.path.abspath(custom_app_dir)
+
+            assert app.app_dir_path == os.path.abspath(custom_app_dir)
+            assert app.host_app_dir_path == app.app_dir_path
 
         def test_host_app_dir_path_without_kwarg(self, tmp_app_dir):
-            """Test host_app_dir_path falls back to app_dir_path"""
+            """Test host_app_dir_path equals app_dir_path when not containerized"""
             app = App(tmp_app_dir)
             
             assert app.host_app_dir_path == app.app_dir_path
+
+        def test_host_app_dir_path_matches_resolved_app_from_nested_context(self, tmp_app_dir, tmp_path):
+            """Search path under the app (nested context) must not stick as host_app_dir_path."""
+            nested_context = os.path.join(tmp_app_dir, 'apps', 'app-1')
+            os.makedirs(os.path.join(nested_context, DATA_DIR_NAME), exist_ok=True)
+
+            prev = os.getcwd()
+            try:
+                os.chdir(nested_context)
+                DataDir.handle_chdir()
+                app = App(nested_context, app_dir_path=nested_context)
+            finally:
+                os.chdir(prev)
+                DataDir.handle_chdir()
+
+            assert app.app_dir_path == os.path.abspath(tmp_app_dir)
+            assert app.host_app_dir_path == app.app_dir_path
+            assert app.context_dir_path == os.path.abspath(nested_context)
 
         def test_host_ca_certs_dir_path_with_kwarg(self, tmp_app_dir, tmp_path):
             """Test host_ca_certs_dir_path returns kwarg value when provided"""
@@ -583,8 +650,6 @@ class TestApp:
             AppDataDir walks parents for services/.config.yml; when the denormalized
             copy is missing that walk would incorrectly resolve to the source app.
             """
-            from stoobly_agent.app.cli.scaffold.workflow_namespace import WorkflowNamespace
-
             app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
             workflow_namespace = WorkflowNamespace(app, 'mock')
 
@@ -593,6 +658,24 @@ class TestApp:
             expected = os.path.join(workflow_namespace.path, DATA_DIR_NAME)
             assert app.runtime_app_data_dir.path == expected
             assert app.runtime_app_data_dir.path != app.app_data_dir.path
+
+        def test_denormalize_destination_ignores_stoobly_app_dir_env(self, tmp_app_dir, monkeypatch):
+            """STOOBLY_APP_DIR must not make source == destination for --copy-on-workflow-up."""
+            monkeypatch.setenv(env_vars.APP_DIR, tmp_app_dir)
+
+            app = App(tmp_app_dir, app_dir_path=tmp_app_dir)
+            workflow_namespace = WorkflowNamespace(app, 'mock')
+            service = DenormalizeService(workflow_namespace)
+
+            assert service.source_path == app.scaffold_namespace_path
+            assert service.destination_path == os.path.join(
+                workflow_namespace.path, DATA_DIR_NAME, SERVICES_NAMESPACE
+            )
+            assert service.source_path != service.destination_path
+
+            assert service.denormalize_up() is True
+            assert os.path.exists(service.destination_path)
+            assert app.is_denormalized(workflow_namespace)
 
         def test_denormalize_configure_keeps_host_runtime_on_docker_host(
             self, tmp_app_dir, tmp_path, monkeypatch
@@ -624,13 +707,13 @@ class TestApp:
             assert app.host_runtime_app_dir_path != app.runtime_app_dir_path
 
     class TestDataDir:
-        """Test data_dir related properties"""
+        """Test context_data_dir / app_data_dir related properties"""
 
-        def test_data_dir_returns_data_dir_instance(self, tmp_app_dir):
-            """Test data_dir returns DataDir instance"""
+        def test_context_data_dir_returns_data_dir_instance(self, tmp_app_dir):
+            """Test context_data_dir returns DataDir instance"""
             app = App(tmp_app_dir)
             
-            assert isinstance(app.data_dir, DataDir)
+            assert isinstance(app.context_data_dir, DataDir)
 
         def test_app_data_dir_returns_data_dir_instance(self, tmp_app_dir):
             """Test app_data_dir returns DataDir instance"""
@@ -638,9 +721,9 @@ class TestApp:
             
             assert isinstance(app.app_data_dir, DataDir)
 
-        def test_data_dir_path_property_returns_string(self, tmp_app_dir):
-            """Test data_dir_path property returns string path"""
+        def test_context_data_dir_path_property_returns_string(self, tmp_app_dir):
+            """Test context_data_dir_path property returns string path"""
             app = App(tmp_app_dir)
             
-            assert isinstance(app.data_dir_path, str)
-            assert DATA_DIR_NAME in app.data_dir_path
+            assert isinstance(app.context_data_dir_path, str)
+            assert DATA_DIR_NAME in app.context_data_dir_path

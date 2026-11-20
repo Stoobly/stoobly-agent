@@ -70,8 +70,8 @@ class TestScaffoldApply:
     # PATH is optional; Click marks optional arguments with brackets.
     assert '[PATH]' in result.output
 
-  def test_omitted_path_uses_data_dir_scaffold_file(self, runner: CliRunner):
-    config_path = DataDir.instance().scaffold_file_path
+  def test_omitted_path_uses_app_data_dir_scaffold_file(self, runner: CliRunner):
+    config_path = AppDataDir.instance().scaffold_file_path
     self._write_yaml(config_path, {
       'version': 1,
       'commands': [
@@ -97,12 +97,55 @@ class TestScaffoldApply:
         os.remove(config_path)
 
   def test_omitted_path_missing_default_file(self, runner: CliRunner):
-    config_path = DataDir.instance().scaffold_file_path
+    config_path = AppDataDir.instance().scaffold_file_path
     if os.path.exists(config_path):
       os.remove(config_path)
 
     result = runner.invoke(scaffold, ['apply'])
     assert result.exit_code != 0
+
+  def test_omitted_path_from_nested_context_uses_app_scaffold_file(
+    self, runner: CliRunner, temp_dir: str
+  ):
+    """When cwd is a context under an app, omit PATH and still apply APP scaffold.yml."""
+    app_dir = os.path.join(temp_dir, 'app')
+    context_dir = os.path.join(app_dir, 'apps', 'ctx-1')
+    app_stoobly = os.path.join(app_dir, DATA_DIR_NAME)
+    services_dir = os.path.join(app_stoobly, 'services')
+    os.makedirs(services_dir, exist_ok=True)
+    os.makedirs(os.path.join(context_dir, DATA_DIR_NAME), exist_ok=True)
+
+    # Mark app_dir as a scaffold app so AppDataDir walks up to it.
+    with open(os.path.join(services_dir, '.config.yml'), 'w') as fp:
+      fp.write('version: 1\n')
+
+    app_scaffold_path = os.path.join(app_stoobly, 'scaffold.yml')
+    self._write_yaml(app_scaffold_path, {
+      'version': 1,
+      'commands': [
+        {
+          'resource': 'app',
+          'action': 'create',
+          'options': {
+            'app_name': 'nested-context-app',
+            'quiet': True,
+            'runtime': 'local',
+          },
+        },
+      ],
+    })
+
+    # Context has its own .stoobly but no scaffold.yml — the old DataDir default
+    # would fail here; AppDataDir must resolve to the parent app.
+    original_cwd = os.getcwd()
+    try:
+      os.chdir(context_dir)
+      result = runner.invoke(scaffold, ['apply', '--dry-run'])
+      assert result.exit_code == 0, result.output
+      combined = result.output + (result.stderr or '')
+      assert 'would apply app create nested-context-app' in combined
+    finally:
+      os.chdir(original_cwd)
 
   def test_happy_path_app_and_service_create(self, runner: CliRunner, temp_dir: str):
     app_dir_path = os.path.join(temp_dir, 'my-app')
@@ -405,7 +448,7 @@ class TestScaffoldApply:
     result = runner.invoke(scaffold, ['apply', config_path])
     assert result.exit_code != 0
     combined = result.output + (result.stderr or '')
-    assert 'does not support --apply' in combined
+    assert 'cannot be used with scaffold apply' in combined
     assert 'service update' in combined
 
   def test_nested_setting_rewrite_set_dry_run(self, runner: CliRunner, temp_dir: str):
