@@ -674,7 +674,7 @@ def down(**kwargs):
             try:
               # Prompt confirm to install hostnames
               __hostname_uninstall_with_prompt(
-                  app_dir_path=kwargs['app_dir_path'],
+                  app,
                   hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
                   service=kwargs['service'],
                   validate=True,
@@ -866,7 +866,7 @@ def up(**kwargs):
         # Entrypoint container will be within the container network
         if workflow_command.workflow_template != WORKFLOW_TEST_TYPE:
           __hostname_install_with_prompt(
-            app_dir_path=kwargs['app_dir_path'],
+            app,
             hostname_install_confirm=kwargs.get('hostname_install_confirm'),
             service=kwargs['service'],
             validate=True,
@@ -1012,7 +1012,7 @@ def install(**kwargs):
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_install_with_prompt(
-    app_dir_path=kwargs['app_dir_path'],
+    app,
     hostname_install_confirm=kwargs.get('hostname_install_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
@@ -1033,7 +1033,7 @@ def uninstall(**kwargs):
   __apply_context_service_defaults(app.context_dir_path, kwargs)
 
   __hostname_uninstall_with_prompt(
-    app_dir_path=kwargs['app_dir_path'],
+    app,
     hostname_uninstall_confirm=kwargs.get('hostname_uninstall_confirm'),
     service=kwargs['service'],
     validate=kwargs.get('validate'),
@@ -1181,9 +1181,12 @@ def __get_services(app: App, **kwargs):
 
   return services
 
-def __get_hostnames(**kwargs):
-  """Get list of hostnames from services in the workflow."""
-  app = App(kwargs['app_dir_path'])
+def __get_hostnames(app: App, **kwargs):
+  """Get list of hostnames from services in the workflow.
+
+  Uses the caller's resolved App so --context-dir-path is preserved (do not rebuild
+  App from app_dir_path alone — that drops context and can fail App.valid).
+  """
   __validate_app(app)
 
   services = __get_services(
@@ -1202,8 +1205,8 @@ def __get_hostnames(**kwargs):
   return hostnames
 
 def __hostname_install_with_prompt(
+  app: App,
   workflow: tuple,
-  app_dir_path: str,
   service: tuple,
   hostname_install_confirm: str = None,
   validate: bool = False,
@@ -1211,13 +1214,10 @@ def __hostname_install_with_prompt(
 ):
   """Prompt user to install hostnames and install them if confirmed."""
 
-  hostnames = __get_hostnames(
-    app_dir_path=app_dir_path, service=service, workflow=workflow
-  )
+  hostnames = __get_hostnames(app, service=service, workflow=workflow)
 
   if validate:
     # Check app_config.proxy_mode is reverse
-    app = App(app_dir_path)
     app_config = AppConfig(app.scaffold_namespace_path)
 
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
@@ -1237,16 +1237,13 @@ def __hostname_install_with_prompt(
 
   if confirm == "y" or confirm == "Y":
     __hostname_install(
-      app_dir_path=app_dir_path,
       hosts_file_path=hosts_file_path,
       hostnames=hostnames,
-      service=service,
-      workflow=workflow,
     )
 
 def __hostname_uninstall_with_prompt(
+  app: App,
   workflow: tuple,
-  app_dir_path: str,
   service: tuple,
   hostname_uninstall_confirm: str = None,
   validate: bool = False,
@@ -1254,11 +1251,10 @@ def __hostname_uninstall_with_prompt(
 ):
   """Prompt user to uninstall hostnames and uninstall them if confirmed."""
 
-  hostnames = __get_hostnames(app_dir_path=app_dir_path, service=service, workflow=workflow)
+  hostnames = __get_hostnames(app, service=service, workflow=workflow)
 
   if validate:
     # Check app_config.proxy_mode is reverse
-    app = App(app_dir_path)
     app_config = AppConfig(app.scaffold_namespace_path)
 
     if app_config.proxy_mode != PROXY_MODE_REVERSE:
@@ -1278,11 +1274,8 @@ def __hostname_uninstall_with_prompt(
 
   if confirm == "y" or confirm == "Y":
     __hostname_uninstall(
-      app_dir_path=app_dir_path,
       hosts_file_path=hosts_file_path,
       hostnames=hostnames,
-      service=service,
-      workflow=workflow,
     )
 
 def __prepare_temp_hosts(hosts_file_path: str) -> str:
