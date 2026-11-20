@@ -53,7 +53,7 @@ For each selected service:
 
 ## Implementation note
 
-`__services_filter` in `scaffold_cli.py` must load and commit settings for **`app.context_dir_path`**, not a cwd-only `Settings.instance()`. Otherwise, when the shell cwd is the app (or another directory) and `--context-dir-path` points elsewhere, rules can land in the wrong `settings.yml` while the proxy still reads the context mount.
+`__services_filter` loads and commits settings via `Settings.instance(app.context_dir_path)` so rules always target the context the proxy mounts, even when cwd is the app or another directory.
 
 ## Examples
 

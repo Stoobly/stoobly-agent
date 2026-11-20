@@ -1427,7 +1427,8 @@ def __services_rewrite(app: App, services, workflow_name: str):
     apply_upstream_url_rewrite(service_config)
 
 def __services_filter(app: App, services, workflow_name: str):
-  settings = Settings.instance()
+  # Filter rules belong on the context the proxy mounts, not cwd/app by accident.
+  settings = Settings.instance(app.context_dir_path)
   project_key = ProjectKey(settings.proxy.intercept.project_key)
   project_id = project_key.id
   filter_rules = settings.proxy.filter.filter_rules(project_id)
