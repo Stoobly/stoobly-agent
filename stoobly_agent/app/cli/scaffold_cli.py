@@ -128,6 +128,11 @@ def hostname(ctx):
   default=os.getcwd(),
   help='Docker host app directory (volume mount source). Kept distinct from container paths.',
 )
+@click.option(
+  '--context-dir-path',
+  default=None,
+  help='Path to Stoobly context directory.',
+)
 @click.option('--namespace', default=WORKFLOW_MOCK_TYPE, help='Workflow namespace.')
 @click.option(
   '--containerized',
@@ -137,7 +142,12 @@ def hostname(ctx):
 def debug(**kwargs):
   # app_dir_path kwarg is the Docker host path; with --containerized, app_dir_path is the container mount.
   host_app_dir = kwargs['app_dir_path']
-  app = App(host_app_dir, app_dir_path=host_app_dir, containerized=kwargs['containerized'])
+  app = App(
+    host_app_dir,
+    app_dir_path=host_app_dir,
+    context_dir_path=kwargs.get('context_dir_path'),
+    containerized=kwargs['containerized'],
+  )
 
   click.echo(f"containerized:             {app.containerized}")
   click.echo(f"app_dir_path (container):  {app.app_dir_path}")
@@ -177,8 +187,6 @@ def debug(**kwargs):
   if app.containerized and app.host_runtime_app_dir_path == app.runtime_app_dir_path:
     click.echo("FAIL: host_runtime must stay on the Docker host path, not the container path", err=True)
     sys.exit(1)
-
-  click.echo("OK: host and container runtimes share relative_path but remain distinct bases")
 
 @app.command(
   help="Scaffold application"
