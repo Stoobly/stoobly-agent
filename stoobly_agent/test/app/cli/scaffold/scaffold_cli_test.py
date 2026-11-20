@@ -1108,4 +1108,4 @@ class TestHostnameHelpersPreserveContext:
     hostnames = get_hostnames(app, service=(), workflow=())
 
     assert app.context_dir_path == str(context_dir_path)
-    assert 'api.example.com' in hostnames
+    assert any(hostname == 'api.example.com' for hostname in hostnames)
