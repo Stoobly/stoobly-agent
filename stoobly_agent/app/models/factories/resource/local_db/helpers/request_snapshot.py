@@ -55,7 +55,7 @@ def _detect_request_format(uuid: str, data_dir: DataDir, slug: str = None) -> in
 
 
 class RequestSnapshot(Snapshot):
-  """Base request snapshot. Prefer RequestSnapshot.create() or V1/V2 subclasses."""
+  """Base request snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
 
@@ -88,6 +88,38 @@ class RequestSnapshot(Snapshot):
     if format == FORMAT_V2:
       return RequestSnapshotV2(parsed_uuid, data_dir, slug=parsed_slug)
     return RequestSnapshotV1(parsed_uuid, data_dir)
+
+  @classmethod
+  def from_path(
+    cls,
+    path: str,
+    data_dir: DataDir = None,
+    uuid: str = None,
+  ) -> Optional['RequestSnapshot']:
+    """
+    Build a request snapshot from a filesystem path.
+
+    v1: .../requests/{uuid[0:2]}/{uuid}
+    v2: .../requests/{slug}/{uuid}.http
+    """
+    data_dir = data_dir or DataDir.instance()
+    abs_path = os.path.abspath(path)
+    requests_dir = data_dir.snapshots_requests_dir_path
+    rel_path = os.path.relpath(abs_path, requests_dir)
+    if rel_path.startswith('..'):
+      return None
+
+    parts = [p for p in rel_path.split(os.sep) if p]
+    if len(parts) < 2:
+      return None
+
+    slug, filename = parts[0], parts[1]
+    if filename.endswith(REQUEST_FILE_EXTENSION):
+      parsed_uuid = uuid or filename[:-len(REQUEST_FILE_EXTENSION)]
+      return cls.create(parsed_uuid, data_dir=data_dir, slug=slug, format=FORMAT_V2)
+
+    parsed_uuid = uuid or filename
+    return cls.create(parsed_uuid, data_dir=data_dir, format=FORMAT_V1)
 
   @property
   def format(self) -> int:

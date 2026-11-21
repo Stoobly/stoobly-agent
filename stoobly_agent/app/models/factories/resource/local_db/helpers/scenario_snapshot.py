@@ -95,7 +95,7 @@ def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> i
   return resolve_write_format(data_dir)
 
 class ScenarioSnapshot(Snapshot):
-  """Base scenario snapshot. Prefer ScenarioSnapshot.create() or V1/V2 subclasses."""
+  """Base scenario snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
 
@@ -134,6 +134,42 @@ class ScenarioSnapshot(Snapshot):
       snapshot._hydrate_uuid_from_metadata()
       return snapshot
     return ScenarioSnapshotV1(parsed_uuid, data_dir)
+
+  @classmethod
+  def from_path(
+    cls,
+    path: str,
+    data_dir: DataDir = None,
+    uuid: str = None,
+  ) -> Optional['ScenarioSnapshot']:
+    """
+    Build a scenario snapshot from a filesystem path.
+
+    v1: .../scenarios/{uuid}
+    v2: .../scenarios/{name}.yaml
+    """
+    data_dir = data_dir or DataDir.instance()
+    abs_path = os.path.abspath(path)
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    rel_path = os.path.relpath(abs_path, scenarios_dir)
+    if rel_path.startswith('..'):
+      return None
+
+    parts = [p for p in rel_path.split(os.sep) if p]
+    if len(parts) < 1:
+      return None
+
+    basename = parts[0]
+    if basename.endswith(('.yaml', '.yml')):
+      name = basename.rsplit('.', 1)[0]
+      snapshot = cls.create(name, data_dir=data_dir)
+      if uuid:
+        snapshot._resolved_uuid = uuid
+      elif not snapshot._resolved_uuid:
+        return None
+      return snapshot
+
+    return cls.create(uuid or basename, data_dir=data_dir)
 
   @property
   def uuid(self):

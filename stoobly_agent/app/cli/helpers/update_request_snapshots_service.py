@@ -4,10 +4,8 @@ from typing import Callable, Dict, List, Tuple
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import REQUEST_FILE_EXTENSION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import FORMAT_V1, FORMAT_V2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import DELETE_ACTION, PUT_ACTION, Action
 from stoobly_agent.config.data_dir import DataDir
 
@@ -46,67 +44,41 @@ def update_request_snapshots(
     
     # Check if it's a request snapshot path
     if abs_path.startswith(request_snapshots_dir):
-        # v1: .../requests/{uuid[0:2]}/{uuid}
-        # v2: .../requests/{slug}/{uuid}.http
-        rel_path = os.path.relpath(abs_path, request_snapshots_dir)
-        parts = [p for p in rel_path.split(os.sep) if p]
-        if len(parts) >= 2:
-            filename = parts[1]
-            slug = parts[0]
-            if filename.endswith(REQUEST_FILE_EXTENSION):
-                uuid = resource_uuid or filename[:-len(REQUEST_FILE_EXTENSION)]
-                request_snapshot = RequestSnapshot.create(uuid, slug=slug, format=FORMAT_V2)
-            else:
-                uuid = resource_uuid or filename
-                request_snapshot = RequestSnapshot.create(uuid, format=FORMAT_V1)
-
-            # Find the event for this request snapshot
-            event = _find_event_by_resource_uuid(log, REQUEST_RESOURCE, uuid)
-            if not event:
-                print(f"Error: No event found for request snapshot {uuid}", file=sys.stderr)
-                sys.exit(1)
-
-            if not no_verify:
-                _verify_request(request_snapshot)
-
-            request_snapshots.append((request_snapshot, event))
-        else:
+        request_snapshot = RequestSnapshot.from_path(abs_path, data_dir=data_dir, uuid=resource_uuid)
+        if not request_snapshot:
             print(f"Error: Invalid request snapshot path format: {file_path}", file=sys.stderr)
             sys.exit(1)
 
+        uuid = request_snapshot.uuid
+        event = _find_event_by_resource_uuid(log, REQUEST_RESOURCE, uuid)
+        if not event:
+            print(f"Error: No event found for request snapshot {uuid}", file=sys.stderr)
+            sys.exit(1)
+
+        if not no_verify:
+            _verify_request(request_snapshot)
+
+        request_snapshots.append((request_snapshot, event))
+
     # Check if it's a scenario snapshot metadata path
     elif abs_path.startswith(scenarios_dir):
-        # v1: .../scenarios/{uuid}
-        # v2: .../scenarios/{name}.yaml
-        rel_path = os.path.relpath(abs_path, scenarios_dir)
-        parts = [p for p in rel_path.split(os.sep) if p]
-        if len(parts) >= 1:
-            uuid = resource_uuid or _scenario_uuid_from_path(abs_path, parts[0])
-            if not uuid:
-                print(f"Error: Invalid scenario snapshot path format: {file_path}", file=sys.stderr)
-                sys.exit(1)
-
-            # Prefer name-only locator for v2 YAML paths
-            basename = parts[0]
-            if basename.endswith(('.yaml', '.yml')):
-                scenario_snapshot = ScenarioSnapshot.create(basename.rsplit('.', 1)[0])
-            else:
-                scenario_snapshot = ScenarioSnapshot.create(uuid)
-
-            event = _find_event_by_resource_uuid(log, SCENARIO_RESOURCE, uuid)
-            if not event:
-                print(f"Error: No event found for scenario snapshot {uuid}", file=sys.stderr)
-                sys.exit(1)
-
-            if not no_verify:
-                scenario_snapshot.iter_request_snapshots(_verify_request)
-
-            scenario_snapshot.iter_request_snapshots(
-                lambda snapshot: request_snapshots.append((snapshot, event))
-            )
-        else:
+        scenario_snapshot = ScenarioSnapshot.from_path(abs_path, data_dir=data_dir, uuid=resource_uuid)
+        if not scenario_snapshot:
             print(f"Error: Invalid scenario snapshot path format: {file_path}", file=sys.stderr)
             sys.exit(1)
+
+        uuid = scenario_snapshot.uuid
+        event = _find_event_by_resource_uuid(log, SCENARIO_RESOURCE, uuid)
+        if not event:
+            print(f"Error: No event found for scenario snapshot {uuid}", file=sys.stderr)
+            sys.exit(1)
+
+        if not no_verify:
+            scenario_snapshot.iter_request_snapshots(_verify_request)
+
+        scenario_snapshot.iter_request_snapshots(
+            lambda snapshot: request_snapshots.append((snapshot, event))
+        )
     else:
         print(f"Error: Path {file_path} is not a valid snapshot path", file=sys.stderr)
         sys.exit(1)
@@ -192,19 +164,6 @@ def _apply_print(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
         print(request_snapshot.path)
 
     return snapshot_migrations
-
-def _scenario_uuid_from_path(abs_path: str, part: str) -> str:
-    """Resolve scenario uuid from v1 uuid filename or v2 yaml metadata."""
-    if part.endswith('.yaml') or part.endswith('.yml'):
-        try:
-            import yaml
-            with open(abs_path, 'r') as fp:
-                data = yaml.safe_load(fp) or {}
-            return data.get('uuid')
-        except Exception:
-            return None
-    return part
-
 
 def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) -> LogEvent:
     """Find the most recent event for a given resource UUID (or scenario name identity)."""
