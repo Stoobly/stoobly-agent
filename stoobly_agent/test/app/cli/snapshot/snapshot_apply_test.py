@@ -426,7 +426,7 @@ class TestApply():
           assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
 
         def test_it_removes_request_snapshot(self, delete_event: LogEvent):
-          scenario_snapshot = ScenarioSnapshot(delete_event.resource_id)
+          scenario_snapshot = ScenarioSnapshot.create(delete_event.resource_id)
           assert len(scenario_snapshot.requests) == 1
 
       class TestWhenMergingRequests():

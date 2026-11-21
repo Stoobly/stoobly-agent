@@ -281,7 +281,7 @@ def diff_handler(kwargs):
 
   if scenario_key:
     resolved_scenario_key = validate_scenario_key(scenario_key)
-    snapshot = ScenarioSnapshot(resolved_scenario_key.id)
+    snapshot = ScenarioSnapshot.create(resolved_scenario_key.id)
     if not snapshot.exists:
       print('Error: Snapshot not found for this scenario.', file=sys.stderr)
       sys.exit(1)

@@ -61,7 +61,7 @@ class TestSnapshotFormatV2:
       assert detect_snapshot_format(data_dir) == FORMAT_V2
 
       slug = build_request_slug(recorded_request.method, recorded_request.path)
-      snapshot = RequestSnapshot(recorded_request.uuid)
+      snapshot = RequestSnapshot.create(recorded_request.uuid)
       assert snapshot.format == FORMAT_V2
       assert snapshot.path.endswith(f'{slug}/{recorded_request.uuid}.http')
       assert os.path.isfile(snapshot.path)
@@ -103,7 +103,7 @@ class TestSnapshotFormatV2:
       result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert result.exit_code == 0
 
-      snap = ScenarioSnapshot(created_scenario.uuid)
+      snap = ScenarioSnapshot.create(created_scenario.uuid)
       assert snap.format == FORMAT_V2
       assert snap.metadata_path.endswith('checkout-flow.yaml')
       assert snap.metadata['name'] == 'checkout-flow'
@@ -163,7 +163,7 @@ class TestSnapshotFormatV2:
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
       assert not os.path.exists(v1_snapshot)
 
-      snap = RequestSnapshot(recorded_request.uuid)
+      snap = RequestSnapshot.create(recorded_request.uuid)
       assert snap.format == FORMAT_V2
       assert snap.path.endswith('.http')
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
@@ -234,7 +234,7 @@ class TestSnapshotFormatV2:
 
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 
-      scenario_snap = ScenarioSnapshot(created_scenario.uuid)
+      scenario_snap = ScenarioSnapshot.create(created_scenario.uuid)
       assert scenario_snap.format == FORMAT_V2
       assert scenario_snap.metadata_path.endswith('legacy-flow.yaml')
 
@@ -283,7 +283,7 @@ class TestSnapshotFormatV2:
       result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert result.exit_code == 0
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
-      return RequestSnapshot(recorded_request.uuid).path
+      return RequestSnapshot.create(recorded_request.uuid).path
 
     def test_migrate_creates_v1_files(
       self,
@@ -299,11 +299,11 @@ class TestSnapshotFormatV2:
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V1
       assert not os.path.exists(v2_snapshots)
 
-      snap = RequestSnapshot(recorded_request.uuid)
+      snap = RequestSnapshot.create(recorded_request.uuid)
       assert snap.format == FORMAT_V1
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
 
-      scenario_snap = ScenarioSnapshot(created_scenario.uuid)
+      scenario_snap = ScenarioSnapshot.create(created_scenario.uuid)
       assert scenario_snap.format == FORMAT_V1
       assert scenario_snap.metadata['name'] == 'migrate-flow'
 
@@ -345,7 +345,7 @@ class TestSnapshotFormatV2:
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
       assert not os.path.exists(v1_path)
 
-      snap = RequestSnapshot(recorded_request.uuid)
+      snap = RequestSnapshot.create(recorded_request.uuid)
       assert snap.format == FORMAT_V2
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
 
@@ -373,7 +373,7 @@ class TestSnapshotFormatV2:
       assert 'Migrated 1 request(s) and 0 scenario(s) to v1.' in result.output
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V1
 
-      snap = RequestSnapshot(recorded_request.uuid)
+      snap = RequestSnapshot.create(recorded_request.uuid)
       assert snap.format == FORMAT_V1
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
 
@@ -402,7 +402,7 @@ class TestSnapshotFormatV2:
       create_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
       assert create_result.exit_code == 0
 
-      source = RequestSnapshot(recorded_request.uuid)
+      source = RequestSnapshot.create(recorded_request.uuid)
       assert source.format == FORMAT_V2
       assert os.path.isfile(source.path)
 
@@ -421,7 +421,7 @@ class TestSnapshotFormatV2:
         assert copy_result.exit_code == 0
 
         dest_data_dir = DataDir.instance(dirpath)
-        dest = RequestSnapshot(recorded_request.uuid, dest_data_dir)
+        dest = RequestSnapshot.create(recorded_request.uuid, dest_data_dir)
         assert dest.format == FORMAT_V2
         assert os.path.isfile(dest.path)
 
@@ -461,8 +461,8 @@ class TestSnapshotFormatV2:
       put_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert put_result.exit_code == 0
 
-      scenario_snap = ScenarioSnapshot(created_scenario.uuid)
-      request_snap = RequestSnapshot(recorded_request.uuid)
+      scenario_snap = ScenarioSnapshot.create(created_scenario.uuid)
+      request_snap = RequestSnapshot.create(recorded_request.uuid)
       assert scenario_snap.format == FORMAT_V2
 
       metadata_path = scenario_snap.metadata_path
@@ -493,8 +493,8 @@ class TestSnapshotFormatV2:
       put_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert put_result.exit_code == 0
 
-      request_path = RequestSnapshot(recorded_request.uuid).path
-      metadata_path = ScenarioSnapshot(created_scenario.uuid).metadata_path
+      request_path = RequestSnapshot.create(recorded_request.uuid).path
+      metadata_path = ScenarioSnapshot.create(created_scenario.uuid).metadata_path
       assert os.path.isfile(request_path)
       assert os.path.isfile(metadata_path)
 

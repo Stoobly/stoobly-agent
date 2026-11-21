@@ -35,7 +35,7 @@ class TestRequestSnapshot():
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
-        snapshot = RequestSnapshot(recorded_request.uuid)
+        snapshot = RequestSnapshot.create(recorded_request.uuid)
 
         # Assert the snapshot path is printed to stdout
         assert snapshot_result.stdout.strip() == snapshot.path
@@ -57,7 +57,7 @@ class TestRequestSnapshot():
         snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
         assert snapshot_result.exit_code == 0
 
-        snapshot = RequestSnapshot(recorded_request.uuid)
+        snapshot = RequestSnapshot.create(recorded_request.uuid)
         raw_request = snapshot.request
 
         expected_raw_request = JoinedRequestStringAdapter(recorded_request).adapt()

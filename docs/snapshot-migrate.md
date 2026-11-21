@@ -104,6 +104,8 @@ Migrate is also used interactively on **snapshot create** when v1 trees are dete
 | CLI | [`snapshot_cli.py`](../stoobly_agent/app/cli/snapshot_cli.py) (`snapshot migrate`) |
 | Core | [`snapshot_migrate.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_migrate.py) |
 | Format detect | [`snapshot_format.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py) |
+| Snapshot classes | [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) / [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) (`*V1` / `*V2`; readers use `.create()`) |
 | Body externalize / reconstitute | [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) |
 | OpenCLI contract | [`snapshot.opencli.yaml`](../stoobly_agent/app/cli/snapshot.opencli.yaml) |
+| Create flow | [snapshot-create.md](snapshot-create.md) |
 | Tests | [`snapshot_format_v2_test.py`](../stoobly_agent/test/app/cli/snapshot/snapshot_format_v2_test.py) |

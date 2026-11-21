@@ -140,7 +140,7 @@ class TestWhenDataDirPathDiffersFromCwd():
     context_data_dir = DataDir.instance(context_dir_path)
     # v2 default: scenarios/<name>.yaml (resolvable via ScenarioSnapshot)
     from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
-    scenario_snapshot = ScenarioSnapshot(scenario.uuid, context_data_dir, name=scenario.name)
+    scenario_snapshot = ScenarioSnapshot.create(scenario.uuid, context_data_dir, name=scenario.name)
     metadata_path = scenario_snapshot.metadata_path
 
     assert [file_path for _, file_path in snapshots] == [metadata_path]

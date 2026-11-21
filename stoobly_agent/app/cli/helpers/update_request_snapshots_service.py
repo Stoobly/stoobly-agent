@@ -7,6 +7,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import REQUEST_FILE_EXTENSION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import FORMAT_V1, FORMAT_V2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import DELETE_ACTION, PUT_ACTION, Action
 from stoobly_agent.config.data_dir import DataDir
 
@@ -54,10 +55,10 @@ def update_request_snapshots(
             slug = parts[0]
             if filename.endswith(REQUEST_FILE_EXTENSION):
                 uuid = resource_uuid or filename[:-len(REQUEST_FILE_EXTENSION)]
-                request_snapshot = RequestSnapshot(uuid, slug=slug)
+                request_snapshot = RequestSnapshot.create(uuid, slug=slug, format=FORMAT_V2)
             else:
                 uuid = resource_uuid or filename
-                request_snapshot = RequestSnapshot(uuid)
+                request_snapshot = RequestSnapshot.create(uuid, format=FORMAT_V1)
 
             # Find the event for this request snapshot
             event = _find_event_by_resource_uuid(log, REQUEST_RESOURCE, uuid)
@@ -85,7 +86,7 @@ def update_request_snapshots(
                 print(f"Error: Invalid scenario snapshot path format: {file_path}", file=sys.stderr)
                 sys.exit(1)
 
-            scenario_snapshot = ScenarioSnapshot(uuid)
+            scenario_snapshot = ScenarioSnapshot.create(uuid)
 
             event = _find_event_by_resource_uuid(log, SCENARIO_RESOURCE, uuid)
             if not event:
@@ -212,7 +213,7 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
             if event.resource != SCENARIO_RESOURCE:
                 continue
 
-            scenario_snapshot = ScenarioSnapshot(event.resource_id)
+            scenario_snapshot = ScenarioSnapshot.create(event.resource_id)
             # Check if the request UUID is in this scenario's request snapshots
             for request_snapshot in scenario_snapshot.request_snapshots:
                 if request_snapshot.uuid == resource_uuid:
@@ -236,7 +237,7 @@ def _commit_snapshot_migration(snapshot_migration):
 def _verify_request(snapshot: RequestSnapshot):
     """Verify and fix a request snapshot if needed."""
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request
-    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import FORMAT_V2
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
 
     raw_request = snapshot.request
     if not raw_request:
@@ -245,5 +246,5 @@ def _verify_request(snapshot: RequestSnapshot):
     verified_raw_request = verify_raw_request(raw_request)
 
     # Always rewrite v2 so on-disk form is normalized (strips trailing junk, re-externalizes bodies)
-    if raw_request != verified_raw_request or snapshot.format == FORMAT_V2:
+    if raw_request != verified_raw_request or isinstance(snapshot, RequestSnapshotV2):
         snapshot.write_raw(verified_raw_request)

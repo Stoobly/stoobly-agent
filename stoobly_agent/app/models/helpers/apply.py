@@ -176,7 +176,7 @@ class Apply():
     return res, status
 
   def __apply_put_request(self, resource_ref: str):
-    snapshot = RequestSnapshot(resource_ref)
+    snapshot = RequestSnapshot.create(resource_ref)
 
     raw_request = snapshot.request
     if not raw_request:
@@ -202,7 +202,7 @@ class Apply():
     return res, status
 
   def __apply_put_scenario(self, resource_ref: str):
-    snapshot = ScenarioSnapshot(resource_ref)
+    snapshot = ScenarioSnapshot.create(resource_ref)
     uuid = snapshot.uuid
     metadata = snapshot.metadata
 
@@ -294,7 +294,7 @@ class Apply():
 
   def __apply_put_scenario_requests(self, scenario, snapshot: ScenarioSnapshot = None):
     if not snapshot:
-      snapshot = ScenarioSnapshot(scenario['uuid'])
+      snapshot = ScenarioSnapshot.create(scenario['uuid'])
 
     snapshot_requests = {}
 

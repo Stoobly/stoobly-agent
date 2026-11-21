@@ -157,9 +157,9 @@ class LogEvent():
 
   def snapshot(self, data_dir: DataDir = None):
     if self.is_request():
-      return RequestSnapshot(self.resource_id, data_dir, slug=self.resource_slug)
+      return RequestSnapshot.create(self.resource_id, data_dir, slug=self.resource_slug)
     elif self.is_scenario():
-      return ScenarioSnapshot(self.resource_id, data_dir, name=self.resource_slug)
+      return ScenarioSnapshot.create(self.resource_id, data_dir, name=self.resource_slug)
 
   def to_dict(self):
     return {

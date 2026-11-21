@@ -523,7 +523,7 @@ def diff_handler(kwargs):
     _request_key = validate_request_key(request_key)
     request_uuid = _request_key.id
 
-    snapshot = RequestSnapshot(request_uuid)
+    snapshot = RequestSnapshot.create(request_uuid)
     if not snapshot.exists:
       print('Error: Snapshot not found for this request.', file=sys.stderr)
       sys.exit(1)
