@@ -1,13 +1,13 @@
 from typing import Literal, Optional, TypedDict
 
-REQUEST_RESOURCE = 'request'
-SCENARIO_RESOURCE = 'scenario'
+REQUEST_RESOURCE: Literal['request'] = 'request'
+SCENARIO_RESOURCE: Literal['scenario'] = 'scenario'
 
-DELETE_ACTION = 'DELETE'
-PUT_ACTION = 'PUT'
+DELETE_ACTION: Literal['DELETE'] = 'DELETE'
+PUT_ACTION: Literal['PUT'] = 'PUT'
 
-Action = Literal[f"{DELETE_ACTION}", f"{PUT_ACTION}"]
-Resource = Literal[f"{REQUEST_RESOURCE}", f"{SCENARIO_RESOURCE}"]
+Action = Literal['DELETE', 'PUT']
+Resource = Literal['request', 'scenario']
 
 class SnapshotOptions(TypedDict, total=False):
   action: Action

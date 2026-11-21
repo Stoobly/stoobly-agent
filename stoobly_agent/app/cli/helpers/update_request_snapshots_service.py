@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
@@ -10,12 +10,12 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types
 from stoobly_agent.config.data_dir import DataDir
 
 def update_request_snapshots(
-    file_path: str,
+    file_path: Optional[str],
     action: Action = PUT_ACTION,
-    lifecycle_hooks_path: str = None,
+    lifecycle_hooks_path: Optional[str] = None,
     no_verify: bool = False,
     with_snapshot: bool = True,
-    resource_uuid: str = None,
+    resource_uuid: Optional[str] = None,
 ):
     """
     Update request snapshots given a file path.
