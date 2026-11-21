@@ -5,7 +5,6 @@ from typing import List
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
-from stoobly_agent.app.models.factories.resource.local_db.helpers.resource_ref import parse_resource_ref
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
@@ -266,10 +265,10 @@ class Apply():
       return resource_ref
 
     if '/' in resource_ref:
-      _name, rest = parse_resource_ref(resource_ref)
-      if rest and UUID_RE.match(rest):
-        return rest
-      resource_ref = _name or resource_ref
+      parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(resource_ref)
+      if parsed_uuid and UUID_RE.match(parsed_uuid):
+        return parsed_uuid
+      resource_ref = parsed_name or resource_ref
 
     # Prefer uuid from on-disk snapshot when present
     snapshot = ScenarioSnapshot.create(resource_ref)

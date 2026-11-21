@@ -7,7 +7,6 @@ from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
 from .request_snapshot import RequestSnapshot, RequestSnapshotV2
-from .resource_ref import parse_resource_ref, parse_scenario_resource_ref
 from .scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
@@ -37,9 +36,14 @@ class LogEvent():
     self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
 
     if self.resource == SCENARIO_RESOURCE:
-      self.__resource_slug, self.__resource_id = parse_scenario_resource_ref(self.resource_uuid)
+      # Collapse identity is the unique name when present, else uuid
+      parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(self.resource_uuid)
+      self.__resource_slug = parsed_name
+      self.__resource_id = parsed_name or parsed_uuid
     else:
-      self.__resource_slug, self.__resource_id = parse_resource_ref(self.resource_uuid)
+      parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(self.resource_uuid)
+      self.__resource_slug = parsed_slug
+      self.__resource_id = parsed_uuid
 
   @classmethod
   def _resolve_event_class(cls, format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
