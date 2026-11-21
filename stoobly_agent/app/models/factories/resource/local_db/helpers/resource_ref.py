@@ -1,7 +1,6 @@
 from typing import Optional, Tuple
 
-from .request_slug import REQUEST_FILE_EXTENSION
-from .snapshot_format import UUID_RE
+from .snapshot_format import REQUEST_FILE_EXTENSION, UUID_RE
 
 
 def parse_resource_ref(ref: str) -> Tuple[Optional[str], str]:

@@ -13,8 +13,7 @@ from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref import BODY_REF_HEADER
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import build_request_slug
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot, RequestSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_V1,
@@ -60,7 +59,7 @@ class TestSnapshotFormatV2:
       data_dir = DataDir.instance()
       assert detect_snapshot_format(data_dir) == FORMAT_V2
 
-      slug = build_request_slug(recorded_request.method, recorded_request.path)
+      slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
       snapshot = RequestSnapshot.create(recorded_request.uuid)
       assert snapshot.format == FORMAT_V2
       assert snapshot.path.endswith(f'{slug}/{recorded_request.uuid}.http')
@@ -171,9 +170,8 @@ class TestSnapshotFormatV2:
 
       # History locators are rewritten; no uuid-index needed
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-      from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import build_request_slug
 
-      slug = build_request_slug(recorded_request.method, recorded_request.path)
+      slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
       event = Log().events[-1]
       assert event.resource_uuid == f'{slug}/{recorded_request.uuid}'
       assert event.resource_id == recorded_request.uuid

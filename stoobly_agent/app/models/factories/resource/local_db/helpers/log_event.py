@@ -6,10 +6,9 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
-from .request_slug import build_request_slug, sanitize_scenario_filename
-from .request_snapshot import RequestSnapshot
+from .request_snapshot import RequestSnapshot, RequestSnapshotV2
 from .resource_ref import parse_resource_ref, parse_scenario_resource_ref
-from .scenario_snapshot import ScenarioSnapshot
+from .scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
 
@@ -225,9 +224,9 @@ class LogEventV2(LogEvent):
 
   @classmethod
   def request_locator(cls, request: Request, data_dir: DataDir = None) -> str:
-    slug = build_request_slug(request.method, request.path)
+    slug = RequestSnapshotV2.build_request_slug(request.method, request.path)
     return f"{slug}/{request.uuid}"
 
   @classmethod
   def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
-    return sanitize_scenario_filename(scenario.name)
+    return ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name)

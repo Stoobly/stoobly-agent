@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Callable, List, Optional
 
 import yaml
@@ -7,17 +8,12 @@ import yaml
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.scenario import Scenario
 
-from .request_slug import (
-  build_request_slug,
-  parse_request_relative_path,
-  request_relative_path,
-  sanitize_scenario_filename,
-)
 from .request_snapshot import RequestSnapshot, RequestSnapshotV1, RequestSnapshotV2, RequestSnapshotOptions
 from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 
 REQUEST_DELIMITTER = "\n"
+SAFE_NAME_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 
 def _parse_scenario_ref(uuid: str, name: str = None):
@@ -64,7 +60,9 @@ def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> i
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
 
   if name:
-    candidate = os.path.join(scenarios_dir, f"{sanitize_scenario_filename(name)}.yaml")
+    candidate = os.path.join(
+      scenarios_dir, f"{ScenarioSnapshotV2.sanitize_scenario_filename(name)}.yaml"
+    )
     if os.path.isfile(candidate):
       return FORMAT_V2
 
@@ -378,6 +376,13 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
   def __init__(self, uuid: str, data_dir: DataDir = None, name: str = None):
     super().__init__(uuid, data_dir, name=name)
 
+  @staticmethod
+  def sanitize_scenario_filename(name: str) -> str:
+    """Filesystem-safe scenario YAML basename (without extension)."""
+    name = (name or '').strip() or 'scenario'
+    name = SAFE_NAME_RE.sub('-', name).strip('-._')
+    return name or 'scenario'
+
   @property
   def exists(self):
     return bool(self.metadata_path) and os.path.exists(self.metadata_path)
@@ -393,7 +398,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       return found
 
     name = self._name or self.uuid
-    filename = f"{sanitize_scenario_filename(name)}.yaml"
+    filename = f"{self.sanitize_scenario_filename(name)}.yaml"
     self._resolved_metadata_path = os.path.join(self._scenarios_dir_path, filename)
     return self._resolved_metadata_path
 
@@ -405,7 +410,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
   def iter_request_snapshots(self, handler: Callable[[RequestSnapshot], None]):
     meta = self._load_metadata_data()
     for relative in meta.get('requests') or []:
-      parsed = parse_request_relative_path(relative)
+      parsed = RequestSnapshotV2.parse_request_relative_path(relative)
       if not parsed:
         continue
       slug, uuid = parsed
@@ -439,10 +444,10 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
   def write_requests(self, scenario: Scenario, **options: RequestSnapshotOptions):
     relative_paths = []
     for request in scenario.requests:
-      slug = build_request_slug(request.method, request.path)
+      slug = RequestSnapshotV2.build_request_slug(request.method, request.path)
       request_snapshot = RequestSnapshotV2(request.uuid, self.data_dir, slug=slug)
       request_snapshot.write(request, **options)
-      relative_paths.append(request_relative_path(slug, request.uuid))
+      relative_paths.append(RequestSnapshotV2.request_relative_path(slug, request.uuid))
 
     self._name = scenario.name
     self._resolved_metadata_path = None
@@ -469,7 +474,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     if self._name:
       candidate = os.path.join(
         self._scenarios_dir_path,
-        f"{sanitize_scenario_filename(self._name)}.yaml",
+        f"{self.sanitize_scenario_filename(self._name)}.yaml",
       )
       if os.path.isfile(candidate):
         return candidate

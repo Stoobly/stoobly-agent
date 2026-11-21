@@ -2,11 +2,8 @@ import os
 
 import pytest
 
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import (
-  build_request_slug,
-  parse_request_relative_path,
-  sanitize_scenario_filename,
-)
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_NONE,
   FORMAT_V1,
@@ -23,18 +20,18 @@ def settings():
   return reset()
 
 
-class TestRequestSlug:
+class TestRequestSnapshotV2Naming:
   def test_method_and_path(self):
-    assert build_request_slug('GET', '/api/users/1') == 'GET-api-users-1'
+    assert RequestSnapshotV2.build_request_slug('GET', '/api/users/1') == 'GET-api-users-1'
 
   def test_root_path(self):
-    assert build_request_slug('POST', '/') == 'POST'
+    assert RequestSnapshotV2.build_request_slug('POST', '/') == 'POST'
 
   def test_relative_path_parse(self):
-    assert parse_request_relative_path('GET-api-users/abc.http') == ('GET-api-users', 'abc')
+    assert RequestSnapshotV2.parse_request_relative_path('GET-api-users/abc.http') == ('GET-api-users', 'abc')
 
   def test_sanitize_scenario_name(self):
-    assert sanitize_scenario_filename('My Scenario!') == 'My-Scenario'
+    assert ScenarioSnapshotV2.sanitize_scenario_filename('My Scenario!') == 'My-Scenario'
 
 
 class TestSnapshotFormatDetect:

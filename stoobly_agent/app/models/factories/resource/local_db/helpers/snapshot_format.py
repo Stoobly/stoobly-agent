@@ -4,11 +4,12 @@ from typing import Optional
 
 from stoobly_agent.config.data_dir import DataDir
 
-from .request_slug import REQUEST_FILE_EXTENSION
-
 FORMAT_NONE = None
 FORMAT_V1 = 1
 FORMAT_V2 = 2
+
+# v2 request snapshot file suffix (owned conceptually by RequestSnapshotV2)
+REQUEST_FILE_EXTENSION = '.http'
 
 UUID_RE = re.compile(
   r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',

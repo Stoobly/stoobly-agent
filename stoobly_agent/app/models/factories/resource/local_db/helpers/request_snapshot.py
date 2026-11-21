@@ -1,7 +1,7 @@
 import glob
 import os
 import shutil
-from typing import Optional
+from typing import Optional, Union
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.config.constants.custom_headers import BODY_REF
@@ -10,9 +10,8 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
 from .body_ref import externalize_joined_request, reconstitute_joined_request
-from .request_slug import REQUEST_FILE_EXTENSION, build_request_slug, request_relative_path
 from .snapshot import Snapshot
-from .snapshot_format import FORMAT_V1, FORMAT_V2, resolve_write_format
+from .snapshot_format import FORMAT_V1, FORMAT_V2, REQUEST_FILE_EXTENSION, resolve_write_format
 from .snapshot_types import RequestSnapshotOptions
 
 LOG_ID = 'RequestSnapshot'
@@ -262,9 +261,51 @@ class RequestSnapshotV1(RequestSnapshot):
 
 class RequestSnapshotV2(RequestSnapshot):
   FORMAT = FORMAT_V2
+  FILE_EXTENSION = REQUEST_FILE_EXTENSION
 
   def __init__(self, uuid: str, data_dir: DataDir = None, slug: str = None):
     super().__init__(uuid, data_dir, slug=slug)
+
+  @staticmethod
+  def build_request_slug(method: str, path: str) -> str:
+    """
+    Build v2 request directory slug: {METHOD}-{path-slug}.
+
+    path-slug is path with leading/trailing slashes stripped and '/' replaced by '-'.
+    Root path '/' yields method only.
+    """
+    method = (method or 'GET').upper()
+    path = path or '/'
+    path_slug = path.strip('/')
+    if not path_slug:
+      return method
+    return f"{method}-{path_slug.replace('/', '-')}"
+
+  @staticmethod
+  def request_relative_path(slug: str, uuid: str) -> str:
+    return f"{slug}/{uuid}{RequestSnapshotV2.FILE_EXTENSION}"
+
+  @staticmethod
+  def parse_request_relative_path(relative_path: str) -> Union[tuple, None]:
+    """
+    Parse `slug/<uuid>.http` into (slug, uuid).
+    """
+    if not relative_path:
+      return None
+
+    parts = relative_path.replace('\\', '/').split('/')
+    if len(parts) != 2:
+      return None
+
+    slug, filename = parts
+    if not filename.endswith(RequestSnapshotV2.FILE_EXTENSION):
+      return None
+
+    uuid = filename[:-len(RequestSnapshotV2.FILE_EXTENSION)]
+    if not slug or not uuid:
+      return None
+
+    return slug, uuid
 
   @property
   def slug(self) -> Optional[str]:
@@ -280,7 +321,7 @@ class RequestSnapshotV2(RequestSnapshot):
     slug = self.slug
     if not slug:
       return None
-    return request_relative_path(slug, self.uuid)
+    return self.request_relative_path(slug, self.uuid)
 
   @property
   def request(self):
@@ -310,7 +351,7 @@ class RequestSnapshotV2(RequestSnapshot):
 
     # Do not mkdir here — path is also used for exists/remove checks
     self._resolved_path = os.path.join(
-      self._requests_dir_path, slug, f"{self.uuid}{REQUEST_FILE_EXTENSION}"
+      self._requests_dir_path, slug, f"{self.uuid}{self.FILE_EXTENSION}"
     )
     return self._resolved_path
 
@@ -329,7 +370,7 @@ class RequestSnapshotV2(RequestSnapshot):
       self._cleanup_empty_slug_dir(os.path.dirname(request_file_path))
 
   def write(self, request: Request, **options: RequestSnapshotOptions):
-    self._slug = build_request_slug(request.method, request.path)
+    self._slug = self.build_request_slug(request.method, request.path)
     self._resolved_path = None
     super().write(request, **options)
 
@@ -354,7 +395,7 @@ class RequestSnapshotV2(RequestSnapshot):
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
       candidate = os.path.join(
-        self._requests_dir_path, self._slug, f"{self.uuid}{REQUEST_FILE_EXTENSION}"
+        self._requests_dir_path, self._slug, f"{self.uuid}{self.FILE_EXTENSION}"
       )
       if os.path.exists(candidate):
         return candidate
@@ -369,7 +410,7 @@ class RequestSnapshotV2(RequestSnapshot):
           self._slug = self._slug or relative.split('/', 1)[0]
           return candidate
 
-    pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{REQUEST_FILE_EXTENSION}")
+    pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{self.FILE_EXTENSION}")
     matches = glob.glob(pattern)
     if matches:
       return matches[0]
@@ -399,7 +440,7 @@ class RequestSnapshotV2(RequestSnapshot):
     if not os.path.isdir(slug_dir):
       return
 
-    remaining_http = [n for n in os.listdir(slug_dir) if n.endswith(REQUEST_FILE_EXTENSION)]
+    remaining_http = [n for n in os.listdir(slug_dir) if n.endswith(self.FILE_EXTENSION)]
     if remaining_http:
       return
 

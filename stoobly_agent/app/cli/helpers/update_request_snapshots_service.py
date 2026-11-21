@@ -178,12 +178,12 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
             if snapshot.uuid == resource_uuid:
                 return event
             # DELETE may have already removed YAML; match via ORM name
-            from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import (
-              sanitize_scenario_filename,
+            from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+              ScenarioSnapshotV2,
             )
             from stoobly_agent.lib.orm.scenario import Scenario
             scenario = Scenario.find_by(uuid=resource_uuid)
-            if scenario and event.resource_id == sanitize_scenario_filename(scenario.name):
+            if scenario and event.resource_id == ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name):
                 return event
 
     # If resource is request and no event found, check if it belongs to a scenario event

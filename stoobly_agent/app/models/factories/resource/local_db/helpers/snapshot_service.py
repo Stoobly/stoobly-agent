@@ -8,7 +8,6 @@ if TYPE_CHECKING:
 
 from .log import Log
 from .log_event import Action, DELETE_ACTION, PUT_ACTION
-from .request_slug import build_request_slug
 from .request_snapshot import RequestSnapshotV1, RequestSnapshotV2, RequestSnapshotOptions
 from .scenario_snapshot import ScenarioSnapshotV1, ScenarioSnapshotV2
 from .snapshot_format import FORMAT_V2, resolve_write_format
@@ -27,7 +26,7 @@ def snapshot_request(request: 'Request', **options: Unpack[RequestSnapshotOption
     snapshot = RequestSnapshotV2(
       request.uuid,
       data_dir,
-      slug=build_request_slug(request.method, request.path),
+      slug=RequestSnapshotV2.build_request_slug(request.method, request.path),
     )
   else:
     snapshot = RequestSnapshotV1(request.uuid, data_dir)

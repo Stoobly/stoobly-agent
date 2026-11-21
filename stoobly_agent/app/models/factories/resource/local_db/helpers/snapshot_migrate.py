@@ -14,14 +14,16 @@ from .body_ref import (
 )
 from .log import EVENT_DELIMITTER, Log
 from .log_event import LogEvent
-from .request_slug import (
+from .request_snapshot import RequestSnapshotV2
+from .scenario_snapshot import ScenarioSnapshotV2
+from .snapshot_format import (
+  FORMAT_NONE,
+  FORMAT_V1,
+  FORMAT_V2,
   REQUEST_FILE_EXTENSION,
-  build_request_slug,
-  parse_request_relative_path,
-  request_relative_path,
-  sanitize_scenario_filename,
+  UUID_RE,
+  detect_snapshot_format,
 )
-from .snapshot_format import FORMAT_NONE, FORMAT_V1, FORMAT_V2, UUID_RE, detect_snapshot_format
 
 
 def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict:
@@ -89,7 +91,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
           # Skip corrupt files; leave them in place
           continue
 
-        slug = build_request_slug(method, path)
+        slug = RequestSnapshotV2.build_request_slug(method, path)
         slug_dir = os.path.join(requests_dir, slug)
         os.makedirs(slug_dir, exist_ok=True)
 
@@ -98,7 +100,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
         with open(dest, 'wb') as fp:
           fp.write(externalized)
 
-        relative = request_relative_path(slug, name)
+        relative = RequestSnapshotV2.request_relative_path(slug, name)
         os.remove(src)
         request_uuid_to_relative[name] = relative
         request_uuid_to_locator[name] = f"{slug}/{name}"
@@ -149,12 +151,12 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
             relative = _find_v2_relative(requests_dir, request_uuid)
           if relative:
             relative_requests.append(relative)
-            parsed = parse_request_relative_path(relative)
+            parsed = RequestSnapshotV2.parse_request_relative_path(relative)
             if parsed and request_uuid not in request_uuid_to_locator:
               slug, _uuid = parsed
               request_uuid_to_locator[request_uuid] = f"{slug}/{request_uuid}"
 
-      yaml_name = f"{sanitize_scenario_filename(scenario_name)}.yaml"
+      yaml_name = f"{ScenarioSnapshotV2.sanitize_scenario_filename(scenario_name)}.yaml"
       yaml_path = os.path.join(scenarios_dir, yaml_name)
       # Avoid clobbering if name collision
       yaml_path = _unique_path(yaml_path)
@@ -285,7 +287,7 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       request_uuids = []
       for relative in data.get('requests') or []:
-        parsed = parse_request_relative_path(relative)
+        parsed = RequestSnapshotV2.parse_request_relative_path(relative)
         if not parsed:
           continue
         _, request_uuid = parsed
@@ -412,7 +414,7 @@ def _find_v2_relative(requests_dir: str, uuid: str) -> Optional[str]:
       continue
     candidate = os.path.join(requests_dir, slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
     if os.path.isfile(candidate):
-      return request_relative_path(slug, uuid)
+      return RequestSnapshotV2.request_relative_path(slug, uuid)
   return None
 
 

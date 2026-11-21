@@ -4,10 +4,9 @@ from typing import List
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import sanitize_scenario_filename
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.resource_ref import parse_resource_ref
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
@@ -349,7 +348,7 @@ class Apply():
 
         scenarios = res.get('list') or []
         for scenario in scenarios:
-          if sanitize_scenario_filename(scenario.get('name') or '') == sanitized:
+          if ScenarioSnapshotV2.sanitize_scenario_filename(scenario.get('name') or '') == sanitized:
             return scenario, 200
 
         total = res.get('total') or len(scenarios)
