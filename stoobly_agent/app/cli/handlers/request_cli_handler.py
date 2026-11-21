@@ -389,6 +389,9 @@ def snapshot_handler(kwargs):
     print(f"Error: Could not find request", file=sys.stderr)
     sys.exit(1)
 
+  from stoobly_agent.app.cli.helpers.snapshot_format_prompt import prepare_snapshot_write_format
+  kwargs['format'] = prepare_snapshot_write_format(yes=kwargs.pop('yes', False))
+
   response, status = request.snapshot(request_key, kwargs)
   if status != 200:
     print(f"Error: Could not snapshot request: {response}", file=sys.stderr)
@@ -545,11 +548,11 @@ def diff_handler(kwargs):
       continue
     if event.resource != REQUEST_RESOURCE:
       continue
-    if event.resource_uuid in visited_request_ids:
+    if event.resource_id in visited_request_ids:
       continue
 
-    visited_request_ids.add(event.resource_uuid)
-    snapshot = RequestSnapshot(event.resource_uuid)
+    visited_request_ids.add(event.resource_id)
+    snapshot = event.snapshot()
     if not snapshot.exists:
       continue
     if snapshot.request is None:

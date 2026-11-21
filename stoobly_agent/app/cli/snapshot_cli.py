@@ -8,6 +8,13 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE, SCENARIO_RESOURCE
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
+  FORMAT_NONE,
+  FORMAT_V1,
+  FORMAT_V2,
+  detect_snapshot_format,
+)
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_migrate import migrate_snapshots
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.scenario_model import ScenarioModel
@@ -16,6 +23,12 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.update_request_snapshots_service import update_request_snapshots
+
+SNAPSHOT_FORMAT_CHOICES = ['v1', 'v2']
+SNAPSHOT_FORMAT_MAP = {
+  'v1': FORMAT_V1,
+  'v2': FORMAT_V2,
+}
 
 @click.group(
     epilog="Run 'stoobly-agent project COMMAND --help' for more information on a command.",
@@ -76,9 +89,9 @@ def reset(**kwargs):
         if event.action != PUT_ACTION:
           continue
         if event.resource == REQUEST_RESOURCE:
-          request_ids.add(event.resource_uuid)
+          request_ids.add(event.resource_id)
         elif event.resource == SCENARIO_RESOURCE:
-          scenario_ids.add(event.resource_uuid)
+          scenario_ids.add(event.resource_id)
 
       if not kwargs.get('yes'):
         total = len(request_ids) + len(scenario_ids)
@@ -104,7 +117,7 @@ def reset(**kwargs):
           continue
 
         if event.resource == REQUEST_RESOURCE:
-          uuid = event.resource_uuid
+          uuid = event.resource_id
           if uuid in processed_requests:
             continue
           processed_requests.add(uuid)
@@ -115,7 +128,7 @@ def reset(**kwargs):
           else:
             failure_count += 1
         elif event.resource == SCENARIO_RESOURCE:
-          uuid = event.resource_uuid
+          uuid = event.resource_id
           if uuid in processed_scenarios:
             continue
           processed_scenarios.add(uuid)
@@ -165,6 +178,33 @@ def update(**kwargs):
     no_verify=kwargs.get('no_verify', False)
   )
 
+@snapshot.command(
+  help="Migrate snapshots to v1 or v2 format.",
+)
+@click.option(
+  '--format',
+  'format',
+  required=True,
+  type=click.Choice(SNAPSHOT_FORMAT_CHOICES),
+  help='Target snapshot format.',
+)
+def migrate(**kwargs):
+  format_name = kwargs['format']
+  target_format = SNAPSHOT_FORMAT_MAP[format_name]
+  data_dir = DataDir.instance()
+  result = migrate_snapshots(data_dir, format=target_format)
+
+  if result.get('noop'):
+    if detect_snapshot_format(data_dir) == FORMAT_NONE:
+      print("No snapshots to migrate.")
+    else:
+      print(f"Snapshots are already in {format_name} format.")
+    return
+
+  print(
+    f"Migrated {result['requests']} request(s) and {result['scenarios']} scenario(s) to {format_name}."
+  )
+
 def __copy_requests(request_keys: list, destination: str):
   log = Log()
 
@@ -182,7 +222,7 @@ def __copy_requests(request_keys: list, destination: str):
         continue
 
       key = RequestKey(request_key)
-      if event.resource_uuid != key.id:
+      if event.resource_id != key.id:
         continue
 
       snapshot: RequestSnapshot = event.snapshot()
@@ -215,7 +255,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
         continue
 
       key = ScenarioKey(scenario_key)
-      if event.resource_uuid != key.id:
+      if event.resource_id != key.id:
         continue
 
       snapshot: ScenarioSnapshot = event.snapshot()

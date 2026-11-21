@@ -235,7 +235,7 @@ def _scenario_key_filter_matches(event: LogEvent, scenario_key: Optional[str]) -
     if event.resource != SCENARIO_RESOURCE:
         return False
 
-    return event.resource_uuid == resolved
+    return event.resource_id == resolved
 
 
 def _transform_scenario(snapshot: ScenarioSnapshot):

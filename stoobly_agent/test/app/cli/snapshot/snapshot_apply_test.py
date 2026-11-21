@@ -324,7 +324,7 @@ class TestApply():
         @pytest.fixture(scope='class', autouse=True)
         @classmethod
         def new_scenario_request(cls, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
-          assert created_scenario.uuid == put_event.resource_uuid
+          assert created_scenario.uuid == put_event.resource_id
           assert created_scenario.requests.count() == 2
 
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
@@ -426,7 +426,7 @@ class TestApply():
           assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
 
         def test_it_removes_request_snapshot(self, delete_event: LogEvent):
-          scenario_snapshot = ScenarioSnapshot(delete_event.resource_uuid)
+          scenario_snapshot = ScenarioSnapshot(delete_event.resource_id)
           assert len(scenario_snapshot.requests) == 1
 
       class TestWhenMergingRequests():

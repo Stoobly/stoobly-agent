@@ -56,4 +56,4 @@ class TestCopy():
           request_key = RequestKey(recorded_request.key())
 
           # Check that the event is the request
-          assert request_key.id == event.resource_uuid
+          assert request_key.id == event.resource_id

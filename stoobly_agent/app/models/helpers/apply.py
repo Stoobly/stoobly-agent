@@ -175,16 +175,16 @@ class Apply():
 
     return res, status
 
-  def __apply_put_request(self, uuid: str):
-    snapshot = RequestSnapshot(uuid)
+  def __apply_put_request(self, resource_ref: str):
+    snapshot = RequestSnapshot(resource_ref)
 
     raw_request = snapshot.request
     if not raw_request:
-      error = f"snapshot for request {uuid} not found" 
+      error = f"snapshot for request {snapshot.uuid} not found"
       self.__logger(f"{bcolors.WARNING}Skipping Request{bcolors.ENDC} {error}")
       return error, 301
 
-    res, status = self.__put_request(uuid, raw_request)
+    res, status = self.__put_request(snapshot.uuid, raw_request)
 
     if status != 200:
       return f"{res} {snapshot.path}", status
@@ -201,14 +201,15 @@ class Apply():
 
     return res, status
 
-  def __apply_put_scenario(self, uuid: str):
-    snapshot = ScenarioSnapshot(uuid)
+  def __apply_put_scenario(self, resource_ref: str):
+    snapshot = ScenarioSnapshot(resource_ref)
+    uuid = snapshot.uuid
     metadata = snapshot.metadata
 
     if not metadata:
       error = f"snapshot for scenario {uuid} not found"
       self.__logger(f"{bcolors.WARNING}Skipping Scenario{bcolors.ENDC} {error}")
-      return error, 301 
+      return error, 301
 
     res, status = self.scenario_model.show(uuid)
     if status == 404:
@@ -228,8 +229,8 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}") 
-        else: 
+          self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}")
+        else:
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     else:
       res, status = self.scenario_model.update(uuid, **{

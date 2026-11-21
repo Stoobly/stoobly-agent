@@ -140,7 +140,7 @@ class Log():
       fp.write(event + EVENT_DELIMITTER)
 
   def delete(self, resource: Resource):
-    serialized_event = LogEvent.serialize_delete(resource)
+    serialized_event = LogEvent.serialize_delete(resource, data_dir=self.__data_dir)
     self.append(serialized_event)
 
   def generate_version(self, uuids: List[str]):
@@ -158,17 +158,21 @@ class Log():
   def build_log_events(self, raw_events) -> List[LogEvent]:
     return list(map(lambda raw_event: LogEvent(raw_event), raw_events))
   
-  def build_scenario_inverted_index(self, events: List[LogEvent], index = {}):
+  def build_scenario_inverted_index(self, events: List[LogEvent], index = {}, include_deletes = False):
     def handle_snapshot(snapshot: RequestSnapshot):
       request_uuid = snapshot.uuid
       if not request_uuid in index:
         index[request_uuid] = []
 
-      index[request_uuid].append(event.resource_uuid)
+      index[request_uuid].append(event.resource_id)
 
     for event in events:
       if not event.is_scenario():
-        continue 
+        continue
+
+      # Deleted scenarios no longer keep requests alive for prune/delete cleanup
+      if event.action == DELETE_ACTION and not include_deletes:
+        continue
 
       event.snapshot(self.__data_dir).iter_request_snapshots(handle_snapshot)
 
@@ -219,7 +223,7 @@ class Log():
     return target_events
 
   def put(self, resource: Resource):
-    serialized_event = LogEvent.serialize_put(resource)
+    serialized_event = LogEvent.serialize_put(resource, data_dir=self.__data_dir)
     self.append(serialized_event)
 
   def prune(self, dry_run = False):
@@ -239,13 +243,13 @@ class Log():
 
         events += history_events
     
-    # resource_uuid => event
+    # resource_id => event (UUID identity; ignores slug locator)
     resource_index = {}
     for event in events:
-      if event.resource_uuid not in resource_index:
-        resource_index[event.resource_uuid] = []
+      if event.resource_id not in resource_index:
+        resource_index[event.resource_id] = []
 
-      resource_index[event.resource_uuid].append(event)
+      resource_index[event.resource_id].append(event)
 
     scenario_inverted_index = self.scenario_inverted_index
 
@@ -255,13 +259,13 @@ class Log():
       snapshot_exists = snapshot.exists
 
       if event.action == DELETE_ACTION or not snapshot_exists:
-        if event.is_request() and event.resource_uuid in scenario_inverted_index:
+        if event.is_request() and event.resource_id in scenario_inverted_index:
           # If a request is deleted, only prune if it's not also a part of a scenario
           continue
 
         Logger.instance(LOG_ID).info(f"{bcolors.OKBLUE}Removing{bcolors.ENDC} {event.resource} {event.resource_uuid}")
 
-        resource_events: List[LogEvent] = resource_index[event.resource_uuid]
+        resource_events: List[LogEvent] = resource_index[event.resource_id]
         removed_events = {}
 
         for event in resource_events:
@@ -311,13 +315,13 @@ class Log():
     index = {}
     for event in processed_events:
       if event.action == PUT_ACTION:
-        index[event.resource_uuid] = event
+        index[event.resource_id] = event
       elif event.action == DELETE_ACTION:
-        if event.resource_uuid in index:
-          del index[event.resource_uuid]
+        if event.resource_id in index:
+          del index[event.resource_id]
 
     scenario_inverted_index = self.build_scenario_inverted_index(processed_events)
-    
+
     def keep(e: LogEvent):
       # Keep the event if it's a PUT, it may have been updated
       if e.action == PUT_ACTION:
@@ -325,16 +329,16 @@ class Log():
 
       if e.action == DELETE_ACTION:
         if e.is_request():
-          referenced = e.resource_uuid in scenario_inverted_index
+          referenced = e.resource_id in scenario_inverted_index
           # Keep the DELETE event if the requests exists in a scenario
           # or if it doesn't exist in a scenario, there was a previous delete event
-          return referenced or (e.resource_uuid in index and not referenced)
+          return referenced or (e.resource_id in index and not referenced)
         elif e.is_scenario():
           # Update scenario_inverted_index with unprocessed event
-          self.build_scenario_inverted_index([e], scenario_inverted_index)
+          self.build_scenario_inverted_index([e], scenario_inverted_index, include_deletes=True)
 
           # Keep DELETE scenario event only if previous event for the resource was PUT
-          return e.resource_uuid in index
+          return e.resource_id in index
         else:
           return True
     
@@ -377,10 +381,21 @@ class Log():
     remaining_events = self.remove_dangling_events(processed_events, unprocessed_events)
     return list(filter(lambda e: e.uuid not in remaining_version_uuids, remaining_events))
 
-  def remove_request_snapshot(self, snapshot: RequestSnapshot, scenario_inverted_index: dict = None):
+  def remove_request_snapshot(
+    self,
+    snapshot: RequestSnapshot,
+    scenario_inverted_index: dict = None,
+    ignore_scenario_ids: list = None,
+  ):
     scenario_inverted_index = scenario_inverted_index or self.scenario_inverted_index
+    ignore = set(ignore_scenario_ids or [])
+    referencing = [
+      scenario_id
+      for scenario_id in (scenario_inverted_index.get(snapshot.uuid) or [])
+      if scenario_id not in ignore
+    ]
 
-    if snapshot.uuid not in scenario_inverted_index:
+    if not referencing:
       snapshot.remove()
 
   # Rotate log to history

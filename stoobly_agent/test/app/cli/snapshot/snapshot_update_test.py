@@ -132,15 +132,17 @@ class TestUpdate():
 
     def test_it_updates_snapshot_contents(self, snapshot_contents: str, updated_event: LogEvent):
       snapshot = updated_event.snapshot()
-      data_path = snapshot.path
+      contents = snapshot.request
+      new_response = self.__to_python_response(contents)
+      content_length = str(len(new_response.content)).encode()
 
-      with open(data_path, 'rb') as fp:
-        contents = fp.read()
-        new_response = self.__to_python_response(contents)
-        content_length = str(len(new_response.content)).encode()
+      assert content_length in contents
 
-        assert content_length in contents
-        assert content_length not in snapshot_contents
+      with open(snapshot.path, 'rb') as fp:
+        disk = fp.read()
+      # Trailing corruption from setup should be removed after verify/update
+      assert snapshot_contents.endswith(b'test')
+      assert not disk.endswith(b'test')
 
     def __to_python_response(self, raw_request):
       adapter = JoinedRequestAdapter(raw_request)

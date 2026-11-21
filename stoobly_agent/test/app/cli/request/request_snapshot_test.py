@@ -128,7 +128,7 @@ class TestRequestSnapshot():
         assert len(unprocessed_events) == 1
 
         event = unprocessed_events[0]
-        assert event.resource_uuid == recorded_request_two.uuid
+        assert event.resource_id == recorded_request_two.uuid
         assert event.action == PUT_ACTION
 
     class TestWhenDeleteFirst():

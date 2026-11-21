@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Tuple
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE, SCENARIO_RESOURCE
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import REQUEST_FILE_EXTENSION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import DELETE_ACTION, PUT_ACTION, Action
@@ -15,6 +16,7 @@ def update_request_snapshots(
     lifecycle_hooks_path: str = None,
     no_verify: bool = False,
     with_snapshot: bool = True,
+    resource_uuid: str = None,
 ):
     """
     Update request snapshots given a file path.
@@ -43,49 +45,56 @@ def update_request_snapshots(
     
     # Check if it's a request snapshot path
     if abs_path.startswith(request_snapshots_dir):
-        # Extract UUID from path (format: .../requests/{uuid[0:2]}/{uuid})
+        # v1: .../requests/{uuid[0:2]}/{uuid}
+        # v2: .../requests/{slug}/{uuid}.http
         rel_path = os.path.relpath(abs_path, request_snapshots_dir)
-        parts = [p for p in rel_path.split(os.sep) if p]  # Filter empty parts
+        parts = [p for p in rel_path.split(os.sep) if p]
         if len(parts) >= 2:
-            uuid = parts[1]
-            request_snapshot = RequestSnapshot(uuid)
-            
+            filename = parts[1]
+            slug = parts[0]
+            if filename.endswith(REQUEST_FILE_EXTENSION):
+                uuid = resource_uuid or filename[:-len(REQUEST_FILE_EXTENSION)]
+                request_snapshot = RequestSnapshot(uuid, slug=slug)
+            else:
+                uuid = resource_uuid or filename
+                request_snapshot = RequestSnapshot(uuid)
+
             # Find the event for this request snapshot
             event = _find_event_by_resource_uuid(log, REQUEST_RESOURCE, uuid)
             if not event:
                 print(f"Error: No event found for request snapshot {uuid}", file=sys.stderr)
                 sys.exit(1)
-            
+
             if not no_verify:
                 _verify_request(request_snapshot)
-            
-            # Create list of (request_snapshot, event) tuples
-            # Event will be cloned/committed in _commit_snapshot_migration if needed
+
             request_snapshots.append((request_snapshot, event))
         else:
             print(f"Error: Invalid request snapshot path format: {file_path}", file=sys.stderr)
             sys.exit(1)
-            
+
     # Check if it's a scenario snapshot metadata path
     elif abs_path.startswith(scenarios_dir):
-        # Extract UUID from path (format: .../scenarios/{uuid} or .../scenarios/{uuid}/...)
+        # v1: .../scenarios/{uuid}
+        # v2: .../scenarios/{name}.yaml
         rel_path = os.path.relpath(abs_path, scenarios_dir)
-        parts = [p for p in rel_path.split(os.sep) if p]  # Filter empty parts
+        parts = [p for p in rel_path.split(os.sep) if p]
         if len(parts) >= 1:
-            uuid = parts[0]
+            uuid = resource_uuid or _scenario_uuid_from_path(abs_path, parts[0])
+            if not uuid:
+                print(f"Error: Invalid scenario snapshot path format: {file_path}", file=sys.stderr)
+                sys.exit(1)
+
             scenario_snapshot = ScenarioSnapshot(uuid)
-            
-            # Find the event for this scenario snapshot
+
             event = _find_event_by_resource_uuid(log, SCENARIO_RESOURCE, uuid)
             if not event:
                 print(f"Error: No event found for scenario snapshot {uuid}", file=sys.stderr)
                 sys.exit(1)
-            
+
             if not no_verify:
                 scenario_snapshot.iter_request_snapshots(_verify_request)
-            
-            # Get all request snapshots for this scenario
-            # Event will be cloned/committed in _commit_snapshot_migration if needed
+
             scenario_snapshot.iter_request_snapshots(
                 lambda snapshot: request_snapshots.append((snapshot, event))
             )
@@ -178,24 +187,37 @@ def _apply_print(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
 
     return snapshot_migrations
 
+def _scenario_uuid_from_path(abs_path: str, part: str) -> str:
+    """Resolve scenario uuid from v1 uuid filename or v2 yaml metadata."""
+    if part.endswith('.yaml') or part.endswith('.yml'):
+        try:
+            import yaml
+            with open(abs_path, 'r') as fp:
+                data = yaml.safe_load(fp) or {}
+            return data.get('uuid')
+        except Exception:
+            return None
+    return part
+
+
 def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) -> LogEvent:
     """Find the most recent event for a given resource UUID."""
     for event in reversed(log.target_events):
-        if event.resource == resource and event.resource_uuid == resource_uuid:
+        if event.resource == resource and event.resource_id == resource_uuid:
             return event
-    
+
     # If resource is request and no event found, check if it belongs to a scenario event
     if resource == REQUEST_RESOURCE:
         for event in reversed(log.target_events):
             if event.resource != SCENARIO_RESOURCE:
                 continue
-            
-            scenario_snapshot = ScenarioSnapshot(event.resource_uuid)
+
+            scenario_snapshot = ScenarioSnapshot(event.resource_id)
             # Check if the request UUID is in this scenario's request snapshots
             for request_snapshot in scenario_snapshot.request_snapshots:
                 if request_snapshot.uuid == resource_uuid:
                     return event
-    
+
     return None
 
 def _commit_snapshot_migration(snapshot_migration):
@@ -214,12 +236,14 @@ def _commit_snapshot_migration(snapshot_migration):
 def _verify_request(snapshot: RequestSnapshot):
     """Verify and fix a request snapshot if needed."""
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request
-    
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import FORMAT_V2
+
     raw_request = snapshot.request
     if not raw_request:
         return
-    
+
     verified_raw_request = verify_raw_request(raw_request)
-    
-    if raw_request != verified_raw_request:
+
+    # Always rewrite v2 so on-disk form is normalized (strips trailing junk, re-externalizes bodies)
+    if raw_request != verified_raw_request or snapshot.format == FORMAT_V2:
         snapshot.write_raw(verified_raw_request)
