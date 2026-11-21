@@ -29,8 +29,8 @@ flowchart TD
 ```
 
 1. CLI handler validates the key and loads the ORM request/scenario.
-2. [`prepare_snapshot_write_format`](../stoobly_agent/app/cli/helpers/snapshot_format_prompt.py) picks **v1** or **v2** (and may migrate).
-3. Facade → model → [`snapshot_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) / [`snapshot_scenario`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) constructs the matching **V1/V2** class, writes files, and appends a log event.
+2. [`prepare_snapshot_write_format`](../stoobly_agent/app/cli/helpers/snapshot_format_prompt.py) detects format **once** and picks **v1** or **v2** (and may migrate).
+3. Facade → model → [`snapshot_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) / [`snapshot_scenario`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) constructs the matching **V1/V2** class, writes files, and appends a log event with the **same** `format` (no second disk scan).
 4. CLI runs [`update_request_snapshots`](../stoobly_agent/app/cli/helpers/update_request_snapshots_service.py) on the returned path (optional lifecycle hooks / verify). Prints request snapshot path(s).
 
 ## Class hierarchy
@@ -89,7 +89,7 @@ classDiagram
 | Role | How the class is chosen |
 |------|-------------------------|
 | **Create / delete write** ([`snapshot_service`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py)) | Instantiates `RequestSnapshotV1` / `RequestSnapshotV2` or `ScenarioSnapshotV1` / `ScenarioSnapshotV2` from the resolved write format |
-| **History append** ([`Log.put` / `Log.delete`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log.py)) | `LogEvent.serialize_put` / `serialize_delete` dispatch to `LogEventV1` / `LogEventV2` via `resolve_write_format` |
+| **History append** ([`Log.put` / `Log.delete`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log.py)) | Same `format` from create is passed through; `LogEvent.serialize_*` picks `LogEventV1` / `LogEventV2` without re-detecting. `resolve_write_format` remains a fallback when `format` is omitted |
 | **Read / apply / list / diff** | `RequestSnapshot.create(...)` / `ScenarioSnapshot.create(...)` detect from disk (and prefer V2 when a history locator includes a slug/name); `LogEvent.create(line)` picks V1/V2 from locator shape |
 | **Type checks** | e.g. `isinstance(snapshot, RequestSnapshotV2)` instead of comparing a format flag |
 

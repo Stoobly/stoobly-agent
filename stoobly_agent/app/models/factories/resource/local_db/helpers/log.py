@@ -139,8 +139,10 @@ class Log():
     with open(file_path, 'a') as fp:
       fp.write(event + EVENT_DELIMITTER)
 
-  def delete(self, resource: Resource):
-    serialized_event = LogEvent.serialize_delete(resource, data_dir=self.__data_dir)
+  def delete(self, resource: Resource, format: int = None):
+    serialized_event = LogEvent.serialize_delete(
+      resource, data_dir=self.__data_dir, format=format
+    )
     self.append(serialized_event)
 
   def generate_version(self, uuids: List[str]):
@@ -222,8 +224,10 @@ class Log():
 
     return target_events
 
-  def put(self, resource: Resource):
-    serialized_event = LogEvent.serialize_put(resource, data_dir=self.__data_dir)
+  def put(self, resource: Resource, format: int = None):
+    serialized_event = LogEvent.serialize_put(
+      resource, data_dir=self.__data_dir, format=format
+    )
     self.append(serialized_event)
 
   def prune(self, dry_run = False):

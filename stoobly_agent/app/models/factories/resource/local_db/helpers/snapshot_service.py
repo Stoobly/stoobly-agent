@@ -46,9 +46,9 @@ def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
 
   try:
     if action == PUT_ACTION:
-      log.put(request)
+      log.put(request, format=write_format)
     elif action == DELETE_ACTION:
-      log.delete(request)
+      log.delete(request, format=write_format)
   except Exception as e:
     snapshot.rollback()
 
@@ -102,9 +102,9 @@ def snapshot_scenario(scenario: 'Scenario', **options):
     snapshot.remove_metadata()
 
   if action == PUT_ACTION:
-    log.put(scenario)
+    log.put(scenario, format=write_format)
   elif action == DELETE_ACTION:
-    log.delete(scenario)
+    log.delete(scenario, format=write_format)
 
   return snapshot.metadata_path
 

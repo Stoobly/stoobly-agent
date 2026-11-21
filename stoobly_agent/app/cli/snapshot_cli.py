@@ -13,6 +13,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_forma
   FORMAT_V1,
   FORMAT_V2,
   detect_snapshot_format,
+  resolve_write_format,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_migrate import migrate_snapshots
 from stoobly_agent.app.models.helpers.apply import Apply
@@ -210,6 +211,7 @@ def __copy_requests(request_keys: list, destination: str):
 
   data_dir = DataDir.instance(destination)
   destination_log = Log(data_dir)
+  write_format = resolve_write_format(data_dir)
 
   for request_key in request_keys:
     found = False
@@ -232,7 +234,7 @@ def __copy_requests(request_keys: list, destination: str):
       if not resource:
         print(f"Could not find request {key.id}", file=sys.stderr)
       else:
-        destination_log.put(resource)
+        destination_log.put(resource, format=write_format)
         found = True
 
       if not found:
@@ -243,6 +245,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
 
   data_dir =  DataDir.instance(destination)
   destination_log = Log(data_dir)
+  write_format = resolve_write_format(data_dir)
 
   for scenario_key in scenario_keys:
     found = False
@@ -265,7 +268,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
       if not resource:
         print(f"Could not find scenario {key.id}", file=sys.stderr)
       else:
-        destination_log.put(resource)
+        destination_log.put(resource, format=write_format)
         found = True
 
       if not found:

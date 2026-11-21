@@ -34,7 +34,10 @@ def detect_snapshot_format(data_dir: DataDir = None) -> Optional[int]:
 
 def resolve_write_format(data_dir: DataDir = None, migrate_to_v2: bool = False) -> int:
   """
-  Format to use for new writes.
+  Format to use for new writes when callers have not already resolved one.
+
+  Prefer resolving once at the write boundary (CLI / snapshot_service) and
+  passing `format` through Log.put/delete so this disk scan is skipped.
 
   none/v2 -> v2; v1 -> v1 unless migrate_to_v2.
   """
