@@ -45,6 +45,8 @@ classDiagram
   Snapshot <|-- ScenarioSnapshot
   ScenarioSnapshot <|-- ScenarioSnapshotV1
   ScenarioSnapshot <|-- ScenarioSnapshotV2
+  LogEvent <|-- LogEventV1
+  LogEvent <|-- LogEventV2
 
   class RequestSnapshot {
     +create(uuid, data_dir, slug, format)
@@ -71,12 +73,24 @@ classDiagram
   class ScenarioSnapshotV2 {
     name.yaml + relative request paths
   }
+  class LogEvent {
+    +create(line)
+    +serialize_put / serialize_delete
+    +request_locator / scenario_locator
+  }
+  class LogEventV1 {
+    locator bare uuid
+  }
+  class LogEventV2 {
+    locator slug/uuid or name/uuid
+  }
 ```
 
 | Role | How the class is chosen |
 |------|-------------------------|
 | **Create / delete write** ([`snapshot_service`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py)) | Instantiates `RequestSnapshotV1` / `RequestSnapshotV2` or `ScenarioSnapshotV1` / `ScenarioSnapshotV2` from the resolved write format |
-| **Read / apply / list / diff** | `RequestSnapshot.create(...)` / `ScenarioSnapshot.create(...)` detect from disk (and prefer V2 when a history locator includes a slug/name) |
+| **History append** ([`Log.put` / `Log.delete`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log.py)) | `LogEvent.serialize_put` / `serialize_delete` dispatch to `LogEventV1` / `LogEventV2` via `resolve_write_format` |
+| **Read / apply / list / diff** | `RequestSnapshot.create(...)` / `ScenarioSnapshot.create(...)` detect from disk (and prefer V2 when a history locator includes a slug/name); `LogEvent.create(line)` picks V1/V2 from locator shape |
 | **Type checks** | e.g. `isinstance(snapshot, RequestSnapshotV2)` instead of comparing a format flag |
 
 ## Format detection and write policy
@@ -140,10 +154,10 @@ Space-delimited under `snapshots/history/`:
 <event-uuid> request <locator> PUT <ms>
 ```
 
-| Format | `<locator>` |
-|--------|-------------|
-| v2 | `GET-api-users/<request-uuid>` |
-| v1 / legacy | `<request-uuid>` |
+| Format | Class | `<locator>` |
+|--------|-------|-------------|
+| v2 | `LogEventV2` | `GET-api-users/<request-uuid>` |
+| v1 / legacy | `LogEventV1` | `<request-uuid>` |
 
 Apply passes the locator into `RequestSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is always the UUID suffix (`resource_id`).
 
@@ -192,10 +206,10 @@ Request entries are relative paths under `snapshots/requests/` (order preserved)
 <event-uuid> scenario <locator> PUT <ms>
 ```
 
-| Format | `<locator>` |
-|--------|-------------|
-| v2 | `<sanitized-name>/<scenario-uuid>` |
-| v1 / legacy | `<scenario-uuid>` |
+| Format | Class | `<locator>` |
+|--------|-------|-------------|
+| v2 | `LogEventV2` | `<sanitized-name>/<scenario-uuid>` |
+| v1 / legacy | `LogEventV1` | `<scenario-uuid>` |
 
 ## Delete action
 
@@ -233,6 +247,6 @@ Legacy `.uuid-index` dirs may exist under older v2 trees for uuid-only history l
 | [`snapshot_service.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) | Create/delete orchestration; constructs V1/V2 classes |
 | [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) | `RequestSnapshot` + `RequestSnapshotV1` / `RequestSnapshotV2` |
 | [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) | `ScenarioSnapshot` + `ScenarioSnapshotV1` / `ScenarioSnapshotV2` |
-| [`log_event.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log_event.py) | History serialize/parse + locators; `.snapshot()` → `.create()` |
+| [`log_event.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log_event.py) | `LogEvent` + `LogEventV1` / `LogEventV2` (locators); `.create()` / `.snapshot()` → snapshot `.create()` |
 | [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) | v2 body externalize/reconstitute |
 | [`snapshot_migrate.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_migrate.py) | v1 ↔ v2 migrate ([docs](snapshot-migrate.md)) |

@@ -34,7 +34,7 @@ class Log():
     if events_count == 0:
       return [] 
 
-    return list(map(lambda raw_event: LogEvent(raw_event), events))
+    return list(map(LogEvent.create, events))
 
   @property
   def history_dir_path(self):
@@ -156,7 +156,7 @@ class Log():
       fp.write(_events + EVENT_DELIMITTER)
 
   def build_log_events(self, raw_events) -> List[LogEvent]:
-    return list(map(lambda raw_event: LogEvent(raw_event), raw_events))
+    return list(map(LogEvent.create, raw_events))
   
   def build_scenario_inverted_index(self, events: List[LogEvent], index = {}, include_deletes = False):
     def handle_snapshot(snapshot: RequestSnapshot):

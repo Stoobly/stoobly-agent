@@ -1,6 +1,6 @@
 import time
 import uuid
-from typing import Callable, Optional, Tuple, TypedDict
+from typing import Callable, Optional, Tuple, TypedDict, Type
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
@@ -9,7 +9,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from .request_slug import REQUEST_FILE_EXTENSION, build_request_slug, sanitize_scenario_filename
 from .request_snapshot import RequestSnapshot
 from .scenario_snapshot import ScenarioSnapshot
-from .snapshot_format import FORMAT_V2, resolve_write_format
+from .snapshot_format import FORMAT_V1, FORMAT_V2, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
 
 COLUMN_DELIMITTER = ' '
@@ -37,13 +37,24 @@ def parse_resource_ref(ref: str) -> Tuple[Optional[str], str]:
     rest = rest[:-len(REQUEST_FILE_EXTENSION)]
   return slug or None, rest
 
+
+def _resolve_event_class(format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
+  if format is None:
+    format = resolve_write_format(data_dir or DataDir.instance())
+  return LogEventV2 if format == FORMAT_V2 else LogEventV1
+
+
 class LogEvent():
+  """Base history event. Prefer LogEvent.create() or LogEventV1/V2 for writes."""
+
+  FORMAT = None
+
   def __init__(self, event: str):
     toks = event.strip().split(COLUMN_DELIMITTER)
 
     self.uuid = toks[0]
     self.resource = toks[1]
-    # Raw history field: bare uuid (v1/legacy) or slug/<uuid> (v2 requests)
+    # Raw history field: bare uuid (v1/legacy) or slug/<uuid> (v2)
     self.resource_uuid = toks[2]
     self.action = toks[3]
     self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
@@ -51,7 +62,26 @@ class LogEvent():
     self.__resource_slug, self.__resource_id = parse_resource_ref(self.resource_uuid)
 
   @classmethod
-  def from_resource(cls, resource: Resource, action: Action, data_dir: DataDir = None):
+  def create(cls, event: str) -> 'LogEvent':
+    """Parse a history line into LogEventV1 or LogEventV2 from locator shape."""
+    toks = event.strip().split(COLUMN_DELIMITTER)
+    resource_uuid = toks[2] if len(toks) > 2 else ''
+    if '/' in resource_uuid:
+      return LogEventV2(event)
+    return LogEventV1(event)
+
+  @classmethod
+  def from_resource(
+    cls,
+    resource: Resource,
+    action: Action,
+    data_dir: DataDir = None,
+    format: int = None,
+  ):
+    if cls is LogEvent:
+      return _resolve_event_class(format, data_dir).from_resource(
+        resource, action, data_dir=data_dir
+      )
     return cls(cls.serialize_resource(resource, action, data_dir=data_dir))
 
   @staticmethod
@@ -59,11 +89,29 @@ class LogEvent():
     return f"{str(uuid.uuid1())} {resource_name} {resource_uuid} {action} {int(time.time() * 1000)}"
 
   @classmethod
-  def serialize_delete(cls, resource: Resource, data_dir: DataDir = None):
+  def serialize_delete(
+    cls,
+    resource: Resource,
+    data_dir: DataDir = None,
+    format: int = None,
+  ):
+    if cls is LogEvent:
+      return _resolve_event_class(format, data_dir).serialize_delete(
+        resource, data_dir=data_dir
+      )
     return cls.serialize_resource(resource, DELETE_ACTION, data_dir=data_dir)
 
   @classmethod
-  def serialize_put(cls, resource: Resource, data_dir: DataDir = None):
+  def serialize_put(
+    cls,
+    resource: Resource,
+    data_dir: DataDir = None,
+    format: int = None,
+  ):
+    if cls is LogEvent:
+      return _resolve_event_class(format, data_dir).serialize_put(
+        resource, data_dir=data_dir
+      )
     return cls.serialize_resource(resource, PUT_ACTION, data_dir=data_dir)
 
   @classmethod
@@ -82,25 +130,17 @@ class LogEvent():
 
     return cls.serialize(resource_name, locator, action)
 
-  @staticmethod
-  def request_locator(request: Request, data_dir: DataDir = None) -> str:
-    """History locator for a request: slug/<uuid> in v2, bare uuid in v1."""
-    data_dir = data_dir or DataDir.instance()
-    if resolve_write_format(data_dir) != FORMAT_V2:
-      return request.uuid
+  @classmethod
+  def request_locator(cls, request: Request, data_dir: DataDir = None) -> str:
+    raise NotImplementedError
 
-    slug = build_request_slug(request.method, request.path)
-    return f"{slug}/{request.uuid}"
+  @classmethod
+  def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
+    raise NotImplementedError
 
-  @staticmethod
-  def scenario_locator(scenario: Scenario, data_dir: DataDir = None) -> str:
-    """History locator for a scenario: <name>/<uuid> in v2, bare uuid in v1."""
-    data_dir = data_dir or DataDir.instance()
-    if resolve_write_format(data_dir) != FORMAT_V2:
-      return scenario.uuid
-
-    name = sanitize_scenario_filename(scenario.name)
-    return f"{name}/{scenario.uuid}"
+  @property
+  def format(self) -> Optional[int]:
+    return self.FORMAT
 
   @property
   def resource_id(self) -> str:
@@ -137,7 +177,7 @@ class LogEvent():
     toks = event_str.split(COLUMN_DELIMITTER)
     toks[0] = str(uuid.uuid1())
     toks[4] = str(int(time.time() * 1000))
-    return LogEvent(COLUMN_DELIMITTER.join(toks))
+    return self.__class__(COLUMN_DELIMITTER.join(toks))
 
   def duplicate_as_delete(self):
     event = self.duplicate()
@@ -169,3 +209,33 @@ class LogEvent():
       'resource_uuid': self.resource_uuid,
       'uuid': self.uuid,
     }
+
+
+class LogEventV1(LogEvent):
+  """History events with bare-UUID resource locators."""
+
+  FORMAT = FORMAT_V1
+
+  @classmethod
+  def request_locator(cls, request: Request, data_dir: DataDir = None) -> str:
+    return request.uuid
+
+  @classmethod
+  def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
+    return scenario.uuid
+
+
+class LogEventV2(LogEvent):
+  """History events with slug/name locators (slug/<uuid>, name/<uuid>)."""
+
+  FORMAT = FORMAT_V2
+
+  @classmethod
+  def request_locator(cls, request: Request, data_dir: DataDir = None) -> str:
+    slug = build_request_slug(request.method, request.path)
+    return f"{slug}/{request.uuid}"
+
+  @classmethod
+  def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
+    name = sanitize_scenario_filename(scenario.name)
+    return f"{name}/{scenario.uuid}"

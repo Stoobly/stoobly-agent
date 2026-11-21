@@ -343,7 +343,7 @@ def _rewrite_history_locators(
 
     for raw in raw_events:
       try:
-        event = LogEvent(raw)
+        event = LogEvent.create(raw)
       except Exception:
         new_raw_events.append(raw)
         continue
