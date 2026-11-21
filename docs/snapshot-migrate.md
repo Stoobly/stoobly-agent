@@ -30,7 +30,7 @@ stoobly-agent snapshot migrate --format v1
 | Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies inline) | `snapshots/requests/{slug}/{uuid}.http` (bodies under `bodies/` via `X-Stoobly-Body-Ref`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Listed in YAML as `slug/{uuid}.http` relative paths |
-| History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}/{uuid}` |
+| History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}` (unique) |
 
 Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none.
 
@@ -64,7 +64,7 @@ flowchart TB
    - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
-3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` / `{yaml-stem}/{uuid}` in history files and the active log file when present.
+3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` (requests) / `{yaml-stem}` (scenarios) in history files and the active log file when present. Also collapses legacy `name/{uuid}` scenario locators to name-only.
 4. **Cleanup** — Remove any `.uuid-index` under requests/scenarios (legacy; locators replace them).
 
 Corrupt request/scenario files are skipped and left in place.
@@ -86,8 +86,8 @@ Migrate does **not** append new log events. It updates the resource field on exi
 
 | Direction | Request field | Scenario field |
 |-----------|---------------|----------------|
-| → v2 | `uuid` → `slug/uuid` | `uuid` → `name/uuid` |
-| → v1 | `slug/uuid` → `uuid` | `name/uuid` → `uuid` |
+| → v2 | `uuid` → `slug/uuid` | `uuid` or `name/uuid` → `name` |
+| → v1 | `slug/uuid` → `uuid` | `name` or `name/uuid` → `uuid` |
 
 `VERSION` (processed event UUIDs) is unchanged. Event UUIDs and timestamps are unchanged.
 

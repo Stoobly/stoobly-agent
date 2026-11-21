@@ -9,7 +9,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from .request_slug import REQUEST_FILE_EXTENSION, build_request_slug, sanitize_scenario_filename
 from .request_snapshot import RequestSnapshot
 from .scenario_snapshot import ScenarioSnapshot
-from .snapshot_format import FORMAT_V1, FORMAT_V2, resolve_write_format
+from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
 
 COLUMN_DELIMITTER = ' '
@@ -38,6 +38,29 @@ def parse_resource_ref(ref: str) -> Tuple[Optional[str], str]:
   return slug or None, rest
 
 
+def _parse_scenario_resource_ref(ref: str) -> Tuple[Optional[str], str]:
+  """
+  Parse scenario history field into (name, identity).
+
+  v2 uses name-only (unique). Legacy accepts `name/<uuid>`.
+  v1 uses bare uuid. Identity for collapse is name when present, else uuid.
+  """
+  if not ref:
+    return None, ref
+
+  if '/' in ref:
+    name, rest = ref.rsplit('/', 1)
+    if rest.endswith('.yaml') or rest.endswith('.yml'):
+      rest = rest.rsplit('.', 1)[0]
+    # Name is the stable unique key; uuid kept only for legacy path resolve
+    return name or None, name or rest
+
+  if UUID_RE.match(ref):
+    return None, ref
+
+  return ref, ref
+
+
 def _resolve_event_class(format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
   if format is None:
     format = resolve_write_format(data_dir or DataDir.instance())
@@ -54,19 +77,26 @@ class LogEvent():
 
     self.uuid = toks[0]
     self.resource = toks[1]
-    # Raw history field: bare uuid (v1/legacy) or slug/<uuid> (v2)
+    # Raw history field: bare uuid (v1), slug/<uuid> (v2 request), or name (v2 scenario)
     self.resource_uuid = toks[2]
     self.action = toks[3]
     self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
 
-    self.__resource_slug, self.__resource_id = parse_resource_ref(self.resource_uuid)
+    if self.resource == SCENARIO_RESOURCE:
+      self.__resource_slug, self.__resource_id = _parse_scenario_resource_ref(self.resource_uuid)
+    else:
+      self.__resource_slug, self.__resource_id = parse_resource_ref(self.resource_uuid)
 
   @classmethod
   def create(cls, event: str) -> 'LogEvent':
     """Parse a history line into LogEventV1 or LogEventV2 from locator shape."""
     toks = event.strip().split(COLUMN_DELIMITTER)
+    resource = toks[1] if len(toks) > 1 else ''
     resource_uuid = toks[2] if len(toks) > 2 else ''
     if '/' in resource_uuid:
+      return LogEventV2(event)
+    # v2 scenarios use a unique name-only locator (not a UUID)
+    if resource == SCENARIO_RESOURCE and resource_uuid and not UUID_RE.match(resource_uuid):
       return LogEventV2(event)
     return LogEventV1(event)
 
@@ -144,7 +174,7 @@ class LogEvent():
 
   @property
   def resource_id(self) -> str:
-    """Stable UUID identity for collapse/apply/ORM (ignores slug locator)."""
+    """Stable identity for collapse/apply (request UUID; scenario name or UUID)."""
     return self.__resource_id
 
   @property
@@ -167,9 +197,10 @@ class LogEvent():
         return kwargs['handle_request_put'](self.resource_uuid)
     elif self.is_scenario():
       if self.action == DELETE_ACTION:
-        return kwargs['handle_scenario_delete'](self.resource_id)
+        # Pass locator (name or uuid) so apply can resolve ORM identity
+        return kwargs['handle_scenario_delete'](self.resource_uuid)
       elif self.action == PUT_ACTION:
-        # Pass full history locator (name/<uuid>) so snapshot resolve stays O(1)
+        # Pass history locator (name) so snapshot resolve stays O(1)
         return kwargs['handle_scenario_put'](self.resource_uuid)
 
   def duplicate(self):
@@ -199,7 +230,8 @@ class LogEvent():
     if self.is_request():
       return RequestSnapshot.create(self.resource_id, data_dir, slug=self.resource_slug)
     elif self.is_scenario():
-      return ScenarioSnapshot.create(self.resource_id, data_dir, name=self.resource_slug)
+      # resource_uuid is name (v2), name/uuid (legacy v2), or bare uuid (v1)
+      return ScenarioSnapshot.create(self.resource_uuid, data_dir)
 
   def to_dict(self):
     return {
@@ -226,7 +258,7 @@ class LogEventV1(LogEvent):
 
 
 class LogEventV2(LogEvent):
-  """History events with slug/name locators (slug/<uuid>, name/<uuid>)."""
+  """History events with v2 locators (request: slug/<uuid>; scenario: unique name)."""
 
   FORMAT = FORMAT_V2
 
@@ -237,5 +269,4 @@ class LogEventV2(LogEvent):
 
   @classmethod
   def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
-    name = sanitize_scenario_filename(scenario.name)
-    return f"{name}/{scenario.uuid}"
+    return sanitize_scenario_filename(scenario.name)

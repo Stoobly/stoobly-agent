@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, TypeGuard, Unpack
 
 from stoobly_agent.config.data_dir import DataDir
 
@@ -13,8 +13,8 @@ from .request_snapshot import RequestSnapshotV1, RequestSnapshotV2, RequestSnaps
 from .scenario_snapshot import ScenarioSnapshotV1, ScenarioSnapshotV2
 from .snapshot_format import FORMAT_V2, resolve_write_format
 
-def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
-  action: Action = options.get('action')
+def snapshot_request(request: 'Request', **options: Unpack[RequestSnapshotOptions]):
+  action = options.get('action')
   if not __validate_action(action):
     return
 
@@ -54,8 +54,8 @@ def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
 
   return snapshot.path
 
-def snapshot_scenario(scenario: 'Scenario', **options):
-  action: Action = options.get('action')
+def snapshot_scenario(scenario: 'Scenario', **options: Unpack[RequestSnapshotOptions]):
+  action = options.get('action')
   if not __validate_action(action):
     return
 
@@ -108,5 +108,5 @@ def snapshot_scenario(scenario: 'Scenario', **options):
 
   return snapshot.metadata_path
 
-def __validate_action(action: Action):
+def __validate_action(action: Optional[Action]) -> TypeGuard[Action]:
   return action == PUT_ACTION or action == DELETE_ACTION

@@ -120,9 +120,10 @@ class TestSnapshotFormatV2:
 
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
       event = Log().events[-1]
-      assert event.resource_uuid == f'checkout-flow/{created_scenario.uuid}'
-      assert event.resource_id == created_scenario.uuid
+      assert event.resource_uuid == 'checkout-flow'
+      assert event.resource_id == 'checkout-flow'
       assert event.snapshot().metadata_path == snap.metadata_path
+      assert event.snapshot().uuid == created_scenario.uuid
       assert not os.path.exists(
         os.path.join(
           DataDir.instance().snapshots_scenarios_dir_path,
@@ -239,9 +240,10 @@ class TestSnapshotFormatV2:
       assert scenario_snap.metadata_path.endswith('legacy-flow.yaml')
 
       event = next(e for e in reversed(Log().events) if e.is_scenario())
-      assert event.resource_uuid == f'legacy-flow/{created_scenario.uuid}'
-      assert event.resource_id == created_scenario.uuid
+      assert event.resource_uuid == 'legacy-flow'
+      assert event.resource_id == 'legacy-flow'
       assert event.snapshot().metadata_path == scenario_snap.metadata_path
+      assert event.snapshot().uuid == created_scenario.uuid
 
       index_path = os.path.join(
         DataDir.instance().snapshots_scenarios_dir_path,
@@ -321,6 +323,7 @@ class TestSnapshotFormatV2:
       scenario_event = next(e for e in reversed(events) if e.is_scenario())
       assert scenario_event.resource_uuid == created_scenario.uuid
       assert scenario_event.resource_id == created_scenario.uuid
+      assert '/' not in scenario_event.resource_uuid
 
   class TestMigrateCli:
     @pytest.fixture(autouse=True)

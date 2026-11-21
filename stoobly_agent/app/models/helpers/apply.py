@@ -4,8 +4,11 @@ from typing import List
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import parse_resource_ref
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import sanitize_scenario_filename
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
 
@@ -191,7 +194,13 @@ class Apply():
 
     return res, status
 
-  def __apply_delete_scenario(self, uuid: str):
+  def __apply_delete_scenario(self, resource_ref: str):
+    uuid = self.__resolve_scenario_uuid(resource_ref)
+    if not uuid:
+      error = f"scenario {resource_ref} not found"
+      self.__logger(f"{bcolors.WARNING}Skipping Scenario{bcolors.ENDC} {error}")
+      return error, 301
+
     res, status = self.scenario_model.destroy(uuid, force=self.__force)
 
     if self.__logger and status == 200:
@@ -249,6 +258,32 @@ class Apply():
     else:
       return self.__apply_put_scenario_requests(res, snapshot)
 
+  def __resolve_scenario_uuid(self, resource_ref: str):
+    """Resolve history locator (uuid, name/uuid, or name) to a scenario UUID."""
+    if not resource_ref:
+      return None
+
+    if UUID_RE.match(resource_ref):
+      return resource_ref
+
+    if '/' in resource_ref:
+      _name, rest = parse_resource_ref(resource_ref)
+      if rest and UUID_RE.match(rest):
+        return rest
+      resource_ref = _name or resource_ref
+
+    # Prefer uuid from on-disk snapshot when present
+    snapshot = ScenarioSnapshot.create(resource_ref)
+    if snapshot.uuid and UUID_RE.match(str(snapshot.uuid)):
+      return snapshot.uuid
+
+    # DELETE may run after snapshot files were removed; match ORM by sanitized name
+    scenario, status = self.__find_scenario_by_sanitized_name(resource_ref)
+    if status == 200 and scenario:
+      return scenario.get('uuid')
+
+    return None
+
   def __find_scenario_by_name(self, name: str):
     if not name:
       return None, 404
@@ -274,6 +309,47 @@ class Apply():
         scenarios = res.get('list') or []
         for scenario in scenarios:
           if scenario.get('name') == name:
+            return scenario, 200
+
+        total = res.get('total') or len(scenarios)
+        if (page + 1) * size >= total:
+          break
+
+        page += 1
+
+      return None, 404
+
+    scenario, status = search()
+    if status == 200:
+      return scenario, status
+    elif status != 404:
+      return scenario, status
+
+    return search('is_deleted')
+
+  def __find_scenario_by_sanitized_name(self, sanitized: str):
+    if not sanitized:
+      return None, 404
+
+    def search(filter: str = None):
+      page = 0
+      size = 100
+
+      while True:
+        params = {
+          'page': page,
+          'size': size,
+        }
+        if filter:
+          params['filter'] = filter
+
+        res, status = self.scenario_model.index(**params)
+        if status != 200:
+          return None, status
+
+        scenarios = res.get('list') or []
+        for scenario in scenarios:
+          if sanitize_scenario_filename(scenario.get('name') or '') == sanitized:
             return scenario, 200
 
         total = res.get('total') or len(scenarios)

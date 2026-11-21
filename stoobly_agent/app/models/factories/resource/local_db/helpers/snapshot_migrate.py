@@ -57,8 +57,8 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
   """
   Convert all v1 snapshot files under data_dir to v2 layout.
 
-  Also rewrites history locators from bare uuids to slug/uuid and name/uuid
-  so .uuid-index is unnecessary. VERSION is left untouched.
+  Also rewrites history locators from bare uuids to slug/uuid (requests) and
+  unique name (scenarios) so .uuid-index is unnecessary. VERSION is left untouched.
   """
   data_dir = data_dir or DataDir.instance()
   migrated_requests = 0
@@ -171,7 +171,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
       if os.path.exists(index_path):
         os.remove(index_path)
 
-      scenario_uuid_to_locator[scenario_uuid] = f"{yaml_stem}/{scenario_uuid}"
+      scenario_uuid_to_locator[scenario_uuid] = yaml_stem
       migrated_scenarios += 1
 
     _remove_uuid_index_dir(os.path.join(scenarios_dir, '.uuid-index'))
@@ -205,6 +205,7 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
   data_dir = data_dir or DataDir.instance()
   migrated_requests = 0
   migrated_scenarios = 0
+  scenario_name_to_uuid: Dict[str, str] = {}
 
   requests_dir = data_dir.snapshots_requests_dir_path
   if os.path.isdir(requests_dir):
@@ -279,6 +280,8 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       scenario_name = data.get('name') or _name_from_yaml_filename(name)
       description = data.get('description') or ''
+      yaml_stem = _name_from_yaml_filename(name)
+      scenario_name_to_uuid[yaml_stem] = scenario_uuid
 
       request_uuids = []
       for relative in data.get('requests') or []:
@@ -306,7 +309,11 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
     _remove_uuid_index_dir(os.path.join(scenarios_dir, '.uuid-index'))
 
-  _rewrite_history_locators(data_dir, to_v2=False)
+  _rewrite_history_locators(
+    data_dir,
+    to_v2=False,
+    scenario_locators=scenario_name_to_uuid,
+  )
 
   return {
     'requests': migrated_requests,
@@ -358,10 +365,21 @@ def _rewrite_history_locators(
           new_resource_uuid = event.resource_id
       elif event.is_scenario():
         if to_v2:
-          if '/' not in event.resource_uuid and event.resource_id in scenario_locators:
+          # bare uuid → name; legacy name/uuid → name
+          if '/' in event.resource_uuid:
+            new_resource_uuid = event.resource_uuid.rsplit('/', 1)[0]
+          elif event.resource_id in scenario_locators:
             new_resource_uuid = scenario_locators[event.resource_id]
-        elif '/' in event.resource_uuid:
-          new_resource_uuid = event.resource_id
+        else:
+          # name or name/uuid → bare uuid
+          if '/' in event.resource_uuid:
+            _name, rest = event.resource_uuid.rsplit('/', 1)
+            if UUID_RE.match(rest):
+              new_resource_uuid = rest
+            elif _name in scenario_locators:
+              new_resource_uuid = scenario_locators[_name]
+          elif not UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
+            new_resource_uuid = scenario_locators[event.resource_uuid]
 
       if new_resource_uuid != event.resource_uuid:
         changed = True

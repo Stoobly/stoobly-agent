@@ -161,12 +161,12 @@ class Log():
     return list(map(LogEvent.create, raw_events))
   
   def build_scenario_inverted_index(self, events: List[LogEvent], index = {}, include_deletes = False):
-    def handle_snapshot(snapshot: RequestSnapshot):
+    def handle_snapshot(snapshot: RequestSnapshot, scenario_uuid: str):
       request_uuid = snapshot.uuid
       if not request_uuid in index:
         index[request_uuid] = []
 
-      index[request_uuid].append(event.resource_id)
+      index[request_uuid].append(scenario_uuid)
 
     for event in events:
       if not event.is_scenario():
@@ -176,7 +176,13 @@ class Log():
       if event.action == DELETE_ACTION and not include_deletes:
         continue
 
-      event.snapshot(self.__data_dir).iter_request_snapshots(handle_snapshot)
+      scenario_snapshot = event.snapshot(self.__data_dir)
+      # Prefer resolved snapshot UUID (YAML) so ignore_scenario_ids can stay UUIDs
+      # even when history uses name-only locators.
+      scenario_uuid = scenario_snapshot.uuid if scenario_snapshot.uuid else event.resource_id
+      scenario_snapshot.iter_request_snapshots(
+        lambda request_snapshot: handle_snapshot(request_snapshot, scenario_uuid)
+      )
 
     return index
 

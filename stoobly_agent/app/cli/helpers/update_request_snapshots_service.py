@@ -86,7 +86,12 @@ def update_request_snapshots(
                 print(f"Error: Invalid scenario snapshot path format: {file_path}", file=sys.stderr)
                 sys.exit(1)
 
-            scenario_snapshot = ScenarioSnapshot.create(uuid)
+            # Prefer name-only locator for v2 YAML paths
+            basename = parts[0]
+            if basename.endswith(('.yaml', '.yml')):
+                scenario_snapshot = ScenarioSnapshot.create(basename.rsplit('.', 1)[0])
+            else:
+                scenario_snapshot = ScenarioSnapshot.create(uuid)
 
             event = _find_event_by_resource_uuid(log, SCENARIO_RESOURCE, uuid)
             if not event:
@@ -202,10 +207,25 @@ def _scenario_uuid_from_path(abs_path: str, part: str) -> str:
 
 
 def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) -> LogEvent:
-    """Find the most recent event for a given resource UUID."""
+    """Find the most recent event for a given resource UUID (or scenario name identity)."""
     for event in reversed(log.target_events):
-        if event.resource == resource and event.resource_id == resource_uuid:
+        if event.resource != resource:
+            continue
+        if event.resource_id == resource_uuid:
             return event
+        # v2 scenarios use name-only locators; match via resolved snapshot UUID
+        if resource == SCENARIO_RESOURCE:
+            snapshot = event.snapshot()
+            if snapshot.uuid == resource_uuid:
+                return event
+            # DELETE may have already removed YAML; match via ORM name
+            from stoobly_agent.app.models.factories.resource.local_db.helpers.request_slug import (
+              sanitize_scenario_filename,
+            )
+            from stoobly_agent.lib.orm.scenario import Scenario
+            scenario = Scenario.find_by(uuid=resource_uuid)
+            if scenario and event.resource_id == sanitize_scenario_filename(scenario.name):
+                return event
 
     # If resource is request and no event found, check if it belongs to a scenario event
     if resource == REQUEST_RESOURCE:
@@ -213,7 +233,7 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
             if event.resource != SCENARIO_RESOURCE:
                 continue
 
-            scenario_snapshot = ScenarioSnapshot.create(event.resource_id)
+            scenario_snapshot = event.snapshot()
             # Check if the request UUID is in this scenario's request snapshots
             for request_snapshot in scenario_snapshot.request_snapshots:
                 if request_snapshot.uuid == resource_uuid:

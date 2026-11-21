@@ -324,7 +324,8 @@ class TestApply():
         @pytest.fixture(scope='class', autouse=True)
         @classmethod
         def new_scenario_request(cls, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
-          assert created_scenario.uuid == put_event.resource_id
+          assert put_event.resource_id == 'test'
+          assert put_event.snapshot().uuid == created_scenario.uuid
           assert created_scenario.requests.count() == 2
 
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
@@ -516,12 +517,13 @@ class TestApply():
         created_scenario.delete()
         assert Scenario.find(created_scenario.id) == None
 
-      def test_creates_scenario_with_uuid_name(self, runner: CliRunner, created_scenario: Scenario):
+      def test_skips_scenario_with_malformed_metadata(self, runner: CliRunner, created_scenario: Scenario):
+        # v2 YAML must include uuid; corrupt metadata cannot recover identity from name-only history
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 0
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
-        assert recreated_scenario.name == created_scenario.uuid
+        assert recreated_scenario == None
 
     class TestWhenMissingScenarioMetadata():
 

@@ -82,7 +82,7 @@ classDiagram
     locator bare uuid
   }
   class LogEventV2 {
-    locator slug/uuid or name/uuid
+    locator slug/uuid or scenario name
   }
 ```
 
@@ -208,7 +208,7 @@ Request entries are relative paths under `snapshots/requests/` (order preserved)
 
 | Format | Class | `<locator>` |
 |--------|-------|-------------|
-| v2 | `LogEventV2` | `<sanitized-name>/<scenario-uuid>` |
+| v2 | `LogEventV2` | `<sanitized-name>` (unique scenario name) |
 | v1 / legacy | `LogEventV1` | `<scenario-uuid>` |
 
 ## Delete action
