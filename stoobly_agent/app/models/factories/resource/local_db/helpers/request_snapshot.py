@@ -4,6 +4,7 @@ import shutil
 from typing import Optional
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.config.constants.custom_headers import BODY_REF
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
@@ -356,7 +357,7 @@ class RequestSnapshotV2(RequestSnapshot):
 
     raw_text = raw.decode('utf-8', errors='ignore')
     for line in raw_text.splitlines():
-      if line.lower().startswith('x-stoobly-body-ref:'):
+      if line.lower().startswith(f'{BODY_REF.lower()}:'):
         ref = line.split(':', 1)[1].strip()
         src = os.path.join(slug_dir, ref.replace('/', os.sep))
         if os.path.exists(src):

@@ -8,8 +8,9 @@ from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRe
 from stoobly_agent.app.proxy.record.joined_request import REQUEST_DELIMITTER
 from stoobly_agent.app.proxy.record.request_string import CLRF as RequestStringCLRF
 from stoobly_agent.app.proxy.record.response_string import CLRF as ResponseStringCLRF
+from stoobly_agent.config.constants.custom_headers import BODY_REF
 
-BODY_REF_HEADER = 'X-Stoobly-Body-Ref'
+BODY_REF_HEADER = BODY_REF
 BODY_REF_HEADER_LOWER = BODY_REF_HEADER.lower()
 HEADER_SEP = b'\r\n'
 HEADER_BODY_SEP = b'\r\n\r\n'
