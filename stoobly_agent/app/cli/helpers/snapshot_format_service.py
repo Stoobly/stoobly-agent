@@ -13,7 +13,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_migra
 from stoobly_agent.config.data_dir import DataDir
 
 
-def prepare_snapshot_write_format(data_dir: DataDir = None, yes: bool = False) -> int:
+def get_snapshot_format(data_dir: DataDir = None, prompt: bool = True) -> int:
   """
   Resolve write format for snapshot create (single detect scan).
 
@@ -29,7 +29,7 @@ def prepare_snapshot_write_format(data_dir: DataDir = None, yes: bool = False) -
 
   # detected == FORMAT_V1
   # Non-interactive: keep v1 (no silent migrate)
-  if yes or not sys.stdin.isatty():
+  if not prompt or not sys.stdin.isatty():
     return FORMAT_V1
 
   should_migrate = click.confirm(

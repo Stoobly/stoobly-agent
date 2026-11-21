@@ -195,8 +195,8 @@ def snapshot_handler(kwargs):
     print(f"Error: Could not find scenario", file=sys.stderr)
     sys.exit(1)
 
-  from stoobly_agent.app.cli.helpers.snapshot_format_prompt import prepare_snapshot_write_format
-  kwargs['format'] = prepare_snapshot_write_format(yes=kwargs.pop('yes', False))
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
 
   response, status = scenario.snapshot(scenario_key, kwargs)
 

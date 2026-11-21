@@ -95,7 +95,7 @@ Events whose snapshots were skipped (corrupt) keep bare UUIDs when migrating to 
 
 ## Related paths
 
-Migrate is also used interactively on **snapshot create** when v1 trees are detected: [`prepare_snapshot_write_format`](../stoobly_agent/app/cli/helpers/snapshot_format_prompt.py) can prompt and call `migrate_snapshots_to_v2` before writing.
+Migrate is also used interactively on **snapshot create** when v1 trees are detected: [`get_snapshot_format`](../stoobly_agent/app/cli/helpers/snapshot_format_service.py) can prompt and call `migrate_snapshots_to_v2` before writing.
 
 ## Implementation
 

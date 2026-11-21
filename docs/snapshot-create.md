@@ -15,7 +15,7 @@ Default `--action` is `PUT` (write/replace). `DELETE` removes snapshot files (wh
 
 ```mermaid
 flowchart TD
-  cli[CLI snapshot create] --> prompt[prepare_snapshot_write_format]
+  cli[CLI snapshot create] --> prompt[get_snapshot_format]
   prompt -->|none or v2| v2[write format v2]
   prompt -->|v1 + confirm migrate| migrate[migrate_snapshots to v2]
   migrate --> v2
@@ -29,7 +29,7 @@ flowchart TD
 ```
 
 1. CLI handler validates the key and loads the ORM request/scenario.
-2. [`prepare_snapshot_write_format`](../stoobly_agent/app/cli/helpers/snapshot_format_prompt.py) detects format **once** and picks **v1** or **v2** (and may migrate).
+2. [`get_snapshot_format`](../stoobly_agent/app/cli/helpers/snapshot_format_service.py) detects format **once** and picks **v1** or **v2** (and may migrate).
 3. Facade → model → [`snapshot_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) / [`snapshot_scenario`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) constructs the matching **V1/V2** class, writes files, and appends a log event with the **same** `format` (no second disk scan).
 4. CLI runs [`update_request_snapshots`](../stoobly_agent/app/cli/helpers/update_request_snapshots_service.py) on the returned path (optional lifecycle hooks / verify). Prints request snapshot path(s).
 
@@ -109,7 +109,7 @@ Write policy:
 |----------|----------------|
 | none or v2 | **v2** (`*SnapshotV2`) |
 | v1 | **v1** (`*SnapshotV1`), unless interactive create confirms migrate → then migrate tree and write **v2** |
-| v1 + non-TTY / `--yes`-style non-interactive | stay on **v1** (no silent migrate) |
+| v1 + non-TTY / `prompt=False` | stay on **v1** (no silent migrate) |
 
 Readers always accept both formats via `.create()`.
 
@@ -243,7 +243,7 @@ Legacy `.uuid-index` dirs may exist under older v2 trees for uuid-only history l
 | File | Role |
 |------|------|
 | [`request_cli.py`](../stoobly_agent/app/cli/request_cli.py) / [`scenario_cli.py`](../stoobly_agent/app/cli/scenario_cli.py) | CLI entrypoints |
-| [`snapshot_format_prompt.py`](../stoobly_agent/app/cli/helpers/snapshot_format_prompt.py) | Migrate prompt + write format |
+| [`snapshot_format_service.py`](../stoobly_agent/app/cli/helpers/snapshot_format_service.py) | Migrate prompt + write format |
 | [`snapshot_service.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) | Create/delete orchestration; constructs V1/V2 classes |
 | [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) | `RequestSnapshot` + `RequestSnapshotV1` / `RequestSnapshotV2` |
 | [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) | `ScenarioSnapshot` + `ScenarioSnapshotV1` / `ScenarioSnapshotV2` |
