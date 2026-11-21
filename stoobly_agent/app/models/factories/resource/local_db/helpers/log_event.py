@@ -1,13 +1,14 @@
 import time
 import uuid
-from typing import Callable, Optional, Tuple, TypedDict, Type
+from typing import Callable, Optional, TypedDict, Type
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.scenario import Scenario
 
-from .request_slug import REQUEST_FILE_EXTENSION, build_request_slug, sanitize_scenario_filename
+from .request_slug import build_request_slug, sanitize_scenario_filename
 from .request_snapshot import RequestSnapshot
+from .resource_ref import parse_resource_ref, parse_scenario_resource_ref
 from .scenario_snapshot import ScenarioSnapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
@@ -19,52 +20,6 @@ class EventHandlers(TypedDict):
   handle_request_put: Callable[[str], None]
   handle_scenario_delete: Callable[[str], None]
   handle_scenario_put: Callable[[str], None]
-
-def parse_resource_ref(ref: str) -> Tuple[Optional[str], str]:
-  """
-  Parse history resource field into (slug, uuid).
-
-  Accepts bare uuid or `slug/<uuid>` / `slug/<uuid>.http`.
-  """
-  if not ref:
-    return None, ref
-
-  if '/' not in ref:
-    return None, ref
-
-  slug, rest = ref.rsplit('/', 1)
-  if rest.endswith(REQUEST_FILE_EXTENSION):
-    rest = rest[:-len(REQUEST_FILE_EXTENSION)]
-  return slug or None, rest
-
-
-def _parse_scenario_resource_ref(ref: str) -> Tuple[Optional[str], str]:
-  """
-  Parse scenario history field into (name, identity).
-
-  v2 uses name-only (unique). Legacy accepts `name/<uuid>`.
-  v1 uses bare uuid. Identity for collapse is name when present, else uuid.
-  """
-  if not ref:
-    return None, ref
-
-  if '/' in ref:
-    name, rest = ref.rsplit('/', 1)
-    if rest.endswith('.yaml') or rest.endswith('.yml'):
-      rest = rest.rsplit('.', 1)[0]
-    # Name is the stable unique key; uuid kept only for legacy path resolve
-    return name or None, name or rest
-
-  if UUID_RE.match(ref):
-    return None, ref
-
-  return ref, ref
-
-
-def _resolve_event_class(format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
-  if format is None:
-    format = resolve_write_format(data_dir or DataDir.instance())
-  return LogEventV2 if format == FORMAT_V2 else LogEventV1
 
 
 class LogEvent():
@@ -83,9 +38,15 @@ class LogEvent():
     self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
 
     if self.resource == SCENARIO_RESOURCE:
-      self.__resource_slug, self.__resource_id = _parse_scenario_resource_ref(self.resource_uuid)
+      self.__resource_slug, self.__resource_id = parse_scenario_resource_ref(self.resource_uuid)
     else:
       self.__resource_slug, self.__resource_id = parse_resource_ref(self.resource_uuid)
+
+  @classmethod
+  def _resolve_event_class(cls, format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
+    if format is None:
+      format = resolve_write_format(data_dir or DataDir.instance())
+    return LogEventV2 if format == FORMAT_V2 else LogEventV1
 
   @classmethod
   def create(cls, event: str) -> 'LogEvent':
@@ -109,7 +70,7 @@ class LogEvent():
     format: int = None,
   ):
     if cls is LogEvent:
-      return _resolve_event_class(format, data_dir).from_resource(
+      return cls._resolve_event_class(format, data_dir).from_resource(
         resource, action, data_dir=data_dir
       )
     return cls(cls.serialize_resource(resource, action, data_dir=data_dir))
@@ -126,7 +87,7 @@ class LogEvent():
     format: int = None,
   ):
     if cls is LogEvent:
-      return _resolve_event_class(format, data_dir).serialize_delete(
+      return cls._resolve_event_class(format, data_dir).serialize_delete(
         resource, data_dir=data_dir
       )
     return cls.serialize_resource(resource, DELETE_ACTION, data_dir=data_dir)
@@ -139,7 +100,7 @@ class LogEvent():
     format: int = None,
   ):
     if cls is LogEvent:
-      return _resolve_event_class(format, data_dir).serialize_put(
+      return cls._resolve_event_class(format, data_dir).serialize_put(
         resource, data_dir=data_dir
       )
     return cls.serialize_resource(resource, PUT_ACTION, data_dir=data_dir)
