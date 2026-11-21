@@ -34,7 +34,7 @@ stoobly-agent snapshot migrate --format v1
 
 Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none.
 
-Request slug: `{METHOD}-{path-with-slashes-as-dashes}` (root path → method only). See [`build_request_slug`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_slug.py).
+Request slug: `{METHOD}-{path-with-slashes-as-dashes}` (root path → method only). See [`RequestSnapshotV2.build_request_slug`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py).
 
 ## Behavior
 

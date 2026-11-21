@@ -59,6 +59,9 @@ classDiagram
     path requests/ab/uuid
   }
   class RequestSnapshotV2 {
+    +build_request_slug(method, path)
+    +request_relative_path(slug, uuid)
+    +parse_request_relative_path(path)
     path requests/slug/uuid.http
     bodies + X-Stoobly-Body-Ref
   }
@@ -71,6 +74,7 @@ classDiagram
     JSON metadata + requests index
   }
   class ScenarioSnapshotV2 {
+    +sanitize_scenario_filename(name)
     name.yaml + relative request paths
   }
   class LogEvent {
@@ -118,7 +122,7 @@ Readers always accept both formats via `.create()`.
 Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py).
 
 1. Resolve write format.
-2. Construct `RequestSnapshotV2` (with slug from [`build_request_slug`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_slug.py)) or `RequestSnapshotV1`.
+2. Construct `RequestSnapshotV2` (with slug from [`RequestSnapshotV2.build_request_slug`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py)) or `RequestSnapshotV1`.
    - Slug: `{METHOD}-{path-with-/-as--}` (path only, no query). Example: `GET` + `/api/users/1` → `GET-api-users-1`.
 3. Backup existing snapshot file (for rollback if log append fails).
 4. `write(request)` — ORM → joined bytes via `JoinedRequestStringAdapter` (V2 externalizes bodies).
@@ -245,8 +249,9 @@ Legacy `.uuid-index` dirs may exist under older v2 trees for uuid-only history l
 | [`request_cli.py`](../stoobly_agent/app/cli/request_cli.py) / [`scenario_cli.py`](../stoobly_agent/app/cli/scenario_cli.py) | CLI entrypoints |
 | [`snapshot_format_service.py`](../stoobly_agent/app/cli/helpers/snapshot_format_service.py) | Migrate prompt + write format |
 | [`snapshot_service.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_service.py) | Create/delete orchestration; constructs V1/V2 classes |
-| [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) | `RequestSnapshot` + `RequestSnapshotV1` / `RequestSnapshotV2` |
-| [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) | `ScenarioSnapshot` + `ScenarioSnapshotV1` / `ScenarioSnapshotV2` |
+| [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) | `RequestSnapshot` + `RequestSnapshotV1` / `RequestSnapshotV2` (v2 naming helpers) |
+| [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) | `ScenarioSnapshot` + `ScenarioSnapshotV1` / `ScenarioSnapshotV2` (v2 filename sanitize) |
 | [`log_event.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log_event.py) | `LogEvent` + `LogEventV1` / `LogEventV2` (locators); `.create()` / `.snapshot()` → snapshot `.create()` |
+| [`resource_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/resource_ref.py) | Parse history resource locators (`slug/uuid`, scenario name) |
 | [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) | v2 body externalize/reconstitute |
 | [`snapshot_migrate.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_migrate.py) | v1 ↔ v2 migrate ([docs](snapshot-migrate.md)) |
