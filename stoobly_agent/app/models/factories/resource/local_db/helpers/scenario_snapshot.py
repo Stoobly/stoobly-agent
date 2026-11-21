@@ -16,89 +16,13 @@ REQUEST_DELIMITTER = "\n"
 SAFE_NAME_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 
-def _parse_scenario_ref(uuid: str, name: str = None):
-  """
-  Parse history-style refs into (uuid, name).
-
-  Accepts:
-  - name-only (v2)
-  - name/<uuid> (legacy v2)
-  - bare uuid (v1)
-  """
-  parsed_name = name
-  parsed_uuid = uuid
-
-  if uuid and '/' in uuid:
-    parsed_name, rest = uuid.rsplit('/', 1)
-    if rest.endswith('.yaml') or rest.endswith('.yml'):
-      rest = rest.rsplit('.', 1)[0]
-    parsed_uuid = rest
-    parsed_name = name or parsed_name
-    return parsed_uuid, parsed_name
-
-  if uuid and not name and not UUID_RE.match(uuid):
-    # v2 name-only locator
-    return None, uuid
-
-  return parsed_uuid, parsed_name
-
-
-def _uuid_from_v2_yaml(path: str) -> Optional[str]:
-  try:
-    with open(path, 'r') as fp:
-      data = yaml.safe_load(fp) or {}
-    if isinstance(data, dict):
-      found = data.get('uuid')
-      if found and UUID_RE.match(str(found)):
-        return str(found)
-  except Exception:
-    pass
-  return None
-
-
-def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> int:
-  scenarios_dir = data_dir.snapshots_scenarios_dir_path
-
-  if name:
-    candidate = os.path.join(
-      scenarios_dir, f"{ScenarioSnapshotV2.sanitize_scenario_filename(name)}.yaml"
-    )
-    if os.path.isfile(candidate):
-      return FORMAT_V2
-
-  if uuid:
-    index_path = os.path.join(scenarios_dir, '.uuid-index', uuid)
-    if os.path.isfile(index_path):
-      return FORMAT_V2
-
-    if os.path.isdir(scenarios_dir):
-      for entry in os.listdir(scenarios_dir):
-        if not (entry.endswith('.yaml') or entry.endswith('.yml')):
-          continue
-        path = os.path.join(scenarios_dir, entry)
-        if not os.path.isfile(path):
-          continue
-        try:
-          with open(path, 'r') as fp:
-            data = yaml.safe_load(fp) or {}
-          if isinstance(data, dict) and data.get('uuid') == uuid:
-            return FORMAT_V2
-        except Exception:
-          continue
-
-    v1_meta = os.path.join(scenarios_dir, uuid)
-    if os.path.exists(v1_meta):
-      return FORMAT_V1
-
-  return resolve_write_format(data_dir)
-
 class ScenarioSnapshot(Snapshot):
   """Base scenario snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
 
   def __init__(self, uuid: str, data_dir: DataDir = None, name: str = None):
-    parsed_uuid, parsed_name = _parse_scenario_ref(uuid, name)
+    parsed_uuid, parsed_name = self._parse_scenario_ref(uuid, name)
     # Snapshot requires a uuid string; hydrate from YAML in create() when name-only
     super().__init__(parsed_uuid or parsed_name or '', data_dir)
 
@@ -110,6 +34,83 @@ class ScenarioSnapshot(Snapshot):
     self._resolved_metadata_path = None
     self._resolved_uuid = parsed_uuid if parsed_uuid and UUID_RE.match(str(parsed_uuid)) else None
 
+  @staticmethod
+  def _parse_scenario_ref(uuid: str, name: str = None):
+    """
+    Parse history-style refs into (uuid, name).
+
+    Accepts:
+    - name-only (v2)
+    - name/<uuid> (legacy v2)
+    - bare uuid (v1)
+    """
+    parsed_name = name
+    parsed_uuid = uuid
+
+    if uuid and '/' in uuid:
+      parsed_name, rest = uuid.rsplit('/', 1)
+      if rest.endswith('.yaml') or rest.endswith('.yml'):
+        rest = rest.rsplit('.', 1)[0]
+      parsed_uuid = rest
+      parsed_name = name or parsed_name
+      return parsed_uuid, parsed_name
+
+    if uuid and not name and not UUID_RE.match(uuid):
+      # v2 name-only locator
+      return None, uuid
+
+    return parsed_uuid, parsed_name
+
+  @staticmethod
+  def _uuid_from_v2_yaml(path: str) -> Optional[str]:
+    try:
+      with open(path, 'r') as fp:
+        data = yaml.safe_load(fp) or {}
+      if isinstance(data, dict):
+        found = data.get('uuid')
+        if found and UUID_RE.match(str(found)):
+          return str(found)
+    except Exception:
+      pass
+    return None
+
+  @staticmethod
+  def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> int:
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+
+    if name:
+      candidate = os.path.join(
+        scenarios_dir, f"{ScenarioSnapshotV2.sanitize_scenario_filename(name)}.yaml"
+      )
+      if os.path.isfile(candidate):
+        return FORMAT_V2
+
+    if uuid:
+      index_path = os.path.join(scenarios_dir, '.uuid-index', uuid)
+      if os.path.isfile(index_path):
+        return FORMAT_V2
+
+      if os.path.isdir(scenarios_dir):
+        for entry in os.listdir(scenarios_dir):
+          if not (entry.endswith('.yaml') or entry.endswith('.yml')):
+            continue
+          path = os.path.join(scenarios_dir, entry)
+          if not os.path.isfile(path):
+            continue
+          try:
+            with open(path, 'r') as fp:
+              data = yaml.safe_load(fp) or {}
+            if isinstance(data, dict) and data.get('uuid') == uuid:
+              return FORMAT_V2
+          except Exception:
+            continue
+
+      v1_meta = os.path.join(scenarios_dir, uuid)
+      if os.path.exists(v1_meta):
+        return FORMAT_V1
+
+    return resolve_write_format(data_dir)
+
   @classmethod
   def create(
     cls,
@@ -119,13 +120,13 @@ class ScenarioSnapshot(Snapshot):
     format: int = None,
   ) -> 'ScenarioSnapshot':
     data_dir = data_dir or DataDir.instance()
-    parsed_uuid, parsed_name = _parse_scenario_ref(uuid, name)
+    parsed_uuid, parsed_name = cls._parse_scenario_ref(uuid, name)
 
     if format is None:
       if parsed_name:
         format = FORMAT_V2
       else:
-        format = _detect_scenario_format(parsed_uuid, data_dir, parsed_name)
+        format = cls._detect_scenario_format(parsed_uuid, data_dir, parsed_name)
 
     if format == FORMAT_V2:
       snapshot = ScenarioSnapshotV2(parsed_uuid or '', data_dir, name=parsed_name)
@@ -180,7 +181,7 @@ class ScenarioSnapshot(Snapshot):
       return
     path = self.metadata_path
     if path and os.path.isfile(path):
-      found = _uuid_from_v2_yaml(path)
+      found = self._uuid_from_v2_yaml(path)
       if found:
         self._resolved_uuid = found
 

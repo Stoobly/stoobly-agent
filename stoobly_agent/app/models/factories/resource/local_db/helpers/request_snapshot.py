@@ -17,55 +17,55 @@ from .snapshot_types import RequestSnapshotOptions
 LOG_ID = 'RequestSnapshot'
 
 
-def _parse_request_ref(uuid: str, slug: str = None):
-  """Parse history-style refs: slug/<uuid> or slug/<uuid>.http."""
-  parsed_slug = slug
-  parsed_uuid = uuid
-  if uuid and '/' in uuid:
-    parsed_slug, rest = uuid.rsplit('/', 1)
-    if rest.endswith(REQUEST_FILE_EXTENSION):
-      rest = rest[:-len(REQUEST_FILE_EXTENSION)]
-    parsed_uuid = rest
-    parsed_slug = parsed_slug or slug
-  return parsed_uuid, parsed_slug
-
-
-def _detect_request_format(uuid: str, data_dir: DataDir, slug: str = None) -> int:
-  requests_dir = data_dir.snapshots_requests_dir_path
-
-  if slug:
-    candidate = os.path.join(requests_dir, slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
-    if os.path.exists(candidate):
-      return FORMAT_V2
-
-  index_path = os.path.join(requests_dir, '.uuid-index', uuid)
-  if os.path.isfile(index_path):
-    return FORMAT_V2
-
-  pattern = os.path.join(requests_dir, '*', f"{uuid}{REQUEST_FILE_EXTENSION}")
-  if glob.glob(pattern):
-    return FORMAT_V2
-
-  v1_path = os.path.join(requests_dir, uuid[0:2], uuid)
-  if os.path.exists(v1_path):
-    return FORMAT_V1
-
-  return resolve_write_format(data_dir)
-
-
 class RequestSnapshot(Snapshot):
   """Base request snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
 
   def __init__(self, uuid: str, data_dir: DataDir = None, slug: str = None):
-    parsed_uuid, parsed_slug = _parse_request_ref(uuid, slug)
+    parsed_uuid, parsed_slug = self._parse_request_ref(uuid, slug)
     super().__init__(parsed_uuid, data_dir)
 
     self._requests_dir_path = self.data_dir.snapshots_requests_dir_path
     self._slug = parsed_slug
     self._backup = None
     self._resolved_path = None
+
+  @staticmethod
+  def _parse_request_ref(uuid: str, slug: str = None):
+    """Parse history-style refs: slug/<uuid> or slug/<uuid>.http."""
+    parsed_slug = slug
+    parsed_uuid = uuid
+    if uuid and '/' in uuid:
+      parsed_slug, rest = uuid.rsplit('/', 1)
+      if rest.endswith(REQUEST_FILE_EXTENSION):
+        rest = rest[:-len(REQUEST_FILE_EXTENSION)]
+      parsed_uuid = rest
+      parsed_slug = parsed_slug or slug
+    return parsed_uuid, parsed_slug
+
+  @staticmethod
+  def _detect_request_format(uuid: str, data_dir: DataDir, slug: str = None) -> int:
+    requests_dir = data_dir.snapshots_requests_dir_path
+
+    if slug:
+      candidate = os.path.join(requests_dir, slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
+      if os.path.exists(candidate):
+        return FORMAT_V2
+
+    index_path = os.path.join(requests_dir, '.uuid-index', uuid)
+    if os.path.isfile(index_path):
+      return FORMAT_V2
+
+    pattern = os.path.join(requests_dir, '*', f"{uuid}{REQUEST_FILE_EXTENSION}")
+    if glob.glob(pattern):
+      return FORMAT_V2
+
+    v1_path = os.path.join(requests_dir, uuid[0:2], uuid)
+    if os.path.exists(v1_path):
+      return FORMAT_V1
+
+    return resolve_write_format(data_dir)
 
   @classmethod
   def create(
@@ -76,13 +76,13 @@ class RequestSnapshot(Snapshot):
     format: int = None,
   ) -> 'RequestSnapshot':
     data_dir = data_dir or DataDir.instance()
-    parsed_uuid, parsed_slug = _parse_request_ref(uuid, slug)
+    parsed_uuid, parsed_slug = cls._parse_request_ref(uuid, slug)
 
     if format is None:
       if parsed_slug:
         format = FORMAT_V2
       else:
-        format = _detect_request_format(parsed_uuid, data_dir, parsed_slug)
+        format = cls._detect_request_format(parsed_uuid, data_dir, parsed_slug)
 
     if format == FORMAT_V2:
       return RequestSnapshotV2(parsed_uuid, data_dir, slug=parsed_slug)
