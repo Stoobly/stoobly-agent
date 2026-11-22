@@ -39,7 +39,8 @@ class RequestSnapshot(Snapshot):
     super().__init__(parsed_uuid, data_dir)
 
     self._requests_dir_path = self.data_dir.snapshots_requests_dir_path
-    self._slug = parsed_slug
+    # Sanitize history/YAML/constructor slugs before any path join
+    self._slug = RequestSnapshotV2.sanitize_request_slug(parsed_slug) if parsed_slug else None
     self._backup = None
     self._resolved_path = None
 
@@ -57,11 +58,44 @@ class RequestSnapshot(Snapshot):
     return parsed_uuid, parsed_slug
 
   @staticmethod
+  def _v2_file_path(requests_dir: str, slug: str, uuid: str) -> str:
+    """Join requests_dir/slug/uuid.http with a sanitized single-component slug."""
+    safe_slug = RequestSnapshotV2.sanitize_request_slug(slug)
+    return os.path.join(requests_dir, safe_slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
+
+  @staticmethod
+  def _path_under_requests_dir(requests_dir: str, relative: str) -> Optional[str]:
+    """
+    Resolve a relative path under requests_dir.
+
+    Rejects absolute paths and any '..' / '.' segments so uuid-index or
+    history locators cannot escape snapshots/requests/.
+    """
+    if not relative:
+      return None
+
+    normalized = relative.replace('\\', '/').lstrip('/')
+    parts = [p for p in normalized.split('/') if p]
+    if not parts or any(p in ('.', '..') for p in parts):
+      return None
+
+    # First component is the slug directory — sanitize it
+    parts[0] = RequestSnapshotV2.sanitize_request_slug(parts[0])
+    candidate = os.path.normpath(os.path.join(requests_dir, *parts))
+    requests_root = os.path.normpath(requests_dir)
+    try:
+      if os.path.commonpath([requests_root, candidate]) != requests_root:
+        return None
+    except ValueError:
+      return None
+    return candidate
+
+  @staticmethod
   def _detect_request_format(uuid: str, data_dir: DataDir, slug: str = None) -> int:
     requests_dir = data_dir.snapshots_requests_dir_path
 
     if slug:
-      candidate = os.path.join(requests_dir, slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
+      candidate = RequestSnapshot._v2_file_path(requests_dir, slug, uuid)
       if os.path.exists(candidate):
         return FORMAT_V2
 
@@ -383,9 +417,7 @@ class RequestSnapshotV2(RequestSnapshot):
       return None
 
     # Do not mkdir here — path is also used for exists/remove checks
-    self._resolved_path = os.path.join(
-      self._requests_dir_path, slug, f"{self.uuid}{self.FILE_EXTENSION}"
-    )
+    self._resolved_path = self._v2_file_path(self._requests_dir_path, slug, self.uuid)
     return self._resolved_path
 
   def copy(self, dest_dir: str):
@@ -427,21 +459,18 @@ class RequestSnapshotV2(RequestSnapshot):
 
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
-      candidate = os.path.join(
-        self._requests_dir_path, self._slug, f"{self.uuid}{self.FILE_EXTENSION}"
-      )
+      candidate = self._v2_file_path(self._requests_dir_path, self._slug, self.uuid)
       if os.path.exists(candidate):
         return candidate
 
     index_path = self._uuid_index_path()
     if os.path.isfile(index_path):
       with open(index_path, 'r') as fp:
-        relative = fp.read().strip().replace('\\', '/')
-      if relative:
-        candidate = os.path.join(self._requests_dir_path, *relative.split('/'))
-        if os.path.isfile(candidate):
-          self._slug = self._slug or relative.split('/', 1)[0]
-          return candidate
+        relative = fp.read().strip()
+      candidate = self._path_under_requests_dir(self._requests_dir_path, relative)
+      if candidate and os.path.isfile(candidate):
+        self._slug = self._slug or os.path.basename(os.path.dirname(candidate))
+        return candidate
 
     pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{self.FILE_EXTENSION}")
     matches = glob.glob(pattern)
