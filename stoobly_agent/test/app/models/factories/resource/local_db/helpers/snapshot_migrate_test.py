@@ -287,6 +287,52 @@ class TestRemigrateHistoryBackfill:
     assert by_id[SCENARIO_A].resource_uuid == SCENARIO_A
     assert by_id[SCENARIO_B].resource_uuid == SCENARIO_B
 
+  def test_gate_rewrites_history_when_last_v1_already_gone(self):
+    # Interrupt after last v1 remove, before history rewrite: pure v2 + bare uuids
+    _write_v2_request(UUID_A)
+    _write_v2_scenario(SCENARIO_A, 'checkout')
+    _append_history(REQUEST_RESOURCE, UUID_A, format=FORMAT_V1)
+    _append_history(SCENARIO_RESOURCE, SCENARIO_A, format=FORMAT_V1)
+
+    assert not has_v1_snapshots(DataDir.instance())
+    assert has_v2_snapshots(DataDir.instance())
+
+    result = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
+    assert result['noop'] is False
+    assert result['requests'] == 0
+    assert result['scenarios'] == 0
+
+    request_event = next(e for e in Log().events if e.is_request())
+    scenario_event = next(e for e in Log().events if e.is_scenario())
+    assert request_event.resource_uuid == f'GET-api/{UUID_A}'
+    assert scenario_event.resource_uuid == 'checkout'
+
+    noop = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
+    assert noop['noop'] is True
+
+  def test_gate_rewrites_history_when_last_v2_already_gone(self):
+    # Interrupt after last v2 remove, before history rewrite: pure v1 + v2 locators
+    _write_v1_request(UUID_A)
+    _write_v1_scenario(SCENARIO_A, 'checkout')
+    _append_history(REQUEST_RESOURCE, f'GET-api/{UUID_A}', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, 'checkout', format=FORMAT_V2)
+
+    assert not has_v2_snapshots(DataDir.instance())
+    assert has_v1_snapshots(DataDir.instance())
+
+    result = migrate_snapshots(DataDir.instance(), format=FORMAT_V1)
+    assert result['noop'] is False
+    assert result['requests'] == 0
+    assert result['scenarios'] == 0
+
+    request_event = next(e for e in Log().events if e.is_request())
+    scenario_event = next(e for e in Log().events if e.is_scenario())
+    assert request_event.resource_uuid == UUID_A
+    assert scenario_event.resource_uuid == SCENARIO_A
+
+    noop = migrate_snapshots(DataDir.instance(), format=FORMAT_V1)
+    assert noop['noop'] is True
+
 
 class TestBackfillHelpers:
   def test_backfill_v2_request_locators(self):

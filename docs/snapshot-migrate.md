@@ -33,7 +33,7 @@ stoobly-agent snapshot migrate --format v1
 | History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
 | History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}` (unique) |
 
-Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none. Migrate gates on remaining source-format files (`has_v1_snapshots` / `has_v2_snapshots`) so a mixed tree from an interrupted run is finished rather than treated as already migrated.
+Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none. Migrate gates on remaining source-format files (`has_v1_snapshots` / `has_v2_snapshots`) **or** unfinished history rewrite (target-format files exist but history still has source-shaped locators) so an interrupted run is finished rather than treated as already migrated.
 
 Request slug: `{METHOD}-{path-with-slashes-as-dashes}` (root path → method only). See [`RequestSnapshotV2.build_request_slug`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py).
 
@@ -41,10 +41,10 @@ Request slug: `{METHOD}-{path-with-slashes-as-dashes}` (root path → method onl
 
 ```mermaid
 flowchart TB
-  cli["snapshot migrate --format"] --> gate[has source-format leftovers?]
+  cli["snapshot migrate --format"] --> gate["source leftovers or unfinished history?"]
   gate -->|no| noop[Noop]
-  gate -->|v1 leftovers and target v2| toV2[migrate_snapshots_to_v2]
-  gate -->|v2 leftovers and target v1| toV1[migrate_snapshots_to_v1]
+  gate -->|v1 leftovers or bare/legacy history and target v2| toV2[migrate_snapshots_to_v2]
+  gate -->|v2 leftovers or v2-shaped history and target v1| toV1[migrate_snapshots_to_v1]
   toV2 --> reqV2[Convert request files]
   toV2 --> scenV2[Convert scenario files]
   toV2 --> histV2[Rewrite history → locators]

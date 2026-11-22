@@ -30,10 +30,13 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
   """
   Convert snapshots to the target format.
 
-  Noops when there is nothing left in the source format. Keying off source
-  presence (not detect_snapshot_format) so an interrupted migrate that left a
-  mixed tree still finishes remaining files — detect prefers v2 as soon as any
-  v2 file exists.
+  Noops when there is nothing left to do. Keying off source presence (not
+  detect_snapshot_format) so an interrupted migrate that left a mixed tree
+  still finishes remaining files — detect prefers v2 as soon as any v2 file
+  exists. Also treats unfinished history rewrite as work remaining: if files
+  are already in the target format but history still has source-shaped
+  locators (interrupt after the last source file was removed), remigrate runs
+  backfill + rewrite instead of nooping.
 
   Rewrites history locators to match the target format. VERSION is left
   untouched. Returns counts of migrated resources and whether the call was a noop.
@@ -41,7 +44,9 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
   data_dir = data_dir or DataDir.instance()
 
   if format == FORMAT_V2:
-    if not has_v1_snapshots(data_dir):
+    if not has_v1_snapshots(data_dir) and not (
+      has_v2_snapshots(data_dir) and _history_needs_locator_rewrite(data_dir, to_v2=True)
+    ):
       return {
         'requests': 0,
         'scenarios': 0,
@@ -49,7 +54,9 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
       }
     result = migrate_snapshots_to_v2(data_dir)
   elif format == FORMAT_V1:
-    if not has_v2_snapshots(data_dir):
+    if not has_v2_snapshots(data_dir) and not (
+      has_v1_snapshots(data_dir) and _history_needs_locator_rewrite(data_dir, to_v2=False)
+    ):
       return {
         'requests': 0,
         'scenarios': 0,
@@ -399,6 +406,69 @@ def _backfill_v1_scenario_locators(scenarios_dir: str, locators: Dict[str, str])
       continue
 
 
+def _history_file_paths(data_dir: DataDir) -> list:
+  log = Log(data_dir)
+  paths = list(log.history_files)
+  if os.path.isfile(log.log_file_path):
+    paths.append(log.log_file_path)
+  return paths
+
+
+def _history_needs_locator_rewrite(data_dir: DataDir, to_v2: bool) -> bool:
+  """
+  True when history/log still has locators that rewrite would change.
+
+  Used so remigrate after an interrupt that removed the last source file still
+  runs backfill + rewrite instead of nooping on a pure target-format tree.
+  Only counts locators resolvable from on-disk target-format files so orphaned
+  lines do not permanently block noop.
+  """
+  request_locators: Dict[str, str] = {}
+  scenario_locators: Dict[str, str] = {}
+  if to_v2:
+    _backfill_v2_request_locators(data_dir.snapshots_requests_dir_path, request_locators)
+    _backfill_v2_scenario_locators(data_dir.snapshots_scenarios_dir_path, scenario_locators)
+  else:
+    _backfill_v1_scenario_locators(data_dir.snapshots_scenarios_dir_path, scenario_locators)
+
+  for path in _history_file_paths(data_dir):
+    with open(path, 'r') as fp:
+      contents = fp.read().strip()
+    if not contents:
+      continue
+
+    for raw in contents.split(EVENT_DELIMITTER):
+      if not raw:
+        continue
+      try:
+        event = LogEvent.create(raw)
+      except Exception:
+        continue
+
+      if event.is_request():
+        if to_v2:
+          if '/' not in event.resource_uuid and event.resource_id in request_locators:
+            return True
+        elif '/' in event.resource_uuid:
+          return True
+      elif event.is_scenario():
+        if to_v2:
+          # name/uuid → stem; bare uuid → stem when resolvable
+          if '/' in event.resource_uuid:
+            return True
+          if event.resource_id in scenario_locators:
+            return True
+        else:
+          if '/' in event.resource_uuid:
+            _name, rest = event.resource_uuid.rsplit('/', 1)
+            if UUID_RE.match(rest) or _name in scenario_locators:
+              return True
+          elif not UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
+            return True
+
+  return False
+
+
 def _rewrite_history_locators(
   data_dir: DataDir,
   to_v2: bool,
@@ -411,12 +481,7 @@ def _rewrite_history_locators(
   request_locators = request_locators or {}
   scenario_locators = scenario_locators or {}
 
-  log = Log(data_dir)
-  paths = list(log.history_files)
-  if os.path.isfile(log.log_file_path):
-    paths.append(log.log_file_path)
-
-  for path in paths:
+  for path in _history_file_paths(data_dir):
     with open(path, 'r') as fp:
       contents = fp.read().strip()
     if not contents:
