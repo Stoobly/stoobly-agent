@@ -420,12 +420,17 @@ class RequestSnapshotV2(RequestSnapshot):
     payload = externalize_joined_request(text, os.path.dirname(path))
     with open(path, 'wb') as fp:
       fp.write(payload)
+    self._remove_uuid_orphans(path)
 
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
       candidate = self._v2_file_path(self._requests_dir_path, self._slug, self.uuid)
+      # When slug is set (e.g. after method/path change), do not fall through to
+      # glob — that would return the old */{uuid}.http and write() would overwrite
+      # it while history/YAML record the new slug.
       if os.path.exists(candidate):
         return candidate
+      return None
 
     # Reject glob metacharacters / non-UUIDs before interpolating into glob.glob
     if not self.uuid or not UUID_RE.match(str(self.uuid)):
@@ -436,6 +441,22 @@ class RequestSnapshotV2(RequestSnapshot):
     if matches:
       return matches[0]
     return None
+
+  def _remove_uuid_orphans(self, keep_path: str):
+    """Remove other */{uuid}.http copies left after a slug change write."""
+    if not self.uuid or not UUID_RE.match(str(self.uuid)):
+      return
+
+    keep = os.path.abspath(keep_path)
+    pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{self.FILE_EXTENSION}")
+    for match in glob.glob(pattern):
+      if os.path.abspath(match) == keep:
+        continue
+      try:
+        os.remove(match)
+      except OSError:
+        continue
+      self._cleanup_empty_slug_dir(os.path.dirname(match))
 
   def _copy_bodies(self, request_file_path: str, dest_dir: str):
     slug_dir = os.path.dirname(request_file_path)

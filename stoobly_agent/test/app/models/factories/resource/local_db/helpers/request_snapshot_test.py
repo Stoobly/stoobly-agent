@@ -133,6 +133,39 @@ class TestRequestSnapshotV2PathAndWrite:
     with open(snapshot.path, 'rb') as fp:
       assert fp.read() == b'original'
 
+  def test_find_v2_path_with_slug_missing_does_not_glob(self):
+    old = RequestSnapshotV2(UUID, slug='GET-api')
+    old_path = _write_v2_file(old)
+
+    snap = RequestSnapshotV2(UUID, slug='POST-api')
+    assert snap._find_v2_path() is None
+    assert snap.path.endswith(f'POST-api/{UUID}.http')
+    assert snap.path != old_path
+
+  def test_find_v2_path_without_slug_still_globs(self):
+    old = RequestSnapshotV2(UUID, slug='GET-api')
+    old_path = _write_v2_file(old)
+
+    snap = RequestSnapshotV2(UUID)
+    assert snap._find_v2_path() == old_path
+
+  def test_write_after_slug_change_uses_new_path_and_removes_orphan(self):
+    old = RequestSnapshotV2(UUID, slug='GET-api')
+    old_path = _write_v2_file(old, b'old')
+    old_slug_dir = os.path.dirname(old_path)
+
+    # Simulate write(): new method/path slug, clear resolved path
+    snap = RequestSnapshotV2(UUID, slug='GET-api')
+    snap._slug = RequestSnapshotV2.build_request_slug('POST', '/api')
+    snap._resolved_path = None
+    snap.write_raw(_joined(b''))
+
+    new_path = snap.path
+    assert new_path.endswith(f'POST-api/{UUID}.http')
+    assert os.path.exists(new_path)
+    assert not os.path.exists(old_path)
+    assert not os.path.isdir(old_slug_dir)
+
 
 class TestRequestSnapshotV2SlugTraversal:
   def test_constructor_slug_with_dotdot_stays_under_requests(self):
