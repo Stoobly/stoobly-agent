@@ -171,7 +171,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
               slug, _uuid = parsed
               request_uuid_to_locator[request_uuid] = f"{slug}/{request_uuid}"
 
-      # Avoid clobbering if sanitized names collide (e.g. My Scenario / My-Scenario)
+      # Reuse existing uuid file when present; otherwise avoid clobbering orphans
       yaml_path = ScenarioSnapshotV2.allocate_yaml_path(
         scenarios_dir, scenario_name, uuid=scenario_uuid
       )

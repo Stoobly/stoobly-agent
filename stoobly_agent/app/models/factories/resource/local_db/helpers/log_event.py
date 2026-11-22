@@ -369,7 +369,7 @@ class LogEventV2(LogEvent):
 
   @classmethod
   def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
-    # Prefer on-disk yaml stem so colliding sanitized names stay distinct
+    # Prefer on-disk yaml stem when present (e.g. orphan -2 allocation)
     return ScenarioSnapshotV2.history_locator_for(
       scenario.uuid, scenario.name, data_dir=data_dir
     )

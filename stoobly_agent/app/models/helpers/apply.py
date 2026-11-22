@@ -8,7 +8,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapsh
   MalformedRequestSnapshotError,
   RequestSnapshot,
 )
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
@@ -298,8 +298,8 @@ class Apply():
     if snapshot.uuid and UUID_RE.match(str(snapshot.uuid)):
       return snapshot.uuid
 
-    # DELETE may run after snapshot files were removed; match ORM by sanitized name
-    scenario, status = self.__find_scenario_by_sanitized_name(resource_ref)
+    # DELETE may run after snapshot files were removed; history stem == scenario name
+    scenario, status = self.__find_scenario_by_name(resource_ref)
     if status == 200 and scenario:
       return scenario.get('uuid')
 
@@ -330,47 +330,6 @@ class Apply():
         scenarios = res.get('list') or []
         for scenario in scenarios:
           if scenario.get('name') == name:
-            return scenario, 200
-
-        total = res.get('total') or len(scenarios)
-        if (page + 1) * size >= total:
-          break
-
-        page += 1
-
-      return None, 404
-
-    scenario, status = search()
-    if status == 200:
-      return scenario, status
-    elif status != 404:
-      return scenario, status
-
-    return search('is_deleted')
-
-  def __find_scenario_by_sanitized_name(self, sanitized: str):
-    if not sanitized:
-      return None, 404
-
-    def search(filter: str = None):
-      page = 0
-      size = 100
-
-      while True:
-        params = {
-          'page': page,
-          'size': size,
-        }
-        if filter:
-          params['filter'] = filter
-
-        res, status = self.scenario_model.index(**params)
-        if status != 200:
-          return None, status
-
-        scenarios = res.get('list') or []
-        for scenario in scenarios:
-          if ScenarioSnapshotV2.sanitize_scenario_filename(scenario.get('name') or '') == sanitized:
             return scenario, 200
 
         total = res.get('total') or len(scenarios)

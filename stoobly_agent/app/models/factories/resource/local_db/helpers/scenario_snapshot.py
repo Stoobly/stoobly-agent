@@ -80,14 +80,9 @@ class ScenarioSnapshot(Snapshot):
     scenarios_dir = data_dir.snapshots_scenarios_dir_path
 
     if name:
-      stems = [name]
-      sanitized = ScenarioSnapshotV2.sanitize_scenario_filename(name)
-      if sanitized not in stems:
-        stems.append(sanitized)
-      for stem in stems:
-        candidate = os.path.join(scenarios_dir, f"{stem}.yaml")
-        if os.path.isfile(candidate):
-          return FORMAT_V2
+      candidate = os.path.join(scenarios_dir, f"{name}.yaml")
+      if os.path.isfile(candidate):
+        return FORMAT_V2
 
     if uuid:
       index_path = os.path.join(scenarios_dir, '.uuid-index', uuid)
@@ -468,7 +463,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       self._resolved_metadata_path = found
       return found
 
-    # New file: keep sanitized names unique so My Scenario / My-Scenario do not collide
+    # New file: reuse uuid match when present, else {name}.yaml (unique on orphan collision)
     self._resolved_metadata_path = self.allocate_yaml_path(
       self._scenarios_dir_path,
       self._name or self.uuid,
@@ -565,17 +560,11 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         if self._uuid_from_v2_yaml(path) == str(resolved_uuid):
           return path
 
-    # Name / history-stem lookup. When uuid is known, only accept a matching file
-    # so "My Scenario" does not resolve to another scenario's My-Scenario.yaml.
+    # Name / history-stem lookup (validated names are already filesystem-safe).
+    # When uuid is known, only accept a matching file.
     if self._name:
-      stems = [self._name]
-      sanitized = self.sanitize_scenario_filename(self._name)
-      if sanitized not in stems:
-        stems.append(sanitized)
-      for stem in stems:
-        candidate = os.path.join(self._scenarios_dir_path, f"{stem}.yaml")
-        if not os.path.isfile(candidate):
-          continue
+      candidate = os.path.join(self._scenarios_dir_path, f"{self._name}.yaml")
+      if os.path.isfile(candidate):
         if not resolved_uuid or not UUID_RE.match(str(resolved_uuid)):
           return candidate
         if self._uuid_from_v2_yaml(candidate) == str(resolved_uuid):
