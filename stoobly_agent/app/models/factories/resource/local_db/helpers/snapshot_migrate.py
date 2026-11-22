@@ -17,12 +17,12 @@ from .log_event import LogEvent, LogEventV1, LogEventV2
 from .request_snapshot import RequestSnapshotV2
 from .scenario_snapshot import ScenarioSnapshotV2
 from .snapshot_format import (
-  FORMAT_NONE,
   FORMAT_V1,
   FORMAT_V2,
   REQUEST_FILE_EXTENSION,
   UUID_RE,
-  detect_snapshot_format,
+  has_v1_snapshots,
+  has_v2_snapshots,
 )
 
 
@@ -30,23 +30,31 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
   """
   Convert snapshots to the target format.
 
-  Noops when there are no snapshots or they are already the target format.
+  Noops when there is nothing left in the source format. Keying off source
+  presence (not detect_snapshot_format) so an interrupted migrate that left a
+  mixed tree still finishes remaining files — detect prefers v2 as soon as any
+  v2 file exists.
+
   Rewrites history locators to match the target format. VERSION is left
   untouched. Returns counts of migrated resources and whether the call was a noop.
   """
   data_dir = data_dir or DataDir.instance()
-  detected = detect_snapshot_format(data_dir)
-
-  if detected == FORMAT_NONE or detected == format:
-    return {
-      'requests': 0,
-      'scenarios': 0,
-      'noop': True,
-    }
 
   if format == FORMAT_V2:
+    if not has_v1_snapshots(data_dir):
+      return {
+        'requests': 0,
+        'scenarios': 0,
+        'noop': True,
+      }
     result = migrate_snapshots_to_v2(data_dir)
   elif format == FORMAT_V1:
+    if not has_v2_snapshots(data_dir):
+      return {
+        'requests': 0,
+        'scenarios': 0,
+        'noop': True,
+      }
     result = migrate_snapshots_to_v1(data_dir)
   else:
     raise ValueError(f"Unsupported snapshot format: {format}")
@@ -185,6 +193,11 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
     except OSError:
       pass
 
+  # Remigrate after interrupt: include already-v2 files so history rewrite
+  # covers requests/scenarios converted in a prior partial run.
+  _backfill_v2_request_locators(requests_dir, request_uuid_to_locator)
+  _backfill_v2_scenario_locators(scenarios_dir, scenario_uuid_to_locator)
+
   _rewrite_history_locators(
     data_dir,
     to_v2=True,
@@ -311,6 +324,10 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
     _remove_uuid_index_dir(os.path.join(scenarios_dir, '.uuid-index'))
 
+  # Remigrate after interrupt: include already-v1 scenario metas so name
+  # locators from a prior partial run still resolve to bare uuids.
+  _backfill_v1_scenario_locators(scenarios_dir, scenario_name_to_uuid)
+
   _rewrite_history_locators(
     data_dir,
     to_v2=False,
@@ -321,6 +338,65 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
     'requests': migrated_requests,
     'scenarios': migrated_scenarios,
   }
+
+
+def _backfill_v2_request_locators(requests_dir: str, locators: Dict[str, str]):
+  if not os.path.isdir(requests_dir):
+    return
+  for slug in os.listdir(requests_dir):
+    if slug.startswith('.'):
+      continue
+    slug_dir = os.path.join(requests_dir, slug)
+    if not os.path.isdir(slug_dir):
+      continue
+    for name in os.listdir(slug_dir):
+      if not name.endswith(REQUEST_FILE_EXTENSION):
+        continue
+      request_uuid = name[:-len(REQUEST_FILE_EXTENSION)]
+      if UUID_RE.match(request_uuid) and request_uuid not in locators:
+        locators[request_uuid] = f"{slug}/{request_uuid}"
+
+
+def _backfill_v2_scenario_locators(scenarios_dir: str, locators: Dict[str, str]):
+  if not os.path.isdir(scenarios_dir):
+    return
+  for name in os.listdir(scenarios_dir):
+    if not (name.endswith('.yaml') or name.endswith('.yml')):
+      continue
+    yaml_path = os.path.join(scenarios_dir, name)
+    if not os.path.isfile(yaml_path):
+      continue
+    try:
+      with open(yaml_path, 'r') as fp:
+        data = yaml.safe_load(fp) or {}
+      if not isinstance(data, dict):
+        continue
+      scenario_uuid = data.get('uuid')
+      if scenario_uuid and UUID_RE.match(str(scenario_uuid)):
+        scenario_uuid = str(scenario_uuid)
+        if scenario_uuid not in locators:
+          locators[scenario_uuid] = _name_from_yaml_filename(name)
+    except Exception:
+      continue
+
+
+def _backfill_v1_scenario_locators(scenarios_dir: str, locators: Dict[str, str]):
+  if not os.path.isdir(scenarios_dir):
+    return
+  for name in os.listdir(scenarios_dir):
+    if name.endswith(('.yaml', '.yml', '.json')) or not UUID_RE.match(name):
+      continue
+    meta_path = os.path.join(scenarios_dir, name)
+    if not os.path.isfile(meta_path):
+      continue
+    try:
+      with open(meta_path, 'r') as fp:
+        meta = json.loads(fp.read())
+      scenario_name = (meta or {}).get('name') or name
+      if scenario_name not in locators:
+        locators[scenario_name] = name
+    except Exception:
+      continue
 
 
 def _rewrite_history_locators(

@@ -21,14 +21,15 @@ def detect_snapshot_format(data_dir: DataDir = None) -> Optional[int]:
   Detect on-disk snapshot format.
 
   Returns FORMAT_V2, FORMAT_V1, or FORMAT_NONE.
-  Prefers v2 when any v2-shaped files exist.
+  Prefers v2 when any v2-shaped files exist (mixed trees report v2).
+  Migrate must not treat that as "already done" — see has_v1_snapshots.
   """
   data_dir = data_dir or DataDir.instance()
 
-  if _has_v2_snapshots(data_dir):
+  if has_v2_snapshots(data_dir):
     return FORMAT_V2
 
-  if _has_v1_snapshots(data_dir):
+  if has_v1_snapshots(data_dir):
     return FORMAT_V1
 
   return FORMAT_NONE
@@ -47,7 +48,7 @@ def resolve_write_format(data_dir: DataDir = None, migrate_to_v2: bool = False) 
     return FORMAT_V2
   return FORMAT_V1
 
-def _has_v2_snapshots(data_dir: DataDir) -> bool:
+def has_v2_snapshots(data_dir: DataDir) -> bool:
   requests_dir = data_dir.snapshots_requests_dir_path
   if os.path.isdir(requests_dir):
     for entry in os.listdir(requests_dir):
@@ -68,7 +69,7 @@ def _has_v2_snapshots(data_dir: DataDir) -> bool:
 
   return False
 
-def _has_v1_snapshots(data_dir: DataDir) -> bool:
+def has_v1_snapshots(data_dir: DataDir) -> bool:
   requests_dir = data_dir.snapshots_requests_dir_path
   if os.path.isdir(requests_dir):
     for entry in os.listdir(requests_dir):

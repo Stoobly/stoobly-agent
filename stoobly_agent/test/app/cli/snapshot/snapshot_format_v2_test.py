@@ -408,6 +408,32 @@ class TestSnapshotFormatV2:
       assert runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL]).exit_code == 0
       return Request.last()
 
+    def test_remigrate_finishes_interrupted_v1_to_v2(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+      assert migrate_snapshots_to_v2(DataDir.instance())['requests'] == 1
+      assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
+
+      # Plant leftover v1 file (interrupted migrate left a mixed tree)
+      leftover_uuid = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+      shard = os.path.join(DataDir.instance().snapshots_requests_dir_path, leftover_uuid[0:2])
+      os.makedirs(shard, exist_ok=True)
+      leftover_path = os.path.join(shard, leftover_uuid)
+      with open(leftover_path, 'wb') as fp:
+        fp.write(RequestSnapshot.create(recorded_request.uuid).request)
+
+      assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
+
+      result = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
+      assert result['noop'] is False
+      assert result['requests'] == 1
+      assert not os.path.exists(leftover_path)
+      assert RequestSnapshot.create(leftover_uuid).format == FORMAT_V2
+
+      noop = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
+      assert noop['noop'] is True
+
     def test_skips_corrupt_v1_request(self, recorded_request: Request):
       from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
 
