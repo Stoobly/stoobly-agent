@@ -169,3 +169,36 @@ class TestRequestSnapshotV2NamingEdges:
       _ = snapshot.request
 
     assert snapshot.path in str(exc.value)
+
+  def test_copy_bodies_skips_unsafe_refs(self, tmp_path):
+    from stoobly_agent.config.constants.custom_headers import BODY_REF
+
+    snapshot = RequestSnapshotV2(UUID, slug='GET-copy')
+    slug_dir = os.path.dirname(snapshot.path)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    os.makedirs(bodies_dir, exist_ok=True)
+
+    safe_hash = 'a' * 64
+    safe_body = os.path.join(bodies_dir, safe_hash)
+    with open(safe_body, 'wb') as fp:
+      fp.write(b'safe')
+
+    payload = (
+      b'GET / HTTP/1.1\r\n'
+      + f'{BODY_REF}: bodies/{safe_hash}\r\n'.encode()
+      + f'{BODY_REF}: ../outside-secret\r\n'.encode()
+      + f'{BODY_REF}: /etc/passwd\r\n'.encode()
+      + b'\r\n'
+    )
+    _write_v2_file(snapshot, payload)
+
+    dest = tmp_path / 'dest'
+    dest.mkdir()
+    snapshot.copy(str(dest))
+
+    # Safe body copied; absolute/traversal refs skipped
+    copied_bodies = list(dest.rglob(safe_hash))
+    assert len(copied_bodies) == 1
+    assert copied_bodies[0].read_bytes() == b'safe'
+    assert not list(dest.rglob('outside-secret'))
+    assert not list(dest.rglob('passwd'))

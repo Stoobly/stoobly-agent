@@ -27,6 +27,21 @@ def body_file_path(slug_dir: str, hash_value: str) -> str:
 def relative_body_ref(hash_value: str) -> str:
   return f"bodies/{hash_value}"
 
+def normalize_body_ref(ref: str) -> str:
+  """
+  Normalize a body ref to a relative bodies/<...> path under slug_dir.
+
+  Rejects absolute paths and '..' segments so joins cannot escape the slug dir.
+  """
+  normalized = (ref or '').replace('\\', '/').lstrip('/')
+  if not normalized.startswith('bodies/') or '..' in normalized.split('/'):
+    raise ValueError(f"Invalid body ref: {ref}")
+  return normalized
+
+def resolve_body_path(slug_dir: str, ref: str) -> str:
+  """Resolve a validated body ref to an absolute path under slug_dir."""
+  return os.path.join(slug_dir, normalize_body_ref(ref))
+
 def write_body(slug_dir: str, body: bytes) -> str:
   """Write body bytes under bodies/<sha256>. Returns content hash."""
   hash_value = content_hash(body)
@@ -40,11 +55,7 @@ def write_body(slug_dir: str, body: bytes) -> str:
 
 def read_body(slug_dir: str, ref: str) -> bytes:
   """Read body from a relative bodies/<hash> ref under slug_dir."""
-  normalized = ref.replace('\\', '/').lstrip('/')
-  if not normalized.startswith('bodies/') or '..' in normalized.split('/'):
-    raise ValueError(f"Invalid body ref: {ref}")
-
-  path = os.path.join(slug_dir, normalized)
+  path = resolve_body_path(slug_dir, ref)
   with open(path, 'rb') as fp:
     return fp.read()
 

@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 import shutil
 from typing import Optional, Union
 
@@ -9,12 +10,14 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
-from .body_ref import externalize_joined_request, reconstitute_joined_request
+from .body_ref import externalize_joined_request, reconstitute_joined_request, resolve_body_path
 from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, REQUEST_FILE_EXTENSION, resolve_write_format
 from .snapshot_types import RequestSnapshotOptions
 
 LOG_ID = 'RequestSnapshot'
+# Single path-component slug: no separators/whitespace; dots allowed mid-slug only
+SAFE_SLUG_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 
 class MalformedRequestSnapshotError(ValueError):
@@ -276,19 +279,34 @@ class RequestSnapshotV2(RequestSnapshot):
     super().__init__(uuid, data_dir, slug=slug)
 
   @staticmethod
+  def sanitize_request_slug(slug: str) -> str:
+    """
+    Ensure slug is a single safe directory name under requests/.
+
+    Rejects path separators and '.'/'..' (after cleanup) so os.path.join
+    cannot escape the snapshots tree. Also strips whitespace / other
+    unsafe characters so history space-delimited locators stay parsable.
+    """
+    slug = (slug or '').replace('\\', '/').replace('/', '-')
+    slug = SAFE_SLUG_RE.sub('-', slug).strip('-._')
+    return slug or 'GET'
+
+  @staticmethod
   def build_request_slug(method: str, path: str) -> str:
     """
     Build v2 request directory slug: {METHOD}-{path-slug}.
 
     path-slug is path with leading/trailing slashes stripped and '/' replaced by '-'.
-    Root path '/' yields method only.
+    Root path '/' yields method only. Result is always a single path component.
     """
     method = (method or 'GET').upper()
     path = path or '/'
     path_slug = path.strip('/')
     if not path_slug:
-      return method
-    return f"{method}-{path_slug.replace('/', '-')}"
+      slug = method
+    else:
+      slug = f"{method}-{path_slug.replace('/', '-')}"
+    return RequestSnapshotV2.sanitize_request_slug(slug)
 
   @staticmethod
   def request_relative_path(slug: str, uuid: str) -> str:
@@ -447,7 +465,10 @@ class RequestSnapshotV2(RequestSnapshot):
     for line in raw_text.splitlines():
       if line.lower().startswith(f'{BODY_REF.lower()}:'):
         ref = line.split(':', 1)[1].strip()
-        src = os.path.join(slug_dir, ref.replace('/', os.sep))
+        try:
+          src = resolve_body_path(slug_dir, ref)
+        except ValueError:
+          continue
         if os.path.exists(src):
           self.copy_file(src, dest_dir)
 

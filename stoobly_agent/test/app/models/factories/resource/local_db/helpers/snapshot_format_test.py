@@ -48,6 +48,20 @@ class TestRequestSnapshotV2Naming:
   def test_root_path(self):
     assert RequestSnapshotV2.build_request_slug('POST', '/') == 'POST'
 
+  def test_rejects_dot_method(self):
+    assert RequestSnapshotV2.build_request_slug('..', '/') == 'GET'
+    assert RequestSnapshotV2.build_request_slug('.', '/') == 'GET'
+
+  def test_rejects_method_with_separators(self):
+    # Separators become '-', so join stays a single directory component
+    assert RequestSnapshotV2.build_request_slug('GET/../x', '/') == 'GET-..-X'
+    assert RequestSnapshotV2.build_request_slug('a\\b', '/') == 'A-B'
+    assert '/' not in RequestSnapshotV2.build_request_slug('GET/evil', '/')
+    assert '\\' not in RequestSnapshotV2.build_request_slug('GET\\evil', '/')
+
+  def test_strips_whitespace_from_path(self):
+    assert RequestSnapshotV2.build_request_slug('GET', '/api/foo bar') == 'GET-api-foo-bar'
+
   def test_relative_path_parse(self):
     assert RequestSnapshotV2.parse_request_relative_path('GET-api-users/abc.http') == ('GET-api-users', 'abc')
 

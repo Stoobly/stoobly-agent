@@ -1,11 +1,15 @@
 import os
 import tempfile
 
+import pytest
+
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref import (
   BODY_REF_HEADER,
   externalize_joined_request,
+  normalize_body_ref,
   reconstitute_joined_request,
+  resolve_body_path,
 )
 from stoobly_agent.app.proxy.record.joined_request import REQUEST_DELIMITTER
 
@@ -65,3 +69,17 @@ class TestBodyRef:
       head, _ = response_raw.split(b'\r\n\r\n', 1)
       header_lines = head.split(b'\r\n')[1:]
       assert header_lines[-1].lower().startswith(BODY_REF_HEADER.lower().encode())
+
+  def test_normalize_rejects_traversal_and_absolute(self):
+    assert normalize_body_ref('bodies/abc') == 'bodies/abc'
+    assert normalize_body_ref('/bodies/abc') == 'bodies/abc'
+
+    for bad in ('/etc/passwd', 'bodies/../secret', '../bodies/abc', 'etc/passwd', ''):
+      with pytest.raises(ValueError, match='Invalid body ref'):
+        normalize_body_ref(bad)
+
+  def test_resolve_stays_under_slug_dir(self):
+    with tempfile.TemporaryDirectory() as slug_dir:
+      path = resolve_body_path(slug_dir, 'bodies/deadbeef')
+      assert path.startswith(slug_dir)
+      assert path.endswith(os.path.join('bodies', 'deadbeef'))
