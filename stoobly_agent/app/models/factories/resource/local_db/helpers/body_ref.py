@@ -38,9 +38,24 @@ def normalize_body_ref(ref: str) -> str:
     raise ValueError(f"Invalid body ref: {ref}")
   return normalized
 
+def _is_under_dir(path: str, parent: str) -> bool:
+  """True if realpath(path) is parent or a descendant (follows symlinks)."""
+  real_path = os.path.realpath(path)
+  real_parent = os.path.realpath(parent)
+  return real_path == real_parent or real_path.startswith(real_parent + os.sep)
+
 def resolve_body_path(slug_dir: str, ref: str) -> str:
-  """Resolve a validated body ref to an absolute path under slug_dir."""
-  return os.path.join(slug_dir, normalize_body_ref(ref))
+  """
+  Resolve a validated body ref to a path under slug_dir/bodies.
+
+  After join, require realpath(path) stays under realpath(bodies_dir) so a
+  planted bodies/<name> symlink cannot escape the slug tree.
+  """
+  path = os.path.join(slug_dir, normalize_body_ref(ref))
+  bodies_dir = bodies_dir_path(slug_dir)
+  if not _is_under_dir(bodies_dir, slug_dir) or not _is_under_dir(path, bodies_dir):
+    raise ValueError(f"Invalid body ref: {ref}")
+  return path
 
 def write_body(slug_dir: str, body: bytes) -> str:
   """Write body bytes under bodies/<sha256>. Returns content hash."""

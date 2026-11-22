@@ -83,3 +83,27 @@ class TestBodyRef:
       path = resolve_body_path(slug_dir, 'bodies/deadbeef')
       assert path.startswith(slug_dir)
       assert path.endswith(os.path.join('bodies', 'deadbeef'))
+
+  def test_resolve_rejects_symlink_escape(self):
+    with tempfile.TemporaryDirectory() as slug_dir:
+      bodies = os.path.join(slug_dir, 'bodies')
+      os.makedirs(bodies)
+      target = os.path.join(slug_dir, 'outside-secret')
+      with open(target, 'wb') as fp:
+        fp.write(b'secret')
+      link = os.path.join(bodies, 'deadbeef')
+      os.symlink(target, link)
+
+      with pytest.raises(ValueError, match='Invalid body ref'):
+        resolve_body_path(slug_dir, 'bodies/deadbeef')
+
+  def test_resolve_rejects_bodies_dir_symlink_escape(self):
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'slug')
+      os.makedirs(slug_dir)
+      outside = os.path.join(root, 'outside')
+      os.makedirs(outside)
+      os.symlink(outside, os.path.join(slug_dir, 'bodies'))
+
+      with pytest.raises(ValueError, match='Invalid body ref'):
+        resolve_body_path(slug_dir, 'bodies/deadbeef')
