@@ -85,10 +85,6 @@ class ScenarioSnapshot(Snapshot):
         return FORMAT_V2
 
     if uuid:
-      index_path = os.path.join(scenarios_dir, '.uuid-index', uuid)
-      if os.path.isfile(index_path):
-        return FORMAT_V2
-
       if os.path.isdir(scenarios_dir):
         for entry in os.listdir(scenarios_dir):
           if not (entry.endswith('.yaml') or entry.endswith('.yml')):
@@ -489,7 +485,6 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     metadata_file_path = self.metadata_path
     if metadata_file_path and os.path.exists(metadata_file_path):
       os.remove(metadata_file_path)
-    self._remove_uuid_index()
 
   def remove_requests(self, handle_remove_request_snapshot=None):
     self.iter_request_snapshots(handle_remove_request_snapshot or self._handle_remove_requests)
@@ -528,29 +523,12 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         'requests': relative_paths,
       }, fp, sort_keys=False, default_flow_style=False)
 
-  def _uuid_index_path(self) -> str:
-    return os.path.join(self._scenarios_dir_path, '.uuid-index', self.uuid)
-
-  def _remove_uuid_index(self):
-    path = self._uuid_index_path()
-    if os.path.exists(path):
-      os.remove(path)
-
   def _find_v2_metadata_path(self) -> Optional[str]:
     if not os.path.isdir(self._scenarios_dir_path):
       return None
 
     resolved_uuid = self._resolved_uuid
     if resolved_uuid and UUID_RE.match(str(resolved_uuid)):
-      index_path = self._uuid_index_path()
-      if os.path.isfile(index_path):
-        with open(index_path, 'r') as fp:
-          basename = fp.read().strip()
-        if basename:
-          candidate = os.path.join(self._scenarios_dir_path, basename)
-          if os.path.isfile(candidate):
-            return candidate
-
       for name in os.listdir(self._scenarios_dir_path):
         if not (name.endswith('.yaml') or name.endswith('.yml')):
           continue

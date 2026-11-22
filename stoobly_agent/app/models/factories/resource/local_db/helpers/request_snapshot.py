@@ -64,33 +64,6 @@ class RequestSnapshot(Snapshot):
     return os.path.join(requests_dir, safe_slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
 
   @staticmethod
-  def _path_under_requests_dir(requests_dir: str, relative: str) -> Optional[str]:
-    """
-    Resolve a relative path under requests_dir.
-
-    Rejects absolute paths and any '..' / '.' segments so uuid-index or
-    history locators cannot escape snapshots/requests/.
-    """
-    if not relative:
-      return None
-
-    normalized = relative.replace('\\', '/').lstrip('/')
-    parts = [p for p in normalized.split('/') if p]
-    if not parts or any(p in ('.', '..') for p in parts):
-      return None
-
-    # First component is the slug directory — sanitize it
-    parts[0] = RequestSnapshotV2.sanitize_request_slug(parts[0])
-    candidate = os.path.normpath(os.path.join(requests_dir, *parts))
-    requests_root = os.path.normpath(requests_dir)
-    try:
-      if os.path.commonpath([requests_root, candidate]) != requests_root:
-        return None
-    except ValueError:
-      return None
-    return candidate
-
-  @staticmethod
   def _detect_request_format(uuid: str, data_dir: DataDir, slug: str = None) -> int:
     requests_dir = data_dir.snapshots_requests_dir_path
 
@@ -98,10 +71,6 @@ class RequestSnapshot(Snapshot):
       candidate = RequestSnapshot._v2_file_path(requests_dir, slug, uuid)
       if os.path.exists(candidate):
         return FORMAT_V2
-
-    index_path = os.path.join(requests_dir, '.uuid-index', uuid)
-    if os.path.isfile(index_path):
-      return FORMAT_V2
 
     pattern = os.path.join(requests_dir, '*', f"{uuid}{REQUEST_FILE_EXTENSION}")
     if glob.glob(pattern):
@@ -431,7 +400,6 @@ class RequestSnapshotV2(RequestSnapshot):
     request_file_path = self.path
     if request_file_path and os.path.exists(request_file_path):
       os.remove(request_file_path)
-      self._remove_uuid_index()
       self._cleanup_empty_slug_dir(os.path.dirname(request_file_path))
 
   def write(self, request: Request, **options: RequestSnapshotOptions):
@@ -449,27 +417,10 @@ class RequestSnapshotV2(RequestSnapshot):
     with open(path, 'wb') as fp:
       fp.write(payload)
 
-  def _uuid_index_path(self) -> str:
-    return os.path.join(self._requests_dir_path, '.uuid-index', self.uuid)
-
-  def _remove_uuid_index(self):
-    path = self._uuid_index_path()
-    if os.path.exists(path):
-      os.remove(path)
-
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
       candidate = self._v2_file_path(self._requests_dir_path, self._slug, self.uuid)
       if os.path.exists(candidate):
-        return candidate
-
-    index_path = self._uuid_index_path()
-    if os.path.isfile(index_path):
-      with open(index_path, 'r') as fp:
-        relative = fp.read().strip()
-      candidate = self._path_under_requests_dir(self._requests_dir_path, relative)
-      if candidate and os.path.isfile(candidate):
-        self._slug = self._slug or os.path.basename(os.path.dirname(candidate))
         return candidate
 
     pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{self.FILE_EXTENSION}")

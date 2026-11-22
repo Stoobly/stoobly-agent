@@ -2,7 +2,7 @@
 
 ## Overview
 
-`stoobly-agent snapshot migrate` converts on-disk request and scenario snapshots between **v1** and **v2** layouts. It also rewrites history/log locators so apply can resolve paths without `.uuid-index`. `VERSION` is left untouched.
+`stoobly-agent snapshot migrate` converts on-disk request and scenario snapshots between **v1** and **v2** layouts. It also rewrites history/log locators so apply can resolve paths. `VERSION` is left untouched.
 
 ## CLI
 
@@ -48,11 +48,9 @@ flowchart TB
   toV2 --> reqV2[Convert request files]
   toV2 --> scenV2[Convert scenario files]
   toV2 --> histV2[Rewrite history → locators]
-  toV2 --> dropIdx[Remove .uuid-index]
   toV1 --> reqV1[Convert request files]
   toV1 --> scenV1[Convert scenario files]
   toV1 --> histV1[Rewrite history → bare UUIDs]
-  toV1 --> dropIdx
 ```
 
 ### v1 → v2
@@ -66,7 +64,6 @@ flowchart TB
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
 3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` (requests) / `{yaml-stem}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Also collapses legacy `name/{uuid}` scenario locators to name-only.
-4. **Cleanup** — Remove any `.uuid-index` under requests/scenarios (legacy; locators replace them).
 
 Corrupt request/scenario files are skipped and left in place.
 
@@ -79,7 +76,6 @@ Corrupt request/scenario files are skipped and left in place.
    - Write JSON metadata at `scenarios/{uuid}` and UUID list at `scenarios/requests/{uuid}`.
    - Remove the YAML file.
 3. **History** — Strip locators back to bare UUIDs and re-order lines to `uuid resource locator action [ms]`.
-4. **Cleanup** — Remove `.uuid-index` if present.
 
 ## History rewrite
 

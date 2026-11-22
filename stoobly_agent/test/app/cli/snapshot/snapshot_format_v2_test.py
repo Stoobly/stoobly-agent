@@ -123,13 +123,6 @@ class TestSnapshotFormatV2:
       assert event.resource_id == 'checkout-flow'
       assert event.snapshot().metadata_path == snap.metadata_path
       assert event.snapshot().uuid == created_scenario.uuid
-      assert not os.path.exists(
-        os.path.join(
-          DataDir.instance().snapshots_scenarios_dir_path,
-          '.uuid-index',
-          created_scenario.uuid,
-        )
-      )
 
   class TestMigrateV1ToV2:
     @pytest.fixture(scope='class', autouse=True)
@@ -168,7 +161,7 @@ class TestSnapshotFormatV2:
       assert snap.path.endswith('.http')
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
 
-      # History locators are rewritten; no uuid-index needed
+      # History locators are rewritten so apply can resolve without scanning
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 
       slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
@@ -176,13 +169,6 @@ class TestSnapshotFormatV2:
       assert event.resource_uuid == f'{slug}/{recorded_request.uuid}'
       assert event.resource_id == recorded_request.uuid
       assert event.snapshot().path == snap.path
-
-      index_path = os.path.join(
-        DataDir.instance().snapshots_requests_dir_path,
-        '.uuid-index',
-        recorded_request.uuid,
-      )
-      assert not os.path.exists(index_path)
 
   class TestMigrateScenarioV1ToV2:
     @pytest.fixture(scope='class', autouse=True)
@@ -221,7 +207,7 @@ class TestSnapshotFormatV2:
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V1
       return path
 
-    def test_migrate_rewrites_history_without_uuid_index(
+    def test_migrate_rewrites_history_locators(
       self,
       created_scenario: Scenario,
       recorded_request: Request,
@@ -242,13 +228,6 @@ class TestSnapshotFormatV2:
       assert event.resource_id == 'legacy-flow'
       assert event.snapshot().metadata_path == scenario_snap.metadata_path
       assert event.snapshot().uuid == created_scenario.uuid
-
-      index_path = os.path.join(
-        DataDir.instance().snapshots_scenarios_dir_path,
-        '.uuid-index',
-        created_scenario.uuid,
-      )
-      assert not os.path.exists(index_path)
 
       request_event = next(e for e in reversed(Log().events) if e.is_request() and e.resource_id == recorded_request.uuid)
       assert '/' in request_event.resource_uuid
@@ -614,19 +593,6 @@ class TestSnapshotFormatV2:
       assert '/' in archived_event.resource_uuid
       assert archived_event.resource_id == recorded_request.uuid
       assert archived_event.uuid == archived_line.split()[0]
-
-    def test_removes_planted_uuid_index(self, recorded_request: Request):
-      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
-
-      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
-      index_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, '.uuid-index')
-      os.makedirs(index_dir, exist_ok=True)
-      index_path = os.path.join(index_dir, recorded_request.uuid)
-      with open(index_path, 'w') as fp:
-        fp.write('GET-api/' + recorded_request.uuid + '.http')
-
-      migrate_snapshots_to_v2(DataDir.instance())
-      assert not os.path.isdir(index_dir)
 
     def test_v2_to_v1_rewrites_request_history_and_cleans_bodies(self, runner: CliRunner, recorded_request: Request):
       assert runner.invoke(request, ['snapshot', 'create', recorded_request.key()]).exit_code == 0

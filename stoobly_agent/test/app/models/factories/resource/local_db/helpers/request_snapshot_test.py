@@ -168,36 +168,6 @@ class TestRequestSnapshotV2SlugTraversal:
     snapshot.remove()
     assert os.path.isfile(outside)
 
-  def test_uuid_index_traversal_is_ignored(self):
-    data_dir = DataDir.instance()
-    requests_dir = data_dir.snapshots_requests_dir_path
-    index_dir = os.path.join(requests_dir, '.uuid-index')
-    os.makedirs(index_dir, exist_ok=True)
-    index_path = os.path.join(index_dir, UUID)
-    with open(index_path, 'w') as fp:
-      fp.write(f'../outside-secret/{UUID}.http')
-
-    outside_dir = os.path.join(data_dir.path, 'outside-secret')
-    os.makedirs(outside_dir, exist_ok=True)
-    outside_file = os.path.join(outside_dir, f'{UUID}.http')
-    with open(outside_file, 'wb') as fp:
-      fp.write(b'pwned')
-
-    snapshot = RequestSnapshotV2(UUID, data_dir)
-    assert snapshot.path is None or os.path.commonpath(
-      [requests_dir, os.path.normpath(snapshot.path)]
-    ) == os.path.normpath(requests_dir)
-    assert snapshot.path != outside_file
-
-  def test_path_under_requests_dir_rejects_dotdot(self):
-    data_dir = DataDir.instance()
-    requests_dir = data_dir.snapshots_requests_dir_path
-    assert RequestSnapshot._path_under_requests_dir(requests_dir, '../outside/x.http') is None
-    assert RequestSnapshot._path_under_requests_dir(requests_dir, 'GET-api/../x.http') is None
-    safe = RequestSnapshot._path_under_requests_dir(requests_dir, f'GET-api/{UUID}.http')
-    assert safe == os.path.normpath(os.path.join(requests_dir, 'GET-api', f'{UUID}.http'))
-
-
 class TestRequestSnapshotV2NamingEdges:
   def test_parse_relative_path_invalid(self):
     assert RequestSnapshotV2.parse_request_relative_path('only-one-part') is None

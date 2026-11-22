@@ -242,7 +242,7 @@ Both CLIs call `update_request_snapshots` with the written path and `with_snapsh
 | `snapshots/log` | Locked/committed event copy (gitignored) |
 | `snapshots/VERSION` | Apply cursor (processed **event** UUIDs), not storage schema version |
 
-Legacy `.uuid-index` dirs may exist under older v2 trees for uuid-only history lines; new creates rely on history locators instead. See also [snapshot migrate](snapshot-migrate.md).
+See also [snapshot migrate](snapshot-migrate.md).
 
 ## Key source files
 

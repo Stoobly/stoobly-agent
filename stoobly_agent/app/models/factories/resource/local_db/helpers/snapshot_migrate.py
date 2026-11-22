@@ -75,7 +75,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
   Convert all v1 snapshot files under data_dir to v2 layout.
 
   Also rewrites history locators from bare uuids to slug/uuid (requests) and
-  unique name (scenarios) so .uuid-index is unnecessary. VERSION is left untouched.
+  unique name (scenarios). VERSION is left untouched.
   """
   data_dir = data_dir or DataDir.instance()
   migrated_requests = 0
@@ -127,9 +127,6 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
           os.rmdir(shard_dir)
       except OSError:
         pass
-
-    # Drop legacy indexes; history locators replace them
-    _remove_uuid_index_dir(os.path.join(requests_dir, '.uuid-index'))
 
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
   scenario_requests_dir = data_dir.snapshots_scenario_requests_dir_path
@@ -190,8 +187,6 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
 
       scenario_uuid_to_locator[scenario_uuid] = yaml_stem
       migrated_scenarios += 1
-
-    _remove_uuid_index_dir(os.path.join(scenarios_dir, '.uuid-index'))
 
   # Remove empty scenarios/requests dir if empty
   if os.path.isdir(scenario_requests_dir) and not os.listdir(scenario_requests_dir):
@@ -272,8 +267,6 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       _cleanup_slug_dir(slug_dir)
 
-    _remove_uuid_index_dir(os.path.join(requests_dir, '.uuid-index'))
-
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
   scenario_requests_dir = data_dir.snapshots_scenario_requests_dir_path
 
@@ -328,8 +321,6 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       os.remove(yaml_path)
       migrated_scenarios += 1
-
-    _remove_uuid_index_dir(os.path.join(scenarios_dir, '.uuid-index'))
 
   # Remigrate after interrupt: include already-v1 scenario metas so name
   # locators from a prior partial run still resolve to bare uuids.
@@ -558,14 +549,6 @@ def _find_v2_relative(requests_dir: str, uuid: str) -> Optional[str]:
   if not os.path.isdir(requests_dir):
     return None
 
-  # Legacy O(1) lookup for older migrated trees
-  index_path = os.path.join(requests_dir, '.uuid-index', uuid)
-  if os.path.isfile(index_path):
-    with open(index_path, 'r') as fp:
-      relative = fp.read().strip().replace('\\', '/')
-    if relative:
-      return relative
-
   for slug in os.listdir(requests_dir):
     if slug.startswith('.'):
       continue
@@ -599,8 +582,3 @@ def _cleanup_slug_dir(slug_dir: str):
       os.rmdir(slug_dir)
   except OSError:
     pass
-
-
-def _remove_uuid_index_dir(index_dir: str):
-  if os.path.isdir(index_dir):
-    shutil.rmtree(index_dir, ignore_errors=True)
