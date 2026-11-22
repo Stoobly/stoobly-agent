@@ -12,7 +12,7 @@ from stoobly_agent.lib.orm.request import Request
 
 from .body_ref import externalize_joined_request, reconstitute_joined_request, resolve_body_path
 from .snapshot import Snapshot
-from .snapshot_format import FORMAT_V1, FORMAT_V2, REQUEST_FILE_EXTENSION, resolve_write_format
+from .snapshot_format import FORMAT_V1, FORMAT_V2, REQUEST_FILE_EXTENSION, UUID_RE, resolve_write_format
 from .snapshot_types import RequestSnapshotOptions
 
 LOG_ID = 'RequestSnapshot'
@@ -71,6 +71,10 @@ class RequestSnapshot(Snapshot):
       candidate = RequestSnapshot._v2_file_path(requests_dir, slug, uuid)
       if os.path.exists(candidate):
         return FORMAT_V2
+
+    # Reject glob metacharacters / non-UUIDs before interpolating into glob.glob
+    if not uuid or not UUID_RE.match(str(uuid)):
+      return resolve_write_format(data_dir)
 
     pattern = os.path.join(requests_dir, '*', f"{uuid}{REQUEST_FILE_EXTENSION}")
     if glob.glob(pattern):
@@ -422,6 +426,10 @@ class RequestSnapshotV2(RequestSnapshot):
       candidate = self._v2_file_path(self._requests_dir_path, self._slug, self.uuid)
       if os.path.exists(candidate):
         return candidate
+
+    # Reject glob metacharacters / non-UUIDs before interpolating into glob.glob
+    if not self.uuid or not UUID_RE.match(str(self.uuid)):
+      return None
 
     pattern = os.path.join(self._requests_dir_path, '*', f"{self.uuid}{self.FILE_EXTENSION}")
     matches = glob.glob(pattern)

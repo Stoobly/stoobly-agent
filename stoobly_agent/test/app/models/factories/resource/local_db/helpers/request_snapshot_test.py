@@ -168,6 +168,30 @@ class TestRequestSnapshotV2SlugTraversal:
     snapshot.remove()
     assert os.path.isfile(outside)
 
+  def test_wildcard_uuid_does_not_glob_other_snapshots(self):
+    data_dir = DataDir.instance()
+    victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
+    victim_path = _write_v2_file(victim, b'keep-me')
+
+    # Bare '*' would expand glob .../requests/*/*.http to the victim
+    wildcard = RequestSnapshotV2('*', data_dir)
+    assert wildcard._find_v2_path() is None
+    assert wildcard.path is None
+    wildcard.remove()
+    assert os.path.isfile(victim_path)
+
+  def test_history_style_wildcard_ref_does_not_remove_other_snapshots(self):
+    data_dir = DataDir.instance()
+    victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
+    victim_path = _write_v2_file(victim, b'keep-me')
+
+    # slug/*.http parses to uuid='*'; must not glob-match victim
+    snapshot = RequestSnapshot.create('slug/*.http', data_dir)
+    assert isinstance(snapshot, RequestSnapshotV2)
+    assert snapshot.uuid == '*'
+    snapshot.remove()
+    assert os.path.isfile(victim_path)
+
 class TestRequestSnapshotV2NamingEdges:
   def test_parse_relative_path_invalid(self):
     assert RequestSnapshotV2.parse_request_relative_path('only-one-part') is None
