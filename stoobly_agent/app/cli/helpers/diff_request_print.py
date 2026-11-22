@@ -57,14 +57,15 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
 
   snapshot_py_req = request_snapshot.python_request
   snapshot_py_res = request_snapshot.python_response
-  snapshot_url = snapshot_py_req.url if snapshot_py_req else None
-  snapshot_req_body = snapshot_py_req.data if snapshot_py_req else None
-  snapshot_res_body = snapshot_py_res.content if snapshot_py_res else None
+  # Use `is not None`: requests.Response is falsy for status >= 400
+  snapshot_url = snapshot_py_req.url if snapshot_py_req is not None else None
+  snapshot_req_body = snapshot_py_req.data if snapshot_py_req is not None else None
+  snapshot_res_body = snapshot_py_res.content if snapshot_py_res is not None else None
   snapshot_req_headers = None
   snapshot_res_headers = None
-  if snapshot_py_req and hasattr(snapshot_py_req, "headers"):
+  if snapshot_py_req is not None and hasattr(snapshot_py_req, "headers"):
     snapshot_req_headers = snapshot_py_req.headers
-  if snapshot_py_res and hasattr(snapshot_py_res, "headers"):
+  if snapshot_py_res is not None and hasattr(snapshot_py_res, "headers"):
     snapshot_res_headers = snapshot_py_res.headers
 
   current_url = getattr(current_request, "url", None)
@@ -81,8 +82,12 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
       current_req_headers = None
 
   current_py_res = OrmResponseAdapterFactory(current_request.response).python_response()
-  current_res_body = current_py_res.content if current_py_res else None
-  current_res_headers = current_py_res.headers if current_py_res and hasattr(current_py_res, "headers") else None
+  current_res_body = current_py_res.content if current_py_res is not None else None
+  current_res_headers = (
+    current_py_res.headers
+    if current_py_res is not None and hasattr(current_py_res, "headers")
+    else None
+  )
 
   def headers_to_string(h):
     if not h:

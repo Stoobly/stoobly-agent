@@ -17,7 +17,10 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
     REQUEST_RESOURCE,
     SCENARIO_RESOURCE,
 )
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+    MalformedRequestSnapshotError,
+    RequestSnapshot,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.lib.api.keys.scenario_key import InvalidScenarioKey, ScenarioKey
 
@@ -60,19 +63,21 @@ def list_snapshots(
           events = log.unprocessed_events
       else:
           events = log.target_events
+
+      if not events:
+          return []
+
+      return _format_events(
+          events,
+          resource=resource,
+          scenario_key=scenario_key,
+          search=search,
+          size=size,
+      )
     except MalformedLogEventError as e:
       raise click.ClickException(str(e)) from e
-
-    if not events:
-        return []
-
-    return _format_events(
-        events,
-        resource=resource,
-        scenario_key=scenario_key,
-        search=search,
-        size=size,
-    )
+    except MalformedRequestSnapshotError as e:
+      raise click.ClickException(str(e)) from e
 
 
 def _format_events(

@@ -59,3 +59,17 @@ def test_scenario_key_filter_matches_event():
     assert _scenario_key_filter_matches(event, su) is False
     assert _scenario_key_filter_matches(event, str(uuid.uuid4())) is False
     assert _scenario_key_filter_matches(event, None) is True
+
+
+def test_scenario_key_filter_matches_v2_name_uuid_locator():
+    su = str(uuid.uuid4())
+    encoded = ScenarioKey.encode(LOCAL_PROJECT_ID, su)
+    # v2 field order: uuid timestamp action resource locator (locator last; name may have spaces)
+    line = (
+        f"00000000-0000-0000-0000-000000000001 0 {PUT_ACTION} {SCENARIO_RESOURCE} "
+        f"my cool flow/{su}"
+    )
+    event = LogEvent.create(line)
+    assert event.resource_id == su
+    assert _scenario_key_filter_matches(event, encoded) is True
+    assert _scenario_key_filter_matches(event, str(uuid.uuid4())) is False

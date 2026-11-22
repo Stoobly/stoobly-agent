@@ -255,3 +255,63 @@ def test_response_headers_diff_printed_when_full(monkeypatch):
 
     assert any_diffs is True
     assert "~ Response headers" in out
+
+
+def test_error_status_response_body_diff_not_skipped(monkeypatch):
+    """requests.Response is falsy for status >= 400; body diffs must still compare."""
+    import requests
+
+    snap_res = requests.Response()
+    snap_res.status_code = 502
+    snap_res._content = b"Bad Gateway"
+
+    cur_res = requests.Response()
+    cur_res.status_code = 502
+    cur_res._content = b"nope"
+
+    assert bool(snap_res) is False
+    assert bool(cur_res) is False
+
+    snapshot = _StubSnapshot(
+        py_req=_StubPythonRequest(url="http://u", data=b"", headers={}),
+        py_res=snap_res,
+    )
+    current = _StubCurrentReq(url="http://u", body=b"", headers={})
+    current.raw = b"X"
+
+    class _FakeRespAdapter:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def python_response(self):
+            return cur_res
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory",
+        _FakeRespAdapter,
+    )
+
+    class _FakeRawReqAdapter:
+        def __init__(self, raw):
+            self.body = b""
+            self.headers = {}
+            self.url = "http://u"
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.raw_http_request_adapter.RawHttpRequestAdapter",
+        _FakeRawReqAdapter,
+    )
+
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        any_diffs = print_request_diff(snapshot, current, full=True)
+    finally:
+        sys.stdout = old
+    out = buf.getvalue()
+
+    assert any_diffs is True
+    assert "~ Response body" in out
+    assert "Bad Gateway" in out
+    assert "nope" in out

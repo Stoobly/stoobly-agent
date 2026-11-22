@@ -7,6 +7,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import MalformedRequestSnapshotError
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
@@ -367,7 +368,11 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
     if not current_request or not current_request.response:
       request_analyses.append((request_snapshot, None))
       continue
-    request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
+    try:
+      request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
+    except MalformedRequestSnapshotError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
 
   snapshot_request_uuids = set([request_snapshot.uuid for request_snapshot in request_snapshots])
   current_requests = current_scenario.requests or []
