@@ -594,13 +594,13 @@ class TestApply():
       def test_it_creates_request(self, runner: CliRunner, recorded_request: Request):
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 1
-
+        assert 'Malformed request snapshot' in apply_result.output
         assert Request.find_by(uuid=recorded_request.uuid) == None
 
       def test_idempotent(self, runner: CliRunner, recorded_request: Request, put_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
         assert apply_result.exit_code == 1
-
+        assert 'Malformed request snapshot' in apply_result.output
         assert Request.find_by(uuid=recorded_request.uuid) == None
 
     class TestWhenMalformedScenarioRequest():
@@ -642,6 +642,7 @@ class TestApply():
       def test_skips_scenario(self, runner: CliRunner, created_scenario: Scenario):
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 1
+        assert 'Malformed request snapshot' in apply_result.output
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
         assert recreated_scenario
@@ -651,6 +652,7 @@ class TestApply():
       def test_idempotent(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
         assert apply_result.exit_code == 1
+        assert 'Malformed request snapshot' in apply_result.output
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
         assert recreated_scenario

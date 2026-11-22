@@ -17,6 +17,15 @@ from .snapshot_types import RequestSnapshotOptions
 LOG_ID = 'RequestSnapshot'
 
 
+class MalformedRequestSnapshotError(ValueError):
+  """Raised when a request snapshot file exists but cannot be parsed."""
+
+  def __init__(self, path: str, reason: str):
+    self.path = path
+    self.reason = reason
+    super().__init__(f"Malformed request snapshot ({reason}): {path}")
+
+
 class RequestSnapshot(Snapshot):
   """Base request snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
@@ -333,7 +342,13 @@ class RequestSnapshotV2(RequestSnapshot):
       raw = fp.read()
 
     slug_dir = os.path.dirname(request_file_path)
-    return reconstitute_joined_request(raw, slug_dir)
+    try:
+      return reconstitute_joined_request(raw, slug_dir)
+    except Exception as e:
+      raise MalformedRequestSnapshotError(
+        request_file_path,
+        str(e) or e.__class__.__name__,
+      ) from e
 
   @property
   def path(self):

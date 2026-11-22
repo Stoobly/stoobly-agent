@@ -3,6 +3,7 @@ import os
 import pytest
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
   RequestSnapshot,
   RequestSnapshotV1,
   RequestSnapshotV2,
@@ -159,3 +160,12 @@ class TestRequestSnapshotV2NamingEdges:
     first.remove()
     assert os.path.isdir(slug_dir)
     assert os.path.isfile(second.path)
+
+  def test_malformed_contents_raise(self):
+    snapshot = RequestSnapshotV2(UUID, slug='GET-bad')
+    _write_v2_file(snapshot, b'junk')
+
+    with pytest.raises(MalformedRequestSnapshotError, match='Malformed request snapshot') as exc:
+      _ = snapshot.request
+
+    assert snapshot.path in str(exc.value)

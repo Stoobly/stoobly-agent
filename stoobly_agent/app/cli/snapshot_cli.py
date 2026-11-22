@@ -11,7 +11,10 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
   REQUEST_RESOURCE,
   SCENARIO_RESOURCE,
 )
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
+  RequestSnapshot,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_NONE,
@@ -66,9 +69,11 @@ def apply(**kwargs):
         completed = apply.all()
 
       if not completed:
+        if apply.last_error:
+          print(f"Error: {apply.last_error}", file=sys.stderr)
         sys.exit(1)
-  except MalformedLogEventError as e:
-    __abort_malformed_log(e)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    __abort_with_error(e)
   except Timeout:
     print("Error: Another snapshot apply command is already running. Please wait for it to complete.", file=sys.stderr)
     sys.exit(1)
@@ -135,6 +140,8 @@ def reset(**kwargs):
             success_count += 1
           else:
             failure_count += 1
+            if apply_service.last_error:
+              print(f"Error: {apply_service.last_error}", file=sys.stderr)
         elif event.resource == SCENARIO_RESOURCE:
           uuid = event.resource_id
           if uuid in processed_scenarios:
@@ -146,12 +153,14 @@ def reset(**kwargs):
             success_count += 1
           else:
             failure_count += 1
+            if apply_service.last_error:
+              print(f"Error: {apply_service.last_error}", file=sys.stderr)
 
       if failure_count > 0:
         print(f"Completed with {failure_count} failures ({success_count} succeeded).", file=sys.stderr)
         sys.exit(1)
-  except MalformedLogEventError as e:
-    __abort_malformed_log(e)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    __abort_with_error(e)
   except Timeout:
     print("Error: Another snapshot reset command is already running. Please wait for it to complete.", file=sys.stderr)
     sys.exit(1)
@@ -167,8 +176,8 @@ def copy(**kwargs):
     destination = kwargs['destination']
     __copy_scenarios(kwargs['scenario_key'], destination)
     __copy_requests(kwargs['request_key'], destination)
-  except MalformedLogEventError as e:
-    __abort_malformed_log(e)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    __abort_with_error(e)
 
 @snapshot.command(
   help="Prune deleted snapshots."
@@ -178,8 +187,8 @@ def prune(**kwargs):
   try:
     log = Log()
     log.prune(kwargs['dry_run'])
-  except MalformedLogEventError as e:
-    __abort_malformed_log(e)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    __abort_with_error(e)
 
 @snapshot.command(
   help="Update a snapshot.",
@@ -289,7 +298,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
       if not found:
         print(f"No snapshot found for {key}", file=sys.stderr)
 
-def __abort_malformed_log(error: MalformedLogEventError):
+def __abort_with_error(error: Exception):
   print(f"Error: {error}", file=sys.stderr)
   sys.exit(1)
 

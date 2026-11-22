@@ -4,7 +4,10 @@ from typing import List
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
+  RequestSnapshot,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
@@ -37,6 +40,7 @@ class Apply():
   def __init__(self, **options):
     self.__force = options.get('force') or False
     self.__logger = None
+    self.__last_error = None
     self.__request_model = None
     self.__scenario_model = None
 
@@ -47,6 +51,10 @@ class Apply():
   @force.setter
   def force(self, v):
     self.__force = v
+
+  @property
+  def last_error(self):
+    return self.__last_error
 
   @property
   def request_model(self):
@@ -74,6 +82,7 @@ class Apply():
 
   def all(self):
     log = Log()
+    self.__last_error = None
 
     unprocessed_events = log.unprocessed_events
     events_count = len(unprocessed_events) 
@@ -92,7 +101,7 @@ class Apply():
       if results:
         status = results[1]
         if status == 0 or status >= 400:
-          self.__logger(f"{bcolors.FAIL}Error{bcolors.ENDC} {results[0]}")
+          self.__last_error = results[0]
           completed = False
           break
 
@@ -113,23 +122,32 @@ class Apply():
     return completed
 
   def request(self, uuid: str):
+    self.__last_error = None
     result = self.__apply_put_request(uuid)
     if not result:
       return False
 
     status = result[1]
-    return status == 200
+    if status != 200:
+      self.__last_error = result[0]
+      return False
+    return True
 
   def scenario(self, uuid: str):
+    self.__last_error = None
     result = self.__apply_put_scenario(uuid)
     if not result:
       return False
 
     status = result[1]
-    return status == 200
+    if status != 200:
+      self.__last_error = result[0]
+      return False
+    return True
 
   def single(self, uuid: str):
     log = Log()
+    self.__last_error = None
 
     events = log.events
     events_count = len(events) 
@@ -153,6 +171,7 @@ class Apply():
     if results:
       status = results[1]
       if status == 0 or status >= 400:
+        self.__last_error = results[0]
         return False
 
     log.mark_processed(target_event.uuid)
@@ -179,7 +198,11 @@ class Apply():
   def __apply_put_request(self, resource_ref: str):
     snapshot = RequestSnapshot.create(resource_ref)
 
-    raw_request = snapshot.request
+    try:
+      raw_request = snapshot.request
+    except MalformedRequestSnapshotError as e:
+      return str(e), 400
+
     if not raw_request:
       error = f"snapshot for request {snapshot.uuid} not found"
       self.__logger(f"{bcolors.WARNING}Skipping Request{bcolors.ENDC} {error}")
@@ -374,7 +397,10 @@ class Apply():
 
     request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
     for request_snapshot in request_snapshots:
-      raw_request = request_snapshot.request
+      try:
+        raw_request = request_snapshot.request
+      except MalformedRequestSnapshotError as e:
+        return str(e), 400
 
       if not raw_request:
         return f"{request_snapshot.path} is missing", 400

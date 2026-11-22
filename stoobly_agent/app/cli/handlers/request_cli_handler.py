@@ -19,7 +19,10 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
   PUT_ACTION,
   REQUEST_RESOURCE,
 )
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
+  RequestSnapshot,
+)
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
@@ -532,7 +535,12 @@ def diff_handler(kwargs):
       print('Error: Snapshot not found for this request.', file=sys.stderr)
       sys.exit(1)
 
-    snapshot_raw = snapshot.request
+    try:
+      snapshot_raw = snapshot.request
+    except MalformedRequestSnapshotError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
+
     if snapshot_raw is None:
       print('Error: Snapshot file is empty or unreadable.', file=sys.stderr)
       sys.exit(1)
@@ -560,8 +568,12 @@ def diff_handler(kwargs):
       snapshot = event.snapshot()
       if not snapshot.exists:
         continue
-      if snapshot.request is None:
-        continue
+      try:
+        if snapshot.request is None:
+          continue
+      except MalformedRequestSnapshotError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
       current_request = snapshot.find_resource()
       if not current_request or not current_request.response:
