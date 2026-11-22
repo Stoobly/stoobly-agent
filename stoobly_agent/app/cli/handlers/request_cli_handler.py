@@ -14,7 +14,11 @@ from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
+  MalformedLogEventError,
+  PUT_ACTION,
+  REQUEST_RESOURCE,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
@@ -541,25 +545,29 @@ def diff_handler(kwargs):
     print_request_diff(snapshot, current_request, full=full)
     return
 
-  log = Log()
-  visited_request_ids = set()
-  for event in log.target_events:
-    if event.action != PUT_ACTION:
-      continue
-    if event.resource != REQUEST_RESOURCE:
-      continue
-    if event.resource_id in visited_request_ids:
-      continue
+  try:
+    log = Log()
+    visited_request_ids = set()
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+      if event.resource != REQUEST_RESOURCE:
+        continue
+      if event.resource_id in visited_request_ids:
+        continue
 
-    visited_request_ids.add(event.resource_id)
-    snapshot = event.snapshot()
-    if not snapshot.exists:
-      continue
-    if snapshot.request is None:
-      continue
+      visited_request_ids.add(event.resource_id)
+      snapshot = event.snapshot()
+      if not snapshot.exists:
+        continue
+      if snapshot.request is None:
+        continue
 
-    current_request = snapshot.find_resource()
-    if not current_request or not current_request.response:
-      continue
+      current_request = snapshot.find_resource()
+      if not current_request or not current_request.response:
+        continue
 
-    print_request_diff(snapshot, current_request, full=full)
+      print_request_diff(snapshot, current_request, full=full)
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)

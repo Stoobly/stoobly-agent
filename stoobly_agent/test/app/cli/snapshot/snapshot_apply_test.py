@@ -1010,6 +1010,263 @@ class TestApply():
 
         assert Log().unprocessed_events == []
 
+    class TestWhenSoftDeletingRequest():
+      '''
+      Apply DELETE without --force soft-deletes the ORM row (is_deleted=True).
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
+        assert len(pending) == 1
+
+        apply_result = runner.invoke(snapshot, ['apply', pending[0].uuid])
+        assert apply_result.exit_code == 0
+
+        recorded = Request.find_by(uuid=pending[0].resource_id)
+        assert recorded is not None
+
+        time.sleep(0.5)
+        delete_result = runner.invoke(
+          request,
+          ['snapshot', 'create', '--action', DELETE_ACTION, recorded.key()],
+        )
+        assert delete_result.exit_code == 0
+        return recorded
+
+      def test_it_soft_deletes(self, runner: CliRunner, recorded_request: Request):
+        delete_event = Log().unprocessed_events[-1]
+        assert delete_event.action == DELETE_ACTION
+
+        apply_result = runner.invoke(snapshot, ['apply', delete_event.uuid])
+        assert apply_result.exit_code == 0
+
+        soft_deleted = Request.find_by(uuid=recorded_request.uuid)
+        assert soft_deleted is not None
+        assert bool(soft_deleted.is_deleted) is True
+
+    class TestWhenSoftDeleteThenPutUndeletes():
+      '''
+      After a soft-deleted request, applying a PUT clears is_deleted.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
+        recorded = Request.find_by(uuid=pending[0].resource_id)
+        recorded.update({'is_deleted': True})
+        assert bool(Request.find_by(uuid=recorded.uuid).is_deleted) is True
+        return recorded
+
+      def test_it_undeletes(self, runner: CliRunner, recorded_request: Request):
+        put_event = Log().unprocessed_events[-1]
+        apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
+        assert apply_result.exit_code == 0
+
+        restored = Request.find_by(uuid=recorded_request.uuid)
+        assert restored is not None
+        assert bool(restored.is_deleted) is False
+
+    class TestWhenMissingRequestSnapshotSkips():
+      '''
+      Missing request snapshot file returns 301 (skip). apply all continues and
+      advances VERSION past the skip so later events still apply.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(
+          runner,
+          [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert len(pending) == 2
+
+        missing_path = pending[0].snapshot().path
+        assert os.path.isfile(missing_path)
+        os.remove(missing_path)
+
+        for event in pending:
+          orm_request = Request.find_by(uuid=event.resource_id)
+          if orm_request:
+            orm_request.delete()
+
+        return pending
+
+      def test_it_skips_and_applies_later_events(self, runner: CliRunner, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        assert Request.find_by(uuid=pending_events[0].resource_id) is None
+        assert Request.find_by(uuid=pending_events[1].resource_id) is not None
+        assert Log().unprocessed_events == []
+
+    class TestWhenPartialApplyFailureAdvancesVersion():
+      '''
+      On mid-batch failure, VERSION advances through the last successful event
+      and remaining events stay pending.
+
+      Uses a request PUT (success) followed by a scenario PUT whose nested
+      request file is missing (clean 400). Junk .http files raise during v2
+      reconstitute and abort apply before VERSION can advance.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        recorded_request = Request.last()
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        time.sleep(0.5)
+
+        create_result = runner.invoke(scenario, ['create', 'partial-fail-scenario'])
+        assert create_result.exit_code == 0
+        created_scenario = Scenario.last()
+        record_result = runner.invoke(
+          record,
+          ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert record_result.exit_code == 0
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        pending = Log().unprocessed_events
+        assert len(pending) == 2
+
+        nested = pending[1].snapshot().request_snapshots[0]
+        os.remove(nested.path)
+
+        recorded_request.delete()
+        scenario_requests = list(created_scenario.requests)
+        created_scenario.delete()
+        for req in scenario_requests:
+          req.delete()
+
+        return pending
+
+      def test_it_advances_version_to_last_success(self, runner: CliRunner, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        assert Request.find_by(uuid=pending_events[0].resource_id) is not None
+
+        unprocessed = Log().unprocessed_events
+        assert [event.uuid for event in unprocessed] == [pending_events[1].uuid]
+        assert pending_events[0].uuid in Log().version
+
+    class TestWhenMissingScenarioRequestFile():
+      '''
+      Scenario PUT with a missing nested request file fails apply (400).
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def put_event(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        create_result = runner.invoke(scenario, ['create', 'missing-request-file'])
+        assert create_result.exit_code == 0
+        created_scenario = Scenario.last()
+
+        record_result = runner.invoke(
+          record,
+          ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert record_result.exit_code == 0
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        event = Log().unprocessed_events[-1]
+        request_snap = event.snapshot().request_snapshots[0]
+        os.remove(request_snap.path)
+
+        requests = list(created_scenario.requests)
+        created_scenario.delete()
+        for req in requests:
+          req.delete()
+
+        return event
+
+      def test_it_fails_apply(self, runner: CliRunner, put_event: LogEvent):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        recreated = Scenario.find_by(uuid=put_event.snapshot().uuid)
+        assert recreated is not None
+        assert len(recreated.requests) == 0
+
+    class TestWhenScenarioNameExistsAsSoftDeleted():
+      '''
+      Creating from snapshot hits 409 against a soft-deleted same-name row;
+      apply remaps that row to the snapshot UUID and undeletes it.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def source_scenario(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        create_result = runner.invoke(scenario, ['create', 'soft-deleted-name'])
+        assert create_result.exit_code == 0
+        source = Scenario.last()
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', source.key()])
+        assert snapshot_result.exit_code == 0
+
+        # Replace ORM row with a soft-deleted scenario of the same name but different uuid
+        source.delete()
+        create_result = runner.invoke(scenario, ['create', 'soft-deleted-name'])
+        assert create_result.exit_code == 0
+        conflicting = Scenario.last()
+        conflicting.update({'is_deleted': True})
+        assert bool(Scenario.find(conflicting.id).is_deleted) is True
+
+        return source
+
+      def test_it_remaps_soft_deleted_scenario(self, runner: CliRunner, source_scenario: Scenario):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        remapped = Scenario.find_by(uuid=source_scenario.uuid)
+        assert remapped is not None
+        assert remapped.name == source_scenario.name
+        assert bool(remapped.is_deleted) is False
+
+    class TestWhenApplyingUnknownUuid():
+      def test_it_exits_nonzero(self, runner: CliRunner):
+        apply_result = runner.invoke(snapshot, ['apply', '00000000-0000-0000-0000-000000000000'])
+        assert apply_result.exit_code == 1
+
+    class TestWhenHistoryLineMalformed():
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def malformed_history(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+        # Append a truncated history line under snapshots/history
+        history_dir = log.history_dir_path
+        os.makedirs(history_dir, exist_ok=True)
+        path = os.path.join(history_dir, 'malformed-history')
+        with open(path, 'a') as fp:
+          fp.write('not-enough-fields\n')
+
+      def test_it_reports_error_to_user(self, runner: CliRunner):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+        assert 'Malformed snapshot history line' in apply_result.output
+        assert 'not-enough-fields' in apply_result.output
+
     class TestLocking():
       def test_concurrent_apply_commands_timeout(self, runner: CliRunner):
         """Test that concurrent snapshot apply commands properly timeout"""

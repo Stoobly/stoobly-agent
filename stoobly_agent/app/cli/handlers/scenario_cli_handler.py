@@ -10,7 +10,11 @@ from stoobly_agent.app.cli.helpers.context import ReplayContext
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import SCENARIO_RESOURCE, PUT_ACTION
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
+  MalformedLogEventError,
+  PUT_ACTION,
+  SCENARIO_RESOURCE,
+)
 from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
@@ -289,22 +293,26 @@ def diff_handler(kwargs):
     _print_scenario_diff(snapshot=snapshot, full=full, strict=True)
     return
 
-  log = Log()
-  visited_scenario_ids = set()
-  for event in log.target_events:
-    if event.action != PUT_ACTION:
-      continue
-    if event.resource != SCENARIO_RESOURCE:
-      continue
-    if event.resource_id in visited_scenario_ids:
-      continue
+  try:
+    log = Log()
+    visited_scenario_ids = set()
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+      if event.resource != SCENARIO_RESOURCE:
+        continue
+      if event.resource_id in visited_scenario_ids:
+        continue
 
-    visited_scenario_ids.add(event.resource_id)
-    snapshot = event.snapshot()
-    if not snapshot.exists:
-      continue
+      visited_scenario_ids.add(event.resource_id)
+      snapshot = event.snapshot()
+      if not snapshot.exists:
+        continue
 
-    _print_scenario_diff(snapshot=snapshot, full=full, strict=False)
+      _print_scenario_diff(snapshot=snapshot, full=full, strict=False)
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   # Diff scenario metadata (name/description) if possible

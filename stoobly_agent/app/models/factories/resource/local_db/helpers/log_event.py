@@ -13,6 +13,16 @@ from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE,
 
 COLUMN_DELIMITTER = ' '
 
+class MalformedLogEventError(ValueError):
+  """Raised when a snapshot history line cannot be parsed."""
+
+  def __init__(self, line: str, reason: str):
+    self.line = line
+    self.reason = reason
+    display = line if len(line) <= 200 else f"{line[:200]}..."
+    super().__init__(f"Malformed snapshot history line ({reason}): {display}")
+
+
 class EventHandlers(TypedDict):
   handle_request_delete: Callable[[str], None]
   handle_request_put: Callable[[str], None]
@@ -26,14 +36,31 @@ class LogEvent():
   FORMAT = None
 
   def __init__(self, event: str):
-    toks = event.strip().split(COLUMN_DELIMITTER)
+    line = event.strip()
+    toks = line.split(COLUMN_DELIMITTER)
+
+    if len(toks) < 4:
+      raise MalformedLogEventError(
+        line,
+        f"expected at least 4 space-separated fields, got {len(toks)}",
+      )
 
     self.uuid = toks[0]
     self.resource = toks[1]
     # Raw history field: bare uuid (v1), slug/<uuid> (v2 request), or name (v2 scenario)
     self.resource_uuid = toks[2]
     self.action = toks[3]
-    self.created_at = int(toks[4]) if len(toks) > 4 else None # milliseconds
+
+    if len(toks) > 4:
+      try:
+        self.created_at = int(toks[4])  # milliseconds
+      except ValueError as e:
+        raise MalformedLogEventError(
+          line,
+          f"created_at must be an integer timestamp, got {toks[4]!r}",
+        ) from e
+    else:
+      self.created_at = None
 
     if self.resource == SCENARIO_RESOURCE:
       # Collapse identity is the unique name when present, else uuid
