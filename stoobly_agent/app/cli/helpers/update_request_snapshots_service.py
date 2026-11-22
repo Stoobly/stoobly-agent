@@ -166,31 +166,13 @@ def _apply_print(request_snapshots: List[Tuple[RequestSnapshot, LogEvent]]):
     return snapshot_migrations
 
 def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) -> LogEvent:
-    """Find the most recent event for a given resource UUID (or scenario name identity)."""
+    """Find the most recent event for a given resource UUID."""
     for event in reversed(log.target_events):
         if event.resource != resource:
             continue
+        # resource_id is bare uuid (v1) or uuid from slug|name/uuid (v2)
         if event.resource_id == resource_uuid:
             return event
-        # v2 scenarios: name/uuid or legacy name-only; match via snapshot / locator
-        if resource == SCENARIO_RESOURCE:
-            snapshot = event.snapshot()
-            if snapshot.uuid == resource_uuid:
-                return event
-            # DELETE may have already removed YAML; match locator or legacy name
-            from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
-              ScenarioSnapshotV2,
-            )
-            from stoobly_agent.lib.orm.scenario import Scenario
-            scenario = Scenario.find_by(uuid=resource_uuid)
-            if scenario:
-              locator = ScenarioSnapshotV2.history_locator_for(
-                scenario.uuid, scenario.name
-              )
-              if event.resource_uuid == locator:
-                return event
-              if event.resource_id == scenario.name or event.resource_uuid == scenario.name:
-                return event
 
     # If resource is request and no event found, check if it belongs to a scenario event
     if resource == REQUEST_RESOURCE:

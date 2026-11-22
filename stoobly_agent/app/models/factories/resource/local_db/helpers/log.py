@@ -177,8 +177,7 @@ class Log():
         continue
 
       scenario_snapshot = event.snapshot(self.__data_dir)
-      # Prefer resolved snapshot UUID (YAML) so ignore_scenario_ids can stay UUIDs
-      # even when history uses name-only locators.
+      # Prefer resolved snapshot UUID (YAML) so ignore_scenario_ids can stay UUIDs.
       scenario_uuid = scenario_snapshot.uuid if scenario_snapshot.uuid else event.resource_id
       scenario_snapshot.iter_request_snapshots(
         lambda request_snapshot: handle_snapshot(request_snapshot, scenario_uuid)

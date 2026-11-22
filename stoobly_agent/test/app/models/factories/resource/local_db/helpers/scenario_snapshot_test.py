@@ -25,10 +25,10 @@ REQUEST_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
 
 class TestScenarioSnapshotParseRef:
-  def test_name_only(self):
+  def test_non_uuid_without_slash_is_not_a_locator(self):
     parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref('checkout-flow')
-    assert parsed_uuid is None
-    assert parsed_name == 'checkout-flow'
+    assert parsed_uuid == 'checkout-flow'
+    assert parsed_name is None
 
   def test_name_uuid(self):
     parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(f'checkout-flow/{UUID}')
@@ -158,14 +158,14 @@ class TestScenarioSnapshotV2NameCollision:
 
 
 class TestScenarioSnapshotCreateAndFromPath:
-  def test_create_name_only_is_v2_and_hydrates_uuid(self):
+  def test_create_by_yaml_stem_is_v2_and_hydrates_uuid(self):
     data_dir = DataDir.instance()
     path = os.path.join(data_dir.snapshots_scenarios_dir_path, 'checkout-flow.yaml')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w') as fp:
       yaml.safe_dump({'uuid': UUID, 'description': '', 'requests': []}, fp)
 
-    snapshot = ScenarioSnapshot.create('checkout-flow', data_dir)
+    snapshot = ScenarioSnapshot.create('', data_dir, name='checkout-flow')
     assert isinstance(snapshot, ScenarioSnapshotV2)
     assert snapshot.format == FORMAT_V2
     assert snapshot.uuid == UUID

@@ -229,7 +229,7 @@ class TestMigrateSnapshotsToV1:
     relative = RequestSnapshotV2.request_relative_path('GET-api', UUID_A)
     _write_v2_scenario(SCENARIO_A, 'checkout', [relative])
     _append_history(REQUEST_RESOURCE, f'GET-api/{UUID_A}', format=FORMAT_V2)
-    _append_history(SCENARIO_RESOURCE, 'checkout', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, f'checkout/{SCENARIO_A}', format=FORMAT_V2)
 
     result = migrate_snapshots_to_v1(DataDir.instance())
     assert result == {'requests': 1, 'scenarios': 1}
@@ -274,12 +274,12 @@ class TestRemigrateHistoryBackfill:
     assert locators == {f'already-done/{SCENARIO_A}', f'pending/{SCENARIO_B}'}
 
   def test_remigrate_to_v1_rewrites_history_for_already_converted_scenario(self):
-    # Already-v1 scenario meta; history still uses name locator from partial v2→v1
+    # Already-v1 scenario meta; history still uses name/uuid from partial v2→v1
     _write_v1_scenario(SCENARIO_A, 'already-done')
-    _append_history(SCENARIO_RESOURCE, 'already-done', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, f'already-done/{SCENARIO_A}', format=FORMAT_V2)
 
     _write_v2_scenario(SCENARIO_B, 'pending')
-    _append_history(SCENARIO_RESOURCE, 'pending', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, f'pending/{SCENARIO_B}', format=FORMAT_V2)
 
     migrate_snapshots_to_v1(DataDir.instance())
 
@@ -316,7 +316,7 @@ class TestRemigrateHistoryBackfill:
     _write_v1_request(UUID_A)
     _write_v1_scenario(SCENARIO_A, 'checkout')
     _append_history(REQUEST_RESOURCE, f'GET-api/{UUID_A}', format=FORMAT_V2)
-    _append_history(SCENARIO_RESOURCE, 'checkout', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, f'checkout/{SCENARIO_A}', format=FORMAT_V2)
 
     assert not has_v2_snapshots(DataDir.instance())
     assert has_v1_snapshots(DataDir.instance())

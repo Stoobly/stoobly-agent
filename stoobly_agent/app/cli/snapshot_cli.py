@@ -17,14 +17,12 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapsh
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
   ScenarioSnapshot,
-  ScenarioSnapshotV2,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_NONE,
   FORMAT_V1,
   FORMAT_V2,
   detect_snapshot_format,
-  resolve_write_format,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_migrate import migrate_snapshots
 from stoobly_agent.app.models.helpers.apply import Apply
@@ -33,7 +31,6 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
-from stoobly_agent.lib.orm.scenario import Scenario
 
 from .helpers.update_request_snapshots_service import update_request_snapshots
 
@@ -239,7 +236,6 @@ def __copy_requests(request_keys: list, destination: str):
 
   data_dir = DataDir.instance(destination)
   destination_log = Log(data_dir)
-  write_format = resolve_write_format(data_dir)
 
   for request_key in request_keys:
     found = False
@@ -262,39 +258,18 @@ def __copy_requests(request_keys: list, destination: str):
       if not resource:
         print(f"Could not find request {key.id}", file=sys.stderr)
       else:
-        destination_log.put(resource, format=write_format)
+        # Match history to copied file layout (empty dest must not default to v2)
+        destination_log.put(resource, format=snapshot.format)
         found = True
 
     if not found:
       print(f"No snapshot found for {key}", file=sys.stderr)
-
-def __scenario_event_matches_uuid(event, scenario_uuid: str) -> bool:
-  """Match history events to a scenario UUID (v1 bare uuid or v2 name/uuid)."""
-  if event.resource_id == scenario_uuid:
-    return True
-
-  # Legacy name-only / resolve via on-disk snapshot UUID
-  snapshot = event.snapshot()
-  if snapshot.uuid == scenario_uuid:
-    return True
-
-  # DELETE may have already removed YAML; match locator or legacy name stem
-  scenario = Scenario.find_by(uuid=scenario_uuid)
-  if scenario:
-    locator = ScenarioSnapshotV2.history_locator_for(scenario.uuid, scenario.name)
-    if event.resource_uuid == locator:
-      return True
-    if event.resource_id == scenario.name or event.resource_uuid == scenario.name:
-      return True
-
-  return False
 
 def __copy_scenarios(scenario_keys: list, destination: str):
   log = Log()
 
   data_dir =  DataDir.instance(destination)
   destination_log = Log(data_dir)
-  write_format = resolve_write_format(data_dir)
 
   for scenario_key in scenario_keys:
     found = False
@@ -307,7 +282,8 @@ def __copy_scenarios(scenario_keys: list, destination: str):
       if event.resource != SCENARIO_RESOURCE:
         continue
 
-      if not __scenario_event_matches_uuid(event, key.id):
+      # resource_id is bare uuid (v1) or uuid from name/uuid (v2)
+      if event.resource_id != key.id:
         continue
 
       snapshot: ScenarioSnapshot = event.snapshot()
@@ -317,7 +293,8 @@ def __copy_scenarios(scenario_keys: list, destination: str):
       if not resource:
         print(f"Could not find scenario {key.id}", file=sys.stderr)
       else:
-        destination_log.put(resource, format=write_format)
+        # Match history to copied file layout (empty dest must not default to v2)
+        destination_log.put(resource, format=snapshot.format)
         found = True
 
     if not found:

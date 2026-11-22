@@ -63,7 +63,7 @@ flowchart TB
    - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
-3. **History** — Rewrite bare UUID / name-only / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
+3. **History** — Rewrite bare UUID / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
 
 Corrupt request/scenario files are skipped and left in place.
 
@@ -83,8 +83,8 @@ Migrate does **not** append new log events. It updates the resource field on exi
 
 | Direction | Request field | Scenario field |
 |-----------|---------------|----------------|
-| → v2 | `uuid` → `slug/uuid` | `uuid`, name-only, or stale `name/uuid` → `{stem}/{uuid}` |
-| → v1 | `slug/uuid` → `uuid` | `name` or `name/uuid` → `uuid` |
+| → v2 | `uuid` → `slug/uuid` | `uuid` or stale `name/uuid` → `{stem}/{uuid}` |
+| → v1 | `slug/uuid` → `uuid` | `name/uuid` → `uuid` |
 
 `VERSION` (processed event UUIDs) is unchanged. Event UUIDs and timestamps are unchanged.
 

@@ -217,7 +217,7 @@ Request entries are relative paths under `snapshots/requests/` (order preserved)
 | v2 | `<yaml-stem>/<scenario-uuid>` (stem is filesystem-safe name; spaces kept; `-2`, `-3`, … on collision) |
 | v1 / legacy | `<scenario-uuid>` |
 
-Apply passes the full locator into `ScenarioSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is the UUID suffix (`resource_id`), matching requests. DELETE apply passes `resource_id` (UUID) so it still works after the YAML is removed. Legacy name-only locators remain readable.
+Apply passes the full locator into `ScenarioSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is the UUID suffix (`resource_id`), matching requests. DELETE apply passes `resource_id` (UUID) so it still works after the YAML is removed.
 
 ## Delete action
 
