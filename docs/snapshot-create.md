@@ -86,7 +86,7 @@ classDiagram
     locator bare uuid
   }
   class LogEventV2 {
-    locator slug/uuid or scenario name
+    locator slug/uuid or name/uuid
   }
 ```
 
@@ -173,7 +173,7 @@ Orchestration: [`snapshot_scenario`](../stoobly_agent/app/models/factories/resou
 1. Resolve write format.
 2. Construct `ScenarioSnapshotV2` (with scenario name) or `ScenarioSnapshotV1`.
 3. Backup metadata (and later request payloads).
-4. `write_metadata` / remove stale request snapshots (respecting shared refs via scenario inverted index) / `write_requests` (uses matching `RequestSnapshotV1` or `RequestSnapshotV2` for each request).
+4. `write_metadata` / remove stale request snapshots (respecting shared refs via scenario inverted index) / `write_requests` (uses matching `RequestSnapshotV1` or `RequestSnapshotV2` for each request). On rename, v2 relocates `{old-stem}.yaml` → `{new-stem}.yaml` and removes the orphan (same idea as request slug changes).
 5. Append `Log.put(scenario)`.
 6. Return metadata path.
 
@@ -195,7 +195,7 @@ requests:
   - GET-api-users/<request-uuid>.http
 ```
 
-Request entries are relative paths under `snapshots/requests/` (order preserved).
+Request entries are relative paths under `snapshots/requests/` (order preserved). Display name is the YAML stem (ORM names are required to equal the sanitized stem).
 
 ### v1 on-disk layout (`ScenarioSnapshotV1`)
 
@@ -214,8 +214,10 @@ Request entries are relative paths under `snapshots/requests/` (order preserved)
 
 | Format | `<locator>` |
 |--------|-------------|
-| v2 | `<yaml-stem>` (filesystem-safe name; spaces kept; `-2`, `-3`, … on collision) |
+| v2 | `<yaml-stem>/<scenario-uuid>` (stem is filesystem-safe name; spaces kept; `-2`, `-3`, … on collision) |
 | v1 / legacy | `<scenario-uuid>` |
+
+Apply passes the full locator into `ScenarioSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is the UUID suffix (`resource_id`), matching requests. DELETE apply passes `resource_id` (UUID) so it still works after the YAML is removed. Legacy name-only locators remain readable.
 
 ## Delete action
 

@@ -31,7 +31,7 @@ stoobly-agent snapshot migrate --format v1
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Listed in YAML as `slug/{uuid}.http` relative paths |
 | History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
-| History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}` (unique) |
+| History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}/{uuid}` |
 
 Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none. Migrate gates on remaining source-format files (`has_v1_snapshots` / `has_v2_snapshots`) **or** unfinished history rewrite (target-format files exist but history still has source-shaped locators) so an interrupted run is finished rather than treated as already migrated.
 
@@ -63,7 +63,7 @@ flowchart TB
    - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
-3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` (requests) / `{yaml-stem}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Also collapses legacy `name/{uuid}` scenario locators to name-only.
+3. **History** — Rewrite bare UUID / name-only / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
 
 Corrupt request/scenario files are skipped and left in place.
 
@@ -83,7 +83,7 @@ Migrate does **not** append new log events. It updates the resource field on exi
 
 | Direction | Request field | Scenario field |
 |-----------|---------------|----------------|
-| → v2 | `uuid` → `slug/uuid` | `uuid` or `name/uuid` → `name` |
+| → v2 | `uuid` → `slug/uuid` | `uuid`, name-only, or stale `name/uuid` → `{stem}/{uuid}` |
 | → v1 | `slug/uuid` → `uuid` | `name` or `name/uuid` → `uuid` |
 
 `VERSION` (processed event UUIDs) is unchanged. Event UUIDs and timestamps are unchanged.

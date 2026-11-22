@@ -88,9 +88,21 @@ class TestLogEventCreate:
     )
     event = LogEvent.create(line)
     assert isinstance(event, LogEventV2)
-    # Collapse identity prefers the name when present
-    assert event.resource_id == 'checkout-flow'
+    # Collapse identity prefers UUID when present (same as requests)
+    assert event.resource_id == 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     assert event.resource_slug == 'checkout-flow'
+
+  def test_scenario_name_uuid_locator_is_v2(self):
+    line = LogEventV2.serialize(
+      SCENARIO_RESOURCE,
+      'checkout-flow/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      PUT_ACTION,
+    )
+    event = LogEvent.create(line)
+    assert isinstance(event, LogEventV2)
+    assert event.resource_id == 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    assert event.resource_slug == 'checkout-flow'
+    assert event.resource_uuid == 'checkout-flow/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 
 class TestLogEventApply:
@@ -131,8 +143,9 @@ class TestLogEventApply:
     assert seen['delete'] == 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
   def test_scenario_put_and_delete_pass_locator(self):
-    put_line = LogEvent.serialize(SCENARIO_RESOURCE, 'checkout-flow', PUT_ACTION)
-    delete_line = LogEvent.serialize(SCENARIO_RESOURCE, 'checkout-flow', DELETE_ACTION)
+    locator = 'checkout-flow/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+    put_line = LogEvent.serialize(SCENARIO_RESOURCE, locator, PUT_ACTION)
+    delete_line = LogEvent.serialize(SCENARIO_RESOURCE, locator, DELETE_ACTION)
     put_event = LogEvent.create(put_line)
     delete_event = LogEvent.create(delete_line)
     seen = {}
@@ -150,8 +163,9 @@ class TestLogEventApply:
       handle_scenario_delete=lambda ref: seen.setdefault('delete', ref),
     )
 
-    assert seen['put'] == 'checkout-flow'
-    assert seen['delete'] == 'checkout-flow'
+    # PUT gets full locator for O(1) path resolve; DELETE gets UUID identity
+    assert seen['put'] == locator
+    assert seen['delete'] == 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 
 class TestLogEventDuplicate:

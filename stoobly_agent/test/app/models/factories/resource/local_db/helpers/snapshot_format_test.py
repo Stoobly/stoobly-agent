@@ -266,6 +266,6 @@ class TestWriteFormatFollowsDetection:
     assert isinstance(snap, ScenarioSnapshotV2)
     assert path.endswith('.yaml')
     assert isinstance(Log().events[-1], LogEventV2)
-    assert Log().events[-1].resource_uuid == ScenarioSnapshotV2.sanitize_scenario_filename(
-      created_scenario.name
-    )
+    stem = ScenarioSnapshotV2.sanitize_scenario_filename(created_scenario.name)
+    assert Log().events[-1].resource_uuid == f'{stem}/{created_scenario.uuid}'
+    assert Log().events[-1].resource_id == created_scenario.uuid

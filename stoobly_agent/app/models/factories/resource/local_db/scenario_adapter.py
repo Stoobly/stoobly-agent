@@ -40,8 +40,9 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
     """
     Reject names that are empty, too long, or change under filesystem sanitization.
 
-    Requiring name == sanitize(name) makes the v2 history stem identical to the
-    ORM name (given the unique name constraint), so apply can resolve by name.
+    Requiring name == sanitize(name) keeps the v2 yaml stem identical to the
+    ORM name (given the unique name constraint). History locators are
+    {stem}/{uuid}; UUID is the collapse/DELETE identity.
     """
     if not name:
       return self.bad_request('Scenario name is required')

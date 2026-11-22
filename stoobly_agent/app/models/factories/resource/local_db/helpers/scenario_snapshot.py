@@ -450,18 +450,28 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     name: str,
     data_dir: DataDir = None,
   ) -> str:
-    """Stable v2 history locator: existing yaml stem, else newly allocated stem."""
+    """
+    v2 history locator: {stem}/{uuid}.
+
+    Stem is the on-disk yaml basename when present, else the newly allocated
+    stem for name. UUID is always appended when valid so collapse/DELETE can
+    key on resource_id == uuid (same pattern as request slug/uuid locators).
+    """
     data_dir = data_dir or DataDir.instance()
     snap = cls(uuid or '', data_dir, name=name)
     found = snap._find_v2_metadata_path()
     if found:
-      return snap._name_from_path(found)
-    path = cls.allocate_yaml_path(
-      data_dir.snapshots_scenarios_dir_path,
-      name or uuid or 'scenario',
-      uuid=uuid,
-    )
-    return snap._name_from_path(path)
+      stem = snap._name_from_path(found)
+    else:
+      path = cls.allocate_yaml_path(
+        data_dir.snapshots_scenarios_dir_path,
+        name or uuid or 'scenario',
+        uuid=uuid,
+      )
+      stem = snap._name_from_path(path)
+    if uuid and UUID_RE.match(str(uuid)):
+      return f"{stem}/{uuid}"
+    return stem
 
   @property
   def exists(self):
@@ -509,19 +519,28 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
 
   def write_metadata(self, scenario: Scenario, **options):
     self._name = scenario.name
+    if scenario.uuid and UUID_RE.match(str(scenario.uuid)):
+      self._resolved_uuid = str(scenario.uuid)
     self._resolved_metadata_path = None
 
+    existing_path = self._find_uuid_metadata_path()
     existing_requests = []
-    if self.metadata_path and os.path.exists(self.metadata_path):
+    if existing_path and os.path.exists(existing_path):
+      self._resolved_metadata_path = existing_path
       existing_requests = (self._load_metadata_data() or {}).get('requests') or []
+      self._resolved_metadata_path = None
 
+    dest_path = self._destination_metadata_path(scenario.name, existing_path)
     os.makedirs(self._scenarios_dir_path, exist_ok=True)
-    with open(self.metadata_path, 'w') as fp:
+    with open(dest_path, 'w') as fp:
       yaml.safe_dump({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
         'requests': existing_requests,
       }, fp, sort_keys=False, default_flow_style=False)
+
+    self._resolved_metadata_path = dest_path
+    self._remove_uuid_orphans(dest_path)
 
   def write_requests(self, scenario: Scenario, **options: RequestSnapshotOptions):
     relative_paths = []
@@ -532,33 +551,91 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       relative_paths.append(RequestSnapshotV2.request_relative_path(slug, request.uuid))
 
     self._name = scenario.name
+    if scenario.uuid and UUID_RE.match(str(scenario.uuid)):
+      self._resolved_uuid = str(scenario.uuid)
     self._resolved_metadata_path = None
+
+    existing_path = self._find_uuid_metadata_path()
+    dest_path = self._destination_metadata_path(scenario.name, existing_path)
     os.makedirs(self._scenarios_dir_path, exist_ok=True)
-    with open(self.metadata_path, 'w') as fp:
+    with open(dest_path, 'w') as fp:
       yaml.safe_dump({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
         'requests': relative_paths,
       }, fp, sort_keys=False, default_flow_style=False)
 
-  def _find_v2_metadata_path(self) -> Optional[str]:
+    self._resolved_metadata_path = dest_path
+    self._remove_uuid_orphans(dest_path)
+
+  def _find_uuid_metadata_path(self) -> Optional[str]:
+    """Locate scenarios/*.yaml whose embedded uuid matches, ignoring name/stem."""
     if not os.path.isdir(self._scenarios_dir_path):
       return None
 
     resolved_uuid = self._resolved_uuid
-    if resolved_uuid and UUID_RE.match(str(resolved_uuid)):
-      for name in os.listdir(self._scenarios_dir_path):
-        if not (name.endswith('.yaml') or name.endswith('.yml')):
-          continue
-        path = os.path.join(self._scenarios_dir_path, name)
-        if not os.path.isfile(path):
-          continue
-        if self._uuid_from_v2_yaml(path) == str(resolved_uuid):
-          return path
+    if not resolved_uuid or not UUID_RE.match(str(resolved_uuid)):
+      return None
 
-    # Name / history-stem lookup. Sanitize before join: history locators may
-    # contain ../ or separators (legacy or hand-edited). When uuid is known,
-    # only accept a matching file.
+    for name in os.listdir(self._scenarios_dir_path):
+      if not (name.endswith('.yaml') or name.endswith('.yml')):
+        continue
+      path = os.path.join(self._scenarios_dir_path, name)
+      if not os.path.isfile(path):
+        continue
+      if self._uuid_from_v2_yaml(path) == str(resolved_uuid):
+        return path
+    return None
+
+  def _destination_metadata_path(self, name: str, existing_path: Optional[str] = None) -> str:
+    """
+    Path to write for the current scenario name.
+
+    Keeps the existing file when its stem already matches the sanitized name;
+    otherwise allocates a new {name}.yaml (with -2, -3, ... on collision) so a
+    rename relocates instead of writing in place under the old stem.
+    """
+    desired_stem = self.sanitize_scenario_filename(name or self.uuid or 'scenario')
+    if existing_path and self._name_from_path(existing_path) == desired_stem:
+      return existing_path
+
+    # Do not pass uuid: allocate_yaml_path would reuse the old-stem file.
+    return self.allocate_yaml_path(
+      self._scenarios_dir_path,
+      name or self.uuid or 'scenario',
+      uuid=None,
+    )
+
+  def _remove_uuid_orphans(self, keep_path: str):
+    """Remove other scenarios/*.yaml copies left after a rename write."""
+    if not self._resolved_uuid or not UUID_RE.match(str(self._resolved_uuid)):
+      return
+    if not os.path.isdir(self._scenarios_dir_path):
+      return
+
+    keep = os.path.abspath(keep_path)
+    for name in os.listdir(self._scenarios_dir_path):
+      if not (name.endswith('.yaml') or name.endswith('.yml')):
+        continue
+      path = os.path.join(self._scenarios_dir_path, name)
+      if not os.path.isfile(path):
+        continue
+      if os.path.abspath(path) == keep:
+        continue
+      if self._uuid_from_v2_yaml(path) != str(self._resolved_uuid):
+        continue
+      try:
+        os.remove(path)
+      except OSError:
+        continue
+
+  def _find_v2_metadata_path(self) -> Optional[str]:
+    if not os.path.isdir(self._scenarios_dir_path):
+      return None
+
+    # Prefer exact name/stem path when set (after rename, avoids pinning old stem
+    # via uuid). Fall through to uuid scan for history name/uuid and bare uuid.
+    resolved_uuid = self._resolved_uuid
     if self._name:
       candidate = self._safe_scenario_yaml_path(self._scenarios_dir_path, self._name)
       if candidate and os.path.isfile(candidate):
@@ -566,6 +643,10 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
           return candidate
         if self._uuid_from_v2_yaml(candidate) == str(resolved_uuid):
           return candidate
+
+    found = self._find_uuid_metadata_path()
+    if found:
+      return found
 
     return None
 

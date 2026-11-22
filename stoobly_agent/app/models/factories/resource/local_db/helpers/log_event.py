@@ -59,10 +59,14 @@ class LogEvent():
     ) = type(self)._parse_fields(toks, line)
 
     if self.resource == SCENARIO_RESOURCE:
-      # Collapse identity is the unique name when present, else uuid
+      # Collapse identity prefers UUID (name/uuid or bare uuid); name-only
+      # legacy locators fall back to the stem.
       parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(self.resource_uuid)
       self.__resource_slug = parsed_name
-      self.__resource_id = parsed_name or parsed_uuid
+      if parsed_uuid and UUID_RE.match(str(parsed_uuid)):
+        self.__resource_id = str(parsed_uuid)
+      else:
+        self.__resource_id = parsed_name or parsed_uuid
     else:
       parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(self.resource_uuid)
       self.__resource_slug = parsed_slug
@@ -215,7 +219,7 @@ class LogEvent():
 
   @property
   def resource_id(self) -> str:
-    """Stable identity for collapse/apply (request UUID; scenario name or UUID)."""
+    """Stable identity for collapse/apply (request UUID; scenario UUID or legacy name)."""
     return self.__resource_id
 
   @property
@@ -248,10 +252,10 @@ class LogEvent():
         return kwargs['handle_request_put'](self.resource_uuid)
     elif self.is_scenario():
       if self.action == DELETE_ACTION:
-        # Pass locator (name or uuid) so apply can resolve ORM identity
-        return kwargs['handle_scenario_delete'](self.resource_uuid)
+        # Pass UUID identity when present (name/uuid); name-only legacy still works
+        return kwargs['handle_scenario_delete'](self.resource_id)
       elif self.action == PUT_ACTION:
-        # Pass history locator (name) so snapshot resolve stays O(1)
+        # Pass full history locator (name/uuid) so snapshot resolve stays O(1)
         return kwargs['handle_scenario_put'](self.resource_uuid)
 
   def duplicate(self):
@@ -287,7 +291,7 @@ class LogEvent():
     if self.is_request():
       return RequestSnapshot.create(self.resource_id, data_dir, slug=self.resource_slug)
     elif self.is_scenario():
-      # resource_uuid is name (v2), name/uuid (legacy v2), or bare uuid (v1)
+      # resource_uuid is name/uuid (v2), name-only (legacy v2), or bare uuid (v1)
       return ScenarioSnapshot.create(self.resource_uuid, data_dir)
 
   def to_dict(self):
@@ -369,7 +373,7 @@ class LogEventV2(LogEvent):
 
   @classmethod
   def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
-    # Prefer on-disk yaml stem when present (e.g. orphan -2 allocation)
+    # {stem}/{uuid}; stem prefers on-disk yaml (e.g. orphan -2 allocation)
     return ScenarioSnapshotV2.history_locator_for(
       scenario.uuid, scenario.name, data_dir=data_dir
     )

@@ -119,8 +119,8 @@ class TestSnapshotFormatV2:
 
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
       event = Log().events[-1]
-      assert event.resource_uuid == 'checkout-flow'
-      assert event.resource_id == 'checkout-flow'
+      assert event.resource_uuid == f'checkout-flow/{created_scenario.uuid}'
+      assert event.resource_id == created_scenario.uuid
       assert event.snapshot().metadata_path == snap.metadata_path
       assert event.snapshot().uuid == created_scenario.uuid
 
@@ -224,8 +224,8 @@ class TestSnapshotFormatV2:
       assert scenario_snap.metadata_path.endswith('legacy-flow.yaml')
 
       event = next(e for e in reversed(Log().events) if e.is_scenario())
-      assert event.resource_uuid == 'legacy-flow'
-      assert event.resource_id == 'legacy-flow'
+      assert event.resource_uuid == f'legacy-flow/{created_scenario.uuid}'
+      assert event.resource_id == created_scenario.uuid
       assert event.snapshot().metadata_path == scenario_snap.metadata_path
       assert event.snapshot().uuid == created_scenario.uuid
 
@@ -505,8 +505,14 @@ class TestSnapshotFormatV2:
             return event.resource_uuid
         raise AssertionError(f'no history locator for {scenario_uuid}')
 
-      locators = {locator_for(first.uuid), locator_for(other_uuid)}
-      assert locators == {'dup-name', 'dup-name-2'}
+      # Migration walk order is not stable; only stems + uuid suffix matter
+      stems = set()
+      for scenario_uuid in (first.uuid, other_uuid):
+        loc = locator_for(scenario_uuid)
+        stem, uid = loc.rsplit('/', 1)
+        assert uid == scenario_uuid
+        stems.add(stem)
+      assert stems == {'dup-name', 'dup-name-2'}
 
     def test_legacy_scenario_name_uuid_locator_collapsed(self, runner: CliRunner):
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, SCENARIO_RESOURCE
@@ -529,8 +535,8 @@ class TestSnapshotFormatV2:
 
       migrate_snapshots_to_v2(DataDir.instance())
       event = next(e for e in reversed(Log().events) if e.is_scenario())
-      assert event.resource_uuid == 'legacy-loc'
-      assert '/' not in event.resource_uuid
+      assert event.resource_uuid == f'legacy-loc/{created.uuid}'
+      assert event.resource_id == created.uuid
 
       migrate_snapshots_to_v1(DataDir.instance())
       event = next(e for e in reversed(Log().events) if e.is_scenario())
@@ -566,7 +572,9 @@ class TestSnapshotFormatV2:
       assert ScenarioSnapshot.create('dup-name-2').uuid == other_uuid
 
       # Prefer uuid map over rsplit name so history points at dup-name-2, not dup-name
-      assert 'dup-name-2' in [e.resource_uuid for e in Log().events if e.is_scenario()]
+      assert f'dup-name-2/{other_uuid}' in [
+        e.resource_uuid for e in Log().events if e.is_scenario()
+      ]
 
     def test_rewrites_archived_history_and_preserves_version(self, recorded_request: Request):
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE

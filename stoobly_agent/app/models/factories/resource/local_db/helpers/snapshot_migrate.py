@@ -185,7 +185,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
       if os.path.exists(index_path):
         os.remove(index_path)
 
-      scenario_uuid_to_locator[scenario_uuid] = yaml_stem
+      scenario_uuid_to_locator[scenario_uuid] = f"{yaml_stem}/{scenario_uuid}"
       migrated_scenarios += 1
 
   # Remove empty scenarios/requests dir if empty
@@ -373,7 +373,8 @@ def _backfill_v2_scenario_locators(scenarios_dir: str, locators: Dict[str, str])
       if scenario_uuid and UUID_RE.match(str(scenario_uuid)):
         scenario_uuid = str(scenario_uuid)
         if scenario_uuid not in locators:
-          locators[scenario_uuid] = _name_from_yaml_filename(name)
+          stem = _name_from_yaml_filename(name)
+          locators[scenario_uuid] = f"{stem}/{scenario_uuid}"
     except Exception:
       continue
 
@@ -444,11 +445,24 @@ def _history_needs_locator_rewrite(data_dir: DataDir, to_v2: bool) -> bool:
           return True
       elif event.is_scenario():
         if to_v2:
-          # name/uuid → stem; bare uuid → stem when resolvable
+          # bare uuid / name-only → name/uuid; stale name/uuid → canonical
           if '/' in event.resource_uuid:
-            return True
-          if event.resource_id in scenario_locators:
-            return True
+            _name, rest = event.resource_uuid.rsplit('/', 1)
+            if UUID_RE.match(rest):
+              canonical = scenario_locators.get(rest)
+              if canonical and canonical != event.resource_uuid:
+                return True
+            else:
+              return True
+          elif UUID_RE.match(event.resource_uuid):
+            if event.resource_uuid in scenario_locators:
+              return True
+          else:
+            # name-only legacy locator
+            for loc in scenario_locators.values():
+              stem = loc.rsplit('/', 1)[0] if '/' in loc else loc
+              if stem == event.resource_uuid:
+                return True
         else:
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
@@ -499,16 +513,20 @@ def _rewrite_history_locators(
           new_resource_uuid = event.resource_id
       elif event.is_scenario():
         if to_v2:
-          # bare uuid → unique stem; legacy name/uuid → unique stem via uuid map
-          # (rsplit name alone is wrong after sanitize collisions, e.g. dup-name-2)
+          # bare uuid / name-only / stale name/uuid → canonical {stem}/{uuid}
+          # (uuid map required after sanitize collisions, e.g. dup-name-2)
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
             if UUID_RE.match(rest) and rest in scenario_locators:
               new_resource_uuid = scenario_locators[rest]
-            else:
-              new_resource_uuid = _name
-          elif event.resource_id in scenario_locators:
-            new_resource_uuid = scenario_locators[event.resource_id]
+          elif UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
+            new_resource_uuid = scenario_locators[event.resource_uuid]
+          else:
+            for loc in scenario_locators.values():
+              stem = loc.rsplit('/', 1)[0] if '/' in loc else loc
+              if stem == event.resource_uuid:
+                new_resource_uuid = loc
+                break
         else:
           # name or name/uuid → bare uuid
           if '/' in event.resource_uuid:

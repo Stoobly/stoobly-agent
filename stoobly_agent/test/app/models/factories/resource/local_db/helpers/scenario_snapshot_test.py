@@ -118,10 +118,43 @@ class TestScenarioSnapshotV2NameCollision:
     events = [e for e in Log().events if e.is_scenario()]
     assert all(isinstance(e, LogEventV2) for e in events)
     locators = {e.resource_uuid for e in events}
-    assert locators == {'My Scenario', 'My-Scenario'}
+    assert locators == {f'My Scenario/{a.uuid}', f'My-Scenario/{b.uuid}'}
 
     targets = [e for e in Log().target_events if e.is_scenario()]
-    assert {e.resource_id for e in targets} == {'My Scenario', 'My-Scenario'}
+    assert {e.resource_id for e in targets} == {a.uuid, b.uuid}
+
+  def test_rename_relocates_yaml_and_collapses_history_by_uuid(self):
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_scenario
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import PUT_ACTION
+    from stoobly_agent.lib.orm.scenario import Scenario
+
+    scenario = Scenario.create(name='old-name', description='')
+    first_path = snapshot_scenario(scenario, action=PUT_ACTION)
+    assert os.path.basename(first_path) == 'old-name.yaml'
+
+    scenario.update({'name': 'new-name'})
+    scenario = Scenario.find(scenario.id)
+    second_path = snapshot_scenario(scenario, action=PUT_ACTION)
+
+    assert os.path.basename(second_path) == 'new-name.yaml'
+    assert os.path.isfile(second_path)
+    assert not os.path.exists(first_path)
+    assert ScenarioSnapshotV2._uuid_from_v2_yaml(second_path) == scenario.uuid
+
+    snap = ScenarioSnapshot.create(scenario.uuid)
+    assert snap.metadata_path == second_path
+    assert snap.metadata['name'] == 'new-name'
+
+    events = [e for e in Log().events if e.is_scenario()]
+    assert len(events) >= 2
+    assert all(e.resource_id == scenario.uuid for e in events)
+    assert events[-1].resource_uuid == f'new-name/{scenario.uuid}'
+
+    targets = [e for e in Log().target_events if e.is_scenario()]
+    assert len(targets) == 1
+    assert targets[0].resource_id == scenario.uuid
+    assert targets[0].resource_uuid == f'new-name/{scenario.uuid}'
 
 
 class TestScenarioSnapshotCreateAndFromPath:

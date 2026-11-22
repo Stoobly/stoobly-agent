@@ -172,20 +172,24 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
             continue
         if event.resource_id == resource_uuid:
             return event
-        # v2 scenarios use name-only locators; match via resolved snapshot UUID
+        # v2 scenarios: name/uuid or legacy name-only; match via snapshot / locator
         if resource == SCENARIO_RESOURCE:
             snapshot = event.snapshot()
             if snapshot.uuid == resource_uuid:
                 return event
-            # DELETE may have already removed YAML; match via ORM name
+            # DELETE may have already removed YAML; match locator or legacy name
             from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
               ScenarioSnapshotV2,
             )
             from stoobly_agent.lib.orm.scenario import Scenario
             scenario = Scenario.find_by(uuid=resource_uuid)
-            if scenario and event.resource_id == ScenarioSnapshotV2.history_locator_for(
-              scenario.uuid, scenario.name
-            ):
+            if scenario:
+              locator = ScenarioSnapshotV2.history_locator_for(
+                scenario.uuid, scenario.name
+              )
+              if event.resource_uuid == locator:
+                return event
+              if event.resource_id == scenario.name or event.resource_uuid == scenario.name:
                 return event
 
     # If resource is request and no event found, check if it belongs to a scenario event

@@ -206,7 +206,8 @@ class TestMigrateSnapshotsToV2:
     request_event = next(e for e in Log().events if e.is_request())
     scenario_event = next(e for e in Log().events if e.is_scenario())
     assert request_event.resource_uuid.startswith('GET-api/')
-    assert scenario_event.resource_uuid == 'checkout'
+    assert scenario_event.resource_uuid == f'checkout/{SCENARIO_A}'
+    assert scenario_event.resource_id == SCENARIO_A
 
   def test_skips_corrupt_v1_request(self):
     _write_v1_request(UUID_A)
@@ -270,7 +271,7 @@ class TestRemigrateHistoryBackfill:
 
     scenario_events = [e for e in Log().events if e.is_scenario()]
     locators = {e.resource_uuid for e in scenario_events}
-    assert locators == {'already-done', 'pending'}
+    assert locators == {f'already-done/{SCENARIO_A}', f'pending/{SCENARIO_B}'}
 
   def test_remigrate_to_v1_rewrites_history_for_already_converted_scenario(self):
     # Already-v1 scenario meta; history still uses name locator from partial v2→v1
@@ -305,7 +306,7 @@ class TestRemigrateHistoryBackfill:
     request_event = next(e for e in Log().events if e.is_request())
     scenario_event = next(e for e in Log().events if e.is_scenario())
     assert request_event.resource_uuid == f'GET-api/{UUID_A}'
-    assert scenario_event.resource_uuid == 'checkout'
+    assert scenario_event.resource_uuid == f'checkout/{SCENARIO_A}'
 
     noop = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
     assert noop['noop'] is True
@@ -351,7 +352,7 @@ class TestBackfillHelpers:
     _write_v2_scenario(SCENARIO_A, 'flow')
     locators = {}
     _backfill_v2_scenario_locators(DataDir.instance().snapshots_scenarios_dir_path, locators)
-    assert locators == {SCENARIO_A: 'flow'}
+    assert locators == {SCENARIO_A: f'flow/{SCENARIO_A}'}
 
   def test_backfill_v1_scenario_locators(self):
     _write_v1_scenario(SCENARIO_A, 'flow')

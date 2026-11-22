@@ -269,21 +269,23 @@ def __copy_requests(request_keys: list, destination: str):
       print(f"No snapshot found for {key}", file=sys.stderr)
 
 def __scenario_event_matches_uuid(event, scenario_uuid: str) -> bool:
-  """Match history events to a scenario UUID (v1 bare uuid or v2 name locator)."""
+  """Match history events to a scenario UUID (v1 bare uuid or v2 name/uuid)."""
   if event.resource_id == scenario_uuid:
     return True
 
-  # v2 scenarios use name-only locators; match via resolved snapshot UUID
+  # Legacy name-only / resolve via on-disk snapshot UUID
   snapshot = event.snapshot()
   if snapshot.uuid == scenario_uuid:
     return True
 
-  # DELETE may have already removed YAML; match via allocated history stem
+  # DELETE may have already removed YAML; match locator or legacy name stem
   scenario = Scenario.find_by(uuid=scenario_uuid)
-  if scenario and event.resource_id == ScenarioSnapshotV2.history_locator_for(
-    scenario.uuid, scenario.name
-  ):
-    return True
+  if scenario:
+    locator = ScenarioSnapshotV2.history_locator_for(scenario.uuid, scenario.name)
+    if event.resource_uuid == locator:
+      return True
+    if event.resource_id == scenario.name or event.resource_uuid == scenario.name:
+      return True
 
   return False
 

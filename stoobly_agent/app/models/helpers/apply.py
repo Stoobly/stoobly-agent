@@ -298,7 +298,7 @@ class Apply():
     if snapshot.uuid and UUID_RE.match(str(snapshot.uuid)):
       return snapshot.uuid
 
-    # DELETE may run after snapshot files were removed; history stem == scenario name
+    # DELETE may run after snapshot files were removed; legacy name-only locator
     scenario, status = self.__find_scenario_by_name(resource_ref)
     if status == 200 and scenario:
       return scenario.get('uuid')

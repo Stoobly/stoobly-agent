@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
@@ -127,6 +128,105 @@ class TestApply():
         _request = Request.find_by(uuid=recorded_request.uuid)
         assert_orm_request_equivalent(_request, recorded_request)
 
+    class TestWhenUpdatingRequestMethodPath():
+      '''
+      1. Record request, snapshot (old slug)
+      2. CLI update --method/--path, snapshot again (slug relocates, orphan removed)
+      3. Delete ORM request
+      4. Apply
+      5. Expect recreated request with new method/path; history collapses by UUID
+      '''
+
+      NEW_METHOD = 'POST'
+      NEW_PATH = '/api/renamed'
+
+      @pytest.fixture(scope='class')
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def first_snapshot(cls, runner: CliRunner, recorded_request: Request):
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        old_slug = RequestSnapshotV2.build_request_slug(
+          recorded_request.method, recorded_request.path
+        )
+        old_path = RequestSnapshotV2(recorded_request.uuid, slug=old_slug).path
+        assert os.path.isfile(old_path)
+
+        event = Log().events[-1]
+        assert event.resource_id == recorded_request.uuid
+        assert event.resource_uuid == f'{old_slug}/{recorded_request.uuid}'
+        return old_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def updated_snapshot(cls, runner: CliRunner, recorded_request: Request, first_snapshot: str):
+        update_result = runner.invoke(
+          request,
+          [
+            'update',
+            recorded_request.key(),
+            '--method', cls.NEW_METHOD,
+            '--path', cls.NEW_PATH,
+          ],
+        )
+        assert update_result.exit_code == 0
+
+        recorded_request = Request.find(recorded_request.id)
+        assert recorded_request.method == cls.NEW_METHOD
+        assert recorded_request.path == cls.NEW_PATH
+
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        new_slug = RequestSnapshotV2.build_request_slug(cls.NEW_METHOD, cls.NEW_PATH)
+        new_path = RequestSnapshotV2(recorded_request.uuid, slug=new_slug).path
+        assert os.path.isfile(new_path)
+        assert not os.path.exists(first_snapshot)
+
+        event = Log().events[-1]
+        assert event.resource_id == recorded_request.uuid
+        assert event.resource_uuid == f'{new_slug}/{recorded_request.uuid}'
+
+        targets = [
+          e for e in Log().target_events
+          if e.is_request() and e.resource_id == recorded_request.uuid
+        ]
+        assert len(targets) == 1
+        assert targets[0].resource_uuid == f'{new_slug}/{recorded_request.uuid}'
+        return new_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recreated_request(cls, runner: CliRunner, recorded_request: Request, updated_snapshot: str):
+        uuid = recorded_request.uuid
+        recorded_request.delete()
+        assert Request.find_by(uuid=uuid) is None
+
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated = Request.find_by(uuid=uuid)
+        assert recreated is not None
+        assert os.path.isfile(updated_snapshot)
+        return recreated
+
+      def test_it_applies_updated_method_and_path(self, recreated_request: Request):
+        assert recreated_request.method == self.NEW_METHOD
+        assert recreated_request.path == self.NEW_PATH
+
+      def test_it_keeps_relocated_slug(self, recreated_request: Request):
+        new_slug = RequestSnapshotV2.build_request_slug(self.NEW_METHOD, self.NEW_PATH)
+        snap = RequestSnapshotV2(recreated_request.uuid, slug=new_slug)
+        assert snap.path.endswith(f'{new_slug}/{recreated_request.uuid}.http')
+        assert os.path.isfile(snap.path)
+
     class TestWhenDeletingScenario():
 
       @pytest.fixture(scope='class')
@@ -233,6 +333,98 @@ class TestApply():
         assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
         assert_orm_request_equivalent(requests[1], created_scenario_requests[1])
 
+    class TestWhenRenamingScenario():
+      '''
+      1. Create scenario old-name, record a request, snapshot
+      2. Rename to new-name, snapshot again (YAML relocates)
+      3. Delete ORM scenario (+ requests)
+      4. Apply
+      5. Expect recreated scenario named new-name; history collapses by UUID
+      '''
+
+      @pytest.fixture(scope='class')
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
+        create_result = runner.invoke(scenario, ['create', 'rename-old'])
+        assert create_result.exit_code == 0
+        return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner, created_scenario: Scenario):
+        record_result = runner.invoke(
+          record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL]
+        )
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def first_snapshot(cls, runner: CliRunner, created_scenario: Scenario):
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+        old_path = os.path.join(scenarios_dir, 'rename-old.yaml')
+        assert os.path.isfile(old_path)
+
+        event = Log().events[-1]
+        assert event.resource_id == created_scenario.uuid
+        assert event.resource_uuid == f'rename-old/{created_scenario.uuid}'
+        return old_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def renamed_snapshot(cls, runner: CliRunner, created_scenario: Scenario, first_snapshot: str):
+        assert created_scenario.update({'name': 'rename-new'})
+        created_scenario = Scenario.find(created_scenario.id)
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+        new_path = os.path.join(scenarios_dir, 'rename-new.yaml')
+        assert os.path.isfile(new_path)
+        assert not os.path.exists(first_snapshot)
+
+        event = Log().events[-1]
+        assert event.resource_id == created_scenario.uuid
+        assert event.resource_uuid == f'rename-new/{created_scenario.uuid}'
+
+        targets = [e for e in Log().target_events if e.is_scenario() and e.resource_id == created_scenario.uuid]
+        assert len(targets) == 1
+        assert targets[0].resource_uuid == f'rename-new/{created_scenario.uuid}'
+        return new_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recreated_scenario(cls, runner: CliRunner, created_scenario: Scenario, renamed_snapshot: str):
+        requests = list(created_scenario.requests)
+        uuid = created_scenario.uuid
+
+        created_scenario.delete()
+        assert Scenario.find_by(uuid=uuid) is None
+        for request in requests:
+          request.delete()
+
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated = Scenario.find_by(uuid=uuid)
+        assert recreated is not None
+        assert os.path.isfile(renamed_snapshot)
+        return recreated
+
+      def test_it_applies_renamed_scenario(self, created_scenario: Scenario, recreated_scenario: Scenario):
+        assert recreated_scenario.uuid == created_scenario.uuid
+        assert recreated_scenario.name == 'rename-new'
+        assert recreated_scenario.requests_count == 1
+
+      def test_it_keeps_relocated_yaml(self, recreated_scenario: Scenario):
+        snap = ScenarioSnapshot.create(recreated_scenario.uuid)
+        assert snap.metadata_path.endswith('rename-new.yaml')
+        assert snap.metadata['name'] == 'rename-new'
+
     class TestWhenMergingScenario():
       class TestWhenScenarioNameAlreadyExists():
         @pytest.fixture(scope='class')
@@ -324,7 +516,8 @@ class TestApply():
         @pytest.fixture(scope='class', autouse=True)
         @classmethod
         def new_scenario_request(cls, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
-          assert put_event.resource_id == 'test'
+          assert put_event.resource_id == created_scenario.uuid
+          assert put_event.resource_uuid == f'test/{created_scenario.uuid}'
           assert put_event.snapshot().uuid == created_scenario.uuid
           assert created_scenario.requests.count() == 2
 
