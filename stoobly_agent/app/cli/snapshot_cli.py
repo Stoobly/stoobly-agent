@@ -15,7 +15,10 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapsh
   MalformedRequestSnapshotError,
   RequestSnapshot,
 )
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+  ScenarioSnapshot,
+  ScenarioSnapshotV2,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_NONE,
   FORMAT_V1,
@@ -30,6 +33,7 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
+from stoobly_agent.lib.orm.scenario import Scenario
 
 from .helpers.update_request_snapshots_service import update_request_snapshots
 
@@ -239,6 +243,7 @@ def __copy_requests(request_keys: list, destination: str):
 
   for request_key in request_keys:
     found = False
+    key = RequestKey(request_key)
 
     for event in log.target_events:
       if event.action != PUT_ACTION:
@@ -247,7 +252,6 @@ def __copy_requests(request_keys: list, destination: str):
       if event.resource != REQUEST_RESOURCE:
         continue
 
-      key = RequestKey(request_key)
       if event.resource_id != key.id:
         continue
 
@@ -261,8 +265,25 @@ def __copy_requests(request_keys: list, destination: str):
         destination_log.put(resource, format=write_format)
         found = True
 
-      if not found:
-        print(f"No snapshot found for {key}", file=sys.stderr)
+    if not found:
+      print(f"No snapshot found for {key}", file=sys.stderr)
+
+def __scenario_event_matches_uuid(event, scenario_uuid: str) -> bool:
+  """Match history events to a scenario UUID (v1 bare uuid or v2 name locator)."""
+  if event.resource_id == scenario_uuid:
+    return True
+
+  # v2 scenarios use name-only locators; match via resolved snapshot UUID
+  snapshot = event.snapshot()
+  if snapshot.uuid == scenario_uuid:
+    return True
+
+  # DELETE may have already removed YAML; match via ORM name
+  scenario = Scenario.find_by(uuid=scenario_uuid)
+  if scenario and event.resource_id == ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name):
+    return True
+
+  return False
 
 def __copy_scenarios(scenario_keys: list, destination: str):
   log = Log()
@@ -273,6 +294,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
 
   for scenario_key in scenario_keys:
     found = False
+    key = ScenarioKey(scenario_key)
 
     for event in log.target_events:
       if event.action != PUT_ACTION:
@@ -281,8 +303,7 @@ def __copy_scenarios(scenario_keys: list, destination: str):
       if event.resource != SCENARIO_RESOURCE:
         continue
 
-      key = ScenarioKey(scenario_key)
-      if event.resource_id != key.id:
+      if not __scenario_event_matches_uuid(event, key.id):
         continue
 
       snapshot: ScenarioSnapshot = event.snapshot()
@@ -295,8 +316,8 @@ def __copy_scenarios(scenario_keys: list, destination: str):
         destination_log.put(resource, format=write_format)
         found = True
 
-      if not found:
-        print(f"No snapshot found for {key}", file=sys.stderr)
+    if not found:
+      print(f"No snapshot found for {key}", file=sys.stderr)
 
 def __abort_with_error(error: Exception):
   print(f"Error: {error}", file=sys.stderr)
