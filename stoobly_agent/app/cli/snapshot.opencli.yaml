@@ -69,6 +69,17 @@ command:
       arguments:
       - name: lifecycle_hooks_path
     - name: no-verify
+  - name: migrate
+    description: Migrate snapshots to v1 or v2 format.
+    options:
+    - name: format
+      description: Target snapshot format.
+      required: true
+      acceptedValues:
+      - v1
+      - v2
+      arguments:
+      - name: format
   exitCodes:
   - code: 0
     description: Success

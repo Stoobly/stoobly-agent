@@ -145,6 +145,10 @@ if is_local:
     @click.option('--no-verify', is_flag=True, default=False)
     @click.argument('scenario_key')
     def snapshot_create(**kwargs):
+        from stoobly_agent.lib.api.keys import ScenarioKey
+
+        scenario_key = kwargs.get('scenario_key')
+        scenario_uuid = ScenarioKey(scenario_key).id if scenario_key else None
         scenario_snapshot_path = snapshot_handler(kwargs)
 
         if scenario_snapshot_path is None:
@@ -156,7 +160,8 @@ if is_local:
           file_path=scenario_snapshot_path,
           lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
           no_verify=kwargs.get('no_verify', False),
-          with_snapshot=False
+          with_snapshot=False,
+          resource_uuid=scenario_uuid,
         )
 
     @snapshot.command(

@@ -138,18 +138,20 @@ class TestWhenDataDirPathDiffersFromCwd():
     snapshots = snapshot_scenarios_since_service.snapshot_scenarios_since(since, data_dir_path=context_dir_path)
 
     context_data_dir = DataDir.instance(context_dir_path)
-    metadata_path = os.path.join(context_data_dir.snapshots_scenarios_dir_path, scenario.uuid)
-    requests_path = os.path.join(context_data_dir.snapshots_scenario_requests_dir_path, scenario.uuid)
+    # v2 default: scenarios/<name>.yaml (resolvable via ScenarioSnapshot)
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+    scenario_snapshot = ScenarioSnapshot.create(scenario.uuid, context_data_dir, name=scenario.name)
+    metadata_path = scenario_snapshot.metadata_path
 
     assert [file_path for _, file_path in snapshots] == [metadata_path]
     assert os.path.exists(metadata_path)
-    assert os.path.exists(requests_path)
     assert os.listdir(context_data_dir.snapshots_history_dir_path)
 
     cwd_data_dir = DataDir.instance()
     assert cwd_data_dir.path != context_data_dir.path
-    assert not os.path.exists(os.path.join(cwd_data_dir.snapshots_scenarios_dir_path, scenario.uuid))
-    assert not os.path.exists(os.path.join(cwd_data_dir.snapshots_scenario_requests_dir_path, scenario.uuid))
+    assert not os.path.exists(
+      os.path.join(cwd_data_dir.snapshots_scenarios_dir_path, f"{scenario.name}.yaml")
+    )
 
 
 def test_normalize_iso_datetime_transforms_utc_z():

@@ -4,8 +4,12 @@ from typing import List
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
+  RequestSnapshot,
+)
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import UUID_RE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.lib.logger import bcolors
 
@@ -36,6 +40,7 @@ class Apply():
   def __init__(self, **options):
     self.__force = options.get('force') or False
     self.__logger = None
+    self.__last_error = None
     self.__request_model = None
     self.__scenario_model = None
 
@@ -46,6 +51,10 @@ class Apply():
   @force.setter
   def force(self, v):
     self.__force = v
+
+  @property
+  def last_error(self):
+    return self.__last_error
 
   @property
   def request_model(self):
@@ -73,6 +82,7 @@ class Apply():
 
   def all(self):
     log = Log()
+    self.__last_error = None
 
     unprocessed_events = log.unprocessed_events
     events_count = len(unprocessed_events) 
@@ -91,7 +101,7 @@ class Apply():
       if results:
         status = results[1]
         if status == 0 or status >= 400:
-          self.__logger(f"{bcolors.FAIL}Error{bcolors.ENDC} {results[0]}")
+          self.__last_error = results[0]
           completed = False
           break
 
@@ -112,23 +122,32 @@ class Apply():
     return completed
 
   def request(self, uuid: str):
+    self.__last_error = None
     result = self.__apply_put_request(uuid)
     if not result:
       return False
 
     status = result[1]
-    return status == 200
+    if status != 200:
+      self.__last_error = result[0]
+      return False
+    return True
 
   def scenario(self, uuid: str):
+    self.__last_error = None
     result = self.__apply_put_scenario(uuid)
     if not result:
       return False
 
     status = result[1]
-    return status == 200
+    if status != 200:
+      self.__last_error = result[0]
+      return False
+    return True
 
   def single(self, uuid: str):
     log = Log()
+    self.__last_error = None
 
     events = log.events
     events_count = len(events) 
@@ -152,6 +171,7 @@ class Apply():
     if results:
       status = results[1]
       if status == 0 or status >= 400:
+        self.__last_error = results[0]
         return False
 
     log.mark_processed(target_event.uuid)
@@ -175,23 +195,33 @@ class Apply():
 
     return res, status
 
-  def __apply_put_request(self, uuid: str):
-    snapshot = RequestSnapshot(uuid)
+  def __apply_put_request(self, resource_ref: str):
+    snapshot = RequestSnapshot.create(resource_ref)
 
-    raw_request = snapshot.request
+    try:
+      raw_request = snapshot.request
+    except MalformedRequestSnapshotError as e:
+      return str(e), 400
+
     if not raw_request:
-      error = f"snapshot for request {uuid} not found" 
+      error = f"snapshot for request {snapshot.uuid} not found"
       self.__logger(f"{bcolors.WARNING}Skipping Request{bcolors.ENDC} {error}")
       return error, 301
 
-    res, status = self.__put_request(uuid, raw_request)
+    res, status = self.__put_request(snapshot.uuid, raw_request)
 
     if status != 200:
       return f"{res} {snapshot.path}", status
 
     return res, status
 
-  def __apply_delete_scenario(self, uuid: str):
+  def __apply_delete_scenario(self, resource_ref: str):
+    uuid = self.__resolve_scenario_uuid(resource_ref)
+    if not uuid:
+      error = f"scenario {resource_ref} not found"
+      self.__logger(f"{bcolors.WARNING}Skipping Scenario{bcolors.ENDC} {error}")
+      return error, 301
+
     res, status = self.scenario_model.destroy(uuid, force=self.__force)
 
     if self.__logger and status == 200:
@@ -201,14 +231,15 @@ class Apply():
 
     return res, status
 
-  def __apply_put_scenario(self, uuid: str):
-    snapshot = ScenarioSnapshot(uuid)
+  def __apply_put_scenario(self, resource_ref: str):
+    snapshot = ScenarioSnapshot.create(resource_ref)
+    uuid = snapshot.uuid
     metadata = snapshot.metadata
 
     if not metadata:
       error = f"snapshot for scenario {uuid} not found"
       self.__logger(f"{bcolors.WARNING}Skipping Scenario{bcolors.ENDC} {error}")
-      return error, 301 
+      return error, 301
 
     res, status = self.scenario_model.show(uuid)
     if status == 404:
@@ -228,8 +259,8 @@ class Apply():
 
       if self.__logger:
         if status == 200:
-          self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}") 
-        else: 
+          self.__logger(f"{bcolors.OKGREEN}Created Scenario{bcolors.ENDC} {res['name']}")
+        else:
           self.__logger(f"{bcolors.FAIL}{status}{bcolors.ENDC} {res}")
     else:
       res, status = self.scenario_model.update(uuid, **{
@@ -247,6 +278,32 @@ class Apply():
       return res, status
     else:
       return self.__apply_put_scenario_requests(res, snapshot)
+
+  def __resolve_scenario_uuid(self, resource_ref: str):
+    """Resolve history locator (uuid, name/uuid, or name) to a scenario UUID."""
+    if not resource_ref:
+      return None
+
+    if UUID_RE.match(resource_ref):
+      return resource_ref
+
+    if '/' in resource_ref:
+      parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(resource_ref)
+      if parsed_uuid and UUID_RE.match(parsed_uuid):
+        return parsed_uuid
+      resource_ref = parsed_name or resource_ref
+
+    # Prefer uuid from on-disk snapshot when present
+    snapshot = ScenarioSnapshot.create(resource_ref)
+    if snapshot.uuid and UUID_RE.match(str(snapshot.uuid)):
+      return snapshot.uuid
+
+    # DELETE may run after snapshot files were removed; legacy name-only locator
+    scenario, status = self.__find_scenario_by_name(resource_ref)
+    if status == 200 and scenario:
+      return scenario.get('uuid')
+
+    return None
 
   def __find_scenario_by_name(self, name: str):
     if not name:
@@ -293,13 +350,16 @@ class Apply():
 
   def __apply_put_scenario_requests(self, scenario, snapshot: ScenarioSnapshot = None):
     if not snapshot:
-      snapshot = ScenarioSnapshot(scenario['uuid'])
+      snapshot = ScenarioSnapshot.create(scenario['uuid'])
 
     snapshot_requests = {}
 
     request_snapshots: List[RequestSnapshot] = snapshot.request_snapshots
     for request_snapshot in request_snapshots:
-      raw_request = request_snapshot.request
+      try:
+        raw_request = request_snapshot.request
+      except MalformedRequestSnapshotError as e:
+        return str(e), 400
 
       if not raw_request:
         return f"{request_snapshot.path} is missing", 400

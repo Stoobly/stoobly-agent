@@ -1,12 +1,13 @@
 import pdb
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from stoobly_agent.app.models.types import ScenarioDestroyParams, ScenarioCreateParams
 from stoobly_agent.lib.api.interfaces import ScenariosIndexQueryParams, ScenariosIndexResponse, ScenarioShowResponse
 from stoobly_agent.lib.orm import ORM
 from stoobly_agent.lib.orm.scenario import Scenario
 
+from .helpers.scenario_snapshot import ScenarioSnapshotV2
 from .helpers.search import search_scenario
 from .helpers.snapshot_service import snapshot_scenario
 from .local_db_adapter import LocalDBAdapter
@@ -35,12 +36,36 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
       ('unique' in msg and 'scenarios' in msg and 'name' in msg)
     )
 
-  def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
-    name = params.get('name') or ''
+  def __validate_scenario_name(self, name: str) -> Optional[Tuple[ScenarioShowResponse, int]]:
+    """
+    Reject names that are empty, too long, or change under filesystem sanitization.
+
+    Requiring name == sanitize(name) keeps the v2 yaml stem identical to the
+    ORM name (given the unique name constraint). History locators are
+    {stem}/{uuid}; UUID is the collapse/DELETE identity.
+    """
+    if not name:
+      return self.bad_request('Scenario name is required')
+
     if len(name) > self.NAME_MAX_LENGTH:
       return self.bad_request(
         f'Scenario name must be at most {self.NAME_MAX_LENGTH} characters'
       )
+
+    sanitized = ScenarioSnapshotV2.sanitize_scenario_filename(name)
+    if sanitized != name:
+      return self.bad_request(
+        'Scenario name must be filesystem-safe: no path separators or control '
+        'characters, and no leading/trailing spaces or .-_ punctuation'
+      )
+
+    return None
+
+  def create(self, **params: ScenarioCreateParams) -> Tuple[ScenarioShowResponse, int]:
+    name = params.get('name') or ''
+    invalid = self.__validate_scenario_name(name)
+    if invalid:
+      return invalid
 
     try:
       with ORM.instance().db.transaction():
@@ -114,6 +139,11 @@ class LocalDBScenarioAdapter(LocalDBAdapter):
 
     if not scenario:
       return self.__scenario_not_found()
+
+    if 'name' in params:
+      invalid = self.__validate_scenario_name(params.get('name') or '')
+      if invalid:
+        return invalid
 
     if scenario.update(params):
       return self.success(self.__to_show_response(scenario))

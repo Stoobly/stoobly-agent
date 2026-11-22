@@ -14,8 +14,15 @@ from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
-from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION, REQUEST_RESOURCE
-from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
+  MalformedLogEventError,
+  PUT_ACTION,
+  REQUEST_RESOURCE,
+)
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
+  MalformedRequestSnapshotError,
+  RequestSnapshot,
+)
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
@@ -389,6 +396,9 @@ def snapshot_handler(kwargs):
     print(f"Error: Could not find request", file=sys.stderr)
     sys.exit(1)
 
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
+
   response, status = request.snapshot(request_key, kwargs)
   if status != 200:
     print(f"Error: Could not snapshot request: {response}", file=sys.stderr)
@@ -520,12 +530,17 @@ def diff_handler(kwargs):
     _request_key = validate_request_key(request_key)
     request_uuid = _request_key.id
 
-    snapshot = RequestSnapshot(request_uuid)
+    snapshot = RequestSnapshot.create(request_uuid)
     if not snapshot.exists:
       print('Error: Snapshot not found for this request.', file=sys.stderr)
       sys.exit(1)
 
-    snapshot_raw = snapshot.request
+    try:
+      snapshot_raw = snapshot.request
+    except MalformedRequestSnapshotError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
+
     if snapshot_raw is None:
       print('Error: Snapshot file is empty or unreadable.', file=sys.stderr)
       sys.exit(1)
@@ -538,25 +553,33 @@ def diff_handler(kwargs):
     print_request_diff(snapshot, current_request, full=full)
     return
 
-  log = Log()
-  visited_request_ids = set()
-  for event in log.target_events:
-    if event.action != PUT_ACTION:
-      continue
-    if event.resource != REQUEST_RESOURCE:
-      continue
-    if event.resource_uuid in visited_request_ids:
-      continue
+  try:
+    log = Log()
+    visited_request_ids = set()
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+      if event.resource != REQUEST_RESOURCE:
+        continue
+      if event.resource_id in visited_request_ids:
+        continue
 
-    visited_request_ids.add(event.resource_uuid)
-    snapshot = RequestSnapshot(event.resource_uuid)
-    if not snapshot.exists:
-      continue
-    if snapshot.request is None:
-      continue
+      visited_request_ids.add(event.resource_id)
+      snapshot = event.snapshot()
+      if not snapshot.exists:
+        continue
+      try:
+        if snapshot.request is None:
+          continue
+      except MalformedRequestSnapshotError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    current_request = snapshot.find_resource()
-    if not current_request or not current_request.response:
-      continue
+      current_request = snapshot.find_resource()
+      if not current_request or not current_request.response:
+        continue
 
-    print_request_diff(snapshot, current_request, full=full)
+      print_request_diff(snapshot, current_request, full=full)
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)

@@ -1,6 +1,4 @@
-import pdb
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, TypeGuard, Unpack
 
 from stoobly_agent.config.data_dir import DataDir
 
@@ -10,17 +8,29 @@ if TYPE_CHECKING:
 
 from .log import Log
 from .log_event import Action, DELETE_ACTION, PUT_ACTION
-from .request_snapshot import RequestSnapshot, RequestSnapshotOptions
-from .scenario_snapshot import ScenarioSnapshot
+from .request_snapshot import RequestSnapshotV1, RequestSnapshotV2, RequestSnapshotOptions
+from .scenario_snapshot import ScenarioSnapshotV1, ScenarioSnapshotV2
+from .snapshot_format import FORMAT_V2, resolve_write_format
 
-def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
-  action: Action = options.get('action')
+def snapshot_request(request: 'Request', **options: Unpack[RequestSnapshotOptions]):
+  action = options.get('action')
   if not __validate_action(action):
     return
 
   data_dir = DataDir.instance(options.get('data_dir_path'))
+  write_format = options.get('format')
+  if write_format is None:
+    write_format = resolve_write_format(data_dir)
 
-  snapshot = RequestSnapshot(request.uuid, data_dir)
+  if write_format == FORMAT_V2:
+    snapshot = RequestSnapshotV2(
+      request.uuid,
+      data_dir,
+      slug=RequestSnapshotV2.build_request_slug(request.method, request.path),
+    )
+  else:
+    snapshot = RequestSnapshotV1(request.uuid, data_dir)
+
   snapshot.backup()
 
   log = Log(data_dir)
@@ -31,49 +41,71 @@ def snapshot_request(request: 'Request', **options: RequestSnapshotOptions):
     inverted_scenario_index = log.scenario_inverted_index
 
     # If a scenario currently depends on this request, we can't remove the snapshot until the scenario is also removed
-    log.remove_request_snapshot(snapshot, inverted_scenario_index) 
+    log.remove_request_snapshot(snapshot, inverted_scenario_index)
 
   try:
     if action == PUT_ACTION:
-      log.put(request)
+      log.put(request, format=write_format)
     elif action == DELETE_ACTION:
-      log.delete(request)
+      log.delete(request, format=write_format)
   except Exception as e:
-    snapshot.rollback() 
+    snapshot.rollback()
 
   return snapshot.path
 
-def snapshot_scenario(scenario: 'Scenario', **options):
-  action: Action = options.get('action')
+def snapshot_scenario(scenario: 'Scenario', **options: Unpack[RequestSnapshotOptions]):
+  action = options.get('action')
   if not __validate_action(action):
     return
 
   data_dir = DataDir.instance(options.get('data_dir_path'))
+  write_format = options.get('format')
+  if write_format is None:
+    write_format = resolve_write_format(data_dir)
 
-  snapshot = ScenarioSnapshot(scenario.uuid, data_dir)
+  if write_format == FORMAT_V2:
+    snapshot = ScenarioSnapshotV2(scenario.uuid, data_dir, name=scenario.name)
+  else:
+    snapshot = ScenarioSnapshotV1(scenario.uuid, data_dir)
+
   snapshot.backup_metadata()
 
   if action == PUT_ACTION:
     snapshot.write_metadata(scenario)
-  elif action == DELETE_ACTION:
-    snapshot.remove_metadata()
 
+  # Backup/remove requests before deleting metadata: v2 stores the request
+  # list in the scenario YAML, so metadata must still exist while iterating.
   snapshot.backup_requests()
 
   log = Log(data_dir)
   inverted_scenario_index = log.scenario_inverted_index
   if action == PUT_ACTION:
-    snapshot.remove_requests(lambda snapshot: log.remove_request_snapshot(snapshot, inverted_scenario_index))
+    snapshot.remove_requests(
+      lambda snap: log.remove_request_snapshot(
+        snap,
+        inverted_scenario_index,
+        ignore_scenario_ids=[scenario.uuid],
+      )
+    )
     snapshot.write_requests(scenario, **options)
   elif action == DELETE_ACTION:
-    snapshot.remove_requests(lambda snapshot: log.remove_request_snapshot(snapshot, inverted_scenario_index))
+    # Ignore this scenario so its exclusive requests are removed; requests still
+    # referenced by other scenarios are kept.
+    snapshot.remove_requests(
+      lambda snap: log.remove_request_snapshot(
+        snap,
+        inverted_scenario_index,
+        ignore_scenario_ids=[scenario.uuid],
+      )
+    )
+    # Append history while YAML still exists so the locator uses the on-disk stem
+    log.delete(scenario, format=write_format)
+    snapshot.remove_metadata()
+    return snapshot.metadata_path
 
-  if action == PUT_ACTION:
-    log.put(scenario)
-  elif action == DELETE_ACTION:
-    log.delete(scenario)
+  log.put(scenario, format=write_format)
 
   return snapshot.metadata_path
 
-def __validate_action(action: Action):
-  return action == PUT_ACTION or action == DELETE_ACTION 
+def __validate_action(action: Optional[Action]) -> TypeGuard[Action]:
+  return action == PUT_ACTION or action == DELETE_ACTION

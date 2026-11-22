@@ -1,4 +1,5 @@
 ALIAS_RESOLVE_STRATEGY = 'X-Stoobly-Alias-Resolve-Strategy'
+BODY_REF = 'X-Stoobly-Body-Ref'
 CONTENT_TYPE = 'X-Stoobly-Content-Type'
 CONTENT_TYPE_TEST_RESULTS = 'test/results'
 INTERCEPT_ACTIVE = 'X-Stoobly-Intercept-Active'

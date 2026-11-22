@@ -13,6 +13,7 @@ from stoobly_agent.app.models.adapters.raw_joined import RawJoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
     LogEvent,
+    MalformedLogEventError,
     REQUEST_RESOURCE,
     SCENARIO_RESOURCE,
 )
@@ -53,11 +54,14 @@ def list_snapshots(
     size: Optional[int] = None,
 ) -> List[dict]:
     """Return formatted rows for the given snapshot resource type."""
-    log = Log()
-    if pending:
-        events = log.unprocessed_events
-    else:
-        events = log.target_events
+    try:
+      log = Log()
+      if pending:
+          events = log.unprocessed_events
+      else:
+          events = log.target_events
+    except MalformedLogEventError as e:
+      raise click.ClickException(str(e)) from e
 
     if not events:
         return []
@@ -235,7 +239,7 @@ def _scenario_key_filter_matches(event: LogEvent, scenario_key: Optional[str]) -
     if event.resource != SCENARIO_RESOURCE:
         return False
 
-    return event.resource_uuid == resolved
+    return event.resource_id == resolved
 
 
 def _transform_scenario(snapshot: ScenarioSnapshot):

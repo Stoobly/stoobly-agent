@@ -13,6 +13,7 @@ from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, LogEvent
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
@@ -127,6 +128,105 @@ class TestApply():
         _request = Request.find_by(uuid=recorded_request.uuid)
         assert_orm_request_equivalent(_request, recorded_request)
 
+    class TestWhenUpdatingRequestMethodPath():
+      '''
+      1. Record request, snapshot (old slug)
+      2. CLI update --method/--path, snapshot again (slug relocates, orphan removed)
+      3. Delete ORM request
+      4. Apply
+      5. Expect recreated request with new method/path; history collapses by UUID
+      '''
+
+      NEW_METHOD = 'POST'
+      NEW_PATH = '/api/renamed'
+
+      @pytest.fixture(scope='class')
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def first_snapshot(cls, runner: CliRunner, recorded_request: Request):
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        old_slug = RequestSnapshotV2.build_request_slug(
+          recorded_request.method, recorded_request.path
+        )
+        old_path = RequestSnapshotV2(recorded_request.uuid, slug=old_slug).path
+        assert os.path.isfile(old_path)
+
+        event = Log().events[-1]
+        assert event.resource_id == recorded_request.uuid
+        assert event.resource_uuid == f'{old_slug}/{recorded_request.uuid}'
+        return old_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def updated_snapshot(cls, runner: CliRunner, recorded_request: Request, first_snapshot: str):
+        update_result = runner.invoke(
+          request,
+          [
+            'update',
+            recorded_request.key(),
+            '--method', cls.NEW_METHOD,
+            '--path', cls.NEW_PATH,
+          ],
+        )
+        assert update_result.exit_code == 0
+
+        recorded_request = Request.find(recorded_request.id)
+        assert recorded_request.method == cls.NEW_METHOD
+        assert recorded_request.path == cls.NEW_PATH
+
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        new_slug = RequestSnapshotV2.build_request_slug(cls.NEW_METHOD, cls.NEW_PATH)
+        new_path = RequestSnapshotV2(recorded_request.uuid, slug=new_slug).path
+        assert os.path.isfile(new_path)
+        assert not os.path.exists(first_snapshot)
+
+        event = Log().events[-1]
+        assert event.resource_id == recorded_request.uuid
+        assert event.resource_uuid == f'{new_slug}/{recorded_request.uuid}'
+
+        targets = [
+          e for e in Log().target_events
+          if e.is_request() and e.resource_id == recorded_request.uuid
+        ]
+        assert len(targets) == 1
+        assert targets[0].resource_uuid == f'{new_slug}/{recorded_request.uuid}'
+        return new_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recreated_request(cls, runner: CliRunner, recorded_request: Request, updated_snapshot: str):
+        uuid = recorded_request.uuid
+        recorded_request.delete()
+        assert Request.find_by(uuid=uuid) is None
+
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated = Request.find_by(uuid=uuid)
+        assert recreated is not None
+        assert os.path.isfile(updated_snapshot)
+        return recreated
+
+      def test_it_applies_updated_method_and_path(self, recreated_request: Request):
+        assert recreated_request.method == self.NEW_METHOD
+        assert recreated_request.path == self.NEW_PATH
+
+      def test_it_keeps_relocated_slug(self, recreated_request: Request):
+        new_slug = RequestSnapshotV2.build_request_slug(self.NEW_METHOD, self.NEW_PATH)
+        snap = RequestSnapshotV2(recreated_request.uuid, slug=new_slug)
+        assert snap.path.endswith(f'{new_slug}/{recreated_request.uuid}.http')
+        assert os.path.isfile(snap.path)
+
     class TestWhenDeletingScenario():
 
       @pytest.fixture(scope='class')
@@ -233,6 +333,98 @@ class TestApply():
         assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
         assert_orm_request_equivalent(requests[1], created_scenario_requests[1])
 
+    class TestWhenRenamingScenario():
+      '''
+      1. Create scenario old-name, record a request, snapshot
+      2. Rename to new-name, snapshot again (YAML relocates)
+      3. Delete ORM scenario (+ requests)
+      4. Apply
+      5. Expect recreated scenario named new-name; history collapses by UUID
+      '''
+
+      @pytest.fixture(scope='class')
+      @classmethod
+      def created_scenario(cls, runner: CliRunner):
+        create_result = runner.invoke(scenario, ['create', 'rename-old'])
+        assert create_result.exit_code == 0
+        return Scenario.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner, created_scenario: Scenario):
+        record_result = runner.invoke(
+          record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL]
+        )
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def first_snapshot(cls, runner: CliRunner, created_scenario: Scenario):
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+        old_path = os.path.join(scenarios_dir, 'rename-old.yaml')
+        assert os.path.isfile(old_path)
+
+        event = Log().events[-1]
+        assert event.resource_id == created_scenario.uuid
+        assert event.resource_uuid == f'rename-old/{created_scenario.uuid}'
+        return old_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def renamed_snapshot(cls, runner: CliRunner, created_scenario: Scenario, first_snapshot: str):
+        assert created_scenario.update({'name': 'rename-new'})
+        created_scenario = Scenario.find(created_scenario.id)
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+        new_path = os.path.join(scenarios_dir, 'rename-new.yaml')
+        assert os.path.isfile(new_path)
+        assert not os.path.exists(first_snapshot)
+
+        event = Log().events[-1]
+        assert event.resource_id == created_scenario.uuid
+        assert event.resource_uuid == f'rename-new/{created_scenario.uuid}'
+
+        targets = [e for e in Log().target_events if e.is_scenario() and e.resource_id == created_scenario.uuid]
+        assert len(targets) == 1
+        assert targets[0].resource_uuid == f'rename-new/{created_scenario.uuid}'
+        return new_path
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recreated_scenario(cls, runner: CliRunner, created_scenario: Scenario, renamed_snapshot: str):
+        requests = list(created_scenario.requests)
+        uuid = created_scenario.uuid
+
+        created_scenario.delete()
+        assert Scenario.find_by(uuid=uuid) is None
+        for request in requests:
+          request.delete()
+
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        recreated = Scenario.find_by(uuid=uuid)
+        assert recreated is not None
+        assert os.path.isfile(renamed_snapshot)
+        return recreated
+
+      def test_it_applies_renamed_scenario(self, created_scenario: Scenario, recreated_scenario: Scenario):
+        assert recreated_scenario.uuid == created_scenario.uuid
+        assert recreated_scenario.name == 'rename-new'
+        assert recreated_scenario.requests_count == 1
+
+      def test_it_keeps_relocated_yaml(self, recreated_scenario: Scenario):
+        snap = ScenarioSnapshot.create(recreated_scenario.uuid)
+        assert snap.metadata_path.endswith('rename-new.yaml')
+        assert snap.metadata['name'] == 'rename-new'
+
     class TestWhenMergingScenario():
       class TestWhenScenarioNameAlreadyExists():
         @pytest.fixture(scope='class')
@@ -324,7 +516,9 @@ class TestApply():
         @pytest.fixture(scope='class', autouse=True)
         @classmethod
         def new_scenario_request(cls, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
-          assert created_scenario.uuid == put_event.resource_uuid
+          assert put_event.resource_id == created_scenario.uuid
+          assert put_event.resource_uuid == f'test/{created_scenario.uuid}'
+          assert put_event.snapshot().uuid == created_scenario.uuid
           assert created_scenario.requests.count() == 2
 
           record_result = runner.invoke(record, ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL])
@@ -426,7 +620,7 @@ class TestApply():
           assert_orm_request_equivalent(requests[0], created_scenario_requests[0])
 
         def test_it_removes_request_snapshot(self, delete_event: LogEvent):
-          scenario_snapshot = ScenarioSnapshot(delete_event.resource_uuid)
+          scenario_snapshot = ScenarioSnapshot.create(delete_event.resource_id)
           assert len(scenario_snapshot.requests) == 1
 
       class TestWhenMergingRequests():
@@ -516,12 +710,13 @@ class TestApply():
         created_scenario.delete()
         assert Scenario.find(created_scenario.id) == None
 
-      def test_creates_scenario_with_uuid_name(self, runner: CliRunner, created_scenario: Scenario):
+      def test_skips_scenario_with_malformed_metadata(self, runner: CliRunner, created_scenario: Scenario):
+        # v2 YAML must include uuid; corrupt metadata cannot recover identity from name-only history
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 0
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
-        assert recreated_scenario.name == created_scenario.uuid
+        assert recreated_scenario == None
 
     class TestWhenMissingScenarioMetadata():
 
@@ -592,13 +787,13 @@ class TestApply():
       def test_it_creates_request(self, runner: CliRunner, recorded_request: Request):
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 1
-
+        assert 'Malformed request snapshot' in apply_result.output
         assert Request.find_by(uuid=recorded_request.uuid) == None
 
       def test_idempotent(self, runner: CliRunner, recorded_request: Request, put_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
         assert apply_result.exit_code == 1
-
+        assert 'Malformed request snapshot' in apply_result.output
         assert Request.find_by(uuid=recorded_request.uuid) == None
 
     class TestWhenMalformedScenarioRequest():
@@ -640,6 +835,7 @@ class TestApply():
       def test_skips_scenario(self, runner: CliRunner, created_scenario: Scenario):
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 1
+        assert 'Malformed request snapshot' in apply_result.output
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
         assert recreated_scenario
@@ -649,6 +845,7 @@ class TestApply():
       def test_idempotent(self, runner: CliRunner, created_scenario: Scenario, put_event: LogEvent):
         apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
         assert apply_result.exit_code == 1
+        assert 'Malformed request snapshot' in apply_result.output
 
         recreated_scenario = Scenario.find_by(uuid=created_scenario.uuid)
         assert recreated_scenario
@@ -1007,6 +1204,263 @@ class TestApply():
         assert apply_result.exit_code == 0
 
         assert Log().unprocessed_events == []
+
+    class TestWhenSoftDeletingRequest():
+      '''
+      Apply DELETE without --force soft-deletes the ORM row (is_deleted=True).
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
+        assert len(pending) == 1
+
+        apply_result = runner.invoke(snapshot, ['apply', pending[0].uuid])
+        assert apply_result.exit_code == 0
+
+        recorded = Request.find_by(uuid=pending[0].resource_id)
+        assert recorded is not None
+
+        time.sleep(0.5)
+        delete_result = runner.invoke(
+          request,
+          ['snapshot', 'create', '--action', DELETE_ACTION, recorded.key()],
+        )
+        assert delete_result.exit_code == 0
+        return recorded
+
+      def test_it_soft_deletes(self, runner: CliRunner, recorded_request: Request):
+        delete_event = Log().unprocessed_events[-1]
+        assert delete_event.action == DELETE_ACTION
+
+        apply_result = runner.invoke(snapshot, ['apply', delete_event.uuid])
+        assert apply_result.exit_code == 0
+
+        soft_deleted = Request.find_by(uuid=recorded_request.uuid)
+        assert soft_deleted is not None
+        assert bool(soft_deleted.is_deleted) is True
+
+    class TestWhenSoftDeleteThenPutUndeletes():
+      '''
+      After a soft-deleted request, applying a PUT clears is_deleted.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(runner, [DETERMINISTIC_GET_REQUEST_URL])
+        recorded = Request.find_by(uuid=pending[0].resource_id)
+        recorded.update({'is_deleted': True})
+        assert bool(Request.find_by(uuid=recorded.uuid).is_deleted) is True
+        return recorded
+
+      def test_it_undeletes(self, runner: CliRunner, recorded_request: Request):
+        put_event = Log().unprocessed_events[-1]
+        apply_result = runner.invoke(snapshot, ['apply', put_event.uuid])
+        assert apply_result.exit_code == 0
+
+        restored = Request.find_by(uuid=recorded_request.uuid)
+        assert restored is not None
+        assert bool(restored.is_deleted) is False
+
+    class TestWhenMissingRequestSnapshotSkips():
+      '''
+      Missing request snapshot file returns 301 (skip). apply all continues and
+      advances VERSION past the skip so later events still apply.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
+        pending = create_pending_request_snapshots(
+          runner,
+          [DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert len(pending) == 2
+
+        missing_path = pending[0].snapshot().path
+        assert os.path.isfile(missing_path)
+        os.remove(missing_path)
+
+        for event in pending:
+          orm_request = Request.find_by(uuid=event.resource_id)
+          if orm_request:
+            orm_request.delete()
+
+        return pending
+
+      def test_it_skips_and_applies_later_events(self, runner: CliRunner, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        assert Request.find_by(uuid=pending_events[0].resource_id) is None
+        assert Request.find_by(uuid=pending_events[1].resource_id) is not None
+        assert Log().unprocessed_events == []
+
+    class TestWhenPartialApplyFailureAdvancesVersion():
+      '''
+      On mid-batch failure, VERSION advances through the last successful event
+      and remaining events stay pending.
+
+      Uses a request PUT (success) followed by a scenario PUT whose nested
+      request file is missing (clean 400). Junk .http files raise during v2
+      reconstitute and abort apply before VERSION can advance.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def pending_events(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        recorded_request = Request.last()
+        snapshot_result = runner.invoke(request, ['snapshot', 'create', recorded_request.key()])
+        assert snapshot_result.exit_code == 0
+
+        time.sleep(0.5)
+
+        create_result = runner.invoke(scenario, ['create', 'partial-fail-scenario'])
+        assert create_result.exit_code == 0
+        created_scenario = Scenario.last()
+        record_result = runner.invoke(
+          record,
+          ['--scenario-key', created_scenario.key(), NON_DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert record_result.exit_code == 0
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        pending = Log().unprocessed_events
+        assert len(pending) == 2
+
+        nested = pending[1].snapshot().request_snapshots[0]
+        os.remove(nested.path)
+
+        recorded_request.delete()
+        scenario_requests = list(created_scenario.requests)
+        created_scenario.delete()
+        for req in scenario_requests:
+          req.delete()
+
+        return pending
+
+      def test_it_advances_version_to_last_success(self, runner: CliRunner, pending_events: List[LogEvent]):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        assert Request.find_by(uuid=pending_events[0].resource_id) is not None
+
+        unprocessed = Log().unprocessed_events
+        assert [event.uuid for event in unprocessed] == [pending_events[1].uuid]
+        assert pending_events[0].uuid in Log().version
+
+    class TestWhenMissingScenarioRequestFile():
+      '''
+      Scenario PUT with a missing nested request file fails apply (400).
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def put_event(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        create_result = runner.invoke(scenario, ['create', 'missing-request-file'])
+        assert create_result.exit_code == 0
+        created_scenario = Scenario.last()
+
+        record_result = runner.invoke(
+          record,
+          ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL],
+        )
+        assert record_result.exit_code == 0
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+        assert snapshot_result.exit_code == 0
+
+        event = Log().unprocessed_events[-1]
+        request_snap = event.snapshot().request_snapshots[0]
+        os.remove(request_snap.path)
+
+        requests = list(created_scenario.requests)
+        created_scenario.delete()
+        for req in requests:
+          req.delete()
+
+        return event
+
+      def test_it_fails_apply(self, runner: CliRunner, put_event: LogEvent):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+
+        recreated = Scenario.find_by(uuid=put_event.snapshot().uuid)
+        assert recreated is not None
+        assert len(recreated.requests) == 0
+
+    class TestWhenScenarioNameExistsAsSoftDeleted():
+      '''
+      Creating from snapshot hits 409 against a soft-deleted same-name row;
+      apply remaps that row to the snapshot UUID and undeletes it.
+      '''
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def source_scenario(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+
+        create_result = runner.invoke(scenario, ['create', 'soft-deleted-name'])
+        assert create_result.exit_code == 0
+        source = Scenario.last()
+
+        snapshot_result = runner.invoke(scenario, ['snapshot', 'create', source.key()])
+        assert snapshot_result.exit_code == 0
+
+        # Replace ORM row with a soft-deleted scenario of the same name but different uuid
+        source.delete()
+        create_result = runner.invoke(scenario, ['create', 'soft-deleted-name'])
+        assert create_result.exit_code == 0
+        conflicting = Scenario.last()
+        conflicting.update({'is_deleted': True})
+        assert bool(Scenario.find(conflicting.id).is_deleted) is True
+
+        return source
+
+      def test_it_remaps_soft_deleted_scenario(self, runner: CliRunner, source_scenario: Scenario):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 0
+
+        remapped = Scenario.find_by(uuid=source_scenario.uuid)
+        assert remapped is not None
+        assert remapped.name == source_scenario.name
+        assert bool(remapped.is_deleted) is False
+
+    class TestWhenApplyingUnknownUuid():
+      def test_it_exits_nonzero(self, runner: CliRunner):
+        apply_result = runner.invoke(snapshot, ['apply', '00000000-0000-0000-0000-000000000000'])
+        assert apply_result.exit_code == 1
+
+    class TestWhenHistoryLineMalformed():
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def malformed_history(cls, runner: CliRunner):
+        log = Log()
+        log.version = log.generate_version(log.uuids())
+        # Append a truncated history line under snapshots/history
+        history_dir = log.history_dir_path
+        os.makedirs(history_dir, exist_ok=True)
+        path = os.path.join(history_dir, 'malformed-history')
+        with open(path, 'a') as fp:
+          fp.write('not-enough-fields\n')
+
+      def test_it_reports_error_to_user(self, runner: CliRunner):
+        apply_result = runner.invoke(snapshot, ['apply'])
+        assert apply_result.exit_code == 1
+        assert 'Malformed snapshot history line' in apply_result.output
+        assert 'not-enough-fields' in apply_result.output
 
     class TestLocking():
       def test_concurrent_apply_commands_timeout(self, runner: CliRunner):
