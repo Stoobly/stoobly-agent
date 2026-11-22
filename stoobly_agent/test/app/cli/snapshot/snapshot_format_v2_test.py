@@ -388,6 +388,224 @@ class TestSnapshotFormatV2:
       assert result.exit_code == 0
       assert 'Snapshots are already in v1 format.' in result.output
 
+    def test_migrate_empty_dir_is_noop(self, runner: CliRunner):
+      assert detect_snapshot_format(DataDir.instance()) is None
+
+      result = runner.invoke(snapshot, ['migrate', '--format', 'v2'])
+      assert result.exit_code == 0
+      assert 'No snapshots to migrate.' in result.output
+
+      noop = migrate_snapshots(DataDir.instance(), format=FORMAT_V2)
+      assert noop['noop'] is True
+
+  class TestMigrateEdgeCases:
+    @pytest.fixture(autouse=True)
+    def settings(self):
+      return reset()
+
+    @pytest.fixture
+    def recorded_request(self, runner: CliRunner):
+      assert runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL]).exit_code == 0
+      return Request.last()
+
+    def test_skips_corrupt_v1_request(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      good_path = snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+      corrupt_uuid = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+      shard = os.path.join(DataDir.instance().snapshots_requests_dir_path, corrupt_uuid[0:2])
+      os.makedirs(shard, exist_ok=True)
+      corrupt_path = os.path.join(shard, corrupt_uuid)
+      with open(corrupt_path, 'wb') as fp:
+        fp.write(b'not-a-joined-request')
+
+      result = migrate_snapshots_to_v2(DataDir.instance())
+      assert result['requests'] == 1
+      assert os.path.isfile(corrupt_path)
+      assert not os.path.exists(good_path)
+      assert RequestSnapshot.create(recorded_request.uuid).format == FORMAT_V2
+
+    def test_skips_corrupt_v2_request(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V2)
+      good_path = RequestSnapshot.create(recorded_request.uuid).path
+
+      corrupt_uuid = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
+      slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, 'GET-corrupt')
+      os.makedirs(slug_dir, exist_ok=True)
+      corrupt_path = os.path.join(slug_dir, f'{corrupt_uuid}.http')
+      with open(corrupt_path, 'wb') as fp:
+        fp.write(b'junk')
+
+      result = migrate_snapshots_to_v1(DataDir.instance())
+      assert result['requests'] == 1
+      assert os.path.isfile(corrupt_path)
+      assert not os.path.exists(good_path)
+      assert RequestSnapshot.create(recorded_request.uuid).format == FORMAT_V1
+
+    def test_skips_corrupt_scenario_yaml(self, runner: CliRunner, recorded_request: Request):
+      assert runner.invoke(request, ['snapshot', 'create', recorded_request.key()]).exit_code == 0
+
+      scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+      os.makedirs(scenarios_dir, exist_ok=True)
+      bad_yaml = os.path.join(scenarios_dir, 'broken.yaml')
+      with open(bad_yaml, 'w') as fp:
+        fp.write('not: valid: yaml: [')
+
+      no_uuid_yaml = os.path.join(scenarios_dir, 'no-uuid.yaml')
+      with open(no_uuid_yaml, 'w') as fp:
+        yaml.safe_dump({'description': 'x', 'requests': []}, fp)
+
+      result = migrate_snapshots_to_v1(DataDir.instance())
+      assert result['scenarios'] == 0
+      assert os.path.isfile(bad_yaml)
+      assert os.path.isfile(no_uuid_yaml)
+      assert result['requests'] == 1
+
+    def test_scenario_name_collision_uses_unique_stem(self, runner: CliRunner):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_scenario
+
+      assert runner.invoke(scenario, ['create', 'dup-name']).exit_code == 0
+      first = Scenario.last()
+      snapshot_scenario(first, action=PUT_ACTION, format=FORMAT_V1)
+
+      # Plant a second v1 scenario metadata with the same display name
+      other_uuid = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+      meta_path = os.path.join(DataDir.instance().snapshots_scenarios_dir_path, other_uuid)
+      with open(meta_path, 'w') as fp:
+        json.dump({'name': 'dup-name', 'description': ''}, fp)
+
+      index_dir = DataDir.instance().snapshots_scenario_requests_dir_path
+      os.makedirs(index_dir, exist_ok=True)
+      with open(os.path.join(index_dir, other_uuid), 'w') as fp:
+        fp.write('')
+
+      # History line for the planted scenario (bare uuid)
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, SCENARIO_RESOURCE
+      Log().append(LogEvent.serialize(SCENARIO_RESOURCE, other_uuid, PUT_ACTION))
+
+      result = migrate_snapshots_to_v2(DataDir.instance())
+      assert result['scenarios'] == 2
+
+      scenarios_dir = DataDir.instance().snapshots_scenarios_dir_path
+      assert os.path.isfile(os.path.join(scenarios_dir, 'dup-name.yaml'))
+      assert os.path.isfile(os.path.join(scenarios_dir, 'dup-name-2.yaml'))
+
+      def locator_for(scenario_uuid: str) -> str:
+        for event in Log().events:
+          if not event.is_scenario():
+            continue
+          if ScenarioSnapshot.create(event.resource_uuid).uuid == scenario_uuid:
+            return event.resource_uuid
+        raise AssertionError(f'no history locator for {scenario_uuid}')
+
+      locators = {locator_for(first.uuid), locator_for(other_uuid)}
+      assert locators == {'dup-name', 'dup-name-2'}
+
+    def test_legacy_scenario_name_uuid_locator_collapsed(self, runner: CliRunner):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, SCENARIO_RESOURCE
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_scenario
+
+      assert runner.invoke(scenario, ['create', 'legacy-loc']).exit_code == 0
+      created = Scenario.last()
+      snapshot_scenario(created, action=PUT_ACTION, format=FORMAT_V1)
+
+      # Replace last history locator with legacy name/uuid form
+      log = Log()
+      history_files = log.history_files
+      assert history_files
+      path = history_files[-1]
+      with open(path, 'r') as fp:
+        lines = [l for l in fp.read().split('\n') if l]
+      legacy = LogEvent.serialize(SCENARIO_RESOURCE, f'legacy-loc/{created.uuid}', PUT_ACTION)
+      with open(path, 'w') as fp:
+        fp.write('\n'.join(lines[:-1] + [legacy]) + '\n')
+
+      migrate_snapshots_to_v2(DataDir.instance())
+      event = next(e for e in reversed(Log().events) if e.is_scenario())
+      assert event.resource_uuid == 'legacy-loc'
+      assert '/' not in event.resource_uuid
+
+      migrate_snapshots_to_v1(DataDir.instance())
+      event = next(e for e in reversed(Log().events) if e.is_scenario())
+      assert event.resource_uuid == created.uuid
+
+    def test_rewrites_archived_history_and_preserves_version(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+      log = Log()
+      event = log.events[-1]
+      version_before = log.generate_version([event.uuid])
+      log.version = version_before
+
+      # Archived history file with a bare-uuid locator (not the active bucket)
+      archived = os.path.join(log.history_dir_path, '1000000000')
+      archived_line = LogEvent.serialize(REQUEST_RESOURCE, recorded_request.uuid, PUT_ACTION)
+      with open(archived, 'w') as fp:
+        fp.write(archived_line + '\n')
+
+      migrate_snapshots_to_v2(DataDir.instance())
+
+      assert Log().version == version_before
+      with open(archived, 'r') as fp:
+        rewritten = fp.read().strip()
+      archived_event = LogEvent.create(rewritten)
+      assert '/' in archived_event.resource_uuid
+      assert archived_event.resource_id == recorded_request.uuid
+      assert archived_event.uuid == archived_line.split()[0]
+
+    def test_removes_planted_uuid_index(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+      index_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, '.uuid-index')
+      os.makedirs(index_dir, exist_ok=True)
+      index_path = os.path.join(index_dir, recorded_request.uuid)
+      with open(index_path, 'w') as fp:
+        fp.write('GET-api/' + recorded_request.uuid + '.http')
+
+      migrate_snapshots_to_v2(DataDir.instance())
+      assert not os.path.isdir(index_dir)
+
+    def test_v2_to_v1_rewrites_request_history_and_cleans_bodies(self, runner: CliRunner, recorded_request: Request):
+      assert runner.invoke(request, ['snapshot', 'create', recorded_request.key()]).exit_code == 0
+      v2 = RequestSnapshot.create(recorded_request.uuid)
+      slug_dir = os.path.dirname(v2.path)
+      bodies_dir = os.path.join(slug_dir, 'bodies')
+      assert os.path.isdir(bodies_dir)
+
+      event_before = Log().events[-1]
+      assert '/' in event_before.resource_uuid
+
+      result = migrate_snapshots_to_v1(DataDir.instance())
+      assert result['requests'] == 1
+
+      event_after = Log().events[-1]
+      assert event_after.uuid == event_before.uuid
+      assert event_after.resource_uuid == recorded_request.uuid
+      assert '/' not in event_after.resource_uuid
+      assert not os.path.isdir(bodies_dir)
+      assert not os.path.isdir(slug_dir)
+
+    def test_preserves_malformed_history_line(self, recorded_request: Request):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+
+      snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+      log = Log()
+      path = log.history_files[-1]
+      with open(path, 'a') as fp:
+        fp.write('not-enough-fields\n')
+
+      migrate_snapshots_to_v2(DataDir.instance())
+
+      with open(path, 'r') as fp:
+        contents = fp.read()
+      assert 'not-enough-fields' in contents
+      assert any('/' in line and recorded_request.uuid in line for line in contents.split('\n') if line)
+
   class TestCopyV2WithBodies:
     @pytest.fixture(autouse=True)
     def settings(self):
