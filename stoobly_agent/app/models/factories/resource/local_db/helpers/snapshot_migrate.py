@@ -13,7 +13,7 @@ from .body_ref import (
   reconstitute_joined_request,
 )
 from .log import EVENT_DELIMITTER, Log
-from .log_event import LogEvent
+from .log_event import LogEvent, LogEventV1, LogEventV2
 from .request_snapshot import RequestSnapshotV2
 from .scenario_snapshot import ScenarioSnapshotV2
 from .snapshot_format import (
@@ -156,10 +156,10 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
               slug, _uuid = parsed
               request_uuid_to_locator[request_uuid] = f"{slug}/{request_uuid}"
 
-      yaml_name = f"{ScenarioSnapshotV2.sanitize_scenario_filename(scenario_name)}.yaml"
-      yaml_path = os.path.join(scenarios_dir, yaml_name)
-      # Avoid clobbering if name collision
-      yaml_path = _unique_path(yaml_path)
+      # Avoid clobbering if sanitized names collide (e.g. My Scenario / My-Scenario)
+      yaml_path = ScenarioSnapshotV2.allocate_yaml_path(
+        scenarios_dir, scenario_name, uuid=scenario_uuid
+      )
       yaml_stem = _name_from_yaml_filename(os.path.basename(yaml_path))
 
       with open(yaml_path, 'w') as fp:
@@ -383,10 +383,21 @@ def _rewrite_history_locators(
           elif not UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
             new_resource_uuid = scenario_locators[event.resource_uuid]
 
-      if new_resource_uuid != event.resource_uuid:
+      event.resource_uuid = new_resource_uuid
+      if to_v2:
+        # uuid timestamp action resource resource_id
+        new_line = LogEventV2.format_line(
+          event.uuid, event.created_at, event.action, event.resource, new_resource_uuid,
+        )
+      else:
+        # uuid resource locator action [timestamp]
+        new_line = LogEventV1.format_line(
+          event.uuid, event.created_at, event.action, event.resource, new_resource_uuid,
+        )
+
+      if new_line != raw:
         changed = True
-        event.resource_uuid = new_resource_uuid
-        new_raw_events.append(str(event))
+        new_raw_events.append(new_line)
       else:
         new_raw_events.append(raw)
 
@@ -416,18 +427,6 @@ def _find_v2_relative(requests_dir: str, uuid: str) -> Optional[str]:
     if os.path.isfile(candidate):
       return RequestSnapshotV2.request_relative_path(slug, uuid)
   return None
-
-
-def _unique_path(path: str) -> str:
-  if not os.path.exists(path):
-    return path
-  base, ext = os.path.splitext(path)
-  i = 2
-  while True:
-    candidate = f"{base}-{i}{ext}"
-    if not os.path.exists(candidate):
-      return candidate
-    i += 1
 
 
 def _name_from_yaml_filename(filename: str) -> str:

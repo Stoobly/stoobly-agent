@@ -183,7 +183,9 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
             )
             from stoobly_agent.lib.orm.scenario import Scenario
             scenario = Scenario.find_by(uuid=resource_uuid)
-            if scenario and event.resource_id == ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name):
+            if scenario and event.resource_id == ScenarioSnapshotV2.history_locator_for(
+              scenario.uuid, scenario.name
+            ):
                 return event
 
     # If resource is request and no event found, check if it belongs to a scenario event

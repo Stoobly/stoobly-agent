@@ -13,7 +13,8 @@ from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 
 REQUEST_DELIMITTER = "\n"
-SAFE_NAME_RE = re.compile(r'[^A-Za-z0-9._-]+')
+# Only path separators and controls (history is newline-delimited; resource id may have spaces).
+SAFE_NAME_RE = re.compile(r'[/\\\x00-\x1f]+')
 
 
 class ScenarioSnapshot(Snapshot):
@@ -79,11 +80,14 @@ class ScenarioSnapshot(Snapshot):
     scenarios_dir = data_dir.snapshots_scenarios_dir_path
 
     if name:
-      candidate = os.path.join(
-        scenarios_dir, f"{ScenarioSnapshotV2.sanitize_scenario_filename(name)}.yaml"
-      )
-      if os.path.isfile(candidate):
-        return FORMAT_V2
+      stems = [name]
+      sanitized = ScenarioSnapshotV2.sanitize_scenario_filename(name)
+      if sanitized not in stems:
+        stems.append(sanitized)
+      for stem in stems:
+        candidate = os.path.join(scenarios_dir, f"{stem}.yaml")
+        if os.path.isfile(candidate):
+          return FORMAT_V2
 
     if uuid:
       index_path = os.path.join(scenarios_dir, '.uuid-index', uuid)
@@ -381,8 +385,74 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
   def sanitize_scenario_filename(name: str) -> str:
     """Filesystem-safe scenario YAML basename (without extension)."""
     name = (name or '').strip() or 'scenario'
-    name = SAFE_NAME_RE.sub('-', name).strip('-._')
+    name = SAFE_NAME_RE.sub('-', name).strip(' .-_')
     return name or 'scenario'
+
+  @staticmethod
+  def unique_yaml_path(path: str) -> str:
+    """Return path, or path with -2, -3, ... before the extension if it exists."""
+    if not os.path.exists(path):
+      return path
+    base, ext = os.path.splitext(path)
+    i = 2
+    while True:
+      candidate = f"{base}-{i}{ext}"
+      if not os.path.exists(candidate):
+        return candidate
+      i += 1
+
+  @classmethod
+  def allocate_yaml_path(
+    cls,
+    scenarios_dir: str,
+    name: str,
+    uuid: str = None,
+  ) -> str:
+    """
+    Choose a unique scenarios/*.yaml path for name.
+
+    Reuses an existing file whose YAML uuid matches; otherwise sanitizes name and
+    appends -2, -3, ... on collision (same as migrate).
+    """
+    if uuid and UUID_RE.match(str(uuid)) and os.path.isdir(scenarios_dir):
+      for entry in os.listdir(scenarios_dir):
+        if not (entry.endswith('.yaml') or entry.endswith('.yml')):
+          continue
+        path = os.path.join(scenarios_dir, entry)
+        if not os.path.isfile(path):
+          continue
+        if cls._uuid_from_v2_yaml(path) == str(uuid):
+          return path
+
+    base = cls.sanitize_scenario_filename(name)
+    path = os.path.join(scenarios_dir, f"{base}.yaml")
+    if not os.path.exists(path):
+      return path
+
+    if uuid and UUID_RE.match(str(uuid)) and cls._uuid_from_v2_yaml(path) == str(uuid):
+      return path
+
+    return cls.unique_yaml_path(path)
+
+  @classmethod
+  def history_locator_for(
+    cls,
+    uuid: str,
+    name: str,
+    data_dir: DataDir = None,
+  ) -> str:
+    """Stable v2 history locator: existing yaml stem, else newly allocated stem."""
+    data_dir = data_dir or DataDir.instance()
+    snap = cls(uuid or '', data_dir, name=name)
+    found = snap._find_v2_metadata_path()
+    if found:
+      return snap._name_from_path(found)
+    path = cls.allocate_yaml_path(
+      data_dir.snapshots_scenarios_dir_path,
+      name or uuid or 'scenario',
+      uuid=uuid,
+    )
+    return snap._name_from_path(path)
 
   @property
   def exists(self):
@@ -398,9 +468,12 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       self._resolved_metadata_path = found
       return found
 
-    name = self._name or self.uuid
-    filename = f"{self.sanitize_scenario_filename(name)}.yaml"
-    self._resolved_metadata_path = os.path.join(self._scenarios_dir_path, filename)
+    # New file: keep sanitized names unique so My Scenario / My-Scenario do not collide
+    self._resolved_metadata_path = self.allocate_yaml_path(
+      self._scenarios_dir_path,
+      self._name or self.uuid,
+      uuid=self._resolved_uuid,
+    )
     return self._resolved_metadata_path
 
   def copy_requests(self, dest_dir: str):
@@ -472,36 +545,42 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     if not os.path.isdir(self._scenarios_dir_path):
       return None
 
-    if self._name:
-      candidate = os.path.join(
-        self._scenarios_dir_path,
-        f"{self.sanitize_scenario_filename(self._name)}.yaml",
-      )
-      if os.path.isfile(candidate):
-        return candidate
+    resolved_uuid = self._resolved_uuid
+    if resolved_uuid and UUID_RE.match(str(resolved_uuid)):
+      index_path = self._uuid_index_path()
+      if os.path.isfile(index_path):
+        with open(index_path, 'r') as fp:
+          basename = fp.read().strip()
+        if basename:
+          candidate = os.path.join(self._scenarios_dir_path, basename)
+          if os.path.isfile(candidate):
+            return candidate
 
-    index_path = self._uuid_index_path()
-    if os.path.isfile(index_path):
-      with open(index_path, 'r') as fp:
-        basename = fp.read().strip()
-      if basename:
-        candidate = os.path.join(self._scenarios_dir_path, basename)
-        if os.path.isfile(candidate):
+      for name in os.listdir(self._scenarios_dir_path):
+        if not (name.endswith('.yaml') or name.endswith('.yml')):
+          continue
+        path = os.path.join(self._scenarios_dir_path, name)
+        if not os.path.isfile(path):
+          continue
+        if self._uuid_from_v2_yaml(path) == str(resolved_uuid):
+          return path
+
+    # Name / history-stem lookup. When uuid is known, only accept a matching file
+    # so "My Scenario" does not resolve to another scenario's My-Scenario.yaml.
+    if self._name:
+      stems = [self._name]
+      sanitized = self.sanitize_scenario_filename(self._name)
+      if sanitized not in stems:
+        stems.append(sanitized)
+      for stem in stems:
+        candidate = os.path.join(self._scenarios_dir_path, f"{stem}.yaml")
+        if not os.path.isfile(candidate):
+          continue
+        if not resolved_uuid or not UUID_RE.match(str(resolved_uuid)):
+          return candidate
+        if self._uuid_from_v2_yaml(candidate) == str(resolved_uuid):
           return candidate
 
-    for name in os.listdir(self._scenarios_dir_path):
-      if not (name.endswith('.yaml') or name.endswith('.yml')):
-        continue
-      path = os.path.join(self._scenarios_dir_path, name)
-      if not os.path.isfile(path):
-        continue
-      try:
-        with open(path, 'r') as fp:
-          data = yaml.safe_load(fp) or {}
-        if isinstance(data, dict) and data.get('uuid') == self.uuid:
-          return path
-      except Exception:
-        continue
     return None
 
   def _name_from_path(self, path: str) -> str:

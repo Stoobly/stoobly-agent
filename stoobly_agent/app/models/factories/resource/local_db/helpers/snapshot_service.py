@@ -98,12 +98,12 @@ def snapshot_scenario(scenario: 'Scenario', **options: Unpack[RequestSnapshotOpt
         ignore_scenario_ids=[scenario.uuid],
       )
     )
-    snapshot.remove_metadata()
-
-  if action == PUT_ACTION:
-    log.put(scenario, format=write_format)
-  elif action == DELETE_ACTION:
+    # Append history while YAML still exists so the locator uses the unique stem
     log.delete(scenario, format=write_format)
+    snapshot.remove_metadata()
+    return snapshot.metadata_path
+
+  log.put(scenario, format=write_format)
 
   return snapshot.metadata_path
 

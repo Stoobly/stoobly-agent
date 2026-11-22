@@ -20,7 +20,7 @@ def settings():
 
 class TestLogEventCreate:
   def test_bare_uuid_request_is_v1(self):
-    line = LogEvent.serialize(REQUEST_RESOURCE, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', PUT_ACTION)
+    line = LogEventV1.serialize(REQUEST_RESOURCE, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', PUT_ACTION)
     event = LogEvent.create(line)
     assert isinstance(event, LogEventV1)
     assert event.format == FORMAT_V1
@@ -28,7 +28,7 @@ class TestLogEventCreate:
     assert event.resource_slug is None
 
   def test_slug_uuid_request_is_v2(self):
-    line = LogEvent.serialize(
+    line = LogEventV2.serialize(
       REQUEST_RESOURCE,
       'GET-api-users/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       PUT_ACTION,
@@ -38,16 +38,37 @@ class TestLogEventCreate:
     assert event.format == FORMAT_V2
     assert event.resource_id == 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     assert event.resource_slug == 'GET-api-users'
+    # uuid timestamp action resource resource_id
+    toks = line.split(' ')
+    assert toks[2] == PUT_ACTION
+    assert toks[3] == REQUEST_RESOURCE
 
   def test_scenario_name_only_is_v2(self):
-    line = LogEvent.serialize(SCENARIO_RESOURCE, 'checkout-flow', PUT_ACTION)
+    line = LogEventV2.serialize(SCENARIO_RESOURCE, 'checkout-flow', PUT_ACTION)
     event = LogEvent.create(line)
     assert isinstance(event, LogEventV2)
     assert event.resource_id == 'checkout-flow'
     assert event.resource_slug == 'checkout-flow'
 
+  def test_scenario_name_with_spaces_is_v2(self):
+    line = LogEventV2.serialize(SCENARIO_RESOURCE, 'My Scenario', PUT_ACTION)
+    event = LogEvent.create(line)
+    assert isinstance(event, LogEventV2)
+    assert event.resource_uuid == 'My Scenario'
+    assert event.resource_id == 'My Scenario'
+
+  def test_legacy_v2_line_order_still_parses(self):
+    # Pre-rewrite: uuid resource locator action timestamp
+    line = (
+      '11111111-1111-1111-1111-111111111111 scenario My-Scenario PUT 1700000000000'
+    )
+    event = LogEvent.create(line)
+    assert isinstance(event, LogEventV2)
+    assert event.resource_uuid == 'My-Scenario'
+    assert event.created_at == 1700000000000
+
   def test_scenario_bare_uuid_is_v1(self):
-    line = LogEvent.serialize(
+    line = LogEventV1.serialize(
       SCENARIO_RESOURCE,
       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
       PUT_ACTION,
@@ -57,10 +78,13 @@ class TestLogEventCreate:
     assert event.resource_id == 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
   def test_legacy_scenario_name_uuid_is_v2(self):
-    line = LogEvent.serialize(
+    # Legacy field order with name/uuid locator
+    line = LogEventV1.format_line(
+      '11111111-1111-1111-1111-111111111111',
+      1700000000000,
+      PUT_ACTION,
       SCENARIO_RESOURCE,
       'checkout-flow/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-      PUT_ACTION,
     )
     event = LogEvent.create(line)
     assert isinstance(event, LogEventV2)

@@ -66,7 +66,9 @@ class TestRequestSnapshotV2Naming:
     assert RequestSnapshotV2.parse_request_relative_path('GET-api-users/abc.http') == ('GET-api-users', 'abc')
 
   def test_sanitize_scenario_name(self):
-    assert ScenarioSnapshotV2.sanitize_scenario_filename('My Scenario!') == 'My-Scenario'
+    assert ScenarioSnapshotV2.sanitize_scenario_filename('My Scenario!') == 'My Scenario!'
+    assert ScenarioSnapshotV2.sanitize_scenario_filename('My-Scenario') == 'My-Scenario'
+    assert ScenarioSnapshotV2.sanitize_scenario_filename('a/b') == 'a-b'
 
 
 class TestSnapshotFormatDetect:

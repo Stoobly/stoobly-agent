@@ -154,16 +154,17 @@ Single extensionless file of joined request+response with bodies inline.
 
 Space-delimited under `snapshots/history/`:
 
-```
-<event-uuid> request <locator> PUT <ms>
-```
+| Format | Class | Line |
+|--------|-------|------|
+| v2 | `LogEventV2` | `<event-uuid> <ms> PUT request <locator>` |
+| v1 / legacy | `LogEventV1` | `<event-uuid> request <locator> PUT <ms>` |
 
-| Format | Class | `<locator>` |
-|--------|-------|-------------|
-| v2 | `LogEventV2` | `GET-api-users/<request-uuid>` |
-| v1 / legacy | `LogEventV1` | `<request-uuid>` |
+| Format | `<locator>` |
+|--------|-------------|
+| v2 | `GET-api-users/<request-uuid>` |
+| v1 / legacy | `<request-uuid>` |
 
-Apply passes the locator into `RequestSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is always the UUID suffix (`resource_id`).
+v2 puts `resource_id` last so it may contain spaces. Apply passes the locator into `RequestSnapshot.create(...)` for O(1) path resolve; collapse/ORM identity is always the UUID suffix (`resource_id`).
 
 ## Scenario snapshot create (`PUT`)
 
@@ -179,7 +180,7 @@ Orchestration: [`snapshot_scenario`](../stoobly_agent/app/models/factories/resou
 ### v2 on-disk layout (`ScenarioSnapshotV2`)
 
 ```
-.stoobly/snapshots/scenarios/<sanitized-name>.yaml
+.stoobly/snapshots/scenarios/<sanitized-name>.yaml   # collisions → name-2.yaml, …
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
   <uuid>.http
   bodies/<sha256>
@@ -206,14 +207,15 @@ Request entries are relative paths under `snapshots/requests/` (order preserved)
 
 ### History line (scenario)
 
-```
-<event-uuid> scenario <locator> PUT <ms>
-```
+| Format | Class | Line |
+|--------|-------|------|
+| v2 | `LogEventV2` | `<event-uuid> <ms> PUT scenario <locator>` |
+| v1 / legacy | `LogEventV1` | `<event-uuid> scenario <locator> PUT <ms>` |
 
-| Format | Class | `<locator>` |
-|--------|-------|-------------|
-| v2 | `LogEventV2` | `<sanitized-name>` (unique scenario name) |
-| v1 / legacy | `LogEventV1` | `<scenario-uuid>` |
+| Format | `<locator>` |
+|--------|-------------|
+| v2 | `<yaml-stem>` (filesystem-safe name; spaces kept; `-2`, `-3`, … on collision) |
+| v1 / legacy | `<scenario-uuid>` |
 
 ## Delete action
 

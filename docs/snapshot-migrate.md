@@ -30,6 +30,7 @@ stoobly-agent snapshot migrate --format v1
 | Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies inline) | `snapshots/requests/{slug}/{uuid}.http` (bodies under `bodies/` via `X-Stoobly-Body-Ref`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Listed in YAML as `slug/{uuid}.http` relative paths |
+| History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
 | History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}` (unique) |
 
 Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none.
@@ -64,7 +65,7 @@ flowchart TB
    - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
-3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` (requests) / `{yaml-stem}` (scenarios) in history files and the active log file when present. Also collapses legacy `name/{uuid}` scenario locators to name-only.
+3. **History** — Rewrite bare UUID resource fields to `slug/{uuid}` (requests) / `{yaml-stem}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Also collapses legacy `name/{uuid}` scenario locators to name-only.
 4. **Cleanup** — Remove any `.uuid-index` under requests/scenarios (legacy; locators replace them).
 
 Corrupt request/scenario files are skipped and left in place.
@@ -77,7 +78,7 @@ Corrupt request/scenario files are skipped and left in place.
 2. **Scenarios** — For each `*.yaml` / `*.yml`:
    - Write JSON metadata at `scenarios/{uuid}` and UUID list at `scenarios/requests/{uuid}`.
    - Remove the YAML file.
-3. **History** — Strip locators back to bare UUIDs.
+3. **History** — Strip locators back to bare UUIDs and re-order lines to `uuid resource locator action [ms]`.
 4. **Cleanup** — Remove `.uuid-index` if present.
 
 ## History rewrite

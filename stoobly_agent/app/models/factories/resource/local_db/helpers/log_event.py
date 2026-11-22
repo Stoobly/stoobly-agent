@@ -1,6 +1,6 @@
 import time
 import uuid
-from typing import Callable, Optional, TypedDict, Type
+from typing import Callable, Optional, Tuple, TypedDict, Type
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
@@ -12,6 +12,11 @@ from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
 from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE, Resource, SCENARIO_RESOURCE
 
 COLUMN_DELIMITTER = ' '
+_ACTIONS = {DELETE_ACTION, PUT_ACTION}
+_RESOURCES = {REQUEST_RESOURCE, SCENARIO_RESOURCE}
+
+# uuid, resource, resource_uuid, action, created_at
+_ParsedFields = Tuple[str, str, str, Action, Optional[int]]
 
 class MalformedLogEventError(ValueError):
   """Raised when a snapshot history line cannot be parsed."""
@@ -45,22 +50,13 @@ class LogEvent():
         f"expected at least 4 space-separated fields, got {len(toks)}",
       )
 
-    self.uuid = toks[0]
-    self.resource = toks[1]
-    # Raw history field: bare uuid (v1), slug/<uuid> (v2 request), or name (v2 scenario)
-    self.resource_uuid = toks[2]
-    self.action = toks[3]
-
-    if len(toks) > 4:
-      try:
-        self.created_at = int(toks[4])  # milliseconds
-      except ValueError as e:
-        raise MalformedLogEventError(
-          line,
-          f"created_at must be an integer timestamp, got {toks[4]!r}",
-        ) from e
-    else:
-      self.created_at = None
+    (
+      self.uuid,
+      self.resource,
+      self.resource_uuid,
+      self.action,
+      self.created_at,
+    ) = type(self)._parse_fields(toks, line)
 
     if self.resource == SCENARIO_RESOURCE:
       # Collapse identity is the unique name when present, else uuid
@@ -73,6 +69,36 @@ class LogEvent():
       self.__resource_id = parsed_uuid
 
   @classmethod
+  def _parse_fields(cls, toks, line: str) -> _ParsedFields:
+    """Default / legacy: `uuid resource locator action [timestamp]`."""
+    event_uuid = toks[0]
+    resource = toks[1]
+    resource_uuid = toks[2]
+    action = toks[3]
+
+    if len(toks) > 4:
+      try:
+        created_at = int(toks[4])
+      except ValueError as e:
+        raise MalformedLogEventError(
+          line,
+          f"created_at must be an integer timestamp, got {toks[4]!r}",
+        ) from e
+    else:
+      created_at = None
+
+    return event_uuid, resource, resource_uuid, action, created_at
+
+  @staticmethod
+  def _is_v2_field_order(toks) -> bool:
+    """True for `uuid timestamp action resource resource_id`."""
+    return (
+      len(toks) >= 5
+      and toks[2] in _ACTIONS
+      and toks[3] in _RESOURCES
+    )
+
+  @classmethod
   def _resolve_event_class(cls, format: int = None, data_dir: DataDir = None) -> Type['LogEvent']:
     if format is None:
       format = resolve_write_format(data_dir or DataDir.instance())
@@ -80,13 +106,16 @@ class LogEvent():
 
   @classmethod
   def create(cls, event: str) -> 'LogEvent':
-    """Parse a history line into LogEventV1 or LogEventV2 from locator shape."""
+    """Parse a history line into LogEventV1 or LogEventV2 from line/locator shape."""
     toks = event.strip().split(COLUMN_DELIMITTER)
+    if cls._is_v2_field_order(toks):
+      return LogEventV2(event)
+
     resource = toks[1] if len(toks) > 1 else ''
     resource_uuid = toks[2] if len(toks) > 2 else ''
     if '/' in resource_uuid:
       return LogEventV2(event)
-    # v2 scenarios use a unique name-only locator (not a UUID)
+    # Legacy v2 scenarios use a unique name-only locator (not a UUID)
     if resource == SCENARIO_RESOURCE and resource_uuid and not UUID_RE.match(resource_uuid):
       return LogEventV2(event)
     return LogEventV1(event)
@@ -105,9 +134,30 @@ class LogEvent():
       )
     return cls(cls.serialize_resource(resource, action, data_dir=data_dir))
 
-  @staticmethod
-  def serialize(resource_name: Resource, resource_uuid: str, action: Action):
-    return f"{str(uuid.uuid1())} {resource_name} {resource_uuid} {action} {int(time.time() * 1000)}"
+  @classmethod
+  def format_line(
+    cls,
+    event_uuid: str,
+    created_at: Optional[int],
+    action: Action,
+    resource_name: str,
+    resource_uuid: str,
+  ) -> str:
+    """Build a history line in this class's field order (legacy by default)."""
+    parts = [event_uuid, resource_name, resource_uuid, action]
+    if created_at is not None:
+      parts.append(str(created_at))
+    return COLUMN_DELIMITTER.join(parts)
+
+  @classmethod
+  def serialize(cls, resource_name: Resource, resource_uuid: str, action: Action):
+    return cls.format_line(
+      str(uuid.uuid1()),
+      int(time.time() * 1000),
+      action,
+      resource_name,
+      resource_uuid,
+    )
 
   @classmethod
   def serialize_delete(
@@ -177,7 +227,17 @@ class LogEvent():
     return f"{self.resource_id}.{self.resource}"
 
   def __str__(self):
-    return COLUMN_DELIMITTER.join([self.uuid, self.resource, self.resource_uuid, self.action, str(self.created_at)])
+    event_cls = type(self)
+    if event_cls.FORMAT is None:
+      # Bare LogEvent: preserve legacy order
+      event_cls = LogEventV1
+    return event_cls.format_line(
+      self.uuid,
+      self.created_at,
+      self.action,
+      self.resource,
+      self.resource_uuid,
+    )
 
   def apply(self, **kwargs: EventHandlers):
     if self.is_request():
@@ -195,11 +255,17 @@ class LogEvent():
         return kwargs['handle_scenario_put'](self.resource_uuid)
 
   def duplicate(self):
-    event_str = str(self)
-    toks = event_str.split(COLUMN_DELIMITTER)
-    toks[0] = str(uuid.uuid1())
-    toks[4] = str(int(time.time() * 1000))
-    return self.__class__(COLUMN_DELIMITTER.join(toks))
+    event_cls = type(self)
+    if event_cls.FORMAT is None:
+      event_cls = LogEventV1
+    line = event_cls.format_line(
+      str(uuid.uuid1()),
+      int(time.time() * 1000),
+      self.action,
+      self.resource,
+      self.resource_uuid,
+    )
+    return event_cls(line)
 
   def duplicate_as_delete(self):
     event = self.duplicate()
@@ -235,7 +301,10 @@ class LogEvent():
 
 
 class LogEventV1(LogEvent):
-  """History events with bare-UUID resource locators."""
+  """History events with bare-UUID resource locators.
+
+  Line: `uuid resource locator action [timestamp]`
+  """
 
   FORMAT = FORMAT_V1
 
@@ -249,9 +318,49 @@ class LogEventV1(LogEvent):
 
 
 class LogEventV2(LogEvent):
-  """History events with v2 locators (request: slug/<uuid>; scenario: unique name)."""
+  """History events with v2 locators (request: slug/<uuid>; scenario: unique name).
+
+  Line: `uuid timestamp action resource resource_id`
+  (resource_id last so names may contain spaces).
+  Also accepts legacy `uuid resource locator action [timestamp]` lines.
+  """
 
   FORMAT = FORMAT_V2
+
+  @classmethod
+  def _parse_fields(cls, toks, line: str) -> _ParsedFields:
+    if cls._is_v2_field_order(toks):
+      event_uuid = toks[0]
+      try:
+        created_at = int(toks[1])
+      except ValueError as e:
+        raise MalformedLogEventError(
+          line,
+          f"created_at must be an integer timestamp, got {toks[1]!r}",
+        ) from e
+      action = toks[2]
+      resource = toks[3]
+      resource_uuid = COLUMN_DELIMITTER.join(toks[4:])
+      if not resource_uuid:
+        raise MalformedLogEventError(line, "missing resource id")
+      return event_uuid, resource, resource_uuid, action, created_at
+
+    # Legacy v2 lines still routed here by create()
+    return super()._parse_fields(toks, line)
+
+  @classmethod
+  def format_line(
+    cls,
+    event_uuid: str,
+    created_at: Optional[int],
+    action: Action,
+    resource_name: str,
+    resource_uuid: str,
+  ) -> str:
+    ts = str(created_at if created_at is not None else int(time.time() * 1000))
+    return COLUMN_DELIMITTER.join([
+      event_uuid, ts, action, resource_name, resource_uuid,
+    ])
 
   @classmethod
   def request_locator(cls, request: Request, data_dir: DataDir = None) -> str:
@@ -260,4 +369,7 @@ class LogEventV2(LogEvent):
 
   @classmethod
   def scenario_locator(cls, scenario: Scenario, data_dir: DataDir = None) -> str:
-    return ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name)
+    # Prefer on-disk yaml stem so colliding sanitized names stay distinct
+    return ScenarioSnapshotV2.history_locator_for(
+      scenario.uuid, scenario.name, data_dir=data_dir
+    )

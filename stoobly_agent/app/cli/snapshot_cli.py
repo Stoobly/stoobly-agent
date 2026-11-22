@@ -278,9 +278,11 @@ def __scenario_event_matches_uuid(event, scenario_uuid: str) -> bool:
   if snapshot.uuid == scenario_uuid:
     return True
 
-  # DELETE may have already removed YAML; match via ORM name
+  # DELETE may have already removed YAML; match via allocated history stem
   scenario = Scenario.find_by(uuid=scenario_uuid)
-  if scenario and event.resource_id == ScenarioSnapshotV2.sanitize_scenario_filename(scenario.name):
+  if scenario and event.resource_id == ScenarioSnapshotV2.history_locator_for(
+    scenario.uuid, scenario.name
+  ):
     return True
 
   return False
