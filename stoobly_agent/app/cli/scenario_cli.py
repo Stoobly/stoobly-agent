@@ -15,7 +15,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from stoobly_agent.app.models.import_ import IMPORT_FORMATS, HAR_FORMAT
 
 from .handlers.scenario_cli_handler import (
-    create_handler, delete_handler, import_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler
+    create_handler, delete_handler, import_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler, update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.validations import *
@@ -125,6 +125,18 @@ def show(**kwargs):
 @click.argument('scenario_key')
 def delete(**kwargs):
     delete_handler(kwargs)
+
+@scenario.command(
+  help="Update a scenario"
+)
+@click.option('--description', help='Scenario description.')
+@click.option('--format', type=click.Choice(FORMATS), help='Format output.')
+@click.option('--name', help='Scenario name.')
+@click.option('--select', multiple=True, help='Select column(s) to display.')
+@click.option('--without-headers', is_flag=True, default=False, help='Disable printing column headers.')
+@click.argument('scenario_key')
+def update(**kwargs):
+    update_handler(kwargs)
 
 if is_local:
     @click.group(

@@ -379,6 +379,33 @@ command:
       description: 'Validate one or more aliases. Format: <NAME>=?<TYPE>'
       arguments:
       - name: validate
+  - name: update
+    description: Update a scenario
+    arguments:
+    - name: scenario_key
+      required: true
+    options:
+    - name: description
+      description: Scenario description.
+      arguments:
+      - name: description
+    - name: format
+      description: Format output.
+      arguments:
+      - name: format
+        acceptedValues:
+        - json
+        - simple
+    - name: name
+      description: Scenario name.
+      arguments:
+      - name: name
+    - name: select
+      description: Select column(s) to display.
+      arguments:
+      - name: select
+    - name: without-headers
+      description: Disable printing column headers.
   exitCodes:
   - code: 0
     description: Success

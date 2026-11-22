@@ -186,6 +186,30 @@ def show_handler(kwargs):
 
   print_scenarios([scenario_response], **print_options)
 
+def update_handler(kwargs):
+  print_options = select_print_options(kwargs)
+
+  scenario_key = kwargs.pop('scenario_key')
+  validate_scenario_key(scenario_key)
+
+  params = {}
+  if kwargs.get('name') is not None:
+    params['name'] = kwargs['name']
+  if kwargs.get('description') is not None:
+    params['description'] = kwargs['description']
+
+  if not params:
+    print('Error: At least one update option is required.', file=sys.stderr)
+    sys.exit(1)
+
+  scenario = ScenarioFacade(Settings.instance())
+  res, status = scenario.update(scenario_key, **params)
+
+  if filter_response(res, status):
+    sys.exit(1)
+
+  print_scenarios([res], **print_options)
+
 def snapshot_handler(kwargs):
   scenario_key = kwargs['scenario_key']
   del kwargs['scenario_key']

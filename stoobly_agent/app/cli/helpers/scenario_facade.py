@@ -140,6 +140,11 @@ class ScenarioFacade(ReplayFacade):
       **self.__common_replay_options(scenario_key),
     })
 
+  def update(self, scenario_key: str, **params):
+    key = ScenarioKey(scenario_key)
+
+    return self.__model.update(key.id, **params)
+
   def delete(self, scenario_key: str, **params):
     key = ScenarioKey(scenario_key)
 
