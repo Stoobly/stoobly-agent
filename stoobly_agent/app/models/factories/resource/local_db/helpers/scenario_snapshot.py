@@ -76,12 +76,30 @@ class ScenarioSnapshot(Snapshot):
     return None
 
   @staticmethod
+  def _safe_scenario_yaml_path(scenarios_dir: str, name: str) -> Optional[str]:
+    """
+    Join scenarios_dir/{sanitized_name}.yaml without allowing path escape.
+
+    History-derived names may contain ../ or separators; sanitize to a single
+    basename component before joining (same idea as request slug sanitization).
+    """
+    if not name:
+      return None
+    safe = ScenarioSnapshotV2.sanitize_scenario_filename(name)
+    path = os.path.join(scenarios_dir, f"{safe}.yaml")
+    abs_path = os.path.abspath(path)
+    abs_dir = os.path.abspath(scenarios_dir)
+    if os.path.commonpath([abs_path, abs_dir]) != abs_dir:
+      return None
+    return path
+
+  @staticmethod
   def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> int:
     scenarios_dir = data_dir.snapshots_scenarios_dir_path
 
     if name:
-      candidate = os.path.join(scenarios_dir, f"{name}.yaml")
-      if os.path.isfile(candidate):
+      candidate = ScenarioSnapshot._safe_scenario_yaml_path(scenarios_dir, name)
+      if candidate and os.path.isfile(candidate):
         return FORMAT_V2
 
     if uuid:
@@ -538,11 +556,12 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         if self._uuid_from_v2_yaml(path) == str(resolved_uuid):
           return path
 
-    # Name / history-stem lookup (validated names are already filesystem-safe).
-    # When uuid is known, only accept a matching file.
+    # Name / history-stem lookup. Sanitize before join: history locators may
+    # contain ../ or separators (legacy or hand-edited). When uuid is known,
+    # only accept a matching file.
     if self._name:
-      candidate = os.path.join(self._scenarios_dir_path, f"{self._name}.yaml")
-      if os.path.isfile(candidate):
+      candidate = self._safe_scenario_yaml_path(self._scenarios_dir_path, self._name)
+      if candidate and os.path.isfile(candidate):
         if not resolved_uuid or not UUID_RE.match(str(resolved_uuid)):
           return candidate
         if self._uuid_from_v2_yaml(candidate) == str(resolved_uuid):

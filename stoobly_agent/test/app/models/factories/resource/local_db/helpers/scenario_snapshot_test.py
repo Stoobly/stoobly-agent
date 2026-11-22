@@ -178,6 +178,54 @@ class TestScenarioSnapshotCreateAndFromPath:
     assert ScenarioSnapshot.from_path(outside, data_dir) is None
 
 
+class TestScenarioSnapshotPathEscape:
+  def test_history_locator_with_dotdot_stays_under_scenarios_dir(self):
+    data_dir = DataDir.instance()
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+
+    # Plant a file outside scenarios/ that an unsanitized join would hit
+    outside_dir = os.path.join(data_dir.path, 'tmp', 'x')
+    os.makedirs(outside_dir, exist_ok=True)
+    outside_yaml = os.path.join(outside_dir, 'evil.yaml')
+    with open(outside_yaml, 'w') as fp:
+      yaml.safe_dump({'uuid': UUID, 'description': 'outside', 'requests': []}, fp)
+
+    # Legacy-style locator: name is ../../tmp/x relative to scenarios/
+    rel_escape = os.path.relpath(outside_dir, scenarios_dir)
+    locator = f'{rel_escape}/{UUID}'
+    assert '..' in locator
+
+    snap = ScenarioSnapshot.create(locator, data_dir)
+    assert isinstance(snap, ScenarioSnapshotV2)
+
+    meta = snap.metadata_path
+    abs_meta = os.path.abspath(meta)
+    abs_scenarios = os.path.abspath(scenarios_dir)
+    assert os.path.commonpath([abs_meta, abs_scenarios]) == abs_scenarios
+    assert abs_meta != os.path.abspath(outside_yaml)
+
+    # Name lookup must not treat the outside file as the scenario snapshot
+    found = snap._find_v2_metadata_path()
+    if found:
+      assert os.path.commonpath(
+        [os.path.abspath(found), abs_scenarios]
+      ) == abs_scenarios
+
+  def test_safe_scenario_yaml_path_rejects_escape(self):
+    data_dir = DataDir.instance()
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    path = ScenarioSnapshot._safe_scenario_yaml_path(scenarios_dir, '../../tmp/x')
+    assert path is not None
+    # Separators become '-', leading .-_ stripped → single basename under scenarios/
+    assert os.path.basename(path) == 'tmp-x.yaml'
+    assert '/' not in os.path.basename(path)
+    assert os.path.dirname(os.path.abspath(path)) == os.path.abspath(scenarios_dir)
+    assert os.path.commonpath(
+      [os.path.abspath(path), os.path.abspath(scenarios_dir)]
+    ) == os.path.abspath(scenarios_dir)
+
+
 class TestScenarioSnapshotV2Metadata:
   def test_corrupt_yaml_returns_empty_metadata(self):
     data_dir = DataDir.instance()
