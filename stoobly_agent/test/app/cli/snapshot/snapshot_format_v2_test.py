@@ -557,6 +557,38 @@ class TestSnapshotFormatV2:
       event = next(e for e in reversed(Log().events) if e.is_scenario())
       assert event.resource_uuid == created.uuid
 
+    def test_legacy_name_uuid_locator_uses_uuid_map_on_collision(self, runner: CliRunner):
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, SCENARIO_RESOURCE
+      from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_scenario
+
+      # Own dup-name.yaml first so the colliding scenario must get dup-name-2
+      assert runner.invoke(scenario, ['create', 'dup-name']).exit_code == 0
+      first = Scenario.last()
+      snapshot_scenario(first, action=PUT_ACTION, format=FORMAT_V1)
+      migrate_snapshots_to_v2(DataDir.instance())
+      assert os.path.isfile(os.path.join(DataDir.instance().snapshots_scenarios_dir_path, 'dup-name.yaml'))
+
+      other_uuid = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
+      meta_path = os.path.join(DataDir.instance().snapshots_scenarios_dir_path, other_uuid)
+      with open(meta_path, 'w') as fp:
+        json.dump({'name': 'dup-name', 'description': ''}, fp)
+
+      index_dir = DataDir.instance().snapshots_scenario_requests_dir_path
+      os.makedirs(index_dir, exist_ok=True)
+      with open(os.path.join(index_dir, other_uuid), 'w') as fp:
+        fp.write('')
+
+      # Legacy name/uuid; rsplit alone would keep 'dup-name' (wrong stem after collision)
+      Log().append(LogEvent.serialize(SCENARIO_RESOURCE, f'dup-name/{other_uuid}', PUT_ACTION))
+
+      result = migrate_snapshots_to_v2(DataDir.instance())
+      assert result['scenarios'] == 1
+      assert os.path.isfile(os.path.join(DataDir.instance().snapshots_scenarios_dir_path, 'dup-name-2.yaml'))
+      assert ScenarioSnapshot.create('dup-name-2').uuid == other_uuid
+
+      # Prefer uuid map over rsplit name so history points at dup-name-2, not dup-name
+      assert 'dup-name-2' in [e.resource_uuid for e in Log().events if e.is_scenario()]
+
     def test_rewrites_archived_history_and_preserves_version(self, recorded_request: Request):
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import LogEvent, REQUEST_RESOURCE
       from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request

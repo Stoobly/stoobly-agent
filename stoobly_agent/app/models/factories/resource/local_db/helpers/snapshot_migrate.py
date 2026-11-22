@@ -443,9 +443,14 @@ def _rewrite_history_locators(
           new_resource_uuid = event.resource_id
       elif event.is_scenario():
         if to_v2:
-          # bare uuid → name; legacy name/uuid → name
+          # bare uuid → unique stem; legacy name/uuid → unique stem via uuid map
+          # (rsplit name alone is wrong after sanitize collisions, e.g. dup-name-2)
           if '/' in event.resource_uuid:
-            new_resource_uuid = event.resource_uuid.rsplit('/', 1)[0]
+            _name, rest = event.resource_uuid.rsplit('/', 1)
+            if UUID_RE.match(rest) and rest in scenario_locators:
+              new_resource_uuid = scenario_locators[rest]
+            else:
+              new_resource_uuid = _name
           elif event.resource_id in scenario_locators:
             new_resource_uuid = scenario_locators[event.resource_id]
         else:
