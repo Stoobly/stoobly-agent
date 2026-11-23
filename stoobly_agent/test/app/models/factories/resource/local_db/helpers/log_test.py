@@ -142,9 +142,11 @@ class TestLog():
 
     def test_keeps_scenario_delete_only_after_put(self, monkeypatch):
       log = Log()
-      put = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, 'flow', PUT_ACTION))
-      delete = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, 'flow', DELETE_ACTION))
-      orphan_delete = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, 'other', DELETE_ACTION))
+      flow = 'flow/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      other = 'other/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+      put = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, flow, PUT_ACTION))
+      delete = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, flow, DELETE_ACTION))
+      orphan_delete = LogEvent(LogEvent.serialize(SCENARIO_RESOURCE, other, DELETE_ACTION))
       monkeypatch.setattr(log, 'build_scenario_inverted_index', lambda events, index=None, include_deletes=False: index or {})
 
       kept = log.remove_dangling_events([put], [delete, orphan_delete])

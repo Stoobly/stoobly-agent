@@ -7,6 +7,7 @@ from stoobly_agent.app.cli.helpers.handle_test_service import SessionContext, ex
 from stoobly_agent.app.cli.helpers.print_service import print_scenarios, select_print_options
 from stoobly_agent.app.cli.helpers.test_facade import TestFacade
 from stoobly_agent.app.cli.helpers.context import ReplayContext
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import MalformedRequestSnapshotError
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
@@ -367,7 +368,11 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
     if not current_request or not current_request.response:
       request_analyses.append((request_snapshot, None))
       continue
-    request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
+    try:
+      request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
+    except MalformedRequestSnapshotError as e:
+      print(f"Error: {e}", file=sys.stderr)
+      sys.exit(1)
 
   snapshot_request_uuids = set([request_snapshot.uuid for request_snapshot in request_snapshots])
   current_requests = current_scenario.requests or []
@@ -398,19 +403,25 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   else:
     print(current_name or snapshot_name or '', end='')
   print(f' {scenario_key_str}')
-  print()
+
+  request_diffs = [
+    analysis for _, analysis in request_analyses if analysis and analysis.has_diff
+  ]
+  has_request_output = len(request_diffs) > 0 or len(requests_missing_snapshot) > 0
+
+  if full or has_request_output:
+    print()
 
   if full:
     print('~ Description')
     print(diff_strings(str(snapshot_description or ''), str(current_description or '')))
-    print()
 
-  for _, analysis in request_analyses:
-    if not analysis or not analysis.has_diff:
-      continue
+  for analysis in request_diffs:
+    print()
     emit_request_diff(analysis, full=full)
 
   for request in requests_missing_snapshot:
+    print()
     emit_request_diff_header(
       request.url or "",
       request.key(),

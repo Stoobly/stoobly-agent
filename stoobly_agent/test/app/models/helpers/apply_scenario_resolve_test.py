@@ -10,16 +10,21 @@ def _reset_db():
   reset()
 
 
-def test_resolve_scenario_uuid_by_name_after_yaml_gone():
+def test_resolve_scenario_uuid_bare_uuid():
   scenario = Scenario.create(name='checkout-flow', description='')
 
-  uuid = Apply()._Apply__resolve_scenario_uuid('checkout-flow')
+  uuid = Apply()._Apply__resolve_scenario_uuid(scenario.uuid)
   assert uuid == scenario.uuid
 
 
-def test_resolve_scenario_uuid_prefers_exact_name():
-  target = Scenario.create(name='My Scenario', description='')
-  Scenario.create(name='My-Scenario', description='')
+def test_resolve_scenario_uuid_from_name_uuid_locator():
+  scenario = Scenario.create(name='My Scenario', description='')
 
-  uuid = Apply()._Apply__resolve_scenario_uuid('My Scenario')
-  assert uuid == target.uuid
+  uuid = Apply()._Apply__resolve_scenario_uuid(f'My Scenario/{scenario.uuid}')
+  assert uuid == scenario.uuid
+
+
+def test_resolve_scenario_uuid_rejects_name_only():
+  Scenario.create(name='checkout-flow', description='')
+
+  assert Apply()._Apply__resolve_scenario_uuid('checkout-flow') is None

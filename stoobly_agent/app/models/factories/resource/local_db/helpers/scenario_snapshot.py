@@ -24,7 +24,7 @@ class ScenarioSnapshot(Snapshot):
 
   def __init__(self, uuid: str, data_dir: DataDir = None, name: str = None):
     parsed_uuid, parsed_name = self._parse_scenario_ref(uuid, name)
-    # Snapshot requires a uuid string; hydrate from YAML in create() when name-only
+    # Snapshot requires a uuid string; hydrate from YAML when opened by stem
     super().__init__(parsed_uuid or parsed_name or '', data_dir)
 
     self._scenarios_dir_path = self.data_dir.snapshots_scenarios_dir_path
@@ -41,8 +41,7 @@ class ScenarioSnapshot(Snapshot):
     Parse history-style refs into (uuid, name).
 
     Accepts:
-    - name-only (v2)
-    - name/<uuid> (legacy v2)
+    - name/<uuid> (v2)
     - bare uuid (v1)
     """
     parsed_name = name
@@ -55,10 +54,6 @@ class ScenarioSnapshot(Snapshot):
       parsed_uuid = rest
       parsed_name = name or parsed_name
       return parsed_uuid, parsed_name
-
-    if uuid and not name and not UUID_RE.match(uuid):
-      # v2 name-only locator
-      return None, uuid
 
     return parsed_uuid, parsed_name
 
@@ -133,6 +128,16 @@ class ScenarioSnapshot(Snapshot):
     format: int = None,
   ) -> 'ScenarioSnapshot':
     data_dir = data_dir or DataDir.instance()
+    # Open by on-disk yaml stem (filesystem helper, not a history locator)
+    if (
+      uuid
+      and name is None
+      and '/' not in str(uuid)
+      and not UUID_RE.match(str(uuid))
+    ):
+      name = uuid
+      uuid = ''
+
     parsed_uuid, parsed_name = cls._parse_scenario_ref(uuid, name)
 
     if format is None:
@@ -174,7 +179,7 @@ class ScenarioSnapshot(Snapshot):
     basename = parts[0]
     if basename.endswith(('.yaml', '.yml')):
       name = basename.rsplit('.', 1)[0]
-      snapshot = cls.create(name, data_dir=data_dir)
+      snapshot = cls.create('', data_dir=data_dir, name=name)
       if uuid:
         snapshot._resolved_uuid = uuid
       elif not snapshot._resolved_uuid:
@@ -454,9 +459,12 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     v2 history locator: {stem}/{uuid}.
 
     Stem is the on-disk yaml basename when present, else the newly allocated
-    stem for name. UUID is always appended when valid so collapse/DELETE can
-    key on resource_id == uuid (same pattern as request slug/uuid locators).
+    stem for name. UUID is always appended so collapse/DELETE can key on
+    resource_id == uuid (same pattern as request slug/uuid locators).
     """
+    if not uuid or not UUID_RE.match(str(uuid)):
+      raise ValueError(f"scenario history locator requires a uuid, got {uuid!r}")
+
     data_dir = data_dir or DataDir.instance()
     snap = cls(uuid or '', data_dir, name=name)
     found = snap._find_v2_metadata_path()
@@ -469,9 +477,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         uuid=uuid,
       )
       stem = snap._name_from_path(path)
-    if uuid and UUID_RE.match(str(uuid)):
-      return f"{stem}/{uuid}"
-    return stem
+    return f"{stem}/{uuid}"
 
   @property
   def exists(self):
@@ -669,7 +675,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       if not isinstance(data, dict):
         raise ValueError('invalid yaml')
       found_uuid = data.get('uuid')
-      # Without a uuid in YAML, name-only history cannot recover identity
+      # v2 YAML must include uuid for history/apply identity
       if not found_uuid or not UUID_RE.match(str(found_uuid)):
         raise ValueError('missing uuid')
       return {

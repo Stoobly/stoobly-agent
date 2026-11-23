@@ -59,8 +59,7 @@ class LogEvent():
     ) = type(self)._parse_fields(toks, line)
 
     if self.resource == SCENARIO_RESOURCE:
-      # Collapse identity prefers UUID (name/uuid or bare uuid); name-only
-      # legacy locators fall back to the stem.
+      # Collapse identity prefers UUID (name/uuid or bare uuid).
       parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(self.resource_uuid)
       self.__resource_slug = parsed_name
       if parsed_uuid and UUID_RE.match(str(parsed_uuid)):
@@ -115,12 +114,8 @@ class LogEvent():
     if cls._is_v2_field_order(toks):
       return LogEventV2(event)
 
-    resource = toks[1] if len(toks) > 1 else ''
     resource_uuid = toks[2] if len(toks) > 2 else ''
     if '/' in resource_uuid:
-      return LogEventV2(event)
-    # Legacy v2 scenarios use a unique name-only locator (not a UUID)
-    if resource == SCENARIO_RESOURCE and resource_uuid and not UUID_RE.match(resource_uuid):
       return LogEventV2(event)
     return LogEventV1(event)
 
@@ -219,7 +214,7 @@ class LogEvent():
 
   @property
   def resource_id(self) -> str:
-    """Stable identity for collapse/apply (request UUID; scenario UUID or legacy name)."""
+    """Stable identity for collapse/apply (request UUID; scenario UUID)."""
     return self.__resource_id
 
   @property
@@ -252,7 +247,7 @@ class LogEvent():
         return kwargs['handle_request_put'](self.resource_uuid)
     elif self.is_scenario():
       if self.action == DELETE_ACTION:
-        # Pass UUID identity when present (name/uuid); name-only legacy still works
+        # Pass UUID identity (from name/uuid or bare uuid)
         return kwargs['handle_scenario_delete'](self.resource_id)
       elif self.action == PUT_ACTION:
         # Pass full history locator (name/uuid) so snapshot resolve stays O(1)
@@ -291,7 +286,7 @@ class LogEvent():
     if self.is_request():
       return RequestSnapshot.create(self.resource_id, data_dir, slug=self.resource_slug)
     elif self.is_scenario():
-      # resource_uuid is name/uuid (v2), name-only (legacy v2), or bare uuid (v1)
+      # resource_uuid is name/uuid (v2) or bare uuid (v1)
       return ScenarioSnapshot.create(self.resource_uuid, data_dir)
 
   def to_dict(self):
@@ -322,7 +317,7 @@ class LogEventV1(LogEvent):
 
 
 class LogEventV2(LogEvent):
-  """History events with v2 locators (request: slug/<uuid>; scenario: unique name).
+  """History events with v2 locators (request: slug/<uuid>; scenario: name/<uuid>).
 
   Line: `uuid timestamp action resource resource_id`
   (resource_id last so names may contain spaces).

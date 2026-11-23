@@ -280,7 +280,7 @@ class Apply():
       return self.__apply_put_scenario_requests(res, snapshot)
 
   def __resolve_scenario_uuid(self, resource_ref: str):
-    """Resolve history locator (uuid, name/uuid, or name) to a scenario UUID."""
+    """Resolve history locator (uuid or name/uuid) to a scenario UUID."""
     if not resource_ref:
       return None
 
@@ -288,20 +288,9 @@ class Apply():
       return resource_ref
 
     if '/' in resource_ref:
-      parsed_uuid, parsed_name = ScenarioSnapshot._parse_scenario_ref(resource_ref)
+      parsed_uuid, _parsed_name = ScenarioSnapshot._parse_scenario_ref(resource_ref)
       if parsed_uuid and UUID_RE.match(parsed_uuid):
         return parsed_uuid
-      resource_ref = parsed_name or resource_ref
-
-    # Prefer uuid from on-disk snapshot when present
-    snapshot = ScenarioSnapshot.create(resource_ref)
-    if snapshot.uuid and UUID_RE.match(str(snapshot.uuid)):
-      return snapshot.uuid
-
-    # DELETE may run after snapshot files were removed; legacy name-only locator
-    scenario, status = self.__find_scenario_by_name(resource_ref)
-    if status == 200 and scenario:
-      return scenario.get('uuid')
 
     return None
 

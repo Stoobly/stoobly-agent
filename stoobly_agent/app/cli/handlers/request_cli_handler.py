@@ -18,11 +18,13 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
   MalformedLogEventError,
   PUT_ACTION,
   REQUEST_RESOURCE,
+  SCENARIO_RESOURCE,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
   MalformedRequestSnapshotError,
   RequestSnapshot,
 )
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
@@ -556,30 +558,38 @@ def diff_handler(kwargs):
   try:
     log = Log()
     visited_request_ids = set()
-    for event in log.target_events:
-      if event.action != PUT_ACTION:
-        continue
-      if event.resource != REQUEST_RESOURCE:
-        continue
-      if event.resource_id in visited_request_ids:
-        continue
 
-      visited_request_ids.add(event.resource_id)
-      snapshot = event.snapshot()
+    def _diff_request_snapshot(snapshot: RequestSnapshot):
+      if snapshot.uuid in visited_request_ids:
+        return
       if not snapshot.exists:
-        continue
+        return
       try:
         if snapshot.request is None:
-          continue
+          return
       except MalformedRequestSnapshotError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
       current_request = snapshot.find_resource()
       if not current_request or not current_request.response:
+        return
+
+      visited_request_ids.add(snapshot.uuid)
+      print_request_diff(snapshot, current_request, full=full)
+
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
         continue
 
-      print_request_diff(snapshot, current_request, full=full)
+      if event.resource == REQUEST_RESOURCE:
+        _diff_request_snapshot(event.snapshot())
+      elif event.resource == SCENARIO_RESOURCE:
+        # Match request snapshot list: expand scenario-contained v1/v2 requests
+        scenario_snapshot: ScenarioSnapshot = event.snapshot()
+        if not scenario_snapshot.exists:
+          continue
+        scenario_snapshot.iter_request_snapshots(_diff_request_snapshot)
   except MalformedLogEventError as e:
     print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)

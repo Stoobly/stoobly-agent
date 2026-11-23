@@ -764,3 +764,100 @@ class TestSnapshotFormatV2:
       prune_result = runner.invoke(snapshot, ['prune'])
       assert prune_result.exit_code == 0
       assert len(Log().events) == 0
+
+  class TestListAndDiffV2:
+    @pytest.fixture(scope='class', autouse=True)
+    @classmethod
+    def settings(cls):
+      return reset()
+
+    @pytest.fixture(scope='class')
+    @classmethod
+    def created_scenario(cls, runner: CliRunner):
+      create_result = runner.invoke(scenario, ['create', 'list diff flow'])
+      assert create_result.exit_code == 0
+      return Scenario.last()
+
+    @pytest.fixture(scope='class')
+    @classmethod
+    def recorded_request(cls, runner: CliRunner, created_scenario: Scenario):
+      record_result = runner.invoke(
+        record,
+        ['--scenario-key', created_scenario.key(), DETERMINISTIC_GET_REQUEST_URL],
+      )
+      assert record_result.exit_code == 0
+      return Request.last()
+
+    @pytest.fixture(scope='class', autouse=True)
+    @classmethod
+    def scenario_snapshot(cls, runner: CliRunner, created_scenario: Scenario, recorded_request: Request):
+      result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
+      assert result.exit_code == 0
+      snap = ScenarioSnapshot.create(created_scenario.uuid)
+      assert snap.format == FORMAT_V2
+      return snap
+
+    def test_scenario_list_shows_v2_name(
+      self,
+      runner: CliRunner,
+      created_scenario: Scenario,
+    ):
+      result = runner.invoke(scenario, ['snapshot', 'list', '--size', '20'])
+      assert result.exit_code == 0
+      assert 'list diff flow' in result.output
+
+      filtered = runner.invoke(
+        scenario,
+        ['snapshot', 'list', '--scenario-key', created_scenario.key()],
+      )
+      assert filtered.exit_code == 0
+      assert 'list diff flow' in filtered.output
+
+    def test_request_list_shows_v2_slug_path(
+      self,
+      runner: CliRunner,
+      created_scenario: Scenario,
+      recorded_request: Request,
+    ):
+      slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
+      result = runner.invoke(request, ['snapshot', 'list', '--size', '20'])
+      assert result.exit_code == 0
+      assert f'{slug}/{recorded_request.uuid}.http' in result.output
+      assert 'list diff flow' in result.output
+
+      filtered = runner.invoke(
+        request,
+        ['snapshot', 'list', '--scenario-key', created_scenario.key()],
+      )
+      assert filtered.exit_code == 0
+      assert f'{slug}/{recorded_request.uuid}.http' in filtered.output
+
+    def test_request_and_scenario_diff_after_response_change(
+      self,
+      runner: CliRunner,
+      created_scenario: Scenario,
+      recorded_request: Request,
+    ):
+      recorded_request.response.raw = b'HTTP/1.1 502\r\nContent-Length: 4\r\n\r\nnope'
+      recorded_request.response.save()
+
+      request_diff = runner.invoke(
+        request,
+        ['snapshot', 'diff', '--request-key', recorded_request.key(), '--full'],
+      )
+      assert request_diff.exit_code == 0
+      assert '~ Response body' in request_diff.output
+      assert 'nope' in request_diff.output
+
+      # scenario-only history: unscoped request diff still expands scenario requests
+      all_diff = runner.invoke(request, ['snapshot', 'diff', '--full'])
+      assert all_diff.exit_code == 0
+      assert '~ Response body' in all_diff.output
+
+      scenario_diff = runner.invoke(
+        scenario,
+        ['snapshot', 'diff', '--scenario-key', created_scenario.key(), '--full'],
+      )
+      assert scenario_diff.exit_code == 0
+      assert 'list diff flow' in scenario_diff.output
+      assert '~ Response body' in scenario_diff.output

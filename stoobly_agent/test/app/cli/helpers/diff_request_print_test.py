@@ -4,14 +4,18 @@ import types
 
 import pytest
 
-from stoobly_agent.app.cli.helpers.diff_request_print import print_request_diff
+from stoobly_agent.app.cli.helpers.diff_request_print import (
+    analyze_request_diff,
+    print_request_diff,
+)
 
 
 class _StubPythonRequest:
-    def __init__(self, url=None, data=None, headers=None):
+    def __init__(self, url=None, data=None, headers=None, method=None):
         self.url = url
         self.data = data
         self.headers = headers
+        self.method = method
 
 
 class _StubPythonResponse:
@@ -39,9 +43,16 @@ class _StubSnapshot:
 
 class _StubCurrentReq:
     def __init__(
-        self, url=None, body=None, headers=None, res_content=None, res_headers=None
+        self,
+        url=None,
+        body=None,
+        headers=None,
+        res_content=None,
+        res_headers=None,
+        method=None,
     ):
         self.url = url
+        self.method = method
         # Simulate minimal surface used in diff_request_print:
         self.raw = None
         # Attach a tiny adapter-compatible shape by monkeypatching via attributes accessed later
@@ -122,6 +133,90 @@ def test_request_body_one_sided_and_diff_detection(
         assert "~ Request body" in out
     else:
         assert out == ""
+
+
+def test_method_diff_printed_when_full(monkeypatch):
+    snapshot = _StubSnapshot(
+        py_req=_StubPythonRequest(url="http://u", data="same", method="GET"),
+    )
+    current = _StubCurrentReq(url="http://u", body="same", method="POST")
+    current.raw = b"X"
+
+    from stoobly_agent.app.models.adapters.orm import OrmResponseAdapterFactory
+
+    class _FakeRespAdapter:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def python_response(self):
+            return None
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory",
+        _FakeRespAdapter,
+    )
+
+    class _FakeRawReqAdapter:
+        def __init__(self, raw):
+            self.body = "same"
+            self.headers = None
+            self.url = "http://u"
+            self.method = "POST"
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.raw_http_request_adapter.RawHttpRequestAdapter",
+        _FakeRawReqAdapter,
+    )
+
+    analysis = analyze_request_diff(snapshot, current)
+    assert analysis is not None
+    assert analysis.method_has_diff is True
+    assert analysis.snapshot_method == "GET"
+    assert analysis.current_method == "POST"
+
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        any_diffs = print_request_diff(snapshot, current, full=True)
+    finally:
+        sys.stdout = old
+    out = buf.getvalue()
+
+    assert any_diffs is True
+    assert "~ Method" in out
+
+
+def test_method_only_diff_detected_without_full(monkeypatch):
+    snapshot = _StubSnapshot(
+        py_req=_StubPythonRequest(url="http://u", method="GET"),
+    )
+    current = _StubCurrentReq(url="http://u", method="PUT")
+
+    class _FakeRespAdapter:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def python_response(self):
+            return None
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory",
+        _FakeRespAdapter,
+    )
+
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        any_diffs = print_request_diff(snapshot, current, full=False)
+    finally:
+        sys.stdout = old
+    out = buf.getvalue()
+
+    assert any_diffs is True
+    assert "--- Request http://u" in out
+    assert "~ Method" not in out
 
 
 def test_url_diff_sets_any_diffs_true_and_prints(monkeypatch):
@@ -255,3 +350,63 @@ def test_response_headers_diff_printed_when_full(monkeypatch):
 
     assert any_diffs is True
     assert "~ Response headers" in out
+
+
+def test_error_status_response_body_diff_not_skipped(monkeypatch):
+    """requests.Response is falsy for status >= 400; body diffs must still compare."""
+    import requests
+
+    snap_res = requests.Response()
+    snap_res.status_code = 502
+    snap_res._content = b"Bad Gateway"
+
+    cur_res = requests.Response()
+    cur_res.status_code = 502
+    cur_res._content = b"nope"
+
+    assert bool(snap_res) is False
+    assert bool(cur_res) is False
+
+    snapshot = _StubSnapshot(
+        py_req=_StubPythonRequest(url="http://u", data=b"", headers={}),
+        py_res=snap_res,
+    )
+    current = _StubCurrentReq(url="http://u", body=b"", headers={})
+    current.raw = b"X"
+
+    class _FakeRespAdapter:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def python_response(self):
+            return cur_res
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.orm.OrmResponseAdapterFactory",
+        _FakeRespAdapter,
+    )
+
+    class _FakeRawReqAdapter:
+        def __init__(self, raw):
+            self.body = b""
+            self.headers = {}
+            self.url = "http://u"
+
+    monkeypatch.setattr(
+        "stoobly_agent.app.models.adapters.raw_http_request_adapter.RawHttpRequestAdapter",
+        _FakeRawReqAdapter,
+    )
+
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        any_diffs = print_request_diff(snapshot, current, full=True)
+    finally:
+        sys.stdout = old
+    out = buf.getvalue()
+
+    assert any_diffs is True
+    assert "~ Response body" in out
+    assert "Bad Gateway" in out
+    assert "nope" in out

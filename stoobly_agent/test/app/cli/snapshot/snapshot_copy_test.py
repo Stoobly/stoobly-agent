@@ -8,8 +8,17 @@ from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshotV2
-from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import SCENARIO_RESOURCE
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
+  FORMAT_V1,
+  detect_snapshot_format,
+)
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
+from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import (
+  PUT_ACTION,
+  SCENARIO_RESOURCE,
+)
 from stoobly_agent.cli import record
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
@@ -109,3 +118,47 @@ class TestCopy():
           sanitized = ScenarioSnapshotV2.sanitize_scenario_filename(created_scenario.name)
           assert event.resource_id in (created_scenario.uuid, sanitized)
           assert event.snapshot().uuid == ScenarioKey(created_scenario.key()).id
+
+    class TestWhenV1RequestToEmptyDest():
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def settings(cls):
+        return reset()
+
+      @pytest.fixture(scope='class')
+      @classmethod
+      def recorded_request(cls, runner: CliRunner):
+        record_result = runner.invoke(record, [DETERMINISTIC_GET_REQUEST_URL])
+        assert record_result.exit_code == 0
+        return Request.last()
+
+      @pytest.fixture(scope='class', autouse=True)
+      @classmethod
+      def v1_snapshot(cls, recorded_request: Request):
+        path = snapshot_request(recorded_request, action=PUT_ACTION, format=FORMAT_V1)
+        assert path is not None
+        assert detect_snapshot_format(DataDir.instance()) == FORMAT_V1
+        return path
+
+      def test_history_matches_v1_files(self, runner: CliRunner, recorded_request: Request):
+        with tempfile.TemporaryDirectory() as dirpath:
+          dest = DataDir.instance(dirpath)
+          assert detect_snapshot_format(dest) is None
+
+          copy_result = runner.invoke(
+            snapshot,
+            ['copy', dirpath, '--request-key', recorded_request.key()],
+          )
+          assert copy_result.exit_code == 0
+
+          assert detect_snapshot_format(dest) == FORMAT_V1
+          dest_snap = RequestSnapshot.create(recorded_request.uuid, dest)
+          assert dest_snap.format == FORMAT_V1
+
+          log = Log(dest)
+          assert len(log.events) == 1
+          event = log.events[0]
+          assert event.resource_id == recorded_request.uuid
+          # v1 history locator is bare uuid (no slug/)
+          assert '/' not in event.resource_uuid
+          assert event.snapshot(dest).format == FORMAT_V1

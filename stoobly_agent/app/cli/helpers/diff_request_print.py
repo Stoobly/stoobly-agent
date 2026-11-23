@@ -9,6 +9,8 @@ class RequestDiffAnalysis:
   request_key_str: str
   url_line: str
   snapshot_path: str
+  snapshot_method: Optional[str]
+  current_method: Optional[str]
   snapshot_req_body: Any
   current_req_body: Any
   snapshot_res_body: Any
@@ -17,6 +19,7 @@ class RequestDiffAnalysis:
   current_req_headers_str: Optional[str]
   snapshot_res_headers_str: Optional[str]
   current_res_headers_str: Optional[str]
+  method_has_diff: bool
   request_headers_has_diff: bool
   response_headers_has_diff: bool
   request_body_has_diff: bool
@@ -36,7 +39,6 @@ def emit_request_diff_header(
   emit("")
   emit("~ Snapshot Path")
   emit(snapshot_path)
-  emit("")
 
 
 def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optional[RequestDiffAnalysis]:
@@ -57,17 +59,24 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
 
   snapshot_py_req = request_snapshot.python_request
   snapshot_py_res = request_snapshot.python_response
-  snapshot_url = snapshot_py_req.url if snapshot_py_req else None
-  snapshot_req_body = snapshot_py_req.data if snapshot_py_req else None
-  snapshot_res_body = snapshot_py_res.content if snapshot_py_res else None
+  # Use `is not None`: requests.Response is falsy for status >= 400
+  snapshot_url = snapshot_py_req.url if snapshot_py_req is not None else None
+  snapshot_method = None
+  if snapshot_py_req is not None and getattr(snapshot_py_req, "method", None):
+    snapshot_method = str(snapshot_py_req.method).upper()
+  snapshot_req_body = snapshot_py_req.data if snapshot_py_req is not None else None
+  snapshot_res_body = snapshot_py_res.content if snapshot_py_res is not None else None
   snapshot_req_headers = None
   snapshot_res_headers = None
-  if snapshot_py_req and hasattr(snapshot_py_req, "headers"):
+  if snapshot_py_req is not None and hasattr(snapshot_py_req, "headers"):
     snapshot_req_headers = snapshot_py_req.headers
-  if snapshot_py_res and hasattr(snapshot_py_res, "headers"):
+  if snapshot_py_res is not None and hasattr(snapshot_py_res, "headers"):
     snapshot_res_headers = snapshot_py_res.headers
 
   current_url = getattr(current_request, "url", None)
+  current_method = getattr(current_request, "method", None)
+  if current_method:
+    current_method = str(current_method).upper()
   current_req_headers = None
   current_req_body = None
   if hasattr(current_request, "raw") and current_request.raw:
@@ -76,13 +85,20 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
       current_req_body = adapter.body
       current_req_headers = adapter.headers
       current_url = adapter.url
+      adapter_method = getattr(adapter, "method", None)
+      if adapter_method:
+        current_method = str(adapter_method).upper()
     except Exception:
       current_req_body = None
       current_req_headers = None
 
   current_py_res = OrmResponseAdapterFactory(current_request.response).python_response()
-  current_res_body = current_py_res.content if current_py_res else None
-  current_res_headers = current_py_res.headers if current_py_res and hasattr(current_py_res, "headers") else None
+  current_res_body = current_py_res.content if current_py_res is not None else None
+  current_res_headers = (
+    current_py_res.headers
+    if current_py_res is not None and hasattr(current_py_res, "headers")
+    else None
+  )
 
   def headers_to_string(h):
     if not h:
@@ -99,6 +115,8 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
   url_after = current_url or ""
   url_has_diff = url_before != url_after
 
+  method_has_diff = (snapshot_method or "") != (current_method or "")
+
   snapshot_req_headers_str = headers_to_string(snapshot_req_headers)
   current_req_headers_str = headers_to_string(current_req_headers)
   request_headers_has_diff = (snapshot_req_headers_str or "") != (current_req_headers_str or "")
@@ -111,6 +129,7 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
 
   has_diff = (
     url_has_diff
+    or method_has_diff
     or request_headers_has_diff
     or request_body_has_diff
     or response_headers_has_diff
@@ -123,6 +142,8 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
     request_key_str=request_key_str,
     url_line=url_line,
     snapshot_path=request_snapshot.path,
+    snapshot_method=snapshot_method,
+    current_method=current_method,
     snapshot_req_body=snapshot_req_body,
     current_req_body=current_req_body,
     snapshot_res_body=snapshot_res_body,
@@ -131,6 +152,7 @@ def analyze_request_diff(request_snapshot: Any, current_request: Any) -> Optiona
     current_req_headers_str=current_req_headers_str,
     snapshot_res_headers_str=snapshot_res_headers_str,
     current_res_headers_str=current_res_headers_str,
+    method_has_diff=method_has_diff,
     request_headers_has_diff=request_headers_has_diff,
     response_headers_has_diff=response_headers_has_diff,
     request_body_has_diff=request_body_has_diff,
@@ -158,25 +180,38 @@ def emit_request_diff(
     emit=emit,
   )
 
+  sections = []
+  if full and analysis.method_has_diff:
+    sections.append(
+      ("~ Method", diff_strings(analysis.snapshot_method or "", analysis.current_method or ""))
+    )
   if full and analysis.request_headers_has_diff:
-    emit("~ Request headers")
-    emit(diff_strings(analysis.snapshot_req_headers_str or "", analysis.current_req_headers_str or ""))
-    emit("")
-
+    sections.append(
+      (
+        "~ Request headers",
+        diff_strings(analysis.snapshot_req_headers_str or "", analysis.current_req_headers_str or ""),
+      )
+    )
   if full and analysis.request_body_has_diff:
-    emit("~ Request body")
-    emit(diff_strings(analysis.snapshot_req_body or "", analysis.current_req_body or ""))
-    emit("")
-
+    sections.append(
+      ("~ Request body", diff_strings(analysis.snapshot_req_body or "", analysis.current_req_body or ""))
+    )
   if full and analysis.response_headers_has_diff:
-    emit("~ Response headers")
-    emit(diff_strings(analysis.snapshot_res_headers_str or "", analysis.current_res_headers_str or ""))
-    emit("")
-
+    sections.append(
+      (
+        "~ Response headers",
+        diff_strings(analysis.snapshot_res_headers_str or "", analysis.current_res_headers_str or ""),
+      )
+    )
   if full and analysis.response_body_has_diff:
-    emit("~ Response body")
-    emit(diff_strings(analysis.snapshot_res_body or "", analysis.current_res_body or ""))
+    sections.append(
+      ("~ Response body", diff_strings(analysis.snapshot_res_body or "", analysis.current_res_body or ""))
+    )
+
+  for title, body in sections:
     emit("")
+    emit(title)
+    emit(body)
 
 
 def print_request_diff(request_snapshot: Any, current_request: Any, *, full: bool = False, emit: bool = True) -> bool:
@@ -184,7 +219,7 @@ def print_request_diff(request_snapshot: Any, current_request: Any, *, full: boo
   Print diffs for a single request, returning True if any diffs were printed.
   Follows formatting used by scenario diffs:
     - Header: --- URL, ~ Request Key, ~ Snapshot Path
-    - When full=True: ~ Request headers / ~ Request body / ~ Response headers / ~ Response body with unified diffs
+    - When full=True: ~ Method / ~ Request headers / ~ Request body / ~ Response headers / ~ Response body with unified diffs
   Snapshot is treated as previous, current as next.
   """
   analysis = analyze_request_diff(request_snapshot, current_request)

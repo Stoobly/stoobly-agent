@@ -711,7 +711,7 @@ class TestApply():
         assert Scenario.find(created_scenario.id) == None
 
       def test_skips_scenario_with_malformed_metadata(self, runner: CliRunner, created_scenario: Scenario):
-        # v2 YAML must include uuid; corrupt metadata cannot recover identity from name-only history
+        # v2 YAML must include uuid; corrupt metadata cannot recover identity
         apply_result = runner.invoke(snapshot, ['apply'])
         assert apply_result.exit_code == 0
 

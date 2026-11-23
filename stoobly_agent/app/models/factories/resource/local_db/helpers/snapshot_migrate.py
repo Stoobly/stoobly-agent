@@ -445,31 +445,21 @@ def _history_needs_locator_rewrite(data_dir: DataDir, to_v2: bool) -> bool:
           return True
       elif event.is_scenario():
         if to_v2:
-          # bare uuid / name-only → name/uuid; stale name/uuid → canonical
+          # bare uuid → name/uuid; stale name/uuid → canonical
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
             if UUID_RE.match(rest):
               canonical = scenario_locators.get(rest)
               if canonical and canonical != event.resource_uuid:
                 return True
-            else:
-              return True
           elif UUID_RE.match(event.resource_uuid):
             if event.resource_uuid in scenario_locators:
               return True
-          else:
-            # name-only legacy locator
-            for loc in scenario_locators.values():
-              stem = loc.rsplit('/', 1)[0] if '/' in loc else loc
-              if stem == event.resource_uuid:
-                return True
         else:
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
-            if UUID_RE.match(rest) or _name in scenario_locators:
+            if UUID_RE.match(rest):
               return True
-          elif not UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
-            return True
 
   return False
 
@@ -513,7 +503,7 @@ def _rewrite_history_locators(
           new_resource_uuid = event.resource_id
       elif event.is_scenario():
         if to_v2:
-          # bare uuid / name-only / stale name/uuid → canonical {stem}/{uuid}
+          # bare uuid / stale name/uuid → canonical {stem}/{uuid}
           # (uuid map required after sanitize collisions, e.g. dup-name-2)
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
@@ -521,22 +511,12 @@ def _rewrite_history_locators(
               new_resource_uuid = scenario_locators[rest]
           elif UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
             new_resource_uuid = scenario_locators[event.resource_uuid]
-          else:
-            for loc in scenario_locators.values():
-              stem = loc.rsplit('/', 1)[0] if '/' in loc else loc
-              if stem == event.resource_uuid:
-                new_resource_uuid = loc
-                break
         else:
-          # name or name/uuid → bare uuid
+          # name/uuid → bare uuid
           if '/' in event.resource_uuid:
             _name, rest = event.resource_uuid.rsplit('/', 1)
             if UUID_RE.match(rest):
               new_resource_uuid = rest
-            elif _name in scenario_locators:
-              new_resource_uuid = scenario_locators[_name]
-          elif not UUID_RE.match(event.resource_uuid) and event.resource_uuid in scenario_locators:
-            new_resource_uuid = scenario_locators[event.resource_uuid]
 
       event.resource_uuid = new_resource_uuid
       if to_v2:
