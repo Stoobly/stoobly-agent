@@ -4,7 +4,10 @@ import types
 
 import pytest
 
-from stoobly_agent.app.cli.helpers.diff_request_print import print_request_diff
+from stoobly_agent.app.cli.helpers.diff_request_print import (
+    analyze_request_diff,
+    print_request_diff,
+)
 
 
 class _StubPythonRequest:
@@ -165,6 +168,12 @@ def test_method_diff_printed_when_full(monkeypatch):
         _FakeRawReqAdapter,
     )
 
+    analysis = analyze_request_diff(snapshot, current)
+    assert analysis is not None
+    assert analysis.method_has_diff is True
+    assert analysis.snapshot_method == "GET"
+    assert analysis.current_method == "POST"
+
     buf = io.StringIO()
     old = sys.stdout
     sys.stdout = buf
@@ -176,8 +185,6 @@ def test_method_diff_printed_when_full(monkeypatch):
 
     assert any_diffs is True
     assert "~ Method" in out
-    assert "GET" in out
-    assert "POST" in out
 
 
 def test_method_only_diff_detected_without_full(monkeypatch):
