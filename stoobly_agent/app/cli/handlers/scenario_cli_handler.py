@@ -403,19 +403,25 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   else:
     print(current_name or snapshot_name or '', end='')
   print(f' {scenario_key_str}')
-  print()
+
+  request_diffs = [
+    analysis for _, analysis in request_analyses if analysis and analysis.has_diff
+  ]
+  has_request_output = len(request_diffs) > 0 or len(requests_missing_snapshot) > 0
+
+  if full or has_request_output:
+    print()
 
   if full:
     print('~ Description')
     print(diff_strings(str(snapshot_description or ''), str(current_description or '')))
-    print()
 
-  for _, analysis in request_analyses:
-    if not analysis or not analysis.has_diff:
-      continue
+  for analysis in request_diffs:
+    print()
     emit_request_diff(analysis, full=full)
 
   for request in requests_missing_snapshot:
+    print()
     emit_request_diff_header(
       request.url or "",
       request.key(),
