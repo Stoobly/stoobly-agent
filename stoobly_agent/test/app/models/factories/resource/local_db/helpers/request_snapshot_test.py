@@ -261,22 +261,28 @@ class TestRequestSnapshotV2NamingEdges:
 
     assert snapshot.path in str(exc.value)
 
-  def test_copy_bodies_skips_unsafe_refs(self, tmp_path):
-    from stoobly_agent.config.constants.custom_headers import BODY_REF
+  def test_copy_refs_skips_unsafe_refs(self, tmp_path):
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 
     snapshot = RequestSnapshotV2(UUID, slug='GET-copy')
     slug_dir = os.path.dirname(snapshot.path)
     bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
     os.makedirs(bodies_dir, exist_ok=True)
+    os.makedirs(headers_dir, exist_ok=True)
 
-    safe_hash = 'a' * 64
-    safe_body = os.path.join(bodies_dir, safe_hash)
-    with open(safe_body, 'wb') as fp:
-      fp.write(b'safe')
+    safe_body_hash = 'a' * 64
+    safe_header_hash = 'b' * 64
+    with open(os.path.join(bodies_dir, safe_body_hash), 'wb') as fp:
+      fp.write(b'safe-body')
+    with open(os.path.join(headers_dir, safe_header_hash), 'wb') as fp:
+      fp.write(b'User-Agent: ua')
 
     payload = (
       b'GET / HTTP/1.1\r\n'
-      + f'{BODY_REF}: bodies/{safe_hash}\r\n'.encode()
+      + f'{HEADER_REF}: headers/{safe_header_hash}\r\n'.encode()
+      + f'{HEADER_REF}: ../outside-header\r\n'.encode()
+      + f'{BODY_REF}: bodies/{safe_body_hash}\r\n'.encode()
       + f'{BODY_REF}: ../outside-secret\r\n'.encode()
       + f'{BODY_REF}: /etc/passwd\r\n'.encode()
       + b'\r\n'
@@ -287,9 +293,13 @@ class TestRequestSnapshotV2NamingEdges:
     dest.mkdir()
     snapshot.copy(str(dest))
 
-    # Safe body copied; absolute/traversal refs skipped
-    copied_bodies = list(dest.rglob(safe_hash))
+    # Safe refs copied; absolute/traversal refs skipped
+    copied_bodies = list(dest.rglob(safe_body_hash))
     assert len(copied_bodies) == 1
-    assert copied_bodies[0].read_bytes() == b'safe'
+    assert copied_bodies[0].read_bytes() == b'safe-body'
+    copied_headers = list(dest.rglob(safe_header_hash))
+    assert len(copied_headers) == 1
+    assert copied_headers[0].read_bytes() == b'User-Agent: ua'
     assert not list(dest.rglob('outside-secret'))
+    assert not list(dest.rglob('outside-header'))
     assert not list(dest.rglob('passwd'))

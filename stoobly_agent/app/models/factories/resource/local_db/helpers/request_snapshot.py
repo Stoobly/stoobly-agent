@@ -5,12 +5,14 @@ import shutil
 from typing import Optional, Union
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
-from stoobly_agent.config.constants.custom_headers import BODY_REF
+from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
-from .body_ref import externalize_joined_request, reconstitute_joined_request, resolve_body_path
+from .body_ref import resolve_body_path
+from .header_ref import resolve_header_path
+from .joined_request_ref import externalize_joined_request, reconstitute_joined_request
 from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, REQUEST_FILE_EXTENSION, UUID_RE, resolve_write_format
 from .snapshot_types import RequestSnapshotOptions
@@ -397,7 +399,7 @@ class RequestSnapshotV2(RequestSnapshot):
     request_file_path = self.path
     copied = self.copy_file(request_file_path, dest_dir)
     if request_file_path:
-      self._copy_bodies(request_file_path, dest_dir)
+      self._copy_refs(request_file_path, dest_dir)
     return copied
 
   def remove(self):
@@ -458,10 +460,11 @@ class RequestSnapshotV2(RequestSnapshot):
         continue
       self._cleanup_empty_slug_dir(os.path.dirname(match))
 
-  def _copy_bodies(self, request_file_path: str, dest_dir: str):
+  def _copy_refs(self, request_file_path: str, dest_dir: str):
     slug_dir = os.path.dirname(request_file_path)
     bodies_dir = os.path.join(slug_dir, 'bodies')
-    if not os.path.isdir(bodies_dir):
+    headers_dir = os.path.join(slug_dir, 'headers')
+    if not os.path.isdir(bodies_dir) and not os.path.isdir(headers_dir):
       return
 
     try:
@@ -472,10 +475,19 @@ class RequestSnapshotV2(RequestSnapshot):
 
     raw_text = raw.decode('utf-8', errors='ignore')
     for line in raw_text.splitlines():
-      if line.lower().startswith(f'{BODY_REF.lower()}:'):
+      lower = line.lower()
+      if lower.startswith(f'{BODY_REF.lower()}:'):
         ref = line.split(':', 1)[1].strip()
         try:
           src = resolve_body_path(slug_dir, ref)
+        except ValueError:
+          continue
+        if os.path.exists(src):
+          self.copy_file(src, dest_dir)
+      elif lower.startswith(f'{HEADER_REF.lower()}:'):
+        ref = line.split(':', 1)[1].strip()
+        try:
+          src = resolve_header_path(slug_dir, ref)
         except ValueError:
           continue
         if os.path.exists(src):
@@ -492,6 +504,10 @@ class RequestSnapshotV2(RequestSnapshot):
     bodies_dir = os.path.join(slug_dir, 'bodies')
     if os.path.isdir(bodies_dir):
       shutil.rmtree(bodies_dir, ignore_errors=True)
+
+    headers_dir = os.path.join(slug_dir, 'headers')
+    if os.path.isdir(headers_dir):
+      shutil.rmtree(headers_dir, ignore_errors=True)
 
     try:
       if not os.listdir(slug_dir):

@@ -27,7 +27,7 @@ stoobly-agent snapshot migrate --format v1
 
 | | **v1** | **v2** |
 |---|--------|--------|
-| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies inline) | `snapshots/requests/{slug}/{uuid}.http` (bodies under `bodies/` via `X-Stoobly-Body-Ref`) |
+| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.http` (bodies under `bodies/` via `X-Stoobly-Body-Ref`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Listed in YAML as `slug/{uuid}.http` relative paths |
 | History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
@@ -57,7 +57,7 @@ flowchart TB
 
 1. **Requests** — For each v1 shard file (`requests/{2-char}/{uuid}`):
    - Read joined bytes; derive method/path → slug.
-   - Externalize bodies into `{slug}/bodies/` and write `{slug}/{uuid}.http`.
+   - Externalize bodies into `{slug}/bodies/` and dedup-list headers into `{slug}/headers/`, then write `{slug}/{uuid}.http`.
    - Remove the v1 file; drop empty shard dirs.
 2. **Scenarios** — For each v1 metadata file (`scenarios/{uuid}`):
    - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
@@ -70,8 +70,8 @@ Corrupt request/scenario files are skipped and left in place.
 ### v2 → v1
 
 1. **Requests** — For each `{slug}/{uuid}.http`:
-   - Reconstitute inline bodies from `bodies/` refs.
-   - Write `requests/{uuid[0:2]}/{uuid}`; remove `.http` and empty slug/`bodies` dirs.
+   - Reconstitute inline bodies/headers from `bodies/` and `headers/` refs.
+   - Write `requests/{uuid[0:2]}/{uuid}`; remove `.http` and empty slug/`bodies`/`headers` dirs.
 2. **Scenarios** — For each `*.yaml` / `*.yml`:
    - Write JSON metadata at `scenarios/{uuid}` and UUID list at `scenarios/requests/{uuid}`.
    - Remove the YAML file.
@@ -103,7 +103,8 @@ Migrate is also used interactively on **snapshot create** when v1 trees are dete
 | Format detect | [`snapshot_format.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py) |
 | Snapshot classes | [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) / [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) (`*V1` / `*V2`; readers use `.create()`) |
 | History events | [`log_event.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log_event.py) (`LogEventV1` / `LogEventV2`; readers use `.create()`) |
-| Body externalize / reconstitute | [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) |
+| Body / header storage | [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) / [`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py) |
+| Joined-message externalize / reconstitute | [`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py) |
 | OpenCLI contract | [`snapshot.opencli.yaml`](../stoobly_agent/app/cli/snapshot.opencli.yaml) |
 | Create flow | [snapshot-create.md](snapshot-create.md) |
 | Tests | [`snapshot_format_v2_test.py`](../stoobly_agent/test/app/cli/snapshot/snapshot_format_v2_test.py) |

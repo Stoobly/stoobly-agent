@@ -7,7 +7,7 @@ import yaml
 
 from stoobly_agent.config.data_dir import DataDir
 
-from .body_ref import (
+from .joined_request_ref import (
   externalize_joined_request,
   extract_method_and_path_from_joined,
   reconstitute_joined_request,
@@ -574,6 +574,10 @@ def _cleanup_slug_dir(slug_dir: str):
   bodies_dir = os.path.join(slug_dir, 'bodies')
   if os.path.isdir(bodies_dir):
     shutil.rmtree(bodies_dir, ignore_errors=True)
+
+  headers_dir = os.path.join(slug_dir, 'headers')
+  if os.path.isdir(headers_dir):
+    shutil.rmtree(headers_dir, ignore_errors=True)
 
   try:
     if not os.listdir(slug_dir):

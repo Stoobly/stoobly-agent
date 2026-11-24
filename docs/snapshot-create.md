@@ -63,7 +63,7 @@ classDiagram
     +request_relative_path(slug, uuid)
     +parse_request_relative_path(path)
     path requests/slug/uuid.http
-    bodies + X-Stoobly-Body-Ref
+    bodies + headers + Body-Ref/Header-Ref
   }
   class ScenarioSnapshot {
     +create(uuid, data_dir, name, format)
@@ -135,12 +135,14 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
   <uuid>.http
   bodies/<sha256>
+  headers/<sha256>
 ```
 
-- `.http` is the existing joined control + raw HTTP request/response (monkey delimiter), **without** bodies.
+- `.http` is the existing joined control + raw HTTP request/response (monkey delimiter), **without** bodies and without dedup-list headers.
 - Non-empty bodies are written under `bodies/<content-hash>`.
-- Last header on that HTTP message is `X-Stoobly-Body-Ref: bodies/<hash>` ([`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py)).
-- On read, bodies are reconstituted so apply/diff/list still see full joined bytes.
+- Dedup-list request/response headers are written under `headers/<content-hash>` ([`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py)); missing dedup-list names are omitted.
+- Refs on that HTTP message: `X-Stoobly-Header-Ref: headers/<hash>` at the position of the first dedup-list header (when present), and `X-Stoobly-Body-Ref: bodies/<hash>` as the last header ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
+- On read, headers and bodies are reconstituted so apply/diff/list still see full joined bytes.
 
 ### v1 on-disk layout (`RequestSnapshotV1`)
 
@@ -184,6 +186,7 @@ Orchestration: [`snapshot_scenario`](../stoobly_agent/app/models/factories/resou
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
   <uuid>.http
   bodies/<sha256>
+  headers/<sha256>
 ```
 
 YAML fields:
@@ -256,5 +259,7 @@ See also [snapshot migrate](snapshot-migrate.md).
 | [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) | `RequestSnapshot` + `RequestSnapshotV1` / `RequestSnapshotV2` (locator parse + v2 naming helpers) |
 | [`scenario_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/scenario_snapshot.py) | `ScenarioSnapshot` + `ScenarioSnapshotV1` / `ScenarioSnapshotV2` (locator parse + v2 filename sanitize) |
 | [`log_event.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/log_event.py) | `LogEvent` + `LogEventV1` / `LogEventV2` (locators); `.create()` / `.snapshot()` → snapshot `.create()` |
-| [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) | v2 body externalize/reconstitute |
+| [`body_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/body_ref.py) | v2 body content-addressed storage |
+| [`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py) | v2 header content-addressed storage + dedup lists |
+| [`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py) | v2 joined-message externalize/reconstitute |
 | [`snapshot_migrate.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_migrate.py) | v1 ↔ v2 migrate ([docs](snapshot-migrate.md)) |

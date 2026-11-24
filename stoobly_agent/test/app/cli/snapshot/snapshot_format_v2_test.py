@@ -12,6 +12,7 @@ from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref import BODY_REF_HEADER
+from stoobly_agent.app.models.factories.resource.local_db.helpers.header_ref import HEADER_REF_HEADER
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot, RequestSnapshotV2
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
@@ -607,6 +608,7 @@ class TestSnapshotFormatV2:
       v2 = RequestSnapshot.create(recorded_request.uuid)
       slug_dir = os.path.dirname(v2.path)
       bodies_dir = os.path.join(slug_dir, 'bodies')
+      headers_dir = os.path.join(slug_dir, 'headers')
       assert os.path.isdir(bodies_dir)
 
       event_before = Log().events[-1]
@@ -620,6 +622,7 @@ class TestSnapshotFormatV2:
       assert event_after.resource_uuid == recorded_request.uuid
       assert '/' not in event_after.resource_uuid
       assert not os.path.isdir(bodies_dir)
+      assert not os.path.isdir(headers_dir)
       assert not os.path.isdir(slug_dir)
 
     def test_preserves_malformed_history_line(self, recorded_request: Request):
@@ -663,9 +666,13 @@ class TestSnapshotFormatV2:
 
       slug_dir = os.path.dirname(source.path)
       bodies_dir = os.path.join(slug_dir, 'bodies')
+      headers_dir = os.path.join(slug_dir, 'headers')
       assert os.path.isdir(bodies_dir)
       body_names = os.listdir(bodies_dir)
       assert len(body_names) >= 1
+      header_names = os.listdir(headers_dir) if os.path.isdir(headers_dir) else []
+      if header_names:
+        assert HEADER_REF_HEADER.encode() in on_disk
 
       with tempfile.TemporaryDirectory() as dirpath:
         copy_result = runner.invoke(snapshot, ['copy', dirpath, '--request-key', recorded_request.key()])
@@ -680,6 +687,12 @@ class TestSnapshotFormatV2:
         assert os.path.isdir(dest_bodies)
         for name in body_names:
           assert os.path.isfile(os.path.join(dest_bodies, name))
+
+        if header_names:
+          dest_headers = os.path.join(os.path.dirname(dest.path), 'headers')
+          assert os.path.isdir(dest_headers)
+          for name in header_names:
+            assert os.path.isfile(os.path.join(dest_headers, name))
 
         assert dest.request == source.request
 
