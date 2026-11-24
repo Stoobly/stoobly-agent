@@ -134,12 +134,12 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
 ```
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
   <uuid>.http
-  bodies/<sha256>
-  headers/<sha256>
+  bodies/<hash16>
+  headers/<hash16>
 ```
 
 - `.http` is the existing joined control + raw HTTP request/response (monkey delimiter), **without** bodies and without dedup-list headers.
-- Non-empty bodies are written under `bodies/<content-hash>`.
+- Non-empty bodies are written under `bodies/<content-hash>` (16-char truncated SHA-256 hex).
 - Dedup-list request/response headers are written under `headers/<content-hash>` ([`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py)); missing dedup-list names are omitted.
 - Refs on that HTTP message: `X-Stoobly-Header-Ref: headers/<hash>` at the position of the first dedup-list header (when present), and `X-Stoobly-Body-Ref: bodies/<hash>` as the last header ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
 - On read, headers and bodies are reconstituted so apply/diff/list still see full joined bytes.
@@ -185,8 +185,8 @@ Orchestration: [`snapshot_scenario`](../stoobly_agent/app/models/factories/resou
 .stoobly/snapshots/scenarios/<sanitized-name>.yaml   # collisions → name-2.yaml, …
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
   <uuid>.http
-  bodies/<sha256>
-  headers/<sha256>
+  bodies/<hash16>
+  headers/<hash16>
 ```
 
 YAML fields:

@@ -88,6 +88,43 @@ class TestScaffoldCommandIdentity:
 
 
 class TestSaveScaffoldCommandUpsert:
+  def test_preserves_comments_and_unrelated_formatting(self, tmp_path):
+    path = os.path.join(str(tmp_path), 'scaffold.yml')
+    with open(path, 'w') as fp:
+      fp.write(
+        "# Scaffold apply config\n"
+        "version: 1\n"
+        "# ordered steps\n"
+        "commands:\n"
+        "  # backend service\n"
+        "- resource: service\n"
+        "  action: create\n"
+        "  options:\n"
+        "    service_name: api  # primary API\n"
+        "    hostname: api.example.com\n"
+        "- resource: app\n"
+        "  action: create\n"
+        "  options:\n"
+        "    app_name: demo\n"
+      )
+
+    save_scaffold_command(path, 'setting', 'filter set', {
+      'pattern': '.*',
+      'method': ['GET'],
+      'action_name': 'exclude',
+    })
+
+    with open(path) as fp:
+      text = fp.read()
+
+    assert '# Scaffold apply config' in text
+    assert '# ordered steps' in text
+    assert '# backend service' in text
+    assert '# primary API' in text
+    assert 'service_name: api' in text
+    assert 'app_name: demo' in text
+    assert 'filter set' in text
+
   def test_upserts_matching_create_in_place(self, tmp_path):
     path = os.path.join(str(tmp_path), 'scaffold.yml')
     save_scaffold_command(path, 'service', 'create', {
