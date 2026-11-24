@@ -1,8 +1,9 @@
 import hashlib
 import os
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 from stoobly_agent.config.constants.custom_headers import HEADER_REF
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
 HEADER_REF_HEADER = HEADER_REF
 HEADER_REF_HEADER_LOWER = HEADER_REF_HEADER.lower()
@@ -52,6 +53,10 @@ RESPONSE_HEADER_DEDUP_LIST: Set[str] = {
 # Truncated SHA-256 hex (64 bits) — short filenames under headers/
 CONTENT_HASH_HEX_LEN = 16
 
+# Context-dir-relative (PR-readable): .stoobly/snapshots/requests/<slug>/headers/<hash>
+_REF_ROOT_PARTS = (DATA_DIR_NAME, 'snapshots', 'requests')
+_REF_KIND = 'headers'
+
 def full_content_hash(payload: bytes) -> str:
   return hashlib.sha256(payload or b'').hexdigest()
 
@@ -64,19 +69,54 @@ def headers_dir_path(slug_dir: str) -> str:
 def header_file_path(slug_dir: str, hash_value: str) -> str:
   return os.path.join(headers_dir_path(slug_dir), hash_value)
 
-def relative_header_ref(hash_value: str) -> str:
-  return f"headers/{hash_value}"
-
-def normalize_header_ref(ref: str) -> str:
+def relative_header_ref(slug: str, hash_value: str) -> str:
   """
-  Normalize a header ref to a relative headers/<...> path under slug_dir.
+  Context-dir-relative header ref for YAML / PR navigation:
 
-  Rejects absolute paths and '..' segments so joins cannot escape the slug dir.
+    .stoobly/snapshots/requests/<slug>/headers/<hash>
+  """
+  _validate_slug(slug)
+  if not hash_value or '/' in hash_value or '\\' in hash_value or '..' in hash_value:
+    raise ValueError(f"Invalid header hash: {hash_value}")
+  return f"{DATA_DIR_NAME}/snapshots/requests/{slug}/headers/{hash_value}"
+
+def is_header_ref(ref: str) -> bool:
+  """True if ref looks like a context-relative header ref."""
+  try:
+    normalize_header_ref(ref)
+    return True
+  except ValueError:
+    return False
+
+def normalize_header_ref(ref: str, slug: Optional[str] = None) -> str:
+  """
+  Normalize to .stoobly/snapshots/requests/<slug>/headers/<hash>.
+
+  Rejects absolute paths and '..' segments. When slug is provided, the ref's
+  slug segment must match.
   """
   normalized = (ref or '').replace('\\', '/').lstrip('/')
-  if not normalized.startswith('headers/') or '..' in normalized.split('/'):
+  if not normalized or '..' in normalized.split('/'):
     raise ValueError(f"Invalid header ref: {ref}")
+
+  parts = normalized.split('/')
+  if (
+    len(parts) != 6
+    or tuple(parts[:3]) != _REF_ROOT_PARTS
+    or parts[4] != _REF_KIND
+    or not parts[3]
+    or not parts[5]
+  ):
+    raise ValueError(f"Invalid header ref: {ref}")
+
+  if slug is not None and parts[3] != slug:
+    raise ValueError(f"Invalid header ref: {ref}")
+
   return normalized
+
+def _validate_slug(slug: str):
+  if not slug or '/' in slug or '\\' in slug or slug in ('.', '..'):
+    raise ValueError(f"Invalid slug: {slug}")
 
 def _is_under_dir(path: str, parent: str) -> bool:
   """True if realpath(path) is parent or a descendant (follows symlinks)."""
@@ -86,12 +126,16 @@ def _is_under_dir(path: str, parent: str) -> bool:
 
 def resolve_header_path(slug_dir: str, ref: str) -> str:
   """
-  Resolve a validated header ref to a path under slug_dir/headers.
+  Resolve a header ref to a path under slug_dir/headers.
 
-  After join, require realpath(path) stays under realpath(headers_dir) so a
-  planted headers/<name> symlink cannot escape the slug tree.
+  Refs must be .stoobly/snapshots/requests/<slug>/headers/<hash> with <slug>
+  equal to this slug_dir's basename. After join, require realpath(path) stays
+  under realpath(headers_dir) so a planted headers/<name> symlink cannot escape.
   """
-  path = os.path.join(slug_dir, normalize_header_ref(ref))
+  slug = os.path.basename(os.path.normpath(slug_dir))
+  normalized = normalize_header_ref(ref, slug=slug)
+  hash_value = normalized.rsplit('/', 1)[-1]
+  path = header_file_path(slug_dir, hash_value)
   headers_dir = headers_dir_path(slug_dir)
   if not _is_under_dir(headers_dir, slug_dir) or not _is_under_dir(path, headers_dir):
     raise ValueError(f"Invalid header ref: {ref}")
@@ -127,7 +171,7 @@ def write_headers(slug_dir: str, payload: bytes) -> str:
   return full_digest
 
 def read_headers(slug_dir: str, ref: str) -> bytes:
-  """Read headers from a relative headers/<hash> ref under slug_dir."""
+  """Read headers from a context-relative ref under slug_dir."""
   path = resolve_header_path(slug_dir, ref)
   with open(path, 'rb') as fp:
     return fp.read()

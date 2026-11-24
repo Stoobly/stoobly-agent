@@ -27,7 +27,7 @@ stoobly-agent snapshot migrate --format v1
 
 | | **v1** | **v2** |
 |---|--------|--------|
-| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.yaml` (structured entry; bodies under `bodies/` via `X-Stoobly-Body-Ref`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref`) |
+| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.yaml` (structured entry; bodies under `bodies/` via `X-Stoobly-Body-Ref: .stoobly/snapshots/requests/{slug}/bodies/<hash>`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref: .stoobly/snapshots/requests/{slug}/headers/<hash>`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Uuid-keyed dict of structured request entries in the scenario YAML (`method`/`url`/`headers`/`response`/…; uuid is the key) |
 | History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |

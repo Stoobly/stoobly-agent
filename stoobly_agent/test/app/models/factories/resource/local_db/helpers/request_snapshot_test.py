@@ -295,9 +295,9 @@ class TestRequestSnapshotV2NamingEdges:
       'http_version': '1.1',
       'timestamp': 1,
       'headers': {
-        HEADER_REF: f'headers/{safe_header_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/GET-copy/headers/{safe_header_hash}',
         'X-Bad-Header-Ref': '../outside-header',
-        BODY_REF: f'bodies/{safe_body_hash}',
+        BODY_REF: f'.stoobly/snapshots/requests/GET-copy/bodies/{safe_body_hash}',
       },
       'response': {
         'status': 200,

@@ -12,8 +12,8 @@ from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
-from .body_ref import resolve_body_path
-from .header_ref import resolve_header_path
+from .body_ref import is_body_ref, resolve_body_path
+from .header_ref import is_header_ref, resolve_header_path
 from .snapshot import Snapshot
 from .snapshot_format import (
   FORMAT_V1,
@@ -631,9 +631,9 @@ class RequestSnapshotV2(RequestSnapshot):
 
     for ref in entry_ref_paths(entry):
       try:
-        if ref.startswith('bodies/'):
+        if is_body_ref(ref):
           src = resolve_body_path(slug_dir, ref)
-        elif ref.startswith('headers/'):
+        elif is_header_ref(ref):
           src = resolve_header_path(slug_dir, ref)
         else:
           continue

@@ -834,7 +834,9 @@ class TestApply():
             'url': 'https://example.com/',
             'http_version': '1.1',
             'timestamp': 0,
-            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'headers': {
+              'X-Stoobly-Body-Ref': '.stoobly/snapshots/requests/GET/bodies/missing-ref'
+            },
             'response': {
               'status': 200,
               'latency': 0,
@@ -1372,7 +1374,9 @@ class TestApply():
             'url': 'https://example.com/',
             'http_version': '1.1',
             'timestamp': 0,
-            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'headers': {
+              'X-Stoobly-Body-Ref': '.stoobly/snapshots/requests/GET/bodies/missing-ref'
+            },
             'response': {
               'status': 200,
               'latency': 0,
@@ -1439,7 +1443,9 @@ class TestApply():
             'url': 'https://example.com/',
             'http_version': '1.1',
             'timestamp': 0,
-            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'headers': {
+              'X-Stoobly-Body-Ref': '.stoobly/snapshots/requests/GET/bodies/missing-ref'
+            },
             'response': {
               'status': 200,
               'latency': 0,
