@@ -205,12 +205,30 @@ def _verify_request(snapshot: RequestSnapshot):
     """Verify and fix a request snapshot if needed."""
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request
     from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.yaml_adapter import joined_to_entry
 
     raw_request = snapshot.request
     if not raw_request:
         return
 
     verified_raw_request = verify_raw_request(raw_request)
+
+    # Embedded scenario entries have no standalone file — normalize the in-memory
+    # entry only (do not create requests/<slug>/<uuid>.yaml).
+    path = snapshot.path
+    if (
+      isinstance(snapshot, RequestSnapshotV2)
+      and getattr(snapshot, '_entry', None) is not None
+      and not (path and os.path.exists(path))
+    ):
+      if raw_request != verified_raw_request:
+        slug_dir = snapshot.slug_dir
+        if slug_dir:
+          os.makedirs(slug_dir, exist_ok=True)
+          snapshot._entry = joined_to_entry(
+            verified_raw_request, slug_dir, uuid=snapshot.uuid
+          )
+      return
 
     # Always rewrite v2 so on-disk form is normalized (strips trailing junk, re-externalizes bodies)
     if raw_request != verified_raw_request or isinstance(snapshot, RequestSnapshotV2):

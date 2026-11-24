@@ -63,7 +63,7 @@ class TestSnapshotFormatV2:
       slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
       snapshot = RequestSnapshot.create(recorded_request.uuid)
       assert snapshot.format == FORMAT_V2
-      assert snapshot.path.endswith(f'{slug}/{recorded_request.uuid}.http')
+      assert snapshot.path.endswith(f'{slug}/{recorded_request.uuid}.yaml')
       assert os.path.isfile(snapshot.path)
 
       # Reconstituted contents match ORM joined bytes
@@ -112,11 +112,26 @@ class TestSnapshotFormatV2:
         data = yaml.safe_load(fp)
 
       assert data['uuid'] == created_scenario.uuid
+      assert isinstance(data['requests'], dict)
       assert len(data['requests']) == 1
-      assert data['requests'][0].endswith(f'{recorded_request.uuid}.http')
-      assert '/' in data['requests'][0]
+      assert recorded_request.uuid in data['requests']
+      entry = data['requests'][recorded_request.uuid]
+      assert isinstance(entry, dict)
+      assert 'uuid' not in entry
+      assert entry['method'] == recorded_request.method
+      assert 'headers' in entry
+      assert 'response' in entry
+      assert isinstance(entry['response'], dict)
+      assert 'status' in entry['response']
+      assert 'headers' in entry['response']
 
       assert snap.requests[0] == JoinedRequestStringAdapter(recorded_request).adapt()
+
+      # Scenario embeds requests; bodies/headers live under the request slug dir
+      slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
+      slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, slug)
+      assert os.path.isdir(slug_dir)
+      assert not os.path.isfile(os.path.join(slug_dir, f'{recorded_request.uuid}.yaml'))
 
       from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
       event = Log().events[-1]
@@ -159,7 +174,7 @@ class TestSnapshotFormatV2:
 
       snap = RequestSnapshot.create(recorded_request.uuid)
       assert snap.format == FORMAT_V2
-      assert snap.path.endswith('.http')
+      assert snap.path.endswith('.yaml')
       assert snap.request == JoinedRequestStringAdapter(recorded_request).adapt()
 
       # History locators are rewritten so apply can resolve without scanning
@@ -263,7 +278,8 @@ class TestSnapshotFormatV2:
       result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert result.exit_code == 0
       assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
-      return RequestSnapshot.create(recorded_request.uuid).path
+      # Scenario embeds requests (no standalone request yaml)
+      return ScenarioSnapshot.create(created_scenario.uuid).metadata_path
 
     def test_migrate_creates_v1_files(
       self,
@@ -440,7 +456,7 @@ class TestSnapshotFormatV2:
       corrupt_uuid = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
       slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, 'GET-corrupt')
       os.makedirs(slug_dir, exist_ok=True)
-      corrupt_path = os.path.join(slug_dir, f'{corrupt_uuid}.http')
+      corrupt_path = os.path.join(slug_dir, f'{corrupt_uuid}.yaml')
       with open(corrupt_path, 'wb') as fp:
         fp.write(b'junk')
 
@@ -730,11 +746,16 @@ class TestSnapshotFormatV2:
       assert scenario_snap.format == FORMAT_V2
 
       metadata_path = scenario_snap.metadata_path
-      request_path = request_snap.path
-      slug_dir = os.path.dirname(request_path)
+      slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
+      slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, slug)
       bodies_dir = os.path.join(slug_dir, 'bodies')
       assert os.path.isfile(metadata_path)
-      assert os.path.isfile(request_path)
+      # Scenario embeds the request — no standalone uuid.yaml
+      assert request_snap.exists
+      assert not (
+        request_snap.path and os.path.isfile(request_snap.path)
+      )
+      assert request_snap.request is not None
       assert os.path.isdir(bodies_dir)
 
       delete_result = runner.invoke(
@@ -743,9 +764,7 @@ class TestSnapshotFormatV2:
       )
       assert delete_result.exit_code == 0
 
-      # Use saved paths: accessing RequestSnapshot.path can recreate the slug dir
       assert not os.path.exists(metadata_path)
-      assert not os.path.exists(request_path)
       assert not os.path.isdir(slug_dir)
 
     def test_prune_removes_deleted_scenario_history(
@@ -757,10 +776,9 @@ class TestSnapshotFormatV2:
       put_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
       assert put_result.exit_code == 0
 
-      request_path = RequestSnapshot.create(recorded_request.uuid).path
       metadata_path = ScenarioSnapshot.create(created_scenario.uuid).metadata_path
-      assert os.path.isfile(request_path)
       assert os.path.isfile(metadata_path)
+      assert RequestSnapshot.create(recorded_request.uuid).request is not None
 
       time.sleep(0.5)
       delete_result = runner.invoke(
@@ -768,7 +786,6 @@ class TestSnapshotFormatV2:
         ['snapshot', 'create', '--action', DELETE_ACTION, created_scenario.key()],
       )
       assert delete_result.exit_code == 0
-      assert not os.path.exists(request_path)
       assert not os.path.exists(metadata_path)
 
       log = Log()
@@ -835,7 +852,7 @@ class TestSnapshotFormatV2:
       slug = RequestSnapshotV2.build_request_slug(recorded_request.method, recorded_request.path)
       result = runner.invoke(request, ['snapshot', 'list', '--size', '20'])
       assert result.exit_code == 0
-      assert f'{slug}/{recorded_request.uuid}.http' in result.output
+      assert f'{slug}/{recorded_request.uuid}.yaml' in result.output
       assert 'list diff flow' in result.output
 
       filtered = runner.invoke(
@@ -843,7 +860,7 @@ class TestSnapshotFormatV2:
         ['snapshot', 'list', '--scenario-key', created_scenario.key()],
       )
       assert filtered.exit_code == 0
-      assert f'{slug}/{recorded_request.uuid}.http' in filtered.output
+      assert f'{slug}/{recorded_request.uuid}.yaml' in filtered.output
 
     def test_request_and_scenario_diff_after_response_change(
       self,

@@ -62,7 +62,7 @@ classDiagram
     +build_request_slug(method, path)
     +request_relative_path(slug, uuid)
     +parse_request_relative_path(path)
-    path requests/slug/uuid.http
+    path requests/slug/uuid.yaml
     bodies + headers + Body-Ref/Header-Ref
   }
   class ScenarioSnapshot {
@@ -75,7 +75,7 @@ classDiagram
   }
   class ScenarioSnapshotV2 {
     +sanitize_scenario_filename(name)
-    name.yaml + relative request paths
+    name.yaml + embedded request entries
   }
   class LogEvent {
     +create(line)
@@ -103,8 +103,8 @@ Implemented in [`snapshot_format.py`](../stoobly_agent/app/models/factories/reso
 
 | Detected on disk | Meaning |
 |------------------|---------|
-| **v2** | Any `requests/*/*.http` or `scenarios/*.yaml` |
-| **v1** | Any `requests/<2-char>/<uuid>` (no `.http`) or extensionless `scenarios/<uuid>` |
+| **v2** | Any `requests/*/*.yaml` or `scenarios/*.yaml` |
+| **v1** | Any `requests/<2-char>/<uuid>` (extensionless) or extensionless `scenarios/<uuid>` |
 | **none** | Empty / no recognizable snapshot files |
 
 Write policy:
@@ -133,16 +133,18 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
 
 ```
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
-  <uuid>.http
+  <uuid>.yaml
   bodies/<hash16>
   headers/<hash16>
 ```
 
-- `.http` is the existing joined control + raw HTTP request/response (monkey delimiter), **without** bodies and without dedup-list headers.
+- `<uuid>.yaml` is a structured request entry (see [`yaml_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/yaml_adapter.py)); uuid is the filename, not a field:
+  - request: `method`, `url`, `http_version`, `timestamp`, `headers` (YAML mapping)
+  - nested `response`: `status`, `latency`, `http_version`, `timestamp`, `headers`
 - Non-empty bodies are written under `bodies/<content-hash>` (16-char truncated SHA-256 hex).
 - Dedup-list request/response headers are written under `headers/<content-hash>` ([`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py)); missing dedup-list names are omitted.
-- Refs on that HTTP message: `X-Stoobly-Header-Ref: headers/<hash>` at the position of the first dedup-list header (when present), and `X-Stoobly-Body-Ref: bodies/<hash>` as the last header ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
-- On read, headers and bodies are reconstituted so apply/diff/list still see full joined bytes.
+- Refs in the YAML `headers` maps: `X-Stoobly-Header-Ref: headers/<hash>` and `X-Stoobly-Body-Ref: bodies/<hash>` ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
+- On read, the entry is rebuilt into joined HTTP and headers/bodies are reconstituted so apply/diff/list still see full joined bytes.
 
 ### v1 on-disk layout (`RequestSnapshotV1`)
 
@@ -184,21 +186,31 @@ Orchestration: [`snapshot_scenario`](../stoobly_agent/app/models/factories/resou
 ```
 .stoobly/snapshots/scenarios/<sanitized-name>.yaml   # collisions → name-2.yaml, …
 .stoobly/snapshots/requests/<METHOD>-<path-slug>/
-  <uuid>.http
   bodies/<hash16>
   headers/<hash16>
 ```
 
-YAML fields:
+YAML fields (requests are an **embedded** uuid-keyed dict of structured entries — no per-request `<uuid>.yaml` for scenario members; uuid is the dict key, not a field on the entry):
 
 ```yaml
 uuid: <scenario-uuid>
 description: <str>
 requests:
-  - GET-api-users/<request-uuid>.http
+  <request-uuid>:
+    method: GET
+    url: https://example.com/api
+    http_version: "1.1"
+    timestamp: ...
+    headers: { ... }
+    response:
+      status: 200
+      latency: ...
+      http_version: "1.1"
+      timestamp: ...
+      headers: { ... }
 ```
 
-Request entries are relative paths under `snapshots/requests/` (order preserved). Display name is the YAML stem (ORM names are required to equal the sanitized stem).
+Body/header files are still written under each request’s slug dir. Display name is the YAML stem (ORM names are required to equal the sanitized stem).
 
 ### v1 on-disk layout (`ScenarioSnapshotV1`)
 

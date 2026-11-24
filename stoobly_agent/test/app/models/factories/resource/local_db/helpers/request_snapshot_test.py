@@ -23,15 +23,22 @@ UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 UUID_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 
-def _joined(marker: bytes = b'x') -> bytes:
+def _joined(marker: bytes = b'x', uuid: str = UUID) -> bytes:
   request = b'GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n' + marker
-  response = b'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n'
-  return REQUEST_DELIMITTER.join([b'1 id 1\r\n' + request, b'2 id 1 1\r\n' + response])
+  response = b'HTTP/1.1 200\r\nContent-Length: 0\r\n\r\n'
+  return REQUEST_DELIMITTER.join([
+    f'1 {uuid} 1\r\n'.encode() + request,
+    f'2 {uuid} 1 1\r\n'.encode() + response,
+  ])
 
 
-def _write_v2_file(snapshot: RequestSnapshotV2, payload: bytes = b'raw-on-disk'):
+def _write_v2_file(snapshot: RequestSnapshotV2, payload: bytes = None):
+  """Write a valid v2 YAML request snapshot (or raw bytes for malformed-path tests)."""
   path = snapshot.path
   snapshot._ensure_parent(path)
+  if payload is None:
+    snapshot.write_raw(_joined(b'', uuid=snapshot.uuid))
+    return path
   with open(path, 'wb') as fp:
     fp.write(payload)
   return path
@@ -44,7 +51,7 @@ class TestRequestSnapshotParseRef:
     assert parsed_slug == 'GET-api'
 
   def test_slug_uuid_with_http_suffix(self):
-    parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(f'GET-api/{UUID}.http')
+    parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(f'GET-api/{UUID}.yaml')
     assert parsed_uuid == UUID
     assert parsed_slug == 'GET-api'
 
@@ -80,7 +87,7 @@ class TestRequestSnapshotCreateAndFromPath:
     snapshot = RequestSnapshot.create(UUID, data_dir)
     assert isinstance(snapshot, RequestSnapshotV2)
     assert snapshot.format == FORMAT_V2
-    assert snapshot.path.endswith(f'GET-api/{UUID}.http')
+    assert snapshot.path.endswith(f'GET-api/{UUID}.yaml')
     assert snapshot.request == original
 
   def test_from_path_v2(self):
@@ -104,7 +111,7 @@ class TestRequestSnapshotCreateAndFromPath:
 
   def test_from_path_outside_requests_dir(self):
     data_dir = DataDir.instance()
-    outside = os.path.join(data_dir.path, 'outside.http')
+    outside = os.path.join(data_dir.path, 'outside.yaml')
     with open(outside, 'wb') as fp:
       fp.write(b'x')
     assert RequestSnapshot.from_path(outside, data_dir) is None
@@ -139,7 +146,7 @@ class TestRequestSnapshotV2PathAndWrite:
 
     snap = RequestSnapshotV2(UUID, slug='POST-api')
     assert snap._find_v2_path() is None
-    assert snap.path.endswith(f'POST-api/{UUID}.http')
+    assert snap.path.endswith(f'POST-api/{UUID}.yaml')
     assert snap.path != old_path
 
   def test_find_v2_path_without_slug_still_globs(self):
@@ -161,7 +168,7 @@ class TestRequestSnapshotV2PathAndWrite:
     snap.write_raw(_joined(b''))
 
     new_path = snap.path
-    assert new_path.endswith(f'POST-api/{UUID}.http')
+    assert new_path.endswith(f'POST-api/{UUID}.yaml')
     assert os.path.exists(new_path)
     assert not os.path.exists(old_path)
     assert not os.path.isdir(old_slug_dir)
@@ -182,7 +189,7 @@ class TestRequestSnapshotV2SlugTraversal:
   def test_history_style_ref_with_traversal_stays_under_requests(self):
     data_dir = DataDir.instance()
     requests_dir = data_dir.snapshots_requests_dir_path
-    snapshot = RequestSnapshot.create(f'../../tmp/{UUID}.http', data_dir)
+    snapshot = RequestSnapshot.create(f'../../tmp/{UUID}.yaml', data_dir)
 
     assert isinstance(snapshot, RequestSnapshotV2)
     path = snapshot.path
@@ -191,8 +198,8 @@ class TestRequestSnapshotV2SlugTraversal:
   def test_remove_with_traversal_slug_does_not_delete_outside(self):
     data_dir = DataDir.instance()
     requests_dir = data_dir.snapshots_requests_dir_path
-    # Unsanitized join(requests, '..', uuid.http) would land here
-    outside = os.path.normpath(os.path.join(requests_dir, '..', f'{UUID}.http'))
+    # Unsanitized join(requests, '..', uuid.yaml) would land here
+    outside = os.path.normpath(os.path.join(requests_dir, '..', f'{UUID}.yaml'))
     with open(outside, 'wb') as fp:
       fp.write(b'secret')
 
@@ -206,7 +213,7 @@ class TestRequestSnapshotV2SlugTraversal:
     victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
     victim_path = _write_v2_file(victim, b'keep-me')
 
-    # Bare '*' would expand glob .../requests/*/*.http to the victim
+    # Bare '*' would expand glob .../requests/*/*.yaml to the victim
     wildcard = RequestSnapshotV2('*', data_dir)
     assert wildcard._find_v2_path() is None
     assert wildcard.path is None
@@ -218,8 +225,8 @@ class TestRequestSnapshotV2SlugTraversal:
     victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
     victim_path = _write_v2_file(victim, b'keep-me')
 
-    # slug/*.http parses to uuid='*'; must not glob-match victim
-    snapshot = RequestSnapshot.create('slug/*.http', data_dir)
+    # slug/*.yaml parses to uuid='*'; must not glob-match victim
+    snapshot = RequestSnapshot.create('slug/*.yaml', data_dir)
     assert isinstance(snapshot, RequestSnapshotV2)
     assert snapshot.uuid == '*'
     snapshot.remove()
@@ -229,8 +236,8 @@ class TestRequestSnapshotV2NamingEdges:
   def test_parse_relative_path_invalid(self):
     assert RequestSnapshotV2.parse_request_relative_path('only-one-part') is None
     assert RequestSnapshotV2.parse_request_relative_path('slug/uuid.txt') is None
-    assert RequestSnapshotV2.parse_request_relative_path('/uuid.http') is None
-    assert RequestSnapshotV2.parse_request_relative_path('slug/.http') is None
+    assert RequestSnapshotV2.parse_request_relative_path('/uuid.yaml') is None
+    assert RequestSnapshotV2.parse_request_relative_path('slug/.yaml') is None
 
   def test_cleanup_empty_slug_dir_after_remove(self):
     snapshot = RequestSnapshotV2(UUID, slug='GET-cleanup')
@@ -262,10 +269,14 @@ class TestRequestSnapshotV2NamingEdges:
     assert snapshot.path in str(exc.value)
 
   def test_copy_refs_skips_unsafe_refs(self, tmp_path):
+    import yaml
+
     from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 
     snapshot = RequestSnapshotV2(UUID, slug='GET-copy')
-    slug_dir = os.path.dirname(snapshot.path)
+    path = snapshot.path
+    snapshot._ensure_parent(path)
+    slug_dir = os.path.dirname(path)
     bodies_dir = os.path.join(slug_dir, 'bodies')
     headers_dir = os.path.join(slug_dir, 'headers')
     os.makedirs(bodies_dir, exist_ok=True)
@@ -278,16 +289,33 @@ class TestRequestSnapshotV2NamingEdges:
     with open(os.path.join(headers_dir, safe_header_hash), 'wb') as fp:
       fp.write(b'User-Agent: ua')
 
-    payload = (
-      b'GET / HTTP/1.1\r\n'
-      + f'{HEADER_REF}: headers/{safe_header_hash}\r\n'.encode()
-      + f'{HEADER_REF}: ../outside-header\r\n'.encode()
-      + f'{BODY_REF}: bodies/{safe_body_hash}\r\n'.encode()
-      + f'{BODY_REF}: ../outside-secret\r\n'.encode()
-      + f'{BODY_REF}: /etc/passwd\r\n'.encode()
-      + b'\r\n'
-    )
-    _write_v2_file(snapshot, payload)
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        HEADER_REF: f'headers/{safe_header_hash}',
+        'X-Bad-Header-Ref': '../outside-header',
+        BODY_REF: f'bodies/{safe_body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {
+          BODY_REF: '../outside-secret',
+          'X-Bad-Body': '/etc/passwd',
+        },
+      },
+    }
+    # Include unsafe refs under the real BODY_REF/HEADER_REF keys as alternate entries
+    entry['response']['headers'][BODY_REF] = '../outside-secret'
+    with open(path, 'w') as fp:
+      yaml.safe_dump(entry, fp)
+    snapshot._entry = entry
+    snapshot._resolved_path = path
 
     dest = tmp_path / 'dest'
     dest.mkdir()

@@ -11,6 +11,7 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from .request_snapshot import RequestSnapshot, RequestSnapshotV1, RequestSnapshotV2, RequestSnapshotOptions
 from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
+from .yaml_adapter import iter_scenario_request_entries
 
 REQUEST_DELIMITTER = "\n"
 # Only path separators and controls (history is newline-delimited; resource id may have spaces).
@@ -508,12 +509,32 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
 
   def iter_request_snapshots(self, handler: Callable[[RequestSnapshot], None]):
     meta = self._load_metadata_data()
-    for relative in meta.get('requests') or []:
-      parsed = RequestSnapshotV2.parse_request_relative_path(relative)
-      if not parsed:
+    requests_field = meta.get('requests') or {}
+
+    for request_uuid, entry in iter_scenario_request_entries(requests_field):
+      try:
+        embedded = RequestSnapshotV2.from_entry(
+          entry, self.data_dir, uuid=request_uuid
+        )
+      except ValueError:
         continue
-      slug, uuid = parsed
-      handler(RequestSnapshotV2(uuid, self.data_dir, slug=slug))
+      # Prefer a standalone uuid.yaml when present (e.g. after snapshot update)
+      standalone = RequestSnapshotV2(embedded.uuid, self.data_dir, slug=embedded.slug)
+      if standalone.path and os.path.exists(standalone.path):
+        handler(standalone)
+      else:
+        handler(embedded)
+
+    # Legacy v2: list of relative path strings slug/<uuid>.yaml
+    if isinstance(requests_field, list):
+      for item in requests_field:
+        if not isinstance(item, str):
+          continue
+        parsed = RequestSnapshotV2.parse_request_relative_path(item)
+        if not parsed:
+          continue
+        slug, uuid = parsed
+        handler(RequestSnapshotV2(uuid, self.data_dir, slug=slug))
 
   def remove_metadata(self):
     metadata_file_path = self.metadata_path
@@ -530,10 +551,10 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     self._resolved_metadata_path = None
 
     existing_path = self._find_uuid_metadata_path()
-    existing_requests = []
+    existing_requests = {}
     if existing_path and os.path.exists(existing_path):
       self._resolved_metadata_path = existing_path
-      existing_requests = (self._load_metadata_data() or {}).get('requests') or []
+      existing_requests = (self._load_metadata_data() or {}).get('requests') or {}
       self._resolved_metadata_path = None
 
     dest_path = self._destination_metadata_path(scenario.name, existing_path)
@@ -549,12 +570,11 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     self._remove_uuid_orphans(dest_path)
 
   def write_requests(self, scenario: Scenario, **options: RequestSnapshotOptions):
-    relative_paths = []
+    entries = {}
     for request in scenario.requests:
       slug = RequestSnapshotV2.build_request_slug(request.method, request.path)
       request_snapshot = RequestSnapshotV2(request.uuid, self.data_dir, slug=slug)
-      request_snapshot.write(request, **options)
-      relative_paths.append(RequestSnapshotV2.request_relative_path(slug, request.uuid))
+      entries[request.uuid] = request_snapshot.build_entry(request, **options)
 
     self._name = scenario.name
     if scenario.uuid and UUID_RE.match(str(scenario.uuid)):
@@ -568,7 +588,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       yaml.safe_dump({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
-        'requests': relative_paths,
+        'requests': entries,
       }, fp, sort_keys=False, default_flow_style=False)
 
     self._resolved_metadata_path = dest_path
@@ -682,7 +702,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         'name': data.get('name') or self._name_from_path(self.metadata_path),
         'description': data.get('description') or '',
         'uuid': str(found_uuid),
-        'requests': data.get('requests') or [],
+        'requests': data.get('requests') or {},
       }
     except Exception:
       # Treat corrupt/invalid YAML as missing so apply can skip

@@ -50,21 +50,52 @@ SCENARIO_A = 'dddddddd-dddd-dddd-dddd-dddddddddddd'
 SCENARIO_B = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'
 
 
-def _joined(path: str = '/api', marker: bytes = b'') -> bytes:
+def _joined(path: str = '/api', marker: bytes = b'', uuid: str = UUID_A) -> bytes:
   request = f'GET {path} HTTP/1.1\r\nHost: example.com\r\n\r\n'.encode() + marker
-  response = b'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n'
-  return REQUEST_DELIMITTER.join([b'1 id 1\r\n' + request, b'2 id 1 1\r\n' + response])
+  response = b'HTTP/1.1 200\r\nContent-Length: 0\r\n\r\n'
+  return REQUEST_DELIMITTER.join([
+    f'1 {uuid} 1\r\n'.encode() + request,
+    f'2 {uuid} 1 1\r\n'.encode() + response,
+  ])
+
+
+def _joined_with_body_and_dedup_headers(
+  path: str = '/api',
+  uuid: str = UUID_A,
+  request_body: bytes = b'hello-body',
+  response_body: bytes = b'world-body',
+) -> bytes:
+  """Joined request that externalizes both bodies/ and headers/ under the slug dir."""
+  request = (
+    f'GET {path} HTTP/1.1\r\n'
+    f'Host: example.com\r\n'
+    f'User-Agent: stoobly-test\r\n'
+    f'Content-Type: text/plain\r\n'
+    f'Content-Length: {len(request_body)}\r\n'
+    f'\r\n'
+  ).encode() + request_body
+  response = (
+    f'HTTP/1.1 200 OK\r\n'
+    f'Server: test\r\n'
+    f'Content-Type: text/plain\r\n'
+    f'Content-Length: {len(response_body)}\r\n'
+    f'\r\n'
+  ).encode() + response_body
+  return REQUEST_DELIMITTER.join([
+    f'1 {uuid} 1\r\n'.encode() + request,
+    f'2 {uuid} 1 1\r\n'.encode() + response,
+  ])
 
 
 def _write_v1_request(uuid: str, joined: bytes = None) -> str:
   snap = RequestSnapshotV1(uuid, DataDir.instance())
-  snap.write_raw(joined if joined is not None else _joined())
+  snap.write_raw(joined if joined is not None else _joined(uuid=uuid))
   return snap.path
 
 
 def _write_v2_request(uuid: str, slug: str = 'GET-api', joined: bytes = None) -> str:
   snap = RequestSnapshotV2(uuid, DataDir.instance(), slug=slug)
-  snap.write_raw(joined if joined is not None else _joined())
+  snap.write_raw(joined if joined is not None else _joined(uuid=uuid))
   return snap.path
 
 
@@ -83,7 +114,7 @@ def _write_v1_scenario(uuid: str, name: str, request_uuids: list = None) -> str:
   return meta_path
 
 
-def _write_v2_scenario(uuid: str, name: str, requests: list = None) -> str:
+def _write_v2_scenario(uuid: str, name: str, requests=None) -> str:
   data_dir = DataDir.instance()
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
   os.makedirs(scenarios_dir, exist_ok=True)
@@ -92,7 +123,7 @@ def _write_v2_scenario(uuid: str, name: str, requests: list = None) -> str:
     yaml.safe_dump({
       'uuid': uuid,
       'description': '',
-      'requests': requests or [],
+      'requests': requests if requests is not None else {},
     }, fp, sort_keys=False)
   return yaml_path
 
@@ -160,7 +191,7 @@ class TestMigrateSnapshotsGate:
 
   def test_mixed_tree_finishes_pending_v1_when_targeting_v2(self):
     _write_v2_request(UUID_A)
-    _write_v1_request(UUID_B, _joined('/other'))
+    _write_v1_request(UUID_B, _joined('/other', uuid=UUID_B))
 
     assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
     assert has_v1_snapshots(DataDir.instance())
@@ -175,7 +206,7 @@ class TestMigrateSnapshotsGate:
 
   def test_mixed_tree_finishes_pending_v2_when_targeting_v1(self):
     _write_v1_request(UUID_A)
-    _write_v2_request(UUID_B, slug='GET-other', joined=_joined('/other'))
+    _write_v2_request(UUID_B, slug='GET-other', joined=_joined('/other', uuid=UUID_B))
 
     assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
     assert has_v1_snapshots(DataDir.instance())
@@ -222,6 +253,83 @@ class TestMigrateSnapshotsToV2:
     assert os.path.isfile(corrupt)
     assert RequestSnapshot.create(UUID_A).format == FORMAT_V2
 
+  def test_scenario_only_request_embeds_without_standalone_yaml(self):
+    """v1 request shards created only by scenario snapshot become embeds, not uuid.yaml."""
+    _write_v1_request(UUID_A)
+    _write_v1_scenario(SCENARIO_A, 'checkout', [UUID_A])
+    _append_history(SCENARIO_RESOURCE, SCENARIO_A, format=FORMAT_V1)
+    # No REQUEST history — not a standalone request snapshot
+
+    result = migrate_snapshots_to_v2(DataDir.instance())
+    assert result['requests'] == 1
+    assert result['scenarios'] == 1
+
+    scenario = ScenarioSnapshot.create(SCENARIO_A)
+    assert scenario.format == FORMAT_V2
+    assert len(scenario.request_snapshots) == 1
+    assert scenario.request_snapshots[0].uuid == UUID_A
+    assert scenario.request_snapshots[0].request is not None
+
+    snap = RequestSnapshot.create(UUID_A)
+    assert snap.exists
+    assert snap.request is not None
+    assert not (snap.path and os.path.isfile(snap.path))
+
+  def test_scenario_only_request_keeps_bodies_and_headers(self):
+    """Scenario-only migrate must not wipe slug bodies/headers still referenced by embeds."""
+    request_body = b'hello-body'
+    response_body = b'world-body'
+    _write_v1_request(
+      UUID_A,
+      _joined_with_body_and_dedup_headers(
+        uuid=UUID_A,
+        request_body=request_body,
+        response_body=response_body,
+      ),
+    )
+    _write_v1_scenario(SCENARIO_A, 'checkout', [UUID_A])
+    _append_history(SCENARIO_RESOURCE, SCENARIO_A, format=FORMAT_V1)
+
+    migrate_snapshots_to_v2(DataDir.instance())
+
+    snap = RequestSnapshot.create(UUID_A)
+    assert isinstance(snap, RequestSnapshotV2)
+    assert not (snap.path and os.path.isfile(snap.path))
+
+    slug_dir = snap.slug_dir
+    assert slug_dir and os.path.isdir(slug_dir)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
+    assert os.path.isdir(bodies_dir)
+    assert os.path.isdir(headers_dir)
+    assert os.listdir(bodies_dir)
+    assert os.listdir(headers_dir)
+
+    raw = snap.request
+    assert raw is not None
+    assert request_body in raw
+    assert response_body in raw
+    assert b'User-Agent: stoobly-test' in raw
+
+    scenario = ScenarioSnapshot.create(SCENARIO_A)
+    embedded = scenario.request_snapshots[0]
+    assert embedded.uuid == UUID_A
+    assert request_body in embedded.request
+    assert response_body in embedded.request
+
+  def test_request_and_scenario_keeps_standalone_yaml_when_request_snapshotted(self):
+    _write_v1_request(UUID_A)
+    _write_v1_scenario(SCENARIO_A, 'checkout', [UUID_A])
+    _append_history(REQUEST_RESOURCE, UUID_A, format=FORMAT_V1)
+    _append_history(SCENARIO_RESOURCE, SCENARIO_A, format=FORMAT_V1)
+
+    migrate_snapshots_to_v2(DataDir.instance())
+
+    snap = RequestSnapshot.create(UUID_A)
+    assert snap.path and os.path.isfile(snap.path)
+    assert snap.path.endswith(f'{UUID_A}.yaml')
+    assert ScenarioSnapshot.create(SCENARIO_A).request_snapshots[0].request is not None
+
 
 class TestMigrateSnapshotsToV1:
   def test_converts_request_and_scenario(self):
@@ -250,7 +358,7 @@ class TestRemigrateHistoryBackfill:
     _append_history(REQUEST_RESOURCE, UUID_A, format=FORMAT_V1)
 
     # Leftover v1 file so migrate_snapshots_to_v2 actually runs
-    _write_v1_request(UUID_B, _joined('/other'))
+    _write_v1_request(UUID_B, _joined('/other', uuid=UUID_B))
     _append_history(REQUEST_RESOURCE, UUID_B, format=FORMAT_V1)
 
     migrate_snapshots_to_v2(DataDir.instance())

@@ -224,7 +224,7 @@ class TestApply():
       def test_it_keeps_relocated_slug(self, recreated_request: Request):
         new_slug = RequestSnapshotV2.build_request_slug(self.NEW_METHOD, self.NEW_PATH)
         snap = RequestSnapshotV2(recreated_request.uuid, slug=new_slug)
-        assert snap.path.endswith(f'{new_slug}/{recreated_request.uuid}.http')
+        assert snap.path.endswith(f'{new_slug}/{recreated_request.uuid}.yaml')
         assert os.path.isfile(snap.path)
 
     class TestWhenDeletingScenario():
@@ -815,14 +815,37 @@ class TestApply():
 
       @pytest.fixture(scope='class', autouse=True)
       @classmethod
-      def put_event(cls, runner: CliRunner, created_scenario: Scenario):
+      def put_event(cls, runner: CliRunner, created_scenario: Scenario, created_scenario_requests):
         snapshot_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert snapshot_result.exit_code == 0
 
         log = Log()
         events = log.events
         event = events[len(events) - 1]
-        event.snapshot().iter_request_snapshots(lambda snapshot: write_junk(snapshot.path))
+        # Scenario embeds request entries — corrupt body ref so apply raises malformed
+        import yaml
+        meta_path = event.snapshot().metadata_path
+        with open(meta_path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+        req_uuid = created_scenario_requests[0].uuid
+        data['requests'] = {
+          req_uuid: {
+            'method': 'GET',
+            'url': 'https://example.com/',
+            'http_version': '1.1',
+            'timestamp': 0,
+            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'response': {
+              'status': 200,
+              'latency': 0,
+              'http_version': '1.1',
+              'timestamp': 0,
+              'headers': {},
+            },
+          },
+        }
+        with open(meta_path, 'w') as fp:
+          yaml.safe_dump(data, fp)
 
         return event
 
@@ -1304,7 +1327,7 @@ class TestApply():
       and remaining events stay pending.
 
       Uses a request PUT (success) followed by a scenario PUT whose nested
-      request file is missing (clean 400). Junk .http files raise during v2
+      request file is missing (clean 400). Junk .yaml files raise during v2
       reconstitute and abort apply before VERSION can advance.
       '''
 
@@ -1336,8 +1359,31 @@ class TestApply():
         pending = Log().unprocessed_events
         assert len(pending) == 2
 
-        nested = pending[1].snapshot().request_snapshots[0]
-        os.remove(nested.path)
+        # Corrupt embedded scenario request so apply fails after the first PUT
+        import yaml
+        scenario_snap = pending[1].snapshot()
+        meta_path = scenario_snap.metadata_path
+        with open(meta_path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+        nested = scenario_snap.request_snapshots[0]
+        data['requests'] = {
+          nested.uuid: {
+            'method': 'GET',
+            'url': 'https://example.com/',
+            'http_version': '1.1',
+            'timestamp': 0,
+            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'response': {
+              'status': 200,
+              'latency': 0,
+              'http_version': '1.1',
+              'timestamp': 0,
+              'headers': {},
+            },
+          },
+        }
+        with open(meta_path, 'w') as fp:
+          yaml.safe_dump(data, fp)
 
         recorded_request.delete()
         scenario_requests = list(created_scenario.requests)
@@ -1359,7 +1405,7 @@ class TestApply():
 
     class TestWhenMissingScenarioRequestFile():
       '''
-      Scenario PUT with a missing nested request file fails apply (400).
+      Scenario PUT with a corrupted nested request entry fails apply (400).
       '''
 
       @pytest.fixture(scope='class', autouse=True)
@@ -1382,8 +1428,29 @@ class TestApply():
         assert snapshot_result.exit_code == 0
 
         event = Log().unprocessed_events[-1]
+        import yaml
+        meta_path = event.snapshot().metadata_path
         request_snap = event.snapshot().request_snapshots[0]
-        os.remove(request_snap.path)
+        with open(meta_path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+        data['requests'] = {
+          request_snap.uuid: {
+            'method': 'GET',
+            'url': 'https://example.com/',
+            'http_version': '1.1',
+            'timestamp': 0,
+            'headers': {'X-Stoobly-Body-Ref': 'bodies/missing-ref'},
+            'response': {
+              'status': 200,
+              'latency': 0,
+              'http_version': '1.1',
+              'timestamp': 0,
+              'headers': {},
+            },
+          },
+        }
+        with open(meta_path, 'w') as fp:
+          yaml.safe_dump(data, fp)
 
         requests = list(created_scenario.requests)
         created_scenario.delete()

@@ -27,9 +27,9 @@ stoobly-agent snapshot migrate --format v1
 
 | | **v1** | **v2** |
 |---|--------|--------|
-| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.http` (bodies under `bodies/` via `X-Stoobly-Body-Ref`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref`) |
+| Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.yaml` (structured entry; bodies under `bodies/` via `X-Stoobly-Body-Ref`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
-| Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Listed in YAML as `slug/{uuid}.http` relative paths |
+| Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Uuid-keyed dict of structured request entries in the scenario YAML (`method`/`url`/`headers`/`response`/…; uuid is the key) |
 | History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
 | History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}/{uuid}` |
 
@@ -57,10 +57,11 @@ flowchart TB
 
 1. **Requests** — For each v1 shard file (`requests/{2-char}/{uuid}`):
    - Read joined bytes; derive method/path → slug.
-   - Externalize bodies into `{slug}/bodies/` and dedup-list headers into `{slug}/headers/`, then write `{slug}/{uuid}.http`.
+   - Externalize bodies into `{slug}/bodies/` and dedup-list headers into `{slug}/headers/`.
+   - Write standalone `{slug}/{uuid}.yaml` only when history has a **request** snapshot for that UUID (or the file is not referenced by any scenario). Scenario-only shards are embedded into the scenario YAML instead — no individual request file.
    - Remove the v1 file; drop empty shard dirs.
 2. **Scenarios** — For each v1 metadata file (`scenarios/{uuid}`):
-   - Load JSON name/description; map request UUIDs from `scenarios/requests/{uuid}` to relative `slug/{uuid}.http` paths.
+   - Load JSON name/description; embed structured request entries (from migrated request YAMLs) into the scenario YAML.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
 3. **History** — Rewrite bare UUID / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
@@ -69,9 +70,9 @@ Corrupt request/scenario files are skipped and left in place.
 
 ### v2 → v1
 
-1. **Requests** — For each `{slug}/{uuid}.http`:
+1. **Requests** — For each `{slug}/{uuid}.yaml`:
    - Reconstitute inline bodies/headers from `bodies/` and `headers/` refs.
-   - Write `requests/{uuid[0:2]}/{uuid}`; remove `.http` and empty slug/`bodies`/`headers` dirs.
+   - Write `requests/{uuid[0:2]}/{uuid}`; remove `.yaml` and empty slug/`bodies`/`headers` dirs. Scenario-embedded entries without a standalone file are reconstituted into v1 shards as well.
 2. **Scenarios** — For each `*.yaml` / `*.yml`:
    - Write JSON metadata at `scenarios/{uuid}` and UUID list at `scenarios/requests/{uuid}`.
    - Remove the YAML file.

@@ -9,7 +9,7 @@ FORMAT_V1 = 1
 FORMAT_V2 = 2
 
 # v2 request snapshot file suffix (owned conceptually by RequestSnapshotV2)
-REQUEST_FILE_EXTENSION = '.http'
+REQUEST_FILE_EXTENSION = '.yaml'
 
 UUID_RE = re.compile(
   r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
@@ -81,7 +81,11 @@ def has_v1_snapshots(data_dir: DataDir) -> bool:
         continue
       for name in os.listdir(shard_dir):
         path = os.path.join(shard_dir, name)
-        if os.path.isfile(path) and not name.endswith(REQUEST_FILE_EXTENSION) and UUID_RE.match(name):
+        if (
+          os.path.isfile(path)
+          and not name.endswith(REQUEST_FILE_EXTENSION)
+          and UUID_RE.match(name)
+        ):
           return True
 
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
