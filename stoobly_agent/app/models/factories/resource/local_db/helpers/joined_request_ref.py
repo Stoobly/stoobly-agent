@@ -157,7 +157,6 @@ def _externalize_http(
 
   restored_body = body
   if body:
-    header_lines = _set_or_add_content_length(header_lines, 0)
     body_hash = write_body(slug_dir, body)
     # Body-ref must be the last header
     header_lines.append(
