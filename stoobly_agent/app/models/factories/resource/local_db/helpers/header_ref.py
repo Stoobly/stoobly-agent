@@ -52,8 +52,11 @@ RESPONSE_HEADER_DEDUP_LIST: Set[str] = {
 # Truncated SHA-256 hex (64 bits) — short filenames under headers/
 CONTENT_HASH_HEX_LEN = 16
 
+def full_content_hash(payload: bytes) -> str:
+  return hashlib.sha256(payload or b'').hexdigest()
+
 def content_hash(payload: bytes) -> str:
-  return hashlib.sha256(payload or b'').hexdigest()[:CONTENT_HASH_HEX_LEN]
+  return full_content_hash(payload)[:CONTENT_HASH_HEX_LEN]
 
 def headers_dir_path(slug_dir: str) -> str:
   return os.path.join(slug_dir, 'headers')
@@ -95,15 +98,33 @@ def resolve_header_path(slug_dir: str, ref: str) -> str:
   return path
 
 def write_headers(slug_dir: str, payload: bytes) -> str:
-  """Write header bytes under headers/<hash16>. Returns content hash."""
-  hash_value = content_hash(payload)
+  """
+  Write header bytes under headers/<hash16>. Returns the hash used in the filename.
+
+  On truncated-hash collision (same short name, different bytes), falls back to
+  the full SHA-256 hex filename so content is never silently reused.
+  """
+  data = payload or b''
+  full_digest = full_content_hash(data)
+  short_hash = full_digest[:CONTENT_HASH_HEX_LEN]
   headers_dir = headers_dir_path(slug_dir)
   os.makedirs(headers_dir, exist_ok=True)
-  path = header_file_path(slug_dir, hash_value)
-  if not os.path.exists(path):
-    with open(path, 'wb') as fp:
-      fp.write(payload)
-  return hash_value
+
+  short_path = header_file_path(slug_dir, short_hash)
+  if not os.path.exists(short_path):
+    with open(short_path, 'wb') as fp:
+      fp.write(data)
+    return short_hash
+
+  with open(short_path, 'rb') as fp:
+    if fp.read() == data:
+      return short_hash
+
+  full_path = header_file_path(slug_dir, full_digest)
+  if not os.path.exists(full_path):
+    with open(full_path, 'wb') as fp:
+      fp.write(data)
+  return full_digest
 
 def read_headers(slug_dir: str, ref: str) -> bytes:
   """Read headers from a relative headers/<hash> ref under slug_dir."""

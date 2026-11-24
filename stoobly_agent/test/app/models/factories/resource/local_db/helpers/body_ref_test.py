@@ -6,8 +6,13 @@ import pytest
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref import (
   BODY_REF_HEADER,
+  bodies_dir_path,
+  content_hash,
+  full_content_hash,
   normalize_body_ref,
+  read_body,
   resolve_body_path,
+  write_body,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.joined_request_ref import (
   externalize_joined_request,
@@ -73,6 +78,31 @@ class TestBodyRef:
       head, _ = response_raw.split(b'\r\n\r\n', 1)
       header_lines = head.split(b'\r\n')[1:]
       assert header_lines[-1].lower().startswith(BODY_REF_HEADER.lower().encode())
+
+  def test_write_body_dedupes_identical_content(self):
+    with tempfile.TemporaryDirectory() as slug_dir:
+      h1 = write_body(slug_dir, b'same')
+      h2 = write_body(slug_dir, b'same')
+      assert h1 == h2
+      assert len(h1) == 16
+      assert len(os.listdir(bodies_dir_path(slug_dir))) == 1
+
+  def test_write_body_truncated_collision_falls_back_to_full_digest(self):
+    with tempfile.TemporaryDirectory() as slug_dir:
+      body = b'unique-body-payload'
+      short = content_hash(body)
+      bodies = bodies_dir_path(slug_dir)
+      os.makedirs(bodies)
+      with open(os.path.join(bodies, short), 'wb') as fp:
+        fp.write(b'planted-different-bytes')
+
+      hash_value = write_body(slug_dir, body)
+      assert hash_value == full_content_hash(body)
+      assert len(hash_value) == 64
+      assert read_body(slug_dir, f'bodies/{hash_value}') == body
+      # Original short-hash file left untouched
+      with open(os.path.join(bodies, short), 'rb') as fp:
+        assert fp.read() == b'planted-different-bytes'
 
   def test_normalize_rejects_traversal_and_absolute(self):
     assert normalize_body_ref('bodies/abc') == 'bodies/abc'

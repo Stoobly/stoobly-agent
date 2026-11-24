@@ -15,8 +15,12 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.header_ref imp
   HEADER_REF_HEADER,
   REQUEST_HEADER_DEDUP_LIST,
   RESPONSE_HEADER_DEDUP_LIST,
+  content_hash,
   extract_dedup_list_headers,
+  full_content_hash,
+  headers_dir_path,
   normalize_header_ref,
+  read_headers,
   relative_header_ref,
   resolve_header_path,
   write_headers,
@@ -156,7 +160,24 @@ class TestHeaderRef:
       h1 = write_headers(slug_dir, payload)
       h2 = write_headers(slug_dir, payload)
       assert h1 == h2
+      assert len(h1) == 16
       assert len(os.listdir(os.path.join(slug_dir, 'headers'))) == 1
+
+  def test_write_headers_truncated_collision_falls_back_to_full_digest(self):
+    with tempfile.TemporaryDirectory() as slug_dir:
+      payload = b'User-Agent: collision-test'
+      short = content_hash(payload)
+      headers = headers_dir_path(slug_dir)
+      os.makedirs(headers)
+      with open(os.path.join(headers, short), 'wb') as fp:
+        fp.write(b'planted-different-bytes')
+
+      hash_value = write_headers(slug_dir, payload)
+      assert hash_value == full_content_hash(payload)
+      assert len(hash_value) == 64
+      assert read_headers(slug_dir, f'headers/{hash_value}') == payload
+      with open(os.path.join(headers, short), 'rb') as fp:
+        assert fp.read() == b'planted-different-bytes'
 
   def test_reconstitute_restores_header_values(self):
     joined = _joined(
