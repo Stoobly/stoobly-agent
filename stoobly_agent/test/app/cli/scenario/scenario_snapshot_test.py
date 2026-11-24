@@ -1,6 +1,4 @@
-import json
 import os
-import pdb
 import time
 
 import pytest
@@ -10,7 +8,10 @@ from click.testing import CliRunner
 from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, NON_DETERMINISTIC_GET_REQUEST_URL, reset
 
 from stoobly_agent.app.cli.scenario_cli import scenario
+from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRequestAdapter
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
@@ -23,6 +24,32 @@ from stoobly_agent.lib.orm.scenario import Scenario
 @pytest.fixture(scope='module')
 def runner():
     return CliRunner()
+
+def _headers_by_lower_name(headers) -> dict:
+  return {str(k).lower(): v for k, v in dict(headers).items()}
+
+def assert_joined_requests_equivalent(actual: bytes, expected: bytes):
+  """
+  Compare reconstituted snapshot bytes to ORM joined bytes.
+
+  Header line order among mixed dedup-list / non-dedup-list headers may differ
+  after v2 externalize/reconstitute; compare header maps and bodies instead.
+  """
+  actual_adapter = JoinedRequestAdapter(actual)
+  expected_adapter = JoinedRequestAdapter(expected)
+
+  actual_req = RawHttpRequestAdapter(actual_adapter.build_request_string().get(control=False))
+  expected_req = RawHttpRequestAdapter(expected_adapter.build_request_string().get(control=False))
+  assert actual_req.method == expected_req.method
+  assert actual_req.url == expected_req.url
+  assert _headers_by_lower_name(actual_req.headers) == _headers_by_lower_name(expected_req.headers)
+  assert actual_req.body == expected_req.body
+
+  actual_res = RawHttpResponseAdapter(actual_adapter.build_response_string().get(control=False))
+  expected_res = RawHttpResponseAdapter(expected_adapter.build_response_string().get(control=False))
+  assert actual_res.status == expected_res.status
+  assert _headers_by_lower_name(actual_res.headers) == _headers_by_lower_name(expected_res.headers)
+  assert actual_res.body == expected_res.body
 
 class TestScenario():
     @pytest.fixture(scope='class', autouse=True)
@@ -81,10 +108,17 @@ class TestScenario():
       def test_it_snapshots(self, created_scenario: Scenario, recorded_request_one: Request, recorded_request_two: Request):
         snapshot = ScenarioSnapshot.create(created_scenario.uuid)
 
-        raw_requests = snapshot.requests
+        by_uuid = {s.uuid: s.request for s in snapshot.request_snapshots}
+        assert set(by_uuid) == {recorded_request_one.uuid, recorded_request_two.uuid}
 
-        assert raw_requests[0] == JoinedRequestStringAdapter(recorded_request_one).adapt()
-        assert raw_requests[1] == JoinedRequestStringAdapter(recorded_request_two).adapt()
+        assert_joined_requests_equivalent(
+          by_uuid[recorded_request_one.uuid],
+          JoinedRequestStringAdapter(recorded_request_one).adapt(),
+        )
+        assert_joined_requests_equivalent(
+          by_uuid[recorded_request_two.uuid],
+          JoinedRequestStringAdapter(recorded_request_two).adapt(),
+        )
 
       def test_it_logs(self):
         log = Log()

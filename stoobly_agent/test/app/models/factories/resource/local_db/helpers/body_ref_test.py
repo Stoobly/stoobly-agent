@@ -6,10 +6,12 @@ import pytest
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref import (
   BODY_REF_HEADER,
-  externalize_joined_request,
   normalize_body_ref,
-  reconstitute_joined_request,
   resolve_body_path,
+)
+from stoobly_agent.app.models.factories.resource.local_db.helpers.joined_request_ref import (
+  externalize_joined_request,
+  reconstitute_joined_request,
 )
 from stoobly_agent.app.proxy.record.joined_request import REQUEST_DELIMITTER
 
