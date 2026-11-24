@@ -99,7 +99,9 @@ class TestHeaderRef:
 
       headers_dir = os.path.join(slug_dir, 'headers')
       assert os.path.isdir(headers_dir)
-      assert len(os.listdir(headers_dir)) == 2
+      header_names = os.listdir(headers_dir)
+      assert len(header_names) == 2
+      assert all(len(name) == 16 for name in header_names)
 
       adapter = JoinedRequestAdapter(externalized)
       request_raw = adapter.build_request_string().get(control=False)

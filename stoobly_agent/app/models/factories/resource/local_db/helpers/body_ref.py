@@ -5,9 +5,11 @@ from stoobly_agent.config.constants.custom_headers import BODY_REF
 
 BODY_REF_HEADER = BODY_REF
 BODY_REF_HEADER_LOWER = BODY_REF_HEADER.lower()
+# Truncated SHA-256 hex (64 bits) — short filenames under bodies/
+CONTENT_HASH_HEX_LEN = 16
 
 def content_hash(body: bytes) -> str:
-  return hashlib.sha256(body or b'').hexdigest()
+  return hashlib.sha256(body or b'').hexdigest()[:CONTENT_HASH_HEX_LEN]
 
 def bodies_dir_path(slug_dir: str) -> str:
   return os.path.join(slug_dir, 'bodies')
@@ -49,7 +51,7 @@ def resolve_body_path(slug_dir: str, ref: str) -> str:
   return path
 
 def write_body(slug_dir: str, body: bytes) -> str:
-  """Write body bytes under bodies/<sha256>. Returns content hash."""
+  """Write body bytes under bodies/<hash16>. Returns content hash."""
   hash_value = content_hash(body)
   bodies_dir = bodies_dir_path(slug_dir)
   os.makedirs(bodies_dir, exist_ok=True)

@@ -271,8 +271,8 @@ class TestRequestSnapshotV2NamingEdges:
     os.makedirs(bodies_dir, exist_ok=True)
     os.makedirs(headers_dir, exist_ok=True)
 
-    safe_body_hash = 'a' * 64
-    safe_header_hash = 'b' * 64
+    safe_body_hash = 'a' * 16
+    safe_header_hash = 'b' * 16
     with open(os.path.join(bodies_dir, safe_body_hash), 'wb') as fp:
       fp.write(b'safe-body')
     with open(os.path.join(headers_dir, safe_header_hash), 'wb') as fp:

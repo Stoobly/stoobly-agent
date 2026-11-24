@@ -48,7 +48,9 @@ class TestBodyRef:
 
       bodies = os.path.join(slug_dir, 'bodies')
       assert os.path.isdir(bodies)
-      assert len(os.listdir(bodies)) == 2
+      body_names = os.listdir(bodies)
+      assert len(body_names) == 2
+      assert all(len(name) == 16 for name in body_names)
 
       restored = reconstitute_joined_request(externalized, slug_dir)
       assert restored == joined

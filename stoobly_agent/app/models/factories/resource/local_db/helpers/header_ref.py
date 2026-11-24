@@ -49,8 +49,11 @@ RESPONSE_HEADER_DEDUP_LIST: Set[str] = {
   'x-frame-options',
 }
 
+# Truncated SHA-256 hex (64 bits) — short filenames under headers/
+CONTENT_HASH_HEX_LEN = 16
+
 def content_hash(payload: bytes) -> str:
-  return hashlib.sha256(payload or b'').hexdigest()
+  return hashlib.sha256(payload or b'').hexdigest()[:CONTENT_HASH_HEX_LEN]
 
 def headers_dir_path(slug_dir: str) -> str:
   return os.path.join(slug_dir, 'headers')
@@ -92,7 +95,7 @@ def resolve_header_path(slug_dir: str, ref: str) -> str:
   return path
 
 def write_headers(slug_dir: str, payload: bytes) -> str:
-  """Write header bytes under headers/<sha256>. Returns content hash."""
+  """Write header bytes under headers/<hash16>. Returns content hash."""
   hash_value = content_hash(payload)
   headers_dir = headers_dir_path(slug_dir)
   os.makedirs(headers_dir, exist_ok=True)
