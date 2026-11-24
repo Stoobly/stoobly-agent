@@ -38,7 +38,7 @@ RESPONSE_HEADER_DEDUP_LIST: Set[str] = {
   'access-control-expose-headers',
   'cache-control',
   'content-encoding',
-  'context-security-policy',
+  'content-security-policy',
   'content-type',
   'cross-origin-opener-policy',
   'referrer-policy',
@@ -46,7 +46,7 @@ RESPONSE_HEADER_DEDUP_LIST: Set[str] = {
   'strict-transport-security',
   'vary',
   'x-content-type-options',
-  'X-frame-options',
+  'x-frame-options',
 }
 
 def content_hash(payload: bytes) -> str:
