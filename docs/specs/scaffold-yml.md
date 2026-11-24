@@ -33,7 +33,7 @@ A default config can be created with `stoobly-agent scaffold create`, which writ
 
 `service update` and `service delete` always apply and do **not** support `--apply`. Instead of recording an `update`/`delete` step, they change the matching `service create` step: update merges options (creating a create step if missing; rename via `--name` updates `service_name`), and delete removes that create step.
 
-Recording uses **upsert by identity** for some commands (matching step replaced in place); others still append:
+Recording uses **upsert by identity** for some commands (matching step replaced in place); others still append. Updates round-trip `scaffold.yml` with comment-preserving YAML so existing comments and key order are kept:
 
 | Commands | Identity |
 |----------|----------|

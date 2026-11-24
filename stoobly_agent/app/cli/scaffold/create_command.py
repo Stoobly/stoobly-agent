@@ -3,7 +3,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
-import yaml
+from ruamel.yaml import YAML
 
 from stoobly_agent import COMMAND
 from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
@@ -21,6 +21,36 @@ _CREATE_NAME_KEYS = {
 }
 
 _SETTING_PATTERN_ACTIONS = frozenset({'filter set', 'match set', 'rewrite set'})
+
+
+def _scaffold_yaml() -> YAML:
+  """Round-trip YAML so scaffold.yml updates keep comments and key order."""
+  yaml = YAML()
+  yaml.default_flow_style = False
+  yaml.preserve_quotes = True
+  yaml.width = 4096
+  return yaml
+
+
+def _assign_mapping(target: dict, source: dict) -> None:
+  """Update target to match source in place (preserves ruamel comments)."""
+  for key in list(target.keys()):
+    if key not in source:
+      del target[key]
+
+  for key, value in source.items():
+    existing = target.get(key) if key in target else None
+    if isinstance(existing, dict) and isinstance(value, dict):
+      _assign_mapping(existing, value)
+    elif (
+      isinstance(existing, list)
+      and isinstance(value, list)
+      and not isinstance(value, (str, bytes))
+    ):
+      del existing[:]
+      existing.extend(value)
+    else:
+      target[key] = value
 
 
 def _rewrite_set_options(name: str) -> Dict[str, Any]:
@@ -99,7 +129,7 @@ def create_scaffold_yml(path: str = None, app_name: str = None) -> str:
 
   config = default_scaffold_config(app_name=app_name)
   with open(scaffold_path, 'w') as fp:
-    yaml.safe_dump(config, fp, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    _scaffold_yaml().dump(config, fp)
 
   return scaffold_path
 
@@ -221,7 +251,11 @@ def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
       if scaffold_command_identity(existing) == identity
     ]
     if match_indexes:
-      commands[match_indexes[0]] = step
+      existing = commands[match_indexes[0]]
+      if isinstance(existing, dict):
+        _assign_mapping(existing, step)
+      else:
+        commands[match_indexes[0]] = step
       for i in reversed(match_indexes[1:]):
         del commands[i]
       return
@@ -231,7 +265,7 @@ def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
 def _load_scaffold_data(path: str) -> Dict[str, Any]:
   if os.path.exists(path):
     with open(path, 'r') as fp:
-      data = yaml.safe_load(fp)
+      data = _scaffold_yaml().load(fp)
 
     if not isinstance(data, dict):
       data = {}
@@ -258,7 +292,7 @@ def _load_scaffold_data(path: str) -> Dict[str, Any]:
 
 def _write_scaffold_data(path: str, data: Dict[str, Any]) -> str:
   with open(path, 'w') as fp:
-    yaml.safe_dump(data, fp, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    _scaffold_yaml().dump(data, fp)
   return path
 
 
@@ -309,23 +343,25 @@ def update_scaffold_create_command(path: str, resource: str, kwargs: dict) -> st
   commands = data['commands']
   identity = (resource, 'create', current_name)
 
-  for i, existing in enumerate(commands):
+  for existing in commands:
     if scaffold_command_identity(existing) != identity:
+      continue
+
+    if not isinstance(existing, dict):
       continue
 
     existing_options = existing.get('options') or {}
     if not isinstance(existing_options, dict):
       existing_options = {}
 
-    merged = _merge_options_into_create(existing_options, patch)
+    merged = _merge_options_into_create(dict(existing_options), patch)
     merged[name_key] = target_name
 
-    step: Dict[str, Any] = {
+    _assign_mapping(existing, {
       'resource': resource,
       'action': 'create',
       'options': merged,
-    }
-    commands[i] = step
+    })
     return _write_scaffold_data(path, data)
 
   create_kwargs = dict(kwargs)
