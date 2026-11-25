@@ -574,9 +574,31 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     metadata_file_path = self.metadata_path
     if metadata_file_path and os.path.exists(metadata_file_path):
       os.remove(metadata_file_path)
+    # Embed-only request.remove() leaves bodies/headers alone while this YAML
+    # still exists. After it is gone, drop slug dirs no other scenario uses.
+    self._cleanup_pending_slug_dirs()
 
   def remove_requests(self, handle_remove_request_snapshot=None):
-    self.iter_request_snapshots(handle_remove_request_snapshot or self._handle_remove_requests)
+    handler = handle_remove_request_snapshot or self._handle_remove_requests
+    pending = set()
+
+    def wrap(request_snapshot: RequestSnapshot):
+      slug_dir = getattr(request_snapshot, 'slug_dir', None)
+      if slug_dir:
+        pending.add(slug_dir)
+      handler(request_snapshot)
+
+    self.iter_request_snapshots(wrap)
+    self._pending_slug_dirs = pending
+
+  def _cleanup_pending_slug_dirs(self):
+    pending = getattr(self, '_pending_slug_dirs', None) or set()
+    self._pending_slug_dirs = set()
+    if not pending:
+      return
+    cleaner = RequestSnapshotV2('', self.data_dir)
+    for slug_dir in pending:
+      cleaner._cleanup_empty_slug_dir(slug_dir)
 
   def write_metadata(self, scenario: Scenario, **options):
     self._name = scenario.name
