@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
@@ -627,6 +627,34 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
 
     self._resolved_metadata_path = dest_path
     self._remove_uuid_orphans(dest_path)
+
+  def update_request_entries(self, entries: Dict[str, dict]):
+    """
+    Merge updated request embeds into the scenario YAML and write.
+
+    Only updates the current uuid-keyed `requests` map. No-op when the
+    metadata file is missing or `requests` is not a dict.
+    """
+    path = self.metadata_path
+    if not path or not os.path.exists(path) or not entries:
+      return
+
+    with open(path, 'r') as fp:
+      data = yaml.safe_load(fp) or {}
+    if not isinstance(data, dict):
+      return
+
+    requests_field = data.get('requests')
+    if not isinstance(requests_field, dict):
+      return
+
+    for request_uuid, entry in entries.items():
+      if not isinstance(entry, dict):
+        continue
+      requests_field[str(request_uuid)] = entry
+
+    with open(path, 'w') as fp:
+      yaml.safe_dump(data, fp, sort_keys=False, default_flow_style=False)
 
   def _find_uuid_metadata_path(self) -> Optional[str]:
     """Locate scenarios/*.yaml whose embedded uuid matches, ignoring name/stem."""
