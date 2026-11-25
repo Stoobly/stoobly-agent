@@ -114,9 +114,16 @@ class RawHttpResponseAdapter():
 
   def __parse_response_line(self, response_line):
     response_parts = response_line.split(b' ')
-    self.protocol = decode(response_parts[0]) if len(response_parts) > 2 else DEFAULT_HTTP_VERSION
-    self.status = int(decode(response_parts[1]))
-    self.reason = decode(response_parts[2]) if len(response_parts) > 2 else ''
+    # "HTTP/x STATUS" (no reason) is the wire form written by ResponseString;
+    # still trust the protocol token when present.
+    if len(response_parts) >= 2:
+      self.protocol = decode(response_parts[0])
+      self.status = int(decode(response_parts[1]))
+      self.reason = decode(b' '.join(response_parts[2:])) if len(response_parts) > 2 else ''
+    else:
+      self.protocol = decode(DEFAULT_HTTP_VERSION)
+      self.status = 0
+      self.reason = ''
 
   def __str__(self):
     header_lines = []
@@ -129,8 +136,10 @@ class RawHttpResponseAdapter():
         header_lines.append(f'{key}: {val}')
     headers = '\r\n'.join(header_lines)
     body = decode(self.body) if isinstance(self.body, (bytes, bytearray)) else (self.body or '')
-    return f'{self.protocol} {self.status} {self.reason}\r\n' \
-            f'{headers}\r\n\r\n{body}'
+    status_line = f'{self.protocol} {self.status}'
+    if self.reason:
+      status_line = f'{status_line} {self.reason}'
+    return f'{status_line}\r\n{headers}\r\n\r\n{body}'
 
   def __new_parser(self, response_dict):
     handler = ResponseParseHandler(response_dict)
