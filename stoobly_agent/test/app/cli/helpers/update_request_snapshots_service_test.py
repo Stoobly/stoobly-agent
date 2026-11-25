@@ -34,7 +34,8 @@ def settings():
 
 
 def _joined(marker: bytes = b'') -> bytes:
-  request = b'GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n' + marker
+  # Absolute-form URL so mitmproxy_request (lifecycle path) has a hostname.
+  request = b'GET http://example.com/api HTTP/1.1\r\nHost: example.com\r\n\r\n' + marker
   response = b'HTTP/1.1 200\r\nContent-Length: 0\r\n\r\n'
   return REQUEST_DELIMITTER.join([
     f'1 {REQUEST_UUID} 1\r\n'.encode() + request,
@@ -130,3 +131,57 @@ class TestUpdateRequestSnapshotsEmbedVerify:
     assert id(snapshot._entry) == entry_id
     assert snapshot._entry is entry
     assert data['requests'][REQUEST_UUID] is entry
+
+
+class TestUpdateRequestSnapshotsEmbedLifecycle:
+  def test_dirty_lifecycle_persists_embed_without_standalone(self, tmp_path):
+    """
+    Dirty lifecycle commits must update the scenario embed map in place.
+
+    write_raw() would create a forbidden requests/<slug>/<uuid>.yaml that
+    migrate later deletes, leaving the stale embed — edits would be lost.
+    """
+    original = _joined(b'')
+    yaml_path = _write_scenario_with_embed(original)
+
+    with open(yaml_path, 'r') as fp:
+      before = yaml.safe_load(fp)
+    original_entry = before['requests'][REQUEST_UUID]
+
+    hooks_path = tmp_path / 'lifecycle_hooks_migrate.py'
+    hooks_path.write_text(
+      "from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration\n"
+      "\n"
+      "def handle_before_migrate(snapshot_migration: SnapshotMigration):\n"
+      "  request = snapshot_migration.request\n"
+      "  response = snapshot_migration.response\n"
+      "  request.headers['X-Test'] = '1'\n"
+      "  response.content = b'Test'\n"
+      "  snapshot_migration.request = request\n"
+      "  snapshot_migration.response = response\n"
+    )
+
+    update_request_snapshots(
+      yaml_path,
+      lifecycle_hooks_path=str(hooks_path),
+      no_verify=True,
+      with_snapshot=False,
+    )
+
+    with open(yaml_path, 'r') as fp:
+      after = yaml.safe_load(fp)
+
+    updated_entry = after['requests'][REQUEST_UUID]
+    assert updated_entry != original_entry
+
+    slug = RequestSnapshotV2.build_request_slug('GET', '/api')
+    slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, slug)
+    standalone = os.path.join(slug_dir, f'{REQUEST_UUID}.yaml')
+    assert not os.path.isfile(standalone)
+
+    snap = ScenarioSnapshotV2(SCENARIO_UUID, DataDir.instance(), name='checkout')
+    reloaded = []
+    snap.iter_request_snapshots(lambda s: reloaded.append(s))
+    assert len(reloaded) == 1
+    assert reloaded[0].mitmproxy_request.headers.get('X-Test') == '1'
+    assert reloaded[0].mitmproxy_response.content == b'Test'
