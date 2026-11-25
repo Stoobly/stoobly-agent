@@ -1,5 +1,6 @@
 import os
 
+import pytest
 import yaml
 
 from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
@@ -549,6 +550,60 @@ class TestScaffoldYmlFormattingPreserved:
     text = _read_text(path)
     assert f'pattern: {pattern}\n' in text
     assert yaml.safe_load(text)['commands'][2]['options']['pattern'] == pattern
+
+
+# PyYAML (used by scaffold apply) keeps the last duplicate key but ruamel keeps the first,
+# so editing such a file would silently change what apply sees. Refuse with a clear error instead.
+DUPLICATE_KEY_SCAFFOLD = (
+  'version: 1\n'
+  'commands:\n'
+  '- resource: service\n'
+  '  action: create\n'
+  '  options:\n'
+  '    service_name: api\n'
+  '    hostname: first.example.com\n'
+  '    hostname: second.example.com\n'
+)
+
+
+class TestScaffoldYmlDuplicateKeys:
+  def _write_duplicate_key_scaffold(self, tmp_path) -> str:
+    path = os.path.join(str(tmp_path), 'scaffold.yml')
+    with open(path, 'w') as fp:
+      fp.write(DUPLICATE_KEY_SCAFFOLD)
+    return path
+
+  def test_save_exits_with_clear_error(self, tmp_path, capsys):
+    path = self._write_duplicate_key_scaffold(tmp_path)
+
+    with pytest.raises(SystemExit) as exc_info:
+      save_scaffold_command(path, 'app', 'create', {'app_name': 'app'})
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert 'duplicate key "hostname"' in err
+    assert ':8:' in err
+    assert 'Remove the duplicate key' in err
+    assert _read_text(path) == DUPLICATE_KEY_SCAFFOLD
+
+  def test_update_exits_without_rewriting_file(self, tmp_path):
+    path = self._write_duplicate_key_scaffold(tmp_path)
+
+    with pytest.raises(SystemExit):
+      update_scaffold_create_command(path, 'service', {
+        'service_name': 'api',
+        'port': 8443,
+      })
+
+    assert _read_text(path) == DUPLICATE_KEY_SCAFFOLD
+
+  def test_remove_exits_without_rewriting_file(self, tmp_path):
+    path = self._write_duplicate_key_scaffold(tmp_path)
+
+    with pytest.raises(SystemExit):
+      remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    assert _read_text(path) == DUPLICATE_KEY_SCAFFOLD
 
 
 # Style used by the docs, which hand-written and AI-written files tend to follow

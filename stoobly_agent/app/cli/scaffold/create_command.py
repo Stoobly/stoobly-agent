@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 from ruamel.yaml import YAML
+from ruamel.yaml.constructor import DuplicateKeyError
 from ruamel.yaml.util import load_yaml_guess_indent
 
 from stoobly_agent import COMMAND
@@ -288,7 +289,17 @@ def _upsert_scaffold_command(commands: List[dict], step: dict) -> None:
 def _load_scaffold_data(path: str) -> Dict[str, Any]:
   if os.path.exists(path):
     with open(path, 'r') as fp:
-      data = _scaffold_yaml().load(fp)
+      try:
+        data = _scaffold_yaml().load(fp)
+      except DuplicateKeyError as e:
+        # PyYAML (used by scaffold apply) keeps the last duplicate but ruamel keeps the first,
+        # so rewriting the file could silently change what apply sees
+        click.echo(
+          f"Error: {os.path.relpath(path)}:{e.problem_mark.line + 1}: {e.problem}. "
+          "Remove the duplicate key and try again",
+          err=True,
+        )
+        sys.exit(1)
 
     if not isinstance(data, dict):
       data = {}
