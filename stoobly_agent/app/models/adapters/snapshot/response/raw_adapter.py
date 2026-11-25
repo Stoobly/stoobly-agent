@@ -32,7 +32,9 @@ class RawResponseAdapter():
 
     version = format_http_version(response.get('http_version'))
     status = int(response.get('status') or 0)
-    response_line = f"{version} {status}".encode()
+    # Trailing reason (empty OK) keeps len(parts) > 2 so RawHttpResponseAdapter
+    # trusts the protocol token instead of forcing HTTP/1.1.
+    response_line = f"{version} {status} ".encode()
 
     headers = headers_dict_to_lines(response.get('headers') or {})
     response_raw = join_start_and_headers(response_line, headers)

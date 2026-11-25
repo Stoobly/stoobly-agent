@@ -28,6 +28,24 @@ def headers_dict_to_lines(headers: Union[dict, None]) -> List[bytes]:
   return lines
 
 
+def headers_string_to_lines(headers: Union[str, None]) -> List[bytes]:
+  """Split a multiline header block into HTTP header lines."""
+  if not isinstance(headers, str) or not headers.strip():
+    return []
+  lines: List[bytes] = []
+  for line in headers.splitlines():
+    if line.strip():
+      lines.append(line.encode())
+  return lines
+
+
+def headers_to_lines(headers: Union[str, dict, None]) -> List[bytes]:
+  """Accept request header string or legacy/response header dict."""
+  if isinstance(headers, str):
+    return headers_string_to_lines(headers)
+  return headers_dict_to_lines(headers)
+
+
 def join_start_and_headers(start_line: bytes, header_lines: List[bytes]) -> bytes:
   if header_lines:
     return start_line + HEADER_SEP + HEADER_SEP.join(header_lines) + HEADER_BODY_SEP

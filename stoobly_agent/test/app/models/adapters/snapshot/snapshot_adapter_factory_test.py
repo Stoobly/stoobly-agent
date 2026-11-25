@@ -11,7 +11,7 @@ def _entry():
     'url': 'https://example.com/api',
     'http_version': '1.1',
     'timestamp': REQ_TS_NS,
-    'headers': {'Host': 'example.com'},
+    'headers': 'Host: example.com',
     'response': {
       'status': 200,
       'latency': 42,

@@ -451,3 +451,14 @@ class TestRequestSnapshotEntryRefPaths:
       'response': {'headers': {'X-Stoobly-Header-Ref': 'headers/def'}},
     }
     assert RequestSnapshot.entry_ref_paths(entry) == ['bodies/abc', 'headers/def']
+
+  def test_collects_refs_from_request_header_string(self):
+    entry = {
+      'headers': (
+        'Host: example.com\n'
+        'X-Stoobly-Body-Ref: bodies/abc\n'
+        'X-Stoobly-Header-Ref: headers/def'
+      ),
+      'response': {'headers': {}},
+    }
+    assert RequestSnapshot.entry_ref_paths(entry) == ['bodies/abc', 'headers/def']

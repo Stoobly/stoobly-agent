@@ -31,7 +31,7 @@ class TestSnapshotEntryAdapter:
     assert entry['url'] == 'https://example.com/api'
     assert entry['http_version'] == '1.1'
     assert entry['timestamp'] == '2026-11-19T05:29:50.943834368Z'
-    assert entry['headers']['Host'] == 'example.com'
+    assert entry['headers'] == 'Host: example.com'
     assert entry['response']['status'] == 200
     assert entry['response']['latency'] == 42
     assert entry['response']['timestamp'] == '2026-11-19T05:29:50.944042Z'
@@ -68,7 +68,7 @@ class TestSnapshotEntryAdapter:
       'url': 'https://example.com/api',
       'http_version': '1.1',
       'timestamp': REQ_TS_NS,
-      'headers': {'Host': 'example.com'},
+      'headers': 'Host: example.com',
       'response': {
         'status': 200,
         'latency': 42,
@@ -105,3 +105,26 @@ class TestSnapshotEntryAdapter:
       joined = _joined(REQ_TS_NS, RES_TS_NS)
       entry = RawJoinedRequestAdapterFactory(joined).snapshot_entry(slug_dir)
       assert entry['timestamp'] == '2026-11-19T05:29:50.943834368Z'
+
+  def test_multiple_set_cookie_round_trip(self):
+    request = b'GET https://example.com/api HTTP/1.1\r\nHost: example.com\r\n\r\n'
+    response = (
+      b'HTTP/1.1 200\r\n'
+      b'Set-Cookie: session=abc; Path=/\r\n'
+      b'Set-Cookie: user=john; HttpOnly\r\n'
+      b'Content-Length: 0\r\n\r\n'
+    )
+    joined = REQUEST_DELIMITTER.join([
+      f'1 req-id {REQ_TS_NS}'.encode() + b'\r\n' + request,
+      f'2 req-id {RES_TS_NS} 42'.encode() + b'\r\n' + response,
+    ])
+    with tempfile.TemporaryDirectory() as slug_dir:
+      entry = SnapshotEntryAdapter.from_joined(joined, slug_dir).adapt()
+      assert entry['response']['headers']['Set-Cookie'] == [
+        'session=abc; Path=/',
+        'user=john; HttpOnly',
+      ]
+      dumped = yaml.safe_dump(entry, sort_keys=False)
+      loaded = yaml.safe_load(dumped)
+      restored = SnapshotAdapterFactory(loaded, uuid='req-id').joined_request(slug_dir)
+      assert restored == joined

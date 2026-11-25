@@ -47,16 +47,29 @@ class RequestSnapshot(Snapshot):
   FORMAT = None
 
   @staticmethod
+  def _header_items(headers) -> List[tuple]:
+    """Yield (name, value) from a header string block or legacy/response dict."""
+    if isinstance(headers, dict):
+      return list(headers.items())
+    if isinstance(headers, str):
+      items = []
+      for line in headers.splitlines():
+        if ':' not in line:
+          continue
+        name, _, value = line.partition(':')
+        items.append((name.strip(), value.strip()))
+      return items
+    return []
+
+  @staticmethod
   def entry_ref_paths(entry: dict) -> List[str]:
-    """Collect relative body/header refs from an entry's header maps."""
+    """Collect relative body/header refs from an entry's request/response headers."""
     refs: List[str] = []
     if not isinstance(entry, dict):
       return refs
 
     for headers in (entry.get('headers'), (entry.get('response') or {}).get('headers')):
-      if not isinstance(headers, dict):
-        continue
-      for name, value in headers.items():
+      for name, value in RequestSnapshot._header_items(headers):
         lower = str(name).lower()
         if lower in (BODY_REF.lower(), HEADER_REF.lower()) and value:
           refs.append(str(value).strip())

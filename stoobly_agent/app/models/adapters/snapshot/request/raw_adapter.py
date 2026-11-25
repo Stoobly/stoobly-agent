@@ -4,13 +4,16 @@ from stoobly_agent.app.proxy.record.request_string import CLRF as RequestStringC
 from stoobly_agent.app.proxy.record.request_string_control import RequestStringControl
 
 from ..control_timestamp import parse_control_timestamp
-from ..headers import format_http_version, headers_dict_to_lines, join_start_and_headers
+from ..headers import format_http_version, headers_to_lines, join_start_and_headers
 
 
 class RawRequestAdapter():
   """
   Adapt a snapshot request entry (method/url/http_version/timestamp/headers) to a
   Stoobly request string: control line + CRLF + raw HTTP request.
+
+  `headers` is a multiline string (raw header block). Legacy dict maps are still
+  accepted for older YAML.
   """
 
   def __init__(self, entry: dict, uuid: Optional[str] = None):
@@ -31,6 +34,6 @@ class RawRequestAdapter():
     version = format_http_version(entry.get('http_version'))
     request_line = f"{method} {url} {version}".encode()
 
-    headers = headers_dict_to_lines(entry.get('headers') or {})
+    headers = headers_to_lines(entry.get('headers'))
     request_raw = join_start_and_headers(request_line, headers)
     return control.serialize().encode() + RequestStringCLRF + request_raw
