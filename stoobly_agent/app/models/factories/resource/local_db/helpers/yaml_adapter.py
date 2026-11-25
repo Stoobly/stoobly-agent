@@ -1,3 +1,5 @@
+import re
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from stoobly_agent.app.models.adapters.joined_request_adapter import JoinedRequestAdapter
@@ -19,6 +21,17 @@ HEADER_BODY_SEP = b'\r\n\r\n'
 HEADER_COOKIE = 'cookie'
 HEADER_COOKIE_SEPARATOR = '; '
 HEADER_SEPARATOR = ', '
+
+# Request and response control-line timestamps are nanoseconds since epoch.
+CONTROL_TIMESTAMP_SCALE = 10 ** 9
+# Older response control lines used microseconds. Only coerce plausible epoch µs
+# values (not tiny fixture ints like 1).
+_LEGACY_US_TIMESTAMP_MIN = 10 ** 12
+_LEGACY_US_TIMESTAMP_MAX = 10 ** 16
+
+_ISO_TIMESTAMP_RE = re.compile(
+  r'^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})(\.\d+)?(.*)$'
+)
 
 
 def joined_to_entry(
@@ -50,13 +63,15 @@ def joined_to_entry(
     'method': method,
     'url': url,
     'http_version': req_http_version,
-    'timestamp': req_control.timestamp,
+    'timestamp': _format_control_timestamp(req_control.timestamp),
     'headers': req_headers,
     'response': {
       'status': status,
       'latency': res_control.latency,
       'http_version': res_http_version,
-      'timestamp': res_control.timestamp,
+      'timestamp': _format_control_timestamp(
+        _coerce_legacy_us_to_ns(res_control.timestamp)
+      ),
       'headers': res_headers,
     },
   }
@@ -77,16 +92,17 @@ def entry_to_joined(entry: dict, slug_dir: str, uuid: str = None) -> bytes:
     raise ValueError('response must be a dict')
 
   entry_uuid = str(uuid or '')
-  req_timestamp = entry.get('timestamp')
-  res_timestamp = response.get('timestamp')
 
   req_control = RequestStringControl()
   req_control.id = entry_uuid
-  req_control.timestamp = int(req_timestamp) if req_timestamp is not None else 0
+  req_control.timestamp = _parse_control_timestamp(entry.get('timestamp'))
 
   res_control = ResponseStringControl()
   res_control.id = entry_uuid
-  res_control.timestamp = int(res_timestamp) if res_timestamp is not None else 0
+  # Coerce legacy µs ints so rewritten control lines are nanoseconds.
+  res_control.timestamp = _coerce_legacy_us_to_ns(
+    _parse_control_timestamp(response.get('timestamp'))
+  )
   res_control.latency = int(response.get('latency') or 0)
 
   method = entry.get('method') or 'GET'
@@ -243,3 +259,93 @@ def _format_http_version(version: Optional[Union[str, int, float]]) -> str:
   if text.upper().startswith('HTTP/'):
     return text
   return f"HTTP/{text}"
+
+
+def _coerce_legacy_us_to_ns(value: Optional[Union[int, float]]) -> int:
+  """Upgrade legacy response timestamps stored as microseconds to nanoseconds."""
+  if value is None:
+    return 0
+  total = int(value)
+  if _LEGACY_US_TIMESTAMP_MIN <= total < _LEGACY_US_TIMESTAMP_MAX:
+    return total * 1000
+  return total
+
+
+def _format_control_timestamp(value: Optional[Union[int, float]]) -> Optional[str]:
+  """Format a nanosecond control-line epoch int as UTC ISO-8601 (…Z)."""
+  if value is None:
+    return None
+  total = int(value)
+  if total < 0:
+    total = 0
+  seconds, frac = divmod(total, CONTROL_TIMESTAMP_SCALE)
+  digits = len(str(CONTROL_TIMESTAMP_SCALE)) - 1
+  dt = datetime.fromtimestamp(seconds, tz=timezone.utc)
+  if frac == 0:
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+  frac_str = f'{frac:0{digits}d}'.rstrip('0')
+  return f"{dt.strftime('%Y-%m-%dT%H:%M:%S')}.{frac_str}Z"
+
+
+def _parse_control_timestamp(
+  value: Optional[Union[int, float, str, datetime]],
+) -> int:
+  """
+  Parse YAML timestamp back to a nanosecond control-line epoch int.
+
+  Accepts legacy ints/digit-strings, ISO-8601 strings, and datetime values
+  (PyYAML SafeLoader may resolve unquoted timestamps).
+  """
+  if value is None or value == '':
+    return 0
+  if isinstance(value, bool):
+    raise ValueError(f'invalid timestamp: {value!r}')
+  if isinstance(value, (int, float)):
+    return int(value)
+  if isinstance(value, datetime):
+    dt = value
+    if dt.tzinfo is None:
+      dt = dt.replace(tzinfo=timezone.utc)
+    else:
+      dt = dt.astimezone(timezone.utc)
+    seconds = int(dt.timestamp())
+    return seconds * CONTROL_TIMESTAMP_SCALE + dt.microsecond * 1000
+
+  text = str(value).strip()
+  if not text:
+    return 0
+  if text.isdigit() or (text[0] == '-' and text[1:].isdigit()):
+    return int(text)
+
+  if text.endswith('Z') or text.endswith('z'):
+    text = text[:-1] + '+00:00'
+
+  match = _ISO_TIMESTAMP_RE.match(text)
+  if not match:
+    raise ValueError(f'invalid timestamp: {value!r}')
+
+  base, frac, tz = match.group(1), match.group(2) or '', match.group(3) or ''
+  # Replace space separator with T for fromisoformat.
+  base = base.replace(' ', 'T', 1)
+  try:
+    dt = datetime.fromisoformat(base + (tz or '+00:00'))
+  except ValueError as exc:
+    raise ValueError(f'invalid timestamp: {value!r}') from exc
+
+  if dt.tzinfo is None:
+    dt = dt.replace(tzinfo=timezone.utc)
+  else:
+    dt = dt.astimezone(timezone.utc)
+
+  seconds = int(dt.timestamp())
+  digits = len(str(CONTROL_TIMESTAMP_SCALE)) - 1
+  if frac:
+    frac_digits = frac[1:]
+    if len(frac_digits) < digits:
+      frac_digits = frac_digits.ljust(digits, '0')
+    else:
+      frac_digits = frac_digits[:digits]
+    frac_int = int(frac_digits)
+  else:
+    frac_int = 0
+  return seconds * CONTROL_TIMESTAMP_SCALE + frac_int

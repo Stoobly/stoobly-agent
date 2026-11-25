@@ -43,8 +43,8 @@ class ResponseString:
     #
     # 1 - response type
     # 2 - request id
-    # 3 - timestamp in nano seconds
-    # 4 - response latency in nano seconds
+    # 3 - timestamp in nanoseconds
+    # 4 - response latency in microseconds
     #
     @property
     def control(self):
@@ -102,5 +102,5 @@ class ResponseString:
 
     def __get_current_time(self):
         now = time.time()
-        current_time = round(now * (pow(10, 6)))
+        current_time = round(now * (pow(10, 9)))
         return current_time

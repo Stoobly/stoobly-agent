@@ -139,8 +139,8 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
 ```
 
 - `<uuid>.yaml` is a structured request entry (see [`yaml_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/yaml_adapter.py)); uuid is the filename, not a field:
-  - request: `method`, `url`, `http_version`, `timestamp`, `headers` (YAML mapping)
-  - nested `response`: `status`, `latency`, `http_version`, `timestamp`, `headers`
+  - request: `method`, `url`, `http_version`, `timestamp` (UTC ISO-8601; control time is nanoseconds), `headers` (YAML mapping)
+  - nested `response`: `status`, `latency`, `http_version`, `timestamp` (UTC ISO-8601; control time is nanoseconds), `headers`
 - Non-empty bodies are written under `bodies/<content-hash>` (16-char truncated SHA-256 hex).
 - Dedup-list request/response headers are written under `headers/<content-hash>` ([`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py)); missing dedup-list names are omitted.
 - Refs in the YAML `headers` maps are context-dir-relative for PR navigation: `X-Stoobly-Header-Ref: .stoobly/snapshots/requests/<slug>/headers/<hash>` and `X-Stoobly-Body-Ref: .stoobly/snapshots/requests/<slug>/bodies/<hash>` ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
@@ -201,13 +201,13 @@ requests:
     method: GET
     url: https://example.com/api
     http_version: "1.1"
-    timestamp: ...
+    timestamp: "2026-11-19T05:29:50.943834368Z"
     headers: { ... }
     response:
       status: 200
       latency: ...
       http_version: "1.1"
-      timestamp: ...
+      timestamp: "2026-11-19T05:29:50.944042Z"
       headers: { ... }
 ```
 
