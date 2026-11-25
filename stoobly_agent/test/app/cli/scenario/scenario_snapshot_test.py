@@ -194,6 +194,11 @@ class TestScenario():
 
         assert RequestSnapshot.create(shared_request.uuid).request is not None
 
+        request_snap = RequestSnapshot.create(shared_request.uuid)
+        slug_dir = getattr(request_snap, 'slug_dir', None)
+        bodies_dir = os.path.join(slug_dir, 'bodies') if slug_dir else None
+        body_names = os.listdir(bodies_dir) if bodies_dir and os.path.isdir(bodies_dir) else []
+
         delete_one = runner.invoke(
           scenario,
           ['snapshot', 'create', '--action', DELETE_ACTION, scenario_one.key()],
@@ -204,6 +209,11 @@ class TestScenario():
         assert RequestSnapshot.create(shared_request.uuid).request is not None
         assert ScenarioSnapshot.create(scenario_two.uuid).exists
         assert not ScenarioSnapshot.create(scenario_one.uuid).exists
+        # Shared slug blobs must survive delete of the other scenario
+        if body_names:
+          assert os.path.isdir(bodies_dir)
+          for name in body_names:
+            assert os.path.isfile(os.path.join(bodies_dir, name))
 
     class TestWhenDeleteAction():
       @pytest.fixture(scope='class', autouse=True)

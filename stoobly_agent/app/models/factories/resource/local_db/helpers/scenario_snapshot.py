@@ -697,17 +697,30 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         return path
     return None
 
+  @staticmethod
+  def _is_collision_stem(stem: str, base: str) -> bool:
+    """True if stem is base-2, base-3, ... from unique_yaml_path."""
+    prefix = f'{base}-'
+    if not stem.startswith(prefix):
+      return False
+    suffix = stem[len(prefix):]
+    return suffix.isdigit() and int(suffix) >= 2
+
   def _destination_metadata_path(self, name: str, existing_path: Optional[str] = None) -> str:
     """
     Path to write for the current scenario name.
 
-    Keeps the existing file when its stem already matches the sanitized name;
-    otherwise allocates a new {name}.yaml (with -2, -3, ... on collision) so a
-    rename relocates instead of writing in place under the old stem.
+    Keeps the existing file when its stem already matches the sanitized name
+    or a collision suffix (name-2, name-3, ...) so write_metadata + write_requests
+    do not re-allocate past an already-disambiguated path. Otherwise allocates a
+    new {name}.yaml (with -2, -3, ... on collision) so a rename relocates instead
+    of writing in place under the old stem.
     """
     desired_stem = self.sanitize_scenario_filename(name or self.uuid or 'scenario')
-    if existing_path and self._name_from_path(existing_path) == desired_stem:
-      return existing_path
+    if existing_path:
+      existing_stem = self._name_from_path(existing_path)
+      if existing_stem == desired_stem or self._is_collision_stem(existing_stem, desired_stem):
+        return existing_path
 
     # Do not pass uuid: allocate_yaml_path would reuse the old-stem file.
     return self.allocate_yaml_path(
