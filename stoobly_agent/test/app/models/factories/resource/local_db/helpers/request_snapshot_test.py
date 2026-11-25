@@ -331,3 +331,12 @@ class TestRequestSnapshotV2NamingEdges:
     assert not list(dest.rglob('outside-secret'))
     assert not list(dest.rglob('outside-header'))
     assert not list(dest.rglob('passwd'))
+
+
+class TestRequestSnapshotEntryRefPaths:
+  def test_collects_body_and_header_refs(self):
+    entry = {
+      'headers': {'X-Stoobly-Body-Ref': 'bodies/abc'},
+      'response': {'headers': {'X-Stoobly-Header-Ref': 'headers/def'}},
+    }
+    assert RequestSnapshot.entry_ref_paths(entry) == ['bodies/abc', 'headers/def']

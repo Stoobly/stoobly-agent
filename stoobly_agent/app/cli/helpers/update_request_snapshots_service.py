@@ -205,7 +205,7 @@ def _verify_request(snapshot: RequestSnapshot):
     """Verify and fix a request snapshot if needed."""
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request
     from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
-    from stoobly_agent.app.models.factories.resource.local_db.helpers.yaml_adapter import joined_to_entry
+    from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
 
     raw_request = snapshot.request
     if not raw_request:
@@ -225,9 +225,9 @@ def _verify_request(snapshot: RequestSnapshot):
         slug_dir = snapshot.slug_dir
         if slug_dir:
           os.makedirs(slug_dir, exist_ok=True)
-          snapshot._entry = joined_to_entry(
-            verified_raw_request, slug_dir, uuid=snapshot.uuid
-          )
+          snapshot._entry = SnapshotEntryAdapter.from_joined(
+            verified_raw_request, slug_dir
+          ).adapt()
       return
 
     # Always rewrite v2 so on-disk form is normalized (strips trailing junk, re-externalizes bodies)

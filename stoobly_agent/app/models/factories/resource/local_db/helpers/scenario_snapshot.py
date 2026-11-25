@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional
 
 import yaml
 
@@ -11,7 +11,6 @@ from stoobly_agent.lib.orm.scenario import Scenario
 from .request_snapshot import RequestSnapshot, RequestSnapshotV1, RequestSnapshotV2, RequestSnapshotOptions
 from .snapshot import Snapshot
 from .snapshot_format import FORMAT_V1, FORMAT_V2, UUID_RE, resolve_write_format
-from .yaml_adapter import iter_scenario_request_entries
 
 REQUEST_DELIMITTER = "\n"
 # Only path separators and controls (history is newline-delimited; resource id may have spaces).
@@ -22,6 +21,41 @@ class ScenarioSnapshot(Snapshot):
   """Base scenario snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
+
+  @staticmethod
+  def is_request_entry(value: Any) -> bool:
+    """True if value looks like a structured request entry (not a path string)."""
+    return (
+      isinstance(value, dict)
+      and 'headers' in value
+      and 'response' in value
+      and 'method' in value
+    )
+
+  @staticmethod
+  def iter_request_entries(requests_field: Any):
+    """
+    Yield (uuid, entry) from scenario YAML `requests`.
+
+    Current form is a uuid-keyed dict. Also accepts a legacy list of entries that
+    still embedded `uuid` (entry returned without that field).
+    """
+    if isinstance(requests_field, dict):
+      for request_uuid, entry in requests_field.items():
+        if ScenarioSnapshot.is_request_entry(entry) and UUID_RE.match(str(request_uuid)):
+          yield str(request_uuid), entry
+      return
+
+    if not isinstance(requests_field, list):
+      return
+
+    for item in requests_field:
+      if not ScenarioSnapshot.is_request_entry(item):
+        continue
+      request_uuid = str(item.get('uuid') or '')
+      if not UUID_RE.match(request_uuid):
+        continue
+      yield request_uuid, {k: v for k, v in item.items() if k != 'uuid'}
 
   def __init__(self, uuid: str, data_dir: DataDir = None, name: str = None):
     parsed_uuid, parsed_name = self._parse_scenario_ref(uuid, name)
@@ -511,7 +545,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     meta = self._load_metadata_data()
     requests_field = meta.get('requests') or {}
 
-    for request_uuid, entry in iter_scenario_request_entries(requests_field):
+    for request_uuid, entry in self.iter_request_entries(requests_field):
       try:
         embedded = RequestSnapshotV2.from_entry(
           entry, self.data_dir, uuid=request_uuid

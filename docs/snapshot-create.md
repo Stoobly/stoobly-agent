@@ -138,7 +138,7 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
   headers/<hash16>
 ```
 
-- `<uuid>.yaml` is a structured request entry (see [`yaml_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/yaml_adapter.py)); uuid is the filename, not a field:
+- `<uuid>.yaml` is a structured request entry (see [`adapters/snapshot`](../stoobly_agent/app/models/adapters/snapshot) / [`RequestSnapshot`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py)); uuid is the filename, not a field:
   - request: `method`, `url`, `http_version`, `timestamp` (UTC ISO-8601; control time is nanoseconds), `headers` (YAML mapping)
   - nested `response`: `status`, `latency`, `http_version`, `timestamp` (UTC ISO-8601; control time is nanoseconds), `headers`
 - Non-empty bodies are written under `bodies/<content-hash>` (16-char truncated SHA-256 hex).

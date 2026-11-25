@@ -315,3 +315,31 @@ class TestScenarioSnapshotV1CorruptMetadata:
 
     assert v1._load_metadata_data() == {'name': UUID}
     assert v1.metadata['name'] == UUID
+
+
+class TestScenarioSnapshotRequestEntries:
+  def test_is_request_entry(self):
+    assert ScenarioSnapshot.is_request_entry({
+      'method': 'GET',
+      'headers': {},
+      'response': {},
+    })
+    assert not ScenarioSnapshot.is_request_entry('requests/foo/uuid')
+
+  def test_iter_request_entries_dict(self):
+    entry = {'method': 'GET', 'headers': {}, 'response': {}}
+    assert list(ScenarioSnapshot.iter_request_entries({REQUEST_UUID: entry})) == [
+      (REQUEST_UUID, entry),
+    ]
+
+  def test_iter_request_entries_legacy_list(self):
+    item = {
+      'uuid': REQUEST_UUID,
+      'method': 'GET',
+      'headers': {},
+      'response': {},
+    }
+    assert list(ScenarioSnapshot.iter_request_entries([item])) == [(
+      REQUEST_UUID,
+      {'method': 'GET', 'headers': {}, 'response': {}},
+    )]

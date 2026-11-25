@@ -2,12 +2,15 @@ import glob
 import os
 import re
 import shutil
-from typing import Optional, Union
+from typing import List, Optional, Union
 from urllib.parse import urlparse
 
 import yaml
 
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
+from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
+from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
@@ -23,7 +26,6 @@ from .snapshot_format import (
   resolve_write_format,
 )
 from .snapshot_types import RequestSnapshotOptions
-from .yaml_adapter import entry_ref_paths, entry_to_joined, joined_to_entry
 
 LOG_ID = 'RequestSnapshot'
 # Single path-component slug: no separators/whitespace; dots allowed mid-slug only
@@ -43,6 +45,22 @@ class RequestSnapshot(Snapshot):
   """Base request snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
+
+  @staticmethod
+  def entry_ref_paths(entry: dict) -> List[str]:
+    """Collect relative body/header refs from an entry's header maps."""
+    refs: List[str] = []
+    if not isinstance(entry, dict):
+      return refs
+
+    for headers in (entry.get('headers'), (entry.get('response') or {}).get('headers')):
+      if not isinstance(headers, dict):
+        continue
+      for name, value in headers.items():
+        lower = str(name).lower()
+        if lower in (BODY_REF.lower(), HEADER_REF.lower()) and value:
+          refs.append(str(value).strip())
+    return refs
 
   def __init__(self, uuid: str, data_dir: DataDir = None, slug: str = None):
     parsed_uuid, parsed_slug = self._parse_request_ref(uuid, slug)
@@ -442,7 +460,7 @@ class RequestSnapshotV2(RequestSnapshot):
       if not slug_dir:
         return
       try:
-        return entry_to_joined(self._entry, slug_dir, uuid=self.uuid)
+        return SnapshotAdapterFactory(self._entry, uuid=self.uuid).joined_request(slug_dir)
       except Exception as e:
         raise MalformedRequestSnapshotError(
           self.path or self.uuid,
@@ -460,7 +478,7 @@ class RequestSnapshotV2(RequestSnapshot):
       if not isinstance(data, dict):
         raise ValueError('invalid yaml')
       self._entry = data
-      return entry_to_joined(data, slug_dir, uuid=self.uuid)
+      return SnapshotAdapterFactory(data, uuid=self.uuid).joined_request(slug_dir)
     except Exception as e:
       raise MalformedRequestSnapshotError(
         request_file_path,
@@ -531,7 +549,7 @@ class RequestSnapshotV2(RequestSnapshot):
     if not slug_dir:
       raise ValueError(f"Cannot build request entry {self.uuid}: missing slug")
     os.makedirs(slug_dir, exist_ok=True)
-    entry = joined_to_entry(adapter.adapt(), slug_dir, uuid=self.uuid)
+    entry = SnapshotEntryAdapter.from_joined(adapter.adapt(), slug_dir).adapt()
     self._entry = entry
     return entry
 
@@ -541,7 +559,7 @@ class RequestSnapshotV2(RequestSnapshot):
       raise ValueError(f"Cannot write request snapshot {self.uuid}: missing path/slug")
 
     self._ensure_parent(path)
-    entry = joined_to_entry(text, os.path.dirname(path), uuid=self.uuid)
+    entry = SnapshotEntryAdapter.from_joined(text, os.path.dirname(path)).adapt()
     self._entry = entry
     with open(path, 'w') as fp:
       yaml.safe_dump(entry, fp, sort_keys=False, default_flow_style=False)
@@ -573,7 +591,8 @@ class RequestSnapshotV2(RequestSnapshot):
 
   def _hydrate_from_scenario_embed(self) -> bool:
     """Load slug/entry from a scenario YAML embed when no standalone file exists."""
-    from .yaml_adapter import iter_scenario_request_entries
+    # Lazy import: scenario_snapshot imports RequestSnapshot.
+    from .scenario_snapshot import ScenarioSnapshot
 
     scenarios_dir = self.data_dir.snapshots_scenarios_dir_path
     if not self.uuid or not UUID_RE.match(str(self.uuid)) or not os.path.isdir(scenarios_dir):
@@ -592,7 +611,7 @@ class RequestSnapshotV2(RequestSnapshot):
         continue
       if not isinstance(data, dict):
         continue
-      for request_uuid, entry in iter_scenario_request_entries(data.get('requests')):
+      for request_uuid, entry in ScenarioSnapshot.iter_request_entries(data.get('requests')):
         if request_uuid != str(self.uuid):
           continue
         self._entry = entry
@@ -629,7 +648,7 @@ class RequestSnapshotV2(RequestSnapshot):
     if entry is None:
       return
 
-    for ref in entry_ref_paths(entry):
+    for ref in self.entry_ref_paths(entry):
       try:
         if is_body_ref(ref):
           src = resolve_body_path(slug_dir, ref)

@@ -10,8 +10,11 @@ from stoobly_agent.config.data_dir import DataDir
 from .joined_request_ref import extract_method_and_path_from_joined
 from .log import EVENT_DELIMITTER, Log
 from .log_event import LogEvent, LogEventV1, LogEventV2
+from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
+from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+
 from .request_snapshot import RequestSnapshot, RequestSnapshotV2
-from .scenario_snapshot import ScenarioSnapshotV2
+from .scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from .snapshot_format import (
   FORMAT_V1,
   FORMAT_V2,
@@ -19,12 +22,6 @@ from .snapshot_format import (
   UUID_RE,
   has_v1_snapshots,
   has_v2_snapshots,
-)
-from .yaml_adapter import (
-  entry_to_joined,
-  is_request_entry,
-  iter_scenario_request_entries,
-  joined_to_entry,
 )
 
 
@@ -131,7 +128,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
         os.makedirs(slug_dir, exist_ok=True)
 
         try:
-          entry_data = joined_to_entry(joined, slug_dir, uuid=name)
+          entry_data = SnapshotEntryAdapter.from_joined(joined, slug_dir).adapt()
         except Exception:
           continue
 
@@ -338,7 +335,7 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       request_uuids = []
       requests_field = data.get('requests') or {}
-      for request_uuid, entry in iter_scenario_request_entries(requests_field):
+      for request_uuid, entry in ScenarioSnapshot.iter_request_entries(requests_field):
         request_uuids.append(request_uuid)
         if request_uuid not in written_request_uuids:
           try:
@@ -347,7 +344,7 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
               _path_from_entry_url(entry.get('url')),
             )
             slug_dir = os.path.join(requests_dir, slug)
-            reconstituted = entry_to_joined(entry, slug_dir, uuid=request_uuid)
+            reconstituted = SnapshotAdapterFactory(entry, uuid=request_uuid).joined_request(slug_dir)
             shard_dir = os.path.join(requests_dir, request_uuid[0:2])
             os.makedirs(shard_dir, exist_ok=True)
             with open(os.path.join(shard_dir, request_uuid), 'wb') as fp:
@@ -700,7 +697,7 @@ def _scenario_referenced_request_uuids(data_dir: DataDir) -> set:
       if not isinstance(data, dict):
         continue
       requests_field = data.get('requests') or {}
-      for request_uuid, _entry in iter_scenario_request_entries(requests_field):
+      for request_uuid, _entry in ScenarioSnapshot.iter_request_entries(requests_field):
         uuids.add(request_uuid)
       if isinstance(requests_field, list):
         for item in requests_field:
@@ -801,7 +798,7 @@ def _upgrade_scenario_request_entries(
     entries: Dict[str, dict] = {}
     changed = False
     for item in requests:
-      if is_request_entry(item):
+      if ScenarioSnapshot.is_request_entry(item):
         request_uuid = str(item.get('uuid') or '')
         if UUID_RE.match(request_uuid):
           entries[request_uuid] = {k: v for k, v in item.items() if k != 'uuid'}
@@ -862,7 +859,7 @@ def _reconstitute_v2_request_file(path: str, slug_dir: str) -> bytes:
   if not isinstance(data, dict):
     raise ValueError('invalid yaml')
   request_uuid = RequestSnapshot._strip_request_filename_ext(os.path.basename(path))
-  return entry_to_joined(data, slug_dir, uuid=request_uuid)
+  return SnapshotAdapterFactory(data, uuid=request_uuid).joined_request(slug_dir)
 
 
 def _cleanup_slug_dir(slug_dir: str):
