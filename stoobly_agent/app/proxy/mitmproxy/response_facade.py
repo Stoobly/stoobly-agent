@@ -122,7 +122,9 @@ class MitmproxyResponseFacade(Response):
         Remove custom headers
         '''
         from mitmproxy.http import Headers
-        _response_headers = Headers(**response_headers)
+        # Copy via .fields so repeated Set-Cookie values are preserved
+        # (Headers(**headers) collapses them into one comma-joined value).
+        _response_headers = Headers(getattr(response_headers, 'fields', None) or list(response_headers.items()))
 
         headers = custom_headers.__dict__
         for key in headers:

@@ -77,7 +77,14 @@ class ResponseString:
     def __headers(self):
         headers = self.response.headers
 
-        for name, val in headers.items():
+        # Prefer .fields so repeated Set-Cookie lines stay separate;
+        # .items() comma-joins them and breaks Expires values.
+        header_pairs = getattr(headers, 'fields', None) or list(headers.items())
+        for name, val in header_pairs:
+            if isinstance(name, bytes):
+                name = name.decode(self.ENCODING)
+            if isinstance(val, bytes):
+                val = val.decode(self.ENCODING)
             line = "{}: {}".format(self.__to_header_case(name), val)
             self.lines.append(line.encode(self.ENCODING))
 

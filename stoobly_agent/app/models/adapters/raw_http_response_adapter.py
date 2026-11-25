@@ -11,6 +11,7 @@ CRLF = b'\r\n'
 DEFAULT_HTTP_VERSION = b'HTTP/1.1'
 
 HEADER_SEPARATOR = ', '
+HEADER_SET_COOKIE = 'set-cookie'
 
 class RawHttpResponseAdapter():
 
@@ -32,7 +33,15 @@ class RawHttpResponseAdapter():
         decoded_key = decode(header_key)
         decoded_value = decode(header_value).strip()
         if decoded_key in self.headers:
-          self.headers[decoded_key] = HEADER_SEPARATOR.join([self.headers[decoded_key], decoded_value])
+          # Set-Cookie must not be comma-joined (Expires values contain commas).
+          if decoded_key.lower() == HEADER_SET_COOKIE:
+            existing = self.headers[decoded_key]
+            if isinstance(existing, list):
+              existing.append(decoded_value)
+            else:
+              self.headers[decoded_key] = [existing, decoded_value]
+          else:
+            self.headers[decoded_key] = HEADER_SEPARATOR.join([self.headers[decoded_key], decoded_value])
         else:
           self.headers[decoded_key] = decoded_value
 
@@ -46,9 +55,21 @@ class RawHttpResponseAdapter():
   def to_response(self):
     # Lazy import for runtime usage
     import requests
+    from urllib3._collections import HTTPHeaderDict
+
     response = requests.Response()
     response.status_code = self.status
-    response.headers = self.headers
+
+    # HTTPHeaderDict preserves repeated Set-Cookie; CaseInsensitiveDict cannot.
+    headers = HTTPHeaderDict()
+    for key, val in self.headers.items():
+      if isinstance(val, list):
+        for item in val:
+          headers.add(key, item)
+      else:
+        headers.add(key, val)
+
+    response.headers = headers
 
     # Enforce proper Content-Length header
     response.headers['Content-Length'] = str(len(self.body))
@@ -57,7 +78,7 @@ class RawHttpResponseAdapter():
     response.raw = HTTPResponse(
       body=BytesIO(self.body),
       decode_content=False,
-      headers=self.headers,
+      headers=headers,
       preload_content=False
     )
 
@@ -98,9 +119,18 @@ class RawHttpResponseAdapter():
     self.reason = decode(response_parts[2]) if len(response_parts) > 2 else ''
 
   def __str__(self):
-    headers = CRLF.join(f'{key}: {self.headers[key]}' for key in self.headers)
-    return f'{self.protocol} {self.status} {self.reason}{CRLF}' \
-            f'{headers}{CRLF}{CRLF}{self.body}'
+    header_lines = []
+    for key in self.headers:
+      val = self.headers[key]
+      if isinstance(val, list):
+        for item in val:
+          header_lines.append(f'{key}: {item}')
+      else:
+        header_lines.append(f'{key}: {val}')
+    headers = '\r\n'.join(header_lines)
+    body = decode(self.body) if isinstance(self.body, (bytes, bytearray)) else (self.body or '')
+    return f'{self.protocol} {self.status} {self.reason}\r\n' \
+            f'{headers}\r\n\r\n{body}'
 
   def __new_parser(self, response_dict):
     handler = ResponseParseHandler(response_dict)
