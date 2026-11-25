@@ -259,6 +259,117 @@ class TestRequestSnapshotV2NamingEdges:
     assert os.path.isdir(slug_dir)
     assert os.path.isfile(second.path)
 
+  def test_embed_only_remove_keeps_shared_bodies_headers(self):
+    import yaml
+
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-embed'
+    body_hash = 'c' * 16
+    header_hash = 'd' * 16
+    entry_a = {
+      'method': 'GET',
+      'url': 'https://example.com/api/embed',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{header_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+    entry_b = {
+      **entry_a,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+      },
+      'response': dict(entry_a['response']),
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'shared-embed.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        'description': '',
+        'requests': {UUID: entry_a, UUID_B: entry_b},
+      }, fp)
+
+    slug_dir = os.path.join(data_dir.snapshots_requests_dir_path, slug)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
+    os.makedirs(bodies_dir, exist_ok=True)
+    os.makedirs(headers_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    header_path = os.path.join(headers_dir, header_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'shared-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    # No standalone yaml — remove must not rmtree bodies/headers still used by UUID_B
+    RequestSnapshotV2.from_entry(entry_a, data_dir, slug=slug, uuid=UUID).remove()
+
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+  def test_cleanup_keeps_bodies_when_scenario_embed_remains(self):
+    import yaml
+
+    from stoobly_agent.config.constants.custom_headers import BODY_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-keep'
+    body_hash = 'e' * 16
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/api/keep',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'keep-embed.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        'description': '',
+        'requests': {UUID_B: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    _write_v2_file(standalone)
+    slug_dir = os.path.dirname(standalone.path)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    os.makedirs(bodies_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'embed-body')
+
+    # Last standalone yaml gone, but embed still references the slug dir
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isdir(slug_dir)
+
   def test_malformed_contents_raise(self):
     snapshot = RequestSnapshotV2(UUID, slug='GET-bad')
     _write_v2_file(snapshot, b'junk')

@@ -518,12 +518,10 @@ class RequestSnapshotV2(RequestSnapshot):
       self._cleanup_empty_slug_dir(os.path.dirname(request_file_path))
       return
 
-    # Embedded-only: drop body/header files for this entry when slug has no yaml left
-    if self._entry is None:
-      self._hydrate_from_scenario_embed()
-    slug_dir = self.slug_dir
-    if slug_dir and self._entry is not None:
-      self._cleanup_empty_slug_dir(slug_dir)
+    # Embedded-only: no standalone yaml. Do not wipe bodies/headers — scenario
+    # embeds (including other requests sharing this method+path slug) still
+    # reference them. Same invariant as migrate's _remove_scenario_only_request_files.
+    return
 
   def write(self, request: Request, **options: RequestSnapshotOptions):
     self._slug = self.build_request_slug(request.method, request.path)
@@ -661,6 +659,48 @@ class RequestSnapshotV2(RequestSnapshot):
       if os.path.exists(src):
         self.copy_file(src, dest_dir)
 
+  def _slug_has_scenario_embeds(self, slug: str) -> bool:
+    """True if any scenario YAML embed still targets this request slug dir."""
+    # Lazy import: scenario_snapshot imports RequestSnapshot.
+    from .scenario_snapshot import ScenarioSnapshot
+
+    scenarios_dir = self.data_dir.snapshots_scenarios_dir_path
+    if not slug or not os.path.isdir(scenarios_dir):
+      return False
+
+    for name in os.listdir(scenarios_dir):
+      if not (name.endswith('.yaml') or name.endswith('.yml')):
+        continue
+      path = os.path.join(scenarios_dir, name)
+      if not os.path.isfile(path):
+        continue
+      try:
+        with open(path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+      except Exception:
+        continue
+      if not isinstance(data, dict):
+        continue
+
+      requests_field = data.get('requests')
+      for _request_uuid, entry in ScenarioSnapshot.iter_request_entries(requests_field):
+        method = entry.get('method') or 'GET'
+        url = entry.get('url') or '/'
+        path_part = urlparse(url).path or '/'
+        if self.build_request_slug(method, path_part) == slug:
+          return True
+
+      # Legacy v2: list of relative path strings slug/<uuid>.yaml
+      if isinstance(requests_field, list):
+        for item in requests_field:
+          if not isinstance(item, str):
+            continue
+          parsed = self.parse_request_relative_path(item)
+          if parsed and parsed[0] == slug:
+            return True
+
+    return False
+
   def _cleanup_empty_slug_dir(self, slug_dir: str):
     if not os.path.isdir(slug_dir):
       return
@@ -670,6 +710,12 @@ class RequestSnapshotV2(RequestSnapshot):
       if n.endswith(self.FILE_EXTENSION)
     ]
     if remaining:
+      return
+
+    # No standalone yaml left, but scenario embeds may still reference
+    # bodies/headers under this shared method+path slug.
+    slug = os.path.basename(slug_dir)
+    if self._slug_has_scenario_embeds(slug):
       return
 
     bodies_dir = os.path.join(slug_dir, 'bodies')
