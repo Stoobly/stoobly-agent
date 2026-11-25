@@ -40,6 +40,11 @@ def _assign_mapping(target: dict, source: dict) -> None:
 
   for key, value in source.items():
     existing = target.get(key) if key in target else None
+    # Unchanged values may be the same object as the target's (shallow-copied options),
+    # so clearing a list below would also empty its source
+    if key in target and existing == value:
+      continue
+
     if isinstance(existing, dict) and isinstance(value, dict):
       _assign_mapping(existing, value)
     elif (
