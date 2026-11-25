@@ -300,7 +300,8 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
         written_request_uuids.add(request_uuid)
         migrated_requests += 1
 
-      _cleanup_slug_dir(slug_dir)
+      # Do not cleanup here: scenario embeds that share this method+path slug
+      # are reconstituted below and still need bodies/headers under the slug dir.
 
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
   scenario_requests_dir = data_dir.snapshots_scenario_requests_dir_path
@@ -380,6 +381,16 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       os.remove(yaml_path)
       migrated_scenarios += 1
+
+  # After standalones and embeds are reconstituted, drop empty v2 slug dirs
+  # (bodies/headers no longer needed).
+  if os.path.isdir(requests_dir):
+    for entry in list(os.listdir(requests_dir)):
+      if entry.startswith('.'):
+        continue
+      slug_dir = os.path.join(requests_dir, entry)
+      if os.path.isdir(slug_dir):
+        _cleanup_slug_dir(slug_dir)
 
   # Remigrate after interrupt: include already-v1 scenario metas so name
   # locators from a prior partial run still resolve to bare uuids.
