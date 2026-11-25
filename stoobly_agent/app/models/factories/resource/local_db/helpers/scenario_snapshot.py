@@ -112,16 +112,25 @@ class ScenarioSnapshot(Snapshot):
 
     History-derived names may contain ../ or separators; sanitize to a single
     basename component before joining (same idea as request slug sanitization).
+
+    Prefers an existing .yaml, then an existing .yml; otherwise returns the
+    .yaml path for new writes.
     """
     if not name:
       return None
     safe = ScenarioSnapshotV2.sanitize_scenario_filename(name)
-    path = os.path.join(scenarios_dir, f"{safe}.yaml")
-    abs_path = os.path.abspath(path)
     abs_dir = os.path.abspath(scenarios_dir)
-    if os.path.commonpath([abs_path, abs_dir]) != abs_dir:
-      return None
-    return path
+    chosen = None
+    for ext in ('.yaml', '.yml'):
+      path = os.path.join(scenarios_dir, f'{safe}{ext}')
+      abs_path = os.path.abspath(path)
+      if os.path.commonpath([abs_path, abs_dir]) != abs_dir:
+        return None
+      if os.path.isfile(path):
+        return path
+      if chosen is None:
+        chosen = path
+    return chosen
 
   @staticmethod
   def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> int:

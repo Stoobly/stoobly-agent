@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -614,3 +615,180 @@ class TestScenarioSnapshotCopyEmbedRefs:
       assert os.path.isfile(dest_header)
       with open(dest_body, 'rb') as fp:
         assert fp.read() == b'copy-body'
+
+
+class TestScenarioSnapshotYmlExtension:
+  def test_from_path_and_create_accept_yml(self):
+    data_dir = DataDir.instance()
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    path = os.path.join(scenarios_dir, 'yml-flow.yml')
+    with open(path, 'w') as fp:
+      yaml.safe_dump({
+        'uuid': UUID,
+        'description': 'yml',
+        'requests': {},
+      }, fp)
+
+    from_path = ScenarioSnapshot.from_path(path, data_dir)
+    assert isinstance(from_path, ScenarioSnapshotV2)
+    assert from_path.uuid == UUID
+
+    by_stem = ScenarioSnapshot.create('yml-flow', data_dir)
+    assert isinstance(by_stem, ScenarioSnapshotV2)
+    assert by_stem.uuid == UUID
+    assert by_stem.metadata_path == path
+
+  def test_uuid_scan_finds_yml(self):
+    data_dir = DataDir.instance()
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    path = os.path.join(scenarios_dir, 'scan-me.yml')
+    with open(path, 'w') as fp:
+      yaml.safe_dump({'uuid': UUID_C, 'description': '', 'requests': {}}, fp)
+
+    snap = ScenarioSnapshot.create(UUID_C, data_dir)
+    assert isinstance(snap, ScenarioSnapshotV2)
+    assert snap.metadata_path == path
+
+
+class TestScenarioSnapshotCorruptEmbedSkipped:
+  def test_from_entry_value_error_does_not_block_siblings(self):
+    data_dir = DataDir.instance()
+    good = _minimal_entry('https://example.com/api/good', 'GET-api-good')
+    bad = _minimal_entry('https://example.com/api/bad', 'GET-api-bad')
+    _write_scenario_yaml(
+      data_dir,
+      'partial',
+      UUID,
+      {REQUEST_UUID: bad, REQUEST_UUID_B: good},
+    )
+
+    real_from_entry = RequestSnapshotV2.from_entry
+
+    def flaky_from_entry(entry, data_dir=None, slug=None, uuid=None):
+      if str(uuid) == REQUEST_UUID:
+        raise ValueError('simulated corrupt embed')
+      return real_from_entry(entry, data_dir=data_dir, slug=slug, uuid=uuid)
+
+    snap = ScenarioSnapshotV2(UUID, data_dir, name='partial')
+    with patch.object(RequestSnapshotV2, 'from_entry', side_effect=flaky_from_entry):
+      snaps = snap.request_snapshots
+
+    assert len(snaps) == 1
+    assert snaps[0].uuid == REQUEST_UUID_B
+
+
+class TestScenarioSnapshotBackup:
+  def test_backup_metadata_and_requests(self):
+    data_dir = DataDir.instance()
+    slug = 'GET-api-backup'
+    body_hash = 'f' * 16
+    _plant_slug_blob(data_dir, slug, 'bodies', body_hash, b'backup-body')
+    entry = _minimal_entry('https://example.com/api/backup', slug, body_hash)
+    path = _write_scenario_yaml(data_dir, 'backup-flow', UUID, {REQUEST_UUID: entry})
+
+    snap = ScenarioSnapshotV2(UUID, data_dir, name='backup-flow')
+    snap.backup_metadata()
+    snap.backup_requests()
+
+    assert snap.metadata_backup is not None
+    assert 'backup-flow' in snap.metadata_backup or UUID in snap.metadata_backup
+    with open(path, 'r') as fp:
+      assert snap.metadata_backup == fp.read()
+
+    assert snap.requests_backup is not None
+    assert REQUEST_UUID in snap.requests_backup
+    assert snap.requests_backup[REQUEST_UUID] is not None
+
+
+class TestScenarioSnapshotHistoryLocatorFresh:
+  def test_allocates_stem_when_no_yaml_exists(self):
+    data_dir = DataDir.instance()
+    locator = ScenarioSnapshotV2.history_locator_for(UUID, 'brand-new', data_dir)
+    assert locator == f'brand-new/{UUID}'
+
+
+class TestScenarioSnapshotUpdatePreservesSiblings:
+  def test_update_does_not_rewrite_unrelated_embeds(self):
+    data_dir = DataDir.instance()
+    keep = _minimal_entry('https://example.com/api/keep', 'GET-api-keep')
+    change = _minimal_entry('https://example.com/api/change', 'GET-api-change')
+    path = _write_scenario_yaml(
+      data_dir,
+      'siblings',
+      UUID,
+      {REQUEST_UUID: change, REQUEST_UUID_B: keep},
+    )
+    snap = ScenarioSnapshotV2(UUID, data_dir, name='siblings')
+
+    updated = {**change, 'headers': {'X-Changed': 'yes'}, 'response': change['response']}
+    snap.update_request_entries({REQUEST_UUID: updated})
+
+    with open(path, 'r') as fp:
+      data = yaml.safe_load(fp)
+    assert data['requests'][REQUEST_UUID]['headers'] == {'X-Changed': 'yes'}
+    assert data['requests'][REQUEST_UUID_B] == keep
+
+
+class TestScenarioSnapshotMetadataShape:
+  def test_metadata_exposes_name_and_description_only(self):
+    data_dir = DataDir.instance()
+    _write_scenario_yaml(data_dir, 'shape-flow', UUID, {
+      REQUEST_UUID: _minimal_entry('https://example.com/', 'GET'),
+    })
+    # Name comes from stem when YAML omits name
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    path = os.path.join(scenarios_dir, 'shape-flow.yaml')
+    with open(path, 'w') as fp:
+      yaml.safe_dump({
+        'uuid': UUID,
+        'description': 'desc',
+        'requests': {REQUEST_UUID: _minimal_entry('https://example.com/', 'GET')},
+      }, fp)
+
+    snap = ScenarioSnapshotV2(UUID, data_dir, name='shape-flow')
+    meta = snap.metadata
+    assert meta == {'name': 'shape-flow', 'description': 'desc'}
+    assert 'uuid' not in meta
+    assert 'requests' not in meta
+
+
+class TestScenarioSnapshotPutDropsRequest:
+  def test_rewrite_drops_removed_request_embed(self):
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_scenario
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_types import PUT_ACTION
+    from stoobly_agent.cli import record
+    from stoobly_agent.lib.orm.request import Request
+    from stoobly_agent.lib.orm.scenario import Scenario
+    from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    scenario = Scenario.create(name='drop-req', description='')
+    assert runner.invoke(
+      record,
+      ['--scenario-key', scenario.key(), DETERMINISTIC_GET_REQUEST_URL],
+    ).exit_code == 0
+    first = Request.last()
+    assert runner.invoke(
+      record,
+      ['--scenario-key', scenario.key(), DETERMINISTIC_GET_REQUEST_URL],
+    ).exit_code == 0
+    second = Request.last()
+    assert first.uuid != second.uuid
+
+    snapshot_scenario(scenario, action=PUT_ACTION)
+    snap = ScenarioSnapshot.create(scenario.uuid)
+    assert {s.uuid for s in snap.request_snapshots} == {first.uuid, second.uuid}
+
+    # Drop first request from the scenario ORM and re-snapshot
+    first.delete()
+    scenario = Scenario.find(scenario.id)
+    snapshot_scenario(scenario, action=PUT_ACTION)
+
+    with open(snap.metadata_path, 'r') as fp:
+      data = yaml.safe_load(fp)
+    assert second.uuid in data['requests']
+    assert first.uuid not in data['requests']
+    assert ScenarioSnapshot.create(scenario.uuid).request_snapshots[0].uuid == second.uuid
