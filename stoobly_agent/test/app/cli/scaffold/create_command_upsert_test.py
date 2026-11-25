@@ -549,3 +549,71 @@ class TestScaffoldYmlFormattingPreserved:
     text = _read_text(path)
     assert f'pattern: {pattern}\n' in text
     assert yaml.safe_load(text)['commands'][2]['options']['pattern'] == pattern
+
+
+# Style used by the docs, which hand-written and AI-written files tend to follow
+INDENTED_SCAFFOLD = """\
+version: 1
+commands:
+  - resource: app
+    action: create
+    options:
+      app_name: app
+  - resource: service
+    action: create
+    options:
+      service_name: api
+      hostname: api.example.com
+"""
+
+
+def _write_indented_scaffold(tmp_path) -> str:
+  path = os.path.join(str(tmp_path), 'scaffold.yml')
+  with open(path, 'w') as fp:
+    fp.write(INDENTED_SCAFFOLD)
+  return path
+
+
+class TestScaffoldYmlSequenceIndentPreserved:
+  def test_append_keeps_indented_lists(self, tmp_path):
+    path = _write_indented_scaffold(tmp_path)
+
+    save_scaffold_command(path, 'setting', 'filter set', {
+      'pattern': '.*',
+      'method': ['GET'],
+      'action': 'include',
+    })
+
+    text = _read_text(path)
+    assert text.startswith(INDENTED_SCAFFOLD)
+    assert '\n  - resource: setting\n' in text
+    assert '        - GET\n' in text
+
+  def test_update_keeps_indented_lists(self, tmp_path):
+    path = _write_indented_scaffold(tmp_path)
+
+    update_scaffold_create_command(path, 'service', {
+      'service_name': 'api',
+      'port': 8443,
+    })
+
+    text = _read_text(path)
+    assert '\n  - resource: app\n' in text
+    assert '\n  - resource: service\n' in text
+    assert yaml.safe_load(text)['commands'][1]['options']['port'] == 8443
+
+  def test_remove_keeps_indented_lists(self, tmp_path):
+    path = _write_indented_scaffold(tmp_path)
+
+    remove_scaffold_create_command(path, 'service', {'service_name': 'api'})
+
+    assert _read_text(path) == INDENTED_SCAFFOLD.split('  - resource: service')[0]
+
+  def test_unindented_lists_stay_unindented(self, tmp_path):
+    path = _write_hand_written_scaffold(tmp_path)
+
+    save_scaffold_command(path, 'app', 'create', {'app_name': 'other'})
+
+    text = _read_text(path)
+    assert text.startswith(HAND_WRITTEN_SCAFFOLD)
+    assert '\n- resource: app\n' in text
