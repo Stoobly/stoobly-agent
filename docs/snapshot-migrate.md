@@ -30,7 +30,7 @@ stoobly-agent snapshot migrate --format v1
 | Request file | `snapshots/requests/{uuid[0:2]}/{uuid}` (joined bytes, bodies/headers inline) | `snapshots/requests/{slug}/{uuid}.yaml` (structured entry; bodies under `bodies/` via `X-Stoobly-Body-Ref: .stoobly/snapshots/requests/{slug}/bodies/<hash>`; dedup-list headers under `headers/` via `X-Stoobly-Header-Ref: .stoobly/snapshots/requests/{slug}/headers/<hash>`) |
 | Scenario metadata | `snapshots/scenarios/{uuid}` (JSON: `name`, `description`) | `snapshots/scenarios/{name}.yaml` (`uuid`, `description`, `requests`) |
 | Scenario request index | `snapshots/scenarios/requests/{uuid}` (newline-separated UUIDs) | Uuid-keyed dict of structured request entries in the scenario YAML (`method`/`url`/`headers`/`response`/…; uuid is the key) |
-| History line | `uuid resource locator action [ms]` | `uuid ms action resource resource_id` (id last; spaces OK) |
+| History line | `uuid resource locator action [ms]` | `uuid <ISO-8601> action resource resource_id` (id last; spaces OK) |
 | History locator | Bare UUID | Request: `slug/{uuid}`; scenario: `{name}/{uuid}` |
 
 Detection ([`detect_snapshot_format`](../stoobly_agent/app/models/factories/resource/local_db/helpers/snapshot_format.py)): prefers v2 if any v2-shaped files exist; else v1; else none. Migrate gates on remaining source-format files (`has_v1_snapshots` / `has_v2_snapshots`) **or** unfinished history rewrite (target-format files exist but history still has source-shaped locators) so an interrupted run is finished rather than treated as already migrated.
@@ -64,7 +64,7 @@ flowchart TB
    - Load JSON name/description; embed structured request entries (from migrated request YAMLs) into the scenario YAML.
    - Write `{sanitized-name}.yaml` (collision → `name-2.yaml`, …).
    - Remove v1 metadata and request-index files.
-3. **History** — Rewrite bare UUID / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid ms action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
+3. **History** — Rewrite bare UUID / stale `name/{uuid}` resource fields to `slug/{uuid}` (requests) / `{yaml-stem}/{uuid}` (scenarios) and re-order lines to `uuid <ISO-8601> action resource resource_id`. Canonical scenario stems come from the uuid→stem map (needed after collisions such as `dup-name-2`).
 
 Corrupt request/scenario files are skipped and left in place.
 

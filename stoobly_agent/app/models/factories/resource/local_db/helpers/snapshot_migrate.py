@@ -582,7 +582,7 @@ def _rewrite_history_locators(
 
       event.resource_uuid = new_resource_uuid
       if to_v2:
-        # uuid timestamp action resource resource_id
+        # uuid ISO-8601 action resource resource_id
         new_line = LogEventV2.format_line(
           event.uuid, event.created_at, event.action, event.resource, new_resource_uuid,
         )

@@ -161,7 +161,7 @@ Space-delimited under `snapshots/history/`:
 
 | Format | Class | Line |
 |--------|-------|------|
-| v2 | `LogEventV2` | `<event-uuid> <ms> PUT request <locator>` |
+| v2 | `LogEventV2` | `<event-uuid> <ISO-8601> PUT request <locator>` |
 | v1 / legacy | `LogEventV1` | `<event-uuid> request <locator> PUT <ms>` |
 
 | Format | `<locator>` |
@@ -225,7 +225,7 @@ Body/header files are still written under each request’s slug dir. Display nam
 
 | Format | Class | Line |
 |--------|-------|------|
-| v2 | `LogEventV2` | `<event-uuid> <ms> PUT scenario <locator>` |
+| v2 | `LogEventV2` | `<event-uuid> <ISO-8601> PUT scenario <locator>` |
 | v1 / legacy | `LogEventV1` | `<event-uuid> scenario <locator> PUT <ms>` |
 
 | Format | `<locator>` |

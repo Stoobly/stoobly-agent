@@ -1,6 +1,8 @@
+import re
 import time
 import uuid
-from typing import Callable, Optional, Tuple, TypedDict, Type
+from datetime import datetime, timezone
+from typing import Callable, Optional, Tuple, TypedDict, Type, Union
 
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.request import Request
@@ -14,6 +16,12 @@ from .snapshot_types import Action, DELETE_ACTION, PUT_ACTION, REQUEST_RESOURCE,
 COLUMN_DELIMITTER = ' '
 _ACTIONS = {DELETE_ACTION, PUT_ACTION}
 _RESOURCES = {REQUEST_RESOURCE, SCENARIO_RESOURCE}
+
+# History created_at is milliseconds since epoch (in-memory / v1 on disk).
+HISTORY_TIMESTAMP_SCALE = 1000
+_ISO_TIMESTAMP_RE = re.compile(
+  r'^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})(\.\d+)?(.*)$'
+)
 
 # uuid, resource, resource_uuid, action, created_at
 _ParsedFields = Tuple[str, str, str, Action, Optional[int]]
@@ -319,9 +327,10 @@ class LogEventV1(LogEvent):
 class LogEventV2(LogEvent):
   """History events with v2 locators (request: slug/<uuid>; scenario: name/<uuid>).
 
-  Line: `uuid timestamp action resource resource_id`
+  Line: `uuid <ISO-8601> action resource resource_id`
   (resource_id last so names may contain spaces).
-  Also accepts legacy `uuid resource locator action [timestamp]` lines.
+  Also accepts legacy integer ms timestamps and
+  `uuid resource locator action [timestamp]` lines.
   """
 
   FORMAT = FORMAT_V2
@@ -331,11 +340,11 @@ class LogEventV2(LogEvent):
     if cls._is_v2_field_order(toks):
       event_uuid = toks[0]
       try:
-        created_at = int(toks[1])
+        created_at = _parse_history_timestamp(toks[1])
       except ValueError as e:
         raise MalformedLogEventError(
           line,
-          f"created_at must be an integer timestamp, got {toks[1]!r}",
+          f"created_at must be an ISO-8601 or integer timestamp, got {toks[1]!r}",
         ) from e
       action = toks[2]
       resource = toks[3]
@@ -356,9 +365,13 @@ class LogEventV2(LogEvent):
     resource_name: str,
     resource_uuid: str,
   ) -> str:
-    ts = str(created_at if created_at is not None else int(time.time() * 1000))
+    ms = created_at if created_at is not None else int(time.time() * 1000)
     return COLUMN_DELIMITTER.join([
-      event_uuid, ts, action, resource_name, resource_uuid,
+      event_uuid,
+      _format_history_timestamp(ms),
+      action,
+      resource_name,
+      resource_uuid,
     ])
 
   @classmethod
@@ -372,3 +385,62 @@ class LogEventV2(LogEvent):
     return ScenarioSnapshotV2.history_locator_for(
       scenario.uuid, scenario.name, data_dir=data_dir
     )
+
+
+def _format_history_timestamp(created_at_ms: int) -> str:
+  """Format history created_at (ms) as UTC ISO-8601 with millisecond precision."""
+  total = max(0, int(created_at_ms))
+  seconds, millis = divmod(total, HISTORY_TIMESTAMP_SCALE)
+  dt = datetime.fromtimestamp(seconds, tz=timezone.utc)
+  if millis == 0:
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+  return f"{dt.strftime('%Y-%m-%dT%H:%M:%S')}.{millis:03d}Z"
+
+
+def _parse_history_timestamp(value: Union[str, int, float]) -> int:
+  """
+  Parse a history timestamp token to milliseconds since epoch.
+
+  Accepts legacy integer/digit-string ms values and ISO-8601 (…Z / offset).
+  """
+  if isinstance(value, bool):
+    raise ValueError(f'invalid timestamp: {value!r}')
+  if isinstance(value, (int, float)):
+    return int(value)
+
+  text = str(value).strip()
+  if not text:
+    raise ValueError(f'invalid timestamp: {value!r}')
+  if text.isdigit() or (text[0] == '-' and text[1:].isdigit()):
+    return int(text)
+
+  if text.endswith('Z') or text.endswith('z'):
+    text = text[:-1] + '+00:00'
+
+  match = _ISO_TIMESTAMP_RE.match(text)
+  if not match:
+    raise ValueError(f'invalid timestamp: {value!r}')
+
+  base, frac, tz = match.group(1), match.group(2) or '', match.group(3) or ''
+  base = base.replace(' ', 'T', 1)
+  try:
+    dt = datetime.fromisoformat(base + (tz or '+00:00'))
+  except ValueError as exc:
+    raise ValueError(f'invalid timestamp: {value!r}') from exc
+
+  if dt.tzinfo is None:
+    dt = dt.replace(tzinfo=timezone.utc)
+  else:
+    dt = dt.astimezone(timezone.utc)
+
+  seconds = int(dt.timestamp())
+  if frac:
+    frac_digits = frac[1:]
+    if len(frac_digits) < 3:
+      frac_digits = frac_digits.ljust(3, '0')
+    else:
+      frac_digits = frac_digits[:3]
+    millis = int(frac_digits)
+  else:
+    millis = 0
+  return seconds * HISTORY_TIMESTAMP_SCALE + millis
