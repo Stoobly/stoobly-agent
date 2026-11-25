@@ -350,6 +350,44 @@ class TestMigrateSnapshotsToV1:
     assert request_event.resource_uuid == UUID_A
     assert scenario_event.resource_uuid == SCENARIO_A
 
+  def test_shared_slug_embed_reconstitutes_after_standalone(self):
+    """Standalone yaml cleanup must not wipe bodies/headers still needed by embeds."""
+    request_body = b'hello-body'
+    response_body = b'world-body'
+    standalone_path = _write_v2_request(
+      UUID_A,
+      slug='GET-api',
+      joined=_joined_with_body_and_dedup_headers(
+        path='/api',
+        uuid=UUID_A,
+        request_body=request_body,
+        response_body=response_body,
+      ),
+    )
+    with open(standalone_path, 'r') as fp:
+      entry = yaml.safe_load(fp)
+
+    # Embed-only UUID_B shares method+path (and body/header hashes) with UUID_A
+    _write_v2_scenario(SCENARIO_A, 'checkout', {UUID_B: entry})
+    _append_history(REQUEST_RESOURCE, f'GET-api/{UUID_A}', format=FORMAT_V2)
+    _append_history(SCENARIO_RESOURCE, f'checkout/{SCENARIO_A}', format=FORMAT_V2)
+
+    result = migrate_snapshots_to_v1(DataDir.instance())
+    assert result['requests'] == 2
+    assert result['scenarios'] == 1
+
+    embed = RequestSnapshot.create(UUID_B)
+    assert embed.format == FORMAT_V1
+    raw = embed.request
+    assert raw is not None
+    assert request_body in raw
+    assert response_body in raw
+    assert b'User-Agent: stoobly-test' in raw
+
+    # Slug dir cleaned after both standalones and embeds reconstituted
+    slug_dir = os.path.join(DataDir.instance().snapshots_requests_dir_path, 'GET-api')
+    assert not os.path.isdir(slug_dir)
+
 
 class TestRemigrateHistoryBackfill:
   def test_remigrate_rewrites_history_for_already_converted_request(self):
