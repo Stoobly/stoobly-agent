@@ -10,6 +10,7 @@ import yaml
 from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
 from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+from stoobly_agent.app.models.adapters.snapshot.yaml_dump import dump_snapshot_yaml
 from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
@@ -48,7 +49,7 @@ class RequestSnapshot(Snapshot):
 
   @staticmethod
   def _header_items(headers) -> List[tuple]:
-    """Yield (name, value) from a header string block or legacy/response dict."""
+    """Yield (name, value) from a header string block or legacy dict."""
     if isinstance(headers, dict):
       return list(headers.items())
     if isinstance(headers, str):
@@ -573,7 +574,7 @@ class RequestSnapshotV2(RequestSnapshot):
     entry = SnapshotEntryAdapter.from_joined(text, os.path.dirname(path)).adapt()
     self._entry = entry
     with open(path, 'w') as fp:
-      yaml.safe_dump(entry, fp, sort_keys=False, default_flow_style=False)
+      dump_snapshot_yaml(entry, fp)
     self._remove_uuid_orphans(path)
 
   def _find_v2_path(self) -> Optional[str]:

@@ -74,12 +74,12 @@ def parse_request_raw(raw: bytes) -> Tuple[str, str, str, str]:
   return parsed.method, parsed.url, strip_http_prefix(parsed.protocol), headers
 
 
-def parse_response_raw(raw: bytes) -> Tuple[int, str, dict]:
+def parse_response_raw(raw: bytes) -> Tuple[int, str, str]:
   head, _body = split_head_body(raw)
   lines = head.split(HEADER_SEP)
   if not lines:
-    return 0, '1.1', {}
+    return 0, '1.1', ''
 
   parsed = RawHttpResponseAdapter(lines[0] + HEADER_BODY_SEP)
-  headers = header_lines_to_dict(lines[1:])
+  headers = header_lines_to_string(lines[1:])
   return parsed.status, strip_http_prefix(parsed.protocol), headers

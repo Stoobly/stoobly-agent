@@ -40,7 +40,7 @@ def headers_string_to_lines(headers: Union[str, None]) -> List[bytes]:
 
 
 def headers_to_lines(headers: Union[str, dict, None]) -> List[bytes]:
-  """Accept request header string or legacy/response header dict."""
+  """Accept request/response header string or legacy header dict."""
   if isinstance(headers, str):
     return headers_string_to_lines(headers)
   return headers_dict_to_lines(headers)

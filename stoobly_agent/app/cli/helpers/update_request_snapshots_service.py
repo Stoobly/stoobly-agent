@@ -142,7 +142,7 @@ def _apply_lifecycle_hooks(
         lifecycle_hooks_path: Path to lifecycle hooks script
     """
     from runpy import run_path
-    from stoobly_agent.config.constants.lifecycle_hooks import BEFORE_MIGRATE
+    from stoobly_agent.config.constants.lifecycle_hooks import SNAPSHOT_VISIT
     from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration
     
     try:
@@ -151,12 +151,12 @@ def _apply_lifecycle_hooks(
         print(f"Error: Failed to load lifecycle hooks from {lifecycle_hooks_path}: {e}", file=sys.stderr)
         lifecycle_hooks = {}
     
-    before_migrate_hook: Callable[[SnapshotMigration], bool] = None
-    if BEFORE_MIGRATE not in lifecycle_hooks:
-        print(f"Error: Lifecycle hook {BEFORE_MIGRATE} not found in {lifecycle_hooks_path}", file=sys.stderr)
+    snapshot_visit_hook: Callable[[SnapshotMigration], bool] = None
+    if SNAPSHOT_VISIT not in lifecycle_hooks:
+        print(f"Error: Lifecycle hook {SNAPSHOT_VISIT} not found in {lifecycle_hooks_path}", file=sys.stderr)
         sys.exit(1)
     else:
-        before_migrate_hook = lifecycle_hooks[BEFORE_MIGRATE]
+        snapshot_visit_hook = lifecycle_hooks[SNAPSHOT_VISIT]
     
     snapshot_migrations = {}
     for request_snapshot, event in request_snapshots:
@@ -164,7 +164,7 @@ def _apply_lifecycle_hooks(
             snapshot_migration = SnapshotMigration(request_snapshot, event)
             snapshot_migrations[request_snapshot.uuid] = snapshot_migration
             
-            if before_migrate_hook(snapshot_migration):
+            if snapshot_visit_hook(snapshot_migration):
                 snapshot_migration.skip = True
 
     return snapshot_migrations

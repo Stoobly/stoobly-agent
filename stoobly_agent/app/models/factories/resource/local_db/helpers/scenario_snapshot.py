@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
+from stoobly_agent.app.models.adapters.snapshot.yaml_dump import dump_snapshot_yaml
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.orm.scenario import Scenario
 
@@ -561,7 +562,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         )
       except ValueError:
         continue
-      # Prefer a standalone uuid.yaml when present (e.g. after snapshot update)
+      # Prefer a standalone uuid.yaml when present (e.g. after snapshot visit)
       standalone = RequestSnapshotV2(embedded.uuid, self.data_dir, slug=embedded.slug)
       if standalone.path and os.path.exists(standalone.path):
         handler(standalone)
@@ -625,11 +626,11 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     dest_path = self._destination_metadata_path(scenario.name, existing_path)
     os.makedirs(self._scenarios_dir_path, exist_ok=True)
     with open(dest_path, 'w') as fp:
-      yaml.safe_dump({
+      dump_snapshot_yaml({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
         'requests': existing_requests,
-      }, fp, sort_keys=False, default_flow_style=False)
+      }, fp)
 
     self._resolved_metadata_path = dest_path
     self._remove_uuid_orphans(dest_path)
@@ -650,11 +651,11 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     dest_path = self._destination_metadata_path(scenario.name, existing_path)
     os.makedirs(self._scenarios_dir_path, exist_ok=True)
     with open(dest_path, 'w') as fp:
-      yaml.safe_dump({
+      dump_snapshot_yaml({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
         'requests': entries,
-      }, fp, sort_keys=False, default_flow_style=False)
+      }, fp)
 
     self._resolved_metadata_path = dest_path
     self._remove_uuid_orphans(dest_path)
@@ -685,7 +686,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       requests_field[str(request_uuid)] = entry
 
     with open(path, 'w') as fp:
-      yaml.safe_dump(data, fp, sort_keys=False, default_flow_style=False)
+      dump_snapshot_yaml(data, fp)
 
   def _find_uuid_metadata_path(self) -> Optional[str]:
     """Locate scenarios/*.yaml whose embedded uuid matches, ignoring name/stem."""

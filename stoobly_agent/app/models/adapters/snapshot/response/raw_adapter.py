@@ -4,13 +4,16 @@ from stoobly_agent.app.proxy.record.response_string import CLRF as ResponseStrin
 from stoobly_agent.app.proxy.record.response_string_control import ResponseStringControl
 
 from ..control_timestamp import coerce_legacy_us_to_ns, parse_control_timestamp
-from ..headers import format_http_version, headers_dict_to_lines, join_start_and_headers
+from ..headers import format_http_version, headers_to_lines, join_start_and_headers
 
 
 class RawResponseAdapter():
   """
   Adapt a snapshot response dict (status/latency/http_version/timestamp/headers) to a
   Stoobly response string: control line + CRLF + raw HTTP response.
+
+  `headers` is a multiline string (raw header block). Legacy dict maps are still
+  accepted for older YAML.
   """
 
   def __init__(self, response: dict, uuid: Optional[str] = None):
@@ -35,6 +38,6 @@ class RawResponseAdapter():
     # Match ResponseString: "HTTP/x STATUS" with no trailing reason/space.
     response_line = f"{version} {status}".encode()
 
-    headers = headers_dict_to_lines(response.get('headers') or {})
+    headers = headers_to_lines(response.get('headers'))
     response_raw = join_start_and_headers(response_line, headers)
     return control.serialize().encode() + ResponseStringCLRF + response_raw

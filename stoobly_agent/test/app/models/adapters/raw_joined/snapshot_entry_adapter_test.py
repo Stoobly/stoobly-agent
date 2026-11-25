@@ -8,6 +8,7 @@ from stoobly_agent.app.models.adapters.raw_joined import (
   SnapshotEntryAdapter,
 )
 from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+from stoobly_agent.app.models.adapters.snapshot.yaml_dump import dump_snapshot_yaml
 from stoobly_agent.app.proxy.record.joined_request import REQUEST_DELIMITTER
 
 REQ_TS_NS = 1795066190943834368
@@ -32,6 +33,7 @@ class TestSnapshotEntryAdapter:
     assert entry['http_version'] == '1.1'
     assert entry['timestamp'] == '2026-11-19T05:29:50.943834368Z'
     assert entry['headers'] == 'Host: example.com'
+    assert entry['response']['headers'] == 'Content-Length: 0'
     assert entry['response']['status'] == 200
     assert entry['response']['latency'] == 42
     assert entry['response']['timestamp'] == '2026-11-19T05:29:50.944042Z'
@@ -74,7 +76,7 @@ class TestSnapshotEntryAdapter:
         'latency': 42,
         'http_version': '1.1',
         'timestamp': RES_TS_US_LEGACY,
-        'headers': {},
+        'headers': '',
       },
     }
     with tempfile.TemporaryDirectory() as slug_dir:
@@ -87,8 +89,11 @@ class TestSnapshotEntryAdapter:
       entry = SnapshotEntryAdapter.from_joined(
         _joined(REQ_TS_NS, RES_TS_NS), slug_dir
       ).adapt()
-      dumped = yaml.safe_dump(entry, sort_keys=False)
+      dumped = dump_snapshot_yaml(entry)
+      assert 'headers: |-' in dumped or 'headers: |' in dumped
       loaded = yaml.safe_load(dumped)
+      assert isinstance(loaded['headers'], str)
+      assert isinstance(loaded['response']['headers'], str)
       restored = SnapshotAdapterFactory(loaded, uuid='req-id').joined_request(slug_dir)
       assert restored == _joined(REQ_TS_NS, RES_TS_NS)
 
@@ -120,11 +125,14 @@ class TestSnapshotEntryAdapter:
     ])
     with tempfile.TemporaryDirectory() as slug_dir:
       entry = SnapshotEntryAdapter.from_joined(joined, slug_dir).adapt()
-      assert entry['response']['headers']['Set-Cookie'] == [
-        'session=abc; Path=/',
-        'user=john; HttpOnly',
-      ]
-      dumped = yaml.safe_dump(entry, sort_keys=False)
+      assert entry['response']['headers'] == (
+        'Set-Cookie: session=abc; Path=/\n'
+        'Set-Cookie: user=john; HttpOnly\n'
+        'Content-Length: 0'
+      )
+      dumped = dump_snapshot_yaml(entry)
+      assert 'headers: |-' in dumped or 'headers: |' in dumped
       loaded = yaml.safe_load(dumped)
+      assert isinstance(loaded['response']['headers'], str)
       restored = SnapshotAdapterFactory(loaded, uuid='req-id').joined_request(slug_dir)
       assert restored == joined

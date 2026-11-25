@@ -22,7 +22,7 @@ from stoobly_agent.test.test_helper import DETERMINISTIC_GET_REQUEST_URL, reset
 def runner():
   return CliRunner()
 
-class TestUpdate():
+class TestVisit():
   @pytest.fixture(scope='class', autouse=True)
   @classmethod
   def settings(cls):
@@ -59,7 +59,7 @@ class TestUpdate():
       else:
         file_path = request_snapshot.metadata_path
       
-      apply_result = runner.invoke(snapshot, ['update', file_path])
+      apply_result = runner.invoke(snapshot, ['visit', file_path])
       assert apply_result.exit_code == 0
       log = Log()
       events = log.events
@@ -124,7 +124,7 @@ class TestUpdate():
       else:
         file_path = request_snapshot.metadata_path
 
-      apply_result = runner.invoke(snapshot, ['update', file_path])
+      apply_result = runner.invoke(snapshot, ['visit', file_path])
       assert apply_result.exit_code == 0
       log = Log()
       events = log.events
@@ -171,11 +171,11 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     @classmethod
-    def migrated_event(cls, runner: CliRunner, put_event: LogEvent):
+    def visited_event(cls, runner: CliRunner, put_event: LogEvent):
       time.sleep(1) # Simulate update at different time
 
       current_dir = os.path.dirname(os.path.abspath(__file__))
-      lifecycle_hooks_path = os.path.join(current_dir, 'lifecycle_hooks_migrate.py')
+      lifecycle_hooks_path = os.path.join(current_dir, 'lifecycle_hooks_visit.py')
       
       # Get the snapshot file path from the event
       request_snapshot = put_event.snapshot()
@@ -184,8 +184,8 @@ class TestUpdate():
       else:
         file_path = request_snapshot.metadata_path
       
-      migrate_result = runner.invoke(snapshot, ['update', '--lifecycle-hooks-path', lifecycle_hooks_path, file_path], catch_exceptions=False)
-      assert migrate_result.exit_code == 0
+      visit_result = runner.invoke(snapshot, ['visit', '--lifecycle-hooks-path', lifecycle_hooks_path, file_path], catch_exceptions=False)
+      assert visit_result.exit_code == 0
 
       log = Log()
       events = log.events
@@ -195,7 +195,7 @@ class TestUpdate():
 
     @pytest.fixture(scope='class')
     @classmethod
-    def migrated_request(cls, runner: CliRunner, recorded_request: Request):
+    def visited_request(cls, runner: CliRunner, recorded_request: Request):
       apply_result = runner.invoke(snapshot, ['apply'], catch_exceptions=False)
       assert apply_result.exit_code == 0
 
@@ -204,27 +204,27 @@ class TestUpdate():
 
       return request
 
-    def test_it_has_different_uuid(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.uuid != put_event.uuid 
+    def test_it_has_different_uuid(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.uuid != put_event.uuid 
 
-    def test_it_has_same_action(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.action == put_event.action
+    def test_it_has_same_action(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.action == put_event.action
 
-    def test_it_has_same_resource(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.resource == put_event.resource
+    def test_it_has_same_resource(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.resource == put_event.resource
 
-    def test_it_has_same_resource_uuid(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.resource_uuid == put_event.resource_uuid
+    def test_it_has_same_resource_uuid(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.resource_uuid == put_event.resource_uuid
 
-    def test_it_has_different_created_at(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.created_at != put_event.created_at
+    def test_it_has_different_created_at(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.created_at != put_event.created_at
 
-    def test_it_migrates_request(self, migrated_request: Request):
-      python_request = RawHttpRequestAdapter(migrated_request.raw).to_request()
+    def test_it_visits_request(self, visited_request: Request):
+      python_request = RawHttpRequestAdapter(visited_request.raw).to_request()
       assert python_request.headers['X-Test'] == '1'
 
-    def test_it_migrates_response(self, migrated_request: Request):
-      python_response = RawHttpResponseAdapter(migrated_request.response.raw).to_response()
+    def test_it_visits_response(self, visited_request: Request):
+      python_response = RawHttpResponseAdapter(visited_request.response.raw).to_response()
       assert python_response.content == b'Test'
 
   class TestWithLifecycleHooksAndScenario():
@@ -272,22 +272,22 @@ class TestUpdate():
 
     @pytest.fixture(autouse=True, scope='class')
     @classmethod
-    def migrated_event(
+    def visited_event(
       cls, runner: CliRunner, put_event: LogEvent, put_event_two: LogEvent, created_scenario: Scenario
     ):
       time.sleep(1) # Simulate update at different time
 
       current_dir = os.path.dirname(os.path.abspath(__file__))
-      lifecycle_hooks_path = os.path.join(current_dir, 'lifecycle_hooks_migrate.py')
+      lifecycle_hooks_path = os.path.join(current_dir, 'lifecycle_hooks_visit.py')
       
       # Get the scenario snapshot metadata path from the event
       scenario_snapshot = put_event.snapshot()
       file_path = scenario_snapshot.metadata_path
       
-      migrate_result = runner.invoke(snapshot, 
-        ['update', '--lifecycle-hooks-path', lifecycle_hooks_path, file_path]
+      visit_result = runner.invoke(snapshot, 
+        ['visit', '--lifecycle-hooks-path', lifecycle_hooks_path, file_path]
       )
-      assert migrate_result.exit_code == 0
+      assert visit_result.exit_code == 0
 
       log = Log()
       events = log.events
@@ -299,7 +299,7 @@ class TestUpdate():
 
     @pytest.fixture(scope='class')
     @classmethod
-    def migrated_request(cls, runner: CliRunner, recorded_request_one: Request):
+    def visited_request(cls, runner: CliRunner, recorded_request_one: Request):
       apply_result = runner.invoke(snapshot, ['apply'], catch_exceptions=False)
       assert apply_result.exit_code == 0
 
@@ -308,25 +308,25 @@ class TestUpdate():
 
       return request
 
-    def test_it_has_different_uuid(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.uuid != put_event.uuid 
+    def test_it_has_different_uuid(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.uuid != put_event.uuid 
 
-    def test_it_has_same_action(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.action == put_event.action
+    def test_it_has_same_action(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.action == put_event.action
 
-    def test_it_has_same_resource(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.resource == put_event.resource
+    def test_it_has_same_resource(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.resource == put_event.resource
 
-    def test_it_has_same_resource_uuid(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.resource_uuid == put_event.resource_uuid
+    def test_it_has_same_resource_uuid(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.resource_uuid == put_event.resource_uuid
 
-    def test_it_has_different_created_at(self, migrated_event: LogEvent, put_event: LogEvent):
-      assert migrated_event.created_at != put_event.created_at
+    def test_it_has_different_created_at(self, visited_event: LogEvent, put_event: LogEvent):
+      assert visited_event.created_at != put_event.created_at
 
-    def test_it_migrates_request(self, migrated_request: Request):
-      python_request = RawHttpRequestAdapter(migrated_request.raw).to_request()
+    def test_it_visits_request(self, visited_request: Request):
+      python_request = RawHttpRequestAdapter(visited_request.raw).to_request()
       assert python_request.headers['X-Test'] == '1'
 
-    def test_it_migrates_response(self, migrated_request: Request):
-      python_response = RawHttpResponseAdapter(migrated_request.response.raw).to_response()
+    def test_it_visits_response(self, visited_request: Request):
+      python_response = RawHttpResponseAdapter(visited_request.response.raw).to_response()
       assert python_response.content == b'Test'
