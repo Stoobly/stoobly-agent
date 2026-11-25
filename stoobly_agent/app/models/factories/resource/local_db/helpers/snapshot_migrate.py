@@ -633,7 +633,13 @@ def _needs_v2_yaml_upgrade(data_dir: DataDir) -> bool:
           data = yaml.safe_load(fp) or {}
         if not isinstance(data, dict):
           continue
-        for item in data.get('requests') or []:
+        # Only list-shaped indexes can hold legacy path strings. A missing
+        # requests field, [], or v2 uuid-keyed map is already done — do not
+        # iterate maps (UUID keys are str and would falsely force remigrate).
+        requests_field = data.get('requests') or []
+        if not isinstance(requests_field, list):
+          continue
+        for item in requests_field:
           if isinstance(item, str):
             return True
       except Exception:
