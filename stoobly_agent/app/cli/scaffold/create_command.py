@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import click
 from ruamel.yaml import YAML
 from ruamel.yaml.constructor import DuplicateKeyError
+from ruamel.yaml.util import load_yaml_guess_indent
 
 from stoobly_agent import COMMAND
 from stoobly_agent.app.cli.scaffold.constants import CORE_WORKFLOWS
@@ -24,13 +25,30 @@ _CREATE_NAME_KEYS = {
 _SETTING_PATTERN_ACTIONS = frozenset({'filter set', 'match set', 'rewrite set'})
 
 
-def _scaffold_yaml() -> YAML:
+def _scaffold_yaml(sequence: int = 2, offset: int = 0) -> YAML:
   """Round-trip YAML so scaffold.yml updates keep comments and key order."""
   yaml = YAML()
   yaml.default_flow_style = False
   yaml.preserve_quotes = True
   yaml.width = 4096
+  yaml.indent(mapping=2, sequence=sequence, offset=offset)
   return yaml
+
+
+def _guess_sequence_indent(path: str) -> Tuple[int, int]:
+  """Sequence indent and dash offset used by an existing file, else the defaults."""
+  if not os.path.exists(path):
+    return 2, 0
+
+  with open(path, 'r') as fp:
+    try:
+      _, sequence, offset = load_yaml_guess_indent(fp.read())
+    except Exception:
+      return 2, 0
+
+  if sequence is None or offset is None:
+    return 2, 0
+  return sequence, offset
 
 
 def _assign_mapping(target: dict, source: dict) -> None:
@@ -307,8 +325,9 @@ def _load_scaffold_data(path: str) -> Dict[str, Any]:
 
 
 def _write_scaffold_data(path: str, data: Dict[str, Any]) -> str:
+  sequence, offset = _guess_sequence_indent(path) # Read before open('w') truncates
   with open(path, 'w') as fp:
-    _scaffold_yaml().dump(data, fp)
+    _scaffold_yaml(sequence, offset).dump(data, fp)
   return path
 
 
