@@ -444,6 +444,184 @@ class TestRequestSnapshotV2NamingEdges:
     assert not list(dest.rglob('passwd'))
 
 
+class TestRequestAndScenarioSharedBlobs:
+  """Bodies/headers stay until both the request snapshot and scenario embed are gone."""
+
+  SCENARIO_UUID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+
+  def _plant_shared(self, slug: str):
+    import yaml
+
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+      ScenarioSnapshotV2,
+    )
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    body_hash = 'a' * 16
+    header_hash = 'b' * 16
+    entry = {
+      'method': 'GET',
+      'url': f'https://example.com/{slug.split("-", 1)[-1]}',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{header_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    scenario_stem = f'shared-{slug}'
+    with open(os.path.join(scenarios_dir, f'{scenario_stem}.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': self.SCENARIO_UUID,
+        'description': '',
+        # Embed uses UUID_B so scenario delete does not prefer the standalone yaml
+        'requests': {UUID_B: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    _write_v2_file(standalone)
+    slug_dir = os.path.dirname(standalone.path)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
+    os.makedirs(bodies_dir, exist_ok=True)
+    os.makedirs(headers_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    header_path = os.path.join(headers_dir, header_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'shared-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    scenario = ScenarioSnapshotV2(self.SCENARIO_UUID, data_dir, name=scenario_stem)
+    return standalone, scenario, body_path, header_path, slug_dir
+
+  def test_delete_request_then_scenario_removes_blobs(self):
+    standalone, scenario, body_path, header_path, slug_dir = self._plant_shared(
+      'GET-api-req-first'
+    )
+
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+    scenario.remove()
+    assert not scenario.exists
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+  def test_delete_scenario_then_request_removes_blobs(self):
+    standalone, scenario, body_path, header_path, slug_dir = self._plant_shared(
+      'GET-api-scenario-first'
+    )
+
+    scenario.remove()
+    assert not scenario.exists
+    assert os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+  def test_request_delete_keeps_blobs_while_scenario_references_same_uuid(self):
+    """CLI-style request delete: inverted index blocks remove until scenario is gone."""
+    import yaml
+
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+      ScenarioSnapshotV2,
+    )
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-same-uuid'
+    body_hash = 'c' * 16
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/api/same-uuid',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'same-uuid.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': self.SCENARIO_UUID,
+        'description': '',
+        'requests': {UUID: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    # Write entry yaml so refs resolve from the same shape as the embed
+    standalone._ensure_parent(standalone.path)
+    with open(standalone.path, 'w') as fp:
+      yaml.safe_dump(entry, fp, sort_keys=False)
+
+    slug_dir = os.path.dirname(standalone.path)
+    body_path = os.path.join(slug_dir, 'bodies', body_hash)
+    header_path = os.path.join(slug_dir, 'headers', body_hash)
+    os.makedirs(os.path.dirname(body_path), exist_ok=True)
+    os.makedirs(os.path.dirname(header_path), exist_ok=True)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'same-uuid-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    # Request snapshot delete while scenario still references this uuid
+    Log().remove_request_snapshot(
+      standalone,
+      scenario_inverted_index={UUID: [self.SCENARIO_UUID]},
+    )
+    assert os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+
+    scenario = ScenarioSnapshotV2(self.SCENARIO_UUID, data_dir, name='same-uuid')
+    # Scenario delete removes standalone (preferred over embed) then cleans blobs
+    scenario.remove(
+      lambda snap: Log().remove_request_snapshot(
+        snap,
+        scenario_inverted_index={UUID: [self.SCENARIO_UUID]},
+        ignore_scenario_ids=[self.SCENARIO_UUID],
+      )
+    )
+    assert not scenario.exists
+    assert not os.path.isfile(standalone.path)
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+
 class TestRequestSnapshotEntryRefPaths:
   def test_collects_body_and_header_refs(self):
     entry = {
