@@ -17,7 +17,7 @@ def _entry():
       'latency': 42,
       'http_version': '1.1',
       'timestamp': RES_TS_NS,
-      'headers': {'Content-Length': '0'},
+      'headers': 'Content-Length: 0',
     },
   }
 

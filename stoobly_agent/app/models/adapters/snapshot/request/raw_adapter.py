@@ -13,7 +13,7 @@ class RawRequestAdapter():
   Stoobly request string: control line + CRLF + raw HTTP request.
 
   `headers` is a multiline string (raw header block). Legacy dict maps are still
-  accepted for older YAML.
+  accepted for older YAML snapshots.
   """
 
   def __init__(self, entry: dict, uuid: Optional[str] = None):

@@ -12,6 +12,7 @@ from .log import EVENT_DELIMITTER, Log
 from .log_event import LogEvent, LogEventV1, LogEventV2
 from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
 from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+from stoobly_agent.app.models.adapters.snapshot.yaml_dump import dump_snapshot_yaml
 
 from .request_snapshot import RequestSnapshot, RequestSnapshotV2
 from .scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
@@ -142,7 +143,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
         if write_standalone:
           dest = os.path.join(slug_dir, f"{name}{REQUEST_FILE_EXTENSION}")
           with open(dest, 'w') as fp:
-            yaml.safe_dump(entry_data, fp, sort_keys=False, default_flow_style=False)
+            dump_snapshot_yaml(entry_data, fp)
           request_uuid_to_locator[name] = f"{slug}/{name}"
 
         os.remove(src)
@@ -197,11 +198,11 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
       yaml_stem = _name_from_yaml_filename(os.path.basename(yaml_path))
 
       with open(yaml_path, 'w') as fp:
-        yaml.safe_dump({
+        dump_snapshot_yaml({
           'uuid': scenario_uuid,
           'description': description,
           'requests': request_entries,
-        }, fp, sort_keys=False, default_flow_style=False)
+        }, fp)
 
       os.remove(meta_path)
       if os.path.exists(index_path):
@@ -839,7 +840,7 @@ def _upgrade_scenario_request_entries(
 
     data['requests'] = entries
     with open(yaml_path, 'w') as fp:
-      yaml.safe_dump(data, fp, sort_keys=False, default_flow_style=False)
+      dump_snapshot_yaml(data, fp)
     migrated += 1
 
   return migrated

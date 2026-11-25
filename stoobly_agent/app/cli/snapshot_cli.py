@@ -80,7 +80,7 @@ def apply(**kwargs):
     sys.exit(1)
 
 @snapshot.command(
-  help="Reset requests and scenarios that have snapshots to their last snapshot state."
+  help="Reset requests and scenarios to their last snapshot state."
 )
 @click.option('--hard', is_flag=True, default=False, help='Delete all requests and scenarios before resetting.')
 @click.option('--lock-timeout', default=60, type=int, help='Lock timeout in seconds (default: 60).')
@@ -192,12 +192,12 @@ def prune(**kwargs):
     __abort_with_error(e)
 
 @snapshot.command(
-  help="Update a snapshot.",
+  help="Visit a snapshot using 'handle_snapshot_visit' lifecycle hook.",
 )
 @click.option('--no-verify', is_flag=True, default=False)
 @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
 @click.argument('file_path')
-def update(**kwargs):
+def visit(**kwargs):
   update_request_snapshots(
     file_path=kwargs['file_path'],
     lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),

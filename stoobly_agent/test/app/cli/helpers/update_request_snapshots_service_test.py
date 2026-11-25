@@ -148,11 +148,11 @@ class TestUpdateRequestSnapshotsEmbedLifecycle:
       before = yaml.safe_load(fp)
     original_entry = before['requests'][REQUEST_UUID]
 
-    hooks_path = tmp_path / 'lifecycle_hooks_migrate.py'
+    hooks_path = tmp_path / 'lifecycle_hooks_visit.py'
     hooks_path.write_text(
       "from stoobly_agent.app.cli.types.snapshot_migration import SnapshotMigration\n"
       "\n"
-      "def handle_before_migrate(snapshot_migration: SnapshotMigration):\n"
+      "def handle_snapshot_visit(snapshot_migration: SnapshotMigration):\n"
       "  request = snapshot_migration.request\n"
       "  response = snapshot_migration.response\n"
       "  request.headers['X-Test'] = '1'\n"

@@ -48,7 +48,7 @@ command:
     options:
     - name: dry-run
   - name: reset
-    description: Reset requests and scenarios that have snapshots to their last snapshot state.
+    description: Reset requests and scenarios to their last snapshot state.
     options:
     - name: hard
       description: Delete all requests and scenarios before resetting.
@@ -58,8 +58,8 @@ command:
       - name: lock_timeout
     - name: 'yes'
       description: Proceed without confirmation.
-  - name: update
-    description: Update a snapshot.
+  - name: visit
+    description: Visit a snapshot using 'handle_snapshot_visit' lifecycle hook.
     arguments:
     - name: file_path
       required: true
