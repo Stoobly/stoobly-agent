@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
@@ -21,6 +21,41 @@ class ScenarioSnapshot(Snapshot):
   """Base scenario snapshot. Prefer create(), from_path(), or V1/V2 subclasses."""
 
   FORMAT = None
+
+  @staticmethod
+  def is_request_entry(value: Any) -> bool:
+    """True if value looks like a structured request entry (not a path string)."""
+    return (
+      isinstance(value, dict)
+      and 'headers' in value
+      and 'response' in value
+      and 'method' in value
+    )
+
+  @staticmethod
+  def iter_request_entries(requests_field: Any):
+    """
+    Yield (uuid, entry) from scenario YAML `requests`.
+
+    Current form is a uuid-keyed dict. Also accepts a legacy list of entries that
+    still embedded `uuid` (entry returned without that field).
+    """
+    if isinstance(requests_field, dict):
+      for request_uuid, entry in requests_field.items():
+        if ScenarioSnapshot.is_request_entry(entry) and UUID_RE.match(str(request_uuid)):
+          yield str(request_uuid), entry
+      return
+
+    if not isinstance(requests_field, list):
+      return
+
+    for item in requests_field:
+      if not ScenarioSnapshot.is_request_entry(item):
+        continue
+      request_uuid = str(item.get('uuid') or '')
+      if not UUID_RE.match(request_uuid):
+        continue
+      yield request_uuid, {k: v for k, v in item.items() if k != 'uuid'}
 
   def __init__(self, uuid: str, data_dir: DataDir = None, name: str = None):
     parsed_uuid, parsed_name = self._parse_scenario_ref(uuid, name)
@@ -77,16 +112,25 @@ class ScenarioSnapshot(Snapshot):
 
     History-derived names may contain ../ or separators; sanitize to a single
     basename component before joining (same idea as request slug sanitization).
+
+    Prefers an existing .yaml, then an existing .yml; otherwise returns the
+    .yaml path for new writes.
     """
     if not name:
       return None
     safe = ScenarioSnapshotV2.sanitize_scenario_filename(name)
-    path = os.path.join(scenarios_dir, f"{safe}.yaml")
-    abs_path = os.path.abspath(path)
     abs_dir = os.path.abspath(scenarios_dir)
-    if os.path.commonpath([abs_path, abs_dir]) != abs_dir:
-      return None
-    return path
+    chosen = None
+    for ext in ('.yaml', '.yml'):
+      path = os.path.join(scenarios_dir, f'{safe}{ext}')
+      abs_path = os.path.abspath(path)
+      if os.path.commonpath([abs_path, abs_dir]) != abs_dir:
+        return None
+      if os.path.isfile(path):
+        return path
+      if chosen is None:
+        chosen = path
+    return chosen
 
   @staticmethod
   def _detect_scenario_format(uuid: str, data_dir: DataDir, name: str = None) -> int:
@@ -508,20 +552,62 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
 
   def iter_request_snapshots(self, handler: Callable[[RequestSnapshot], None]):
     meta = self._load_metadata_data()
-    for relative in meta.get('requests') or []:
-      parsed = RequestSnapshotV2.parse_request_relative_path(relative)
-      if not parsed:
+    requests_field = meta.get('requests') or {}
+
+    for request_uuid, entry in self.iter_request_entries(requests_field):
+      try:
+        embedded = RequestSnapshotV2.from_entry(
+          entry, self.data_dir, uuid=request_uuid
+        )
+      except ValueError:
         continue
-      slug, uuid = parsed
-      handler(RequestSnapshotV2(uuid, self.data_dir, slug=slug))
+      # Prefer a standalone uuid.yaml when present (e.g. after snapshot update)
+      standalone = RequestSnapshotV2(embedded.uuid, self.data_dir, slug=embedded.slug)
+      if standalone.path and os.path.exists(standalone.path):
+        handler(standalone)
+      else:
+        handler(embedded)
+
+    # Legacy v2: list of relative path strings slug/<uuid>.yaml
+    if isinstance(requests_field, list):
+      for item in requests_field:
+        if not isinstance(item, str):
+          continue
+        parsed = RequestSnapshotV2.parse_request_relative_path(item)
+        if not parsed:
+          continue
+        slug, uuid = parsed
+        handler(RequestSnapshotV2(uuid, self.data_dir, slug=slug))
 
   def remove_metadata(self):
     metadata_file_path = self.metadata_path
     if metadata_file_path and os.path.exists(metadata_file_path):
       os.remove(metadata_file_path)
+    # Embed-only request.remove() leaves bodies/headers alone while this YAML
+    # still exists. After it is gone, drop slug dirs no other scenario uses.
+    self._cleanup_pending_slug_dirs()
 
   def remove_requests(self, handle_remove_request_snapshot=None):
-    self.iter_request_snapshots(handle_remove_request_snapshot or self._handle_remove_requests)
+    handler = handle_remove_request_snapshot or self._handle_remove_requests
+    pending = set()
+
+    def wrap(request_snapshot: RequestSnapshot):
+      slug_dir = getattr(request_snapshot, 'slug_dir', None)
+      if slug_dir:
+        pending.add(slug_dir)
+      handler(request_snapshot)
+
+    self.iter_request_snapshots(wrap)
+    self._pending_slug_dirs = pending
+
+  def _cleanup_pending_slug_dirs(self):
+    pending = getattr(self, '_pending_slug_dirs', None) or set()
+    self._pending_slug_dirs = set()
+    if not pending:
+      return
+    cleaner = RequestSnapshotV2('', self.data_dir)
+    for slug_dir in pending:
+      cleaner._cleanup_empty_slug_dir(slug_dir)
 
   def write_metadata(self, scenario: Scenario, **options):
     self._name = scenario.name
@@ -530,10 +616,10 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     self._resolved_metadata_path = None
 
     existing_path = self._find_uuid_metadata_path()
-    existing_requests = []
+    existing_requests = {}
     if existing_path and os.path.exists(existing_path):
       self._resolved_metadata_path = existing_path
-      existing_requests = (self._load_metadata_data() or {}).get('requests') or []
+      existing_requests = (self._load_metadata_data() or {}).get('requests') or {}
       self._resolved_metadata_path = None
 
     dest_path = self._destination_metadata_path(scenario.name, existing_path)
@@ -549,12 +635,11 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
     self._remove_uuid_orphans(dest_path)
 
   def write_requests(self, scenario: Scenario, **options: RequestSnapshotOptions):
-    relative_paths = []
+    entries = {}
     for request in scenario.requests:
       slug = RequestSnapshotV2.build_request_slug(request.method, request.path)
       request_snapshot = RequestSnapshotV2(request.uuid, self.data_dir, slug=slug)
-      request_snapshot.write(request, **options)
-      relative_paths.append(RequestSnapshotV2.request_relative_path(slug, request.uuid))
+      entries[request.uuid] = request_snapshot.build_entry(request, **options)
 
     self._name = scenario.name
     if scenario.uuid and UUID_RE.match(str(scenario.uuid)):
@@ -568,11 +653,39 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
       yaml.safe_dump({
         'uuid': scenario.uuid,
         'description': scenario.description or '',
-        'requests': relative_paths,
+        'requests': entries,
       }, fp, sort_keys=False, default_flow_style=False)
 
     self._resolved_metadata_path = dest_path
     self._remove_uuid_orphans(dest_path)
+
+  def update_request_entries(self, entries: Dict[str, dict]):
+    """
+    Merge updated request embeds into the scenario YAML and write.
+
+    Only updates the current uuid-keyed `requests` map. No-op when the
+    metadata file is missing or `requests` is not a dict.
+    """
+    path = self.metadata_path
+    if not path or not os.path.exists(path) or not entries:
+      return
+
+    with open(path, 'r') as fp:
+      data = yaml.safe_load(fp) or {}
+    if not isinstance(data, dict):
+      return
+
+    requests_field = data.get('requests')
+    if not isinstance(requests_field, dict):
+      return
+
+    for request_uuid, entry in entries.items():
+      if not isinstance(entry, dict):
+        continue
+      requests_field[str(request_uuid)] = entry
+
+    with open(path, 'w') as fp:
+      yaml.safe_dump(data, fp, sort_keys=False, default_flow_style=False)
 
   def _find_uuid_metadata_path(self) -> Optional[str]:
     """Locate scenarios/*.yaml whose embedded uuid matches, ignoring name/stem."""
@@ -593,17 +706,30 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         return path
     return None
 
+  @staticmethod
+  def _is_collision_stem(stem: str, base: str) -> bool:
+    """True if stem is base-2, base-3, ... from unique_yaml_path."""
+    prefix = f'{base}-'
+    if not stem.startswith(prefix):
+      return False
+    suffix = stem[len(prefix):]
+    return suffix.isdigit() and int(suffix) >= 2
+
   def _destination_metadata_path(self, name: str, existing_path: Optional[str] = None) -> str:
     """
     Path to write for the current scenario name.
 
-    Keeps the existing file when its stem already matches the sanitized name;
-    otherwise allocates a new {name}.yaml (with -2, -3, ... on collision) so a
-    rename relocates instead of writing in place under the old stem.
+    Keeps the existing file when its stem already matches the sanitized name
+    or a collision suffix (name-2, name-3, ...) so write_metadata + write_requests
+    do not re-allocate past an already-disambiguated path. Otherwise allocates a
+    new {name}.yaml (with -2, -3, ... on collision) so a rename relocates instead
+    of writing in place under the old stem.
     """
     desired_stem = self.sanitize_scenario_filename(name or self.uuid or 'scenario')
-    if existing_path and self._name_from_path(existing_path) == desired_stem:
-      return existing_path
+    if existing_path:
+      existing_stem = self._name_from_path(existing_path)
+      if existing_stem == desired_stem or self._is_collision_stem(existing_stem, desired_stem):
+        return existing_path
 
     # Do not pass uuid: allocate_yaml_path would reuse the old-stem file.
     return self.allocate_yaml_path(
@@ -682,7 +808,7 @@ class ScenarioSnapshotV2(ScenarioSnapshot):
         'name': data.get('name') or self._name_from_path(self.metadata_path),
         'description': data.get('description') or '',
         'uuid': str(found_uuid),
-        'requests': data.get('requests') or [],
+        'requests': data.get('requests') or {},
       }
     except Exception:
       # Treat corrupt/invalid YAML as missing so apply can skip

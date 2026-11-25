@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
@@ -33,16 +34,20 @@ def externalize_joined_request(joined: bytes, slug_dir: str) -> bytes:
   Convert joined request bytes to v2 form: strip dedup-list headers and bodies,
   write them under slug_dir/headers and slug_dir/bodies, and append
   X-Stoobly-Header-Ref / X-Stoobly-Body-Ref (body-ref last when both exist).
+
+  Refs are context-dir-relative for PR navigation:
+  .stoobly/snapshots/requests/<slug>/bodies|headers/<hash>
   """
   adapter = JoinedRequestAdapter(joined)
   request_string = adapter.build_request_string()
   response_string = adapter.build_response_string()
+  slug = os.path.basename(os.path.normpath(slug_dir))
 
   request_raw = _externalize_http(
-    request_string.get(control=False), slug_dir, REQUEST_HEADER_DEDUP_LIST
+    request_string.get(control=False), slug_dir, slug, REQUEST_HEADER_DEDUP_LIST
   )
   response_raw = _externalize_http(
-    response_string.get(control=False), slug_dir, RESPONSE_HEADER_DEDUP_LIST
+    response_string.get(control=False), slug_dir, slug, RESPONSE_HEADER_DEDUP_LIST
   )
 
   request_part = request_string.control + RequestStringCLRF + request_raw
@@ -53,7 +58,8 @@ def externalize_joined_request(joined: bytes, slug_dir: str) -> bytes:
 def reconstitute_joined_request(joined: bytes, slug_dir: str) -> bytes:
   """
   Convert v2 joined request bytes back to inline form by resolving
-  X-Stoobly-Header-Ref and X-Stoobly-Body-Ref headers relative to slug_dir.
+  X-Stoobly-Header-Ref and X-Stoobly-Body-Ref against slug_dir
+  (.stoobly/snapshots/requests/<slug>/bodies|headers/<hash>).
   """
   adapter = JoinedRequestAdapter(joined)
   request_string = adapter.build_request_string()
@@ -124,7 +130,9 @@ def _parse_header_blob(payload: bytes) -> List[bytes]:
     return []
   return [line for line in payload.split(HEADER_SEP) if line]
 
-def _externalize_http(raw: bytes, slug_dir: str, dedup_list: Set[str]) -> bytes:
+def _externalize_http(
+  raw: bytes, slug_dir: str, slug: str, dedup_list: Set[str]
+) -> bytes:
   head, body = _split_head_body(raw)
 
   lines = head.split(HEADER_SEP)
@@ -144,15 +152,16 @@ def _externalize_http(raw: bytes, slug_dir: str, dedup_list: Set[str]) -> bytes:
     header_hash = write_headers(slug_dir, extracted_headers)
     header_lines.insert(
       header_ref_index,
-      f"{HEADER_REF_HEADER}: {relative_header_ref(header_hash)}".encode(),
+      f"{HEADER_REF_HEADER}: {relative_header_ref(slug, header_hash)}".encode(),
     )
 
   restored_body = body
   if body:
-    header_lines = _set_or_add_content_length(header_lines, 0)
     body_hash = write_body(slug_dir, body)
     # Body-ref must be the last header
-    header_lines.append(f"{BODY_REF_HEADER}: {relative_body_ref(body_hash)}".encode())
+    header_lines.append(
+      f"{BODY_REF_HEADER}: {relative_body_ref(slug, body_hash)}".encode()
+    )
     restored_body = b''
   elif not extracted_headers:
     # No body and no dedup-list headers: leave bytes unchanged for round-trip fidelity

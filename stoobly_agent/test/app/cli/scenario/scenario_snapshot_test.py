@@ -186,14 +186,18 @@ class TestScenario():
         put_one = runner.invoke(scenario, ['snapshot', 'create', scenario_one.key()])
         assert put_one.exit_code == 0
 
-        # Move request to B and snapshot B without re-snapshotting A — both YAMLs list the request
+        # Move request to B and snapshot B without re-snapshotting A — both YAMLs embed the request
         shared_request.update(scenario_id=scenario_two.id)
         time.sleep(0.5)
         put_two = runner.invoke(scenario, ['snapshot', 'create', scenario_two.key()])
         assert put_two.exit_code == 0
 
-        request_path = RequestSnapshot.create(shared_request.uuid).path
-        assert os.path.isfile(request_path)
+        assert RequestSnapshot.create(shared_request.uuid).request is not None
+
+        request_snap = RequestSnapshot.create(shared_request.uuid)
+        slug_dir = getattr(request_snap, 'slug_dir', None)
+        bodies_dir = os.path.join(slug_dir, 'bodies') if slug_dir else None
+        body_names = os.listdir(bodies_dir) if bodies_dir and os.path.isdir(bodies_dir) else []
 
         delete_one = runner.invoke(
           scenario,
@@ -201,9 +205,15 @@ class TestScenario():
         )
         assert delete_one.exit_code == 0
 
-        assert os.path.isfile(request_path)
+        # Request data remains via scenario two's embedded entry
+        assert RequestSnapshot.create(shared_request.uuid).request is not None
         assert ScenarioSnapshot.create(scenario_two.uuid).exists
         assert not ScenarioSnapshot.create(scenario_one.uuid).exists
+        # Shared slug blobs must survive delete of the other scenario
+        if body_names:
+          assert os.path.isdir(bodies_dir)
+          for name in body_names:
+            assert os.path.isfile(os.path.join(bodies_dir, name))
 
     class TestWhenDeleteAction():
       @pytest.fixture(scope='class', autouse=True)
@@ -238,9 +248,8 @@ class TestScenario():
         assert put_result.exit_code == 0
 
         metadata_path = ScenarioSnapshot.create(created_scenario.uuid).metadata_path
-        request_path = RequestSnapshot.create(recorded_request.uuid).path
         assert os.path.isfile(metadata_path)
-        assert os.path.isfile(request_path)
+        assert RequestSnapshot.create(recorded_request.uuid).request is not None
 
         delete_result = runner.invoke(
           scenario,
@@ -248,7 +257,7 @@ class TestScenario():
         )
         assert delete_result.exit_code == 0
         assert not os.path.exists(metadata_path)
-        assert not os.path.exists(request_path)
+        assert RequestSnapshot.create(recorded_request.uuid).request is None
         assert Log().events[-1].action == DELETE_ACTION
 
       def test_it_rejects_invalid_action(self, created_scenario: Scenario):

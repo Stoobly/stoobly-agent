@@ -23,15 +23,22 @@ UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 UUID_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 
-def _joined(marker: bytes = b'x') -> bytes:
+def _joined(marker: bytes = b'x', uuid: str = UUID) -> bytes:
   request = b'GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n' + marker
-  response = b'HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n'
-  return REQUEST_DELIMITTER.join([b'1 id 1\r\n' + request, b'2 id 1 1\r\n' + response])
+  response = b'HTTP/1.1 200\r\nContent-Length: 0\r\n\r\n'
+  return REQUEST_DELIMITTER.join([
+    f'1 {uuid} 1\r\n'.encode() + request,
+    f'2 {uuid} 1 1\r\n'.encode() + response,
+  ])
 
 
-def _write_v2_file(snapshot: RequestSnapshotV2, payload: bytes = b'raw-on-disk'):
+def _write_v2_file(snapshot: RequestSnapshotV2, payload: bytes = None):
+  """Write a valid v2 YAML request snapshot (or raw bytes for malformed-path tests)."""
   path = snapshot.path
   snapshot._ensure_parent(path)
+  if payload is None:
+    snapshot.write_raw(_joined(b'', uuid=snapshot.uuid))
+    return path
   with open(path, 'wb') as fp:
     fp.write(payload)
   return path
@@ -44,7 +51,7 @@ class TestRequestSnapshotParseRef:
     assert parsed_slug == 'GET-api'
 
   def test_slug_uuid_with_http_suffix(self):
-    parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(f'GET-api/{UUID}.http')
+    parsed_uuid, parsed_slug = RequestSnapshot._parse_request_ref(f'GET-api/{UUID}.yaml')
     assert parsed_uuid == UUID
     assert parsed_slug == 'GET-api'
 
@@ -80,7 +87,7 @@ class TestRequestSnapshotCreateAndFromPath:
     snapshot = RequestSnapshot.create(UUID, data_dir)
     assert isinstance(snapshot, RequestSnapshotV2)
     assert snapshot.format == FORMAT_V2
-    assert snapshot.path.endswith(f'GET-api/{UUID}.http')
+    assert snapshot.path.endswith(f'GET-api/{UUID}.yaml')
     assert snapshot.request == original
 
   def test_from_path_v2(self):
@@ -104,7 +111,7 @@ class TestRequestSnapshotCreateAndFromPath:
 
   def test_from_path_outside_requests_dir(self):
     data_dir = DataDir.instance()
-    outside = os.path.join(data_dir.path, 'outside.http')
+    outside = os.path.join(data_dir.path, 'outside.yaml')
     with open(outside, 'wb') as fp:
       fp.write(b'x')
     assert RequestSnapshot.from_path(outside, data_dir) is None
@@ -139,7 +146,7 @@ class TestRequestSnapshotV2PathAndWrite:
 
     snap = RequestSnapshotV2(UUID, slug='POST-api')
     assert snap._find_v2_path() is None
-    assert snap.path.endswith(f'POST-api/{UUID}.http')
+    assert snap.path.endswith(f'POST-api/{UUID}.yaml')
     assert snap.path != old_path
 
   def test_find_v2_path_without_slug_still_globs(self):
@@ -161,7 +168,7 @@ class TestRequestSnapshotV2PathAndWrite:
     snap.write_raw(_joined(b''))
 
     new_path = snap.path
-    assert new_path.endswith(f'POST-api/{UUID}.http')
+    assert new_path.endswith(f'POST-api/{UUID}.yaml')
     assert os.path.exists(new_path)
     assert not os.path.exists(old_path)
     assert not os.path.isdir(old_slug_dir)
@@ -182,7 +189,7 @@ class TestRequestSnapshotV2SlugTraversal:
   def test_history_style_ref_with_traversal_stays_under_requests(self):
     data_dir = DataDir.instance()
     requests_dir = data_dir.snapshots_requests_dir_path
-    snapshot = RequestSnapshot.create(f'../../tmp/{UUID}.http', data_dir)
+    snapshot = RequestSnapshot.create(f'../../tmp/{UUID}.yaml', data_dir)
 
     assert isinstance(snapshot, RequestSnapshotV2)
     path = snapshot.path
@@ -191,8 +198,8 @@ class TestRequestSnapshotV2SlugTraversal:
   def test_remove_with_traversal_slug_does_not_delete_outside(self):
     data_dir = DataDir.instance()
     requests_dir = data_dir.snapshots_requests_dir_path
-    # Unsanitized join(requests, '..', uuid.http) would land here
-    outside = os.path.normpath(os.path.join(requests_dir, '..', f'{UUID}.http'))
+    # Unsanitized join(requests, '..', uuid.yaml) would land here
+    outside = os.path.normpath(os.path.join(requests_dir, '..', f'{UUID}.yaml'))
     with open(outside, 'wb') as fp:
       fp.write(b'secret')
 
@@ -206,7 +213,7 @@ class TestRequestSnapshotV2SlugTraversal:
     victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
     victim_path = _write_v2_file(victim, b'keep-me')
 
-    # Bare '*' would expand glob .../requests/*/*.http to the victim
+    # Bare '*' would expand glob .../requests/*/*.yaml to the victim
     wildcard = RequestSnapshotV2('*', data_dir)
     assert wildcard._find_v2_path() is None
     assert wildcard.path is None
@@ -218,8 +225,8 @@ class TestRequestSnapshotV2SlugTraversal:
     victim = RequestSnapshotV2(UUID, data_dir, slug='GET-api')
     victim_path = _write_v2_file(victim, b'keep-me')
 
-    # slug/*.http parses to uuid='*'; must not glob-match victim
-    snapshot = RequestSnapshot.create('slug/*.http', data_dir)
+    # slug/*.yaml parses to uuid='*'; must not glob-match victim
+    snapshot = RequestSnapshot.create('slug/*.yaml', data_dir)
     assert isinstance(snapshot, RequestSnapshotV2)
     assert snapshot.uuid == '*'
     snapshot.remove()
@@ -229,8 +236,8 @@ class TestRequestSnapshotV2NamingEdges:
   def test_parse_relative_path_invalid(self):
     assert RequestSnapshotV2.parse_request_relative_path('only-one-part') is None
     assert RequestSnapshotV2.parse_request_relative_path('slug/uuid.txt') is None
-    assert RequestSnapshotV2.parse_request_relative_path('/uuid.http') is None
-    assert RequestSnapshotV2.parse_request_relative_path('slug/.http') is None
+    assert RequestSnapshotV2.parse_request_relative_path('/uuid.yaml') is None
+    assert RequestSnapshotV2.parse_request_relative_path('slug/.yaml') is None
 
   def test_cleanup_empty_slug_dir_after_remove(self):
     snapshot = RequestSnapshotV2(UUID, slug='GET-cleanup')
@@ -252,6 +259,117 @@ class TestRequestSnapshotV2NamingEdges:
     assert os.path.isdir(slug_dir)
     assert os.path.isfile(second.path)
 
+  def test_embed_only_remove_keeps_shared_bodies_headers(self):
+    import yaml
+
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-embed'
+    body_hash = 'c' * 16
+    header_hash = 'd' * 16
+    entry_a = {
+      'method': 'GET',
+      'url': 'https://example.com/api/embed',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{header_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+    entry_b = {
+      **entry_a,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+      },
+      'response': dict(entry_a['response']),
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'shared-embed.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        'description': '',
+        'requests': {UUID: entry_a, UUID_B: entry_b},
+      }, fp)
+
+    slug_dir = os.path.join(data_dir.snapshots_requests_dir_path, slug)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
+    os.makedirs(bodies_dir, exist_ok=True)
+    os.makedirs(headers_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    header_path = os.path.join(headers_dir, header_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'shared-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    # No standalone yaml — remove must not rmtree bodies/headers still used by UUID_B
+    RequestSnapshotV2.from_entry(entry_a, data_dir, slug=slug, uuid=UUID).remove()
+
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+  def test_cleanup_keeps_bodies_when_scenario_embed_remains(self):
+    import yaml
+
+    from stoobly_agent.config.constants.custom_headers import BODY_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-keep'
+    body_hash = 'e' * 16
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/api/keep',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'keep-embed.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        'description': '',
+        'requests': {UUID_B: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    _write_v2_file(standalone)
+    slug_dir = os.path.dirname(standalone.path)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    os.makedirs(bodies_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'embed-body')
+
+    # Last standalone yaml gone, but embed still references the slug dir
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isdir(slug_dir)
+
   def test_malformed_contents_raise(self):
     snapshot = RequestSnapshotV2(UUID, slug='GET-bad')
     _write_v2_file(snapshot, b'junk')
@@ -262,10 +380,14 @@ class TestRequestSnapshotV2NamingEdges:
     assert snapshot.path in str(exc.value)
 
   def test_copy_refs_skips_unsafe_refs(self, tmp_path):
+    import yaml
+
     from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
 
     snapshot = RequestSnapshotV2(UUID, slug='GET-copy')
-    slug_dir = os.path.dirname(snapshot.path)
+    path = snapshot.path
+    snapshot._ensure_parent(path)
+    slug_dir = os.path.dirname(path)
     bodies_dir = os.path.join(slug_dir, 'bodies')
     headers_dir = os.path.join(slug_dir, 'headers')
     os.makedirs(bodies_dir, exist_ok=True)
@@ -278,16 +400,33 @@ class TestRequestSnapshotV2NamingEdges:
     with open(os.path.join(headers_dir, safe_header_hash), 'wb') as fp:
       fp.write(b'User-Agent: ua')
 
-    payload = (
-      b'GET / HTTP/1.1\r\n'
-      + f'{HEADER_REF}: headers/{safe_header_hash}\r\n'.encode()
-      + f'{HEADER_REF}: ../outside-header\r\n'.encode()
-      + f'{BODY_REF}: bodies/{safe_body_hash}\r\n'.encode()
-      + f'{BODY_REF}: ../outside-secret\r\n'.encode()
-      + f'{BODY_REF}: /etc/passwd\r\n'.encode()
-      + b'\r\n'
-    )
-    _write_v2_file(snapshot, payload)
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        HEADER_REF: f'.stoobly/snapshots/requests/GET-copy/headers/{safe_header_hash}',
+        'X-Bad-Header-Ref': '../outside-header',
+        BODY_REF: f'.stoobly/snapshots/requests/GET-copy/bodies/{safe_body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {
+          BODY_REF: '../outside-secret',
+          'X-Bad-Body': '/etc/passwd',
+        },
+      },
+    }
+    # Include unsafe refs under the real BODY_REF/HEADER_REF keys as alternate entries
+    entry['response']['headers'][BODY_REF] = '../outside-secret'
+    with open(path, 'w') as fp:
+      yaml.safe_dump(entry, fp)
+    snapshot._entry = entry
+    snapshot._resolved_path = path
 
     dest = tmp_path / 'dest'
     dest.mkdir()
@@ -303,3 +442,201 @@ class TestRequestSnapshotV2NamingEdges:
     assert not list(dest.rglob('outside-secret'))
     assert not list(dest.rglob('outside-header'))
     assert not list(dest.rglob('passwd'))
+
+
+class TestRequestAndScenarioSharedBlobs:
+  """Bodies/headers stay until both the request snapshot and scenario embed are gone."""
+
+  SCENARIO_UUID = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+
+  def _plant_shared(self, slug: str):
+    import yaml
+
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+      ScenarioSnapshotV2,
+    )
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    body_hash = 'a' * 16
+    header_hash = 'b' * 16
+    entry = {
+      'method': 'GET',
+      'url': f'https://example.com/{slug.split("-", 1)[-1]}',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{header_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    scenario_stem = f'shared-{slug}'
+    with open(os.path.join(scenarios_dir, f'{scenario_stem}.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': self.SCENARIO_UUID,
+        'description': '',
+        # Embed uses UUID_B so scenario delete does not prefer the standalone yaml
+        'requests': {UUID_B: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    _write_v2_file(standalone)
+    slug_dir = os.path.dirname(standalone.path)
+    bodies_dir = os.path.join(slug_dir, 'bodies')
+    headers_dir = os.path.join(slug_dir, 'headers')
+    os.makedirs(bodies_dir, exist_ok=True)
+    os.makedirs(headers_dir, exist_ok=True)
+    body_path = os.path.join(bodies_dir, body_hash)
+    header_path = os.path.join(headers_dir, header_hash)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'shared-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    scenario = ScenarioSnapshotV2(self.SCENARIO_UUID, data_dir, name=scenario_stem)
+    return standalone, scenario, body_path, header_path, slug_dir
+
+  def test_delete_request_then_scenario_removes_blobs(self):
+    standalone, scenario, body_path, header_path, slug_dir = self._plant_shared(
+      'GET-api-req-first'
+    )
+
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+    scenario.remove()
+    assert not scenario.exists
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+  def test_delete_scenario_then_request_removes_blobs(self):
+    standalone, scenario, body_path, header_path, slug_dir = self._plant_shared(
+      'GET-api-scenario-first'
+    )
+
+    scenario.remove()
+    assert not scenario.exists
+    assert os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+    assert os.path.isdir(slug_dir)
+
+    standalone.remove()
+    assert not os.path.isfile(standalone.path)
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+  def test_request_delete_keeps_blobs_while_scenario_references_same_uuid(self):
+    """CLI-style request delete: inverted index blocks remove until scenario is gone."""
+    import yaml
+
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
+      ScenarioSnapshotV2,
+    )
+    from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+
+    data_dir = DataDir.instance()
+    slug = 'GET-api-same-uuid'
+    body_hash = 'c' * 16
+    entry = {
+      'method': 'GET',
+      'url': 'https://example.com/api/same-uuid',
+      'http_version': '1.1',
+      'timestamp': 1,
+      'headers': {
+        BODY_REF: f'.stoobly/snapshots/requests/{slug}/bodies/{body_hash}',
+        HEADER_REF: f'.stoobly/snapshots/requests/{slug}/headers/{body_hash}',
+      },
+      'response': {
+        'status': 200,
+        'latency': 0,
+        'http_version': '1.1',
+        'timestamp': 1,
+        'headers': {},
+      },
+    }
+
+    scenarios_dir = data_dir.snapshots_scenarios_dir_path
+    os.makedirs(scenarios_dir, exist_ok=True)
+    with open(os.path.join(scenarios_dir, 'same-uuid.yaml'), 'w') as fp:
+      yaml.safe_dump({
+        'uuid': self.SCENARIO_UUID,
+        'description': '',
+        'requests': {UUID: entry},
+      }, fp)
+
+    standalone = RequestSnapshotV2(UUID, data_dir, slug=slug)
+    # Write entry yaml so refs resolve from the same shape as the embed
+    standalone._ensure_parent(standalone.path)
+    with open(standalone.path, 'w') as fp:
+      yaml.safe_dump(entry, fp, sort_keys=False)
+
+    slug_dir = os.path.dirname(standalone.path)
+    body_path = os.path.join(slug_dir, 'bodies', body_hash)
+    header_path = os.path.join(slug_dir, 'headers', body_hash)
+    os.makedirs(os.path.dirname(body_path), exist_ok=True)
+    os.makedirs(os.path.dirname(header_path), exist_ok=True)
+    with open(body_path, 'wb') as fp:
+      fp.write(b'same-uuid-body')
+    with open(header_path, 'wb') as fp:
+      fp.write(b'Host: example.com')
+
+    # Request snapshot delete while scenario still references this uuid
+    Log().remove_request_snapshot(
+      standalone,
+      scenario_inverted_index={UUID: [self.SCENARIO_UUID]},
+    )
+    assert os.path.isfile(standalone.path)
+    assert os.path.isfile(body_path)
+    assert os.path.isfile(header_path)
+
+    scenario = ScenarioSnapshotV2(self.SCENARIO_UUID, data_dir, name='same-uuid')
+    # Scenario delete removes standalone (preferred over embed) then cleans blobs
+    scenario.remove(
+      lambda snap: Log().remove_request_snapshot(
+        snap,
+        scenario_inverted_index={UUID: [self.SCENARIO_UUID]},
+        ignore_scenario_ids=[self.SCENARIO_UUID],
+      )
+    )
+    assert not scenario.exists
+    assert not os.path.isfile(standalone.path)
+    assert not os.path.isfile(body_path)
+    assert not os.path.isfile(header_path)
+    assert not os.path.isdir(slug_dir)
+
+
+class TestRequestSnapshotEntryRefPaths:
+  def test_collects_body_and_header_refs(self):
+    entry = {
+      'headers': {'X-Stoobly-Body-Ref': 'bodies/abc'},
+      'response': {'headers': {'X-Stoobly-Header-Ref': 'headers/def'}},
+    }
+    assert RequestSnapshot.entry_ref_paths(entry) == ['bodies/abc', 'headers/def']
+
+  def test_collects_refs_from_request_header_string(self):
+    entry = {
+      'headers': (
+        'Host: example.com\n'
+        'X-Stoobly-Body-Ref: bodies/abc\n'
+        'X-Stoobly-Header-Ref: headers/def'
+      ),
+      'response': {'headers': {}},
+    }
+    assert RequestSnapshot.entry_ref_paths(entry) == ['bodies/abc', 'headers/def']

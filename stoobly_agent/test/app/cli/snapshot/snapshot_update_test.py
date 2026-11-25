@@ -105,8 +105,9 @@ class TestUpdate():
     def snapshot_contents(cls, put_event: LogEvent):
       snapshot = put_event.snapshot()
       data_path = snapshot.path
-      with open(data_path, 'ab') as fp:
-        fp.write(b'test')
+      # Trailing junk after the YAML document (still parseable as a second doc / ignored noise)
+      with open(data_path, 'a') as fp:
+        fp.write('\n#trailing-junk\n')
 
       with open(data_path, 'rb') as fp:
         return fp.read()
@@ -140,9 +141,9 @@ class TestUpdate():
 
       with open(snapshot.path, 'rb') as fp:
         disk = fp.read()
-      # Trailing corruption from setup should be removed after verify/update
-      assert snapshot_contents.endswith(b'test')
-      assert not disk.endswith(b'test')
+      # Trailing junk from setup should be removed after verify/update rewrite
+      assert b'#trailing-junk' in snapshot_contents
+      assert b'#trailing-junk' not in disk
 
     def __to_python_response(self, raw_request):
       adapter = JoinedRequestAdapter(raw_request)

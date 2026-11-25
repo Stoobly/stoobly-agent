@@ -164,7 +164,9 @@ class TestHeaderRef:
       assert len(os.listdir(os.path.join(slug_dir, 'headers'))) == 1
 
   def test_write_headers_truncated_collision_falls_back_to_full_digest(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
       payload = b'User-Agent: collision-test'
       short = content_hash(payload)
       headers = headers_dir_path(slug_dir)
@@ -175,7 +177,9 @@ class TestHeaderRef:
       hash_value = write_headers(slug_dir, payload)
       assert hash_value == full_content_hash(payload)
       assert len(hash_value) == 64
-      assert read_headers(slug_dir, f'headers/{hash_value}') == payload
+      assert read_headers(
+        slug_dir, relative_header_ref('GET-api', hash_value)
+      ) == payload
       with open(os.path.join(headers, short), 'rb') as fp:
         assert fp.read() == b'planted-different-bytes'
 
@@ -217,22 +221,50 @@ class TestHeaderRef:
       assert rest_adapter.build_request_string().get(control=False).endswith(b'req')
       assert rest_adapter.build_response_string().get(control=False).endswith(b'res')
 
-  def test_normalize_rejects_traversal_and_absolute(self):
-    assert normalize_header_ref('headers/abc') == 'headers/abc'
-    assert normalize_header_ref('/headers/abc') == 'headers/abc'
+  def test_normalize_accepts_context_relative_form(self):
+    from stoobly_agent.config.data_dir import DATA_DIR_NAME
 
-    for bad in ('/etc/passwd', 'headers/../secret', '../headers/abc', 'etc/passwd', ''):
+    long_ref = f'{DATA_DIR_NAME}/snapshots/requests/GET-api/headers/abc'
+    assert normalize_header_ref(long_ref) == long_ref
+    assert normalize_header_ref(long_ref, slug='GET-api') == long_ref
+
+  def test_normalize_rejects_traversal_and_absolute(self):
+    from stoobly_agent.config.data_dir import DATA_DIR_NAME
+
+    for bad in (
+      '/etc/passwd',
+      'headers/abc',
+      'headers/../secret',
+      '../headers/abc',
+      'etc/passwd',
+      '',
+      f'{DATA_DIR_NAME}/snapshots/requests/GET-api/../headers/abc',
+      f'{DATA_DIR_NAME}/snapshots/requests/other/headers/abc',
+    ):
       with pytest.raises(ValueError, match='Invalid header ref'):
-        normalize_header_ref(bad)
+        normalize_header_ref(bad, slug='GET-api')
 
   def test_resolve_stays_under_slug_dir(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
-      path = resolve_header_path(slug_dir, 'headers/deadbeef')
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
+      long_ref = relative_header_ref('GET-api', 'deadbeef')
+      path = resolve_header_path(slug_dir, long_ref)
       assert path.startswith(slug_dir)
       assert path.endswith(os.path.join('headers', 'deadbeef'))
 
+  def test_resolve_rejects_slug_mismatch(self):
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
+      with pytest.raises(ValueError, match='Invalid header ref'):
+        resolve_header_path(
+          slug_dir, relative_header_ref('POST-other', 'deadbeef')
+        )
+
   def test_resolve_rejects_symlink_escape(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
       headers = os.path.join(slug_dir, 'headers')
       os.makedirs(headers)
       target = os.path.join(slug_dir, 'outside-secret')
@@ -241,7 +273,7 @@ class TestHeaderRef:
       os.symlink(target, os.path.join(headers, 'deadbeef'))
 
       with pytest.raises(ValueError, match='Invalid header ref'):
-        resolve_header_path(slug_dir, 'headers/deadbeef')
+        resolve_header_path(slug_dir, relative_header_ref('GET-api', 'deadbeef'))
 
   def test_resolve_rejects_headers_dir_symlink_escape(self):
     with tempfile.TemporaryDirectory() as root:
@@ -252,10 +284,14 @@ class TestHeaderRef:
       os.symlink(outside, os.path.join(slug_dir, 'headers'))
 
       with pytest.raises(ValueError, match='Invalid header ref'):
-        resolve_header_path(slug_dir, 'headers/deadbeef')
+        resolve_header_path(slug_dir, relative_header_ref('slug', 'deadbeef'))
 
   def test_relative_header_ref(self):
-    assert relative_header_ref('abc') == 'headers/abc'
+    from stoobly_agent.config.data_dir import DATA_DIR_NAME
+
+    assert relative_header_ref('GET-api', 'abc') == (
+      f'{DATA_DIR_NAME}/snapshots/requests/GET-api/headers/abc'
+    )
 
   def test_response_dedup_list_distinct_from_request(self):
     assert 'user-agent' in REQUEST_HEADER_DEDUP_LIST

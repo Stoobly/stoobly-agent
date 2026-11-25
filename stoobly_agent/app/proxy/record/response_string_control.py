@@ -6,10 +6,10 @@ class ResponseStringControl():
   RESPONSE_TYPE = 2
 
   def __init__(self, c: Union[bytes, str] = None):
-    self.__latency = 0 # Millisecond
+    self.__latency = 0 # Microsecond
     self.__response_type = self.RESPONSE_TYPE
     self.__id = None
-    self.__timestamp = 0 # Microsecond
+    self.__timestamp = 0 # Nanosecond
 
     if c:
       self.parse(c)

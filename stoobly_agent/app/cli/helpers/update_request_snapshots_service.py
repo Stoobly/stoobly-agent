@@ -41,6 +41,8 @@ def update_request_snapshots(
     scenarios_dir = data_dir.snapshots_scenarios_dir_path
 
     request_snapshots = []
+    scenario_snapshot = None
+    updated_embeds = {}
     
     # Check if it's a request snapshot path
     if abs_path.startswith(request_snapshots_dir):
@@ -73,12 +75,19 @@ def update_request_snapshots(
             print(f"Error: No event found for scenario snapshot {uuid}", file=sys.stderr)
             sys.exit(1)
 
-        if not no_verify:
-            scenario_snapshot.iter_request_snapshots(_verify_request)
+        def _handle(snapshot: RequestSnapshot):
+            if not no_verify:
+                if _verify_request(snapshot):
+                    # Embed entry mutated in place; persist after the pass.
+                    if getattr(snapshot, '_entry', None) is not None:
+                        updated_embeds[snapshot.uuid] = snapshot._entry
+            request_snapshots.append((snapshot, event))
 
-        scenario_snapshot.iter_request_snapshots(
-            lambda snapshot: request_snapshots.append((snapshot, event))
-        )
+        scenario_snapshot.iter_request_snapshots(_handle)
+
+        if updated_embeds:
+            scenario_snapshot.update_request_entries(updated_embeds)
+            updated_embeds = {}
     else:
         print(f"Error: Path {file_path} is not a valid snapshot path", file=sys.stderr)
         sys.exit(1)
@@ -100,7 +109,11 @@ def update_request_snapshots(
 
         if action == PUT_ACTION: 
             if snapshot_migration.dirty:
-                _commit_snapshot_migration(snapshot_migration)
+                if _commit_snapshot_migration(snapshot_migration):
+                    # Embed-only: mutated _entry in place; persist after the loop.
+                    snap = snapshot_migration.snapshot
+                    if getattr(snap, '_entry', None) is not None:
+                        updated_embeds[snap.uuid] = snap._entry
 
             if with_snapshot:
                 new_event = snapshot_migration.event.duplicate_as_put()
@@ -113,6 +126,9 @@ def update_request_snapshots(
         # If the event is a scenario, only create new event once
         if snapshot_migration.event.is_scenario():
             with_snapshot = False
+
+    if scenario_snapshot and updated_embeds:
+        scenario_snapshot.update_request_entries(updated_embeds)
 
 def _apply_lifecycle_hooks(
     request_snapshots: List[Tuple[RequestSnapshot, LogEvent]],
@@ -188,30 +204,89 @@ def _find_event_by_resource_uuid(log: Log, resource: str, resource_uuid: str) ->
 
     return None
 
-def _commit_snapshot_migration(snapshot_migration):
-    """Save a snapshot migration by writing the request/response and optionally appending a new event."""
+def _is_embed_only_request(snapshot: RequestSnapshot) -> bool:
+    """True for scenario-embedded requests with no standalone requests/<slug>/<uuid>.yaml."""
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
+
+    path = snapshot.path
+    return (
+        isinstance(snapshot, RequestSnapshotV2)
+        and getattr(snapshot, '_entry', None) is not None
+        and not (path and os.path.exists(path))
+    )
+
+def _update_embed_entry(snapshot: RequestSnapshot, raw_request: bytes) -> bool:
+    """
+    Rebuild snapshot._entry from joined raw and mutate in place.
+
+    Does not create a standalone request yaml. Caller must persist via
+    scenario_snapshot.update_request_entries(...).
+    """
+    from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
+
+    slug_dir = snapshot.slug_dir
+    if not slug_dir:
+        return False
+
+    os.makedirs(slug_dir, exist_ok=True)
+    new_entry = SnapshotEntryAdapter.from_joined(raw_request, slug_dir).adapt()
+    # Mutate in place so the dict shared with the loaded scenario meta
+    # (and any other holders) stays current.
+    snapshot._entry.clear()
+    snapshot._entry.update(new_entry)
+    return True
+
+def _commit_snapshot_migration(snapshot_migration) -> bool:
+    """
+    Persist dirty lifecycle request/response onto the snapshot.
+
+    Returns True when an embedded scenario entry was updated in place and the
+    scenario YAML must be written back. Never creates a standalone
+    requests/<slug>/<uuid>.yaml for embed-only scenario requests (migrate would
+    delete it and leave the stale embed).
+    """
     from stoobly_agent.app.proxy.record.join_request_service import join_request_from_request_response
     
-    request_uuid = snapshot_migration.snapshot.uuid
+    snapshot = snapshot_migration.snapshot
+    request_uuid = snapshot.uuid
     joined_request = join_request_from_request_response(
         snapshot_migration.request, 
         snapshot_migration.response, 
         id=request_uuid
     )
     raw_request = joined_request.build()
-    snapshot_migration.snapshot.write_raw(raw_request)
+
+    if _is_embed_only_request(snapshot):
+        return _update_embed_entry(snapshot, raw_request)
+
+    snapshot.write_raw(raw_request)
+    return False
     
-def _verify_request(snapshot: RequestSnapshot):
-    """Verify and fix a request snapshot if needed."""
+def _verify_request(snapshot: RequestSnapshot) -> bool:
+    """
+    Verify and fix a request snapshot if needed.
+
+    Returns True when an embedded scenario entry was updated in place and the
+    scenario YAML must be written back.
+    """
     from stoobly_agent.app.cli.helpers.verify_raw_request_service import verify_raw_request
     from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshotV2
 
     raw_request = snapshot.request
     if not raw_request:
-        return
+        return False
 
     verified_raw_request = verify_raw_request(raw_request)
+
+    # Embedded scenario entries have no standalone file — normalize the shared
+    # entry in place (do not create requests/<slug>/<uuid>.yaml). Caller must
+    # persist scenario metadata when this returns True.
+    if _is_embed_only_request(snapshot):
+        if raw_request != verified_raw_request:
+            return _update_embed_entry(snapshot, verified_raw_request)
+        return False
 
     # Always rewrite v2 so on-disk form is normalized (strips trailing junk, re-externalizes bodies)
     if raw_request != verified_raw_request or isinstance(snapshot, RequestSnapshotV2):
         snapshot.write_raw(verified_raw_request)
+    return False

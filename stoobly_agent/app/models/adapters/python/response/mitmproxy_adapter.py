@@ -40,7 +40,17 @@ class MitmproxyResponseAdapter():
   def headers(self):
     # Lazy import for runtime usage
     from mitmproxy.http import Headers
-    return Headers(**self.__decode_dict(self.__response.headers))
+    # Build from byte pairs so repeated Set-Cookie values are preserved
+    # (Headers(**dict) / CaseInsensitiveDict cannot represent them).
+    pairs = []
+    for key, val in self.__response.headers.items():
+      encoded_key = decode(key).encode()
+      if isinstance(val, list):
+        for item in val:
+          pairs.append((encoded_key, decode(item).encode()))
+      else:
+        pairs.append((encoded_key, decode(val).encode()))
+    return Headers(pairs)
 
   @property
   def reason(self):
@@ -71,9 +81,3 @@ class MitmproxyResponseAdapter():
     self.__response.raw._body = res.raw_content
 
     return res
-
-  def __decode_dict(self, d):
-    new_d = {}
-    for k, v in d.items():
-      new_d[decode(k)] = decode(v)
-    return new_d

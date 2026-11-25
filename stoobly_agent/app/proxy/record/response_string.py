@@ -43,8 +43,8 @@ class ResponseString:
     #
     # 1 - response type
     # 2 - request id
-    # 3 - timestamp in nano seconds
-    # 4 - response latency in nano seconds
+    # 3 - timestamp in nanoseconds
+    # 4 - response latency in microseconds
     #
     @property
     def control(self):
@@ -77,7 +77,14 @@ class ResponseString:
     def __headers(self):
         headers = self.response.headers
 
-        for name, val in headers.items():
+        # Prefer .fields so repeated Set-Cookie lines stay separate;
+        # .items() comma-joins them and breaks Expires values.
+        header_pairs = getattr(headers, 'fields', None) or list(headers.items())
+        for name, val in header_pairs:
+            if isinstance(name, bytes):
+                name = name.decode(self.ENCODING)
+            if isinstance(val, bytes):
+                val = val.decode(self.ENCODING)
             line = "{}: {}".format(self.__to_header_case(name), val)
             self.lines.append(line.encode(self.ENCODING))
 
@@ -102,5 +109,5 @@ class ResponseString:
 
     def __get_current_time(self):
         now = time.time()
-        current_time = round(now * (pow(10, 6)))
+        current_time = round(now * (pow(10, 9)))
         return current_time

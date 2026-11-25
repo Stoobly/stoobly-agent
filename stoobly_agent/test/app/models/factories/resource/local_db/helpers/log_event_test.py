@@ -38,10 +38,13 @@ class TestLogEventCreate:
     assert event.format == FORMAT_V2
     assert event.resource_id == 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
     assert event.resource_slug == 'GET-api-users'
-    # uuid timestamp action resource resource_id
+    # uuid ISO-8601 action resource resource_id
     toks = line.split(' ')
+    assert toks[1].endswith('Z')
+    assert 'T' in toks[1]
     assert toks[2] == PUT_ACTION
     assert toks[3] == REQUEST_RESOURCE
+    assert isinstance(event.created_at, int)
 
   def test_scenario_name_with_spaces_is_v2(self):
     locator = 'My Scenario/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
@@ -63,6 +66,27 @@ class TestLogEventCreate:
     assert event.resource_uuid == 'My-Scenario/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     assert event.resource_id == 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
     assert event.created_at == 1700000000000
+
+  def test_v2_iso_timestamp_parses(self):
+    line = (
+      '11111111-1111-1111-1111-111111111111 2023-11-14T22:13:20.000Z PUT request '
+      'GET-api/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    )
+    event = LogEvent.create(line)
+    assert isinstance(event, LogEventV2)
+    assert event.created_at == 1700000000000
+    assert str(event).split(' ')[1] == '2023-11-14T22:13:20Z'
+
+  def test_v2_legacy_integer_timestamp_still_parses(self):
+    line = (
+      '11111111-1111-1111-1111-111111111111 1700000000000 PUT request '
+      'GET-api/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    )
+    event = LogEvent.create(line)
+    assert isinstance(event, LogEventV2)
+    assert event.created_at == 1700000000000
+    # Rewriting upgrades to ISO
+    assert str(event).split(' ')[1] == '2023-11-14T22:13:20Z'
 
   def test_scenario_bare_uuid_is_v1(self):
     line = LogEventV1.serialize(
@@ -216,4 +240,13 @@ class TestMalformedLogEvent:
     with pytest.raises(MalformedLogEventError, match='created_at must be an integer'):
       LogEvent.create(
         '11111111-1111-1111-1111-111111111111 request aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa PUT not-a-number'
+      )
+
+  def test_v2_invalid_timestamp_raises(self):
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import MalformedLogEventError
+
+    with pytest.raises(MalformedLogEventError, match='ISO-8601 or integer timestamp'):
+      LogEvent.create(
+        '11111111-1111-1111-1111-111111111111 not-a-time PUT request '
+        'GET-api/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
       )

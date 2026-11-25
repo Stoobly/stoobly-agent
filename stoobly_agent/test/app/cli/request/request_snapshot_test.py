@@ -12,6 +12,7 @@ from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
+from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_service import snapshot_request
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
@@ -221,15 +222,17 @@ class TestRequestSnapshot():
         scenario_result = runner.invoke(scenario, ['snapshot', 'create', created_scenario.key()])
         assert scenario_result.exit_code == 0
 
-        request_path = RequestSnapshot.create(recorded_request.uuid).path
-        assert os.path.isfile(request_path)
+        # Scenario embeds the request; request DELETE must not drop scenario data
+        assert RequestSnapshot.create(recorded_request.uuid).request is not None
+        assert ScenarioSnapshot.create(created_scenario.uuid).exists
 
         delete_result = runner.invoke(
           request,
           ['snapshot', 'create', '--action', DELETE_ACTION, recorded_request.key()],
         )
         assert delete_result.exit_code == 0
-        assert os.path.isfile(request_path)
+        assert RequestSnapshot.create(recorded_request.uuid).request is not None
+        assert ScenarioSnapshot.create(created_scenario.uuid).exists
         assert Log().events[-1].action == DELETE_ACTION
 
     class TestWhenLogAppendFailsRollsBack():

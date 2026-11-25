@@ -1,21 +1,20 @@
 import json
 import os
 import shutil
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
 from stoobly_agent.config.data_dir import DataDir
 
-from .joined_request_ref import (
-  externalize_joined_request,
-  extract_method_and_path_from_joined,
-  reconstitute_joined_request,
-)
+from .joined_request_ref import extract_method_and_path_from_joined
 from .log import EVENT_DELIMITTER, Log
 from .log_event import LogEvent, LogEventV1, LogEventV2
-from .request_snapshot import RequestSnapshotV2
-from .scenario_snapshot import ScenarioSnapshotV2
+from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
+from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
+
+from .request_snapshot import RequestSnapshot, RequestSnapshotV2
+from .scenario_snapshot import ScenarioSnapshot, ScenarioSnapshotV2
 from .snapshot_format import (
   FORMAT_V1,
   FORMAT_V2,
@@ -44,8 +43,12 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
   data_dir = data_dir or DataDir.instance()
 
   if format == FORMAT_V2:
-    if not has_v1_snapshots(data_dir) and not (
-      has_v2_snapshots(data_dir) and _history_needs_locator_rewrite(data_dir, to_v2=True)
+    if (
+      not has_v1_snapshots(data_dir)
+      and not _needs_v2_yaml_upgrade(data_dir)
+      and not (
+        has_v2_snapshots(data_dir) and _history_needs_locator_rewrite(data_dir, to_v2=True)
+      )
     ):
       return {
         'requests': 0,
@@ -72,18 +75,28 @@ def migrate_snapshots(data_dir: DataDir = None, format: int = FORMAT_V2) -> dict
 
 def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
   """
-  Convert all v1 snapshot files under data_dir to v2 layout.
+  Convert all v1 snapshot files under data_dir to v2 YAML layout.
 
-  Also rewrites history locators from bare uuids to slug/uuid (requests) and
-  unique name (scenarios). VERSION is left untouched.
+  Request shards that only exist because a scenario was snapshotted are
+  embedded into the scenario YAML (bodies/headers under the slug dir) and do
+  **not** get a standalone `requests/<slug>/<uuid>.yaml`. Standalone
+  `<uuid>.yaml` files are written only for requests that have a corresponding
+  request snapshot in history (REQUEST resource events).
+
+  Also upgrades legacy scenario path-string indexes into structured YAML
+  entries. Rewrites history locators from bare uuids to slug/uuid (requests)
+  and name/uuid (scenarios). VERSION is left untouched.
   """
   data_dir = data_dir or DataDir.instance()
   migrated_requests = 0
   migrated_scenarios = 0
 
-  request_uuid_to_relative: Dict[str, str] = {}
+  request_uuid_to_entry: Dict[str, dict] = {}
   request_uuid_to_locator: Dict[str, str] = {}
   scenario_uuid_to_locator: Dict[str, str] = {}
+
+  standalone_request_uuids = _standalone_request_uuids_from_history(data_dir)
+  scenario_request_uuids = _scenario_referenced_request_uuids(data_dir)
 
   requests_dir = data_dir.snapshots_requests_dir_path
   if os.path.isdir(requests_dir):
@@ -94,7 +107,11 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
 
       for name in list(os.listdir(shard_dir)):
         src = os.path.join(shard_dir, name)
-        if not os.path.isfile(src) or name.endswith(REQUEST_FILE_EXTENSION) or not UUID_RE.match(name):
+        if (
+          not os.path.isfile(src)
+          or name.endswith(REQUEST_FILE_EXTENSION)
+          or not UUID_RE.match(name)
+        ):
           continue
 
         with open(src, 'rb') as fp:
@@ -110,15 +127,25 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
         slug_dir = os.path.join(requests_dir, slug)
         os.makedirs(slug_dir, exist_ok=True)
 
-        externalized = externalize_joined_request(joined, slug_dir)
-        dest = os.path.join(slug_dir, f"{name}{REQUEST_FILE_EXTENSION}")
-        with open(dest, 'wb') as fp:
-          fp.write(externalized)
+        try:
+          entry_data = SnapshotEntryAdapter.from_joined(joined, slug_dir).adapt()
+        except Exception:
+          continue
 
-        relative = RequestSnapshotV2.request_relative_path(slug, name)
+        request_uuid_to_entry[name] = entry_data
+        # Keep a standalone yaml only for request-snapshotted UUIDs (or orphans
+        # not referenced by any scenario). Scenario-only shards become embeds.
+        write_standalone = (
+          name in standalone_request_uuids
+          or name not in scenario_request_uuids
+        )
+        if write_standalone:
+          dest = os.path.join(slug_dir, f"{name}{REQUEST_FILE_EXTENSION}")
+          with open(dest, 'w') as fp:
+            yaml.safe_dump(entry_data, fp, sort_keys=False, default_flow_style=False)
+          request_uuid_to_locator[name] = f"{slug}/{name}"
+
         os.remove(src)
-        request_uuid_to_relative[name] = relative
-        request_uuid_to_locator[name] = f"{slug}/{name}"
         migrated_requests += 1
 
       # Remove empty shard dirs
@@ -151,22 +178,17 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
       scenario_name = meta.get('name') or scenario_uuid
       description = meta.get('description') or ''
 
-      relative_requests = []
+      request_entries: Dict[str, dict] = {}
       index_path = os.path.join(scenario_requests_dir, scenario_uuid)
       if os.path.exists(index_path):
         with open(index_path, 'r') as fp:
           uuids = [u for u in fp.read().split('\n') if len(u) == 36]
         for request_uuid in uuids:
-          relative = request_uuid_to_relative.get(request_uuid)
-          if not relative:
-            # Request may already be v2 or missing; try resolve from disk
-            relative = _find_v2_relative(requests_dir, request_uuid)
-          if relative:
-            relative_requests.append(relative)
-            parsed = RequestSnapshotV2.parse_request_relative_path(relative)
-            if parsed and request_uuid not in request_uuid_to_locator:
-              slug, _uuid = parsed
-              request_uuid_to_locator[request_uuid] = f"{slug}/{request_uuid}"
+          entry_data = request_uuid_to_entry.get(request_uuid)
+          if not entry_data:
+            entry_data = _load_v2_request_entry(requests_dir, request_uuid)
+          if entry_data:
+            request_entries[request_uuid] = entry_data
 
       # Reuse existing uuid file when present; otherwise avoid clobbering orphans
       yaml_path = ScenarioSnapshotV2.allocate_yaml_path(
@@ -178,7 +200,7 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
         yaml.safe_dump({
           'uuid': scenario_uuid,
           'description': description,
-          'requests': relative_requests,
+          'requests': request_entries,
         }, fp, sort_keys=False, default_flow_style=False)
 
       os.remove(meta_path)
@@ -187,6 +209,17 @@ def migrate_snapshots_to_v2(data_dir: DataDir = None) -> dict:
 
       scenario_uuid_to_locator[scenario_uuid] = f"{yaml_stem}/{scenario_uuid}"
       migrated_scenarios += 1
+
+    migrated_scenarios += _upgrade_scenario_request_entries(
+      scenarios_dir, requests_dir, request_uuid_to_entry
+    )
+
+  # Drop standalone yaml left over for scenario-only requests
+  _remove_scenario_only_request_files(
+    requests_dir,
+    standalone_request_uuids=standalone_request_uuids,
+    scenario_request_uuids=_scenario_referenced_request_uuids(data_dir),
+  )
 
   # Remove empty scenarios/requests dir if empty
   if os.path.isdir(scenario_requests_dir) and not os.listdir(scenario_requests_dir):
@@ -223,6 +256,7 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
   migrated_requests = 0
   migrated_scenarios = 0
   scenario_name_to_uuid: Dict[str, str] = {}
+  written_request_uuids = set()
 
   requests_dir = data_dir.snapshots_requests_dir_path
   if os.path.isdir(requests_dir):
@@ -234,24 +268,24 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
       if not os.path.isdir(slug_dir):
         continue
 
-      http_files = [
+      request_files = [
         name for name in os.listdir(slug_dir)
-        if name.endswith(REQUEST_FILE_EXTENSION) and os.path.isfile(os.path.join(slug_dir, name))
+        if (
+          name.endswith(REQUEST_FILE_EXTENSION)
+          and os.path.isfile(os.path.join(slug_dir, name))
+        )
       ]
-      if not http_files:
+      if not request_files:
         continue
 
-      for name in http_files:
+      for name in request_files:
         src = os.path.join(slug_dir, name)
-        request_uuid = name[:-len(REQUEST_FILE_EXTENSION)]
+        request_uuid = RequestSnapshot._strip_request_filename_ext(name)
         if not UUID_RE.match(request_uuid):
           continue
 
-        with open(src, 'rb') as fp:
-          joined = fp.read()
-
         try:
-          reconstituted = reconstitute_joined_request(joined, slug_dir)
+          reconstituted = _reconstitute_v2_request_file(src, slug_dir)
         except Exception:
           # Skip corrupt files; leave them in place
           continue
@@ -263,9 +297,11 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
           fp.write(reconstituted)
 
         os.remove(src)
+        written_request_uuids.add(request_uuid)
         migrated_requests += 1
 
-      _cleanup_slug_dir(slug_dir)
+      # Do not cleanup here: scenario embeds that share this method+path slug
+      # are reconstituted below and still need bodies/headers under the slug dir.
 
   scenarios_dir = data_dir.snapshots_scenarios_dir_path
   scenario_requests_dir = data_dir.snapshots_scenario_requests_dir_path
@@ -299,13 +335,37 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
       scenario_name_to_uuid[yaml_stem] = scenario_uuid
 
       request_uuids = []
-      for relative in data.get('requests') or []:
-        parsed = RequestSnapshotV2.parse_request_relative_path(relative)
-        if not parsed:
-          continue
-        _, request_uuid = parsed
-        if UUID_RE.match(request_uuid):
-          request_uuids.append(request_uuid)
+      requests_field = data.get('requests') or {}
+      for request_uuid, entry in ScenarioSnapshot.iter_request_entries(requests_field):
+        request_uuids.append(request_uuid)
+        if request_uuid not in written_request_uuids:
+          try:
+            slug = RequestSnapshotV2.build_request_slug(
+              entry.get('method'),
+              _path_from_entry_url(entry.get('url')),
+            )
+            slug_dir = os.path.join(requests_dir, slug)
+            reconstituted = SnapshotAdapterFactory(entry, uuid=request_uuid).joined_request(slug_dir)
+            shard_dir = os.path.join(requests_dir, request_uuid[0:2])
+            os.makedirs(shard_dir, exist_ok=True)
+            with open(os.path.join(shard_dir, request_uuid), 'wb') as fp:
+              fp.write(reconstituted)
+            written_request_uuids.add(request_uuid)
+            migrated_requests += 1
+          except Exception:
+            pass
+
+      # Legacy v2: list of relative path strings
+      if isinstance(requests_field, list):
+        for item in requests_field:
+          if not isinstance(item, str):
+            continue
+          parsed = RequestSnapshotV2.parse_request_relative_path(item)
+          if not parsed:
+            continue
+          _, request_uuid = parsed
+          if UUID_RE.match(request_uuid):
+            request_uuids.append(request_uuid)
 
       meta_path = os.path.join(scenarios_dir, scenario_uuid)
       with open(meta_path, 'w') as fp:
@@ -321,6 +381,16 @@ def migrate_snapshots_to_v1(data_dir: DataDir = None) -> dict:
 
       os.remove(yaml_path)
       migrated_scenarios += 1
+
+  # After standalones and embeds are reconstituted, drop empty v2 slug dirs
+  # (bodies/headers no longer needed).
+  if os.path.isdir(requests_dir):
+    for entry in list(os.listdir(requests_dir)):
+      if entry.startswith('.'):
+        continue
+      slug_dir = os.path.join(requests_dir, entry)
+      if os.path.isdir(slug_dir):
+        _cleanup_slug_dir(slug_dir)
 
   # Remigrate after interrupt: include already-v1 scenario metas so name
   # locators from a prior partial run still resolve to bare uuids.
@@ -350,7 +420,7 @@ def _backfill_v2_request_locators(requests_dir: str, locators: Dict[str, str]):
     for name in os.listdir(slug_dir):
       if not name.endswith(REQUEST_FILE_EXTENSION):
         continue
-      request_uuid = name[:-len(REQUEST_FILE_EXTENSION)]
+      request_uuid = RequestSnapshot._strip_request_filename_ext(name)
       if UUID_RE.match(request_uuid) and request_uuid not in locators:
         locators[request_uuid] = f"{slug}/{request_uuid}"
 
@@ -520,7 +590,7 @@ def _rewrite_history_locators(
 
       event.resource_uuid = new_resource_uuid
       if to_v2:
-        # uuid timestamp action resource resource_id
+        # uuid ISO-8601 action resource resource_id
         new_line = LogEventV2.format_line(
           event.uuid, event.created_at, event.action, event.resource, new_resource_uuid,
         )
@@ -543,19 +613,6 @@ def _rewrite_history_locators(
           fp.write(EVENT_DELIMITTER)
 
 
-def _find_v2_relative(requests_dir: str, uuid: str) -> Optional[str]:
-  if not os.path.isdir(requests_dir):
-    return None
-
-  for slug in os.listdir(requests_dir):
-    if slug.startswith('.'):
-      continue
-    candidate = os.path.join(requests_dir, slug, f"{uuid}{REQUEST_FILE_EXTENSION}")
-    if os.path.isfile(candidate):
-      return RequestSnapshotV2.request_relative_path(slug, uuid)
-  return None
-
-
 def _name_from_yaml_filename(filename: str) -> str:
   for ext in ('.yaml', '.yml'):
     if filename.endswith(ext):
@@ -563,12 +620,274 @@ def _name_from_yaml_filename(filename: str) -> str:
   return filename
 
 
+def _path_from_entry_url(url: Optional[str]) -> str:
+  if not url:
+    return '/'
+  if '://' in url:
+    from urllib.parse import urlparse
+    return urlparse(url).path or '/'
+  return url.split('?', 1)[0] or '/'
+
+
+def _needs_v2_yaml_upgrade(data_dir: DataDir) -> bool:
+  """True when path-string scenario indexes remain."""
+  scenarios_dir = data_dir.snapshots_scenarios_dir_path
+  if os.path.isdir(scenarios_dir):
+    for name in os.listdir(scenarios_dir):
+      if not (name.endswith('.yaml') or name.endswith('.yml')):
+        continue
+      path = os.path.join(scenarios_dir, name)
+      if not os.path.isfile(path):
+        continue
+      try:
+        with open(path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+        if not isinstance(data, dict):
+          continue
+        # Only list-shaped indexes can hold legacy path strings. A missing
+        # requests field, [], or v2 uuid-keyed map is already done — do not
+        # iterate maps (UUID keys are str and would falsely force remigrate).
+        requests_field = data.get('requests') or []
+        if not isinstance(requests_field, list):
+          continue
+        for item in requests_field:
+          if isinstance(item, str):
+            return True
+      except Exception:
+        continue
+  return False
+
+
+def _standalone_request_uuids_from_history(data_dir: DataDir) -> set:
+  """UUIDs that have a request-resource history event (standalone request snapshot)."""
+  uuids = set()
+  for path in _history_file_paths(data_dir):
+    try:
+      with open(path, 'r') as fp:
+        contents = fp.read()
+    except OSError:
+      continue
+    for raw in contents.split(EVENT_DELIMITTER):
+      if not raw or not raw.strip():
+        continue
+      try:
+        event = LogEvent.create(raw)
+      except Exception:
+        continue
+      if event.is_request() and event.resource_id and UUID_RE.match(str(event.resource_id)):
+        uuids.add(str(event.resource_id))
+  return uuids
+
+
+def _scenario_referenced_request_uuids(data_dir: DataDir) -> set:
+  """
+  Request UUIDs listed by scenario snapshots (v1 index and v2 YAML embeds/paths).
+  """
+  uuids = set()
+  scenario_requests_dir = data_dir.snapshots_scenario_requests_dir_path
+  if os.path.isdir(scenario_requests_dir):
+    for name in os.listdir(scenario_requests_dir):
+      index_path = os.path.join(scenario_requests_dir, name)
+      if not os.path.isfile(index_path):
+        continue
+      try:
+        with open(index_path, 'r') as fp:
+          for request_uuid in fp.read().split('\n'):
+            if len(request_uuid) == 36 and UUID_RE.match(request_uuid):
+              uuids.add(request_uuid)
+      except OSError:
+        continue
+
+  scenarios_dir = data_dir.snapshots_scenarios_dir_path
+  if os.path.isdir(scenarios_dir):
+    for name in os.listdir(scenarios_dir):
+      if not (name.endswith('.yaml') or name.endswith('.yml')):
+        continue
+      path = os.path.join(scenarios_dir, name)
+      if not os.path.isfile(path):
+        continue
+      try:
+        with open(path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+      except Exception:
+        continue
+      if not isinstance(data, dict):
+        continue
+      requests_field = data.get('requests') or {}
+      for request_uuid, _entry in ScenarioSnapshot.iter_request_entries(requests_field):
+        uuids.add(request_uuid)
+      if isinstance(requests_field, list):
+        for item in requests_field:
+          if not isinstance(item, str):
+            continue
+          parsed = RequestSnapshotV2.parse_request_relative_path(item)
+          if parsed:
+            _slug, request_uuid = parsed
+            if UUID_RE.match(request_uuid):
+              uuids.add(request_uuid)
+
+  return uuids
+
+
+def _should_write_standalone_request(
+  request_uuid: str,
+  standalone_request_uuids: set = None,
+  scenario_request_uuids: set = None,
+) -> bool:
+  standalone_request_uuids = standalone_request_uuids or set()
+  scenario_request_uuids = scenario_request_uuids or set()
+  return (
+    request_uuid in standalone_request_uuids
+    or request_uuid not in scenario_request_uuids
+  )
+
+
+def _remove_scenario_only_request_files(
+  requests_dir: str,
+  standalone_request_uuids: set = None,
+  scenario_request_uuids: set = None,
+):
+  """
+  Delete standalone request yaml files that are only scenario-referenced.
+
+  Do not wipe bodies/headers: scenario embeds still reference those files under
+  the slug dir even when no standalone <uuid>.yaml remains.
+  """
+  if not os.path.isdir(requests_dir):
+    return
+
+  standalone_request_uuids = standalone_request_uuids or set()
+  scenario_request_uuids = scenario_request_uuids or set()
+
+  for slug in list(os.listdir(requests_dir)):
+    if slug.startswith('.'):
+      continue
+    slug_dir = os.path.join(requests_dir, slug)
+    if not os.path.isdir(slug_dir):
+      continue
+
+    for name in list(os.listdir(slug_dir)):
+      if not name.endswith(REQUEST_FILE_EXTENSION):
+        continue
+      request_uuid = RequestSnapshot._strip_request_filename_ext(name)
+      if not UUID_RE.match(request_uuid):
+        continue
+      if _should_write_standalone_request(
+        request_uuid, standalone_request_uuids, scenario_request_uuids
+      ):
+        continue
+      path = os.path.join(slug_dir, name)
+      try:
+        os.remove(path)
+      except OSError:
+        continue
+
+
+def _upgrade_scenario_request_entries(
+  scenarios_dir: str,
+  requests_dir: str,
+  request_uuid_to_entry: Dict[str, dict],
+) -> int:
+  migrated = 0
+  for name in list(os.listdir(scenarios_dir)):
+    if not (name.endswith('.yaml') or name.endswith('.yml')):
+      continue
+    yaml_path = os.path.join(scenarios_dir, name)
+    if not os.path.isfile(yaml_path):
+      continue
+
+    try:
+      with open(yaml_path, 'r') as fp:
+        data = yaml.safe_load(fp) or {}
+      if not isinstance(data, dict):
+        continue
+    except Exception:
+      continue
+
+    requests = data.get('requests') or {}
+    # Upgrade legacy list indexes (path strings or entries with inlined uuid)
+    # into a uuid-keyed dict. Already-keyed dicts are left alone.
+    if isinstance(requests, dict):
+      continue
+    if not isinstance(requests, list):
+      continue
+
+    entries: Dict[str, dict] = {}
+    changed = False
+    for item in requests:
+      if ScenarioSnapshot.is_request_entry(item):
+        request_uuid = str(item.get('uuid') or '')
+        if UUID_RE.match(request_uuid):
+          entries[request_uuid] = {k: v for k, v in item.items() if k != 'uuid'}
+          changed = True
+        continue
+      if not isinstance(item, str):
+        continue
+      parsed = RequestSnapshotV2.parse_request_relative_path(item)
+      if not parsed:
+        continue
+      _slug, request_uuid = parsed
+      entry_data = request_uuid_to_entry.get(request_uuid) or _load_v2_request_entry(
+        requests_dir, request_uuid
+      )
+      if entry_data:
+        entries[request_uuid] = {k: v for k, v in entry_data.items() if k != 'uuid'}
+        changed = True
+
+    if not changed:
+      continue
+
+    data['requests'] = entries
+    with open(yaml_path, 'w') as fp:
+      yaml.safe_dump(data, fp, sort_keys=False, default_flow_style=False)
+    migrated += 1
+
+  return migrated
+
+
+def _load_v2_request_entry(requests_dir: str, uuid: str) -> Optional[dict]:
+  if not os.path.isdir(requests_dir) or not UUID_RE.match(uuid):
+    return None
+
+  for slug in os.listdir(requests_dir):
+    if slug.startswith('.'):
+      continue
+    slug_dir = os.path.join(requests_dir, slug)
+    if not os.path.isdir(slug_dir):
+      continue
+
+    yaml_path = os.path.join(slug_dir, f"{uuid}{REQUEST_FILE_EXTENSION}")
+    if os.path.isfile(yaml_path):
+      try:
+        with open(yaml_path, 'r') as fp:
+          data = yaml.safe_load(fp) or {}
+        if isinstance(data, dict):
+          data.pop('uuid', None)
+          return data
+      except Exception:
+        return None
+
+  return None
+
+
+def _reconstitute_v2_request_file(path: str, slug_dir: str) -> bytes:
+  with open(path, 'r') as fp:
+    data = yaml.safe_load(fp) or {}
+  if not isinstance(data, dict):
+    raise ValueError('invalid yaml')
+  request_uuid = RequestSnapshot._strip_request_filename_ext(os.path.basename(path))
+  return SnapshotAdapterFactory(data, uuid=request_uuid).joined_request(slug_dir)
+
+
 def _cleanup_slug_dir(slug_dir: str):
   if not os.path.isdir(slug_dir):
     return
 
-  remaining_http = [n for n in os.listdir(slug_dir) if n.endswith(REQUEST_FILE_EXTENSION)]
-  if remaining_http:
+  remaining = [
+    n for n in os.listdir(slug_dir)
+    if n.endswith(REQUEST_FILE_EXTENSION)
+  ]
+  if remaining:
     return
 
   bodies_dir = os.path.join(slug_dir, 'bodies')

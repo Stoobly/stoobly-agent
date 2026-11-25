@@ -1,2 +1,3 @@
 from .request import RawJoinedRequestAdapterFactory
 from .response import RawJoinedResponseAdapterFactory
+from .snapshot_entry_adapter import SnapshotEntryAdapter

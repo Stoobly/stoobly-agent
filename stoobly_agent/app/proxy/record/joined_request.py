@@ -39,7 +39,7 @@ class JoinedRequest:
 
         self.__response_string = ResponseString(response, self.__request_string.request_id)
 
-        # milliseconds
+        # microseconds
         latency = round((now - self.timestamp) * (10 ** 6))
         self.__response_string.with_latency(latency)
 

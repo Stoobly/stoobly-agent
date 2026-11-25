@@ -11,9 +11,11 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.body_ref impor
   full_content_hash,
   normalize_body_ref,
   read_body,
+  relative_body_ref,
   resolve_body_path,
   write_body,
 )
+from stoobly_agent.config.data_dir import DATA_DIR_NAME
 from stoobly_agent.app.models.factories.resource.local_db.helpers.joined_request_ref import (
   externalize_joined_request,
   reconstitute_joined_request,
@@ -88,7 +90,9 @@ class TestBodyRef:
       assert len(os.listdir(bodies_dir_path(slug_dir))) == 1
 
   def test_write_body_truncated_collision_falls_back_to_full_digest(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
       body = b'unique-body-payload'
       short = content_hash(body)
       bodies = bodies_dir_path(slug_dir)
@@ -99,27 +103,56 @@ class TestBodyRef:
       hash_value = write_body(slug_dir, body)
       assert hash_value == full_content_hash(body)
       assert len(hash_value) == 64
-      assert read_body(slug_dir, f'bodies/{hash_value}') == body
+      assert read_body(slug_dir, relative_body_ref('GET-api', hash_value)) == body
       # Original short-hash file left untouched
       with open(os.path.join(bodies, short), 'rb') as fp:
         assert fp.read() == b'planted-different-bytes'
 
-  def test_normalize_rejects_traversal_and_absolute(self):
-    assert normalize_body_ref('bodies/abc') == 'bodies/abc'
-    assert normalize_body_ref('/bodies/abc') == 'bodies/abc'
+  def test_relative_body_ref_is_context_relative(self):
+    assert relative_body_ref('GET-api', 'abc') == (
+      f'{DATA_DIR_NAME}/snapshots/requests/GET-api/bodies/abc'
+    )
 
-    for bad in ('/etc/passwd', 'bodies/../secret', '../bodies/abc', 'etc/passwd', ''):
+  def test_normalize_accepts_context_relative_form(self):
+    long_ref = f'{DATA_DIR_NAME}/snapshots/requests/GET-api/bodies/abc'
+    assert normalize_body_ref(long_ref) == long_ref
+    assert normalize_body_ref(long_ref, slug='GET-api') == long_ref
+
+  def test_normalize_rejects_traversal_and_absolute(self):
+    for bad in (
+      '/etc/passwd',
+      'bodies/abc',
+      'bodies/../secret',
+      '../bodies/abc',
+      'etc/passwd',
+      '',
+      f'{DATA_DIR_NAME}/snapshots/requests/GET-api/../bodies/abc',
+      f'{DATA_DIR_NAME}/snapshots/requests/other/bodies/abc',
+    ):
       with pytest.raises(ValueError, match='Invalid body ref'):
-        normalize_body_ref(bad)
+        normalize_body_ref(bad, slug='GET-api')
 
   def test_resolve_stays_under_slug_dir(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
-      path = resolve_body_path(slug_dir, 'bodies/deadbeef')
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
+      long_ref = relative_body_ref('GET-api', 'deadbeef')
+      path = resolve_body_path(slug_dir, long_ref)
       assert path.startswith(slug_dir)
       assert path.endswith(os.path.join('bodies', 'deadbeef'))
 
+  def test_resolve_rejects_slug_mismatch(self):
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
+      os.makedirs(slug_dir)
+      with pytest.raises(ValueError, match='Invalid body ref'):
+        resolve_body_path(
+          slug_dir, relative_body_ref('POST-other', 'deadbeef')
+        )
+
   def test_resolve_rejects_symlink_escape(self):
-    with tempfile.TemporaryDirectory() as slug_dir:
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api')
       bodies = os.path.join(slug_dir, 'bodies')
       os.makedirs(bodies)
       target = os.path.join(slug_dir, 'outside-secret')
@@ -129,7 +162,7 @@ class TestBodyRef:
       os.symlink(target, link)
 
       with pytest.raises(ValueError, match='Invalid body ref'):
-        resolve_body_path(slug_dir, 'bodies/deadbeef')
+        resolve_body_path(slug_dir, relative_body_ref('GET-api', 'deadbeef'))
 
   def test_resolve_rejects_bodies_dir_symlink_escape(self):
     with tempfile.TemporaryDirectory() as root:
@@ -140,4 +173,13 @@ class TestBodyRef:
       os.symlink(outside, os.path.join(slug_dir, 'bodies'))
 
       with pytest.raises(ValueError, match='Invalid body ref'):
-        resolve_body_path(slug_dir, 'bodies/deadbeef')
+        resolve_body_path(slug_dir, relative_body_ref('slug', 'deadbeef'))
+
+  def test_externalize_writes_context_relative_refs(self):
+    joined = _joined_with_bodies(b'hello', b'world')
+    with tempfile.TemporaryDirectory() as root:
+      slug_dir = os.path.join(root, 'GET-api-test')
+      os.makedirs(slug_dir)
+      externalized = externalize_joined_request(joined, slug_dir)
+      prefix = f'{DATA_DIR_NAME}/snapshots/requests/GET-api-test/bodies/'.encode()
+      assert prefix in externalized

@@ -63,7 +63,7 @@ class TestRequestSnapshotV2Naming:
     assert RequestSnapshotV2.build_request_slug('GET', '/api/foo bar') == 'GET-api-foo-bar'
 
   def test_relative_path_parse(self):
-    assert RequestSnapshotV2.parse_request_relative_path('GET-api-users/abc.http') == ('GET-api-users', 'abc')
+    assert RequestSnapshotV2.parse_request_relative_path('GET-api-users/abc.yaml') == ('GET-api-users', 'abc')
 
   def test_sanitize_scenario_name(self):
     assert ScenarioSnapshotV2.sanitize_scenario_filename('My Scenario!') == 'My Scenario!'
@@ -82,7 +82,7 @@ class TestSnapshotFormatDetect:
     requests_dir = data_dir.snapshots_requests_dir_path
     slug_dir = os.path.join(requests_dir, 'GET-api')
     os.makedirs(slug_dir, exist_ok=True)
-    with open(os.path.join(slug_dir, '11111111-1111-1111-1111-111111111111.http'), 'wb') as fp:
+    with open(os.path.join(slug_dir, '11111111-1111-1111-1111-111111111111.yaml'), 'wb') as fp:
       fp.write(b'x')
 
     assert detect_snapshot_format(data_dir) == FORMAT_V2
@@ -130,7 +130,7 @@ class TestSnapshotFormatDetect:
 
     slug_dir = os.path.join(requests_dir, 'GET-api')
     os.makedirs(slug_dir, exist_ok=True)
-    with open(os.path.join(slug_dir, '11111111-1111-1111-1111-111111111111.http'), 'wb') as fp:
+    with open(os.path.join(slug_dir, '11111111-1111-1111-1111-111111111111.yaml'), 'wb') as fp:
       fp.write(b'v2')
 
     assert detect_snapshot_format(data_dir) == FORMAT_V2
@@ -202,7 +202,7 @@ class TestWriteFormatFollowsDetection:
     assert isinstance(snap, RequestSnapshotV2)
     assert snap.format == FORMAT_V2
     assert path == snap.path
-    assert path.endswith('.http')
+    assert path.endswith('.yaml')
     assert detect_snapshot_format(DataDir.instance()) == FORMAT_V2
 
     event = Log().events[-1]
@@ -222,7 +222,7 @@ class TestWriteFormatFollowsDetection:
     assert isinstance(snap, RequestSnapshotV1)
     assert snap.format == FORMAT_V1
     assert path == snap.path
-    assert not path.endswith('.http')
+    assert not path.endswith('.yaml')
     assert detect_snapshot_format(DataDir.instance()) == FORMAT_V1
 
     event = Log().events[-1]
@@ -237,7 +237,7 @@ class TestWriteFormatFollowsDetection:
     snap = RequestSnapshot.create(recorded_request.uuid)
 
     assert isinstance(snap, RequestSnapshotV2)
-    assert path.endswith('.http')
+    assert path.endswith('.yaml')
     assert isinstance(Log().events[-1], LogEventV2)
 
   def test_existing_v1_keeps_writing_scenario_v1(self, created_scenario: Scenario, recorded_request: Request):
