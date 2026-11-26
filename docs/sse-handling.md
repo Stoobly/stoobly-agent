@@ -196,5 +196,6 @@ Migrations:
 | Mock | [`request_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
 | Snapshot refs | [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py), [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) |
 | Apply | [`apply.py`](../stoobly_agent/app/models/helpers/apply.py) |
+| Test SSE upstream | [`sse_server.py`](../stoobly_agent/test/sse_server.py) (`python -m stoobly_agent.test.sse_server`) |
 | Create flow | [snapshot-create.md](snapshot-create.md) |
 
