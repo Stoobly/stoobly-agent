@@ -156,11 +156,16 @@ class LocalDBRequestAdapter(LocalDBAdapter):
     headers[custom_headers.MOCK_REQUEST_KEY] = request.key()
     headers[custom_headers.RESPONSE_LATENCY] = str(request.latency)
 
-    return (
-      ORMToRequestsResponseTransformer(response_record)
-        .with_headers(headers, merge=True)
-        .transform()
-    )
+    transformer = ORMToRequestsResponseTransformer(response_record).with_headers(headers, merge=True)
+
+    # SSE: envelope raw + body from response_chunks (never treat raw as the stream body)
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    chunk_count = ResponseChunk.where('response_id', response_record.id).count()
+    if response_record.stream_status or chunk_count > 0:
+      from stoobly_agent.app.proxy.record.sse_record_service import sse_body_from_chunks
+      transformer = transformer.with_body(sse_body_from_chunks(response_record))
+
+    return transformer.transform()
 
   def index(self, **query_params: RequestsIndexQueryParams) -> Tuple[RequestsIndexResponse, int]:
     self.__adapt_scenario_id(query_params)

@@ -11,12 +11,13 @@ from stoobly_agent.app.models.adapters.orm import JoinedRequestStringAdapter
 from stoobly_agent.app.models.adapters.raw_joined import SnapshotEntryAdapter
 from stoobly_agent.app.models.adapters.snapshot import SnapshotAdapterFactory
 from stoobly_agent.app.models.adapters.snapshot.yaml_dump import dump_snapshot_yaml
-from stoobly_agent.config.constants.custom_headers import BODY_REF, HEADER_REF
+from stoobly_agent.config.constants.custom_headers import BODY_REF, CHUNK_REF, HEADER_REF
 from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
 from .body_ref import is_body_ref, resolve_body_path
+from .chunk_ref import is_chunk_ref, resolve_chunks_dir, write_chunks
 from .header_ref import is_header_ref, resolve_header_path
 from .snapshot import Snapshot
 from .snapshot_format import (
@@ -72,7 +73,7 @@ class RequestSnapshot(Snapshot):
     for headers in (entry.get('headers'), (entry.get('response') or {}).get('headers')):
       for name, value in RequestSnapshot._header_items(headers):
         lower = str(name).lower()
-        if lower in (BODY_REF.lower(), HEADER_REF.lower()) and value:
+        if lower in (BODY_REF.lower(), HEADER_REF.lower(), CHUNK_REF.lower()) and value:
           refs.append(str(value).strip())
     return refs
 
@@ -537,12 +538,6 @@ class RequestSnapshotV2(RequestSnapshot):
     # reference them. Same invariant as migrate's _remove_scenario_only_request_files.
     return
 
-  def write(self, request: Request, **options: RequestSnapshotOptions):
-    self._slug = self.build_request_slug(request.method, request.path)
-    self._resolved_path = None
-    self._entry = None
-    super().write(request, **options)
-
   def build_entry(self, request: Request, **options: RequestSnapshotOptions) -> dict:
     """Externalize under the request slug dir and return a structured entry (no file write)."""
     self._slug = self.build_request_slug(request.method, request.path)
@@ -562,6 +557,7 @@ class RequestSnapshotV2(RequestSnapshot):
       raise ValueError(f"Cannot build request entry {self.uuid}: missing slug")
     os.makedirs(slug_dir, exist_ok=True)
     entry = SnapshotEntryAdapter.from_joined(adapter.adapt(), slug_dir).adapt()
+    self._externalize_response_chunks(request, entry, slug_dir)
     self._entry = entry
     return entry
 
@@ -572,10 +568,48 @@ class RequestSnapshotV2(RequestSnapshot):
 
     self._ensure_parent(path)
     entry = SnapshotEntryAdapter.from_joined(text, os.path.dirname(path)).adapt()
+    # Chunks are attached when writing from an ORM request via write()/build_entry.
     self._entry = entry
     with open(path, 'w') as fp:
       dump_snapshot_yaml(entry, fp)
     self._remove_uuid_orphans(path)
+
+  def write(self, request: Request, **options: RequestSnapshotOptions):
+    self._slug = self.build_request_slug(request.method, request.path)
+    self._resolved_path = None
+    entry = self.build_entry(request, **options)
+    path = self.path
+    if path is None:
+      raise ValueError(f"Cannot write request snapshot {self.uuid}: missing path/slug")
+    self._ensure_parent(path)
+    with open(path, 'w') as fp:
+      dump_snapshot_yaml(entry, fp)
+    self._remove_uuid_orphans(path)
+
+  def _externalize_response_chunks(self, request: Request, entry: dict, slug_dir: str):
+    response = request.response
+    if not response:
+      return
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    chunks = ResponseChunk.where('response_id', response.id).order_by('sequence', 'asc').get()
+    if len(chunks) == 0:
+      return
+
+    payloads = [chunk.payload or b'' for chunk in chunks]
+    ref = write_chunks(slug_dir, payloads)
+    response_entry = entry.get('response')
+    if not isinstance(response_entry, dict):
+      return
+
+    headers = response_entry.get('headers')
+    chunk_line = f"{CHUNK_REF}: {ref}"
+    if isinstance(headers, str):
+      headers = headers.rstrip('\n')
+      response_entry['headers'] = f"{headers}\n{chunk_line}\n" if headers else f"{chunk_line}\n"
+    elif isinstance(headers, dict):
+      headers[CHUNK_REF] = ref
+    else:
+      response_entry['headers'] = f"{chunk_line}\n"
 
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
@@ -664,14 +698,23 @@ class RequestSnapshotV2(RequestSnapshot):
       try:
         if is_body_ref(ref):
           src = resolve_body_path(slug_dir, ref)
+          if os.path.exists(src):
+            self.copy_file(src, dest_dir)
         elif is_header_ref(ref):
           src = resolve_header_path(slug_dir, ref)
+          if os.path.exists(src):
+            self.copy_file(src, dest_dir)
+        elif is_chunk_ref(ref):
+          chunks_dir = resolve_chunks_dir(slug_dir, ref)
+          if os.path.isdir(chunks_dir):
+            for name in os.listdir(chunks_dir):
+              chunk_path = os.path.join(chunks_dir, name)
+              if os.path.isfile(chunk_path):
+                self.copy_file(chunk_path, dest_dir)
         else:
           continue
       except ValueError:
         continue
-      if os.path.exists(src):
-        self.copy_file(src, dest_dir)
 
   def _slug_has_scenario_embeds(self, slug: str) -> bool:
     """True if any scenario YAML embed still targets this request slug dir."""
@@ -739,6 +782,10 @@ class RequestSnapshotV2(RequestSnapshot):
     headers_dir = os.path.join(slug_dir, 'headers')
     if os.path.isdir(headers_dir):
       shutil.rmtree(headers_dir, ignore_errors=True)
+
+    chunks_dir = os.path.join(slug_dir, 'chunks')
+    if os.path.isdir(chunks_dir):
+      shutil.rmtree(chunks_dir, ignore_errors=True)
 
     try:
       if not os.listdir(slug_dir):

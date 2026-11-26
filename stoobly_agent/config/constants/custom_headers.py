@@ -1,5 +1,6 @@
 ALIAS_RESOLVE_STRATEGY = 'X-Stoobly-Alias-Resolve-Strategy'
 BODY_REF = 'X-Stoobly-Body-Ref'
+CHUNK_REF = 'X-Stoobly-Chunk-Ref'
 CONTENT_TYPE = 'X-Stoobly-Content-Type'
 CONTENT_TYPE_TEST_RESULTS = 'test/results'
 HEADER_REF = 'X-Stoobly-Header-Ref'

@@ -30,7 +30,8 @@ from .record.context import RecordContext
 from .record.overwrite_scenario_service import overwrite_scenario, overwrite_scenario_with_lock
 from .record.upload_request_service import inject_upload_request
 from .replay.context import ReplayContext
-from .replay.body_parser_service import is_json, is_xml
+from .record.sse_record_service import SSE_RESPONSE_ID_KEY, finalize_sse_record, is_sse_flow
+from .replay.body_parser_service import is_event_stream, is_json, is_xml
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.minimize_headers import minimize_headers
 from .utils.response_handler import apply_response, bad_request, disable_transfer_encoding 
@@ -86,6 +87,12 @@ def handle_response_record(context: RecordContext):
         handle_response_mock(MockContext(flow, intercept_settings))
         return
 
+    # SSE: already created + streamed via responseheaders; do not buffer/chunk-encode or re-upload.
+    if is_sse_flow(flow) or flow.metadata.get(SSE_RESPONSE_ID_KEY):
+        finalize_sse_record(flow)
+        handle_response_develop(context)
+        return
+
     disable_transfer_encoding(flow.response)
     handle_response_develop(context)
 
@@ -103,7 +110,12 @@ def handle_response_record(context: RecordContext):
         content_type: str = response.headers.get('content-type')
 
         if content_type:
-            if is_json(content_type) or is_xml(content_type) or content_type.startswith('text/plain'):
+            if (
+                is_json(content_type)
+                or is_xml(content_type)
+                or content_type.startswith('text/plain')
+                or is_event_stream(content_type)
+            ):
                 __record_request(context, request_model)
     elif active_record_policy == record_policy.FOUND:
         res = inject_eval_request(request_model, intercept_settings)(request, [])

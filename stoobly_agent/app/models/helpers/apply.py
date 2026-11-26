@@ -213,6 +213,7 @@ class Apply():
     if status != 200:
       return f"{res} {snapshot.path}", status
 
+    self.__apply_response_chunks(snapshot)
     return res, status
 
   def __apply_delete_scenario(self, resource_ref: str):
@@ -363,6 +364,7 @@ class Apply():
       if status != 200:
         return f"{res} {request_snapshot.path}", status
 
+      self.__apply_response_chunks(request_snapshot)
       snapshot_requests[uuid] = res
 
     # Remove requests in scenario that don't exist in the snapshot
@@ -412,3 +414,50 @@ class Apply():
           self.__logger(f"{bcolors.OKCYAN}Updated Request{bcolors.ENDC} {res['url']}")
 
     return res, status
+
+  def __apply_response_chunks(self, snapshot: RequestSnapshot):
+    """Recreate response_chunks from X-Stoobly-Chunk-Ref; leave Response.raw as envelope-only."""
+    from stoobly_agent.config.constants import stream_status
+    from stoobly_agent.config.constants.custom_headers import CHUNK_REF
+    from stoobly_agent.lib.orm.request import Request
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.chunk_ref import (
+      is_chunk_ref,
+      read_chunks,
+    )
+
+    entry = snapshot.entry
+    if not isinstance(entry, dict):
+      return
+
+    response_entry = entry.get('response') or {}
+    headers = response_entry.get('headers')
+    chunk_ref = None
+    for name, value in RequestSnapshot._header_items(headers):
+      if str(name).lower() == CHUNK_REF.lower() and value:
+        chunk_ref = str(value).strip()
+        break
+
+    if not chunk_ref or not is_chunk_ref(chunk_ref):
+      return
+
+    slug_dir = snapshot.slug_dir
+    if not slug_dir:
+      return
+
+    request = Request.find_by(uuid=snapshot.uuid)
+    if not request or not request.response:
+      return
+
+    response = request.response
+    for existing in ResponseChunk.where('response_id', response.id).get():
+      existing.delete()
+
+    for sequence, payload in read_chunks(slug_dir, chunk_ref):
+      ResponseChunk.create(
+        response_id=response.id,
+        sequence=sequence,
+        payload=payload,
+      )
+
+    response.update(stream_status=stream_status.COMPLETE)
