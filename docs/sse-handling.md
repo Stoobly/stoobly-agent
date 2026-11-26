@@ -34,13 +34,12 @@ sequenceDiagram
 
   Client->>Mitmproxy: GET SSE
   Mitmproxy->>Intercept: responseheaders text/event-stream
+  Intercept->>Mitmproxy: flow.response.stream equals True
   alt RECORD and ALL or API
-    Intercept->>Record: handle_responseheaders_record
+    Intercept->>Record: handle_sse_record
     Record->>Sse: start_sse_record
     Sse->>DB: create Request plus Response envelope raw
     Sse->>Mitmproxy: flow.response.stream equals tee
-  else other mode or policy
-    Intercept->>Mitmproxy: flow.response.stream equals True
   end
   loop each chunk
     Mitmproxy->>Client: forward chunk
@@ -53,6 +52,16 @@ sequenceDiagram
 
 **Tee:** a mitmproxy `flow.response.stream` callback (named after Unix `tee`) that takes each body chunk and both **forwards** it to the client and **persists** it as a `response_chunk` when recording. Setting `stream = True` alone streams to the client without recording. See [`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py).
 
+mitmproxy decides body handling at `responseheaders` via `flow.response.stream`:
+
+| Value | Behavior |
+|-------|----------|
+| `False` (default) | Buffer the full body, then fire `response`. Unusable for long/open SSE streams. |
+| `True` | Forward each chunk to the client with no buffering. Client stays live; Stoobly never sees the body. |
+| callable | For each chunk, mitmproxy invokes the callback and forwards whatever it returns. |
+
+[`responseheaders`](../stoobly_agent/app/proxy/intercept_handler.py) always sets `stream = True` first so every SSE response streams (even when not recording). In RECORD with policy `all` / `api`, [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py) overrides that with a **tee** callback ([`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py)): on each chunk it returns `[data]` (client still receives the event) and inserts a `response_chunk` (until caps). That keeps passthrough latency while building the envelope + chunk store instead of stuffing the body into `Response.raw`. `.stream` is not cleared afterward; mitmproxy simply stops calling it when the upstream body ends.
+
 ### When recording starts
 
 In **RECORD** mode, early create + tee run when record policy is:
@@ -63,7 +72,7 @@ In **RECORD** mode, early create + tee run when record policy is:
 | `api` | Yes (`text/event-stream` is allowed alongside json/xml/text/plain) |
 | `found` / `not_found` / `none` | No — client still gets streaming passthrough |
 
-Implementation: [`handle_responseheaders_record`](../stoobly_agent/app/proxy/handle_record_service.py) → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
+Implementation: [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
 
 ### What is stored
 

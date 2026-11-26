@@ -14,7 +14,7 @@ from stoobly_agent.app.proxy.handle_develop_service import handle_request_develo
 from stoobly_agent.app.proxy.handle_record_service import (
     handle_request_record,
     handle_response_record,
-    handle_responseheaders_record,
+    handle_sse_record,
 )
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
@@ -100,20 +100,17 @@ def responseheaders(flow: 'MitmproxyHTTPFlow'):
     if not is_sse_flow(flow):
         return
 
+    # Default for all SSE: stream to client without buffering. RECORD may override with a tee.
+    enable_sse_passthrough(flow)
+
     request: 'MitmproxyRequest' = flow.request
 
     intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(__get_scenario_model())
     if not intercept_settings.active:
-        enable_sse_passthrough(flow)
         return
 
-    active_mode = intercept_settings.mode
-
-    if active_mode == mode.RECORD:
-        context = RecordContext(flow, intercept_settings)
-        handle_responseheaders_record(context)
-    else:
-        enable_sse_passthrough(flow)
+    if intercept_settings.mode == mode.RECORD:
+        handle_sse_record(RecordContext(flow, intercept_settings))
 
 def response(flow: 'MitmproxyHTTPFlow'):
     # Undo upstreams remap before response handlers see the request URL.

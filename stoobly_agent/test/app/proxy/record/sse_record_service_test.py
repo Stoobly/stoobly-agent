@@ -8,7 +8,7 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest, Response as Mit
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
 from stoobly_agent.app.models.request_model import RequestModel
-from stoobly_agent.app.proxy.handle_record_service import handle_responseheaders_record
+from stoobly_agent.app.proxy.handle_record_service import handle_sse_record
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.flow_mock import MitmproxyFlowMock
 from stoobly_agent.app.proxy.record.context import RecordContext
@@ -201,7 +201,7 @@ class TestSseRecordFromServer:
     assert b'data: hello' not in (response_record.raw or b'')
     assert sse_body_from_chunks(response_record) == expected
 
-  def test_handle_responseheaders_record_starts_tee(self, settings, sse_server: SseServer):
+  def test_handle_sse_record_starts_tee(self, settings, sse_server: SseServer):
     flow = MitmproxyFlowMock()
     flow.request = _mitmproxy_request_for_url(
       sse_server.url,
@@ -213,7 +213,7 @@ class TestSseRecordFromServer:
     flow.response = _sse_headers_response()
 
     intercept_settings = InterceptSettings(settings, flow.request)
-    handle_responseheaders_record(RecordContext(flow, intercept_settings))
+    handle_sse_record(RecordContext(flow, intercept_settings))
 
     assert flow.metadata.get(SSE_RESPONSE_ID_KEY)
     assert callable(flow.response.stream)
@@ -229,7 +229,7 @@ class TestSseRecordFromServer:
     assert len(chunks) >= 1
     assert b''.join(c.payload or b'' for c in chunks) == expected
 
-  def test_handle_responseheaders_record_passthrough_when_policy_none(
+  def test_handle_sse_record_passthrough_when_policy_none(
     self, settings, sse_server: SseServer
   ):
     flow = MitmproxyFlowMock()
@@ -243,7 +243,8 @@ class TestSseRecordFromServer:
     flow.response = _sse_headers_response()
 
     intercept_settings = InterceptSettings(settings, flow.request)
-    handle_responseheaders_record(RecordContext(flow, intercept_settings))
+    handle_sse_record(RecordContext(flow, intercept_settings))
 
+    # No tee; passthrough is owned by intercept_handler.responseheaders.
     assert flow.metadata.get(SSE_RESPONSE_ID_KEY) is None
-    assert flow.response.stream is True
+    assert not callable(getattr(flow.response, 'stream', None))

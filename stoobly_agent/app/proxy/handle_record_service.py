@@ -32,7 +32,6 @@ from .record.upload_request_service import inject_upload_request
 from .replay.context import ReplayContext
 from .record.sse_record_service import (
     SSE_RESPONSE_ID_KEY,
-    enable_sse_passthrough,
     finalize_sse_record,
     is_sse_flow,
     start_sse_record,
@@ -82,22 +81,15 @@ def handle_request_record(context: ReplayContext) -> None:
 # Mitmproxy responseheaders: start SSE tee + envelope create when policy allows,
 # otherwise passthrough stream without buffering.
 #
-def handle_responseheaders_record(context: RecordContext) -> None:
+def handle_sse_record(context: RecordContext) -> None:
     flow = context.flow
     intercept_settings = context.intercept_settings
     request: 'MitmproxyRequest' = flow.request
 
     active_record_policy = get_intercept_mode_policy(request, intercept_settings, mode.RECORD)
-    content_type = flow.response.headers.get('content-type') if flow.response else None
-    should_record = (
-        active_record_policy == record_policy.ALL
-        or (active_record_policy == record_policy.API and is_event_stream(content_type))
-    )
-    if should_record:
+    if active_record_policy in (record_policy.ALL, record_policy.API):
         request_model = RequestModel(intercept_settings.settings)
         start_sse_record(flow, request_model, intercept_settings)
-    else:
-        enable_sse_passthrough(flow)
 
 ###
 # 1. AFTER_DEVELOP gets triggered

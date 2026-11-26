@@ -61,18 +61,15 @@ def start_sse_record(
   created, status = request_model.create(**body_params.build())
   if not created or status >= 400:
     Logger.instance(LOG_ID).error(f"Failed to create SSE request status={status}")
-    enable_sse_passthrough(flow)
     return None
 
   request_uuid = created['list'][0]['uuid']
   request_record = Request.find_by(uuid=request_uuid)
   if not request_record:
-    enable_sse_passthrough(flow)
     return None
 
   response_record = request_record.response
   if not response_record:
-    enable_sse_passthrough(flow)
     return None
 
   response_record.update(stream_status=stream_status.STREAMING)
