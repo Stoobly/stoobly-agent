@@ -28,6 +28,7 @@ sequenceDiagram
   participant Client
   participant Mitmproxy
   participant Intercept as intercept_handler
+  participant Record as handle_record_service
   participant Sse as sse_record_service
   participant DB
 
@@ -183,6 +184,7 @@ Migrations:
 - Inter-event timing / paced mock replay
 - Generic non-SSE streaming (chunked JSON, etc.) beyond `text/event-stream`
 - Recording SSE under `found` / `not_found` policies at `responseheaders` time
+- Snapshot format v1 (`RequestSnapshotV1`): no `chunks/` externalization or `X-Stoobly-Chunk-Ref` (chunk snapshots are v2-only; see [snapshot-create.md](snapshot-create.md))
 
 ---
 
