@@ -575,6 +575,8 @@ class RequestSnapshotV2(RequestSnapshot):
     self._remove_uuid_orphans(path)
 
   def write(self, request: Request, **options: RequestSnapshotOptions):
+    # Cannot reuse super().write: that path ends in write_raw(joined bytes),
+    # which has no ORM request and cannot call _externalize_response_chunks.
     self._slug = self.build_request_slug(request.method, request.path)
     self._resolved_path = None
     entry = self.build_entry(request, **options)
