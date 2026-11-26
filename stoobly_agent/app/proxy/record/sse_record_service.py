@@ -15,7 +15,7 @@ from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.response_chunk import ResponseChunk
 
-LOG_ID = 'SseRecord'
+LOG_ID = 'SSERecord'
 
 # Flow metadata: Response.id created for this SSE stream
 SSE_RESPONSE_ID_KEY = 'stoobly_sse_response_id'
