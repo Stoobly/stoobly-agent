@@ -39,7 +39,7 @@ from .record.sse_record_service import (
 from .replay.body_parser_service import is_event_stream, is_json, is_xml
 from .utils.allowed_request_service import get_intercept_mode_policy
 from .utils.minimize_headers import minimize_headers
-from .utils.response_handler import apply_response, bad_request, disable_transfer_encoding 
+from .utils.response_handler import apply_response, bad_request, disable_transfer_encoding_chunked 
 from .utils.rewrite import rewrite_request_response
 from .utils.strategy import get_active_mode_strategy
 
@@ -112,7 +112,7 @@ def handle_response_record(context: RecordContext):
         handle_response_develop(context)
         return
 
-    disable_transfer_encoding(flow.response)
+    disable_transfer_encoding_chunked(flow.response)
     handle_response_develop(context)
 
     # Lazy import for runtime usage

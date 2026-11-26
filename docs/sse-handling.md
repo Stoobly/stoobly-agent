@@ -97,8 +97,10 @@ After a cap: further events are still **forwarded** to the client; persistence s
 [`handle_response_record`](../stoobly_agent/app/proxy/handle_record_service.py) detects an SSE / already-started stream and:
 
 - Calls `finalize_sse_record` (idempotent if the tee already finalized).
-- Skips `disable_transfer_encoding` (that would force `Content-Length` and break open streams).
+- Skips `disable_transfer_encoding_chunked` (that would force `Content-Length` and break open streams).
 - Skips the normal buffer-then-upload path (no second create).
+
+[`handle_response_test`](../stoobly_agent/app/proxy/handle_test_service.py) likewise skips `disable_transfer_encoding_chunked` for SSE so live streamed responses (including CLI `keep_live`) keep correct framing headers.
 
 ---
 

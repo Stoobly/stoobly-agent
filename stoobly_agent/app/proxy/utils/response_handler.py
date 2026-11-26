@@ -80,7 +80,7 @@ def enable_cors(flow: 'MitmproxyHTTPFlow'):
 
 # Without deleting this header, causes parsing issues when reading response
 # Note: this should only be applied to live responses and not mocked responses
-def disable_transfer_encoding(response: 'MitmproxyResponse') -> None:
+def disable_transfer_encoding_chunked(response: 'MitmproxyResponse') -> None:
     header_name = 'Transfer-Encoding'
     header_values = response.headers.get_all(header_name)
 

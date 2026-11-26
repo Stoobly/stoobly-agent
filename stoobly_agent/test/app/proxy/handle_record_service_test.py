@@ -129,7 +129,7 @@ class TestHandleResponseRecordFixtures:
     context = build_record_context(fixture_path='/tmp/fixtures/user.json')
 
     with patch(
-      'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding'
+      'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding_chunked'
     ), patch(
       'stoobly_agent.app.proxy.handle_record_service.handle_response_develop'
     ), patch(
@@ -151,7 +151,7 @@ class TestHandleResponseRecordFixtures:
     context = build_record_context()
 
     with patch(
-      'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding'
+      'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding_chunked'
     ), patch(
       'stoobly_agent.app.proxy.handle_record_service.handle_response_develop'
     ), patch(
@@ -222,7 +222,7 @@ def record_and_capture_uploaded_flow(context: RecordContext):
   upload = MagicMock()
 
   with patch.dict(os.environ, {ENV: TEST}), patch(
-    'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding'
+    'stoobly_agent.app.proxy.handle_record_service.disable_transfer_encoding_chunked'
   ), patch(
     'stoobly_agent.app.proxy.handle_record_service.handle_response_develop'
   ), patch(
