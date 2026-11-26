@@ -11,26 +11,23 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop_primary
-from stoobly_agent.app.models.request_model import RequestModel
-from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
+from stoobly_agent.app.proxy.handle_record_service import (
+    handle_request_record,
+    handle_response_record,
+    handle_responseheaders_record,
+)
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
-from stoobly_agent.app.proxy.record.sse_record_service import (
-    enable_sse_passthrough,
-    is_sse_flow,
-    start_sse_record,
-)
-from stoobly_agent.app.proxy.replay.body_parser_service import is_event_stream
-from stoobly_agent.app.proxy.utils.allowed_request_service import get_intercept_mode_policy
+from stoobly_agent.app.proxy.record.sse_record_service import enable_sse_passthrough, is_sse_flow
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.proxy.utils.upstreams import apply_upstreams, restore_upstreams
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.app.proxy.utils.request_correlation import set_proxy_request_uuid
-from stoobly_agent.config.constants import lifecycle_hooks, mode, record_policy
+from stoobly_agent.config.constants import lifecycle_hooks, mode
 from stoobly_agent.lib.cache import Cache
 from stoobly_agent.lib.logger import Logger
 
@@ -104,25 +101,17 @@ def responseheaders(flow: 'MitmproxyHTTPFlow'):
         return
 
     request: 'MitmproxyRequest' = flow.request
+
     intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(__get_scenario_model())
     if not intercept_settings.active:
         enable_sse_passthrough(flow)
         return
 
     active_mode = intercept_settings.mode
-    if active_mode != mode.RECORD:
-        enable_sse_passthrough(flow)
-        return
 
-    active_record_policy = get_intercept_mode_policy(request, intercept_settings, mode.RECORD)
-    content_type = flow.response.headers.get('content-type') if flow.response else None
-    should_record = (
-        active_record_policy == record_policy.ALL
-        or (active_record_policy == record_policy.API and is_event_stream(content_type))
-    )
-    if should_record:
-        request_model = RequestModel(intercept_settings.settings)
-        start_sse_record(flow, request_model, intercept_settings)
+    if active_mode == mode.RECORD:
+        context = RecordContext(flow, intercept_settings)
+        handle_responseheaders_record(context)
     else:
         enable_sse_passthrough(flow)
 

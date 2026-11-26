@@ -34,7 +34,8 @@ sequenceDiagram
   Client->>Mitmproxy: GET SSE
   Mitmproxy->>Intercept: responseheaders text/event-stream
   alt RECORD and ALL or API
-    Intercept->>Sse: start_sse_record
+    Intercept->>Record: handle_responseheaders_record
+    Record->>Sse: start_sse_record
     Sse->>DB: create Request plus Response envelope raw
     Sse->>Mitmproxy: flow.response.stream equals tee
   else other mode or policy
@@ -61,7 +62,7 @@ In **RECORD** mode, early create + tee run when record policy is:
 | `api` | Yes (`text/event-stream` is allowed alongside json/xml/text/plain) |
 | `found` / `not_found` / `none` | No — client still gets streaming passthrough |
 
-Implementation: [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
+Implementation: [`handle_responseheaders_record`](../stoobly_agent/app/proxy/handle_record_service.py) → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
 
 ### What is stored
 
