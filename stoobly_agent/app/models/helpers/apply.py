@@ -432,13 +432,15 @@ class Apply():
 
     response_entry = entry.get('response') or {}
     headers = response_entry.get('headers')
-    chunk_ref = None
+    chunk_refs = []
     for name, value in RequestSnapshot._header_items(headers):
-      if str(name).lower() == CHUNK_REF.lower() and value:
-        chunk_ref = str(value).strip()
-        break
+      if str(name).lower() != CHUNK_REF.lower() or not value:
+        continue
+      ref = str(value).strip()
+      if is_chunk_ref(ref):
+        chunk_refs.append(ref)
 
-    if not chunk_ref or not is_chunk_ref(chunk_ref):
+    if not chunk_refs:
       return
 
     slug_dir = snapshot.slug_dir
@@ -453,7 +455,7 @@ class Apply():
     for existing in ResponseChunk.where('response_id', response.id).get():
       existing.delete()
 
-    for sequence, payload in read_chunks(slug_dir, chunk_ref):
+    for sequence, payload in read_chunks(slug_dir, chunk_refs):
       ResponseChunk.create(
         response_id=response.id,
         sequence=sequence,

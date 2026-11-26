@@ -38,6 +38,10 @@ class TestSseSnapshotChunks:
     request.delete()
 
   def test_snapshot_write_emits_chunk_ref_and_files(self, sse_request: Request):
+    from stoobly_agent.app.models.factories.resource.local_db.helpers.chunk_ref import (
+      content_hash,
+    )
+
     snapshot = RequestSnapshot.create(sse_request.uuid)
     snapshot.write(sse_request)
 
@@ -45,14 +49,20 @@ class TestSseSnapshotChunks:
     assert entry is not None
     headers = (entry.get('response') or {}).get('headers') or ''
     assert CHUNK_REF in headers
-    # Content-Type may be externalized via Header-Ref; Chunk-Ref must remain inline.
+    # One Chunk-Ref header per chunk; Content-Type may be under Header-Ref.
+    chunk_lines = [
+      line for line in headers.splitlines()
+      if line.lower().startswith(CHUNK_REF.lower() + ':')
+    ]
+    assert len(chunk_lines) == 2
 
     slug_dir = snapshot.slug_dir
     chunks_dir = os.path.join(slug_dir, 'chunks')
     assert os.path.isdir(chunks_dir)
-    assert sorted(os.listdir(chunks_dir)) == ['000000', '000001']
+    expected = sorted([content_hash(b'data: hello\n\n'), content_hash(b'data: world\n\n')])
+    assert sorted(os.listdir(chunks_dir)) == expected
 
-    with open(os.path.join(chunks_dir, '000000'), 'rb') as fp:
+    with open(os.path.join(chunks_dir, content_hash(b'data: hello\n\n')), 'rb') as fp:
       assert fp.read() == b'data: hello\n\n'
 
     # Envelope raw in ORM must not contain chunk payloads

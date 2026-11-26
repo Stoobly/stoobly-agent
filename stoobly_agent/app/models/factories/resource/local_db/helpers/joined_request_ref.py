@@ -62,8 +62,8 @@ def reconstitute_joined_request(joined: bytes, slug_dir: str) -> bytes:
   X-Stoobly-Header-Ref and X-Stoobly-Body-Ref against slug_dir
   (.stoobly/snapshots/requests/<slug>/bodies|headers/<hash>).
 
-  X-Stoobly-Chunk-Ref is stripped and not inlined — apply recreates response_chunks
-  separately so Response.raw stays envelope-only for SSE.
+  Repeated X-Stoobly-Chunk-Ref headers are stripped and not inlined — apply
+  recreates response_chunks separately so Response.raw stays envelope-only for SSE.
   """
   adapter = JoinedRequestAdapter(joined)
   request_string = adapter.build_request_string()

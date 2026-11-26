@@ -17,7 +17,7 @@ from stoobly_agent.lib.logger import Logger
 from stoobly_agent.lib.orm.request import Request
 
 from .body_ref import is_body_ref, resolve_body_path
-from .chunk_ref import is_chunk_ref, resolve_chunks_dir, write_chunks
+from .chunk_ref import is_chunk_ref, resolve_chunk_path, write_chunks
 from .header_ref import is_header_ref, resolve_header_path
 from .snapshot import Snapshot
 from .snapshot_format import (
@@ -50,9 +50,20 @@ class RequestSnapshot(Snapshot):
 
   @staticmethod
   def _header_items(headers) -> List[tuple]:
-    """Yield (name, value) from a header string block or legacy dict."""
+    """Yield (name, value) from a header string block or legacy dict.
+
+    Dict values that are lists (e.g. repeated X-Stoobly-Chunk-Ref) expand to
+    one (name, item) pair each so multi-value headers stay ordered.
+    """
     if isinstance(headers, dict):
-      return list(headers.items())
+      items = []
+      for name, value in headers.items():
+        if isinstance(value, list):
+          for item in value:
+            items.append((name, item))
+        else:
+          items.append((name, value))
+      return items
     if isinstance(headers, str):
       items = []
       for line in headers.splitlines():
@@ -598,20 +609,25 @@ class RequestSnapshotV2(RequestSnapshot):
       return
 
     payloads = [chunk.payload or b'' for chunk in chunks]
-    ref = write_chunks(slug_dir, payloads)
+    refs = write_chunks(slug_dir, payloads)
+    if not refs:
+      return
+
     response_entry = entry.get('response')
     if not isinstance(response_entry, dict):
       return
 
     headers = response_entry.get('headers')
-    chunk_line = f"{CHUNK_REF}: {ref}"
+    chunk_lines = [f"{CHUNK_REF}: {ref}" for ref in refs]
     if isinstance(headers, str):
       headers = headers.rstrip('\n')
-      response_entry['headers'] = f"{headers}\n{chunk_line}\n" if headers else f"{chunk_line}\n"
+      block = '\n'.join(chunk_lines)
+      response_entry['headers'] = f"{headers}\n{block}\n" if headers else f"{block}\n"
     elif isinstance(headers, dict):
-      headers[CHUNK_REF] = ref
+      # List preserves repeated Chunk-Ref order; dict keys cannot.
+      headers[CHUNK_REF] = refs[0] if len(refs) == 1 else refs
     else:
-      response_entry['headers'] = f"{chunk_line}\n"
+      response_entry['headers'] = '\n'.join(chunk_lines) + '\n'
 
   def _find_v2_path(self) -> Optional[str]:
     if self._slug:
@@ -707,12 +723,9 @@ class RequestSnapshotV2(RequestSnapshot):
           if os.path.exists(src):
             self.copy_file(src, dest_dir)
         elif is_chunk_ref(ref):
-          chunks_dir = resolve_chunks_dir(slug_dir, ref)
-          if os.path.isdir(chunks_dir):
-            for name in os.listdir(chunks_dir):
-              chunk_path = os.path.join(chunks_dir, name)
-              if os.path.isfile(chunk_path):
-                self.copy_file(chunk_path, dest_dir)
+          src = resolve_chunk_path(slug_dir, ref)
+          if os.path.exists(src):
+            self.copy_file(src, dest_dir)
         else:
           continue
       except ValueError:

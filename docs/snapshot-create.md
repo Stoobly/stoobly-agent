@@ -136,8 +136,7 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
   <uuid>.yaml
   bodies/<hash16>
   headers/<hash16>
-  chunks/000000   # SSE only
-  chunks/000001
+  chunks/<hash16>   # SSE only (one file per chunk payload)
 ```
 
 - `<uuid>.yaml` is a structured request entry (see [`adapters/snapshot`](../stoobly_agent/app/models/adapters/snapshot) / [`RequestSnapshot`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py)); uuid is the filename, not a field:
@@ -146,7 +145,7 @@ Orchestration: [`snapshot_request`](../stoobly_agent/app/models/factories/resour
 - Non-empty bodies are written under `bodies/<content-hash>` (16-char truncated SHA-256 hex).
 - Dedup-list request/response headers are written under `headers/<content-hash>` ([`header_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/header_ref.py)); missing dedup-list names are omitted.
 - Refs in the YAML `headers` maps are context-dir-relative for PR navigation: `X-Stoobly-Header-Ref: .stoobly/snapshots/requests/<slug>/headers/<hash>` and `X-Stoobly-Body-Ref: .stoobly/snapshots/requests/<slug>/bodies/<hash>` ([`joined_request_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py)).
-- **SSE** (`text/event-stream`): body fragments are written under `chunks/` with `X-Stoobly-Chunk-Ref: .stoobly/snapshots/requests/<slug>/chunks` instead of a Body-Ref concat. Apply recreates `response_chunks`; `Response.raw` stays envelope-only. See [sse-handling.md](sse-handling.md).
+- **SSE** (`text/event-stream`): each body fragment is written under `chunks/<content-hash>` with one `X-Stoobly-Chunk-Ref: .stoobly/snapshots/requests/<slug>/chunks/<hash>` header per chunk (order = sequence). Apply recreates `response_chunks`; `Response.raw` stays envelope-only. See [sse-handling.md](sse-handling.md).
 
 - On read, the entry is rebuilt into joined HTTP and headers/bodies are reconstituted so apply/diff/list still see full joined bytes (chunk bytes are restored into ORM chunks on apply, not inlined into `raw`).
 

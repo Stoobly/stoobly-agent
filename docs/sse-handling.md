@@ -149,15 +149,15 @@ SSE bodies are **not** represented only as `X-Stoobly-Body-Ref` (that would rest
 [`RequestSnapshotV2.build_entry` / `write`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py):
 
 1. Externalize envelope headers as usual (`X-Stoobly-Header-Ref` when applicable).
-2. Write chunk files under `.stoobly/snapshots/requests/<slug>/chunks/000000`, `000001`, …
-3. Add **`X-Stoobly-Chunk-Ref: .stoobly/snapshots/requests/<slug>/chunks`** on the response headers ([`CHUNK_REF`](../stoobly_agent/config/constants/custom_headers.py), helpers in [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py)).
+2. Write each chunk under `.stoobly/snapshots/requests/<slug>/chunks/<hash16>` (content-addressed, same pattern as bodies/headers).
+3. Add one **`X-Stoobly-Chunk-Ref: .stoobly/snapshots/requests/<slug>/chunks/<hash>`** response header **per chunk**, in sequence order ([`CHUNK_REF`](../stoobly_agent/config/constants/custom_headers.py), helpers in [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py)).
 
-Real HTTP `Content-Type: text/event-stream` remains part of the response envelope (often under Header-Ref when on the dedup list).
+Real HTTP `Content-Type: text/event-stream` remains part of the response envelope (often under Header-Ref when on the dedup list). Shared method+path slugs are safe: distinct payloads get distinct hashes; identical payloads dedupe.
 
 ### Apply / reconstitute
 
-- [`reconstitute_joined_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py) **strips** `X-Stoobly-Chunk-Ref` and does **not** inline chunk bytes into the HTTP body (envelope stays empty-bodied).
-- After put/create, [`Apply.__apply_response_chunks`](../stoobly_agent/app/models/helpers/apply.py) reads the Chunk-Ref directory and recreates `response_chunks`, then sets `stream_status=complete`.
+- [`reconstitute_joined_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py) **strips** all `X-Stoobly-Chunk-Ref` headers and does **not** inline chunk bytes into the HTTP body (envelope stays empty-bodied).
+- After put/create, [`Apply.__apply_response_chunks`](../stoobly_agent/app/models/helpers/apply.py) reads the ordered Chunk-Ref headers and recreates `response_chunks`, then sets `stream_status=complete`.
 
 Copy/cleanup of snapshot dirs includes the `chunks/` folder alongside `bodies/` and `headers/`.
 
