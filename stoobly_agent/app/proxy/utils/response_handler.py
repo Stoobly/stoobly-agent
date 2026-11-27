@@ -27,6 +27,9 @@ def apply_response(flow: 'MitmproxyHTTPFlow', res: 'Response'):
     flow.response = MitmproxyResponse.make(
         res.status_code, content, dict(res.headers.items())
     )
+    # Mock/fixture egress always serves a finite body; strip chunked TE so it
+    # is not sent together with Content-Length.
+    disable_transfer_encoding_chunked(flow.response)
 
 def bad_request(flow: 'MitmproxyHTTPFlow', message: str):
     # Lazy import for runtime usage
@@ -78,16 +81,25 @@ def enable_cors(flow: 'MitmproxyHTTPFlow'):
         cors_headers(origin, request_headers),
     )
 
-# Without deleting this header, causes parsing issues when reading response
-# Note: this should only be applied to live responses and not mocked responses
+# Without deleting this header, causes parsing issues when reading a buffered body.
+# Also used on mock/fixture egress (apply_response) so TE: chunked is not paired with Content-Length.
 def disable_transfer_encoding_chunked(response: 'MitmproxyResponse') -> None:
     header_name = 'Transfer-Encoding'
     header_values = response.headers.get_all(header_name)
 
-    if len(header_values) > 0:
-        # Remove chunked transfer encoding
-        new_header_values = [v for v in header_values if v.lower() != 'chunked']
+    if len(header_values) == 0:
+        return
 
-        if len(new_header_values) != len(header_values):
-            response.headers.set_all(header_name, new_header_values)
-            response.headers['Content-Length'] = str(len(response.content))
+    new_header_values = []
+    stripped = False
+    for value in header_values:
+        parts = [p.strip() for p in value.split(',') if p.strip()]
+        kept = [p for p in parts if p.lower() != 'chunked']
+        if len(kept) != len(parts):
+            stripped = True
+        if kept:
+            new_header_values.append(', '.join(kept))
+
+    if stripped:
+        response.headers.set_all(header_name, new_header_values)
+        response.headers['Content-Length'] = str(len(response.content))

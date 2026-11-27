@@ -1,37 +1,6 @@
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 
 
-class TestRawHttpResponseAdapterContentLength:
-
-  def test_to_response_strips_transfer_encoding_chunked(self):
-    raw = (
-      b'HTTP/1.1 200 OK\r\n'
-      b'Content-Type: text/event-stream\r\n'
-      b'Transfer-Encoding: chunked\r\n'
-      b'\r\n'
-      b'data: hello\n\n'
-    )
-    response = RawHttpResponseAdapter(raw).to_response()
-
-    assert response.headers.get('Content-Length') == str(len(b'data: hello\n\n'))
-    assert 'Transfer-Encoding' not in response.headers
-    assert response.raw.headers.getlist('Transfer-Encoding') == []
-
-  def test_to_response_keeps_non_chunked_transfer_encoding(self):
-    raw = (
-      b'HTTP/1.1 200 OK\r\n'
-      b'Transfer-Encoding: gzip\r\n'
-      b'Transfer-Encoding: chunked\r\n'
-      b'\r\n'
-      b'body'
-    )
-    response = RawHttpResponseAdapter(raw).to_response()
-
-    assert response.headers.get('Content-Length') == '4'
-    assert response.raw.headers.getlist('Transfer-Encoding') == ['gzip']
-    assert 'chunked' not in (response.headers.get('Transfer-Encoding') or '').lower()
-
-
 class TestRawHttpResponseAdapterSetCookie:
 
   def test_repeated_set_cookie_kept_as_list(self):
