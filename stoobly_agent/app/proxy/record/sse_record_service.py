@@ -3,12 +3,8 @@ from typing import TYPE_CHECKING, Callable, List, Optional
 if TYPE_CHECKING:
   from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from stoobly_agent.app.models.request_model import RequestModel
-from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
-from stoobly_agent.app.proxy.record.join_request_service import join_request_from_flow
 from stoobly_agent.config.constants import stream_status
-from stoobly_agent.lib.api.param_builder import ParamBuilder
 from stoobly_agent.lib.logger import Logger
 # TODO: do not reference ORM directly; go through the DB adapter instead
 from stoobly_agent.lib.orm.request import Request
@@ -35,38 +31,19 @@ def is_sse_flow(flow: 'MitmproxyHTTPFlow') -> bool:
   return is_event_stream(content_type)
 
 
-def start_sse_record(
-  flow: 'MitmproxyHTTPFlow',
-  request_model: RequestModel,
-  intercept_settings: InterceptSettings,
-) -> Optional[Response]:
+def start_sse_record(flow: 'MitmproxyHTTPFlow', created: Optional[dict]) -> Optional[Response]:
   """
-  Create Request + envelope-only Response, then tee streamed body into response_chunks.
-  Never appends chunk payloads into Response.raw.
+  After the shared record upload path creates Request + envelope Response, mark
+  streaming and tee body chunks into response_chunks (never into Response.raw).
+
+  ``created`` is the local-db create payload from __record_request_sync /
+  upload_request (``{'list': [{'uuid': ...}], ...}``).
   """
   if flow.metadata.get(SSE_RESPONSE_ID_KEY):
     return Response.find(flow.metadata[SSE_RESPONSE_ID_KEY])
 
-  # SSE chunks are local-ORM-only. Remote create returns API JSON (no list[0]),
-  # so indexing that shape KeyErrors and never installs the tee — leave passthrough.
-  if not request_model.is_local:
-    Logger.instance(LOG_ID).debug('Skipping SSE record: remote request model is not supported')
-    return None
-
-  joined_request = join_request_from_flow(flow, intercept_settings=intercept_settings)
-
-  body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })
-  body_params.with_resource_scoping(
-    intercept_settings.project_key,
-    intercept_settings.scenario_key,
-  )
-  sequence_id = intercept_settings.request_sequence_id
-  if sequence_id is not None:
-    body_params.with_param('sequence_id', sequence_id)
-
-  created, status = request_model.create(**body_params.build())
-  if not created or status >= 400:
-    Logger.instance(LOG_ID).error(f"Failed to create SSE request status={status}")
+  if not created:
+    Logger.instance(LOG_ID).error('Failed to start SSE record: missing create result')
     return None
 
   request_uuid = created['list'][0]['uuid']
@@ -127,26 +104,47 @@ def _build_tee(flow: 'MitmproxyHTTPFlow', response_id: int) -> Callable[[bytes],
     'capped': False,
   }
 
+  def _mark_capped(reason: str) -> None:
+    state['capped'] = True
+    try:
+      response = Response.find(response_id)
+      if response:
+        response.update(stream_status=stream_status.CAPPED)
+    except Exception as e:
+      Logger.instance(LOG_ID).error(
+        f"Failed to mark SSE capped response_id={response_id} reason={reason}: {e}"
+      )
+
   def tee(data: bytes) -> List[bytes]:
+    # Always forward to the client; never let DB/persistence failures abort the stream.
     if data == b'':
-      finalize_sse_record(flow, capped=state['capped'])
+      try:
+        finalize_sse_record(flow, capped=state['capped'])
+      except Exception as e:
+        Logger.instance(LOG_ID).error(
+          f"Failed to finalize SSE record response_id={response_id}: {e}"
+        )
       return []
 
     if not state['capped']:
       next_total = state['total_bytes'] + len(data)
       if state['sequence'] >= MAX_SSE_CHUNKS or next_total > MAX_SSE_BYTES:
-        state['capped'] = True
-        response = Response.find(response_id)
-        if response:
-          response.update(stream_status=stream_status.CAPPED)
+        _mark_capped('size_or_count_cap')
       else:
-        ResponseChunk.create(
-          response_id=response_id,
-          sequence=state['sequence'],
-          payload=data,
-        )
-        state['sequence'] += 1
-        state['total_bytes'] = next_total
+        try:
+          ResponseChunk.create(
+            response_id=response_id,
+            sequence=state['sequence'],
+            payload=data,
+          )
+          state['sequence'] += 1
+          state['total_bytes'] = next_total
+        except Exception as e:
+          Logger.instance(LOG_ID).error(
+            f"Failed to persist SSE chunk response_id={response_id} "
+            f"sequence={state['sequence']}: {e}"
+          )
+          _mark_capped('persist_error')
 
     return [data]
 

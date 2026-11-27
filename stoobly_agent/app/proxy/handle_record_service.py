@@ -81,15 +81,29 @@ def handle_request_record(context: ReplayContext) -> None:
 # Mitmproxy responseheaders: start SSE tee + envelope create when policy allows,
 # otherwise passthrough stream without buffering.
 #
+# Uses the same prepare → BEFORE_RECORD → upload → AFTER_RECORD path as
+# __record_request, but sync so Response.id exists before body chunks arrive.
+#
 def handle_sse_record(context: RecordContext) -> None:
     flow = context.flow
+    if flow.metadata.get(SSE_RESPONSE_ID_KEY):
+        return
+
     intercept_settings = context.intercept_settings
     request: 'MitmproxyRequest' = flow.request
 
     active_record_policy = get_intercept_mode_policy(request, intercept_settings, mode.RECORD)
-    if active_record_policy in (record_policy.ALL, record_policy.API):
-        request_model = RequestModel(intercept_settings.settings)
-        start_sse_record(flow, request_model, intercept_settings)
+    if active_record_policy not in (record_policy.ALL, record_policy.API):
+        return
+
+    request_model = RequestModel(intercept_settings.settings)
+    # SSE chunks are local-ORM-only; remote create shape cannot install the tee.
+    if not request_model.is_local:
+        Logger.instance(LOG_ID).debug('Skipping SSE record: remote request model is not supported')
+        return
+
+    created = __record_request_sync(context, request_model)
+    start_sse_record(flow, created)
 
 ###
 # 1. AFTER_DEVELOP gets triggered
@@ -154,6 +168,21 @@ def handle_response_record(context: RecordContext):
                 ([record_policy.ALL, record_policy.API, record_policy.FOUND, record_policy.NOT_FOUND], active_record_policy)
             )
 
+def __prepare_record_flow(context: RecordContext) -> 'MitmproxyHTTPFlow':
+    """Deepcopy + minimize + record rewrite. Shared by sync and async record."""
+    flow = context.flow
+    RequestTransformationEntryLogger.log_recording(flow.request, flow.request.url)
+
+    flow_copy = deepcopy(flow)
+    intercept_settings = context.intercept_settings
+
+    active_record_strategy = get_active_mode_strategy(intercept_settings)
+    if active_record_strategy == record_strategy.MINIMAL:
+        minimize_headers(flow_copy)
+
+    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
+    return flow_copy
+
 def __record_handler(context: RecordContext, flow_copy: 'MitmproxyHTTPFlow', request_model: RequestModel):
     intercept_settings = context.intercept_settings
 
@@ -171,18 +200,15 @@ def __record_handler(context: RecordContext, flow_copy: 'MitmproxyHTTPFlow', req
     else:
         InterceptedRequestsLogger.error("Record failure", request=flow_copy.request, response=flow_copy.response)
 
+    return res
+
+def __record_request_sync(context: RecordContext, request_model: RequestModel):
+    """Prepare + upload on the calling thread; returns create result (SSE needs Response.id)."""
+    flow_copy = __prepare_record_flow(context)
+    return __record_handler(context, flow_copy, request_model)
+
 def __record_request(context: RecordContext, request_model: RequestModel):
-    flow = context.flow
-    RequestTransformationEntryLogger.log_recording(flow.request, flow.request.url)
-
-    flow_copy = deepcopy(flow)
-    intercept_settings = context.intercept_settings
-
-    active_record_strategy = get_active_mode_strategy(intercept_settings)
-    if active_record_strategy == record_strategy.MINIMAL:
-        minimize_headers(flow_copy)
-
-    rewrite_request_response(flow_copy, intercept_settings.record_rewrite_rules, mode=mode.RECORD)
+    flow_copy = __prepare_record_flow(context)
 
     if os.environ.get(ENV) == TEST:
         __record_handler(context, flow_copy, request_model)

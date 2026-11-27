@@ -37,8 +37,9 @@ sequenceDiagram
   Intercept->>Mitmproxy: flow.response.stream equals True
   alt RECORD and ALL or API
     Intercept->>Record: handle_sse_record
-    Record->>Sse: start_sse_record
-    Sse->>DB: create Request plus Response envelope raw
+    Note over Record: same prepare minimize rewrite BEFORE/AFTER_RECORD upload as __record_request but sync
+    Record->>DB: create Request plus Response envelope raw
+    Record->>Sse: start_sse_record with create result
     Sse->>Mitmproxy: flow.response.stream equals tee
   end
   loop each chunk
@@ -60,7 +61,9 @@ mitmproxy decides body handling at `responseheaders` via `flow.response.stream`:
 | `True` | Forward each chunk to the client with no buffering. Client stays live; Stoobly never sees the body. |
 | callable | For each chunk, mitmproxy invokes the callback and forwards whatever it returns. |
 
-[`responseheaders`](../stoobly_agent/app/proxy/intercept_handler.py) always sets `stream = True` first so every SSE response streams (even when not recording). In RECORD with policy `all` / `api`, [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py) overrides that with a **tee** callback ([`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py)): on each chunk it returns `[data]` (client still receives the event) and inserts a `response_chunk` (until caps). That keeps passthrough latency while building the envelope + chunk store instead of stuffing the body into `Response.raw`. `.stream` is not cleared afterward; mitmproxy simply stops calling it when the upstream body ends.
+[`responseheaders`](../stoobly_agent/app/proxy/intercept_handler.py) always sets `stream = True` first so every SSE response streams (even when not recording). In RECORD with policy `all` / `api`, [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) runs the **same** record preprocessing as non-SSE (`__prepare_record_flow` → BEFORE_RECORD → `upload_request` → AFTER_RECORD) **synchronously**, then [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py) installs a **tee** callback ([`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py)): on each chunk it returns `[data]` (client still receives the event) and inserts a `response_chunk` (until caps). That keeps passthrough latency while building the envelope + chunk store instead of stuffing the body into `Response.raw`. `.stream` is not cleared afterward; mitmproxy simply stops calling it when the upstream body ends.
+
+Request-side develop rewrite / fixture / overwrite still run earlier in [`request`](../stoobly_agent/app/proxy/intercept_handler.py) → [`handle_request_record`](../stoobly_agent/app/proxy/handle_record_service.py), same as non-SSE. AFTER_DEVELOP still runs on the `response` hook after finalize (SSE cannot wait for a full buffered body before create).
 
 ### When recording starts
 
@@ -72,7 +75,7 @@ In **RECORD** mode, early create + tee run when record policy is:
 | `api` | Yes (`text/event-stream` is allowed alongside json/xml/text/plain) |
 | `found` / `not_found` / `none` | No — client still gets streaming passthrough |
 
-Implementation: [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
+Implementation: [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) → `__record_request_sync` → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
 
 ### What is stored
 
@@ -91,6 +94,8 @@ From [`sse_record_service`](../stoobly_agent/app/proxy/record/sse_record_service
 - Max **10 MiB** total payload bytes
 
 After a cap: further events are still **forwarded** to the client; persistence stops; `stream_status` becomes `capped`.
+
+Persistence errors in the tee (`ResponseChunk.create`, status updates, finalize) are caught the same way: log, mark `capped`, stop inserting chunks, and still return `[data]` so client delivery is never coupled to DB success.
 
 ### `response` hook behavior
 
