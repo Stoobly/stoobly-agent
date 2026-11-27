@@ -224,6 +224,28 @@ class TestResponseChunksMock:
     python_response = RawHttpResponseAdapter(response.raw).to_response()
     assert python_response.status_code == 203
 
+  def test_response_adapter_update_rolls_back_chunks_when_envelope_fails(self, sse_request: Request):
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    before = sse_body_from_chunks(sse_request.response)
+    original_update = Response.update
+
+    def failing_envelope_update(self, _attributes=None, **attributes):
+      attrs = dict(attributes)
+      if _attributes is not None:
+        attrs.update(_attributes)
+      if 'raw' in attrs:
+        return False
+      return original_update(self, _attributes, **attributes)
+
+    with patch.object(Response, 'update', failing_envelope_update):
+      _, status = adapter.update(sse_request.response.id, text='data: nope\n\n', status=203)
+
+    assert status == 500
+    response = Response.find(sse_request.response.id)
+    assert sse_body_from_chunks(response) == before
+    python_response = RawHttpResponseAdapter(response.raw).to_response()
+    assert python_response.status_code == 200
+
   def test_replace_response_chunks_clears_body(self, sse_request: Request):
     replace_response_chunks(sse_request.response, b'')
     response = Response.find(sse_request.response.id)

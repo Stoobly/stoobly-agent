@@ -106,25 +106,27 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       python_response = transformer.transform()
       update_cols['raw'] = PythonResponseAdapterFactory(python_response).raw_response()
 
-    # Chunks before envelope so a failed body rewrite does not leave a partial raw update
-    if chunk_payload is not None:
-      from stoobly_agent.app.proxy.record.sse_record_service import replace_response_chunks
-      try:
-        replace_response_chunks(response, chunk_payload)
-      except Exception:
-        return self.internal_error('Could not update response chunks')
-
-    if update_cols:
-      if not response.update(update_cols):
-        return self.internal_error('Could not update response')
-
     if not update_cols and chunk_payload is None and not request_params:
       return self.success(self.__to_show_response(response))
 
-    if request_params:
-      request = self.__request_orm.find(response.request_id)
-      if request:
-        request.update(request_params)
+    # One transaction so chunk rewrite cannot commit without envelope/request hash
+    from stoobly_agent.lib.orm import ORM
+    try:
+      with ORM.instance().db.transaction():
+        if chunk_payload is not None:
+          from stoobly_agent.app.proxy.record.sse_record_service import replace_response_chunks
+          replace_response_chunks(response, chunk_payload)
+
+        if update_cols:
+          if not response.update(update_cols):
+            raise RuntimeError('Could not update response')
+
+        if request_params:
+          request = self.__request_orm.find(response.request_id)
+          if request and not request.update(request_params):
+            raise RuntimeError('Could not update request')
+    except Exception:
+      return self.internal_error('Could not update response')
 
     # Reload so show sees fresh stream_status / chunks
     response = Response.find(response_id)
