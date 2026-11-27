@@ -248,3 +248,23 @@ class TestSseRecordFromServer:
     # No tee; passthrough is owned by intercept_handler.responseheaders.
     assert flow.metadata.get(SSE_RESPONSE_ID_KEY) is None
     assert not callable(getattr(flow.response, 'stream', None))
+
+  def test_start_sse_record_skips_remote_request_model(self, settings, sse_server: SseServer):
+    flow = MitmproxyFlowMock()
+    flow.request = _mitmproxy_request_for_url(
+      sse_server.url,
+      {
+        custom_headers.PROXY_MODE: mode.RECORD,
+        custom_headers.RECORD_POLICY: record_policy.ALL,
+      },
+    )
+    flow.response = _sse_headers_response()
+    flow.response.stream = True
+
+    intercept_settings = InterceptSettings(settings, flow.request)
+    request_model = RequestModel(settings)
+    request_model.is_local = False
+
+    assert start_sse_record(flow, request_model, intercept_settings) is None
+    assert flow.metadata.get(SSE_RESPONSE_ID_KEY) is None
+    assert flow.response.stream is True

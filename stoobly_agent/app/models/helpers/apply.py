@@ -419,6 +419,7 @@ class Apply():
     """Recreate response_chunks from X-Stoobly-Chunk-Ref; leave Response.raw as envelope-only."""
     from stoobly_agent.config.constants import stream_status
     from stoobly_agent.config.constants.custom_headers import CHUNK_REF
+    from stoobly_agent.lib.orm import ORM
     from stoobly_agent.lib.orm.request import Request
     from stoobly_agent.lib.orm.response_chunk import ResponseChunk
     from stoobly_agent.app.models.factories.resource.local_db.helpers.chunk_ref import (
@@ -451,15 +452,20 @@ class Apply():
     if not request or not request.response:
       return
 
+    # Validate all chunk bytes before mutating ORM so a missing/unreadable file
+    # cannot wipe existing payloads.
+    chunks = read_chunks(slug_dir, chunk_refs)
+
     response = request.response
-    for existing in ResponseChunk.where('response_id', response.id).get():
-      existing.delete()
+    with ORM.instance().db.transaction():
+      for existing in ResponseChunk.where('response_id', response.id).get():
+        existing.delete()
 
-    for sequence, payload in read_chunks(slug_dir, chunk_refs):
-      ResponseChunk.create(
-        response_id=response.id,
-        sequence=sequence,
-        payload=payload,
-      )
+      for sequence, payload in chunks:
+        ResponseChunk.create(
+          response_id=response.id,
+          sequence=sequence,
+          payload=payload,
+        )
 
-    response.update(stream_status=stream_status.COMPLETE)
+      response.update(stream_status=stream_status.COMPLETE)

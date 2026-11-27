@@ -47,6 +47,12 @@ def start_sse_record(
   if flow.metadata.get(SSE_RESPONSE_ID_KEY):
     return Response.find(flow.metadata[SSE_RESPONSE_ID_KEY])
 
+  # SSE chunks are local-ORM-only. Remote create returns API JSON (no list[0]),
+  # so indexing that shape KeyErrors and never installs the tee — leave passthrough.
+  if not request_model.is_local:
+    Logger.instance(LOG_ID).debug('Skipping SSE record: remote request model is not supported')
+    return None
+
   joined_request = join_request_from_flow(flow, intercept_settings=intercept_settings)
 
   body_params = ParamBuilder({ 'flow': flow, 'joined_request': joined_request })

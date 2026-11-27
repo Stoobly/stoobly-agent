@@ -92,3 +92,23 @@ class TestSseSnapshotChunks:
     assert b'data: hello' not in (response.raw or b'')
 
     restored.delete()
+
+  def test_apply_preserves_chunks_when_chunk_file_missing(self, sse_request: Request, settings):
+    snapshot = RequestSnapshot.create(sse_request.uuid)
+    snapshot.write(sse_request)
+
+    chunks_dir = os.path.join(snapshot.slug_dir, 'chunks')
+    chunk_files = os.listdir(chunks_dir)
+    assert chunk_files
+    os.remove(os.path.join(chunks_dir, chunk_files[0]))
+
+    response_id = sse_request.response.id
+    before = ResponseChunk.where('response_id', response_id).order_by('sequence', 'asc').get()
+    assert len(before) == 2
+    before_payloads = [c.payload for c in before]
+
+    with pytest.raises(OSError):
+      Apply().request(sse_request.uuid)
+
+    after = ResponseChunk.where('response_id', response_id).order_by('sequence', 'asc').get()
+    assert [c.payload for c in after] == before_payloads
