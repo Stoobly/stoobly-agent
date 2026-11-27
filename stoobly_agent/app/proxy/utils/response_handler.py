@@ -102,4 +102,6 @@ def disable_transfer_encoding_chunked(response: 'MitmproxyResponse') -> None:
 
     if stripped:
         response.headers.set_all(header_name, new_header_values)
-        response.headers['Content-Length'] = str(len(response.content))
+    
+    # Enforce proper Content-Length header
+    response.headers['Content-Length'] = str(len(response.content))
