@@ -8,9 +8,11 @@ from mitmproxy.http import Headers, Request as MitmproxyRequest, Response as Mit
 
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_builder import RequestBuilder
 from stoobly_agent.app.models.factories.resource.local_db.request_adapter import LocalDBRequestAdapter
+from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_record_service import handle_sse_record
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mitmproxy.flow_mock import MitmproxyFlowMock
+from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.record.sse_record_service import (
   SSE_RESPONSE_ID_KEY,
@@ -21,7 +23,7 @@ from stoobly_agent.app.proxy.record.sse_record_service import (
 )
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 from stoobly_agent.app.proxy.replay.body_parser_service import is_event_stream
-from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mode, record_policy, record_strategy, stream_status
+from stoobly_agent.config.constants import custom_headers, develop_policy, lifecycle_hooks, mode, mock_policy, record_policy, record_strategy, stream_status
 from stoobly_agent.lib.orm.request import Request
 from stoobly_agent.lib.orm.response import Response
 from stoobly_agent.lib.orm.response_chunk import ResponseChunk
@@ -152,6 +154,78 @@ class TestResponseChunksMock:
     assert response.content == b'data: one\n\ndata: two\n\n'
     assert 'event-stream' in (response.headers.get('Content-Type') or '').lower()
     assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(sse_request.id)
+
+  def test_handle_request_mock_serves_chunks_as_body(self, settings, sse_request: Request):
+    """Mock path applies joined SSE chunks as one body (no paced stream)."""
+    flow = MitmproxyFlowMock()
+    flow.request = _mitmproxy_request_for_url(
+      'https://example.com/events',
+      {
+        custom_headers.PROXY_MODE: mode.MOCK,
+        custom_headers.MOCK_POLICY: mock_policy.ALL,
+      },
+    )
+
+    intercept_settings = InterceptSettings(settings, flow.request)
+    handle_request_mock(MockContext(flow, intercept_settings))
+
+    assert flow.response is not None
+    assert flow.response.status_code == 200
+    assert flow.response.content == b'data: one\n\ndata: two\n\n'
+    assert 'event-stream' in (flow.response.headers.get('Content-Type') or '').lower()
+    assert flow.response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(sse_request.id)
+
+  def test_handle_request_mock_reuses_mock_hooks(self, settings, sse_request: Request):
+    """SSE mock must share develop + BEFORE/AFTER_MOCK with the normal mock path."""
+    flow = MitmproxyFlowMock()
+    flow.request = _mitmproxy_request_for_url(
+      'https://example.com/events',
+      {
+        custom_headers.PROXY_MODE: mode.MOCK,
+        custom_headers.MOCK_POLICY: mock_policy.ALL,
+      },
+    )
+
+    before_develop = MagicMock()
+    after_develop = MagicMock()
+    before_mock = MagicMock()
+    after_mock = MagicMock()
+
+    intercept_settings = MagicMock()
+    intercept_settings.settings = settings
+    intercept_settings.mode = mode.MOCK
+    intercept_settings.mock_rewrite_rules = []
+    intercept_settings.develop_rewrite_rules = []
+    intercept_settings.ignore_rules = []
+    intercept_settings.public_directory_path = None
+    intercept_settings.response_fixtures_path = None
+    intercept_settings.scenario_key = None
+    intercept_settings.scenario_name = None
+    intercept_settings.lifecycle_hooks = {
+      lifecycle_hooks.BEFORE_DEVELOP: before_develop,
+      lifecycle_hooks.AFTER_DEVELOP: after_develop,
+      lifecycle_hooks.BEFORE_MOCK: before_mock,
+      lifecycle_hooks.AFTER_MOCK: after_mock,
+    }
+
+    with patch(
+      'stoobly_agent.app.proxy.handle_develop_service.get_intercept_mode_policy',
+      return_value=develop_policy.ALL,
+    ), patch(
+      'stoobly_agent.app.proxy.handle_mock_service.get_intercept_mode_policy',
+      return_value=mock_policy.ALL,
+    ):
+      handle_request_mock(MockContext(flow, intercept_settings))
+      handle_response_mock(MockContext(flow, intercept_settings))
+
+    before_develop.assert_called_once()
+    before_mock.assert_called_once()
+    after_develop.assert_called_once()
+    after_mock.assert_called_once()
+
+    assert flow.response is not None
+    assert flow.response.content == b'data: one\n\ndata: two\n\n'
+    assert 'event-stream' in (flow.response.headers.get('Content-Type') or '').lower()
 
 
 class TestSseRecordFromServer:
