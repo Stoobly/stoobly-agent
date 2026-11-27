@@ -155,6 +155,22 @@ class TestResponseChunksMock:
     assert 'event-stream' in (response.headers.get('Content-Type') or '').lower()
     assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(sse_request.id)
 
+  def test_response_adapter_show_hydrates_chunks(self, sse_request: Request):
+    from stoobly_agent.app.models.factories.resource.local_db.response_adapter import LocalDBResponseAdapter
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    shown, status = adapter.show(sse_request.id)
+    assert status == 200
+    assert shown[0]['text'] == 'data: one\n\ndata: two\n\n'
+    assert 'event-stream' in (shown[0]['mime_type'] or '').lower()
+
+  def test_response_adapter_mock_hydrates_chunks(self, sse_request: Request):
+    from stoobly_agent.app.models.factories.resource.local_db.response_adapter import LocalDBResponseAdapter
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    response, status = adapter.mock(sse_request.id)
+    assert status == 200
+    assert response.content == b'data: one\n\ndata: two\n\n'
+    assert 'event-stream' in (response.headers.get('Content-Type') or '').lower()
+
   def test_handle_request_mock_serves_chunks_as_body(self, settings, sse_request: Request):
     """Mock path applies joined SSE chunks as one body (no paced stream)."""
     flow = MitmproxyFlowMock()

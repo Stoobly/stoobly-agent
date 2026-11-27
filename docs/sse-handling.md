@@ -145,6 +145,22 @@ Joined-request decode ([`JoinedRequestStringAdapter.decode_response`](../stoobly
 
 ---
 
+## API / CLI show
+
+Read paths that surface a response body hydrate the same way as mock:
+
+| Path | Entry | Hydration |
+|------|--------|-----------|
+| API `GET /requests/:id/responses` | [`LocalDBResponseAdapter.show`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) | Joins chunks into `text` |
+| API `GET /requests/:id/responses/mock` | [`LocalDBResponseAdapter.mock`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) | Joins chunks into response content |
+| CLI `request response show` | [`RequestFacade.mock`](../stoobly_agent/app/cli/helpers/request_facade.py) → proxy mock → `LocalDBRequestAdapter.response` | Joins chunks |
+
+`Response.raw` stays envelope-only; hydration is in-memory only for the returned payload.
+
+**Update** (`LocalDBResponseAdapter.update` / `request response update`): writing a body for streamed responses (folding joined chunks into `raw`, or rewriting `response_chunks`) is **out of scope** for v1. Callers should not round-trip hydrated show/`text` back through update.
+
+---
+
 ## Snapshots
 
 SSE bodies are **not** represented only as `X-Stoobly-Body-Ref` (that would restore a concatenated body into `raw` and lose `response_chunks` on apply).
@@ -201,6 +217,7 @@ Migrations:
 - Generic non-SSE streaming (chunked JSON, etc.) beyond `text/event-stream`
 - Recording SSE under `found` / `not_found` policies at `responseheaders` time
 - Snapshot format v1 (`RequestSnapshotV1`): no `chunks/` externalization or `X-Stoobly-Chunk-Ref` (chunk snapshots are v2-only; see [snapshot-create.md](snapshot-create.md))
+- Updating SSE / streamed response bodies via API or CLI (`LocalDBResponseAdapter.update`): do not write hydrated text into `Response.raw`; chunk rewrite is not implemented
 
 ---
 
@@ -212,6 +229,7 @@ Migrations:
 | Record | [`sse_record_service.py`](../stoobly_agent/app/proxy/record/sse_record_service.py), [`handle_record_service.py`](../stoobly_agent/app/proxy/handle_record_service.py) |
 | ORM | [`response.py`](../stoobly_agent/lib/orm/response.py), [`response_chunk.py`](../stoobly_agent/lib/orm/response_chunk.py) |
 | Mock | [`request_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
+| API show / mock | [`response_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) |
 | Snapshot refs | [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py), [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) |
 | Apply | [`apply.py`](../stoobly_agent/app/models/helpers/apply.py) |
 | Test SSE upstream | [`sse_server.py`](../stoobly_agent/test/sse_server.py) (`python -m stoobly_agent.test.sse_server`) |
