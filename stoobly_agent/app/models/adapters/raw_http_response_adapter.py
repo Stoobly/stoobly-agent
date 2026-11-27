@@ -71,7 +71,23 @@ class RawHttpResponseAdapter():
 
     response.headers = headers
 
-    # Enforce proper Content-Length header
+    # Finite body: Content-Length and Transfer-Encoding: chunked must not both be sent.
+    te_values = headers.getlist('Transfer-Encoding')
+    if te_values:
+      new_te = []
+      stripped = False
+      for value in te_values:
+        parts = [p.strip() for p in value.split(',') if p.strip()]
+        kept = [p for p in parts if p.lower() != 'chunked']
+        if len(kept) != len(parts):
+          stripped = True
+        if kept:
+          new_te.append(HEADER_SEPARATOR.join(kept))
+      if stripped:
+        del headers['Transfer-Encoding']
+        for value in new_te:
+          headers.add('Transfer-Encoding', value)
+
     response.headers['Content-Length'] = str(len(self.body))
 
     from urllib3 import HTTPResponse
