@@ -157,7 +157,17 @@ Read paths that surface a response body hydrate the same way as mock:
 
 `Response.raw` stays envelope-only; hydration is in-memory only for the returned payload.
 
-**Update** (`LocalDBResponseAdapter.update` / `request response update`): writing a body for streamed responses (folding joined chunks into `raw`, or rewriting `response_chunks`) is **out of scope** for v1. Callers should not round-trip hydrated show/`text` back through update.
+### Update
+
+[`LocalDBResponseAdapter.update`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) / CLI `request response update`:
+
+| Field | Streamed behavior |
+|-------|-------------------|
+| status / headers / latency | Update envelope `Response.raw` only (body forced empty) |
+| `text` / `--body` | Replace `response_chunks` via [`replace_response_chunks`](../stoobly_agent/app/proxy/record/sse_record_service.py) (split on `\n\n` event boundaries); **do not** write body into `raw` |
+| `response_hash` | Stays the empty-envelope hash (aligned with `raw`) |
+
+Show after update still hydrates joined chunks into `text`.
 
 ---
 
@@ -217,7 +227,6 @@ Migrations:
 - Generic non-SSE streaming (chunked JSON, etc.) beyond `text/event-stream`
 - Recording SSE under `found` / `not_found` policies at `responseheaders` time
 - Snapshot format v1 (`RequestSnapshotV1`): no `chunks/` externalization or `X-Stoobly-Chunk-Ref` (chunk snapshots are v2-only; see [snapshot-create.md](snapshot-create.md))
-- Updating SSE / streamed response bodies via API or CLI (`LocalDBResponseAdapter.update`): do not write hydrated text into `Response.raw`; chunk rewrite is not implemented
 
 ---
 
