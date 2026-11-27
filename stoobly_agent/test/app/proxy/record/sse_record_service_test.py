@@ -325,7 +325,7 @@ class TestSseRecordFromServer:
     after_record.assert_called_once()
     mock_start.assert_called_once()
     assert mock_start.call_args.args[0] is flow
-    assert mock_start.call_args.args[1] == {'list': [{'uuid': 'unused-when-start-patched'}]}
+    assert mock_start.call_args.args[1] == 'unused-when-start-patched'
 
     recorded_flow = captured['flow']
     assert 'Authorization' not in recorded_flow.request.headers
@@ -333,7 +333,7 @@ class TestSseRecordFromServer:
     # Client-facing flow is not mutated by record preprocessing.
     assert list(flow.request.headers.items()) == original_request_headers
 
-  def test_start_sse_record_requires_create_result(self, settings, sse_server: SseServer):
+  def test_start_sse_record_requires_request_uuid(self, settings, sse_server: SseServer):
     flow = MitmproxyFlowMock()
     flow.request = _mitmproxy_request_for_url(sse_server.url)
     flow.response = _sse_headers_response()

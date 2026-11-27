@@ -31,22 +31,20 @@ def is_sse_flow(flow: 'MitmproxyHTTPFlow') -> bool:
   return is_event_stream(content_type)
 
 
-def start_sse_record(flow: 'MitmproxyHTTPFlow', created: Optional[dict]) -> Optional[Response]:
+def start_sse_record(flow: 'MitmproxyHTTPFlow', request_uuid: Optional[str]) -> Optional[Response]:
   """
   After the shared record upload path creates Request + envelope Response, mark
   streaming and tee body chunks into response_chunks (never into Response.raw).
 
-  ``created`` is the local-db create payload from __record_request_sync /
-  upload_request (``{'list': [{'uuid': ...}], ...}``).
+  ``request_uuid`` is the Request.uuid from the local-db create result.
   """
   if flow.metadata.get(SSE_RESPONSE_ID_KEY):
     return Response.find(flow.metadata[SSE_RESPONSE_ID_KEY])
 
-  if not created:
-    Logger.instance(LOG_ID).error('Failed to start SSE record: missing create result')
+  if not request_uuid:
+    Logger.instance(LOG_ID).error('Failed to start SSE record: missing request uuid')
     return None
 
-  request_uuid = created['list'][0]['uuid']
   request_record = Request.find_by(uuid=request_uuid)
   if not request_record:
     return None

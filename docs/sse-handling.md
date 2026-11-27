@@ -39,7 +39,7 @@ sequenceDiagram
     Intercept->>Record: handle_sse_record
     Note over Record: same prepare minimize rewrite BEFORE/AFTER_RECORD upload as __record_request but sync
     Record->>DB: create Request plus Response envelope raw
-    Record->>Sse: start_sse_record with create result
+    Record->>Sse: start_sse_record with request uuid
     Sse->>Mitmproxy: flow.response.stream equals tee
   end
   loop each chunk

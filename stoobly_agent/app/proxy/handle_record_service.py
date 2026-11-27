@@ -103,7 +103,10 @@ def handle_sse_record(context: RecordContext) -> None:
         return
 
     created = __record_request_sync(context, request_model)
-    start_sse_record(flow, created)
+    request_uuid = None
+    if created and created.get('list'):
+        request_uuid = created['list'][0].get('uuid')
+    start_sse_record(flow, request_uuid)
 
 ###
 # 1. AFTER_DEVELOP gets triggered
