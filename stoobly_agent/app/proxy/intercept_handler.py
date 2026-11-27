@@ -11,12 +11,17 @@ from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.proxy.context import InterceptContext
 from stoobly_agent.app.proxy.handle_mock_service import handle_request_mock, handle_response_mock
 from stoobly_agent.app.proxy.handle_develop_service import handle_request_develop, handle_response_develop_primary
-from stoobly_agent.app.proxy.handle_record_service import handle_request_record, handle_response_record
+from stoobly_agent.app.proxy.handle_record_service import (
+    handle_request_record,
+    handle_response_record,
+    handle_sse_record,
+)
 from stoobly_agent.app.proxy.handle_test_service import handle_request_test, handle_response_test
 from stoobly_agent.app.proxy.intercept_settings import InterceptSettings
 from stoobly_agent.app.proxy.mock.context import MockContext
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.record.context import RecordContext
+from stoobly_agent.app.proxy.record.sse_record_service import enable_sse_passthrough, is_sse_flow
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
 from stoobly_agent.app.proxy.utils.response_handler import bad_request
 from stoobly_agent.app.proxy.utils.upstreams import apply_upstreams, restore_upstreams
@@ -86,6 +91,26 @@ def request(flow: 'MitmproxyHTTPFlow'):
             )
     # Ephemeral reverse-proxy remap from --proxy-regular-upstream; restored in response().
     apply_upstreams(flow, intercept_settings.regular_upstreams)
+
+def responseheaders(flow: 'MitmproxyHTTPFlow'):
+    """
+    Enable streaming for SSE so the client receives events without waiting for end.
+    In RECORD mode (ALL / API), create envelope Response and tee chunks into response_chunks.
+    """
+    if not is_sse_flow(flow):
+        return
+
+    # Default for all SSE: stream to client without buffering. RECORD may override with a tee.
+    enable_sse_passthrough(flow)
+
+    request: 'MitmproxyRequest' = flow.request
+
+    intercept_settings = InterceptSettings(settings, request).with_cache(cache).with_scenario_model(__get_scenario_model())
+    if not intercept_settings.active:
+        return
+
+    if intercept_settings.mode == mode.RECORD:
+        handle_sse_record(RecordContext(flow, intercept_settings))
 
 def response(flow: 'MitmproxyHTTPFlow'):
     # Undo upstreams remap before response handlers see the request URL.

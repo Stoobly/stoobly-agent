@@ -15,6 +15,7 @@ from .body_ref import (
   relative_body_ref,
   write_body,
 )
+from .chunk_ref import CHUNK_REF_HEADER_LOWER
 from .header_ref import (
   HEADER_REF_HEADER,
   HEADER_REF_HEADER_LOWER,
@@ -60,6 +61,9 @@ def reconstitute_joined_request(joined: bytes, slug_dir: str) -> bytes:
   Convert v2 joined request bytes back to inline form by resolving
   X-Stoobly-Header-Ref and X-Stoobly-Body-Ref against slug_dir
   (.stoobly/snapshots/requests/<slug>/bodies|headers/<hash>).
+
+  Repeated X-Stoobly-Chunk-Ref headers are stripped and not inlined — apply
+  recreates response_chunks separately so Response.raw stays envelope-only for SSE.
   """
   adapter = JoinedRequestAdapter(joined)
   request_string = adapter.build_request_string()
@@ -142,7 +146,7 @@ def _externalize_http(
   start_line = lines[0]
   header_lines = _drop_headers(
     lines[1:],
-    {BODY_REF_HEADER_LOWER, HEADER_REF_HEADER_LOWER},
+    {BODY_REF_HEADER_LOWER, HEADER_REF_HEADER_LOWER, CHUNK_REF_HEADER_LOWER},
   )
 
   header_lines, extracted_headers, header_ref_index = extract_dedup_list_headers(
@@ -179,8 +183,9 @@ def _reconstitute_http(raw: bytes, slug_dir: str) -> bytes:
   header_lines = lines[1:]
   header_ref = _find_header_value(header_lines, HEADER_REF_HEADER_LOWER)
   body_ref = _find_header_value(header_lines, BODY_REF_HEADER_LOWER)
+  chunk_ref = _find_header_value(header_lines, CHUNK_REF_HEADER_LOWER)
 
-  if not header_ref and not body_ref:
+  if not header_ref and not body_ref and not chunk_ref:
     return raw
 
   restored_headers: List[bytes] = []
@@ -192,7 +197,8 @@ def _reconstitute_http(raw: bytes, slug_dir: str) -> bytes:
     name = _header_name_lower(line)
     if name == HEADER_REF_HEADER_LOWER:
       rebuilt.extend(restored_headers)
-    elif name == BODY_REF_HEADER_LOWER:
+    elif name == BODY_REF_HEADER_LOWER or name == CHUNK_REF_HEADER_LOWER:
+      # Chunk payloads are restored into response_chunks on apply, not into raw.
       continue
     else:
       rebuilt.append(line)

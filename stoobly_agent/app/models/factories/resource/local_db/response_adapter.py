@@ -37,9 +37,13 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       return self.__request_not_found()
 
     response = request.response
-    return self.success(ORMToRequestsResponseTransformer(response).with_response_id().transform())
+    return self.success(
+      self.__transformer_with_sse_body(response).with_response_id().transform()
+    )
 
   def update(self, response_id, **params):
+    # SSE body updates (writing joined chunks into Response.raw) are out of scope.
+    # See docs/sse-handling.md.
     response = Response.find(response_id)
 
     if not response:
@@ -97,8 +101,20 @@ class LocalDBResponseAdapter(LocalDBAdapter):
 
     return self.internal_error('Could not update response')
 
+  def __transformer_with_sse_body(self, response: Response) -> ORMToRequestsResponseTransformer:
+    """Envelope from Response.raw; SSE body joined from response_chunks when present."""
+    transformer = ORMToRequestsResponseTransformer(response)
+
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    chunk_count = ResponseChunk.where('response_id', response.id).count()
+    if response.stream_status or chunk_count > 0:
+      from stoobly_agent.app.proxy.record.sse_record_service import sse_body_from_chunks
+      transformer = transformer.with_body(sse_body_from_chunks(response))
+
+    return transformer
+
   def __to_show_response(self, response: Response):
-    python_response = ORMToRequestsResponseTransformer(response).transform()
+    python_response = self.__transformer_with_sse_body(response).transform()
     headers = python_response.headers
     content = python_response.content
 

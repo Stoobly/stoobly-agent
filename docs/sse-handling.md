@@ -1,0 +1,237 @@
+# SSE / streamed response handling
+
+How Stoobly records, mocks, and snapshots **Server-Sent Events** (`Content-Type: text/event-stream`) without buffering the whole stream before the client sees it, and without folding chunk payloads into `Response.raw`.
+
+## Background
+
+One SSE connection is still **one HTTP response**: status + headers once, then a body delivered as discrete events over time. The stream may never end.
+
+Stoobly therefore:
+
+- Keeps `Request` **1:1** `Response` (envelope).
+- Stores body fragments as `Response` **1:many** `response_chunks`.
+- Leaves `Response.raw` as the **envelope only** (status line + headers, empty body) for the life of the record.
+- Never concatenates chunk payloads into `raw` (in-memory join is used only for mock serving).
+
+Detection: [`is_event_stream`](../stoobly_agent/app/proxy/replay/body_parser_service.py) on response `Content-Type` (`text/event-stream`, optional parameters ignored).
+
+Non-SSE responses are unchanged: full body still lives in `Response.raw`.
+
+---
+
+## Record path
+
+Hook: [`responseheaders`](../stoobly_agent/app/proxy/intercept_handler.py) (before the usual `response` hook).
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Mitmproxy
+  participant Intercept as intercept_handler
+  participant Record as handle_record_service
+  participant Sse as sse_record_service
+  participant DB
+
+  Client->>Mitmproxy: GET SSE
+  Mitmproxy->>Intercept: responseheaders text/event-stream
+  Intercept->>Mitmproxy: flow.response.stream equals True
+  alt RECORD and ALL or API
+    Intercept->>Record: handle_sse_record
+    Note over Record: same prepare minimize rewrite BEFORE/AFTER_RECORD upload as __record_request but sync
+    Record->>DB: create Request plus Response envelope raw
+    Record->>Sse: start_sse_record with request uuid
+    Sse->>Mitmproxy: flow.response.stream equals tee
+  end
+  loop each chunk
+    Mitmproxy->>Client: forward chunk
+    Sse->>DB: insert response_chunk when recording
+  end
+  Note over Sse,DB: on end or empty tee finalize stream_status
+  Mitmproxy->>Intercept: response
+  Intercept->>Sse: finalize_sse_record skip re-upload
+```
+
+**Tee:** a mitmproxy `flow.response.stream` callback (named after Unix `tee`) that takes each body chunk and both **forwards** it to the client and **persists** it as a `response_chunk` when recording. Setting `stream = True` alone streams to the client without recording. See [`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py).
+
+mitmproxy decides body handling at `responseheaders` via `flow.response.stream`:
+
+| Value | Behavior |
+|-------|----------|
+| `False` (default) | Buffer the full body, then fire `response`. Unusable for long/open SSE streams. |
+| `True` | Forward each chunk to the client with no buffering. Client stays live; Stoobly never sees the body. |
+| callable | For each chunk, mitmproxy invokes the callback and forwards whatever it returns. |
+
+[`responseheaders`](../stoobly_agent/app/proxy/intercept_handler.py) always sets `stream = True` first so every SSE response streams (even when not recording). In RECORD with policy `all` / `api`, [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) runs the **same** record preprocessing as non-SSE (`__prepare_record_flow` → BEFORE_RECORD → `upload_request` → AFTER_RECORD) **synchronously**, then [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py) installs a **tee** callback ([`_build_tee`](../stoobly_agent/app/proxy/record/sse_record_service.py)): on each chunk it returns `[data]` (client still receives the event) and inserts a `response_chunk` (until caps). That keeps passthrough latency while building the envelope + chunk store instead of stuffing the body into `Response.raw`. `.stream` is not cleared afterward; mitmproxy simply stops calling it when the upstream body ends.
+
+Request-side develop rewrite / fixture / overwrite still run earlier in [`request`](../stoobly_agent/app/proxy/intercept_handler.py) → [`handle_request_record`](../stoobly_agent/app/proxy/handle_record_service.py), same as non-SSE. AFTER_DEVELOP still runs on the `response` hook after finalize (SSE cannot wait for a full buffered body before create).
+
+### When recording starts
+
+In **RECORD** mode, early create + tee run when record policy is:
+
+| Policy | SSE recorded? |
+|--------|----------------|
+| `all` | Yes |
+| `api` | Yes (`text/event-stream` is allowed alongside json/xml/text/plain) |
+| `found` / `not_found` / `none` | No — client still gets streaming passthrough |
+
+Implementation: [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_service.py) → `__record_request_sync` → [`start_sse_record`](../stoobly_agent/app/proxy/record/sse_record_service.py).
+
+### What is stored
+
+| Field | SSE meaning |
+|-------|-------------|
+| `responses.raw` | Envelope only (status + headers). **Never** updated when chunks arrive. |
+| `responses.stream_status` | `streaming` → `complete` or `capped` ([`stream_status`](../stoobly_agent/config/constants/stream_status.py)) |
+| `response_chunks` | Ordered `sequence` + `payload` body fragments |
+| `requests.response_hash` | Empty-body hash from create (aligned with envelope-only `Response.raw`; never updated from chunks) |
+
+### Caps (never-ending streams)
+
+From [`sse_record_service`](../stoobly_agent/app/proxy/record/sse_record_service.py):
+
+- Max **10_000** chunks
+- Max **10 MiB** total payload bytes
+
+After a cap: further events are still **forwarded** to the client; persistence stops; `stream_status` becomes `capped`.
+
+Persistence errors in the tee (`ResponseChunk.create`, status updates, finalize) are caught the same way: log, mark `capped`, stop inserting chunks, and still return `[data]` so client delivery is never coupled to DB success.
+
+### `response` hook behavior
+
+[`handle_response_record`](../stoobly_agent/app/proxy/handle_record_service.py) detects an SSE / already-started stream and:
+
+- Calls `finalize_sse_record` (idempotent if the tee already finalized).
+- Skips `disable_transfer_encoding_chunked` (that would force `Content-Length` and break open streams).
+- Skips the normal buffer-then-upload path (no second create).
+
+[`handle_response_test`](../stoobly_agent/app/proxy/handle_test_service.py) likewise skips `disable_transfer_encoding_chunked` for SSE so live streamed responses (including CLI `keep_live`) keep correct framing headers.
+
+---
+
+## Mock / replay path
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Mitmproxy
+  participant Mock as handle_mock_service
+  participant Adapter as LocalDBRequestAdapter
+  participant DB
+
+  Client->>Mitmproxy: GET SSE
+  Mitmproxy->>Mock: request MOCK mode
+  Mock->>Adapter: response match query
+  Adapter->>DB: find Request plus Response
+  Adapter->>DB: read envelope raw
+  alt stream_status set or chunks exist
+    Adapter->>DB: load response_chunks by sequence
+    Note over Adapter: sse_body_from_chunks join in memory
+  else non-SSE
+    Adapter->>DB: body from Response.raw
+  end
+  Adapter-->>Mock: requests.Response status headers body
+  Mock->>Mitmproxy: apply_response
+  Mitmproxy->>Client: full response body no paced delays
+```
+
+[`LocalDBRequestAdapter.response`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py):
+
+1. Status / headers from envelope `Response.raw`.
+2. If `stream_status` is set or chunks exist → body = ordered chunk payloads ([`sse_body_from_chunks`](../stoobly_agent/app/proxy/record/sse_record_service.py)).
+3. No inter-event timing / paced replay (v1) — chunks are joined in memory and applied as one body via [`apply_response`](../stoobly_agent/app/proxy/utils/response_handler.py).
+
+Joined-request decode ([`JoinedRequestStringAdapter.decode_response`](../stoobly_agent/app/models/adapters/orm/joined_request_string_adapter.py)) **skips** mutating `raw` when chunks / `stream_status` are present so snapshots keep envelope-only fidelity.
+
+---
+
+## API / CLI show
+
+Read paths that surface a response body hydrate the same way as mock:
+
+| Path | Entry | Hydration |
+|------|--------|-----------|
+| API `GET /requests/:id/responses` | [`LocalDBResponseAdapter.show`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) | Joins chunks into `text` |
+| API `GET /requests/:id/responses/mock` | [`LocalDBResponseAdapter.mock`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) | Joins chunks into response content |
+| CLI `request response show` | [`RequestFacade.mock`](../stoobly_agent/app/cli/helpers/request_facade.py) → proxy mock → `LocalDBRequestAdapter.response` | Joins chunks |
+
+`Response.raw` stays envelope-only; hydration is in-memory only for the returned payload.
+
+**Update** (`LocalDBResponseAdapter.update` / `request response update`): writing a body for streamed responses (folding joined chunks into `raw`, or rewriting `response_chunks`) is **out of scope** for v1. Callers should not round-trip hydrated show/`text` back through update.
+
+---
+
+## Snapshots
+
+SSE bodies are **not** represented only as `X-Stoobly-Body-Ref` (that would restore a concatenated body into `raw` and lose `response_chunks` on apply).
+
+### Write
+
+[`RequestSnapshotV2.build_entry` / `write`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py):
+
+1. Externalize envelope headers as usual (`X-Stoobly-Header-Ref` when applicable).
+2. Write each chunk under `.stoobly/snapshots/requests/<slug>/chunks/<hash16>` (content-addressed, same pattern as bodies/headers).
+3. Add one **`X-Stoobly-Chunk-Ref: .stoobly/snapshots/requests/<slug>/chunks/<hash>`** response header **per chunk**, in sequence order ([`CHUNK_REF`](../stoobly_agent/config/constants/custom_headers.py), helpers in [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py)).
+
+Real HTTP `Content-Type: text/event-stream` remains part of the response envelope (often under Header-Ref when on the dedup list). Shared method+path slugs are safe: distinct payloads get distinct hashes; identical payloads dedupe.
+
+### Apply / reconstitute
+
+- [`reconstitute_joined_request`](../stoobly_agent/app/models/factories/resource/local_db/helpers/joined_request_ref.py) **strips** all `X-Stoobly-Chunk-Ref` headers and does **not** inline chunk bytes into the HTTP body (envelope stays empty-bodied).
+- After put/create, [`Apply.__apply_response_chunks`](../stoobly_agent/app/models/helpers/apply.py) reads the ordered Chunk-Ref headers and recreates `response_chunks`, then sets `stream_status=complete`.
+
+Copy/cleanup of snapshot dirs includes the `chunks/` folder alongside `bodies/` and `headers/`.
+
+---
+
+## Data model
+
+```mermaid
+erDiagram
+  Request ||--|| Response : has_one
+  Response ||--o{ ResponseChunk : has_many_chunks
+  Request {
+    string uuid
+    string response_hash
+  }
+  Response {
+    bytes raw "envelope only for SSE"
+    string stream_status
+  }
+  ResponseChunk {
+    int sequence
+    bytes payload
+  }
+```
+
+Migrations:
+
+- [`2026_11_26_000001_create_response_chunks`](../stoobly_agent/db/migrations/2026_11_26_000001_create_response_chunks.py)
+- [`2026_11_26_000002_add_stream_status_column_to_responses`](../stoobly_agent/db/migrations/2026_11_26_000002_add_stream_status_column_to_responses.py)
+
+---
+
+## Out of scope (v1)
+
+- Inter-event timing / paced mock replay
+- Generic non-SSE streaming (chunked JSON, etc.) beyond `text/event-stream`
+- Recording SSE under `found` / `not_found` policies at `responseheaders` time
+- Snapshot format v1 (`RequestSnapshotV1`): no `chunks/` externalization or `X-Stoobly-Chunk-Ref` (chunk snapshots are v2-only; see [snapshot-create.md](snapshot-create.md))
+- Updating SSE / streamed response bodies via API or CLI (`LocalDBResponseAdapter.update`): do not write hydrated text into `Response.raw`; chunk rewrite is not implemented
+
+---
+
+## Key files
+
+| Area | Path |
+|------|------|
+| Hooks | [`intercept_handler.py`](../stoobly_agent/app/proxy/intercept_handler.py) (`responseheaders`, `response`) |
+| Record | [`sse_record_service.py`](../stoobly_agent/app/proxy/record/sse_record_service.py), [`handle_record_service.py`](../stoobly_agent/app/proxy/handle_record_service.py) |
+| ORM | [`response.py`](../stoobly_agent/lib/orm/response.py), [`response_chunk.py`](../stoobly_agent/lib/orm/response_chunk.py) |
+| Mock | [`request_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/request_adapter.py) |
+| API show / mock | [`response_adapter.py`](../stoobly_agent/app/models/factories/resource/local_db/response_adapter.py) |
+| Snapshot refs | [`chunk_ref.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/chunk_ref.py), [`request_snapshot.py`](../stoobly_agent/app/models/factories/resource/local_db/helpers/request_snapshot.py) |
+| Apply | [`apply.py`](../stoobly_agent/app/models/helpers/apply.py) |
+| Test SSE upstream | [`sse_server.py`](../stoobly_agent/test/sse_server.py) (`python -m stoobly_agent.test.sse_server`) |
+| Create flow | [snapshot-create.md](snapshot-create.md) |
+

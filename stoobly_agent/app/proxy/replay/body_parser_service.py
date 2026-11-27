@@ -12,6 +12,7 @@ from stoobly_agent.lib.utils.decode import decode
 
 from .multipart import decode as multipart_decode, encode as multipart_encode
 
+EVENT_STREAM = 'text/event-stream'
 JSON = 'application/json'
 MULTIPART_FORM = 'multipart/form-data'
 WWW_FORM_URLENCODED = 'application/x-www-form-urlencoded'
@@ -135,6 +136,13 @@ def is_json(content_type: str):
     _content_type = content_type.lower().split(';')[0]
     # e.g. custom json content-type: application/x-amz-json
     return _content_type == JSON or (_content_type.startswith('application/') and _content_type.endswith('json'))
+
+def is_event_stream(content_type: str):
+    if not content_type:
+        return False
+
+    _content_type = content_type.lower().split(';')[0]
+    return _content_type == EVENT_STREAM
 
 def is_xml(content_type: str):
     if not content_type:

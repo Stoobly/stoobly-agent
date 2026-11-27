@@ -15,7 +15,7 @@ from stoobly_agent.app.proxy.record.context import RecordContext
 from stoobly_agent.app.proxy.replay.body_parser_service import encode_response
 from stoobly_agent.app.proxy.replay.context import ReplayContext
 from stoobly_agent.app.proxy.utils.request_transformation_entry_logger import RequestTransformationEntryLogger
-from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding
+from stoobly_agent.app.proxy.utils.response_handler import bad_request, disable_transfer_encoding_chunked
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mock_policy, mode, record_policy, request_origin, test_policy, test_strategy
 from stoobly_agent.lib.intercepted_requests.logger import InterceptedRequestsLogger
 from stoobly_agent.lib.logger import Logger
@@ -29,6 +29,7 @@ from .handle_mock_service import (
 )
 from .handle_develop_service import handle_request_develop, handle_response_develop
 from .mock.context import MockContext
+from .record.sse_record_service import is_sse_flow
 from .test.helpers.expected_response_codec import encode_expected_response
 from .test.helpers.upload_test_service import inject_upload_test
 from .test.context_abc import TestContextABC as TestContext
@@ -85,7 +86,9 @@ def handle_response_test(context: ReplayContext) -> None:
         return
 
     # Else use test flow
-    disable_transfer_encoding(flow.response)
+    # SSE streams via responseheaders; do not force Content-Length.
+    if not is_sse_flow(flow):
+        disable_transfer_encoding_chunked(flow.response)
     handle_response_develop(context)
 
     # Mock policy is used for response handling

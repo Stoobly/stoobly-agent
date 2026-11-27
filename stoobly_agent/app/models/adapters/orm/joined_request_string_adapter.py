@@ -40,6 +40,11 @@ class JoinedRequestStringAdapter():
 
   def decode_response(self):
     response = self.response
+    # SSE bodies live in chunks; keep envelope-only raw as recorded.
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    if response.stream_status or ResponseChunk.where('response_id', response.id).count() > 0:
+      return
+
     python_response = PythonResponseAdapter(response).adapt()
 
     adapter = RawHttpResponseAdapter(response.raw)

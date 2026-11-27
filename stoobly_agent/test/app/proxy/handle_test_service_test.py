@@ -111,7 +111,8 @@ class TestHandleTestService:
         mock_handle_response_develop.assert_not_called()
 
     @pytest.mark.parametrize('mock_policy_value', [mock_policy.NONE, mock_policy.FOUND, mock_policy.ALL])
-    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding')
+    @patch('stoobly_agent.app.proxy.handle_test_service.is_sse_flow', return_value=False)
+    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding_chunked')
     @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_develop')
     @patch('stoobly_agent.app.proxy.handle_test_service.handle_request_mock_generic')
     @patch('stoobly_agent.app.proxy.handle_test_service.get_intercept_mode_policy')
@@ -120,7 +121,8 @@ class TestHandleTestService:
         mock_get_intercept_mode_policy,
         mock_handle_request_mock_generic,
         mock_handle_response_develop,
-        mock_disable_transfer_encoding,
+        mock_disable_transfer_encoding_chunked,
+        mock_is_sse_flow,
         mock_policy_value,
     ):
         flow = MagicMock()
@@ -143,12 +145,43 @@ class TestHandleTestService:
 
         handle_response_test(context)
 
-        mock_disable_transfer_encoding.assert_called_once_with(original_response)
+        mock_disable_transfer_encoding_chunked.assert_called_once_with(original_response)
         mock_handle_response_develop.assert_called_once_with(context)
         mock_handle_request_mock_generic.assert_called_once()
 
         passed_mock_context = mock_handle_request_mock_generic.call_args.args[0]
         assert passed_mock_context.flow is flow_copy
+
+    @patch('stoobly_agent.app.proxy.handle_test_service.is_sse_flow', return_value=True)
+    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding_chunked')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_develop')
+    @patch('stoobly_agent.app.proxy.handle_test_service.handle_request_mock_generic')
+    @patch('stoobly_agent.app.proxy.handle_test_service.get_intercept_mode_policy')
+    def test_handle_response_test_skips_disable_transfer_encoding_chunked_for_sse(
+        self,
+        mock_get_intercept_mode_policy,
+        mock_handle_request_mock_generic,
+        mock_handle_response_develop,
+        mock_disable_transfer_encoding_chunked,
+        mock_is_sse_flow,
+    ):
+        flow = MagicMock()
+        flow.response = MagicMock()
+        flow.request = MagicMock()
+        flow.request.headers = {}
+        flow.copy.return_value = MagicMock(request=MagicMock(headers={}))
+
+        intercept_settings = MagicMock()
+        mock_get_intercept_mode_policy.side_effect = [test_policy.FOUND, mock_policy.ALL]
+
+        context = MagicMock()
+        context.flow = flow
+        context.intercept_settings = intercept_settings
+
+        handle_response_test(context)
+
+        mock_disable_transfer_encoding_chunked.assert_not_called()
+        mock_handle_response_develop.assert_called_once_with(context)
 
     @pytest.mark.parametrize(
         'origin,expect_live',
@@ -157,7 +190,8 @@ class TestHandleTestService:
             ('proxy', False),
         ],
     )
-    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding')
+    @patch('stoobly_agent.app.proxy.handle_test_service.is_sse_flow', return_value=False)
+    @patch('stoobly_agent.app.proxy.handle_test_service.disable_transfer_encoding_chunked')
     @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_develop')
     @patch('stoobly_agent.app.proxy.handle_test_service.handle_response_mock')
     @patch('stoobly_agent.app.proxy.handle_test_service.handle_mock_success_service')
@@ -172,7 +206,8 @@ class TestHandleTestService:
         mock_handle_mock_success_service,
         mock_handle_response_mock,
         mock_handle_response_develop,
-        mock_disable_transfer_encoding,
+        mock_disable_transfer_encoding_chunked,
+        mock_is_sse_flow,
         origin,
         expect_live,
     ):
