@@ -132,6 +132,9 @@ def _build_tee(flow: 'MitmproxyHTTPFlow', response_id: int) -> Callable[[bytes],
         _mark_capped('size_or_count_cap')
       else:
         try:
+          # Sync ORM insert on the stream callback: fine for typical SSE rates,
+          # but can stall mitmproxy under high-frequency events (up to MAX_SSE_CHUNKS).
+          # Follow-up: buffer/flush in batches or persist off the callback thread.
           ResponseChunk.create(
             response_id=response_id,
             sequence=state['sequence'],
