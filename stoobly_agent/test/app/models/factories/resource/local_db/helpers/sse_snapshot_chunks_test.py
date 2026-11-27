@@ -93,6 +93,38 @@ class TestSseSnapshotChunks:
 
     restored.delete()
 
+  def test_apply_non_sse_snapshot_clears_stale_chunks(self, sse_request: Request, settings):
+    """Re-applying a non-SSE snapshot over an SSE record must drop chunks/stream_status."""
+    uuid = sse_request.uuid
+    response = sse_request.response
+    assert response.stream_status == stream_status.COMPLETE
+    assert ResponseChunk.where('response_id', response.id).count() == 2
+
+    # Snapshot a non-SSE body under the SSE request's uuid (no Chunk-Refs).
+    status = RequestBuilder(
+      method='GET',
+      request_body='',
+      request_headers={},
+      response_body='{"ok":true}',
+      response_headers={'Content-Type': 'application/json'},
+      status_code=200,
+      url='https://example.com/sse',
+    ).with_settings(settings).build()[1]
+    assert status == 200
+    non_sse_request = Request.last()
+    RequestSnapshot.create(uuid).write(non_sse_request)
+    non_sse_request.delete()
+
+    result = Apply().request(uuid)
+    assert result is not False
+
+    restored = Request.find_by(uuid=uuid)
+    assert restored is not None
+    response = restored.response
+    assert response.stream_status is None
+    assert ResponseChunk.where('response_id', response.id).count() == 0
+    assert b'{"ok":true}' in (response.raw or b'')
+
   def test_apply_preserves_chunks_when_chunk_file_missing(self, sse_request: Request, settings):
     snapshot = RequestSnapshot.create(sse_request.uuid)
     snapshot.write(sse_request)

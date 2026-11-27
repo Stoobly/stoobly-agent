@@ -441,22 +441,29 @@ class Apply():
       if is_chunk_ref(ref):
         chunk_refs.append(ref)
 
+    request = Request.find_by(uuid=snapshot.uuid)
+    if not request or not request.response:
+      return
+
+    response = request.response
+
+    # Non-SSE snapshots have no Chunk-Refs; clear any leftover SSE state so
+    # mock/show use Response.raw instead of stale response_chunks.
     if not chunk_refs:
+      with ORM.instance().db.transaction():
+        for existing in ResponseChunk.where('response_id', response.id).get():
+          existing.delete()
+        response.update(stream_status=None)
       return
 
     slug_dir = snapshot.slug_dir
     if not slug_dir:
       return
 
-    request = Request.find_by(uuid=snapshot.uuid)
-    if not request or not request.response:
-      return
-
     # Validate all chunk bytes before mutating ORM so a missing/unreadable file
     # cannot wipe existing payloads.
     chunks = read_chunks(slug_dir, chunk_refs)
 
-    response = request.response
     with ORM.instance().db.transaction():
       for existing in ResponseChunk.where('response_id', response.id).get():
         existing.delete()
