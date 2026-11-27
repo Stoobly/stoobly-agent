@@ -63,7 +63,9 @@ class LocalDBResponseAdapter(LocalDBAdapter):
 
     # Prefer hydrated body for SSE so content-encoding changes re-encode stream text
     current_python_response = self.__transformer_with_sse_body(response).transform()
-    if params.get('text') is None:
+    # Only auto-fill text when headers are being updated; omitted headers is {} so
+    # content-encoding would always look changed vs any existing encoding.
+    if params.get('text') is None and params.get('headers'):
       if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
         content = current_python_response.content
         params['text'] = decode(content) if isinstance(content, (bytes, bytearray)) else content
