@@ -19,6 +19,7 @@ from stoobly_agent.app.proxy.record.sse_record_service import (
   sse_body_from_chunks,
   start_sse_record,
 )
+from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 from stoobly_agent.app.proxy.replay.body_parser_service import is_event_stream
 from stoobly_agent.config.constants import custom_headers, lifecycle_hooks, mode, record_policy, record_strategy, stream_status
 from stoobly_agent.lib.orm.request import Request
@@ -227,6 +228,9 @@ class TestSseRecordFromServer:
     chunks = ResponseChunk.where('response_id', response.id).order_by('sequence', 'asc').get()
     assert len(chunks) >= 1
     assert b''.join(c.payload or b'' for c in chunks) == expected
+    # response_hash aligns with empty envelope body in raw, not joined chunks
+    request = response.request
+    assert request.response_hash == RequestHasher.instance().hash_text(b'')
 
   def test_handle_sse_record_passthrough_when_policy_none(
     self, settings, sse_server: SseServer

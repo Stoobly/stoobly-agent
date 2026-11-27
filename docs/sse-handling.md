@@ -11,7 +11,7 @@ Stoobly therefore:
 - Keeps `Request` **1:1** `Response` (envelope).
 - Stores body fragments as `Response` **1:many** `response_chunks`.
 - Leaves `Response.raw` as the **envelope only** (status line + headers, empty body) for the life of the record.
-- Never concatenates chunk payloads into `raw` (in-memory join is used only for hashing / mock serving).
+- Never concatenates chunk payloads into `raw` (in-memory join is used only for mock serving).
 
 Detection: [`is_event_stream`](../stoobly_agent/app/proxy/replay/body_parser_service.py) on response `Content-Type` (`text/event-stream`, optional parameters ignored).
 
@@ -84,7 +84,7 @@ Implementation: [`handle_sse_record`](../stoobly_agent/app/proxy/handle_record_s
 | `responses.raw` | Envelope only (status + headers). **Never** updated when chunks arrive. |
 | `responses.stream_status` | `streaming` → `complete` or `capped` ([`stream_status`](../stoobly_agent/config/constants/stream_status.py)) |
 | `response_chunks` | Ordered `sequence` + `payload` body fragments |
-| `requests.response_hash` | Updated on finalize from concatenated chunk payloads **in memory** |
+| `requests.response_hash` | Empty-body hash from create (aligned with envelope-only `Response.raw`; never updated from chunks) |
 
 ### Caps (never-ending streams)
 

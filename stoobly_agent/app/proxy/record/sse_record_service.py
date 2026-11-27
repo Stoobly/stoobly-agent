@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Callable, List, Optional
 if TYPE_CHECKING:
   from mitmproxy.http import HTTPFlow as MitmproxyHTTPFlow
 
-from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 from stoobly_agent.config.constants import stream_status
 from stoobly_agent.lib.logger import Logger
 # TODO: do not reference ORM directly; go through the DB adapter instead
@@ -80,12 +79,8 @@ def finalize_sse_record(flow: 'MitmproxyHTTPFlow', capped: bool = False) -> None
   status = stream_status.CAPPED if capped or response.stream_status == stream_status.CAPPED else stream_status.COMPLETE
   response.update(stream_status=status)
 
-  # Update request response_hash from chunk payloads (in memory only; raw stays envelope)
-  request = response.request
-  if request:
-    body = sse_body_from_chunks(response)
-    request.update(response_hash=RequestHasher.instance().hash_text(body))
-
+  # response_hash stays the empty-body hash from create: it must align with
+  # Response.raw (envelope-only). Chunk payloads are never folded into raw.
   flow.metadata[SSE_FINALIZED_KEY] = True
   Logger.instance(LOG_ID).debug(f"Finalized SSE record response_id={response_id} status={status}")
 
