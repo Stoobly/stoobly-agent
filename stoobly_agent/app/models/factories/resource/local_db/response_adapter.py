@@ -61,13 +61,13 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       transformer.with_headers(headers)
       request_params['response_headers_hash'] = RequestHasher.instance().hash_params(headers)
 
-    # Prefer hydrated body for SSE so content-encoding changes re-encode stream text
-    current_python_response = self.__transformer_with_sse_body(response).transform()
+    # Envelope only for headers/encoding — hydrate SSE body only when auto-filling text
+    current_python_response = ORMToRequestsResponseTransformer(response).transform()
     # Only auto-fill text when headers are being updated; omitted headers is {} so
     # content-encoding would always look changed vs any existing encoding.
     if params.get('text') is None and params.get('headers'):
       if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
-        content = current_python_response.content
+        content = self.__transformer_with_sse_body(response).transform().content
         params['text'] = decode(content) if isinstance(content, (bytes, bytearray)) else content
 
     if params.get('text') is not None:
