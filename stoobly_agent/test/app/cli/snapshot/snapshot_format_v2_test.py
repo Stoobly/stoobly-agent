@@ -691,7 +691,7 @@ class TestSnapshotFormatV2:
         assert HEADER_REF_HEADER.encode() in on_disk
 
       with tempfile.TemporaryDirectory() as dirpath:
-        copy_result = runner.invoke(snapshot, ['copy', dirpath, '--request-key', recorded_request.key()])
+        copy_result = runner.invoke(request, ['snapshot', 'copy', recorded_request.key(), dirpath])
         assert copy_result.exit_code == 0
 
         dest_data_dir = DataDir.instance(dirpath)

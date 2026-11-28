@@ -83,11 +83,13 @@ class TestCliSubcommandsLoad:
         ['request', 'snapshot', 'diff'],
         ['request', 'snapshot', 'list'],
         ['request', 'snapshot', 'reset'],
+        ['request', 'snapshot', 'copy'],
         ['scenario', 'snapshot', 'create'],
         ['scenario', 'snapshot', 'update'],
         ['scenario', 'snapshot', 'diff'],
         ['scenario', 'snapshot', 'list'],
         ['scenario', 'snapshot', 'reset'],
+        ['scenario', 'snapshot', 'copy'],
     ]
 
     @pytest.mark.parametrize('command', SUBCOMMANDS)
