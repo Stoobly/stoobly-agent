@@ -7,17 +7,48 @@ if TYPE_CHECKING:
 
 class LocalDBAdapter():
 
-  def content_encoding_header(self, new_headers: dict, old_headers: dict):
-    content_encoding = new_headers.get('content-encoding')
-    if not content_encoding:
-      # If content-encoding has changed, we will need to decode 'text' and re-encode it
-      content_encoding = old_headers.get('content-encoding') 
-    return content_encoding
+  CONTENT_ENCODING_HEADER = 'content-encoding'
+  TRANSFER_ENCODING_HEADER = 'transfer-encoding'
+
+  # Framing / body-coding headers that must stay in sync with stored bytes
+  IMMUTABLE_RESPONSE_HEADERS = {
+    CONTENT_ENCODING_HEADER: 'Content-Encoding',
+    TRANSFER_ENCODING_HEADER: 'Transfer-Encoding',
+  }
+
+  def header_value(self, headers, name: str):
+    if not headers:
+      return None
+
+    lower = name.lower()
+    for key, value in headers.items():
+      if str(key).lower() == lower:
+        return value
+
+    return None
+
+  def normalize_header_value(self, value):
+    if value is None:
+      return None
+
+    value = str(value).strip()
+    if not value:
+      return None
+
+    return value.lower()
+
+  def rejected_immutable_header_change(self, new_headers, old_headers):
+    for name, display_name in self.IMMUTABLE_RESPONSE_HEADERS.items():
+      new_value = self.normalize_header_value(self.header_value(new_headers, name))
+      old_value = self.normalize_header_value(self.header_value(old_headers, name))
+      if new_value != old_value:
+        return self.bad_request(f'Changing {display_name} is not allowed')
+
+    return None
 
   def encode_body(self, body: str, content_encoding: str):
-    # If a content encoding is set in the response headers, encode the body
-    # TODO: we may want to create a separate endpoint for this and have the client drive encoding before updating
-    # otherwise, there's an assumption that the 'text' will always be provided as decoded
+    # If a content encoding is set in the response headers, encode the body.
+    # Assumes 'text' is always provided decoded.
 
     if content_encoding:
       # Lazy import for runtime usage

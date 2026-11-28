@@ -39,9 +39,20 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
 
     python_response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
     headers = python_response.headers
+
+    header_key = name.lower()
+    if header_key in self.IMMUTABLE_RESPONSE_HEADERS:
+      new_value = self.normalize_header_value(value)
+      old_value = self.normalize_header_value(self.header_value(headers, header_key))
+      if new_value != old_value:
+        display_name = self.IMMUTABLE_RESPONSE_HEADERS[header_key]
+        return self.bad_request(f'Changing {display_name} is not allowed')
+
     headers[name] = value
 
-    LocalDBResponseAdapter(self.__request_orm).update(response.id, headers=headers)
+    _res, status = LocalDBResponseAdapter(self.__request_orm).update(response.id, headers=headers)
+    if status != 200:
+      return _res, status
 
     return self.success({
       'name': name,
@@ -83,16 +94,23 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     if not decoded_id:
       return self.bad_request('Invalid id')
 
-    response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
-    headers = response.headers
+    python_response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
+    headers = python_response.headers
 
-    header_name = decoded_id['name'] 
+    header_name = decoded_id['name']
+    header_key = header_name.lower()
+    if header_key in self.IMMUTABLE_RESPONSE_HEADERS:
+      display_name = self.IMMUTABLE_RESPONSE_HEADERS[header_key]
+      return self.bad_request(f'Changing {display_name} is not allowed')
+
     if not header_name in headers:
       return self.not_found('Response header not found')
 
     del headers[header_name]
 
-    LocalDBResponseAdapter(self.__request_orm).update(request_id, headers=headers)
+    _res, status = LocalDBResponseAdapter(self.__request_orm).update(response.id, headers=headers)
+    if status != 200:
+      return _res, status
 
     return self.success({
       'name': decoded_id['name'],
