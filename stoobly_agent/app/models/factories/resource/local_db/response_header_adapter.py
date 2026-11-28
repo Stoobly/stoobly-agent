@@ -94,8 +94,8 @@ class LocalDBResponseHeaderAdapter(LocalDBAdapter):
     if not decoded_id:
       return self.bad_request('Invalid id')
 
-    response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
-    headers = response.headers
+    python_response: 'Response' = RawHttpResponseAdapter(response.raw).to_response()
+    headers = python_response.headers
 
     header_name = decoded_id['name']
     header_key = header_name.lower()
