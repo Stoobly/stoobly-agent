@@ -1,11 +1,8 @@
-import sys
-
 import click
 
 from stoobly_agent.app.cli.helpers.handle_replay_service import JSON_FORMAT
 from stoobly_agent.app.cli.helpers.print_service import FORMATS, print_snapshots, select_print_options
 from stoobly_agent.app.cli.helpers.snapshot_list_service import list_snapshots, snapshot_list_options
-from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION, PUT_ACTION, SCENARIO_RESOURCE
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, test_filter, test_output_level, test_strategy
@@ -15,7 +12,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from stoobly_agent.app.models.import_ import IMPORT_FORMATS, HAR_FORMAT
 
 from .handlers.scenario_cli_handler import (
-    create_handler, delete_handler, import_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_handler, test_handler, diff_handler, update_handler
+    create_handler, delete_handler, import_handler, list_handler, replay_handler, reset_handler, show_handler, snapshot_create_handler, snapshot_update_handler, test_handler, diff_handler, update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.validations import *
@@ -149,32 +146,26 @@ if is_local:
 
     @snapshot.command(
         name='create',
-        help="Create a scenario snapshot"
+        help="Create scenario snapshot(s). Omit key to snapshot all without an existing snapshot."
     )
     @click.option('--action', default=PUT_ACTION, type=click.Choice([DELETE_ACTION, PUT_ACTION]), help='Sets snapshot action.')
     @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response bodies.")
     @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
     @click.option('--no-verify', is_flag=True, default=False)
-    @click.argument('scenario_key')
+    @click.argument('scenario_key', required=False)
     def snapshot_create(**kwargs):
-        from stoobly_agent.lib.api.keys import ScenarioKey
+        snapshot_create_handler(kwargs)
 
-        scenario_key = kwargs.get('scenario_key')
-        scenario_uuid = ScenarioKey(scenario_key).id if scenario_key else None
-        scenario_snapshot_path = snapshot_handler(kwargs)
-
-        if scenario_snapshot_path is None:
-            print("Error: Could not snapshot scenario", file=sys.stderr)
-            sys.exit(1)
-
-        update_request_snapshots(
-          action=kwargs['action'],
-          file_path=scenario_snapshot_path,
-          lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
-          no_verify=kwargs.get('no_verify', False),
-          with_snapshot=False,
-          resource_uuid=scenario_uuid,
-        )
+    @snapshot.command(
+        name='update',
+        help="Update scenario snapshot(s) that differ from the DB. Omit key to update all that differ."
+    )
+    @click.option('--decode', default=False, is_flag=True, help="Toggles whether to decode response bodies.")
+    @click.option('--lifecycle-hooks-path', help='Path to lifecycle hooks script.')
+    @click.option('--no-verify', is_flag=True, default=False)
+    @click.argument('scenario_key', required=False)
+    def snapshot_update(**kwargs):
+        snapshot_update_handler(kwargs)
 
     @snapshot.command(
         name='reset',

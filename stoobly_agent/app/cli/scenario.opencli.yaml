@@ -207,10 +207,10 @@ command:
     description: Manage scenario snapshots
     commands:
     - name: create
-      description: Create a scenario snapshot
+      description: Create scenario snapshot(s). Omit key to snapshot all without an existing snapshot.
       arguments:
       - name: scenario_key
-        required: true
+        required: false
       options:
       - name: action
         description: Sets snapshot action.
@@ -219,6 +219,19 @@ command:
           acceptedValues:
           - DELETE
           - PUT
+      - name: decode
+        description: Toggles whether to decode response bodies.
+      - name: lifecycle-hooks-path
+        description: Path to lifecycle hooks script.
+        arguments:
+        - name: lifecycle_hooks_path
+      - name: no-verify
+    - name: update
+      description: Update scenario snapshot(s) that differ from the DB. Omit key to update all that differ.
+      arguments:
+      - name: scenario_key
+        required: false
+      options:
       - name: decode
         description: Toggles whether to decode response bodies.
       - name: lifecycle-hooks-path

@@ -5,11 +5,18 @@ How `request snapshot create` and `scenario snapshot create` write snapshot file
 ## Commands
 
 ```bash
-stoobly-agent request snapshot create [--action PUT|DELETE] [--decode] <request_key>
-stoobly-agent scenario snapshot create [--action PUT|DELETE] [--decode] <scenario_key>
+stoobly-agent request snapshot create [--action PUT|DELETE] [--decode] [request_key]
+stoobly-agent scenario snapshot create [--action PUT|DELETE] [--decode] [scenario_key]
+stoobly-agent request snapshot update [--decode] [request_key]
+stoobly-agent scenario snapshot update [--decode] [scenario_key]
 ```
 
 Default `--action` is `PUT` (write/replace). `DELETE` removes snapshot files (when safe) and appends a delete event.
+
+- **`create` with a key**: snapshot that resource (same as before). `--action DELETE` is only valid with a key.
+- **`create` without a key**: snapshot all non-deleted resources of that type that have **no** existing snapshot (`PUT` only; `DELETE` is rejected).
+- **`update` with a key**: re-snapshot that resource only if it differs from its snapshot.
+- **`update` without a key**: re-snapshot all already-snapshotted resources of that type that currently differ. Request update covers standalone request snapshots only; scenario-contained request diffs are covered by scenario update.
 
 ## High-level flow
 
