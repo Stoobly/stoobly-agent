@@ -491,7 +491,6 @@ def snapshot_update_handler(kwargs):
   request_key = kwargs.get('request_key')
   write_kwargs = {k: v for k, v in kwargs.items() if k != 'request_key'}
   write_kwargs['action'] = PUT_ACTION
-  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
 
   def _update_uuid(request_uuid: str):
     resource = Request.find_by(uuid=request_uuid)
@@ -522,16 +521,26 @@ def snapshot_update_handler(kwargs):
       if not snapshot.exists:
         print('Error: Snapshot not found for this request.', file=sys.stderr)
         sys.exit(1)
-      if request_snapshot_has_diff(snapshot):
-        _update_uuid(resolved.id)
+      if not request_snapshot_has_diff(snapshot):
+        return
+      write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+      _update_uuid(resolved.id)
       return
 
-    def _maybe_update(snapshot: RequestSnapshot):
+    targets = []
+
+    def _collect(snapshot: RequestSnapshot):
       if request_snapshot_has_diff(snapshot):
-        _update_uuid(snapshot.uuid)
+        targets.append(snapshot.uuid)
 
     # Standalone request snapshots only; scenario-contained diffs belong to scenario snapshot update
-    iter_put_request_snapshots(_maybe_update, include_scenario_contained=False)
+    iter_put_request_snapshots(_collect, include_scenario_contained=False)
+    if not targets:
+      return
+
+    write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+    for request_uuid in targets:
+      _update_uuid(request_uuid)
   except MalformedLogEventError as e:
     print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)

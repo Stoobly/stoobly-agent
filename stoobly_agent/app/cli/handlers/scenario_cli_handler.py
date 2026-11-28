@@ -320,7 +320,6 @@ def snapshot_update_handler(kwargs):
   scenario_key = kwargs.get('scenario_key')
   write_kwargs = {k: v for k, v in kwargs.items() if k != 'scenario_key'}
   write_kwargs['action'] = PUT_ACTION
-  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
 
   def _update_uuid(scenario_uuid: str):
     resource = Scenario.find_by(uuid=scenario_uuid)
@@ -351,15 +350,25 @@ def snapshot_update_handler(kwargs):
       if not snapshot.exists:
         print('Error: Snapshot not found for this scenario.', file=sys.stderr)
         sys.exit(1)
-      if scenario_snapshot_has_diff(snapshot):
-        _update_uuid(resolved.id)
+      if not scenario_snapshot_has_diff(snapshot):
+        return
+      write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+      _update_uuid(resolved.id)
       return
 
-    def _maybe_update(snapshot: ScenarioSnapshot):
-      if scenario_snapshot_has_diff(snapshot):
-        _update_uuid(snapshot.uuid)
+    targets = []
 
-    iter_put_scenario_snapshots(_maybe_update)
+    def _collect(snapshot: ScenarioSnapshot):
+      if scenario_snapshot_has_diff(snapshot):
+        targets.append(snapshot.uuid)
+
+    iter_put_scenario_snapshots(_collect)
+    if not targets:
+      return
+
+    write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+    for scenario_uuid in targets:
+      _update_uuid(scenario_uuid)
   except MalformedLogEventError as e:
     print(f"Error: {e}", file=sys.stderr)
     sys.exit(1)
