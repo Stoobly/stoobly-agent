@@ -57,24 +57,29 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       transformer.with_status(params['status'])
 
     headers = params.get('headers') or {}
+    current_python_response = None
+
+    if params.get('headers') or params.get('text') is not None:
+      current_python_response = ORMToRequestsResponseTransformer(response).transform()
+
     if params.get('headers'):
+      rejected = self.rejected_immutable_header_change(
+        headers, current_python_response.headers
+      )
+      if rejected:
+        return rejected
+
       transformer.with_headers(headers)
       request_params['response_headers_hash'] = RequestHasher.instance().hash_params(headers)
-
-    # Envelope only for headers/encoding — hydrate SSE body only when auto-filling text
-    current_python_response = ORMToRequestsResponseTransformer(response).transform()
-    # Only auto-fill text when headers are being updated; omitted headers is {} so
-    # content-encoding would always look changed vs any existing encoding.
-    if params.get('text') is None and params.get('headers'):
-      if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
-        content = self.__transformer_with_sse_body(response).transform().content
-        params['text'] = decode(content) if isinstance(content, (bytes, bytearray)) else content
 
     if params.get('text') is not None:
       text = params['text']
       if isinstance(text, (bytes, bytearray)):
         text = decode(text)
-      content_encoding = self.content_encoding_header(headers, current_python_response.headers)
+      # Content-Encoding is immutable; always re-encode with the stored value
+      content_encoding = self.header_value(
+        current_python_response.headers, self.CONTENT_ENCODING_HEADER
+      )
       encoded_text = self.encode_body(text, content_encoding)
       if not isinstance(encoded_text, (bytes, bytearray)):
         encoded_text = encoded_text.encode()
