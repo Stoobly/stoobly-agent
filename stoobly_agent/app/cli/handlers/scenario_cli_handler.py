@@ -212,6 +212,7 @@ def update_handler(kwargs):
   print_scenarios([res], **print_options)
 
 def snapshot_handler(kwargs):
+  """Create a snapshot for a single scenario. Expects kwargs['scenario_key']."""
   scenario_key = kwargs['scenario_key']
   del kwargs['scenario_key']
 
@@ -225,7 +226,10 @@ def snapshot_handler(kwargs):
     sys.exit(1)
 
   from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
-  kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
+  if 'format' not in kwargs:
+    kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
+  else:
+    kwargs.pop('prompt', None)
 
   response, status = scenario.snapshot(scenario_key, kwargs)
 
@@ -234,6 +238,134 @@ def snapshot_handler(kwargs):
     sys.exit(1)
 
   return response
+
+def snapshot_create_handler(kwargs):
+  """
+  Create scenario snapshot(s).
+  With scenario_key: same as before.
+  Without: snapshot all non-deleted scenarios that have no existing snapshot.
+  """
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  from stoobly_agent.app.cli.helpers.snapshot_bulk_service import (
+    MalformedLogEventError,
+    unsnapshotted_scenarios,
+  )
+  from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
+  from stoobly_agent.lib.api.keys import ScenarioKey
+
+  scenario_key = kwargs.get('scenario_key')
+  if scenario_key:
+    scenario_uuid = ScenarioKey(scenario_key).id
+    scenario_snapshot_path = snapshot_handler(kwargs)
+    if scenario_snapshot_path is None:
+      print("Error: Could not snapshot scenario", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=kwargs['action'],
+      file_path=scenario_snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=scenario_uuid,
+    )
+    return
+
+  try:
+    targets = unsnapshotted_scenarios()
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+
+  if not targets:
+    return
+
+  write_kwargs = {**kwargs}
+  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+
+  for target in targets:
+    one_kwargs = {
+      **write_kwargs,
+      'scenario_key': target.key(),
+    }
+    scenario_snapshot_path = snapshot_handler(one_kwargs)
+    if scenario_snapshot_path is None:
+      print(f"Error: Could not snapshot scenario {target.uuid}", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=kwargs['action'],
+      file_path=scenario_snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=target.uuid,
+    )
+
+def snapshot_update_handler(kwargs):
+  """
+  Re-snapshot scenario(s) that differ from their snapshot.
+  With scenario_key: update that scenario if it differs.
+  Without: update all snapshotted scenarios that differ.
+  """
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  from stoobly_agent.app.cli.helpers.snapshot_bulk_service import (
+    MalformedLogEventError,
+    MalformedRequestSnapshotError,
+    iter_put_scenario_snapshots,
+    scenario_snapshot_has_diff,
+  )
+  from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
+  from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import PUT_ACTION
+  from stoobly_agent.lib.orm.scenario import Scenario
+
+  scenario_key = kwargs.get('scenario_key')
+  write_kwargs = {k: v for k, v in kwargs.items() if k != 'scenario_key'}
+  write_kwargs['action'] = PUT_ACTION
+  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+
+  def _update_uuid(scenario_uuid: str):
+    resource = Scenario.find_by(uuid=scenario_uuid)
+    if not resource:
+      print(f"Error: Current scenario not found for {scenario_uuid}", file=sys.stderr)
+      sys.exit(1)
+    one_kwargs = {
+      **write_kwargs,
+      'scenario_key': resource.key(),
+    }
+    scenario_snapshot_path = snapshot_handler(one_kwargs)
+    if scenario_snapshot_path is None:
+      print(f"Error: Could not snapshot scenario {scenario_uuid}", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=PUT_ACTION,
+      file_path=scenario_snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=scenario_uuid,
+    )
+
+  try:
+    if scenario_key:
+      resolved = validate_scenario_key(scenario_key)
+      snapshot = ScenarioSnapshot.create(resolved.id)
+      if not snapshot.exists:
+        print('Error: Snapshot not found for this scenario.', file=sys.stderr)
+        sys.exit(1)
+      if scenario_snapshot_has_diff(snapshot):
+        _update_uuid(resolved.id)
+      return
+
+    def _maybe_update(snapshot: ScenarioSnapshot):
+      if scenario_snapshot_has_diff(snapshot):
+        _update_uuid(snapshot.uuid)
+
+    iter_put_scenario_snapshots(_maybe_update)
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+  except MalformedRequestSnapshotError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 def test_handler(kwargs: ScenarioTestOptions):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']

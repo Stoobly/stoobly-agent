@@ -386,6 +386,7 @@ def reset_handler(kwargs):
     print('Could not reset the request.')
 
 def snapshot_handler(kwargs):
+  """Create a snapshot for a single request. Expects kwargs['request_key']."""
   request_key = kwargs['request_key']
   del kwargs['request_key']
 
@@ -399,7 +400,10 @@ def snapshot_handler(kwargs):
     sys.exit(1)
 
   from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
-  kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
+  if 'format' not in kwargs:
+    kwargs['format'] = get_snapshot_format(prompt=kwargs.pop('prompt', True))
+  else:
+    kwargs.pop('prompt', None)
 
   response, status = request.snapshot(request_key, kwargs)
   if status != 200:
@@ -407,6 +411,133 @@ def snapshot_handler(kwargs):
     sys.exit(1)
 
   return response
+
+def snapshot_create_handler(kwargs):
+  """
+  Create request snapshot(s).
+  With request_key: same as before.
+  Without: snapshot all non-deleted requests that have no existing snapshot.
+  """
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  from stoobly_agent.app.cli.helpers.snapshot_bulk_service import (
+    MalformedLogEventError,
+    unsnapshotted_requests,
+  )
+  from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
+  from stoobly_agent.lib.api.keys import RequestKey
+
+  request_key = kwargs.get('request_key')
+  if request_key:
+    request_uuid = RequestKey(request_key).id
+    snapshot_path = snapshot_handler(kwargs)
+    if snapshot_path is None:
+      print("Error: Could not snapshot request", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=kwargs['action'],
+      file_path=snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=request_uuid,
+    )
+    return
+
+  try:
+    targets = unsnapshotted_requests()
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+
+  if not targets:
+    return
+
+  write_kwargs = {**kwargs}
+  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+
+  for target in targets:
+    one_kwargs = {
+      **write_kwargs,
+      'request_key': target.key(),
+    }
+    snapshot_path = snapshot_handler(one_kwargs)
+    if snapshot_path is None:
+      print(f"Error: Could not snapshot request {target.uuid}", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=kwargs['action'],
+      file_path=snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=target.uuid,
+    )
+
+def snapshot_update_handler(kwargs):
+  """
+  Re-snapshot request(s) that differ from their snapshot.
+  With request_key: update that request if it differs.
+  Without: update all snapshotted requests that differ.
+  """
+  from stoobly_agent.app.cli.helpers.snapshot_format_service import get_snapshot_format
+  from stoobly_agent.app.cli.helpers.snapshot_bulk_service import (
+    MalformedLogEventError,
+    MalformedRequestSnapshotError,
+    iter_put_request_snapshots,
+    request_snapshot_has_diff,
+  )
+  from stoobly_agent.app.cli.helpers.update_request_snapshots_service import update_request_snapshots
+
+  request_key = kwargs.get('request_key')
+  write_kwargs = {k: v for k, v in kwargs.items() if k != 'request_key'}
+  write_kwargs['action'] = PUT_ACTION
+  write_kwargs['format'] = get_snapshot_format(prompt=write_kwargs.pop('prompt', True))
+
+  def _update_uuid(request_uuid: str):
+    resource = Request.find_by(uuid=request_uuid)
+    if not resource:
+      print(f"Error: Current request not found for {request_uuid}", file=sys.stderr)
+      sys.exit(1)
+    one_kwargs = {
+      **write_kwargs,
+      'request_key': resource.key(),
+    }
+    snapshot_path = snapshot_handler(one_kwargs)
+    if snapshot_path is None:
+      print(f"Error: Could not snapshot request {request_uuid}", file=sys.stderr)
+      sys.exit(1)
+    update_request_snapshots(
+      action=PUT_ACTION,
+      file_path=snapshot_path,
+      lifecycle_hooks_path=kwargs.get('lifecycle_hooks_path'),
+      no_verify=kwargs.get('no_verify', False),
+      with_snapshot=False,
+      resource_uuid=request_uuid,
+    )
+
+  try:
+    if request_key:
+      resolved = validate_request_key(request_key)
+      snapshot = RequestSnapshot.create(resolved.id)
+      if not snapshot.exists:
+        print('Error: Snapshot not found for this request.', file=sys.stderr)
+        sys.exit(1)
+      if request_snapshot_has_diff(snapshot):
+        _update_uuid(resolved.id)
+      return
+
+    def _maybe_update(snapshot: RequestSnapshot):
+      if request_snapshot_has_diff(snapshot):
+        _update_uuid(snapshot.uuid)
+
+    # Standalone request snapshots only; scenario-contained diffs belong to scenario snapshot update
+    iter_put_request_snapshots(_maybe_update, include_scenario_contained=False)
+  except MalformedLogEventError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+  except MalformedRequestSnapshotError as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 def test_handler(kwargs: RequestTestOptions):
   os.environ[env_vars.LOG_LEVEL] = kwargs['log_level']
