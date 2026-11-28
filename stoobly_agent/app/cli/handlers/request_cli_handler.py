@@ -15,6 +15,7 @@ from stoobly_agent.app.models.adapters.raw_http_request_adapter import RawHttpRe
 from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
+  DELETE_ACTION,
   MalformedLogEventError,
   PUT_ACTION,
   REQUEST_RESOURCE,
@@ -442,6 +443,14 @@ def snapshot_create_handler(kwargs):
       resource_uuid=request_uuid,
     )
     return
+
+  if kwargs.get('action') == DELETE_ACTION:
+    print(
+      "Error: --action DELETE requires a request key. "
+      "Omitting the key only creates snapshots for resources without one.",
+      file=sys.stderr,
+    )
+    sys.exit(1)
 
   try:
     targets = unsnapshotted_requests()

@@ -12,6 +12,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snaps
 from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import (
+  DELETE_ACTION,
   MalformedLogEventError,
   PUT_ACTION,
   SCENARIO_RESOURCE,
@@ -270,6 +271,14 @@ def snapshot_create_handler(kwargs):
     )
     return
 
+  if kwargs.get('action') == DELETE_ACTION:
+    print(
+      "Error: --action DELETE requires a scenario key. "
+      "Omitting the key only creates snapshots for resources without one.",
+      file=sys.stderr,
+    )
+    sys.exit(1)
+
   try:
     targets = unsnapshotted_scenarios()
   except MalformedLogEventError as e:
@@ -503,11 +512,27 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   request_snapshots = []
   snapshot.iter_request_snapshots(lambda request_snapshot: request_snapshots.append(request_snapshot))
 
+  snapshot_request_uuids = {request_snapshot.uuid for request_snapshot in request_snapshots}
+  current_requests = current_scenario.requests or []
+  current_request_uuids = {request.uuid for request in current_requests}
+
+  requests_missing_snapshot = [
+    request for request in current_requests if request.uuid not in snapshot_request_uuids
+  ]
+  request_snapshots_missing_from_scenario = [
+    request_snapshot
+    for request_snapshot in request_snapshots
+    if request_snapshot.uuid not in current_request_uuids
+  ]
+
   request_analyses = []
+  requests_missing_resource = []
   for request_snapshot in request_snapshots:
+    if request_snapshot.uuid not in current_request_uuids:
+      continue
     current_request = request_snapshot.find_resource()
     if not current_request or not current_request.response:
-      request_analyses.append((request_snapshot, None))
+      requests_missing_resource.append(request_snapshot)
       continue
     try:
       request_analyses.append((request_snapshot, analyze_request_diff(request_snapshot, current_request)))
@@ -515,16 +540,12 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
       print(f"Error: {e}", file=sys.stderr)
       sys.exit(1)
 
-  snapshot_request_uuids = set([request_snapshot.uuid for request_snapshot in request_snapshots])
-  current_requests = current_scenario.requests or []
-  requests_missing_snapshot = list(filter(
-    lambda request: request.uuid not in snapshot_request_uuids, current_requests
-  ))
-
   has_any_diff = (
     metadata_has_diff
     or any(analysis and analysis.has_diff for _, analysis in request_analyses)
     or len(requests_missing_snapshot) > 0
+    or len(request_snapshots_missing_from_scenario) > 0
+    or len(requests_missing_resource) > 0
   )
   if not has_any_diff:
     return
@@ -548,7 +569,12 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
   request_diffs = [
     analysis for _, analysis in request_analyses if analysis and analysis.has_diff
   ]
-  has_request_output = len(request_diffs) > 0 or len(requests_missing_snapshot) > 0
+  has_request_output = (
+    len(request_diffs) > 0
+    or len(requests_missing_snapshot) > 0
+    or len(request_snapshots_missing_from_scenario) > 0
+    or len(requests_missing_resource) > 0
+  )
 
   if full or has_request_output:
     print()
@@ -567,4 +593,19 @@ def _print_scenario_diff(snapshot: ScenarioSnapshot, full: bool, strict: bool):
       request.url or "",
       request.key(),
       f"{bcolors.FAIL}No snapshot found{bcolors.ENDC}",
+    )
+
+  for request_snapshot in request_snapshots_missing_from_scenario + requests_missing_resource:
+    print()
+    url_line = ''
+    try:
+      py_req = request_snapshot.python_request
+      if py_req is not None:
+        url_line = getattr(py_req, 'url', None) or ''
+    except Exception:
+      pass
+    emit_request_diff_header(
+      url_line,
+      request_snapshot.uuid,
+      f"{bcolors.FAIL}Request not found{bcolors.ENDC}",
     )

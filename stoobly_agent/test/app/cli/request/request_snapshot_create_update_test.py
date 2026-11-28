@@ -3,6 +3,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
@@ -50,6 +51,18 @@ class TestRequestSnapshotCreateWithoutKey:
 
     log = Log()
     assert len(log.raw_events) == before
+
+  def test_create_without_key_rejects_delete(self, runner: CliRunner, recorded_request: Request):
+    log = Log()
+    before = len(log.raw_events)
+
+    result = runner.invoke(request, ['snapshot', 'create', '--action', DELETE_ACTION])
+    assert result.exit_code != 0
+    assert 'DELETE requires a request key' in result.output
+
+    log = Log()
+    assert len(log.raw_events) == before
+    assert not RequestSnapshot.create(recorded_request.uuid).exists
 
 
 class TestRequestSnapshotUpdate:

@@ -97,7 +97,7 @@ def request_snapshot_has_diff(snapshot: RequestSnapshot) -> bool:
 
 
 def scenario_snapshot_has_diff(snapshot: ScenarioSnapshot) -> bool:
-  """Same conditions as scenario diff output (metadata, request diffs, missing requests)."""
+  """Same conditions as scenario diff output (metadata, request diffs, membership)."""
   if not snapshot.exists:
     return False
 
@@ -116,17 +116,19 @@ def scenario_snapshot_has_diff(snapshot: ScenarioSnapshot) -> bool:
   request_snapshots = []
   snapshot.iter_request_snapshots(lambda request_snapshot: request_snapshots.append(request_snapshot))
 
+  current_requests = current_scenario.requests or []
+  snapshot_request_uuids = {request_snapshot.uuid for request_snapshot in request_snapshots}
+  current_request_uuids = {request.uuid for request in current_requests}
+  # Membership grew or shrank (adds, removals, soft-deletes that clear scenario_id).
+  if snapshot_request_uuids != current_request_uuids:
+    return True
+
   for request_snapshot in request_snapshots:
     current_request = request_snapshot.find_resource()
     if not current_request or not current_request.response:
-      continue
+      return True
     analysis = analyze_request_diff(request_snapshot, current_request)
     if analysis and analysis.has_diff:
-      return True
-
-  snapshot_request_uuids = {request_snapshot.uuid for request_snapshot in request_snapshots}
-  for request in current_scenario.requests or []:
-    if request.uuid not in snapshot_request_uuids:
       return True
 
   return False

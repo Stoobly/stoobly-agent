@@ -3,6 +3,7 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.scenario_cli import scenario
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
+from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event import DELETE_ACTION
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshot
 from stoobly_agent.cli import record
 from stoobly_agent.lib.orm.request import Request
@@ -64,6 +65,20 @@ class TestScenarioSnapshotCreateWithoutKey:
 
     log = Log()
     assert len(log.raw_events) == before
+
+  def test_create_without_key_rejects_delete(
+    self, runner: CliRunner, created_scenario: Scenario, recorded_request: Request
+  ):
+    log = Log()
+    before = len(log.raw_events)
+
+    result = runner.invoke(scenario, ['snapshot', 'create', '--action', DELETE_ACTION])
+    assert result.exit_code != 0
+    assert 'DELETE requires a scenario key' in result.output
+
+    log = Log()
+    assert len(log.raw_events) == before
+    assert not ScenarioSnapshot.create(created_scenario.uuid).exists
 
 
 class TestScenarioSnapshotUpdate:
