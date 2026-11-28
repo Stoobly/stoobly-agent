@@ -30,6 +30,7 @@ from stoobly_agent.app.models.helpers.apply import Apply
 from stoobly_agent.app.proxy.replay.body_parser_service import decode_response
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.api.keys import RequestKey
 from stoobly_agent.lib.api.keys.request_key import InvalidRequestKey
 from stoobly_agent.lib.logger import Logger
@@ -385,6 +386,41 @@ def reset_handler(kwargs):
     print('Successfully reset the request!')
   else:
     print('Could not reset the request.')
+
+def snapshot_copy_handler(kwargs):
+  """Copy a request snapshot to a different data directory."""
+  key = validate_request_key(kwargs['request_key'])
+  destination = kwargs['destination']
+
+  try:
+    log = Log()
+    destination_log = Log(DataDir.instance(destination))
+
+    found = False
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+      if event.resource != REQUEST_RESOURCE:
+        continue
+      if event.resource_id != key.id:
+        continue
+
+      snapshot: RequestSnapshot = event.snapshot()
+      snapshot.copy(destination)
+      resource = snapshot.find_resource()
+
+      if not resource:
+        print(f"Could not find request {key.id}", file=sys.stderr)
+      else:
+        # Match history to copied file layout (empty dest must not default to v2)
+        destination_log.put(resource, format=snapshot.format)
+        found = True
+
+    if not found:
+      print(f"No snapshot found for {key}", file=sys.stderr)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 def snapshot_handler(kwargs):
   """Create a snapshot for a single request. Expects kwargs['request_key']."""

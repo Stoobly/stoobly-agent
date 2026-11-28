@@ -6,7 +6,6 @@ from click.testing import CliRunner
 
 from stoobly_agent.app.cli.request_cli import request
 from stoobly_agent.app.cli.scenario_cli import scenario
-from stoobly_agent.app.cli.snapshot_cli import snapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.log import Log
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import RequestSnapshot
 from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import ScenarioSnapshotV2
@@ -59,7 +58,7 @@ class TestCopy():
           # Check that no events have been copied
           assert len(log.events) == 0
 
-          apply_result = runner.invoke(snapshot, ['copy', dirpath, '--request-key', recorded_request.key()])
+          apply_result = runner.invoke(request, ['snapshot', 'copy', recorded_request.key(), dirpath])
           assert apply_result.exit_code == 0
 
           # Check that one event has been copied
@@ -105,8 +104,8 @@ class TestCopy():
           assert len(log.events) == 0
 
           copy_result = runner.invoke(
-            snapshot,
-            ['copy', dirpath, '--scenario-key', created_scenario.key()],
+            scenario,
+            ['snapshot', 'copy', created_scenario.key(), dirpath],
           )
           assert copy_result.exit_code == 0
           assert 'No snapshot found' not in (copy_result.output or '')
@@ -146,8 +145,8 @@ class TestCopy():
           assert detect_snapshot_format(dest) is None
 
           copy_result = runner.invoke(
-            snapshot,
-            ['copy', dirpath, '--request-key', recorded_request.key()],
+            request,
+            ['snapshot', 'copy', recorded_request.key(), dirpath],
           )
           assert copy_result.exit_code == 0
 

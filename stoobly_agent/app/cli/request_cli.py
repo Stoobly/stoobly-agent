@@ -14,7 +14,7 @@ from stoobly_agent.lib.utils.conditional_decorator import ConditionalDecorator
 from stoobly_agent.app.models.import_ import IMPORT_FORMATS, GOR_FORMAT, HAR_FORMAT
 
 from .handlers.request_cli_handler import (
-  create_handler, delete_handler, export_handler, get_handler, import_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_create_handler, snapshot_update_handler, test_handler, diff_handler, update_handler, response_update_handler
+  create_handler, delete_handler, export_handler, get_handler, import_handler, list_handler, query_handler, replay_handler, reset_handler, snapshot_copy_handler, snapshot_create_handler, snapshot_update_handler, test_handler, diff_handler, update_handler, response_update_handler
 )
 from .helpers.feature_flags import is_local as feature_is_local, is_remote as feature_is_remote
 from .helpers.log_options import build_log_filters, log_list_options
@@ -200,6 +200,15 @@ if is_local:
   @click.argument('request_key')
   def snapshot_reset(**kwargs):
     reset_handler(kwargs)
+
+  @snapshot.command(
+    name='copy',
+    help="Copy a request snapshot to a different data directory."
+  )
+  @click.argument('request_key')
+  @click.argument('destination')
+  def snapshot_copy(**kwargs):
+    snapshot_copy_handler(kwargs)
 
   @snapshot.command(
     name='diff',

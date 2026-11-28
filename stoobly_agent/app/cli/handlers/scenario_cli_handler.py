@@ -20,6 +20,7 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
 from stoobly_agent.app.proxy.test.helpers.diff_service import diff as diff_strings
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.constants import alias_resolve_strategy, env_vars
+from stoobly_agent.config.data_dir import DataDir
 from stoobly_agent.lib.logger import bcolors, Logger
 
 from ..helpers.scenario_facade import ScenarioFacade
@@ -174,6 +175,42 @@ def reset_handler(kwargs):
     print('Successfully reset the scenario!')
   else:
     print('Could not reset the scenario.')
+
+def snapshot_copy_handler(kwargs):
+  """Copy a scenario snapshot to a different data directory."""
+  key = validate_scenario_key(kwargs['scenario_key'])
+  destination = kwargs['destination']
+
+  try:
+    log = Log()
+    destination_log = Log(DataDir.instance(destination))
+
+    found = False
+    for event in log.target_events:
+      if event.action != PUT_ACTION:
+        continue
+      if event.resource != SCENARIO_RESOURCE:
+        continue
+      # resource_id is bare uuid (v1) or uuid from name/uuid (v2)
+      if event.resource_id != key.id:
+        continue
+
+      snapshot: ScenarioSnapshot = event.snapshot()
+      snapshot.copy(destination)
+      resource = snapshot.find_resource()
+
+      if not resource:
+        print(f"Could not find scenario {key.id}", file=sys.stderr)
+      else:
+        # Match history to copied file layout (empty dest must not default to v2)
+        destination_log.put(resource, format=snapshot.format)
+        found = True
+
+    if not found:
+      print(f"No snapshot found for {key}", file=sys.stderr)
+  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
 
 def show_handler(kwargs):
   print_options = select_print_options(kwargs)

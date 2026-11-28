@@ -13,10 +13,6 @@ from stoobly_agent.app.models.factories.resource.local_db.helpers.log_event impo
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.request_snapshot import (
   MalformedRequestSnapshotError,
-  RequestSnapshot,
-)
-from stoobly_agent.app.models.factories.resource.local_db.helpers.scenario_snapshot import (
-  ScenarioSnapshot,
 )
 from stoobly_agent.app.models.factories.resource.local_db.helpers.snapshot_format import (
   FORMAT_NONE,
@@ -30,7 +26,6 @@ from stoobly_agent.app.models.request_model import RequestModel
 from stoobly_agent.app.models.scenario_model import ScenarioModel
 from stoobly_agent.app.settings import Settings
 from stoobly_agent.config.data_dir import DataDir
-from stoobly_agent.lib.api.keys import RequestKey, ScenarioKey
 
 from .helpers.update_request_snapshots_service import update_request_snapshots
 
@@ -167,20 +162,6 @@ def reset(**kwargs):
     sys.exit(1)
 
 @snapshot.command(
-  help="Copy snapshots to a different data directory."
-)
-@click.option('--request-key', multiple=True, help='')
-@click.option('--scenario-key', multiple=True, help='')
-@click.argument('destination', required=True)
-def copy(**kwargs):
-  try:
-    destination = kwargs['destination']
-    __copy_scenarios(kwargs['scenario_key'], destination)
-    __copy_requests(kwargs['request_key'], destination)
-  except (MalformedLogEventError, MalformedRequestSnapshotError) as e:
-    __abort_with_error(e)
-
-@snapshot.command(
   help="Prune deleted snapshots."
 )
 @click.option('--dry-run', is_flag=True, default=False)
@@ -230,75 +211,6 @@ def migrate(**kwargs):
   print(
     f"Migrated {result['requests']} request(s) and {result['scenarios']} scenario(s) to {format_name}."
   )
-
-def __copy_requests(request_keys: list, destination: str):
-  log = Log()
-
-  data_dir = DataDir.instance(destination)
-  destination_log = Log(data_dir)
-
-  for request_key in request_keys:
-    found = False
-    key = RequestKey(request_key)
-
-    for event in log.target_events:
-      if event.action != PUT_ACTION:
-        continue
-
-      if event.resource != REQUEST_RESOURCE:
-        continue
-
-      if event.resource_id != key.id:
-        continue
-
-      snapshot: RequestSnapshot = event.snapshot()
-      snapshot.copy(destination)
-      resource = snapshot.find_resource()
-
-      if not resource:
-        print(f"Could not find request {key.id}", file=sys.stderr)
-      else:
-        # Match history to copied file layout (empty dest must not default to v2)
-        destination_log.put(resource, format=snapshot.format)
-        found = True
-
-    if not found:
-      print(f"No snapshot found for {key}", file=sys.stderr)
-
-def __copy_scenarios(scenario_keys: list, destination: str):
-  log = Log()
-
-  data_dir =  DataDir.instance(destination)
-  destination_log = Log(data_dir)
-
-  for scenario_key in scenario_keys:
-    found = False
-    key = ScenarioKey(scenario_key)
-
-    for event in log.target_events:
-      if event.action != PUT_ACTION:
-        continue
-
-      if event.resource != SCENARIO_RESOURCE:
-        continue
-
-      # resource_id is bare uuid (v1) or uuid from name/uuid (v2)
-      if event.resource_id != key.id:
-        continue
-
-      snapshot: ScenarioSnapshot = event.snapshot()
-      snapshot.copy(destination)
-      resource = snapshot.find_resource()
-
-      if not resource:
-        print(f"Could not find scenario {key.id}", file=sys.stderr)
-      else:
-        # Match history to copied file layout (empty dest must not default to v2)
-        destination_log.put(resource, format=snapshot.format)
-        found = True
-
-    if not found:
-      print(f"No snapshot found for {key}", file=sys.stderr)
 
 def __abort_with_error(error: Exception):
   print(f"Error: {error}", file=sys.stderr)
