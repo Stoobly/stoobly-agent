@@ -42,16 +42,16 @@ class LocalDBResponseAdapter(LocalDBAdapter):
     )
 
   def update(self, response_id, **params):
-    # SSE body updates (writing joined chunks into Response.raw) are out of scope.
-    # See docs/sse-handling.md.
     response = Response.find(response_id)
 
     if not response:
       return self.__request_not_found()
-    
+
+    is_streamed = self.__is_streamed(response)
     transformer = ORMToRequestsResponseTransformer(response)
 
     request_params = {}
+    chunk_payload = None
 
     if params.get('status'):
       transformer.with_status(params['status'])
@@ -60,21 +60,33 @@ class LocalDBResponseAdapter(LocalDBAdapter):
     if params.get('headers'):
       transformer.with_headers(headers)
       request_params['response_headers_hash'] = RequestHasher.instance().hash_params(headers)
- 
-    # If text not set and content-encoding changed 
+
+    # Envelope only for headers/encoding — hydrate SSE body only when auto-filling text
     current_python_response = ORMToRequestsResponseTransformer(response).transform()
-    if params.get('text') is None:
+    # Only auto-fill text when headers are being updated; omitted headers is {} so
+    # content-encoding would always look changed vs any existing encoding.
+    if params.get('text') is None and params.get('headers'):
       if headers.get('content-encoding') != current_python_response.headers.get('content-encoding'):
-        params['text'] = current_python_response.content
+        content = self.__transformer_with_sse_body(response).transform().content
+        params['text'] = decode(content) if isinstance(content, (bytes, bytearray)) else content
 
     if params.get('text') is not None:
-      text: str = params['text'] # This will be given in decoded format
+      text = params['text']
+      if isinstance(text, (bytes, bytearray)):
+        text = decode(text)
       content_encoding = self.content_encoding_header(headers, current_python_response.headers)
       encoded_text = self.encode_body(text, content_encoding)
+      if not isinstance(encoded_text, (bytes, bytearray)):
+        encoded_text = encoded_text.encode()
 
-      transformer.with_body(encoded_text)
-      request_params['response_hash'] = RequestHasher.instance().hash_text(encoded_text)
-      
+      if is_streamed:
+        # Body lives in response_chunks; keep Response.raw envelope-only.
+        chunk_payload = bytes(encoded_text)
+        request_params['response_hash'] = RequestHasher.instance().hash_text(b'')
+      else:
+        transformer.with_body(encoded_text)
+        request_params['response_hash'] = RequestHasher.instance().hash_text(encoded_text)
+
     if params.get('latency') is not None:
       control = response.control
       control = ResponseStringControl(control)
@@ -83,23 +95,48 @@ class LocalDBResponseAdapter(LocalDBAdapter):
       params['control'] = control.serialize()
       del params['latency']
 
+    update_cols = {}
+    if params.get('control') is not None:
+      update_cols['control'] = params['control']
+
     if transformer.dirty:
+      if is_streamed:
+        # Envelope only — never fold stream body into raw
+        transformer.with_body(b'')
       python_response = transformer.transform()
-      params = {
-        **params,
-        'raw': PythonResponseAdapterFactory(python_response).raw_response()
-      }
+      update_cols['raw'] = PythonResponseAdapterFactory(python_response).raw_response()
 
-    if response.update(params):
-      if len(request_params.keys()) != 0:
-        request = self.__request_orm.find(response.request_id)
-
-        if request:
-          request.update(request_params)
-
+    if not update_cols and chunk_payload is None and not request_params:
       return self.success(self.__to_show_response(response))
 
-    return self.internal_error('Could not update response')
+    # One transaction so chunk rewrite cannot commit without envelope/request hash
+    from stoobly_agent.lib.orm import ORM
+    try:
+      with ORM.instance().db.transaction():
+        if chunk_payload is not None:
+          from stoobly_agent.app.proxy.record.sse_record_service import replace_response_chunks
+          replace_response_chunks(response, chunk_payload)
+
+        if update_cols:
+          if not response.update(update_cols):
+            raise RuntimeError('Could not update response')
+
+        if request_params:
+          request = self.__request_orm.find(response.request_id)
+          if request and not request.update(request_params):
+            raise RuntimeError('Could not update request')
+    except Exception:
+      return self.internal_error('Could not update response')
+
+    # Reload so show sees fresh stream_status / chunks
+    response = Response.find(response_id)
+    return self.success(self.__to_show_response(response))
+
+  def __is_streamed(self, response: Response) -> bool:
+    from stoobly_agent.lib.orm.response_chunk import ResponseChunk
+    if response.stream_status:
+      return True
+    return ResponseChunk.where('response_id', response.id).count() > 0
 
   def __transformer_with_sse_body(self, response: Response) -> ORMToRequestsResponseTransformer:
     """Envelope from Response.raw; SSE body joined from response_chunks when present."""

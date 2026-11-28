@@ -18,9 +18,13 @@ from stoobly_agent.app.proxy.record.sse_record_service import (
   SSE_RESPONSE_ID_KEY,
   finalize_sse_record,
   is_sse_flow,
+  replace_response_chunks,
+  split_sse_body,
   sse_body_from_chunks,
   start_sse_record,
 )
+from stoobly_agent.app.models.adapters.raw_http_response_adapter import RawHttpResponseAdapter
+from stoobly_agent.app.models.factories.resource.local_db.response_adapter import LocalDBResponseAdapter
 from stoobly_agent.app.proxy.mock.request_hasher import RequestHasher
 from stoobly_agent.app.proxy.replay.body_parser_service import is_event_stream
 from stoobly_agent.config.constants import custom_headers, develop_policy, lifecycle_hooks, mode, mock_policy, record_policy, record_strategy, stream_status
@@ -156,7 +160,6 @@ class TestResponseChunksMock:
     assert response.headers.get(custom_headers.MOCK_REQUEST_ID) == str(sse_request.id)
 
   def test_response_adapter_show_hydrates_chunks(self, sse_request: Request):
-    from stoobly_agent.app.models.factories.resource.local_db.response_adapter import LocalDBResponseAdapter
     adapter = LocalDBResponseAdapter(request_orm=Request)
     shown, status = adapter.show(sse_request.id)
     assert status == 200
@@ -164,12 +167,91 @@ class TestResponseChunksMock:
     assert 'event-stream' in (shown[0]['mime_type'] or '').lower()
 
   def test_response_adapter_mock_hydrates_chunks(self, sse_request: Request):
-    from stoobly_agent.app.models.factories.resource.local_db.response_adapter import LocalDBResponseAdapter
     adapter = LocalDBResponseAdapter(request_orm=Request)
     response, status = adapter.mock(sse_request.id)
     assert status == 200
     assert response.content == b'data: one\n\ndata: two\n\n'
     assert 'event-stream' in (response.headers.get('Content-Type') or '').lower()
+
+  def test_split_sse_body_on_event_boundaries(self):
+    assert split_sse_body(b'') == []
+    assert split_sse_body(b'data: only') == [b'data: only']
+    assert split_sse_body(b'data: a\n\ndata: b\n\n') == [b'data: a\n\n', b'data: b\n\n']
+
+  def test_response_adapter_update_replaces_chunks(self, sse_request: Request):
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    new_body = 'data: alpha\n\ndata: beta\n\n'
+    shown, status = adapter.update(sse_request.response.id, text=new_body)
+    assert status == 200
+    assert shown['text'] == new_body
+
+    response = Response.find(sse_request.response.id)
+    raw = response.raw or b''
+    assert b'data: alpha' not in raw
+    assert b'data: one' not in raw
+    chunks = ResponseChunk.where('response_id', response.id).order_by('sequence', 'asc').get()
+    assert [c.payload for c in chunks] == [b'data: alpha\n\n', b'data: beta\n\n']
+    assert response.stream_status == stream_status.COMPLETE
+    assert Request.find(sse_request.id).response_hash == RequestHasher.instance().hash_text(b'')
+
+  def test_response_adapter_update_headers_keeps_chunks(self, sse_request: Request):
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    before = sse_body_from_chunks(sse_request.response)
+    headers = {
+      'Content-Type': 'text/event-stream',
+      'X-Custom': '1',
+    }
+    shown, status = adapter.update(sse_request.response.id, headers=headers)
+    assert status == 200
+    assert shown['text'] == before.decode()
+
+    response = Response.find(sse_request.response.id)
+    assert sse_body_from_chunks(response) == before
+    assert b'data: one' not in (response.raw or b'')
+    python_response = RawHttpResponseAdapter(response.raw).to_response()
+    assert python_response.headers.get('X-Custom') == '1'
+    assert python_response.content in (b'', None) or len(python_response.content or b'') == 0
+
+  def test_response_adapter_update_status_keeps_chunks(self, sse_request: Request):
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    before = sse_body_from_chunks(sse_request.response)
+    shown, status = adapter.update(sse_request.response.id, status=203)
+    assert status == 200
+    assert shown['text'] == before.decode()
+
+    response = Response.find(sse_request.response.id)
+    assert sse_body_from_chunks(response) == before
+    python_response = RawHttpResponseAdapter(response.raw).to_response()
+    assert python_response.status_code == 203
+
+  def test_response_adapter_update_rolls_back_chunks_when_envelope_fails(self, sse_request: Request):
+    adapter = LocalDBResponseAdapter(request_orm=Request)
+    before = sse_body_from_chunks(sse_request.response)
+    original_update = Response.update
+
+    def failing_envelope_update(self, _attributes=None, **attributes):
+      attrs = dict(attributes)
+      if _attributes is not None:
+        attrs.update(_attributes)
+      if 'raw' in attrs:
+        return False
+      return original_update(self, _attributes, **attributes)
+
+    with patch.object(Response, 'update', failing_envelope_update):
+      _, status = adapter.update(sse_request.response.id, text='data: nope\n\n', status=203)
+
+    assert status == 500
+    response = Response.find(sse_request.response.id)
+    assert sse_body_from_chunks(response) == before
+    python_response = RawHttpResponseAdapter(response.raw).to_response()
+    assert python_response.status_code == 200
+
+  def test_replace_response_chunks_clears_body(self, sse_request: Request):
+    replace_response_chunks(sse_request.response, b'')
+    response = Response.find(sse_request.response.id)
+    assert ResponseChunk.where('response_id', response.id).count() == 0
+    assert sse_body_from_chunks(response) == b''
+    assert response.stream_status == stream_status.COMPLETE
 
   def test_handle_request_mock_serves_chunks_as_body(self, settings, sse_request: Request):
     """Mock path applies joined SSE chunks as one body (no paced stream)."""

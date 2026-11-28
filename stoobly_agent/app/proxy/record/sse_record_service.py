@@ -90,6 +90,45 @@ def sse_body_from_chunks(response: Response) -> bytes:
   return b''.join(chunk.payload or b'' for chunk in chunks)
 
 
+def split_sse_body(payload: bytes) -> List[bytes]:
+  """Split on SSE event boundaries (``\\n\\n``), keeping delimiters with each event."""
+  if not payload:
+    return []
+
+  events: List[bytes] = []
+  start = 0
+  while True:
+    idx = payload.find(b'\n\n', start)
+    if idx < 0:
+      rest = payload[start:]
+      if rest:
+        events.append(rest)
+      break
+    events.append(payload[start:idx + 2])
+    start = idx + 2
+
+  return events if events else [payload]
+
+
+def replace_response_chunks(response: Response, payload: bytes) -> None:
+  """Replace all response_chunks for a streamed response; leave Response.raw alone."""
+  from stoobly_agent.lib.orm import ORM
+
+  parts = split_sse_body(payload)
+  with ORM.instance().db.transaction():
+    for existing in ResponseChunk.where('response_id', response.id).get():
+      existing.delete()
+
+    for sequence, part in enumerate(parts):
+      ResponseChunk.create(
+        response_id=response.id,
+        sequence=sequence,
+        payload=part,
+      )
+
+    response.update(stream_status=stream_status.COMPLETE)
+
+
 def _build_tee(flow: 'MitmproxyHTTPFlow', response_id: int) -> Callable[[bytes], List[bytes]]:
   state = {
     'sequence': 0,
